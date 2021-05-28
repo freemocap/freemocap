@@ -6,9 +6,13 @@ from aniposelib.boards import CharucoBoard, Checkerboard
 import numpy as np
 
 
-# %% Inputs to edit
 
-stage = 8 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+sesh = session.Session(useOpenPose=True,useDLC=False)
+
+# %% Inputs to edit
+stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+sesh.debug = True
+sesh.sessionID = '' #fill in if you are running from Stage 2 onwards 
 
 board = CharucoBoard(7, 5,
                      #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)
@@ -18,10 +22,9 @@ board = CharucoBoard(7, 5,
                      marker_bits=4, dict_size=250)
 
 
-sesh = session.Session(useOpenPose=True,useDLC=False)
-sesh.input_stage = stage
-sesh.debug = True
-sesh.sessionID = 'sesh_21-05-28_113930' #fill in if you are running from Stage 2 onwards
+
+#sesh.input_stage = stage
+
 
 
 # %% Initialization
@@ -41,23 +44,25 @@ if not stage > 2:
 else:
     print('Skipping Video Syncing')
 
+# %% Stage Three
 if not stage > 3:
     sesh.cgroup, sesh.mean_charuco_fr_mar_dim = calibrate.CalibrateCaptureVolume(sesh,board)
 else:
     print('Skipping Calibration')
 
+# %% Stage Four
 if not stage > 4:
     runopenpose.runOpenPose(sesh)
 else:
     print('Skipping Running OpenPose')
 
+# %% Stage Five
 if not stage > 5:
     sesh.openPoseData_nCams_nFrames_nImgPts_XY = runopenpose.parseOpenPose(sesh)
 else:
     print('Skipping Parse OpenPose')
     
-
-
+# %% Stage Six
 if not stage > 6:
     openPose_params = sesh.openPoseData_nCams_nFrames_nImgPts_XY.shape[0:3]
     sesh.skel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XY, openPose_params)
@@ -67,13 +72,13 @@ if not stage > 6:
 else:
     print('Skipping Skeleton Reconstruction')
  
-
+# %% Stage Seven
 if not stage > 7:
     playskeleton.ReplaySkeleton(sesh,1,40,-90,-75)
 else:
     print('Skipping Skeleton Plotting')
     
-
+# %% Stage Eight
 if not stage > 8:
     createvideo.createVideo(sesh)
 else:

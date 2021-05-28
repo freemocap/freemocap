@@ -1,6 +1,8 @@
 # Byte-compiled / optimized / DLL files
+
 __pycache__/
 Data/
+.vscode/
 *.py[cod]
 *$py.class
 
@@ -129,5 +131,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .vscode/launch.json
+Cam4
+Cam3
 Cam2
 Cam1

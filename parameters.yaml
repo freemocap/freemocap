@@ -1,0 +1,24 @@
+#default parameters
+
+
+default:
+  rotations: {}
+  parameters:
+    exposure: -5
+    resWidth: 640
+    resHeight: 480
+    framerate: 25
+    codec: DIVX
+
+#saved parameters    
+
+
+
+saved:
+  rotations:
+  parameters:
+    exposure: 
+    resWidth: 
+    resHeight: 
+    framerate: 
+    codec: 

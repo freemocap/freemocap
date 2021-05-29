@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 from freemocap.webcam import recordGUI,camsetup
-from freemocap import recordingconfig, stolenfromanipose
+from freemocap import recordingconfig, fmc_anipose
 
 def initialize(session, stage, board):
 
@@ -153,7 +153,7 @@ def initialize(session, stage, board):
         session.openPoseData_nCams_nFrames_nImgPts_XY = np.load(session.dataArrayPath/'openPoseData_nCams_nFrames_nImgPts_XY.npy')
         calibrationFile = '{}_calibration.yaml'.format(session.sessionID)
         session.cameraConfigFilePath = session.sessionPath/calibrationFile
-        session.cgroup = stolenfromanipose.CameraGroup.load(session.cameraConfigFilePath)
+        session.cgroup = fmc_anipose.CameraGroup.load(session.cameraConfigFilePath)
 
     if stage == 7:
 

@@ -237,9 +237,9 @@ def ReplaySkeleton(session, vidType, startframe,azimuth,elevation):
         axMain.set_ylabel('y')
         axMain.set_zlabel('z')
 
-        axMain.set_xlim(-100,100)
-        axMain.set_ylim(-100,100)
-        axMain.set_zlim(100,300)
+        axMain.set_xlim(-1000,1000)
+        axMain.set_ylim(-1000,1000)
+        axMain.set_zlim(1000,3000)
         
         if vidType ==0:
                 pass

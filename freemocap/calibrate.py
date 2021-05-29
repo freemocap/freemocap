@@ -1,13 +1,11 @@
 from aniposelib.cameras import CameraGroup
-from freemocap import stolenfromanipose
-
 from aniposelib.utils import load_pose2d_fnames
 import numpy as np
 import cv2
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from freemocap import reconstruct3D, stolenfromanipose
+from freemocap import reconstruct3D, fmc_anipose
 import os
 from rich.progress import track
 
@@ -25,7 +23,7 @@ def CalibrateCaptureVolume(session,board):
         cam_names.append(str(count))
         session.numCams = count
     
-    cgroup = stolenfromanipose.CameraGroup.from_names(cam_names, fisheye=True) #Looking through their code... it looks lke the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)
+    cgroup = fmc_anipose.CameraGroup.from_names(cam_names, fisheye=True) #Looking through their code... it looks lke the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)
 
 
 
@@ -76,16 +74,16 @@ def CalibrateCaptureVolume(session,board):
         #                            init_extrinsics=True)
 #%% End of the copy-paste of the inner bits of `cgroup.calibrate_videos` - END
 
-        #JSM NOTE - need add method to extract Charuco board points from the calibrate_videos pipeline
+    #JSM NOTE - need add method to extract Charuco board points from the calibrate_videos pipeline
 
-        ## if you need to save and load
-        ## example saving and loading for later
-        error,merged = cgroup.calibrate_videos(vidnames, board)
-        cgroup.dump(session.cameraCalFilePath) #JSM NOTE  - let's just use .yaml's unless there is some reason to use .toml
-        mergename = session.sessionPath/'merged.npy'
-        np.save(mergename,merged)
-    else: 
-        cgroup = CameraGroup.load(session.cameraCalFilePath) #load previous calibration config
+    ## if you need to save and load
+    ## example saving and loading for later
+    error,merged = cgroup.calibrate_videos(vidnames, board)
+    cgroup.dump(session.cameraCalFilePath) #JSM NOTE  - let's just use .yaml's unless there is some reason to use .toml
+    mergename = session.sessionPath/'merged.npy'
+    np.save(mergename,merged)
+    # else: 
+    #     cgroup = CameraGroup.load(session.cameraCalFilePath) #load previous calibration config
 
     session.cgroup = cgroup
     n_frames= 40
@@ -154,9 +152,9 @@ def CalibrateCaptureVolume(session,board):
         my = np.nanmean(my)
         mz = np.nanmean(mz)
 
-        ax1.set_xlim(mx-100,mx+100)
-        ax1.set_ylim(my-100,my+100)
-        ax1.set_zlim(mz-100,mz+100)
+        ax1.set_xlim(mx-1000,mx+1000)
+        ax1.set_ylim(my-1000,my+1000)
+        ax1.set_zlim(mz-1000,mz+1000)
 
         # #charuco points over time
         # ax2 = fig.add_subplot(122)

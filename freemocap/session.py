@@ -12,5 +12,10 @@ class Session: #session like "recording session"
         self.cam_inputs = None
         self.parameterDictionary = None
         self.rotationInputs = None
+
+        self.cgroup = None
         
-    
+        self.mean_charuco_fr_mar_dim = None
+        self.skel_fr_mar_dim = None
+
+        self.openPose_imgPathList = None

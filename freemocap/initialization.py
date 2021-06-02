@@ -78,12 +78,12 @@ def initialize(session, stage, board):
 
         #load the config yaml for this session, and add all the paths to the session file
         session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID)
-        config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(session,config_settings) #add paths to session class
+        session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+        recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
 
         #from the config settings add the camera input parameters to parameter dictionary
-        session.parameterDictionary = config_settings['CamInputs']['ParameterDict']
-        session.rotationInputs = config_settings['CamInputs']['RotationInputs']
+        session.parameterDictionary = session.config_settings['CamInputs']['ParameterDict']
+        session.rotationInputs = session.config_settings['CamInputs']['RotationInputs']
 
         #initialize the path to the timestamp csv
         csvName = session.sessionID + '.csv'
@@ -95,6 +95,7 @@ def initialize(session, stage, board):
 
         #get the camIDs and number of cameras (numCamRange) from the dataframe
         camIDs = list(timeStampData.columns)
+        numCams = len(camIDs)
         numCamRange = range(len(camIDs)) 
         
         #create names for each of the raw videos  
@@ -109,6 +110,7 @@ def initialize(session, stage, board):
         session.camIDs = camIDs
         session.numCamRange = numCamRange
         session.vidNames = vidNames
+        session.numCams = numCams
 
     if stage == 3:
        
@@ -118,8 +120,8 @@ def initialize(session, stage, board):
         session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID)
 
         if session.yamlPath.is_file(): #if the config yaml exists (from a webcam recording)
-            config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-            recordingconfig.load_session_paths(session,config_settings) #add paths to session class
+            session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+            recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
         else: #if it doesn't exist (because of a GoPro/external camera recording)
             recordingconfig.createSession(session,filepath)
 
@@ -128,18 +130,26 @@ def initialize(session, stage, board):
         session.sessionPath = filepath/'Data'/session.sessionID
 
         session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
-        config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(session,config_settings) #add paths to session class
+        session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+        recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
+
+        for count,thisVidPath in enumerate(session.syncedVidPath.glob('*.mp4'),start=1): 
+            session.numCams = count
+        
+        
 
     if stage == 5:
 
         session.sessionPath = filepath/'Data'/session.sessionID
 
         session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
-        config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(session,config_settings) #add paths to session class
+        session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+        recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
 
-        session.openPose_jsonPathList = config_settings['openPose_jsonPathList']
+        for count,thisVidPath in enumerate(session.syncedVidPath.glob('*.mp4'),start=1): 
+            session.numCams = count
+
+        session.openPose_jsonPathList = session.config_settings['openPose_jsonPathList']
         session.numCams = len(session.openPose_jsonPathList)
 
     if stage == 6:
@@ -147,23 +157,21 @@ def initialize(session, stage, board):
         session.sessionPath = filepath/'Data'/session.sessionID
 
         session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
-        config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(session,config_settings) #add paths to session class
+        session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+        recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
 
         session.openPoseData_nCams_nFrames_nImgPts_XY = np.load(session.dataArrayPath/'openPoseData_nCams_nFrames_nImgPts_XY.npy')
-        calibrationFile = '{}_calibration.yaml'.format(session.sessionID)
-        session.cameraConfigFilePath = session.sessionPath/calibrationFile
-        session.cgroup = stolenfromanipose.CameraGroup.load(session.cameraConfigFilePath)
+        
 
     if stage == 7:
 
         session.sessionPath = filepath/'Data'/session.sessionID
 
         session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
-        config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(session,config_settings) #add paths to session class   
+        session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+        recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class   
 
-        session.openPose_imgPathList = config_settings['openPose_imgPathList']
+        session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
         session.numCams = len(session.openPose_imgPathList)
 
         session.mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_points.npy')
@@ -174,7 +182,7 @@ def initialize(session, stage, board):
         session.sessionPath = filepath/'Data'/session.sessionID
 
         session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
-        config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(session,config_settings) #add paths to session class   
+        session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+        recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class   
 
 # %%

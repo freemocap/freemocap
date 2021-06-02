@@ -1,5 +1,7 @@
 from freemocap import createvideo, initialization, runcams, calibrate, runopenpose, reconstruct3D, playskeleton, session
 
+from pathlib import Path
+import os
 
 from aniposelib.boards import CharucoBoard, Checkerboard
 
@@ -10,9 +12,14 @@ import numpy as np
 sesh = session.Session(useOpenPose=True,useDLC=False)
 
 # %% Inputs to edit
-stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 8 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = True
-sesh.sessionID = '' #fill in if you are running from Stage 2 onwards 
+
+sesh.sessionID = '' #fill in if you are running from Stage 2 onwards
+if not sesh.sessionID:
+    dataFolder = Path.cwd()/'Data'
+    subfolders = [ f.path for f in os.scandir(dataFolder) if f.is_dir() ] #copy-pasta from who knows where
+    sesh.sessionID = Path(subfolders[-1]).stem #grab the name of the last folder in the list of subfolders
 
 board = CharucoBoard(7, 5,
                      #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)
@@ -33,6 +40,8 @@ initialization.initialize(sesh,stage,board)
 
 # %% Stage One
 if not stage > 1:
+    print()
+    print('Starting Video Recordings')
     runcams.RecordCams(sesh, sesh.cam_inputs, sesh.parameterDictionary, sesh.rotationInputs)
 else:
     print('Skipping Video Recording')
@@ -40,30 +49,40 @@ else:
 
 # %% Stage Two
 if not stage > 2:
+    print()
+    print('Starting Video Syncing')
     runcams.SyncCams(sesh, sesh.timeStampData,sesh.numCamRange,sesh.vidNames,sesh.camIDs)
 else:
     print('Skipping Video Syncing')
 
 # %% Stage Three
 if not stage > 3:
+    print()
+    print('Starting Calibration')
     sesh.cgroup, sesh.mean_charuco_fr_mar_dim = calibrate.CalibrateCaptureVolume(sesh,board)
 else:
     print('Skipping Calibration')
 
 # %% Stage Four
 if not stage > 4:
+    print()
+    print('Starting Running OpenPose')
     runopenpose.runOpenPose(sesh)
 else:
     print('Skipping Running OpenPose')
 
 # %% Stage Five
 if not stage > 5:
+    print()
+    print('Starting Parse OpenPose')
     sesh.openPoseData_nCams_nFrames_nImgPts_XY = runopenpose.parseOpenPose(sesh)
 else:
     print('Skipping Parse OpenPose')
     
 # %% Stage Six
 if not stage > 6:
+    print()
+    print('Starting Skeleton Reconstruction')
     openPose_params = sesh.openPoseData_nCams_nFrames_nImgPts_XY.shape[0:3]
     sesh.skel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XY, openPose_params)
 
@@ -74,12 +93,16 @@ else:
  
 # %% Stage Seven
 if not stage > 7:
+    print()
+    print('Starting Skeleton Plotting')
     playskeleton.ReplaySkeleton(sesh,1,40,-90,-75)
 else:
     print('Skipping Skeleton Plotting')
     
 # %% Stage Eight
 if not stage > 8:
+    print()
+    print('Starting Video Creation')
     createvideo.createVideo(sesh)
 else:
     print('Skipping Video Creation')

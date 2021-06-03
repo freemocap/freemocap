@@ -58,7 +58,9 @@ def runMediaPipe(session, dummyRun=False):
                             annotated_image, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
 
                         #save annotated image
-                        cv2.imwrite(str(imgPath)+ '/' + str(frameNum) + '.png', annotated_image)
+                        frameName = str(frameNum).zfill(6)
+
+                        cv2.imwrite(str(imgPath)+ '/' + frameName + '.png', annotated_image)
                         
                         #load the next image (will break `while-loop` on the last frame)
                         success, image = cap.read()#load next image from video    

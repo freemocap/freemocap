@@ -153,12 +153,12 @@ def ReplaySkeleton(session, vidType, startframe,azimuth,elevation):
 
     camImgPathList = {}
 
-    if session.openPose_imgPathList is None:
-        session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
-        session.numCams = len(session.openPose_imgPathList)
+    if session.mediaPipe_imgPathList is None:
+        session.mediaPipe_imgPathList = session.config_settings['mediaPipe_imgPathList']
+        session.numCams = len(session.mediaPipe_imgPathList)
 
     for cam in range(session.numCams):
-        camImgPathList[cam] = list(sorted(Path(session.openPose_imgPathList[cam]).glob('*.png')))
+        camImgPathList[cam] = list(sorted(Path(session.mediaPipe_imgPathList[cam]).glob('*.png')))
         session.numFrames = len(camImgPathList[cam]) #will need to perhaps put a check in on whether numFrames between cameras are the same
     
 

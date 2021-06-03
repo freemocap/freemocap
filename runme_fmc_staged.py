@@ -1,4 +1,4 @@
-from freemocap import createvideo, initialization, runcams, calibrate, runopenpose, reconstruct3D, playskeleton, session
+from freemocap import createvideo, initialization, runcams, calibrate, runmediapipe, reconstruct3D, playskeleton, session
 
 from pathlib import Path
 import os
@@ -12,7 +12,7 @@ import numpy as np
 sesh = session.Session(useOpenPose=True,useDLC=False)
 
 # %% Inputs to edit
-stage = 8 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = True
 
 sesh.sessionID = '' #fill in if you are running from Stage 2 onwards
@@ -66,25 +66,25 @@ else:
 # %% Stage Four
 if not stage > 4:
     print()
-    print('Starting Running OpenPose')
-    runopenpose.runOpenPose(sesh)
+    print('Starting Run MediaPipe')
+    runmediapipe.runMediaPipe(sesh)
 else:
-    print('Skipping Running OpenPose')
+    print('Skipping Run MediaPipe')
 
 # %% Stage Five
 if not stage > 5:
     print()
-    print('Starting Parse OpenPose')
-    sesh.openPoseData_nCams_nFrames_nImgPts_XY = runopenpose.parseOpenPose(sesh)
+    print('Starting Parse MediaPipe')
+    sesh.mediaPipeData_nCams_nFrames_nImgPts_XY = runmediapipe.parseMediaPipe(sesh)
 else:
-    print('Skipping Parse OpenPose')
+    print('Skipping Parse MediaPipe')
     
 # %% Stage Six
 if not stage > 6:
     print()
     print('Starting Skeleton Reconstruction')
-    openPose_params = sesh.openPoseData_nCams_nFrames_nImgPts_XY.shape[0:3]
-    sesh.skel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XY, openPose_params)
+    mediaPipe_params = sesh.mediaPipeData_nCams_nFrames_nImgPts_XY.shape[0:3]
+    sesh.skel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XY, mediaPipe_params)
 
     path_to_skel_points = sesh.dataArrayPath/'skeleton_points.npy'
     np.save(path_to_skel_points, sesh.skel_fr_mar_dim)

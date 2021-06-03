@@ -34,9 +34,9 @@ def createSession(session,filepath, existing_data = False):
     session.calVidPath.mkdir(exist_ok = True)
     pathList.append(session.calVidPath)
     
-    session.openPoseDataPath = session.sessionPath/'OpenPoseData'
-    session.openPoseDataPath.mkdir(exist_ok = True)
-    pathList.append(session.openPoseDataPath)
+    session.mediaPipeDataPath = session.sessionPath/'OpenPoseData'
+    session.mediaPipeDataPath.mkdir(exist_ok = True)
+    pathList.append(session.mediaPipeDataPath)
     
     session.dlcDataPath  =  session.sessionPath / 'DLCdata' / 'videos'
     session.dlcDataPath.mkdir(exist_ok = True, parents = True)
@@ -89,7 +89,7 @@ def create_config_yaml():
         rawVidPath:
         syncedVidPath:
         calVidPath:
-        openPoseDataPath:
+        mediaPipeDataPath:
         dlcDataPath:
         imOutPath:
         dataArrayPath:
@@ -126,7 +126,7 @@ def load_session_paths(session,config_settings):
     session.rawVidPath = Path(configPaths['rawVidPath'])
     session.syncedVidPath = Path(configPaths['syncedVidPath'])
     session.calVidPath = Path(configPaths['calVidPath'])
-    session.openPoseDataPath = Path(configPaths['openPoseDataPath'])
+    session.mediaPipeDataPath = Path(configPaths['mediaPipeDataPath'])
     session.dlcDataPath = Path(configPaths['dlcDataPath'])
     session.imOutPath = Path(configPaths['imOutPath'])
     session.dataArrayPath = Path(configPaths['dataArrayPath'])

@@ -18,4 +18,4 @@ class Session: #session like "recording session"
         self.mean_charuco_fr_mar_dim = None
         self.skel_fr_mar_dim = None
 
-        self.openPose_imgPathList = None
+        self.mediaPipe_imgPathList = None

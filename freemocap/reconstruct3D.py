@@ -1,4 +1,12 @@
+from freemocap import stolenfromanipose
+
 def reconstruct3D(session, data_nCams_nFrames_nImgPts_XY,data_params):
+    
+    if session.cgroup is None: #load the calibration settings into the session class if it hasn't been already
+        calibrationFile = '{}_calibration.yaml'.format(session.sessionID)
+        session.cameraConfigFilePath = session.sessionPath/calibrationFile
+        session.cgroup = stolenfromanipose.CameraGroup.load(session.cameraConfigFilePath)
+    
     n_cams, n_frames, n_trackedPoints = data_params
 
     #assert numDims == 2, 'Problem with your data! Not enough dimensions'

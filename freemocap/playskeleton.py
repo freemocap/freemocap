@@ -144,7 +144,19 @@ from pathlib import Path
 
 
 def ReplaySkeleton(session, vidType, startframe,azimuth,elevation):
+
+    if session.mean_charuco_fr_mar_dim is None:
+        session.mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_points.npy')
+
+    if session.skel_fr_mar_dim is None:
+        session.skel_fr_mar_dim = np.load(session.dataArrayPath/'skeleton_points.npy')
+
     camImgPathList = {}
+
+    if session.openPose_imgPathList is None:
+        session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
+        session.numCams = len(session.openPose_imgPathList)
+
     for cam in range(session.numCams):
         camImgPathList[cam] = list(sorted(Path(session.openPose_imgPathList[cam]).glob('*.png')))
         session.numFrames = len(camImgPathList[cam]) #will need to perhaps put a check in on whether numFrames between cameras are the same

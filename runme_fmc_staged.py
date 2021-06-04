@@ -1,5 +1,7 @@
 from freemocap import createvideo, initialization, runcams, calibrate, fmc_openpose, reconstruct3D, playskeleton, session
 
+from pathlib import Path
+import os
 
 from aniposelib.boards import CharucoBoard, Checkerboard
 
@@ -13,6 +15,12 @@ sesh = session.Session(useOpenPose=True,useDLC=False)
 stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = False
 sesh.sessionID = '' #fill in if you are running from Stage 2 onwards 
+
+sesh.sessionID = '' #fill in if you are running from Stage 2 onwards
+if not sesh.sessionID:
+    dataFolder = Path.cwd()/'Data'
+    subfolders = [ f.path for f in os.scandir(dataFolder) if f.is_dir() ] #copy-pasta from who knows where
+    sesh.sessionID = Path(subfolders[-1]).stem #grab the name of the last folder in the list of subfolders
 
 board = CharucoBoard(7, 5,
                      #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)

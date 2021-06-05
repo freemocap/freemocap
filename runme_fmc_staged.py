@@ -21,6 +21,11 @@ if not sesh.sessionID:
     dataFolder = Path.cwd()/'Data'
     subfolders = [ f.path for f in os.scandir(dataFolder) if f.is_dir() ] #copy-pasta from who knows where
     sesh.sessionID = Path(subfolders[-1]).stem #grab the name of the last folder in the list of subfolders
+=======
+stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+sesh.debug = True
+sesh.sessionID = '' #fill in if you are running from Stage 2 onwards 
+>>>>>>> 8f1fbc8... runme file reorganization
 
 board = CharucoBoard(7, 5,
                      #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)

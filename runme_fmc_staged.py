@@ -3,7 +3,7 @@ from freemocap import createvideo, initialization, runcams, calibrate, fmc_media
 from pathlib import Path
 import os
 
-from aniposelib.boards import CharucoBoard, Checkerboard
+from aniposelib.boards import CharucoBoard
 
 import numpy as np
 
@@ -21,7 +21,7 @@ if useDLC:
 
 
 # %% Inputs to edit
-stage = 7 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 3 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = False
 
 sesh.sessionID = 'sesh_21-05-31_111833' #fill in if you are running from Stage 2 onwards

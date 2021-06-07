@@ -1,5 +1,4 @@
 from aniposelib.cameras import CameraGroup
-from freemocap import stolenfromanipose
 
 from aniposelib.utils import load_pose2d_fnames
 import numpy as np
@@ -7,7 +6,7 @@ import cv2
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from freemocap import reconstruct3D, stolenfromanipose
+from freemocap import reconstruct3D, fmc_anipose
 import os
 from rich.progress import track
 
@@ -25,7 +24,7 @@ def CalibrateCaptureVolume(session,board):
         cam_names.append(str(count))
         session.numCams = count
     
-    cgroup = stolenfromanipose.CameraGroup.from_names(cam_names, fisheye=True) #Looking through their code... it looks lke the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)
+    cgroup = fmc_anipose.CameraGroup.from_names(cam_names, fisheye=True) #Looking through their code... it looks lke the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)
 
 
 
@@ -105,13 +104,12 @@ def CalibrateCaptureVolume(session,board):
             except: 
                 print('failed frame:', frame)
                 continue
-    charuco_nCams_nFrames_nImgPts_XY = np.array(charucoarray)
+    charuco_nCams_nFrames_nImgPts_XY = np.squeeze(np.array(charucoarray))
     
     session.charuco_nCams_nFrames_nImgPts_XY = charuco_nCams_nFrames_nImgPts_XY
 
-    charuco_params = charuco_nCams_nFrames_nImgPts_XY.shape[0:3]
     
-    charuco_fr_mar_dim = reconstruct3D.reconstruct3D(session,charuco_nCams_nFrames_nImgPts_XY,charuco_params)
+    charuco_fr_mar_dim = reconstruct3D.reconstruct3D(session,charuco_nCams_nFrames_nImgPts_XY)
     
     mean_charuco_fr_mar_dim = np.nanmean(charuco_fr_mar_dim,axis = 0)
 
@@ -135,6 +133,9 @@ def CalibrateCaptureVolume(session,board):
         mx = np.nanmean(x)
         my = np.nanmean(y)
         mz = np.nanmean(z)
+        
+        
+        
         ax1.scatter(x,y,z, marker='o')
         ax1.set_title('Mean Charuco Point Positions')
         
@@ -149,14 +150,11 @@ def CalibrateCaptureVolume(session,board):
 
             ax1.scatter(cgroup.cameras[camNum].tvec[0], cgroup.cameras[camNum].tvec[1],  cgroup.cameras[camNum].tvec[2], marker = 'p')
         
-        
-        mx = np.nanmean(mx)
-        my = np.nanmean(my)
-        mz = np.nanmean(mz)
+        axRange = board.square_length*5
 
-        ax1.set_xlim(mx-100,mx+100)
-        ax1.set_ylim(my-100,my+100)
-        ax1.set_zlim(mz-100,mz+100)
+        ax1.set_xlim(mx-axRange,mx+axRange)
+        ax1.set_ylim(my-axRange,my+axRange)
+        ax1.set_zlim(mz-axRange,mz+axRange)
 
         # #charuco points over time
         # ax2 = fig.add_subplot(122)

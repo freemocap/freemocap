@@ -1,4 +1,4 @@
-from freemocap import createvideo, initialization, runcams, calibrate, runmediapipe, reconstruct3D, playskeleton, session
+from freemocap import createvideo, initialization, runcams, calibrate, fmc_mediapipe, fmc_openpose, fmc_deeplabcut,  reconstruct3D, playskeleton, session
 
 from pathlib import Path
 import os
@@ -7,15 +7,24 @@ from aniposelib.boards import CharucoBoard, Checkerboard
 
 import numpy as np
 
+sesh = session.Session()
 
 
-sesh = session.Session(useOpenPose=True,useDLC=False)
+useOpenPose= True
+useMediaPipe = True
+useDLC=True
+
+if useDLC: 
+    import deeplabcut as dlc
+    sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
+
+
 
 # %% Inputs to edit
-stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
-sesh.debug = True
+stage = 7 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+sesh.debug = False
 
-sesh.sessionID = '' #fill in if you are running from Stage 2 onwards
+sesh.sessionID = 'sesh_21-05-31_111833' #fill in if you are running from Stage 2 onwards
 if not sesh.sessionID:
     dataFolder = Path.cwd()/'Data'
     subfolders = [ f.path for f in os.scandir(dataFolder) if f.is_dir() ] #copy-pasta from who knows where
@@ -24,8 +33,8 @@ if not sesh.sessionID:
 board = CharucoBoard(7, 5,
                      #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)
                      #marker_length=.8,
-                     square_length = 7,
-                     marker_length = 6.8,
+                     square_length = 121,
+                     marker_length = 96,
                      marker_bits=4, dict_size=250)
 
 
@@ -39,7 +48,7 @@ board = CharucoBoard(7, 5,
 initialization.initialize(sesh,stage,board)
 
 # %% Stage One
-if not stage > 1:
+if stage <= 1:
     print()
     print('Starting Video Recordings')
     runcams.RecordCams(sesh, sesh.cam_inputs, sesh.parameterDictionary, sesh.rotationInputs)
@@ -48,7 +57,7 @@ else:
 
 
 # %% Stage Two
-if not stage > 2:
+if stage <= 2:
     print()
     print('Starting Video Syncing')
     runcams.SyncCams(sesh, sesh.timeStampData,sesh.numCamRange,sesh.vidNames,sesh.camIDs)
@@ -56,7 +65,7 @@ else:
     print('Skipping Video Syncing')
 
 # %% Stage Three
-if not stage > 3:
+if stage <= 3:
     print()
     print('Starting Calibration')
     sesh.cgroup, sesh.mean_charuco_fr_mar_dim = calibrate.CalibrateCaptureVolume(sesh,board)
@@ -64,43 +73,72 @@ else:
     print('Skipping Calibration')
 
 # %% Stage Four
-if not stage > 4:
-    print()
-    print('Starting Run MediaPipe')
-    runmediapipe.runMediaPipe(sesh)
+if stage <= 4:
+    print('Starting Track Image Points')
+    if useMediaPipe:
+        fmc_mediapipe.runMediaPipe(sesh)
+        sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
+        sesh.mediaPipeSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
+        np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_dim) #save data to npy
+
+    if useOpenPose:
+        fmc_openpose.runOpenPose(sesh, dummyRun=False)
+        sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
+        sesh.openPoseskel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
+        np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseskel_fr_mar_dim) #save data to npy
+
+    if useDLC:
+        syncedVidList = []
+        for vid in sesh.syncedVidPath.glob('*.mp4'):
+            syncedVidList.append(str(vid))
+        
+        dlc.analyze_videos(sesh.dlcConfigPath,syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True) 
+        sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh)
+        sesh.dlc_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.95)
+        np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_dim) #save data to npy
+
 else:
     print('Skipping Run MediaPipe')
 
-# %% Stage Five
-if not stage > 5:
-    print()
-    print('Starting Parse MediaPipe')
-    sesh.mediaPipeData_nCams_nFrames_nImgPts_XY = runmediapipe.parseMediaPipe(sesh)
-else:
-    print('Skipping Parse MediaPipe')
+# # %% Stage Five
+# if not stage > 5:
+#     print('Starting Parse MediaPipe')
+#     sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
+# else:
+#     print('Skipping Parse MediaPipe')
     
-# %% Stage Six
-if not stage > 6:
-    print()
-    print('Starting Skeleton Reconstruction')
-    mediaPipe_params = sesh.mediaPipeData_nCams_nFrames_nImgPts_XY.shape[0:3]
-    sesh.skel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XY, mediaPipe_params)
 
-    path_to_skel_points = sesh.dataArrayPath/'skeleton_points.npy'
-    np.save(path_to_skel_points, sesh.skel_fr_mar_dim)
-else:
-    print('Skipping Skeleton Reconstruction')
+
+# # %% Stage Six
+# if not stage > 6:
+#     print()
+#     print('Starting Skeleton Reconstruction')
+#     sesh.skel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
+
+#     path_to_skel_points = sesh.dataArrayPath/'skeleton_points.npy'
+#     np.save(path_to_skel_points, sesh.skel_fr_mar_dim)
+# else:
+#     print('Skipping Skeleton Reconstruction')
  
+
+
 # %% Stage Seven
-if not stage > 7:
-    print()
+if stage <= 7:
     print('Starting Skeleton Plotting')
-    playskeleton.ReplaySkeleton(sesh,1,40,-90,-75)
+    playskeleton.ReplaySkeleton(
+                                sesh,
+                                vidType=1,
+                                startFrame=40,
+                                azimuth=-90, 
+                                elevation=-80,
+                                useOpenPose=useOpenPose,
+                                useMediaPipe=useMediaPipe,
+                                useDLC=useDLC)
 else:
     print('Skipping Skeleton Plotting')
     
 # %% Stage Eight
-if not stage > 8:
+if stage <= 8:
     print()
     print('Starting Video Creation')
     createvideo.createVideo(sesh)

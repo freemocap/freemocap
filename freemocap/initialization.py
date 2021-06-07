@@ -7,13 +7,16 @@ import pandas as pd
 import numpy as np
 
 from freemocap.webcam import recordGUI,camsetup
-from freemocap import recordingconfig, stolenfromanipose
+from freemocap import recordingconfig, fmc_anipose
 
 def initialize(session, stage, board):
 
     print('Starting initialization for stage {}'.format(stage))
     #if stage == 1:    
     filepath = Path.cwd()
+
+    session.board = board
+
 # %% Stage One Initialization
     if stage == 1:
 
@@ -171,11 +174,10 @@ def initialize(session, stage, board):
         session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
         recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class   
 
-        session.mediaPipe_imgPathList = session.config_settings['mediaPipe_imgPathList']
-        session.numCams = len(session.mediaPipe_imgPathList)
+        session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
+        session.numCams = len(session.openPose_imgPathList)
 
-        session.mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_points.npy')
-        session.skel_fr_mar_dim = np.load(session.dataArrayPath/'skeleton_points.npy')
+        
 
     if stage == 8:
 

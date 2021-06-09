@@ -36,7 +36,7 @@ def createSession(session,filepath, existing_data = False):
 
     session.openPoseDataPath = session.sessionPath/'OpenPoseData'
     session.openPoseDataPath.mkdir(exist_ok = True)
-    pathList.append(session.mediaPipeDataPath)
+    pathList.append(session.openPoseDataPath)
 
     session.mediaPipeDataPath = session.sessionPath/'MediaPipeData'
     session.mediaPipeDataPath.mkdir(exist_ok = True)
@@ -59,6 +59,8 @@ def createSession(session,filepath, existing_data = False):
    
     
     config_settings,config_yaml = create_config_yaml()
+    session.config_settings = config_settings
+
     yaml_name = session.sessionPath/'{}_config.yaml'.format(session.sessionID)
     session.yamlPath = yaml_name
    # print(yaml_name)
@@ -93,6 +95,7 @@ def create_config_yaml():
         rawVidPath:
         syncedVidPath:
         calVidPath:
+        openPoseDataPath:
         mediaPipeDataPath:
         dlcDataPath:
         imOutPath:
@@ -101,6 +104,7 @@ def create_config_yaml():
         """
     config_yaml = YAML()
     config_settings = config_yaml.load(yaml_str)
+
     return config_settings,config_yaml
 
 

@@ -155,23 +155,27 @@ def ReplaySkeleton( session,
     
     mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_points.npy')
 
-    if useOpenPose:
-        skel_fr_mar_dim = np.load(session.dataArrayPath/'openPoseSkel_3d.npy')
 
-    if useMediaPipe:
+    if session.useMediaPipe:
         mediaPipe_skel_fr_mar_dim = np.load(session.dataArrayPath/'mediaPipeSkel_3d.npy')
+        imgPathList = session.config_settings['mediaPipe_imgPathList']
+        session.numCams = len(session.mediaPipe_imgPathList)
+
+    
+    if session.useOpenPose:
+        skel_fr_mar_dim = np.load(session.dataArrayPath/'openPoseSkel_3d.npy')
+        imgPathList = session.config_settings['openPose_imgPathList']
+        session.numCams = len(session.openPose_imgPathList)    
         
-    if useDLC:
+    if session.useDLC:
         dlc_fr_mar_dim = np.load(session.dataArrayPath/'deepLabCut_3d.npy')
         dlc0 = np.squeeze(dlc_fr_mar_dim[:,0,:])
         dlc1 = np.squeeze(dlc_fr_mar_dim[:,1,:])
         dlc2 = np.squeeze(dlc_fr_mar_dim[:,2,:])
         ballTrailLen = 4
 
-    
-    if useOpenPose:
-        imgPathList = session.config_settings['openPose_imgPathList']
-        session.numCams = len(session.openPose_imgPathList)
+      
+
     
     camImgPathList = {}
     for cam in range(session.numCams):
@@ -227,50 +231,51 @@ def ReplaySkeleton( session,
 
     
         #plot skeleton (openPose by default)
+        if session.useOpenPose:
+            sk_x = skel_fr_mar_dim[fr,:,0] #skeleton x data
+            sk_y = skel_fr_mar_dim[fr,:,1] #skeleton y data
+            sk_z = skel_fr_mar_dim[fr,:,2] #skeleton z data
+
+            axMain.scatter3D(sk_x,sk_y,sk_z, marker='.',color = 'k', s=4.)
+            axMain.plot(sk_x[head],sk_y[head],sk_z[head], linestyle='-', color='g', linewidth = 1.)
+            axMain.plot(sk_x[spine],sk_y[spine],sk_z[spine], linestyle='-', color = 'g', linewidth = 1.)
+            axMain.plot(sk_x[rArm],sk_y[rArm],sk_z[rArm], linestyle='-', color = 'r', linewidth = 1.)
+            axMain.plot(sk_x[lArm],sk_y[lArm],sk_z[lArm], linestyle='-', color = 'b', linewidth = 1.)
+            axMain.plot(sk_x[rLeg],sk_y[rLeg],sk_z[rLeg], linestyle='-', color = 'r', linewidth = 1.)
+            axMain.plot(sk_x[lLeg],sk_y[lLeg],sk_z[lLeg], linestyle='-', color = 'b', linewidth = 1.)
+            axMain.plot(sk_x[rFoot],sk_y[rFoot],sk_z[rFoot], linestyle='-', color = 'r', linewidth = 1.)
+            axMain.plot(sk_x[lFoot],sk_y[lFoot],sk_z[lFoot], linestyle='-', color = 'b', linewidth = 1.)
+
+            # plot handybois
+            # right hand
+            axMain.plot(sk_x[thumb+rHandIDstart],sk_y[thumb+rHandIDstart],sk_z[thumb+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
+            axMain.plot(sk_x[index+rHandIDstart],sk_y[index+rHandIDstart],sk_z[index+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
+            axMain.plot(sk_x[bird+rHandIDstart],sk_y[bird+rHandIDstart],sk_z[bird+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
+            axMain.plot(sk_x[ring+rHandIDstart],sk_y[ring+rHandIDstart],sk_z[ring+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
+            axMain.plot(sk_x[pinky+rHandIDstart],sk_y[pinky+rHandIDstart],sk_z[pinky+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
+
+            #left hand
+            axMain.plot(sk_x[thumb+lHandIDstart],sk_y[thumb+lHandIDstart],sk_z[thumb+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
+            axMain.plot(sk_x[index+lHandIDstart],sk_y[index+lHandIDstart],sk_z[index+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
+            axMain.plot(sk_x[bird+lHandIDstart],sk_y[bird+lHandIDstart],sk_z[bird+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
+            axMain.plot(sk_x[ring+lHandIDstart],sk_y[ring+lHandIDstart],sk_z[ring+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
+            axMain.plot(sk_x[pinky+lHandIDstart],sk_y[pinky+lHandIDstart],sk_z[pinky+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
         
-        sk_x = skel_fr_mar_dim[fr,:,0] #skeleton x data
-        sk_y = skel_fr_mar_dim[fr,:,1] #skeleton y data
-        sk_z = skel_fr_mar_dim[fr,:,2] #skeleton z data
-
-        axMain.scatter3D(sk_x,sk_y,sk_z, marker='.',color = 'k', s=4.)
-        axMain.plot(sk_x[head],sk_y[head],sk_z[head], linestyle='-', color='g', linewidth = 1.)
-        axMain.plot(sk_x[spine],sk_y[spine],sk_z[spine], linestyle='-', color = 'g', linewidth = 1.)
-        axMain.plot(sk_x[rArm],sk_y[rArm],sk_z[rArm], linestyle='-', color = 'r', linewidth = 1.)
-        axMain.plot(sk_x[lArm],sk_y[lArm],sk_z[lArm], linestyle='-', color = 'b', linewidth = 1.)
-        axMain.plot(sk_x[rLeg],sk_y[rLeg],sk_z[rLeg], linestyle='-', color = 'r', linewidth = 1.)
-        axMain.plot(sk_x[lLeg],sk_y[lLeg],sk_z[lLeg], linestyle='-', color = 'b', linewidth = 1.)
-        axMain.plot(sk_x[rFoot],sk_y[rFoot],sk_z[rFoot], linestyle='-', color = 'r', linewidth = 1.)
-        axMain.plot(sk_x[lFoot],sk_y[lFoot],sk_z[lFoot], linestyle='-', color = 'b', linewidth = 1.)
-
-        # plot handybois
-        # right hand
-        axMain.plot(sk_x[thumb+rHandIDstart],sk_y[thumb+rHandIDstart],sk_z[thumb+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
-        axMain.plot(sk_x[index+rHandIDstart],sk_y[index+rHandIDstart],sk_z[index+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
-        axMain.plot(sk_x[bird+rHandIDstart],sk_y[bird+rHandIDstart],sk_z[bird+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
-        axMain.plot(sk_x[ring+rHandIDstart],sk_y[ring+rHandIDstart],sk_z[ring+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
-        axMain.plot(sk_x[pinky+rHandIDstart],sk_y[pinky+rHandIDstart],sk_z[pinky+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
-
-        #left hand
-        axMain.plot(sk_x[thumb+lHandIDstart],sk_y[thumb+lHandIDstart],sk_z[thumb+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
-        axMain.plot(sk_x[index+lHandIDstart],sk_y[index+lHandIDstart],sk_z[index+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
-        axMain.plot(sk_x[bird+lHandIDstart],sk_y[bird+lHandIDstart],sk_z[bird+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
-        axMain.plot(sk_x[ring+lHandIDstart],sk_y[ring+lHandIDstart],sk_z[ring+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
-        axMain.plot(sk_x[pinky+lHandIDstart],sk_y[pinky+lHandIDstart],sk_z[pinky+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
-       
 
         #plot mediapipe
-        mp_sk_x = mediaPipe_skel_fr_mar_dim[fr,:,0] #skeleton x data
-        mp_sk_y = mediaPipe_skel_fr_mar_dim[fr,:,1] #skeleton y data
-        mp_sk_z = mediaPipe_skel_fr_mar_dim[fr,:,2] #skeleton z data
-        axMain.scatter3D(mp_sk_x, mp_sk_y, mp_sk_z, marker='.',color = 'g', s=8.)
+        if session.useMediaPipe:
+            mp_sk_x = mediaPipe_skel_fr_mar_dim[fr,:,0] #skeleton x data
+            mp_sk_y = mediaPipe_skel_fr_mar_dim[fr,:,1] #skeleton y data
+            mp_sk_z = mediaPipe_skel_fr_mar_dim[fr,:,2] #skeleton z data
+            axMain.scatter3D(mp_sk_x, mp_sk_y, mp_sk_z, marker='.',color = 'g', s=8.)
 
         #plot deeplabcut
-
-        dlc_x = dlc_fr_mar_dim[fr,:,0]
-        dlc_y = dlc_fr_mar_dim[fr,:,1]
-        dlc_z = dlc_fr_mar_dim[fr,:,2]
-        
-        axMain.scatter3D(dlc_x,dlc_y,dlc_z, marker='o',color = 'r', s=24.)
+        if session.useDLC:
+            dlc_x = dlc_fr_mar_dim[fr,:,0]
+            dlc_y = dlc_fr_mar_dim[fr,:,1]
+            dlc_z = dlc_fr_mar_dim[fr,:,2]
+            
+            axMain.scatter3D(dlc_x,dlc_y,dlc_z, marker='o',color = 'r', s=24.)
 
         #plot charuco grid
         axMain.scatter(char_x,char_y,char_z, marker='o')

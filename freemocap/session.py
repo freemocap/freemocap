@@ -17,3 +17,4 @@ class Session: #session like "recording session"
         self.skel_fr_mar_dim = None
 
         self.mediaPipe_imgPathList = None
+        self.openPose_imgPathList = None

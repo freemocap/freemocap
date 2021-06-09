@@ -79,12 +79,14 @@ def CalibrateCaptureVolume(session,board):
 
         ## if you need to save and load
         ## example saving and loading for later
+    if not session.cameraCalFilePath.is_file(): 
         error,merged = cgroup.calibrate_videos(vidnames, board)
         cgroup.dump(session.cameraCalFilePath) #JSM NOTE  - let's just use .yaml's unless there is some reason to use .toml
         mergename = session.sessionPath/'merged.npy'
         np.save(mergename,merged)
     else: 
         cgroup = CameraGroup.load(session.cameraCalFilePath) #load previous calibration config
+
 
     session.cgroup = cgroup
     n_frames= 40

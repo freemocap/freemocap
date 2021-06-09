@@ -174,8 +174,13 @@ def initialize(session, stage, board):
         session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
         recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class   
 
+        
+        session.mediaPipe_imgPathList = session.config_settings['mediaPipe_imgPathList']
         session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
-        session.numCams = len(session.openPose_imgPathList)
+
+        
+        #session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
+        #session.numCams = len(session.openPose_imgPathList)
 
         
 

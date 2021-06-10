@@ -143,22 +143,43 @@ from pathlib import Path
 #         plt.show()
 
 
-def ReplaySkeleton(session, vidType, startframe,azimuth,elevation):
+def ReplaySkeleton( session,
+                    vidType=1,
+                    startFrame=40,
+                    azimuth=-90,
+                    elevation=-80,
+                    useOpenPose=True,
+                    useMediaPipe=False,
+                    useDLC=False):
 
-    if session.mean_charuco_fr_mar_dim is None:
-        session.mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_points.npy')
+    
+    mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_points.npy')
 
-    if session.skel_fr_mar_dim is None:
-        session.skel_fr_mar_dim = np.load(session.dataArrayPath/'skeleton_points.npy')
 
+    if session.useMediaPipe:
+        mediaPipe_skel_fr_mar_dim = np.load(session.dataArrayPath/'mediaPipeSkel_3d.npy')
+        imgPathList = session.config_settings['mediaPipe_imgPathList']
+        session.numCams = len(session.mediaPipe_imgPathList)
+
+    
+    if session.useOpenPose:
+        skel_fr_mar_dim = np.load(session.dataArrayPath/'openPoseSkel_3d.npy')
+        imgPathList = session.config_settings['openPose_imgPathList']
+        session.numCams = len(session.openPose_imgPathList)    
+        
+    if session.useDLC:
+        dlc_fr_mar_dim = np.load(session.dataArrayPath/'deepLabCut_3d.npy')
+        dlc0 = np.squeeze(dlc_fr_mar_dim[:,0,:])
+        dlc1 = np.squeeze(dlc_fr_mar_dim[:,1,:])
+        dlc2 = np.squeeze(dlc_fr_mar_dim[:,2,:])
+        ballTrailLen = 4
+
+      
+
+    
     camImgPathList = {}
-
-    if session.openPose_imgPathList is None:
-        session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
-        session.numCams = len(session.openPose_imgPathList)
-
     for cam in range(session.numCams):
-        camImgPathList[cam] = list(sorted(Path(session.openPose_imgPathList[cam]).glob('*.png')))
+        camImgPathList[cam] = list(sorted(Path(imgPathList[cam]).glob('*.png')))
         session.numFrames = len(camImgPathList[cam]) #will need to perhaps put a check in on whether numFrames between cameras are the same
     
 
@@ -196,7 +217,7 @@ def ReplaySkeleton(session, vidType, startframe,azimuth,elevation):
     # fig.tight_layout(h_pad = 5)
     axMain.view_init(azim = azimuth, elev= elevation)
     plt.ion()
-    for fr in range(startframe,session.numFrames):
+    for fr in range(startFrame,session.numFrames):
         fig.suptitle(['Frame# - ', str(fr)])
         axMain.cla()
 
@@ -204,14 +225,16 @@ def ReplaySkeleton(session, vidType, startframe,azimuth,elevation):
             axCam1.cla()
 
 
-        char_x = session.mean_charuco_fr_mar_dim[:][:,0]
-        char_y = session.mean_charuco_fr_mar_dim[:][:,1]
-        char_z = session.mean_charuco_fr_mar_dim[:][:,2]
+        char_x = mean_charuco_fr_mar_dim[:][:,0]
+        char_y = mean_charuco_fr_mar_dim[:][:,1]
+        char_z = mean_charuco_fr_mar_dim[:][:,2]
 
-        if session.useOpenPose:         
-            sk_x = session.skel_fr_mar_dim[fr,:,0] #skeleton x data
-            sk_y = session.skel_fr_mar_dim[fr,:,1] #skeleton y data
-            sk_z = session.skel_fr_mar_dim[fr,:,2] #skeleton z data
+    
+        #plot skeleton (openPose by default)
+        if session.useOpenPose:
+            sk_x = skel_fr_mar_dim[fr,:,0] #skeleton x data
+            sk_y = skel_fr_mar_dim[fr,:,1] #skeleton y data
+            sk_z = skel_fr_mar_dim[fr,:,2] #skeleton z data
 
             axMain.scatter3D(sk_x,sk_y,sk_z, marker='.',color = 'k', s=4.)
             axMain.plot(sk_x[head],sk_y[head],sk_z[head], linestyle='-', color='g', linewidth = 1.)
@@ -223,7 +246,7 @@ def ReplaySkeleton(session, vidType, startframe,azimuth,elevation):
             axMain.plot(sk_x[rFoot],sk_y[rFoot],sk_z[rFoot], linestyle='-', color = 'r', linewidth = 1.)
             axMain.plot(sk_x[lFoot],sk_y[lFoot],sk_z[lFoot], linestyle='-', color = 'b', linewidth = 1.)
 
-                        # plot handybois
+            # plot handybois
             # right hand
             axMain.plot(sk_x[thumb+rHandIDstart],sk_y[thumb+rHandIDstart],sk_z[thumb+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
             axMain.plot(sk_x[index+rHandIDstart],sk_y[index+rHandIDstart],sk_z[index+rHandIDstart], linestyle='-', color = 'r', linewidth = 1.)
@@ -237,21 +260,42 @@ def ReplaySkeleton(session, vidType, startframe,azimuth,elevation):
             axMain.plot(sk_x[bird+lHandIDstart],sk_y[bird+lHandIDstart],sk_z[bird+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
             axMain.plot(sk_x[ring+lHandIDstart],sk_y[ring+lHandIDstart],sk_z[ring+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
             axMain.plot(sk_x[pinky+lHandIDstart],sk_y[pinky+lHandIDstart],sk_z[pinky+lHandIDstart], linestyle='-', color = 'b', linewidth = 1.)
-       
+        
+
+        #plot mediapipe
+        if session.useMediaPipe:
+            mp_sk_x = mediaPipe_skel_fr_mar_dim[fr,:,0] #skeleton x data
+            mp_sk_y = mediaPipe_skel_fr_mar_dim[fr,:,1] #skeleton y data
+            mp_sk_z = mediaPipe_skel_fr_mar_dim[fr,:,2] #skeleton z data
+            axMain.scatter3D(mp_sk_x, mp_sk_y, mp_sk_z, marker='.',color = 'g', s=8.)
+
+        #plot deeplabcut
+        if session.useDLC:
+            dlc_x = dlc_fr_mar_dim[fr,:,0]
+            dlc_y = dlc_fr_mar_dim[fr,:,1]
+            dlc_z = dlc_fr_mar_dim[fr,:,2]
+            
+            axMain.scatter3D(dlc_x,dlc_y,dlc_z, marker='o',color = 'r', s=24.)
+
         #plot charuco grid
         axMain.scatter(char_x,char_y,char_z, marker='o')
 
         # #plot camera positions (I think...)
         # for camNum in range(len(session.cgroup.cameras)):
         #     axMain.scatter(session.cgroup.cameras[camNum].tvec[0], session.cgroup.cameras[camNum].tvec[1],  session.cgroup.cameras[camNum].tvec[2], marker = 'p')
+        axRange = session.board.square_length*10
+        mx = np.nanmean(char_x)
+        my = np.nanmean(char_y)
+        mz = np.nanmean(char_z)
+        
+        axMain.set_xlim(mx-axRange,mx+axRange)
+        axMain.set_ylim(my-axRange,my+axRange)
+        axMain.set_zlim(mz-axRange,mz+axRange)
 
         axMain.set_xlabel('x')
         axMain.set_ylabel('y')
         axMain.set_zlabel('z')
 
-        axMain.set_xlim(-1000,1000)
-        axMain.set_ylim(-1000,1000)
-        axMain.set_zlim(1000,3000)
         
         if vidType ==0:
                 pass

@@ -118,17 +118,12 @@ def parseOpenPose(session):
                 
             
         
-        openPoseData_nCams_nFrames_nImgPts_XY =  openPoseData_nCams_nFrames_nImgPts_XYC[:,:,:,0:2].copy()
-        openpose_confidence = openPoseData_nCams_nFrames_nImgPts_XYC[:,:,:,2].copy() 
-        
-        openpose_score_threshold = .3
-        openPoseData_nCams_nFrames_nImgPts_XY[openpose_confidence < openpose_score_threshold] = np.nan #replace low confidence points with '
-        
-        session.dataFrameHeader = dataFrameHeader
-        session.numImgPoints = numImgPoints
+
+        # session.dataFrameHeader = dataFrameHeader
+        # session.numImgPoints = numImgPoints
         session.numFrames = frameNum  #NOTE - Need to find a safer way to get this number
 
-        path_to_openpose_2d = session.dataArrayPath/'openPoseData_nCams_nFrames_nImgPts_XY.npy'
-        np.save(path_to_openpose_2d, openPoseData_nCams_nFrames_nImgPts_XY)
+        path_to_openpose_2d = session.dataArrayPath/'openPoseData_2d.npy'
+        np.save(path_to_openpose_2d, openPoseData_nCams_nFrames_nImgPts_XYC)
 
-        return openPoseData_nCams_nFrames_nImgPts_XY
+        return openPoseData_nCams_nFrames_nImgPts_XYC

@@ -1,0 +1,3 @@
+model_checkpoint_path: "C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\Data\\sesh_21-05-31_111833\\DLCdata\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\dlc-models\\iteration-0\\PinkGreenRedJugglingBallsMay31-trainset95shuffle1\\train\\snapshot-20000"
+all_model_checkpoint_paths: "C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\Data\\sesh_21-05-31_111833\\DLCdata\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\dlc-models\\iteration-0\\PinkGreenRedJugglingBallsMay31-trainset95shuffle1\\train\\snapshot-10000"
+all_model_checkpoint_paths: "C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\Data\\sesh_21-05-31_111833\\DLCdata\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\dlc-models\\iteration-0\\PinkGreenRedJugglingBallsMay31-trainset95shuffle1\\train\\snapshot-20000"

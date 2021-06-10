@@ -33,12 +33,16 @@ def createSession(session,filepath, existing_data = False):
     session.calVidPath = session.sessionPath/'CalVideos'
     session.calVidPath.mkdir(exist_ok = True)
     pathList.append(session.calVidPath)
-    
+
     session.openPoseDataPath = session.sessionPath/'OpenPoseData'
     session.openPoseDataPath.mkdir(exist_ok = True)
     pathList.append(session.openPoseDataPath)
+
+    session.mediaPipeDataPath = session.sessionPath/'MediaPipeData'
+    session.mediaPipeDataPath.mkdir(exist_ok = True)
+    pathList.append(session.mediaPipeDataPath)
     
-    session.dlcDataPath  =  session.sessionPath / 'DLCdata' / 'videos'
+    session.dlcDataPath  =  session.sessionPath / 'DLCdata'
     session.dlcDataPath.mkdir(exist_ok = True, parents = True)
     pathList.append(session.dlcDataPath)
     
@@ -55,6 +59,8 @@ def createSession(session,filepath, existing_data = False):
    
     
     config_settings,config_yaml = create_config_yaml()
+    session.config_settings = config_settings
+
     yaml_name = session.sessionPath/'{}_config.yaml'.format(session.sessionID)
     session.yamlPath = yaml_name
    # print(yaml_name)
@@ -90,6 +96,7 @@ def create_config_yaml():
         syncedVidPath:
         calVidPath:
         openPoseDataPath:
+        mediaPipeDataPath:
         dlcDataPath:
         imOutPath:
         dataArrayPath:
@@ -97,6 +104,7 @@ def create_config_yaml():
         """
     config_yaml = YAML()
     config_settings = config_yaml.load(yaml_str)
+
     return config_settings,config_yaml
 
 
@@ -126,6 +134,7 @@ def load_session_paths(session,config_settings):
     session.rawVidPath = Path(configPaths['rawVidPath'])
     session.syncedVidPath = Path(configPaths['syncedVidPath'])
     session.calVidPath = Path(configPaths['calVidPath'])
+    session.mediaPipeDataPath = Path(configPaths['mediaPipeDataPath'])
     session.openPoseDataPath = Path(configPaths['openPoseDataPath'])
     session.dlcDataPath = Path(configPaths['dlcDataPath'])
     session.imOutPath = Path(configPaths['imOutPath'])

@@ -14,6 +14,9 @@ def initialize(session, stage, board):
     print('Starting initialization for stage {}'.format(stage))
     #if stage == 1:    
     filepath = Path.cwd()
+
+    session.board = board
+
 # %% Stage One Initialization
     if stage == 1:
 
@@ -149,8 +152,8 @@ def initialize(session, stage, board):
         for count,thisVidPath in enumerate(session.syncedVidPath.glob('*.mp4'),start=1): 
             session.numCams = count
 
-        session.openPose_jsonPathList = session.config_settings['openPose_jsonPathList']
-        session.numCams = len(session.openPose_jsonPathList)
+        session.mediaPipe_jsonPathList = session.config_settings['mediaPipe_jsonPathList']
+        session.numCams = len(session.mediaPipe_jsonPathList)
 
     if stage == 6:
 
@@ -160,10 +163,8 @@ def initialize(session, stage, board):
         session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
         recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
 
-        session.openPoseData_nCams_nFrames_nImgPts_XY = np.load(session.dataArrayPath/'openPoseData_nCams_nFrames_nImgPts_XY.npy')
-        calibrationFile = '{}_calibration.yaml'.format(session.sessionID)
-        session.cameraConfigFilePath = session.sessionPath/calibrationFile
-        session.cgroup = fmc_anipose.CameraGroup.load(session.cameraConfigFilePath)
+        session.mediaPipeData_nCams_nFrames_nImgPts_XY = np.load(session.dataArrayPath/'mediaPipeData_nCams_nFrames_nImgPts_XY.npy')
+        
 
     if stage == 7:
 
@@ -173,11 +174,15 @@ def initialize(session, stage, board):
         session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
         recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class   
 
+        
+        session.mediaPipe_imgPathList = session.config_settings['mediaPipe_imgPathList']
         session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
-        session.numCams = len(session.openPose_imgPathList)
 
-        session.mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_points.npy')
-        session.skel_fr_mar_dim = np.load(session.dataArrayPath/'skeleton_points.npy')
+        
+        #session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
+        #session.numCams = len(session.openPose_imgPathList)
+
+        
 
     if stage == 8:
 

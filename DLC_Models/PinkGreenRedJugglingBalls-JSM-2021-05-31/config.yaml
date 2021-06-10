@@ -1,0 +1,73 @@
+    # Project definitions (do not edit)
+Task: PinkGreenRedJugglingBalls
+scorer: JSM
+date: May31
+multianimalproject: false
+identity:
+
+    # Project path (change when moving around)
+project_path: C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\DLC_Models\PinkGreenRedJugglingBalls-JSM-2021-05-31
+
+    # Annotation data set configuration (and individual video cropping parameters)
+video_sets:
+  ? C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-05-31_111833\SyncedVideos\sesh_21-05-31_111833_synced_Cam1.mp4
+  : crop: 0, 480, 0, 640
+  ? C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-05-31_111833\SyncedVideos\sesh_21-05-31_111833_synced_Cam2.mp4
+  : crop: 0, 480, 0, 640
+  ? C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-05-31_111833\SyncedVideos\sesh_21-05-31_111833_synced_Cam3.mp4
+  : crop: 0, 480, 0, 640
+  ? C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-05-31_111833\SyncedVideos\sesh_21-05-31_111833_synced_Cam4.mp4
+  : crop: 0, 480, 0, 640
+  ? C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-05-31_172709\SyncedVideos\sesh_21-05-31_172709_synced_Cam1.mp4
+  : crop: 0, 480, 0, 640
+  ? C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-05-31_172709\SyncedVideos\sesh_21-05-31_172709_synced_Cam2.mp4
+  : crop: 0, 480, 0, 640
+  ? C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-05-31_172709\SyncedVideos\sesh_21-05-31_172709_synced_Cam3.mp4
+  : crop: 0, 480, 0, 640
+  ? C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-05-31_172709\SyncedVideos\sesh_21-05-31_172709_synced_Cam4.mp4
+  : crop: 0, 480, 0, 640
+bodyparts:
+- PinkBall
+- GreenBall
+- RedBall
+start: 0
+stop: 1
+numframes2pick: 10
+
+    # Plotting configuration
+skeleton:
+- - GreenBall
+  - RedBall
+- - PinkBall
+  - GreenBall
+- - PinkBall
+  - RedBall
+skeleton_color: black
+pcutoff: 0.6
+dotsize: 12
+alphavalue: 0.7
+colormap: rainbow
+
+    # Training,Evaluation and Analysis configuration
+TrainingFraction:
+- 0.95
+iteration: 0
+default_net_type: resnet_50
+default_augmenter: default
+snapshotindex: -1
+batch_size: 8
+
+    # Cropping Parameters (for analysis and outlier frame detection)
+cropping: false
+croppedtraining: false
+    #if cropping is true for analysis, then set the values here:
+x1: 0
+x2: 640
+y1: 277
+y2: 624
+
+    # Refinement configuration (parameters from annotation dataset configuration also relevant in this stage)
+corner2move2:
+- 50
+- 50
+move2corner: true

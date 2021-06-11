@@ -1,5 +1,5 @@
 from freemocap import createvideo, initialization, runcams, calibrate, fmc_mediapipe, fmc_openpose, fmc_deeplabcut, reconstruct3D, playskeleton, session
-from freemocap.fmc_pyqtgraph import PlaySkeleton
+from freemocap.fmc_pyqtgraph import PlayerDockedWindow
 
 from pathlib import Path
 import os
@@ -11,12 +11,12 @@ import numpy as np
 sesh = session.Session()
 
 
-useOpenPose= True
-useMediaPipe = True
-useDLC=True
+sesh.useOpenPose= True
+sesh.useMediaPipe = True
+sesh.useDLC=True
 
-if useDLC: 
-    import deeplabcut as dlc
+if sesh.useDLC: 
+    # import deeplabcut as dlc
     sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
 
 
@@ -76,19 +76,19 @@ else:
 # %% Stage Four
 if stage <= 4:
     print('Starting Track Image Points')
-    if useMediaPipe:
+    if sesh.useMediaPipe:
         fmc_mediapipe.runMediaPipe(sesh)
         sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
         sesh.mediaPipeSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
         np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_dim) #save data to npy
 
-    if useOpenPose:
+    if sesh.useOpenPose:
         fmc_openpose.runOpenPose(sesh, dummyRun=True)
         sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
         sesh.openPoseskel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
         np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseskel_fr_mar_dim) #save data to npy
 
-    if useDLC:
+    if sesh.useDLC:
         sesh.syncedVidList = []
         for vid in sesh.syncedVidPath.glob('*.mp4'):
             sesh.syncedVidList.append(str(vid))
@@ -146,8 +146,10 @@ if stage <= 7:
     #                             useMediaPipe=useMediaPipe,
     #                             useDLC=useDLC)
 
-    playSkel = PlaySkeleton(sesh)
-    playSkel.animate()
+    # playSkel = PlaySkeleton(sesh)
+    # playSkel.animate()
+    playWin =PlayerDockedWindow(sesh)
+    playWin.animate()
 
 else:
     print('Skipping Skeleton Plotting')

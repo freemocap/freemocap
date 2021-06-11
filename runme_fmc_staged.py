@@ -1,4 +1,5 @@
-from freemocap import createvideo, initialization, runcams, calibrate, fmc_mediapipe, fmc_openpose, fmc_deeplabcut,  reconstruct3D, playskeleton, session
+from freemocap import createvideo, initialization, runcams, calibrate, fmc_mediapipe, fmc_openpose, fmc_deeplabcut, reconstruct3D, playskeleton, session
+from freemocap.fmc_pyqtgraph import PlaySkeleton
 
 from pathlib import Path
 import os
@@ -21,7 +22,7 @@ if useDLC:
 
 
 # %% Inputs to edit
-stage = 3 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 7 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = False
 
 sesh.sessionID = 'sesh_21-05-31_111833' #fill in if you are running from Stage 2 onwards
@@ -82,17 +83,18 @@ if stage <= 4:
         np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_dim) #save data to npy
 
     if useOpenPose:
-        fmc_openpose.runOpenPose(sesh, dummyRun=False)
+        fmc_openpose.runOpenPose(sesh, dummyRun=True)
         sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
         sesh.openPoseskel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
         np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseskel_fr_mar_dim) #save data to npy
 
     if useDLC:
-        syncedVidList = []
+        sesh.syncedVidList = []
         for vid in sesh.syncedVidPath.glob('*.mp4'):
-            syncedVidList.append(str(vid))
+            sesh.syncedVidList.append(str(vid))
         
-        dlc.analyze_videos(sesh.dlcConfigPath,syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True) 
+        dlc.analyze_videos(sesh.dlcConfigPath,sesh.syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True) 
+
         sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh)
         sesh.dlc_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.95)
         np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_dim) #save data to npy
@@ -125,15 +127,28 @@ else:
 # %% Stage Seven
 if stage <= 7:
     print('Starting Skeleton Plotting')
-    playskeleton.ReplaySkeleton(
-                                sesh,
-                                vidType=1,
-                                startFrame=40,
-                                azimuth=-90, 
-                                elevation=-80,
-                                useOpenPose=useOpenPose,
-                                useMediaPipe=useMediaPipe,
-                                useDLC=useDLC)
+    # playskeleton.ReplaySkeleton_matplotlib(
+    #                             sesh,
+    #                             vidType=1,
+    #                             startFrame=40,
+    #                             azimuth=-90, 
+    #                             elevation=-80,
+    #                             useOpenPose=useOpenPose,
+    #                             useMediaPipe=useMediaPipe,
+    #                             useDLC=useDLC)
+    # fmc_pyqtgraph.PlaySkeleton(
+    #                             sesh,
+    #                             vidType=1,
+    #                             startFrame=40,
+    #                             azimuth=-90, 
+    #                             elevation=-80,
+    #                             useOpenPose=useOpenPose,
+    #                             useMediaPipe=useMediaPipe,
+    #                             useDLC=useDLC)
+
+    playSkel = PlaySkeleton(sesh)
+    playSkel.animate()
+
 else:
     print('Skipping Skeleton Plotting')
     

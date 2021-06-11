@@ -1,12 +1,12 @@
 import os
 import subprocess
+import json
+
 import numpy as np
 from rich.progress import track
 from ruamel.yaml import YAML
 from pathlib import Path
-
-import glob
-import json
+# from numba import jit
 
 def runOpenPose(session, dummyRun=False):
 
@@ -45,7 +45,7 @@ def runOpenPose(session, dummyRun=False):
     
     os.chdir(session.sessionPath)
    
-
+# @jit(nopython=True)
 def parseOpenPose(session):
         thisCamNum = -1
 

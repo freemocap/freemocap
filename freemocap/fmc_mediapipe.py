@@ -1,15 +1,13 @@
-import os
 from pathlib import Path
-import glob
-import json
+
 
 import numpy as np
 from rich.progress import Progress
 from ruamel.yaml import YAML
 import cv2
-import h5py
 import mediapipe as mp
-from pathlib import Path
+# from numba import jit
+
 mp_drawing = mp.solutions.drawing_utils
 mp_holistic = mp.solutions.holistic
 
@@ -113,7 +111,7 @@ def runMediaPipe(session, dummyRun=False):
     yaml.dump(data, session.yamlPath)
     session.mediaPipeData = eachCamerasData
    
-
+# @jit(nopython=True)
 def parseMediaPipe(session):
         numCams = len(session.mediaPipeData) #Get number of cameras
         numFrames = len(session.mediaPipeData[0]) #Get number of frames

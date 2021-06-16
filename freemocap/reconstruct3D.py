@@ -1,6 +1,8 @@
 from freemocap import fmc_anipose
 import numpy as np 
+# from numba import jit
 
+# @jit(nopython=True)
 def reconstruct3D(session, data_nCams_nFrames_nImgPts_XYC, confidenceThreshold = .3):
     
     if session.cgroup is None: #load the calibration settings into the session class if it hasn't been already

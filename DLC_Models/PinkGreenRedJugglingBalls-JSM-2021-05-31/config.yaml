@@ -6,7 +6,7 @@ multianimalproject: false
 identity:
 
     # Project path (change when moving around)
-project_path: C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\DLC_Models\PinkGreenRedJugglingBalls-JSM-2021-05-31
+project_path: C:\Users\jonma\Desktop\freemocap\DLC_Models\PinkGreenRedJugglingBalls-JSM-2021-05-31
 
     # Annotation data set configuration (and individual video cropping parameters)
 video_sets:

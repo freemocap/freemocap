@@ -1,4 +1,4 @@
-from freemocap import createvideo, initialization, runcams, calibrate, fmc_mediapipe, fmc_openpose, fmc_deeplabcut, reconstruct3D, playskeleton, session
+from freemocap import createvideo, initialization, recordingconfig, runcams, calibrate, fmc_mediapipe, fmc_openpose, fmc_deeplabcut, reconstruct3D, playskeleton, session
 from freemocap.fmc_pyqtgraph import PlayerDockedWindow
 
 from pathlib import Path
@@ -13,7 +13,7 @@ sesh = session.Session()
 
 sesh.useOpenPose= True
 sesh.useMediaPipe = True
-sesh.useDLC=True
+sesh.useDLC=False
 
 if sesh.useDLC: 
     import deeplabcut as dlc
@@ -22,19 +22,16 @@ if sesh.useDLC:
 
 
 # %% Inputs to edit
-stage = 4 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 7 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = False
 
-sesh.sessionID = '' #fill in if you are running from Stage 2 onwards
+sesh.sessionID = 'sesh_21-06-10_151714' #fill in if you are running from Stage 2 onwards
 if not sesh.sessionID:
     dataFolder = Path.cwd()/'Data'
     subfolders = [ f.path for f in os.scandir(dataFolder) if f.is_dir() ] #copy-pasta from who knows where
     sesh.sessionID = Path(subfolders[-1]).stem #grab the name of the last folder in the list of subfolders
-=======
-stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
-sesh.debug = True
-sesh.sessionID = '' #fill in if you are running from Stage 2 onwards 
->>>>>>> 8f1fbc8... runme file reorganization
+
+
 
 board = CharucoBoard(7, 5,
                      #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)
@@ -92,8 +89,8 @@ if stage <= 4:
     if sesh.useOpenPose:
         fmc_openpose.runOpenPose(sesh, dummyRun=False)
         sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
-        sesh.openPoseskel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
-        np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseskel_fr_mar_dim) #save data to npy
+        sesh.openPoseSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
+        np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseSkel_fr_mar_dim) #save data to npy
 
         sesh.syncedVidList = []
     if sesh.useDLC:

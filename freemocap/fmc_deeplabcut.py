@@ -33,7 +33,7 @@ def parseDeepLabCut(session): # NOTE this is assuming both the dlc config file a
     h5files =session.dlcDataPath.glob('*.h5') #Take all h5 files from folder
     
     numCams = int(session.numCams)#Get num of cams
-    numFrames = session.numFrames+1#Get num of frames
+    numFrames = session.numFrames+10#Get num of frames
     
     numPoints = len(bodypartList)# Get amount of points tracked
     dlcData_nCams_nFrames_nImgPts_XYC = np.ndarray([numCams, numFrames, numPoints, 3]) # Create empty array for dlc points

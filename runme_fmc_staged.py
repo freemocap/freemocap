@@ -13,11 +13,12 @@ sesh = session.Session()
 
 sesh.useOpenPose= True
 sesh.useMediaPipe = True
-sesh.useDLC=False
+sesh.useDLC=True
 
 if sesh.useDLC: 
     import deeplabcut as dlc
-    sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
+    # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
+    sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
 
 
 
@@ -25,7 +26,8 @@ if sesh.useDLC:
 stage = 7 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = False
 
-sesh.sessionID = 'sesh_21-06-10_151714' #fill in if you are running from Stage 2 onwards
+sesh.sessionID = '' #fill in if you are running from Stage 2 onwards
+
 if not sesh.sessionID:
     dataFolder = Path.cwd()/'Data'
     subfolders = [ f.path for f in os.scandir(dataFolder) if f.is_dir() ] #copy-pasta from who knows where
@@ -92,7 +94,7 @@ if stage <= 4:
         sesh.openPoseSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
         np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseSkel_fr_mar_dim) #save data to npy
 
-        sesh.syncedVidList = []
+    sesh.syncedVidList = []
     if sesh.useDLC:
         for vid in sesh.syncedVidPath.glob('*.mp4'):
             sesh.syncedVidList.append(str(vid))
@@ -134,15 +136,15 @@ sesh.config_settings = recordingconfig.load_config_yaml(sesh.yamlPath)
 # %% Stage Seven
 if stage <= 7:
     print('Starting Skeleton Plotting')
-    # playskeleton.ReplaySkeleton_matplotlib(
-    #                             sesh,
-    #                             vidType=1,
-    #                             startFrame=40,
-    #                             azimuth=-90, 
-    #                             elevation=-80,
-    #                             useOpenPose=useOpenPose,
-    #                             useMediaPipe=useMediaPipe,
-    #                             useDLC=useDLC)
+    playskeleton.ReplaySkeleton_matplotlib(
+                                sesh,
+                                vidType=1,
+                                startFrame=40,
+                                azimuth=-90, 
+                                elevation=-80,
+                                useOpenPose=sesh.useOpenPose,
+                                useMediaPipe=sesh.useMediaPipe,
+                                useDLC=sesh.useDLC)
     # fmc_pyqtgraph.PlaySkeleton(
     #                             sesh,
     #                             vidType=1,

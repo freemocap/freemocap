@@ -1,4 +1,4 @@
-#default parameters
+#default parameters
 
 
 
@@ -12,7 +12,7 @@ default:
     framerate: 25
     codec: DIVX
 
-#saved parameters    
+#saved parameters    
 
 
 
@@ -20,12 +20,12 @@ default:
 
 saved:
   rotations:
-    0: 90
-    1: 270
+    0: 270
+    1: 90
     2: 90
-    4: 90
+    3: 90
   parameters:
-    exposure: -6
+    exposure: -8
     resWidth: 640
     resHeight: 480
     framerate: 30

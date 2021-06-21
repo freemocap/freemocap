@@ -13,7 +13,7 @@ sesh = session.Session()
 
 sesh.useOpenPose= True
 sesh.useMediaPipe = True
-sesh.useDLC=True
+sesh.useDLC=False
 
 if sesh.useDLC: 
     import deeplabcut as dlc
@@ -23,10 +23,10 @@ if sesh.useDLC:
 
 
 # %% Inputs to edit
-stage = 7 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 3 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = False
 
-sesh.sessionID = '' #fill in if you are running from Stage 2 onwards
+sesh.sessionID = 'sesh_21_06_21_1_CyrWheel' #fill in if you are running from Stage 2 onwards
 
 if not sesh.sessionID:
     dataFolder = Path.cwd()/'Data'
@@ -157,12 +157,21 @@ if stage <= 7:
 
     # playSkel = PlaySkeleton(sesh)
     # playSkel.animate()
-    playWin =PlayerDockedWindow(sesh)
-    playWin.animate()
+    #playWin =PlayerDockedWindow(sesh)
+    #playWin.animate()
 
 else:
     print('Skipping Skeleton Plotting')
-    
+
+createvideo.createBodyTrackingVideos(sesh)
+
+displayVid = 1
+#if displayVid = 0, will show the synced videos
+#if displayVid = 1, will show the openPosed videos
+playWin = PlayerDockedWindow(sesh,displayVid)
+playWin.animate()
+
+
 # %% Stage Eight
 if stage <= 8:
     print()

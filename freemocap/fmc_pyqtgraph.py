@@ -203,10 +203,11 @@ class VideoWindowWidget:
 
 
 class PlayerDockedWindow:
-    def __init__(self, session):
+    def __init__(self, session,displayVid):
 
         
         app = pg.mkQApp("DockArea Example")
+        self.displayVid = displayVid
         self.win = QtGui.QMainWindow()
         area = DockArea()
         self.win.setCentralWidget(area)
@@ -218,20 +219,47 @@ class PlayerDockedWindow:
         ## Create docks, place them into the window one at a time.
         ## Note that size arguments are only a suggestion; docks will still have to
         ## fill the entire dock area and obey the limits of their internal widgets.
+
+        self.VidPathList = []
+        self.dock_name_dictionary = {}
+
+        if displayVid == 0:
+            path_to_search = session.syncedVidPath
+        elif displayVid == 1:
+            path_to_search = session.openPoseDataPath
+        for count,vidPath in enumerate(path_to_search.glob('*.mp4')):
+            self.VidPathList.append(vidPath)
+            #dock_name = 'dock_video{}'.format(count)
+
+            dock_name = count
+            self.dock_name_dictionary[dock_name] = None
+
+
         dock_3dView = Dock('Session: {}'.format(session.sessionID), size=(1, 1), closable=True)     ## give this dock the minimum possible size
         dock_Console = Dock("Dock2 - Console", size=(winHeight,winWidth), closable=True)
-        dock_video0 = Dock("Video0", size=(1,1), closable=True)
-        dock_video1 = Dock("Video1", size=(1,1), closable=True)
-        dock_video2 = Dock("Video2", size=(1,1), closable=True)
-        dock_video3 = Dock("Video3", size=(1,1), closable=True)
+        
+        for key in self.dock_name_dictionary:
+            self.dock_name_dictionary[key] = Dock(str(key), size=(1,1), closable=True)
+        #dock_video0 = Dock("Video0", size=(1,1), closable=True)
+        #dock_video1 = Dock("Video1", size=(1,1), closable=True)
+        #dock_video2 = Dock("Video2", size=(1,1), closable=True)
+        #dock_video3 = Dock("Video3", size=(1,1), closable=True)
 
         area.addDock(dock_3dView, 'left')      ## place d1 at left edge of dock area (it will fill the whole space since there are no other docks yet)
-        area.addDock(dock_video0, 'right')     ## place d2 at right edge of dock area
-        area.addDock(dock_video1, 'right', dock_video0)## place d3 at bottom edge of d1
-        area.addDock(dock_video2, 'bottom',dock_video0)     ## place d4 at right edge of dock area
-        area.addDock(dock_video3, 'left', dock_video2)  ## place d5 at left edge of d1
+        direction_list = ['top','left','bottom','top']
+        for key, value in self.dock_name_dictionary.items():
+            if (key % 2) == 0:
+                area.addDock(value,'right')
+                previous_dock = value
+            else:
+                area.addDock(value,'bottom',previous_dock)
+                #previous_dock = value
         
-        area.moveDock(dock_video1, 'right', dock_video0)
+        #area.addDock(dock_video0, 'right')     ## place d2 at right edge of dock area
+        #area.addDock(dock_video1, 'right', dock_video0)## place d3 at bottom edge of d1
+        #area.addDock(dock_video2, 'bottom',dock_video0)     ## place d4 at right edge of dock area
+        #area.addDock(dock_video3, 'left', dock_video2)  ## place d5 at left edge of d1
+        #area.moveDock(dock_video1, 'right', dock_video0)
 
         ## Add widgets into each dock
 
@@ -253,30 +281,37 @@ class PlayerDockedWindow:
         
         dock_3dView.addWidget(self.playSkel.Skel3dViewWidget)
 
-        self.syncedVidPathList = []
-        for vidPath in session.syncedVidPath.glob('*.mp4'):
-            self.syncedVidPathList.append(vidPath)
+        #self.VidPathList = []
+        #for vidPath in session.syncedVidPath.glob('*.mp4'):
+        #    self.VidPathList.append(vidPath)
+        self.widget_list = []
+        for key, dock_video in self.dock_name_dictionary.items():
+            self.videoWidget = VideoWindowWidget(key,str(self.VidPathList[key]),session)
+            self.widget_list.append(self.videoWidget)
+            dock_video.addWidget(self.videoWidget.videoWidget)
+        #self.video0Widget = VideoWindowWidget(0,str(self.VidPathList[0]), session)
+        #dock_video0.addWidget(self.video0Widget.videoWidget )
 
-        self.video0Widget = VideoWindowWidget(0,str(self.syncedVidPathList[0]), session)
-        dock_video0.addWidget(self.video0Widget.videoWidget )
+        #self.video1Widget = VideoWindowWidget(1,str(self.VidPathList[1]),session)
+        #dock_video1.addWidget(self.video1Widget.videoWidget )
 
-        self.video1Widget = VideoWindowWidget(1,str(self.syncedVidPathList[1]),session)
-        dock_video1.addWidget(self.video1Widget.videoWidget )
+        #self.video2Widget = VideoWindowWidget(2,str(self.VidPathList[2]), session)
+        #dock_video2.addWidget(self.video2Widget.videoWidget )
 
-        self.video2Widget = VideoWindowWidget(2,str(self.syncedVidPathList[2]), session)
-        dock_video2.addWidget(self.video2Widget.videoWidget )
-
-        self.video3Widget = VideoWindowWidget(3,str(self.syncedVidPathList[3]),session)
-        dock_video3.addWidget(self.video3Widget.videoWidget )
+        #self.video3Widget = VideoWindowWidget(3,str(self.VidPathList[3]),session)
+        #dock_video3.addWidget(self.video3Widget.videoWidget )
 
         self.win.show()
     
     def update(self):
         self.playSkel.update()
-        self.video0Widget.update()
-        self.video1Widget.update()
-        self.video2Widget.update()
-        self.video3Widget.update()
+        for widget in self.widget_list:
+            widget.update()
+
+        #self.video0Widget.update()
+        #self.video1Widget.update()
+        #self.video2Widget.update()
+        #self.video3Widget.update()
         
     def animate(self):
         timer = QtCore.QTimer()

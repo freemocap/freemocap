@@ -12,7 +12,7 @@ sesh = session.Session()
 
 
 sesh.useOpenPose= True
-sesh.useMediaPipe = True
+sesh.useMediaPipe = False
 sesh.useDLC=False
 
 if sesh.useDLC: 
@@ -23,10 +23,10 @@ if sesh.useDLC:
 
 
 # %% Inputs to edit
-stage = 3 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 6 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = False
 
-sesh.sessionID = 'sesh_21_06_21_1_CyrWheel' #fill in if you are running from Stage 2 onwards
+sesh.sessionID = 'sesh_21_06_22_1_CyrWheel' #fill in if you are running from Stage 2 onwards
 
 if not sesh.sessionID:
     dataFolder = Path.cwd()/'Data'
@@ -133,6 +133,17 @@ else:
 #reupdate the config_settings with mediapipe and openpose image paths
 sesh.config_settings = recordingconfig.load_config_yaml(sesh.yamlPath)
 
+
+# %% Stage Six
+if stage <= 6:
+    print ('Starting PyQT Animation')
+    #createvideo.createBodyTrackingVideos(sesh)
+    displayVid = 1  
+    #if displayVid = 0, will show the synced videos
+    #if displayVid = 1, will show the openPosed videos
+    playWin = PlayerDockedWindow(sesh,displayVid)
+    playWin.animate()
+
 # %% Stage Seven
 if stage <= 7:
     print('Starting Skeleton Plotting')
@@ -163,13 +174,7 @@ if stage <= 7:
 else:
     print('Skipping Skeleton Plotting')
 
-createvideo.createBodyTrackingVideos(sesh)
 
-displayVid = 1
-#if displayVid = 0, will show the synced videos
-#if displayVid = 1, will show the openPosed videos
-playWin = PlayerDockedWindow(sesh,displayVid)
-playWin.animate()
 
 
 # %% Stage Eight

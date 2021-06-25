@@ -139,31 +139,45 @@ def initialize(session, stage, board):
         for count,thisVidPath in enumerate(session.syncedVidPath.glob('*.mp4'),start=1): 
             session.numCams = count
         
-        
-
-    if stage == 5:
-
-        session.sessionPath = filepath/'Data'/session.sessionID
-
-        session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
-        session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
-
-        for count,thisVidPath in enumerate(session.syncedVidPath.glob('*.mp4'),start=1): 
-            session.numCams = count
-
-        session.mediaPipe_jsonPathList = session.config_settings['mediaPipe_jsonPathList']
-        session.numCams = len(session.mediaPipe_jsonPathList)
-
     if stage == 6:
 
         session.sessionPath = filepath/'Data'/session.sessionID
 
         session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
         session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
+        recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class   
 
-        session.mediaPipeData_nCams_nFrames_nImgPts_XY = np.load(session.dataArrayPath/'mediaPipeData_nCams_nFrames_nImgPts_XY.npy')
+        if session.useOpenPose:
+            session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
+        
+        if session.useMediaPipe:
+            session.mediaPipe_imgPathList = session.config_settings['mediaPipe_imgPathList']
+
+
+
+    # if stage == 5:
+
+    #     session.sessionPath = filepath/'Data'/session.sessionID
+
+    #     session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
+    #     session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+    #     recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
+
+    #     for count,thisVidPath in enumerate(session.syncedVidPath.glob('*.mp4'),start=1): 
+    #         session.numCams = count
+
+    #     session.mediaPipe_jsonPathList = session.config_settings['mediaPipe_jsonPathList']
+    #     session.numCams = len(session.mediaPipe_jsonPathList)
+
+    # if stage == 6:
+
+    #     session.sessionPath = filepath/'Data'/session.sessionID
+
+    #     session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
+    #     session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+    #     recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
+
+    #     session.mediaPipeData_nCams_nFrames_nImgPts_XY = np.load(session.dataArrayPath/'mediaPipeData_nCams_nFrames_nImgPts_XY.npy')
         
 
     if stage == 7:

@@ -6,6 +6,11 @@ cache:
     - $HOME/.cache/pip
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
 
+env:
+  global:
+    # Doctr deploy key for jonmatthis/freemocap
+    - secure: "XP8R3/9jzF71gUJVzg49XcPDKc5lvME0X3iOFf3dKii8IVyvBFM0bc5JBVIPwV7nVJQTHCX0AGEdZSAjT85ie+EoTSm1smD1tHx0gfPJRXfHm6AXXQch7l4kDs9LpEY8S30DVgXiQdgQKTlcl8bwNl4gCpWLG8mclJoQ9hF4OyTkPBsutUjcIiB2Jp8v02CBqXNK0/dQ7dzZzLuu8UK4IwLp80yLK7WVEQGBGF/h+X4eWelRgxpXDHbtLf/OF/YunJYm6bNNXBZnaBHSL9xbmztvn7UWB9gCoJ/9afj2enGesQqlO1pHB7Zmsmz3KsNQjPADQWdd1CXN9nGGceTn7CP0Mfph6hIFnD38nBD7OWwnV3jCKpBCCYXGmc+qwBm0Drbx/wnZOiOxYS3ih+aD4Zkh9FocPwYoKq+U9/urHxtmOxjy0N+aDR3WlzjdAbTybgyX15KCjYpXHSSHG3IIP7NuFnlyRN86XKNLREsFoZvhA0kGqKrZnPojC0OZYyZ7tJl9Plho2GSt66MArJYg8npH5ELV8S/UehlG9PGMZiyvaih1Y5gJqYWddRMBuVy4y4jPQD0FIc53qJeuXBzWLUH2TyJ97zzX5Ri9gwl8Ayr+60XjWel9mNowHLsN18IkqwLfNXElCRgli3L/1iB+LEAmDlpLNp5DnoHzM0qcBKw="
+
 install:
   # The versions of pip and numpy that come pre-installed are often too old and
   # can cause problems. Upgrade them.
@@ -20,4 +25,8 @@ script:
   - coverage report -m  # Generate test coverage report.
   - codecov  # Upload the report to codecov.
   #- flake8  # Enforce code style ('relaxed' line length limit is set in .flake8 config file).
+  - set -e
   - make -C docs html  # Build the documentation.
+  - pip install doctr
+  - doctr deploy --built-docs docs/build/html . #Publish the documentation
+  

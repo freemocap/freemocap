@@ -12,7 +12,7 @@ sesh = session.Session()
 
 
 sesh.useOpenPose= True
-sesh.useMediaPipe = True
+sesh.useMediaPipe = False
 sesh.useDLC=True
 
 if sesh.useDLC: 
@@ -22,7 +22,7 @@ if sesh.useDLC:
 
 
 # %% Inputs to edit
-stage = 7 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = False
 
 sesh.sessionID = 'sesh_21-05-31_111833' #fill in if you are running from Stage 2 onwards

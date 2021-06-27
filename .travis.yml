@@ -1,0 +1,23 @@
+language: python
+python:
+  - 3.7
+cache:
+  directories:
+    - $HOME/.cache/pip
+    - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
+
+install:
+  # The versions of pip and numpy that come pre-installed are often too old and
+  # can cause problems. Upgrade them.
+  - pip install --upgrade pip numpy
+  # Install this package and the packages listed in requirements.txt.
+  - pip install .
+  # Install extra requirements for running tests and building docs.
+  - pip install -r requirements-dev.txt
+
+script:
+  - coverage run -m pytest  # Run the tests and check for test coverage.
+  - coverage report -m  # Generate test coverage report.
+  - codecov  # Upload the report to codecov.
+  - flake8  # Enforce code style ('relaxed' line length limit is set in .flake8 config file).
+  - make -C docs html  # Build the documentation.

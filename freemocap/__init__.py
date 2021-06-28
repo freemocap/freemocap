@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Mar  1 13:39:34 2021
+from ._version import get_versions
 
-@author: Rontc
-"""
-
+__version__ = get_versions()["version"]
+del get_versions

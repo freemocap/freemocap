@@ -58,14 +58,14 @@ class Session: #self like "recording self"
         self.syncedVidPath = self.sessionPath/'SyncedVideos'
         pathList.append(self.syncedVidPath)
 
-        self.calVideos = self.sessionPath/'CalVideos'
-        pathList.append(self.calVideos)
+        self.calVidPath = self.sessionPath/'CalVideos'
+        pathList.append(self.calVidPath)
 
-        self.dataArrays = self.sessionPath/'DataArrays'
-        pathList.append(self.dataArrays)
+        self.dataArrayPath = self.sessionPath/'DataArrays'
+        pathList.append(self.dataArrayPath)
 
-        self.DLCData = self.sessionPath/'DLCData'
-        pathList.append(self.DLCData)
+        self.dlcDataPath = self.sessionPath/'DLCData'
+        pathList.append(self.dlcDataPath)
 
         self.openPoseDataPath = self.sessionPath/'OpenPoseData'
         pathList.append(self.openPoseDataPath)
@@ -115,10 +115,12 @@ class Session: #self like "recording self"
         for key,value in session_dictionary_to_save['session_paths'].items():
             session_dictionary_to_save['session_paths'][key] = str(value)
 
-        session_yaml_path = self.sessionPath/'{}_config.yaml'.format(self.sessionID)
+        self.session_yaml_path = self.sessionPath/'{}_config.yaml'.format(self.sessionID)
+        
         session_yaml = YAML()
         
-        with open(session_yaml_path,'w') as outfile:
+
+        with open(self.session_yaml_path,'w') as outfile:
             session_yaml.dump(session_dictionary_to_save,outfile)
 
    
@@ -131,15 +133,26 @@ class Session: #self like "recording self"
         self.sessionPath = recordPath/self.sessionID
         self.sessionPath.mkdir(exist_ok=True)
 
-        self.session_settings = self.load_session()
+        self.session_yaml_path = self.sessionPath/'{}_config.yaml'.format(self.sessionID)
+
+        if stage == 3:
+            #this is for the case of GoPro recordings/external recordings - if no config file exists, create one
+            if self.session_yaml_path.is_file():
+                self.session_settings = self.load_session()
+            else: 
+                self.start_session({},{})
+        else:
+            self.session_settings = self.load_session()
+        
+
 
    
     def load_session(self):
 
-        session_yaml_path = self.sessionPath/'{}_config.yaml'.format(self.sessionID)
+        #session_yaml_path = self.sessionPath/'{}_config.yaml'.format(self.sessionID)
         session_yaml = YAML(typ='safe', pure=True)
 
-        with open(session_yaml_path,'r') as fp:
+        with open(self.session_yaml_path,'r') as fp:
             session_dictionary_to_load = session_yaml.load(fp)
 
         session_settings_dictionary = session_dictionary_to_load #create a copy of the loaded dictionary

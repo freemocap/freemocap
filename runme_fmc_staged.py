@@ -1,4 +1,4 @@
-from freemocap import createvideo, initialization, recordingconfig, runcams, calibrate, fmc_mediapipe, fmc_openpose, fmc_deeplabcut, reconstruct3D, playskeleton, session
+from freemocap import createvideo, webcamGUI, runcams, calibrate, fmc_mediapipe, fmc_openpose, fmc_deeplabcut, reconstruct3D, playskeleton, session
 from freemocap.fmc_pyqtgraph import PlayerDockedWindow
 
 from pathlib import Path
@@ -25,15 +25,19 @@ if sesh.useDLC:
 
 
 # %% Inputs to edit
-stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 3 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+#6/30/21 log - AC
+ #running from State 1 works until Stage 4 openPose parsing - parseOpenPose needs to be updated, and the graphing stuff with file paths
+ #running from Stage 2 does not work right now
+ #running from Stage 3 for a webcam recording works until openPose parsing
+ #running from Stage 3 for an external recording works until openPose parsing (will break bc we need to set numCams/numFrames manually beforehand)
+
+
+
 sesh.debug = False
 
-sesh.sessionID = 'sesh_21-06-29_141040' #fill in if you are running from Stage 2 onwards
+sesh.sessionID = 'sesh_21-06-30_153942' #fill in if you are running from Stage 2 onwards
 
-#sesh.start_session()
-
-
-#sesh.initialize(stage)
 
 
 if not sesh.sessionID:
@@ -60,7 +64,10 @@ board = CharucoBoard(7, 5,
 
 # %% Initialization
 #sesh.initialize(stage)
-initialization.initialize(sesh,stage,board)
+if stage ==2 or stage == 1:
+    webcamGUI.initialize(sesh,stage,board)
+else:
+    sesh.initialize(stage)
 
 # %% Stage One
 if stage <= 1:
@@ -141,7 +148,7 @@ else:
 
 
 #reupdate the config_settings with mediapipe and openpose image paths
-sesh.config_settings = recordingconfig.load_config_yaml(sesh.yamlPath)
+#sesh.config_settings = recordingconfig.load_config_yaml(sesh.yamlPath)
 
 
 # %% Stage Six

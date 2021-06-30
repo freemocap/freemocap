@@ -67,8 +67,9 @@ def initialize(session, stage, board):
             session.rotationInputs = rotation_input
 
             #create a config yaml and text file for this session
-            config_yaml_path = recordingconfig.createSession(session,filepath)
-            recordingconfig.createSessionTxt(session,paramDict,rotDict)
+            session.start_session(session.parameterDictionary,session.rotationInputs)
+            #config_yaml_path = recordingconfig.createSession(session,filepath)
+            #recordingconfig.createSessionTxt(session,paramDict,rotDict)
             
             print('Proceeding to Stage One')        
     

@@ -6,7 +6,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 from tkinter import Tk,Label, Button, Frame
 
-def TimeSync(timeStampData,numCamRange,camNames):    
+def TimeSync(session,timeStampData,numCamRange,camNames):    
        
     def CloseNeighb(camera,point): 
             closestPoint = (np.abs(camera - point)).argmin() 
@@ -26,7 +26,7 @@ def TimeSync(timeStampData,numCamRange,camNames):
     #print('end',endList)
     print('intervals:',masterTimelineBegin,masterTimelineEnd)   
     
-    
+    preSyncTotalNumFrames = []
     totalFrameIntvl= [] #list for storing frame rates for each camera
     
       
@@ -36,12 +36,23 @@ def TimeSync(timeStampData,numCamRange,camNames):
       #finds the closest point in each camera to the start and end points of our timeline
       currentCamStart = CloseNeighb(currentCam,masterTimelineBegin) 
       currentCamEnd = CloseNeighb(currentCam,masterTimelineEnd)
+    
+
       print("using frames:", currentCamStart,"-",currentCamEnd,"for",camNames[n])
       n +=1
       currentCamTimeline = currentCam[currentCamStart:currentCamEnd] #grab the times from start to finish for each camera
+
+      currentCamNumFrames = len(currentCamTimeline)
+
       currentCamFrameInterval = np.mean(np.diff(currentCamTimeline)) #calculate the interval between each frame and take the mean 
+      
       totalFrameIntvl.append(currentCamFrameInterval) #add interval to list 
+      preSyncTotalNumFrames.append(currentCamNumFrames)
       #print(camNames[x],currentCamStart,currentCamEnd)
+
+    #print(preSyncTotalNumFrames, 'presync')
+    #assert preSyncTotalNumFrames.count(preSyncTotalNumFrames[0]) == len(preSyncTotalNumFrames), "Number of frames sliced for each camera pre-syncing is not the same"
+
     totalAverageIntvl = np.mean(totalFrameIntvl) #find the total average interval across all cameras
     masterTimeline = np.arange(masterTimelineBegin,masterTimelineEnd,totalAverageIntvl) #build a master timeline with the average interval
        
@@ -58,6 +69,8 @@ def TimeSync(timeStampData,numCamRange,camNames):
     count = 0 #Keeps track of what frame we're on (I think?)
     n = 0; #I don't remember why I did this but I'm sure I'll figure it out later
     
+
+    postSyncTotalNumFrames = []
     for y in numCamRange:
         thisCam = timeStampData[camNames[y]]
         camTimes = []; #stored times
@@ -82,7 +95,10 @@ def TimeSync(timeStampData,numCamRange,camNames):
         #start counters for the number of buffered and deleted slides
         bufCount = 0;
         delCount = 0;
-      
+
+        thisCamNumFrames = len(camFrames)
+        postSyncTotalNumFrames.append(thisCamNumFrames)
+
         for i in range(0,len(camFrames)-1): 
             distanceBetweenFrames = camFrames[i+1] - camFrames[i] #find the distance between adjacent frames
             if distanceBetweenFrames == 1: #these frames are consecutive, do nothing
@@ -117,7 +133,12 @@ def TimeSync(timeStampData,numCamRange,camNames):
         #print("deleted frames:",delCount)
         #print("buffered frames:",bufCount)
         n +=1
-        
+
+    #print(postSyncTotalNumFrames, 'post-sync')
+    assert postSyncTotalNumFrames.count(postSyncTotalNumFrames[0]) == len(postSyncTotalNumFrames), "Number of frames sliced for each camera post-syncing is not the same"
+
+    session.postSyncNumFrames = postSyncTotalNumFrames[0]
+
     #create our data frame for both times and frames    
     frameTable = pd.DataFrame(frameList)   
     columnNames = ['Master Timeline'] + camNames

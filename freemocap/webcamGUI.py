@@ -78,12 +78,13 @@ def initialize(session, stage, board):
             sys.exit('Recording Cancelled')
 # %% Stage Two Initalization
     if stage == 2:
-        session.sessionPath = filepath/'Data'/session.sessionID #create a session path based on the sessionID
+        # session.sessionPath = filepath/'Data'/session.sessionID #create a session path based on the sessionID
 
-        #load the config yaml for this session, and add all the paths to the session file
-        session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID)
-        session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
+        # #load the config yaml for this session, and add all the paths to the session file
+        # session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID)
+        # session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+        # recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
+        session.initialize(stage)
 
         #from the config settings add the camera input parameters to parameter dictionary
         session.parameterDictionary = session.config_settings['CamInputs']['ParameterDict']

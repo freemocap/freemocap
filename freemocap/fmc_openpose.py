@@ -38,10 +38,10 @@ def runOpenPose(session, dummyRun=False):
     session.openPose_imgPathList = openPose_imgPathList
 
     yaml = YAML()
-    data = yaml.load(session.yamlPath)
+    data = yaml.load(session.session_yaml_path)
     data['openPose_imgPathList'] = openPose_imgPathList_yaml
     data['openPose_jsonPathList'] = openPose_jsonPathList_yaml
-    yaml.dump(data, session.yamlPath)
+    yaml.dump(data, session.session_yaml_path)
     
     os.chdir(session.sessionPath)
    

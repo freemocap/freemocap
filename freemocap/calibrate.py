@@ -13,6 +13,9 @@ from rich.progress import track
 
 def CalibrateCaptureVolume(session,board):
     
+    session.calVidPath.mkdir(exist_ok = True)
+    session.dataArrayPath.mkdir(exist_ok = True)
+
     calVideoFrameLength = 60
     createCalibrationVideos(session,calVideoFrameLength)
 
@@ -81,7 +84,7 @@ def CalibrateCaptureVolume(session,board):
     if not session.cameraCalFilePath.is_file(): 
         error,merged = cgroup.calibrate_videos(vidnames, board)
         cgroup.dump(session.cameraCalFilePath) #JSM NOTE  - let's just use .yaml's unless there is some reason to use .toml
-        mergename = session.sessionPath/'merged.npy'
+        mergename = session.dataArrayPath/'charuco_2d_points.npy'
         np.save(mergename,merged)
     else: 
         cgroup = CameraGroup.load(session.cameraCalFilePath) #load previous calibration config
@@ -96,7 +99,7 @@ def CalibrateCaptureVolume(session,board):
     charucoarray = np.empty([session.numCams,n_frames,n_trackedPoints,1,2])
     charucoarray[:] = np.nan
 
-    data = np.load(session.sessionPath/'merged.npy',allow_pickle = True)
+    data = np.load(session.dataArrayPath/'charuco_2d_points.npy',allow_pickle = True)
 
     for cam in range(session.numCams):
         for count,frame in enumerate(framelist):
@@ -166,7 +169,7 @@ def CalibrateCaptureVolume(session,board):
         # ax2.set_title('Charuco Point positions over time')
         plt.show()
 
-    path_to_charuco_array = session.dataArrayPath/'charuco_points.npy'
+    path_to_charuco_array = session.dataArrayPath/'charuco_3d_points.npy'
     np.save(path_to_charuco_array, mean_charuco_fr_mar_dim)
     return cgroup,mean_charuco_fr_mar_dim
 

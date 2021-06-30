@@ -15,6 +15,8 @@ sesh.useOpenPose= True
 sesh.useMediaPipe = False
 sesh.useDLC=False
 
+
+
 if sesh.useDLC: 
     import deeplabcut as dlc
     # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
@@ -23,10 +25,16 @@ if sesh.useDLC:
 
 
 # %% Inputs to edit
-stage = 6 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = False
 
-sesh.sessionID = 'sesh_21_06_22_1_CyrWheel' #fill in if you are running from Stage 2 onwards
+sesh.sessionID = 'sesh_21-06-29_141040' #fill in if you are running from Stage 2 onwards
+
+#sesh.start_session()
+
+
+#sesh.initialize(stage)
+
 
 if not sesh.sessionID:
     dataFolder = Path.cwd()/'Data'
@@ -51,7 +59,7 @@ board = CharucoBoard(7, 5,
 
 
 # %% Initialization
-
+#sesh.initialize(stage)
 initialization.initialize(sesh,stage,board)
 
 # %% Stage One
@@ -59,6 +67,7 @@ if stage <= 1:
     print()
     print('Starting Video Recordings')
     runcams.RecordCams(sesh, sesh.cam_inputs, sesh.parameterDictionary, sesh.rotationInputs)
+    sesh.save_session()
 else:
     print('Skipping Video Recording')
 
@@ -68,6 +77,7 @@ if stage <= 2:
     print()
     print('Starting Video Syncing')
     runcams.SyncCams(sesh, sesh.timeStampData,sesh.numCamRange,sesh.vidNames,sesh.camIDs)
+    sesh.save_session()
 else:
     print('Skipping Video Syncing')
 

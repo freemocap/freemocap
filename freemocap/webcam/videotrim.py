@@ -13,6 +13,8 @@ def VideoTrim(session,vidList,ft,parameterDictionary,rotationState,numCamRange):
     trueHeight = resHeight
     codec = parameterDictionary.get('codec')
 
+    postTrimmingTotalNumFrames = []
+
     for vid,cam,camNum in zip(vidList,camList,numCamRange): #iterate in parallel through camera identifiers and matching videos
         print('Editing '+cam+' from ' +vid)
         cap = cv2.VideoCapture(str(session.rawVidPath/vid)) #initialize OpenCV capture
@@ -48,8 +50,16 @@ def VideoTrim(session,vidList,ft,parameterDictionary,rotationState,numCamRange):
         resHeight = trueHeight
         cap.release()
         out.release()
+        frame_length_cap = cv2.VideoCapture(saveSyncedVidPath)
+        thisCamNumFrame = int(frame_length_cap.get(cv2.CAP_PROP_FRAME_COUNT)) 
+        postTrimmingTotalNumFrames.append(thisCamNumFrame)
         print('Saved '+ saveSyncedVidPath)
         print()
+
+    assert postTrimmingTotalNumFrames.count(postTrimmingTotalNumFrames[0]) == len(postTrimmingTotalNumFrames), "Number of frames in each synced video is not the same"
+    session.postTrimmingNumFrames = postTrimmingTotalNumFrames[0]
+    session.numFrames = postTrimmingTotalNumFrames[0]
+
 
 def createCalibrationVideos(session,calVideoFrameLength,parameterDictionary):
     vidList = os.listdir(session.syncedVidPath)

@@ -20,12 +20,11 @@ default:
 
 saved:
   rotations:
-    0: 270
-    1: 90
-    2: 90
-    3: 90
+    0: 0
+    1: 0
+    2: 0
   parameters:
-    exposure: -8
+    exposure: -5
     resWidth: 640
     resHeight: 480
     framerate: 30

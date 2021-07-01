@@ -36,12 +36,14 @@ def runOpenPose(session, dummyRun=False):
                 print('Skipping: ', thisVidPath.name )
     session.openPose_jsonPathList = openPose_jsonPathList
     session.openPose_imgPathList = openPose_imgPathList
-
-    yaml = YAML()
-    data = yaml.load(session.session_yaml_path)
-    data['openPose_imgPathList'] = openPose_imgPathList_yaml
-    data['openPose_jsonPathList'] = openPose_jsonPathList_yaml
-    yaml.dump(data, session.session_yaml_path)
+    
+    session.session_settings['openPose_imgPathList'] = openPose_imgPathList_yaml
+    session.session_settings['openPose_jsonPathList'] = openPose_jsonPathList_yaml
+    # yaml = YAML()
+    # data = yaml.load(session.session_yaml_path)
+    # data['openPose_imgPathList'] = openPose_imgPathList_yaml
+    # data['openPose_jsonPathList'] = openPose_jsonPathList_yaml
+    # yaml.dump(data, session.session_yaml_path)
     
     os.chdir(session.sessionPath)
    

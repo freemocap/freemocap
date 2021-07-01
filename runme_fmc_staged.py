@@ -26,7 +26,7 @@ if sesh.useDLC:
 
 # %% Inputs to edit
 stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
-#6/30/21 log - AC
+#6/30/21 log - AC (will be cleared when merging this with main)
  #running from State 1 works until Stage 4 openPose parsing - parseOpenPose needs to be updated, and the graphing stuff with file paths
  #running from Stage 2 does not work right now
  #running from Stage 3 for a webcam recording works until openPose parsing
@@ -36,6 +36,7 @@ stage = 1 #set your starting stage here (stage = 1 will run the pipeline from we
 #stage 1 till the end presumably works - still need to do a full run thruogh
 #**only tested with openPose - mediaPipe probably wont work
 # -update, got stage 2 onwards to work (I think)
+# -update 2 - stage 1 running till the end works
 
 
 
@@ -126,7 +127,7 @@ if stage <= 4:
         sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh)
         sesh.dlc_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.95)
         np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_dim) #save data to npy
-
+    sesh.save_session()
 else:
     print('Skipping Run MediaPipe')
 

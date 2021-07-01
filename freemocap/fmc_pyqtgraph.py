@@ -106,7 +106,7 @@ class PlaySkeletonWidget():
             
 
 
-        self.charuco_mar_dim = np.load(session.dataArrayPath/'charuco_3D_points.npy')
+        self.charuco_mar_dim = np.load(session.dataArrayPath/'charuco_3d_points.npy')
         self.charucoScatterItem = gl.GLScatterPlotItem(pos=self.charuco_mar_dim, color=(1,1,1,.8), size=10, pxMode=False)
         self.Skel3dViewWidget.addItem(self.charucoScatterItem)
 

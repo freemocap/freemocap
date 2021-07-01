@@ -34,7 +34,7 @@ def ReplaySkeleton_matplotlib( session,
                     useDLC=False):
 
     
-    mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_points.npy')
+    mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_3d_points.npy')
 
     if useOpenPose:
         skel_fr_mar_dim = np.load(session.dataArrayPath/'openPoseSkel_3d.npy')
@@ -51,13 +51,13 @@ def ReplaySkeleton_matplotlib( session,
 
     
     if useOpenPose:
-        imgPathList = session.config_settings['openPose_imgPathList']
-        session.numCams = len(session.openPose_imgPathList)
+        imgPathList = session.session_settings['openPose_imgPathList']
+  
     
     camImgPathList = {}
     for cam in range(session.numCams):
         camImgPathList[cam] = list(sorted(Path(imgPathList[cam]).glob('*.png')))
-        session.numFrames = len(camImgPathList[cam]) #will need to perhaps put a check in on whether numFrames between cameras are the same
+        #session.numFrames = len(camImgPathList[cam]) #will need to perhaps put a check in on whether numFrames between cameras are the same
     
 
 # define Skeleton connections 
@@ -215,20 +215,20 @@ def ReplaySkeleton_matplotlib( session,
                     useMediaPipe=False,
                     useDLC=False):
 
-    
-    mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_points.npy')
+    session.imOutPath.mkdir(exist_ok = True)
+    mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_3d_points.npy')
 
 
     if session.useMediaPipe:
         mediaPipe_skel_fr_mar_dim = np.load(session.dataArrayPath/'mediaPipeSkel_3d.npy')
-        imgPathList = session.config_settings['mediaPipe_imgPathList']
+        imgPathList = session.session_settings['mediaPipe_imgPathList']
         session.numCams = len(session.mediaPipe_imgPathList)
 
     
     if session.useOpenPose:
         skel_fr_mar_dim = np.load(session.dataArrayPath/'openPoseSkel_3d.npy')
-        imgPathList = session.config_settings['openPose_imgPathList']
-        session.numCams = len(session.openPose_imgPathList)    
+        imgPathList = session.session_settings['openPose_imgPathList']
+        #session.numCams = len(session.openPose_imgPathList)    
         
     if session.useDLC:
         dlc_fr_mar_dim = np.load(session.dataArrayPath/'deepLabCut_3d.npy')
@@ -243,7 +243,7 @@ def ReplaySkeleton_matplotlib( session,
     camImgPathList = {}
     for cam in range(session.numCams):
         camImgPathList[cam] = list(sorted(Path(imgPathList[cam]).glob('*.png')))
-        session.numFrames = len(camImgPathList[cam]) #will need to perhaps put a check in on whether numFrames between cameras are the same
+        #session.numFrames = len(camImgPathList[cam]) #will need to perhaps put a check in on whether numFrames between cameras are the same
     
 
 # define Skeleton connections 

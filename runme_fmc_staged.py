@@ -25,18 +25,23 @@ if sesh.useDLC:
 
 
 # %% Inputs to edit
-stage = 3 #set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 1 #set your starting stage here (stage = 1 will run the pipeline from webcams)
 #6/30/21 log - AC
  #running from State 1 works until Stage 4 openPose parsing - parseOpenPose needs to be updated, and the graphing stuff with file paths
  #running from Stage 2 does not work right now
  #running from Stage 3 for a webcam recording works until openPose parsing
  #running from Stage 3 for an external recording works until openPose parsing (will break bc we need to set numCams/numFrames manually beforehand)
+#6/31/21 log -AC
+#running from Stages 3,4,6,7 and 8 work until the end now 
+#stage 1 till the end presumably works - still need to do a full run thruogh
+#stage 2 still out of order
+#**only tested with openPose - mediaPipe probably wont work
 
 
 
 sesh.debug = False
 
-sesh.sessionID = 'sesh_21-06-30_153942' #fill in if you are running from Stage 2 onwards
+sesh.sessionID = 'sesh_21-07-01_142123' #fill in if you are running from Stage 2 onwards
 
 
 
@@ -57,7 +62,7 @@ board = CharucoBoard(7, 5,
                      marker_bits=4, dict_size=250)
 
 
-
+sesh.board = board
 #sesh.input_stage = stage
 
 
@@ -154,7 +159,7 @@ else:
 # %% Stage Six
 if stage <= 6:
     print ('Starting PyQT Animation')
-    #createvideo.createBodyTrackingVideos(sesh)
+    createvideo.createBodyTrackingVideos(sesh)
     displayVid = 1  
     #if displayVid = 0, will show the synced videos
     #if displayVid = 1, will show the openPosed videos

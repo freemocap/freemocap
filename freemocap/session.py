@@ -44,6 +44,8 @@ class Session: #self like "recording self"
         self.session_settings = self.create_session_dictionary()
         self.create_session_txt(paramDict,rotDict)
 
+        self.save_session()
+
 
 
     def create_session_paths(self):

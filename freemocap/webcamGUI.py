@@ -51,6 +51,9 @@ def initialize(session, stage, board):
         parameters['saved']['rotations'] = rotDict
         parameters['saved']['parameters'] = paramDict
         parameters_yaml.dump(parameters, parameter_path)
+
+    #save recording parameters to the config yaml
+
         
     #create a list from the rotation dictionary to be used in running webcams
         rotation_input = list(rotDict.values())
@@ -71,6 +74,14 @@ def initialize(session, stage, board):
 
             #create a config yaml and text file for this session
             session.start_session(session.parameterDictionary,session.rotationInputs)
+            session.session_settings['recording_parameters']['RotationInputs'] = rotDict
+            session.session_settings['recording_parameters']['ParameterDict'] = paramDict
+            #configyaml = YAML()
+            #sessionsettings = configyaml.load(session.session_yaml_path)
+            #sessionsettings['recording_parameters']['RotationInputs'] = rotDict
+            #sessionsettings['recording_parameters']['ParameterDict'] = paramDict
+            #configyaml.dump(sessionsettings, session.session_yaml_path)
+            #print(sessionsettings)
             #config_yaml_path = recordingconfig.createSession(session,filepath)
             #recordingconfig.createSessionTxt(session,paramDict,rotDict)
             
@@ -90,8 +101,8 @@ def initialize(session, stage, board):
         session.initialize(stage)
 
         #from the config settings add the camera input parameters to parameter dictionary
-        session.parameterDictionary = session.config_settings['CamInputs']['ParameterDict']
-        session.rotationInputs = session.config_settings['CamInputs']['RotationInputs']
+        session.parameterDictionary = session.session_settings['recording_parameters']['ParameterDict']
+        session.rotationInputs = session.session_settings['recording_parameters']['RotationInputs']
 
         #initialize the path to the timestamp csv
         csvName = session.sessionID + '.csv'

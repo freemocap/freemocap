@@ -34,14 +34,14 @@ stage = 1 #set your starting stage here (stage = 1 will run the pipeline from we
 #6/31/21 log -AC
 #running from Stages 3,4,6,7 and 8 work until the end now 
 #stage 1 till the end presumably works - still need to do a full run thruogh
-#stage 2 still out of order
 #**only tested with openPose - mediaPipe probably wont work
+# -update, got stage 2 onwards to work (I think)
 
 
 
 sesh.debug = False
 
-sesh.sessionID = 'sesh_21-07-01_142123' #fill in if you are running from Stage 2 onwards
+sesh.sessionID = '' #fill in if you are running from Stage 2 onwards
 
 
 

@@ -25,8 +25,9 @@ def initialize(session, stage, board):
         sessionID_in = datetime.datetime.now().strftime("sesh_%y-%m-%d_%H%M%S")
         session.sessionID = sessionID_in
 
-    #load the parameters YAML and extract the saved parameters if possible, and the default otherwise
-        parameter_path = filepath/'parameters.yaml'
+    #load the parameters YAML and extract the saved parameters if possible, and the default otherwise       
+        here = Path(__file__).parent
+        parameter_path = here/'parameters.yaml'
         parameters_yaml = YAML()
         parameters = parameters_yaml.load(parameter_path)
 
@@ -34,7 +35,7 @@ def initialize(session, stage, board):
             rotation_entry = parameters['saved']['rotations']
             parameter_entry = parameters['saved']['parameters']
         except:
-            print("Using Default Config")
+            print("Could not load saved parameters, using default parameters")
             rotation_entry = parameters['default']['rotations']
             parameter_entry = parameters['default']['parameters']      
 
@@ -45,6 +46,8 @@ def initialize(session, stage, board):
         task, cam_inputs, rotDict, paramDict, session.sessionID = recordGUI.RunGUI(sessionID_in,rotation_entry,parameter_entry)
     
     #update the saved parameters in the YAML
+        #recordingconfig.rotation_settings['saved'] = rotDict
+        #recordingconfig.camera_parameters['saved'] = paramDict
         parameters['saved']['rotations'] = rotDict
         parameters['saved']['parameters'] = paramDict
         parameters_yaml.dump(parameters, parameter_path)

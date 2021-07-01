@@ -83,7 +83,8 @@ def parseOpenPose(session):
 
         ## %% 
         ## load in data from json files
-        numFrames = int(len(list(Path(session.openPose_jsonPathList[0]).glob('*')))) #lol
+        #numFrames = int(len(list(Path(session.openPose_jsonPathList[0]).glob('*')))) #lol
+        numFrames = session.numFrames
         numMarkers= int(int(len(dataFrameHeader)/3))
         numCams = int(session.numCams)
 
@@ -121,7 +122,7 @@ def parseOpenPose(session):
 
         # session.dataFrameHeader = dataFrameHeader
         # session.numImgPoints = numImgPoints
-        session.numFrames = frameNum  #NOTE - Need to find a safer way to get this number
+        #session.numFrames = frameNum  #NOTE - Need to find a safer way to get this number
 
         path_to_openpose_2d = session.dataArrayPath/'openPoseData_2d.npy'
         np.save(path_to_openpose_2d, openPoseData_nCams_nFrames_nImgPts_XYC)

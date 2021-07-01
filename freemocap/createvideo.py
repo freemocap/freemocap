@@ -37,7 +37,7 @@ def createBodyTrackingVideos(session):
 
     if session.useOpenPose:
 
-        for count,videoPath in enumerate(session.config_settings['openPose_imgPathList']):
+        for count,videoPath in enumerate(session.session_settings['openPose_imgPathList']):
             frame_array = []
             vidSavePath = str(session.openPoseDataPath/'openPoseVideo_cam{}.mp4'.format(count))
             videoPath = Path(videoPath)

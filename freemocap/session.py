@@ -84,7 +84,7 @@ class Session: #self like "recording self"
         recording_parameters = {'numCams': self.numCams, 'numFrames': self.numFrames, 'numTrackedPoints': self.numTrackedPoints}
 
         #create a dictionary with the folder names (taken from the recordingconfig.py file) and the folder paths from pathList
-        #NOTE -6/30/21 - as of right now, the order of folder names in the recordingconfig.folder_setup list needs to match the 
+        #NOTE AC- 6/30/21 - as of right now, the order of folder names in the recordingconfig.folder_setup list needs to match the 
         #                the order of folder paths in the pathList
         session_paths = {}
 

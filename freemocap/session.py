@@ -1,15 +1,3 @@
-<<<<<<< HEAD
-class Session:  # session like "recording session"
-    def __init__(self):
-        self.sessionID = (
-            ""  # The sessionID tag will be used to generate files names and whatnot
-        )
-        self.sessionPath = ""  # The folder where the to-be-processed videos live (in a folder called "synced Vids")
-        self.numCams = ""  # The number of cameras used in this recording session
-        self.openPoseDataPath = ""  # Where the open pose data lives
-        self.dlcDataPath = ""  # Where the DLC data lives
-        self.openPoseExePath = r"C:\openpose"
-=======
 from pathlib import Path
 from ruamel.yaml import YAML
 
@@ -30,7 +18,6 @@ class Session: #self like "recording self"
         self.openPoseDataPath   = ''#Where the open pose data lives
         self.dlcDataPath    = ''#Where the DLC data lives
         self.openPoseExePath = r'C:\openpose'
->>>>>>> merge-pipy-aaron
 
         self.cam_inputs = None
         self.parameterDictionary = None
@@ -43,8 +30,6 @@ class Session: #self like "recording self"
 
         self.mediaPipe_imgPathList = None
         self.openPose_imgPathList = None
-<<<<<<< HEAD
-=======
 
     def start_session(self,paramDict,rotDict):
         #start a session, create all the file paths necessary, and create a session dictionary to save settings
@@ -217,4 +202,3 @@ class Session: #self like "recording self"
   
 
 
->>>>>>> merge-pipy-aaron

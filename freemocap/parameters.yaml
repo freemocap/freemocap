@@ -1,4 +1,5 @@
-#default parameters
+#default parameters
+
 
 
 
@@ -11,22 +12,16 @@ default:
     framerate: 25
     codec: DIVX
 
-#saved parameters    
+#saved parameters    
+
 
 
 
 
 saved:
   rotations:
-<<<<<<< HEAD:parameters.yaml
-    0: 90
-    1: 270
-    2: 90
-    3: 270
-=======
     1: 0
     2: 0
->>>>>>> merge-pipy-aaron:freemocap/parameters.yaml
   parameters:
     exposure: -6
     resWidth: 640

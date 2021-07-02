@@ -25,7 +25,7 @@ sesh = session.Session()
 
 sesh.useOpenPose = True
 sesh.useMediaPipe = False
-sesh.useDLC = True
+sesh.useDLC = False
 
 if sesh.useDLC:
     import deeplabcut as dlc

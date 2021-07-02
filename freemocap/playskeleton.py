@@ -37,12 +37,8 @@ def ReplaySkeleton_matplotlib(
     useDLC=False,
 ):
 
-<<<<<<< HEAD
-    mean_charuco_fr_mar_dim = np.load(session.dataArrayPath / "charuco_points.npy")
-=======
     
     mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_3d_points.npy')
->>>>>>> merge-pipy-aaron
 
     if useOpenPose:
         skel_fr_mar_dim = np.load(session.dataArrayPath / "openPoseSkel_3d.npy")
@@ -60,22 +56,6 @@ def ReplaySkeleton_matplotlib(
         ballTrailLen = 4
 
     if useOpenPose:
-<<<<<<< HEAD
-        imgPathList = session.config_settings["openPose_imgPathList"]
-        session.numCams = len(session.openPose_imgPathList)
-
-    camImgPathList = {}
-    for cam in range(session.numCams):
-        camImgPathList[cam] = list(sorted(Path(imgPathList[cam]).glob("*.png")))
-        session.numFrames = len(
-            camImgPathList[cam]
-        )  # will need to perhaps put a check in on whether numFrames between cameras are the same
-
-    # define Skeleton connections
-    # head = [17, 15, 0, 16, 18]
-    head = [15, 0, 16]
-    spine = [0, 1, 8]
-=======
         imgPathList = session.session_settings['openPose_imgPathList']
   
     
@@ -89,7 +69,6 @@ def ReplaySkeleton_matplotlib(
 # head = [17, 15, 0, 16, 18]
     head = [ 15, 0, 16]
     spine = [0,1,8]
->>>>>>> merge-pipy-aaron
     rArm = [17, 15, 0, 16, 18]
     rArm = [4, 3, 2, 1]
     lArm = [1, 5, 6, 7]
@@ -323,27 +302,6 @@ def ReplaySkeleton_matplotlib(
 ########################################################################################################################################
 
 
-def ReplaySkeleton_matplotlib(
-    session,
-    vidType=1,
-    startFrame=40,
-    azimuth=-90,
-    elevation=-80,
-    useOpenPose=True,
-    useMediaPipe=False,
-    useDLC=False,
-):
-
-<<<<<<< HEAD
-    mean_charuco_fr_mar_dim = np.load(session.dataArrayPath / "charuco_points.npy")
-
-    if session.useMediaPipe:
-        mediaPipe_skel_fr_mar_dim = np.load(
-            session.dataArrayPath / "mediaPipeSkel_3d.npy"
-        )
-        imgPathList = session.config_settings["mediaPipe_imgPathList"]
-=======
-
 
 def ReplaySkeleton_matplotlib( session,
                     vidType=1,
@@ -361,21 +319,13 @@ def ReplaySkeleton_matplotlib( session,
     if session.useMediaPipe:
         mediaPipe_skel_fr_mar_dim = np.load(session.dataArrayPath/'mediaPipeSkel_3d.npy')
         imgPathList = session.session_settings['mediaPipe_imgPathList']
->>>>>>> merge-pipy-aaron
         session.numCams = len(session.mediaPipe_imgPathList)
 
     if session.useOpenPose:
-<<<<<<< HEAD
-        skel_fr_mar_dim = np.load(session.dataArrayPath / "openPoseSkel_3d.npy")
-        imgPathList = session.config_settings["openPose_imgPathList"]
-        session.numCams = len(session.openPose_imgPathList)
-
-=======
         skel_fr_mar_dim = np.load(session.dataArrayPath/'openPoseSkel_3d.npy')
         imgPathList = session.session_settings['openPose_imgPathList']
         #session.numCams = len(session.openPose_imgPathList)    
         
->>>>>>> merge-pipy-aaron
     if session.useDLC:
         dlc_fr_mar_dim = np.load(session.dataArrayPath / "deepLabCut_3d.npy")
         dlc0 = np.squeeze(dlc_fr_mar_dim[:, 0, :])
@@ -385,18 +335,6 @@ def ReplaySkeleton_matplotlib( session,
 
     camImgPathList = {}
     for cam in range(session.numCams):
-<<<<<<< HEAD
-        camImgPathList[cam] = list(sorted(Path(imgPathList[cam]).glob("*.png")))
-        session.numFrames = len(
-            camImgPathList[cam]
-        )  # will need to perhaps put a check in on whether numFrames between cameras are the same
-
-    # define Skeleton connections
-    # head = [17, 15, 0, 16, 18]
-    head = [15, 0, 16]
-    spine = [0, 1, 8]
-    rArm = [4, 3, 2, 1]
-=======
         camImgPathList[cam] = list(sorted(Path(imgPathList[cam]).glob('*.png')))
         #session.numFrames = len(camImgPathList[cam]) #will need to perhaps put a check in on whether numFrames between cameras are the same
     
@@ -406,7 +344,6 @@ def ReplaySkeleton_matplotlib( session,
     head = [ 15, 0, 16]
     spine = [0,1,8]
     rArm = [4 ,3 ,2 ,1]
->>>>>>> merge-pipy-aaron
     lArm = [1, 5, 6, 7]
     rLeg = [11, 10, 9, 8]
     lLeg = [14, 13, 12, 8]

@@ -37,9 +37,13 @@ def createBodyTrackingVideos(session):
 
     if session.useOpenPose:
 
+<<<<<<< HEAD
         for count, videoPath in enumerate(
             session.config_settings["openPose_imgPathList"]
         ):
+=======
+        for count,videoPath in enumerate(session.session_settings['openPose_imgPathList']):
+>>>>>>> merge-pipy-aaron
             frame_array = []
             vidSavePath = str(
                 session.openPoseDataPath / "openPoseVideo_cam{}.mp4".format(count)

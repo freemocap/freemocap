@@ -24,9 +24,14 @@ def initialize(session, stage, board):
         sessionID_in = datetime.datetime.now().strftime("sesh_%y-%m-%d_%H%M%S")
         session.sessionID = sessionID_in
 
+<<<<<<< HEAD:freemocap/initialization.py
+        # load the parameters YAML and extract the saved parameters if possible, and the default otherwise
+        parameter_path = filepath / "parameters.yaml"
+=======
     #load the parameters YAML and extract the saved parameters if possible, and the default otherwise       
         here = Path(__file__).parent
         parameter_path = here/'parameters.yaml'
+>>>>>>> merge-pipy-aaron:freemocap/webcamGUI.py
         parameters_yaml = YAML()
         parameters = parameters_yaml.load(parameter_path)
 
@@ -34,6 +39,26 @@ def initialize(session, stage, board):
             rotation_entry = parameters["saved"]["rotations"]
             parameter_entry = parameters["saved"]["parameters"]
         except:
+<<<<<<< HEAD:freemocap/initialization.py
+            print("Using Default Config")
+            rotation_entry = parameters["default"]["rotations"]
+            parameter_entry = parameters["default"]["parameters"]
+
+        proceedToRecording = False  # create this boolean, set it to false, and if the user wants to record
+        # later in the pipeline, it will be set to true
+
+        # run the GUI to get the tasks, the cams chosen, the camera settings, and the session ID
+        task, cam_inputs, rotDict, paramDict, session.sessionID = recordGUI.RunGUI(
+            sessionID_in, rotation_entry, parameter_entry
+        )
+
+        # update the saved parameters in the YAML
+        parameters["saved"]["rotations"] = rotDict
+        parameters["saved"]["parameters"] = paramDict
+        parameters_yaml.dump(parameters, parameter_path)
+
+        # create a list from the rotation dictionary to be used in running webcams
+=======
             print("Could not load saved parameters, using default parameters")
             rotation_entry = parameters['default']['rotations']
             parameter_entry = parameters['default']['parameters']      
@@ -55,6 +80,7 @@ def initialize(session, stage, board):
 
         
     #create a list from the rotation dictionary to be used in running webcams
+>>>>>>> merge-pipy-aaron:freemocap/webcamGUI.py
         rotation_input = list(rotDict.values())
 
         if task == "setup":
@@ -73,6 +99,11 @@ def initialize(session, stage, board):
             session.parameterDictionary = paramDict
             session.rotationInputs = rotation_input
 
+<<<<<<< HEAD:freemocap/initialization.py
+            # create a config yaml and text file for this session
+            config_yaml_path = recordingconfig.createSession(session, filepath)
+            recordingconfig.createSessionTxt(session, paramDict, rotDict)
+=======
             #create a config yaml and text file for this session
             session.start_session(session.parameterDictionary,session.rotationInputs)
             session.session_settings['recording_parameters']['RotationInputs'] = rotDict
@@ -104,6 +135,7 @@ def initialize(session, stage, board):
         #from the config settings add the camera input parameters to parameter dictionary
         session.parameterDictionary = session.session_settings['recording_parameters']['ParameterDict']
         session.rotationInputs = session.session_settings['recording_parameters']['RotationInputs']
+>>>>>>> merge-pipy-aaron:freemocap/webcamGUI.py
 
             print("Proceeding to Stage One")
 

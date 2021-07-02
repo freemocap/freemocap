@@ -25,23 +25,23 @@ sesh = session.Session()
 
 sesh.useOpenPose = True
 sesh.useMediaPipe = False
-sesh.useDLC = False
+sesh.useDLC = True
 
 if sesh.useDLC:
     import deeplabcut as dlc
 
     # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
     sesh.dlcConfigPath = Path(
-        "C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml"
+        "C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml",
     )
 
 
 # %% Inputs to edit
-stage = 6  # set your starting stage here (stage = 1 will run the pipeline from webcams)
+stage = 1  # set your starting stage here (stage = 1 will run the pipeline from webcams)
 sesh.debug = False
 
 sesh.sessionID = (
-    "sesh_21_06_22_1_CyrWheel"  # fill in if you are running from Stage 2 onwards
+    ""  # fill in if you are running from Stage 2 onwards
 )
 
 if not sesh.sessionID:

@@ -1,3 +1,7 @@
+
+#NOTE - this is altered version of code from Anipose - We should make this alteration in a forked repo of aniposelib rather than copying the py file and altering it in our repo
+
+
 import cv2
 import numpy as np
 from copy import copy

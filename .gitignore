@@ -131,12 +131,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .vscode/launch.json
-<<<<<<< HEAD
-Cam4
-Cam3
-Cam2
-Cam1
-=======
-Cam2
-Cam1
->>>>>>> 8f1fbc8... runme file reorganization
+
+
+# other
+src/

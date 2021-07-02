@@ -8,13 +8,9 @@ import numpy as np
 from tkinter import Tk
 
 
-<<<<<<< HEAD
-def RecordCams(session, camInputs, parameterDictionary, rotationInputs):
-=======
 def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     #Create RawVideos folder
     session.rawVidPath.mkdir(exist_ok = True)
->>>>>>> merge-pipy-aaron
 
     #%% Setting up recordings
     beginTime = time.time()
@@ -85,17 +81,6 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     session.numCamRange = numCamRange
     session.vidNames = vidNames
 
-<<<<<<< HEAD
-
-def SyncCams(session, timeStampData, numCamRange, vidNames, camIDs):
-
-    # start the timesync process
-    frameTable, timeTable, frameRate, resultsTable, plots = timesync.TimeSync(
-        timeStampData, numCamRange, camIDs
-    )
-
-    # this message shows you your percentages and asks if you would like to continue or not. shuts down the program if no
-=======
 def SyncCams(session, timeStampData,numCamRange,vidNames,camIDs):
     session.syncedVidPath.mkdir(exist_ok = True)
 
@@ -103,7 +88,6 @@ def SyncCams(session, timeStampData,numCamRange,vidNames,camIDs):
     frameTable,timeTable,frameRate,resultsTable,plots = timesync.TimeSync(session,timeStampData,numCamRange,camIDs) 
     
     #this message shows you your percentages and asks if you would like to continue or not. shuts down the program if no
->>>>>>> merge-pipy-aaron
     root = Tk()
     proceed = timesync.proceedGUI(
         root, resultsTable, plots
@@ -112,22 +96,8 @@ def SyncCams(session, timeStampData,numCamRange,vidNames,camIDs):
 
     if proceed.proceed == True:
         print()
-<<<<<<< HEAD
-        print("Starting editing")
-        videotrim.VideoTrim(
-            session,
-            vidNames,
-            frameTable,
-            session.parameterDictionary,
-            session.rotationInputs,
-            numCamRange,
-        )
-        # videotrim.createCalibrationVideos(session,60,parameterDictionary)
-        print("all done")
-=======
         print('Starting editing')
         videotrim.VideoTrim(session,vidNames,frameTable,session.parameterDictionary,session.rotationInputs,numCamRange)
         session.session_settings['recording_parameters'].update({'numFrames':session.numFrames})
         #videotrim.createCalibrationVideos(session,60,parameterDictionary)
         print('all done')
->>>>>>> merge-pipy-aaron

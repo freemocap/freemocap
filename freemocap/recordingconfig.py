@@ -5,7 +5,6 @@ Created on Thu Mar 11 11:54:12 2021
 @author: Rontc
 """
 
-<<<<<<< HEAD
 
 def createSession(session, filepath, existing_data=False):
     # create file paths for the session, raw and synced videos
@@ -77,7 +76,6 @@ def createSessionTxt(session, paramDict, rotDict):
     text.write("%s = %s\n" % ("Rotations", rotDict))
     text.close()
 
-=======
 folder_setup = ['RawVideos','SyncedVideos','CalVideos','DataArrays','DLCData','OpenPoseData','MediaPipeData','imOut']
 
 
@@ -157,9 +155,8 @@ folder_setup = ['RawVideos','SyncedVideos','CalVideos','DataArrays','DLCData','O
     
 
 # def create_config_yaml():
->>>>>>> merge-pipy-aaron
 
-def create_config_yaml():
+# def create_config_yaml():
 
 #     yaml_str = """\
 #     # Camera Inputs
@@ -183,46 +180,10 @@ def create_config_yaml():
 #     config_yaml = YAML()
 #     config_settings = config_yaml.load(yaml_str)
 
-<<<<<<< HEAD
-    return config_settings, config_yaml
-
-=======
 #     return config_settings,config_yaml
->>>>>>> merge-pipy-aaron
 
-def write_config_yaml(session, config_settings, config_yaml, pathList, yaml_name):
+# def write_config_yaml(session, config_settings, config_yaml, pathList, yaml_name):
 
-<<<<<<< HEAD
-    for count, key in enumerate(config_settings["Paths"].keys()):
-        config_settings["Paths"][key] = str(pathList[count])
-
-    config_settings["CamInputs"]["RotationInputs"] = session.rotationInputs
-    config_settings["CamInputs"]["ParameterDict"] = session.parameterDictionary
-
-    # yamlPath = sessionPath/'config_yaml'
-    # print(config_settings,yaml_name)
-    with open(yaml_name, "w") as outfile:
-        config_yaml.dump(config_settings, outfile)
-
-
-def load_config_yaml(yaml_path):
-    config_yaml = YAML()
-    with open(yaml_path, "r") as fp:
-        config_settings = config_yaml.load(fp)
-    return config_settings
-
-
-def load_session_paths(session, config_settings):
-    configPaths = config_settings["Paths"]
-    session.rawVidPath = Path(configPaths["rawVidPath"])
-    session.syncedVidPath = Path(configPaths["syncedVidPath"])
-    session.calVidPath = Path(configPaths["calVidPath"])
-    session.mediaPipeDataPath = Path(configPaths["mediaPipeDataPath"])
-    session.openPoseDataPath = Path(configPaths["openPoseDataPath"])
-    session.dlcDataPath = Path(configPaths["dlcDataPath"])
-    session.imOutPath = Path(configPaths["imOutPath"])
-    session.dataArrayPath = Path(configPaths["dataArrayPath"])
-=======
 # def write_config_yaml(session,config_settings,config_yaml,pathList,yaml_name):
     
 #     for count,key in enumerate(config_settings['Paths'].keys()):
@@ -254,4 +215,3 @@ def load_session_paths(session, config_settings):
 #     session.dlcDataPath = Path(configPaths['dlcDataPath'])
 #     session.imOutPath = Path(configPaths['imOutPath'])
 #     session.dataArrayPath = Path(configPaths['dataArrayPath'])
->>>>>>> merge-pipy-aaron

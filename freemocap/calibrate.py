@@ -10,7 +10,6 @@ import os
 from rich.progress import track
 
 
-def CalibrateCaptureVolume(session, board):
 
 def CalibrateCaptureVolume(session,board):
     

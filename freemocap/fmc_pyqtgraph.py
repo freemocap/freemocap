@@ -201,10 +201,15 @@ class PlaySkeletonWidget:
 
             self.tailLength = 10
 
+<<<<<<< HEAD
         self.charuco_mar_dim = np.load(session.dataArrayPath / "charuco_points.npy")
         self.charucoScatterItem = gl.GLScatterPlotItem(
             pos=self.charuco_mar_dim, color=(1, 1, 1, 0.8), size=10, pxMode=False
         )
+=======
+        self.charuco_mar_dim = np.load(session.dataArrayPath/'charuco_3d_points.npy')
+        self.charucoScatterItem = gl.GLScatterPlotItem(pos=self.charuco_mar_dim, color=(1,1,1,.8), size=10, pxMode=False)
+>>>>>>> merge-pipy-aaron
         self.Skel3dViewWidget.addItem(self.charucoScatterItem)
 
         # plot videos Frames!

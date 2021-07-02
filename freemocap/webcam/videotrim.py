@@ -16,6 +16,7 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
     trueHeight = resHeight
     codec = parameterDictionary.get("codec")
 
+<<<<<<< HEAD
     for vid, cam, camNum in zip(
         vidList, camList, numCamRange
     ):  # iterate in parallel through camera identifiers and matching videos
@@ -25,6 +26,15 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
         )  # initialize OpenCV capture
         frameTable = ft[cam]  # grab the frames needed for that camera
         success, image = cap.read()  # start reading frames
+=======
+    postTrimmingTotalNumFrames = []
+
+    for vid,cam,camNum in zip(vidList,camList,numCamRange): #iterate in parallel through camera identifiers and matching videos
+        print('Editing '+cam+' from ' +vid)
+        cap = cv2.VideoCapture(str(session.rawVidPath/vid)) #initialize OpenCV capture
+        frameTable = ft[cam] #grab the frames needed for that camera
+        success, image = cap.read() #start reading frames
+>>>>>>> merge-pipy-aaron
         fourcc = cv2.VideoWriter_fourcc(*codec)
         saveName = session.sessionID + "_synced_" + cam + ".mp4"
 
@@ -62,11 +72,26 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
         resHeight = trueHeight
         cap.release()
         out.release()
+<<<<<<< HEAD
         print("Saved " + saveSyncedVidPath)
         print()
 
 
 def createCalibrationVideos(session, calVideoFrameLength, parameterDictionary):
+=======
+        frame_length_cap = cv2.VideoCapture(saveSyncedVidPath)
+        thisCamNumFrame = int(frame_length_cap.get(cv2.CAP_PROP_FRAME_COUNT)) 
+        postTrimmingTotalNumFrames.append(thisCamNumFrame)
+        print('Saved '+ saveSyncedVidPath)
+        print()
+
+    assert postTrimmingTotalNumFrames.count(postTrimmingTotalNumFrames[0]) == len(postTrimmingTotalNumFrames), "Number of frames in each synced video is not the same"
+    session.postTrimmingNumFrames = postTrimmingTotalNumFrames[0]
+    session.numFrames = postTrimmingTotalNumFrames[0]
+
+
+def createCalibrationVideos(session,calVideoFrameLength,parameterDictionary):
+>>>>>>> merge-pipy-aaron
     vidList = os.listdir(session.syncedVidPath)
     framelist = list(range(calVideoFrameLength))
     codec = parameterDictionary.get("codec")

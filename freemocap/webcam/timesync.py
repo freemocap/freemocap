@@ -6,6 +6,14 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 from tkinter import Tk, Label, Button, Frame
 
+<<<<<<< HEAD
+=======
+def TimeSync(session,timeStampData,numCamRange,camNames):    
+       
+    def CloseNeighb(camera,point): 
+            closestPoint = (np.abs(camera - point)).argmin() 
+            return closestPoint
+>>>>>>> merge-pipy-aaron
 
 def TimeSync(timeStampData, numCamRange, camNames):
     def CloseNeighb(camera, point):
@@ -20,6 +28,7 @@ def TimeSync(timeStampData, numCamRange, camNames):
             timeStampData[name].last_valid_index()
         ]  # find the last non-nan value in each camera
         lastPoints.append(cameraLastPoint)
+<<<<<<< HEAD
 
     masterTimelineEnd = np.floor(
         min(lastPoints)
@@ -72,6 +81,60 @@ def TimeSync(timeStampData, numCamRange, camNames):
     n = 0
     # I don't remember why I did this but I'm sure I'll figure it out later
 
+=======
+    
+    masterTimelineEnd = np.floor(min(lastPoints))  #find where the fastest camera ended, round down, use that as the end point
+
+
+    #print('end',endList)
+    print('intervals:',masterTimelineBegin,masterTimelineEnd)   
+    
+    preSyncTotalNumFrames = []
+    totalFrameIntvl= [] #list for storing frame rates for each camera
+    
+      
+    n = 0; #counter for going through camera names
+    for x in numCamRange:
+      currentCam = timeStampData[camNames[x]]
+      #finds the closest point in each camera to the start and end points of our timeline
+      currentCamStart = CloseNeighb(currentCam,masterTimelineBegin) 
+      currentCamEnd = CloseNeighb(currentCam,masterTimelineEnd)
+    
+
+      print("using frames:", currentCamStart,"-",currentCamEnd,"for",camNames[n])
+      n +=1
+      currentCamTimeline = currentCam[currentCamStart:currentCamEnd] #grab the times from start to finish for each camera
+
+      currentCamNumFrames = len(currentCamTimeline)
+
+      currentCamFrameInterval = np.mean(np.diff(currentCamTimeline)) #calculate the interval between each frame and take the mean 
+      
+      totalFrameIntvl.append(currentCamFrameInterval) #add interval to list 
+      preSyncTotalNumFrames.append(currentCamNumFrames)
+      #print(camNames[x],currentCamStart,currentCamEnd)
+
+    #print(preSyncTotalNumFrames, 'presync')
+    #assert preSyncTotalNumFrames.count(preSyncTotalNumFrames[0]) == len(preSyncTotalNumFrames), "Number of frames sliced for each camera pre-syncing is not the same"
+
+    totalAverageIntvl = np.mean(totalFrameIntvl) #find the total average interval across all cameras
+    masterTimeline = np.arange(masterTimelineBegin,masterTimelineEnd,totalAverageIntvl) #build a master timeline with the average interval
+       
+    #now we start the syncing process
+    
+    frameList = masterTimeline #start a list of frames, with the first row being our master timeline
+    timeList = masterTimeline #start a list of timestamps,with the first row being our master timeline
+     
+    delNum= []; #stores number of deleted frames/camera
+    bufNum= []; #stores number of buffered frames/camera
+    bufPercentList = []; #stores percentage of deleted frames/camera
+    delPercentList = []; #stores percentage of buffered frames/camera
+    
+    count = 0 #Keeps track of what frame we're on (I think?)
+    n = 0; #I don't remember why I did this but I'm sure I'll figure it out later
+    
+
+    postSyncTotalNumFrames = []
+>>>>>>> merge-pipy-aaron
     for y in numCamRange:
         thisCam = timeStampData[camNames[y]]
         camTimes = []
@@ -84,6 +147,7 @@ def TimeSync(timeStampData, numCamRange, camNames):
         beginFrame = CloseNeighb(thisCam, masterTimeline[0])
         timeDif = masterTimeline[0] - thisCam[beginFrame]
         thisCam = thisCam + timeDif
+<<<<<<< HEAD
 
         for z in masterTimeline:  # for each point in the master timeline
             closestFrame = CloseNeighb(
@@ -113,6 +177,31 @@ def TimeSync(timeStampData, numCamRange, camNames):
             if distanceBetweenFrames == 1:  # these frames are consecutive, do nothing
                 None
             elif distanceBetweenFrames == 0:  # we have a buffered slide
+=======
+        
+        for z in masterTimeline: #for each point in the master timeline
+            closestFrame = CloseNeighb(thisCam, z) #find the closest frame in this camera to each point of the master timeline
+            camFrames.append(closestFrame) #add that frame to the list
+            camTimes.append(thisCam[closestFrame]) #find the time corresponding to this frame
+            
+        print("starting detection:",camNames[n]) #now to start finding deleted/buffered slides
+        frameList = np.column_stack((frameList,camFrames)) #update our framelist with our new frames
+        timeList = np.column_stack((timeList,camTimes)) #update our timelist 
+        
+    
+        #start counters for the number of buffered and deleted slides
+        bufCount = 0;
+        delCount = 0;
+
+        thisCamNumFrames = len(camFrames)
+        postSyncTotalNumFrames.append(thisCamNumFrames)
+
+        for i in range(0,len(camFrames)-1): 
+            distanceBetweenFrames = camFrames[i+1] - camFrames[i] #find the distance between adjacent frames
+            if distanceBetweenFrames == 1: #these frames are consecutive, do nothing
+                None 
+            elif distanceBetweenFrames == 0: #we have a buffered slide
+>>>>>>> merge-pipy-aaron
                 bufCount += 1
                 # this section looks at our two timepoints, and finds the which point on the master timeline is closest
                 frame1 = abs(masterTimeline[i] - camTimes[i])
@@ -129,6 +218,7 @@ def TimeSync(timeStampData, numCamRange, camNames):
             else:
 
                 print("something else happened")
+<<<<<<< HEAD
         # update and calculate our percentages and numbers for buffers/deletions
         delNum.append(round(delCount, 1))
         bufNum.append(round(bufCount, 1))
@@ -146,6 +236,30 @@ def TimeSync(timeStampData, numCamRange, camNames):
     # create our data frame for both times and frames
     frameTable = pd.DataFrame(frameList)
     columnNames = ["Master Timeline"] + camNames
+=======
+        #update and calculate our percentages and numbers for buffers/deletions
+        delNum.append(round(delCount,1))
+        bufNum.append(round(bufCount,1))
+        #print(bufCount,len(frameList))
+        bufPercent = (bufCount/len(frameList))*100
+        delPercent = (delCount/len(frameList))*100
+        bufPercentList.append(round(bufPercent,2))
+        delPercentList.append(round(delPercent,2))
+       
+        #print(delNum,bufNum,bufPercentList,delPercentList)
+        #print("deleted frames:",delCount)
+        #print("buffered frames:",bufCount)
+        n +=1
+
+    #print(postSyncTotalNumFrames, 'post-sync')
+    assert postSyncTotalNumFrames.count(postSyncTotalNumFrames[0]) == len(postSyncTotalNumFrames), "Number of frames sliced for each camera post-syncing is not the same"
+
+    session.postSyncNumFrames = postSyncTotalNumFrames[0]
+
+    #create our data frame for both times and frames    
+    frameTable = pd.DataFrame(frameList)   
+    columnNames = ['Master Timeline'] + camNames
+>>>>>>> merge-pipy-aaron
     frameTable.columns = columnNames
     timeTable = pd.DataFrame(timeList)
     timeTable.columns = columnNames

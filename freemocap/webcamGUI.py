@@ -105,9 +105,9 @@ def initialize(session, stage, board):
         session.parameterDictionary = session.session_settings['recording_parameters']['ParameterDict']
         session.rotationInputs = session.session_settings['recording_parameters']['RotationInputs']
 
-            print("Proceeding to Stage One")
+        print("Proceeding to Stage One")
 
-        else:
+    else:
 
             sys.exit("Recording Cancelled")
     # %% Stage Two Initalization

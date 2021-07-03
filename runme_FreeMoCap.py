@@ -10,6 +10,7 @@ from freemocap import (
     reconstruct3D,
     playskeleton,
     session,
+    webcamGUI
 )
 from freemocap.fmc_pyqtgraph import PlayerDockedWindow
 
@@ -68,13 +69,13 @@ board = CharucoBoard(
 )
 
 
-# sesh.input_stage = stage
-
 
 # %% Initialization
-
-initialization.initialize(sesh, stage, board)
-
+#sesh.initialize(stage)
+if stage ==2 or stage == 1:
+    webcamGUI.initialize(sesh,stage,board)
+else:
+    sesh.initialize(stage)
 # %% Stage One
 if stage <= 1:
     print()

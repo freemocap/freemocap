@@ -46,13 +46,17 @@ sesh.sessionID = (
 )
 
 if not sesh.sessionID:
-    dataFolder = Path.cwd() / "Data"
-    subfolders = [
-        f.path for f in os.scandir(dataFolder) if f.is_dir()
-    ]  # copy-pasta from who knows where
-    sesh.sessionID = Path(
-        subfolders[-1]
-    ).stem  # grab the name of the last folder in the list of subfolders
+    dataFolder = Path.cwd() / "FreeMoCap_Data"
+
+    if dataFolder.exists():
+        subfolders = [
+            f.path for f in os.scandir(dataFolder) if f.is_dir()
+        ]  # copy-pasta from who knows where
+        sesh.sessionID = Path(
+            subfolders[-1]
+        ).stem  # grab the name of the last folder in the list of subfolders
+    else: #First time run! Make 'FreeMoCap_Data' Folder (and eventually,  prompt to download sample data)
+        dataFolder.mkdir()
 
 
 board = CharucoBoard(
@@ -66,7 +70,7 @@ board = CharucoBoard(
     marker_length=65,
     marker_bits=4,
     dict_size=250,
-)
+) #someday - need alter this code so that the 'squaresx' and 'squaresy' inputs are keyword arguments
 
 
 

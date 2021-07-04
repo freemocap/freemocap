@@ -14,3 +14,4 @@ include freemocap/_version.py
 
 # If including data files in the package, add them like:
 # include path/to/data_file
+include \freemocap\Data\_sample_data\_sample_data_instructions.txt

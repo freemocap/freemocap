@@ -57,7 +57,8 @@ if not sesh.sessionID:
         ).stem  # grab the name of the last folder in the list of subfolders
     else: #First time run! Make 'FreeMoCap_Data' Folder (and eventually,  prompt to download sample data)
         dataFolder.mkdir()
-
+        sampleDataFolder = dataFolder / '_sample_data_folder'
+        sampleDataFolder.mkdir()
 
 board = CharucoBoard(
     7,

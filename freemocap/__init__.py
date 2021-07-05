@@ -29,7 +29,7 @@ from aniposelib.boards import CharucoBoard
 
 import numpy as np
 
-def runme():
+def RunMe():
     sesh = session.Session()
 
 

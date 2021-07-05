@@ -30,6 +30,8 @@ from aniposelib.boards import CharucoBoard
 import numpy as np
 
 def RunMe():
+
+    
     sesh = session.Session()
 
 
@@ -68,7 +70,10 @@ def RunMe():
             dataFolder.mkdir()
             sampleDataFolder = dataFolder / '_sample_data_folder'
             sampleDataFolder.mkdir()
-
+            # prompt user if they want to download sample data
+            # if yes, download sample session folder from public URL (i.e. figshare )
+            # (also same for relevant DLC folder, which we should remove from the .git)
+            
     board = CharucoBoard(
         7,
         5,

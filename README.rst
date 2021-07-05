@@ -11,8 +11,9 @@ Your Project Name
 
 Python package for doing science.
 
-* Free software: Aferro GNU Public License v3 (AGPLv3)
-* Documentation: (COMING SOON!) https://.github.io/freemocap
+* Free software: Affero GNU Public Licence (AGPLv3)
+* Documentation: (COMING SOON!) https://.github.io/your-project-name.
+
 Features
 --------
 

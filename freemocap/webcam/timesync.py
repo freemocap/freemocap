@@ -12,11 +12,6 @@ def TimeSync(session,timeStampData,numCamRange,camNames):
             closestPoint = (np.abs(camera - point)).argmin() 
             return closestPoint
 
-def TimeSync(timeStampData, numCamRange, camNames):
-    def CloseNeighb(camera, point):
-        closestPoint = (np.abs(camera - point)).argmin()
-        return closestPoint
-
     # this section auto-finds the start and end points for our master timeline to the nearest second
     masterTimelineBegin = np.ceil(max(timeStampData.iloc[0]))
     lastPoints = []

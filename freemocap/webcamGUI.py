@@ -105,54 +105,27 @@ def initialize(session, stage, board):
         session.parameterDictionary = session.session_settings['recording_parameters']['ParameterDict']
         session.rotationInputs = session.session_settings['recording_parameters']['RotationInputs']
 
-        print("Proceeding to Stage One")
+        #initialize the path to the timestamp csv
+        csvName = session.sessionID + '.csv'
+        csvPath = session.sessionPath/csvName
 
-    else:
+        #read CSV data, turn it into a data frame
+        timeStampData = pd.read_csv (csvPath)
+        timeStampData = timeStampData.iloc[:,1:]
 
-            sys.exit("Recording Cancelled")
-    # %% Stage Two Initalization
-    if stage == 2:
-        session.sessionPath = (
-            filepath / "Data" / session.sessionID
-        )  # create a session path based on the sessionID
-
-        # load the config yaml for this session, and add all the paths to the session file
-        session.yamlPath = session.sessionPath / "{}_config.yaml".format(
-            session.sessionID
-        )
-        session.config_settings = recordingconfig.load_config_yaml(
-            session.yamlPath
-        )  # config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(
-            session, session.config_settings
-        )  # add paths to session class
-
-        # from the config settings add the camera input parameters to parameter dictionary
-        session.parameterDictionary = session.config_settings["CamInputs"][
-            "ParameterDict"
-        ]
-        session.rotationInputs = session.config_settings["CamInputs"]["RotationInputs"]
-
-        # initialize the path to the timestamp csv
-        csvName = session.sessionID + ".csv"
-        csvPath = session.sessionPath / csvName
-
-        # read CSV data, turn it into a data frame
-        timeStampData = pd.read_csv(csvPath)
-        timeStampData = timeStampData.iloc[:, 1:]
-
-        # get the camIDs and number of cameras (numCamRange) from the dataframe
+        #get the camIDs and number of cameras (numCamRange) from the dataframe
         camIDs = list(timeStampData.columns)
         numCams = len(camIDs)
-        numCamRange = range(len(camIDs))
-
-        # create names for each of the raw videos
+        numCamRange = range(len(camIDs)) 
+        
+        #create names for each of the raw videos  
         vidNames = []
         for x in numCamRange:
-            singleVidName = "raw_cam{}.mp4".format(x + 1)
-            vidNames.append(singleVidName)
+            singleVidName = 'raw_cam{}.mp4'.format(x+1)
+            vidNames.append(singleVidName)    
 
-        # initialize all the session variables we'll need to run the rest of the pipeline
+
+        #initialize all the session variables we'll need to run the rest of the pipeline
         session.timeStampData = timeStampData
         session.camIDs = camIDs
         session.numCamRange = numCamRange

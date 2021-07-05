@@ -75,21 +75,6 @@ def CalibrateCaptureVolume(session,board):
     #                            init_extrinsics=True)
     #%% End of the copy-paste of the inner bits of `cgroup.calibrate_videos` - END
 
-    # JSM NOTE - need add method to extract Charuco board points from the calibrate_videos pipeline
-
-    ## if you need to save and load
-    ## example saving and loading for later
-    if not session.cameraCalFilePath.is_file():
-        error, merged = cgroup.calibrate_videos(vidnames, board)
-        cgroup.dump(
-            session.cameraCalFilePath
-        )  # JSM NOTE  - let's just use .yaml's unless there is some reason to use .toml
-        mergename = session.sessionPath / "merged.npy"
-        np.save(mergename, merged)
-    else:
-        cgroup = CameraGroup.load(
-            session.cameraCalFilePath
-        )  # load previous calibration config
 
     #JSM NOTE - need add method to extract Charuco board points from the calibrate_videos pipeline
 

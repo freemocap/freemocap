@@ -78,7 +78,7 @@ def CamRecording(
         success
     ):  # while the camera is opened, record the data until the escape button is hit
         if flag:  # when the flag is triggered, stop recording and dump the data
-            with open(session.sessionPath/camID, "wb") as f:
+            with open(session.rawVidPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)
             break
         success, frame = cam.read()
@@ -92,7 +92,7 @@ def CamRecording(
         key = cv2.waitKey(20)
         if key == 27:  # exit on ESC
             flag = True  # set flag to true to shut down all other webcams
-            with open(session.sessionPath/camID, "wb") as f:
+            with open(session.rawVidPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)  # dump the data
             break
     cv2.destroyWindow(camID)

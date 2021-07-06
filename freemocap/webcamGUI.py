@@ -112,8 +112,8 @@ def initialize(session, stage, board):
         rotationDict = session.session_settings['recording_parameters']['RotationInputs']
         session.rotationInputs = list(rotationDict.values())
         #initialize the path to the timestamp csv
-        csvName = session.sessionID + '.csv'
-        csvPath = session.sessionPath/csvName
+        csvName = session.sessionID + '_timestamps.csv'
+        csvPath = session.rawVidPath/csvName
 
         #read CSV data, turn it into a data frame
         timeStampData = pd.read_csv (csvPath)

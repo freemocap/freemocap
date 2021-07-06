@@ -54,7 +54,7 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     ) in (
         numCamRange
     ):  # open the saved pickle file for each camera, and add the timestamps to the dataList list
-        with open(session.sessionPath/camIDs[e], "rb") as f:
+        with open(session.rawVidPath/camIDs[e], "rb") as f:
             camTimeList = pickle.load(f)
             timeStampList.append(camTimeList)
 
@@ -71,8 +71,8 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
         timeDictionary, orient="index"
     )  # create a data frame from this dictionary
     timeStampData = df.transpose()
-    csvName = session.sessionID + ".csv"  # create our csv filename
-    csvPath = session.sessionPath / csvName
+    csvName = session.sessionID + "_timestamps.csv" 
+    csvPath = session.rawVidPath / csvName
     timeStampData.to_csv(csvPath)  # turn dataframe into a CSV
 
     session.numCams = numCams

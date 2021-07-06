@@ -6,7 +6,7 @@ import pickle
 
 class CamRecordingThread(threading.Thread):
     def __init__(
-        self, camID, camInput, videoName, rawVidPath, beginTime, parameterDictionary
+        self, session, camID, camInput, videoName, rawVidPath, beginTime, parameterDictionary
     ):
         threading.Thread.__init__(self)
         self.camID = camID
@@ -15,10 +15,12 @@ class CamRecordingThread(threading.Thread):
         self.rawVidPath = rawVidPath
         self.beginTime = beginTime
         self.parameterDictionary = parameterDictionary
+        self.session = session
 
     def run(self):
         print("Starting " + self.camID)
         self.timeStamps = CamRecording(
+            self.session,
             self.camID,
             self.camInput,
             self.videoName,
@@ -33,7 +35,7 @@ class CamRecordingThread(threading.Thread):
 
 # the recording function that each threaded camera object runs
 def CamRecording(
-    camID, camInput, videoName, rawVidPath, beginTime, parameterDictionary
+    session, camID, camInput, videoName, rawVidPath, beginTime, parameterDictionary
 ):
     # the flag is triggered when the user shuts down one webcam to shut down the rest.
     # normally I'd try to avoid global variables, but in this case it's
@@ -76,7 +78,7 @@ def CamRecording(
         success
     ):  # while the camera is opened, record the data until the escape button is hit
         if flag:  # when the flag is triggered, stop recording and dump the data
-            with open(camID, "wb") as f:
+            with open(session.sessionPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)
             break
         success, frame = cam.read()
@@ -90,7 +92,7 @@ def CamRecording(
         key = cv2.waitKey(20)
         if key == 27:  # exit on ESC
             flag = True  # set flag to true to shut down all other webcams
-            with open(camID, "wb") as f:
+            with open(session.sessionPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)  # dump the data
             break
     cv2.destroyWindow(camID)

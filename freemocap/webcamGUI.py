@@ -96,7 +96,7 @@ def initialize(session, stage, board):
     
         else:
         
-            sys.exit('Recording Cancelled')
+            sys.exit('Recording Canceled')
 # %% Stage Two Initalization
     if stage == 2:
         # session.sessionPath = filepath/'Data'/session.sessionID #create a session path based on the sessionID

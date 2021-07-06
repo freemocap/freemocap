@@ -109,8 +109,8 @@ def initialize(session, stage, board):
 
         #from the config settings add the camera input parameters to parameter dictionary
         session.parameterDictionary = session.session_settings['recording_parameters']['ParameterDict']
-        session.rotationInputs = session.session_settings['recording_parameters']['RotationInputs']
-
+        rotationDict = session.session_settings['recording_parameters']['RotationInputs']
+        session.rotationInputs = list(rotationDict.values())
         #initialize the path to the timestamp csv
         csvName = session.sessionID + '.csv'
         csvPath = session.sessionPath/csvName

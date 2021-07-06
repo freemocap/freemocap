@@ -1669,6 +1669,9 @@ class CameraGroup:
             if init_intrinsics:
                 objp, imgp = board.get_all_calibration_points(rows)
                 mixed = [(o, i) for (o, i) in zip(objp, imgp) if len(o) > 5]
+
+                assert len(objp) != 0 & len(imgp) != 0, "No Charuco board points detected"
+
                 objp, imgp = zip(*mixed)
                 matrix = cv2.initCameraMatrix2D(objp, imgp, tuple(size))
                 camera.set_camera_matrix(matrix)

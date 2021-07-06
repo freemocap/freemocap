@@ -15,7 +15,6 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
     trueWidth = resWidth  # creating true resWidth and resHeight in case we need to rotate our images
     trueHeight = resHeight
     codec = parameterDictionary.get("codec")
-
     postTrimmingTotalNumFrames = []
 
     for vid,cam,camNum in zip(vidList,camList,numCamRange): #iterate in parallel through camera identifiers and matching videos

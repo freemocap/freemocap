@@ -30,6 +30,7 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     threads = []
     for n in numCamRange:  # starts recording video, opens threads for each camera
         camRecordings = startcamrecording.CamRecordingThread(
+            session,
             camIDs[n],
             camInputs[n],
             vidNames[n],
@@ -53,7 +54,7 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     ) in (
         numCamRange
     ):  # open the saved pickle file for each camera, and add the timestamps to the dataList list
-        with open(camIDs[e], "rb") as f:
+        with open(session.sessionPath/camIDs[e], "rb") as f:
             camTimeList = pickle.load(f)
             timeStampList.append(camTimeList)
 

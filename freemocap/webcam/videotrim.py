@@ -38,6 +38,7 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
         out = cv2.VideoWriter(
             saveSyncedVidPath, fourcc, framerate, (resWidth, resHeight)
         )  # change resolution as needed
+        count = 0
         for frame in track(frameTable):  # start looking through the frames we need
             if frame == -1:  # this is a buffer frame
                 blankFrame = np.zeros_like(image)  # create a blank frame
@@ -45,8 +46,9 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
                     blankFrame = imutils.rotate_bound(
                         blankFrame, angle=rotationState[camNum]
                     )
-                    image = cv2.resize(image, (resWidth, resHeight))
+                    blankFrame = cv2.resize(blankFrame, (resWidth, resHeight))
                 out.write(blankFrame)  # write that frame to the video
+                count += 1
             else:
                 cap.set(
                     cv2.CAP_PROP_POS_FRAMES, frame
@@ -56,6 +58,8 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
                     image = imutils.rotate_bound(image, angle=rotationState[camNum])
                     image = cv2.resize(image, (resWidth, resHeight))
                 out.write(image)
+                f = 2
+            
         resWidth = trueWidth
         resHeight = trueHeight
         cap.release()

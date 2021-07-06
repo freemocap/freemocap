@@ -8,7 +8,6 @@ del get_versions
 
 from freemocap import (
     createvideo,
-    initialization,
     recordingconfig,
     runcams,
     calibrate,
@@ -195,7 +194,7 @@ def RunMe():
 
 
     # reupdate the config_settings with mediapipe and openpose image paths
-    sesh.config_settings = recordingconfig.load_config_yaml(sesh.yamlPath)
+    #sesh.config_settings = recordingconfig.load_config_yaml(sesh.yamlPath)
 
 
     # %% Stage Six

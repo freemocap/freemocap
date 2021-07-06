@@ -28,7 +28,13 @@ def initialize(session, stage, board):
         here = Path(__file__).parent
         parameter_path = here/'parameters.yaml'
         parameters_yaml = YAML()
-        parameters = parameters_yaml.load(parameter_path)
+        if parameter_path.exists():
+            parameters = parameters_yaml.load(parameter_path)
+        else:
+            parameters = recordingconfig.parameters_for_yaml
+            with open(parameter_path,'w') as outfile:
+                parameters_yaml.dump(parameters, outfile)
+
 
         try:
             rotation_entry = parameters["saved"]["rotations"]

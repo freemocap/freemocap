@@ -20,7 +20,7 @@ from aniposelib.boards import CharucoBoard
 
 import numpy as np
 
-def Run(sessionID,stage,useOpenPose,useMediaPipe,useDLC,debug):
+def Run(sessionID,stage,useOpenPose,useMediaPipe,useDLC,dlcConfigPath,debug):
     sesh = session.Session()
 
     sesh.sessionID = sessionID
@@ -28,13 +28,15 @@ def Run(sessionID,stage,useOpenPose,useMediaPipe,useDLC,debug):
     sesh.useMediaPipe = useMediaPipe
     sesh.useDLC= useDLC
     sesh.debug = debug
+  
 
 
 
     if sesh.useDLC: 
         import deeplabcut as dlc
+        sesh.dlcConfigPath =dlcConfigPath
         # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
-        sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
+        #sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
 
 
     if not sesh.sessionID:

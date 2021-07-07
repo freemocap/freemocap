@@ -18,10 +18,15 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 * Each recording must (for now) start with an unobstructed view of a  Charuco board generated with python commands:
 	```
 	from cv2 import aruco
+	
 	aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_250)
+	
 	board = aruco.CharucoBoard_create(7, 5, 1, .8, aruco_dict)
+	
 	charuco_board_image = board.draw((2000,2000))
+	
 	cv2.imwrite('charuco_board_image.png',charuco_board_image)
+	
 	```
 
 ## Installation instructions

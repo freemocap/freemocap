@@ -5,7 +5,7 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 
 # Installation
 
-## Prerequisates - 
+## Prerequisites - 
 * Install Anaconda
  	- https://www.anaconda.com/products/individual#Downloads
 * Install CUDA

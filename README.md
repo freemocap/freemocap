@@ -17,11 +17,11 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 	*  (USB hubs typically don't work)
 * Each recording must (for now) start with an unobstructed view of a  Charuco board generated with python commands:
 	```
-	from cv2 import aruco
+	import cv2
 	
-	aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_250)
+	aruco_dict = aruco.Dictionary_get(cv2.aruco.DICT_4X4_250) #note `cv2.aruco` can be installed via `pip install opencv-contrib-python`
 	
-	board = aruco.CharucoBoard_create(7, 5, 1, .8, aruco_dict)
+	board = cv2.aruco.CharucoBoard_create(7, 5, 1, .8, aruco_dict)
 	
 	charuco_board_image = board.draw((2000,2000))
 	

@@ -13,11 +13,17 @@
 - Open an Anaconda Prompt (in Windows, or any terminal on Mac/Linux) and enter the following comands
 
 `conda create -n freemocap-env python=3.7`
+
 `conda activate freemocap-env`
+
 `pip install freemocap -v`
+
 `ipython`
+
 `>>> import freemocap as fmc`
+
 `>>> fmc.RunMe() #this is where the magic happens `
+
 
 # More to come!
 

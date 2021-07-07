@@ -29,7 +29,7 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 	
 	```
 
-## Installation instructions
+## Installation instructions (but FYI - This still isn't *really* in a state that's usable for outside users)
 - Open an Anaconda Prompt (in Windows, or any terminal on Mac/Linux) and enter the following comands
 
 `conda create -n freemocap-env python=3.7`

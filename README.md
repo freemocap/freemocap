@@ -40,8 +40,11 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 
 `ipython`
 
-```Python
+```Python Console
 import freemocap as fmc
+```
+
+```Python Console
 fmc.RunMe() #this is where the magic happens
 ```
 

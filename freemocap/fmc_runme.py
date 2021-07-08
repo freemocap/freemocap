@@ -39,12 +39,17 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
         #sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
 
 
-    if not sesh.sessionID:
         dataFolder = Path.cwd()/'Data'
         subfolders = [ f.path for f in os.scandir(dataFolder) if f.is_dir() ] #copy-pasta from who knows where
         sesh.sessionID = Path(subfolders[-1]).stem #grab the name of the last folder in the list of subfolders
 
-
+    if dataFolder.exists():
+        subfolders = [f.path for f in os.scandir(dataFolder) if f.is_dir()]  # copy-pasta from who knows where
+        sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
+    else: #First time run! Make 'FreeMoCap_Data' Folder (and eventually,  prompt to download sample data)
+        dataFolder.mkdir()
+        sampleDataFolder = dataFolder / '_sample_data_folder'
+        sampleDataFolder.mkdir()
 
     board = CharucoBoard(7, 5,
                         #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)

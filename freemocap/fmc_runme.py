@@ -20,7 +20,7 @@ from aniposelib.boards import CharucoBoard
 
 import numpy as np
 
-def Run(sessionID,stage,useOpenPose,useMediaPipe,useDLC,dlcConfigPath,debug):
+def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False):
     sesh = session.Session()
 
     sesh.sessionID = sessionID
@@ -201,3 +201,4 @@ def Run(sessionID,stage,useOpenPose,useMediaPipe,useDLC,dlcConfigPath,debug):
     else:
         print('Skipping Video Creation')
         
+

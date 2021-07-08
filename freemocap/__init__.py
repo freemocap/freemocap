@@ -5,5 +5,5 @@ del get_versions
 
 from freemocap import fmc_runme
 
-def RunMe(sessionID,stage,useOpenPose,useMediaPipe,useDLC,dlcConfigPath,debug):
+def RunMe(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False):
     fmc_runme.Run(sessionID,stage,useOpenPose,useMediaPipe,useDLC,dlcConfigPath,debug)

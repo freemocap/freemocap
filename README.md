@@ -45,7 +45,7 @@ import freemocap as fmc
 ```
 
 ```Python Console
-fmc.RunMe() #this is where the magic happens
+fmc.RunMe() #this is where the magic happens. Also, as of 2021-07-08, is likely going to be pretty crashy/buggy
 ```
 
 

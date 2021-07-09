@@ -5,10 +5,11 @@ Created on Wed Mar  3 12:18:46 2021
 @author: Rontc
 """
 import tkinter as tk
-from tkinter import Tk, Label, Button, Frame, Listbox, Entry
+from tkinter import Tk, Label, Button, Frame, Listbox, Entry, filedialog
 from freemocap.webcam import checkcams
 import pickle
 import datetime
+from pathlib import Path
 
 
 class recordGUI:
@@ -77,6 +78,7 @@ class SettingsGUI:
         rotation_dictionary,
         sessionID_in,
         task,
+        current_path_to_save,
     ):
         self.master = master
         self.cam_inputs = cam_inputs
@@ -84,6 +86,7 @@ class SettingsGUI:
         self.rotation_dictionary = rotation_dictionary
         self.sessionID_in = sessionID_in
         self.task = task
+        self.currentPath = current_path_to_save
         # check if any previous parameters exist
         if self.parameter_dictionary is not None:
             existing_parameters = True
@@ -96,6 +99,9 @@ class SettingsGUI:
         # create frames to organize rotation inputs, resolution inputs, and parameter inputs
         topFrame = Frame(self.master)
         topFrame.pack(side=tk.TOP)
+        if self.task == 'record':
+            recordingSettingsFrame = Frame(self.master)
+            recordingSettingsFrame.pack()
         rotLabelFrame = Frame(self.master)
         rotLabelFrame.pack()
         resFrame = Frame(self.master)
@@ -103,6 +109,8 @@ class SettingsGUI:
         parametersFrame = Frame(self.master)
         parametersFrame.pack()
         bottomFrame = Frame(self.master).pack(side=tk.BOTTOM)
+
+      
 
         taskText = "Current Task: " + self.task
         taskLabel = Label(topFrame, text=taskText, font="bold")
@@ -151,11 +159,31 @@ class SettingsGUI:
         # ---SessionID entry- default is the date/time
         if self.task == "record":
             sessionText = "Change SessionID if desired"
-            sessionLabel = Label(parametersFrame, text=sessionText).pack()
-            self.sessionIDEntry = Entry(parametersFrame)
+            sessionLabel = Label(recordingSettingsFrame, text=sessionText)
+            sessionLabel.pack()
+
+            self.sessionIDEntry = Entry(recordingSettingsFrame)
             self.sessionIDEntry.pack()
             self.sessionIDEntry.insert(0, self.sessionID_in)
 
+            pathText = 'Choose where to create your Freemocap_Data folder:'
+            pathLabel = Label(recordingSettingsFrame, text=pathText)
+            pathLabel.pack()
+
+            text = 'Current file path: ' + self.currentPath
+            self.currentPathText = tk.StringVar()
+            self.currentPathText.set(text)
+            currentPathLabel = Label(recordingSettingsFrame,textvariable = self.currentPathText)
+            currentPathLabel.pack()
+
+            self.path_changed = False #will be set to True if the user changes the path with the file dialog
+
+            changepath_button = Button(recordingSettingsFrame,text = 'Change File Path',command = self.openFileDialog)
+            changepath_button.pack(side = 'left')
+            
+            #savedefault_button = Button(recordingSettingsFrame,text = 'Save as Default Path')
+            #savedefault_button.pack(side = 'left')
+            
         # ---If previous parameters were recieved, insert them into the entry boxes
         if existing_parameters == True:
 
@@ -168,6 +196,13 @@ class SettingsGUI:
         # ---Submit button to hit when things are finalized
         self.sub_button = Button(bottomFrame, text="Submit", command=self.Submit)
         self.sub_button.pack(side=tk.BOTTOM)
+
+    def openFileDialog(self):
+        self.currentPath = filedialog.askdirectory(
+        title='Open a file',
+        initialdir= Path.cwd())
+        self.currentPathText.set('Current file path: ' + self.currentPath)
+     
 
     def Submit(self):
         # get the final entries for all parameters
@@ -187,7 +222,7 @@ class SettingsGUI:
         # spit out the sessionID
         if self.task == "record":
             self.sessionID_out = self.sessionIDEntry.get()
-
+            self.save_path = self.currentPath
         self.master.destroy()
 
     def RotationRetrieval(self, cam_inputs, rotation_dictionary):
@@ -201,14 +236,19 @@ class SettingsGUI:
             else:
                 rotationValues.append(0)
         return rotationValues
+        
+  
+        
+
 
 
 class ProceedToRecordGUI:
-    def __init__(self, master, sessionID_in):
+    def __init__(self, master, sessionID_in, current_path_to_save):
         self.master = master
         self.sessionID_in = sessionID_in
         self.continueToRecording = ""
         self.sessionID_out = ""
+        self.currentPath = current_path_to_save
 
         sessionText = "Proceed to recording with this sessionID?"
         sessionLabel = Label(master, text=sessionText)
@@ -218,22 +258,45 @@ class ProceedToRecordGUI:
         self.sessionIDEntry.pack()
         self.sessionIDEntry.insert(0, self.sessionID_in)
 
-        # master.title("Proceed to Recording?")
-        self.proceed_button = Button(text="Proceed", command=self.destroy)
+
+        pathText = 'Choose where to create your Freemocap_Data folder:'
+        pathLabel = Label(master,text=pathText)
+        pathLabel.pack()
+
+        text = 'Current file path: ' + self.currentPath
+        self.currentPathText = tk.StringVar()
+        self.currentPathText.set(text)
+        currentPathLabel = Label(master,textvariable = self.currentPathText)
+        currentPathLabel.pack()
+
+        changepath_button = Button(master,text = 'Change Folder Path',command = self.openFileDialog)
+        changepath_button.pack(side = 'left')
+
+            # master.title("Proceed to Recording?")
+        self.proceed_button = Button(text="Proceed", command=self.proceed)
         self.stop_button = Button(text="Quit", command=self.stop)
         self.stop_button.pack(side=tk.RIGHT)
         self.proceed_button.pack(side=tk.RIGHT)
 
+
+    def openFileDialog(self):
+        self.currentPath = filedialog.askdirectory(
+        title='Open a file',
+        initialdir= Path.cwd())
+        self.currentPathText.set('Current file path: ' + self.currentPath)
+        
+
     def stop(self):
         self.master.destroy()
 
-    def destroy(self):
+    def proceed(self):
         self.continueToRecording = True
         self.sessionID_out = self.sessionIDEntry.get()
+        self.save_path = self.currentPath
         self.master.destroy()
 
 
-def RunGUI(sessionID_in, rotation_entry, parameter_entry):
+def RunGUI(sessionID_in, rotation_entry, parameter_entry,current_path_to_save):
 
     # ---Get the camera inputs and the task
     root = tk.Tk()
@@ -248,7 +311,7 @@ def RunGUI(sessionID_in, rotation_entry, parameter_entry):
     # ---Get all the necessary parameters
     root = tk.Tk()
     recording_settings = SettingsGUI(
-        root, cam_inputs, parameter_entry, rotation_entry, sessionID_in, task
+        root, cam_inputs, parameter_entry, rotation_entry, sessionID_in, task, current_path_to_save
     )
     root.mainloop()
 
@@ -259,15 +322,17 @@ def RunGUI(sessionID_in, rotation_entry, parameter_entry):
 
     if task == "record":
         sessionID = recording_settings.sessionID_out
+        savepath = recording_settings.save_path
     else:
         sessionID = None
+        savepath = None
 
-    return task, cam_inputs, recording_settings.rotation_output, paramDict, sessionID
+    return task, cam_inputs, recording_settings.rotation_output, paramDict, sessionID,savepath
 
 
-def RunProceedtoRecordGUI(sessionID_in):
+def RunProceedtoRecordGUI(sessionID_in,current_path_to_save):
     root = tk.Tk()
-    goToRecording = ProceedToRecordGUI(root, sessionID_in)
+    goToRecording = ProceedToRecordGUI(root, sessionID_in,current_path_to_save)
     root.mainloop()
 
-    return goToRecording.continueToRecording, goToRecording.sessionID_out
+    return goToRecording.continueToRecording, goToRecording.sessionID_out, goToRecording.save_path

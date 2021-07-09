@@ -30,7 +30,7 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 	- This can be complicated, so I'll need to add more instructions here!
 * Two or more USB webcams attached to viable USB ports 
 	*  (USB hubs typically don't work)
-* Each recording must (for now) start with an unobstructed view of a  Charuco board generated with python commands:
+* Each recording must (for now) start with an unobstructed view of a  Charuco board generated with python commands (or equivalent):
 	```
 	import cv2
 	
@@ -38,7 +38,7 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 	
 	board = cv2.aruco.CharucoBoard_create(7, 5, 1, .8, aruco_dict)
 	
-	charuco_board_image = board.draw((2000,2000))
+	charuco_board_image = board.draw((2000,2000)) #`2000` is the resolution of the resulting image. Increase this number if printing a large board (bigger is better! Esp for large spaces!
 	
 	cv2.imwrite('charuco_board_image.png',charuco_board_image)
 	

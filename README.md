@@ -1,9 +1,8 @@
 # This is all very much a work in progress! More to come!
-
-# Installation 
-## (but FYI - This still isn't *really* in a state that's usable for outside users yet 😅)
+## (FYI - This still isn't *really* in a state that's usable for outside users yet 😅)
 ### ( We're working on it though! Stay tuned!)
 
+# Installation
 - Open an Anaconda Prompt (in Windows, or any terminal on Mac/Linux) and enter the following comands
 
 `conda create -n freemocap-env python=3.7`

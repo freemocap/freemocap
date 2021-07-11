@@ -33,22 +33,20 @@ def parseDeepLabCut(
     numCams = int(session.numCams)  # Get num of cams
     numFrames = session.numFrames + 10  # Get num of frames
 
-    numPoints = len(bodypartList)  # Get amount of points tracked
-    dlcData_nCams_nFrames_nImgPts_XYC = np.ndarray(
-        [numCams, numFrames, numPoints, 3]
-    )  # Create empty array for dlc points
+    numImgPoints = len(bodypartList)  # Get amount of points tracked
+    dlcData_nCams_nFrames_nImgPts_XYC = np.ndarray([numCams, numFrames, numImgPoints, 3])  # Create empty array for dlc points
 
     nn = 0  # counter for each camera
     for data in h5files:  # Loop throuxgh each camera
+
         with h5py.File(data) as f:  # Open each h5 file
             fullDataGroup = f.get("df_with_missing")  # Open main h5 group
-            dataTable = fullDataGroup.get(
-                "table"
-            )  # Open datatable with all DLC tracked points
+            dataTable = fullDataGroup.get("table")  # Open datatable with all DLC tracked points
+
             for ii in range(len(dataTable)):  # Loop through each frame
                 dataFromOneFrame = dataTable[ii]  # Assign frame to varible
                 idx = len(dataFromOneFrame[1]) / 3  # index for reshaping data
-                sortedFrame = np.array(dataFromOneFrame[1])  # Put data in numoy array
+                sortedFrame = np.array(dataFromOneFrame[1])  # Put data in numpy array
                 dlcData_nCams_nFrames_nImgPts_XYC[nn, ii, :, :] = sortedFrame.reshape(
                     int(idx), 3
                 )  # Reshape the data into the correct form
@@ -93,9 +91,6 @@ def parseDeepLabCut(
 
         plt.show()
 
-    np.save(
-        session.dataArrayPath / "deepLabCutData_2d.npy",
-        dlcData_nCams_nFrames_nImgPts_XYC,
-    )
+
 
     return dlcData_nCams_nFrames_nImgPts_XYC

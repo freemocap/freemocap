@@ -20,7 +20,7 @@ from aniposelib.boards import CharucoBoard
 
 import numpy as np
 
-def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False):
+def Run(sessionID=None,stage=1,useOpenPose=True, openPoseDummyRun = False, useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False):
     sesh = session.Session()
 
     sesh.sessionID = sessionID
@@ -39,12 +39,11 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
         #sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
 
     dataFolder = Path.cwd()/'Data'
-    if dataFolder.exists():
+    if dataFolder.exists() and not sesh.sessionID:
         subfolders = [f.path for f in os.scandir(dataFolder) if f.is_dir()]  # copy-pasta from who knows where
         sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
     else: #First time run! Make 'FreeMoCap_Data' Folder (and eventually,  prompt to download sample data)
         dataFolder.mkdir()
-        sampleDataFolder = dataFolder / '_sample_data_folder'
         sampleDataFolder.mkdir()
 
     board = CharucoBoard(7, 5,
@@ -106,7 +105,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_dim) #save data to npy
 
         if sesh.useOpenPose:
-            fmc_openpose.runOpenPose(sesh, dummyRun=False)
+            fmc_openpose.runOpenPose(sesh, dummyRun=openPoseDummyRun)
             sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
             sesh.openPoseSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
             np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseSkel_fr_mar_dim) #save data to npy
@@ -116,9 +115,11 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
             for vid in sesh.syncedVidPath.glob('*.mp4'):
                 sesh.syncedVidList.append(str(vid))
             
-            dlc.analyze_videos(sesh.dlcConfigPath,sesh.syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True) 
+            dlc.analyze_videos(str(sesh.dlcConfigPath),sesh.syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True) 
 
             sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh)
+            np.save(sesh.dataArrayPath / "deepLabCutData_2d.npy", sesh.dlcData_nCams_nFrames_nImgPts_XYC,)
+            
             sesh.dlc_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.95)
             np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_dim) #save data to npy
         sesh.save_session()

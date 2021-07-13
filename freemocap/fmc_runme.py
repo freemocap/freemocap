@@ -11,6 +11,7 @@ from freemocap import (
     session,
     webcamGUI
 )
+
 from freemocap.fmc_pyqtgraph import PlayerDockedWindow
 
 from pathlib import Path
@@ -32,19 +33,19 @@ def Run(sessionID=None,stage=1,useOpenPose=True, openPoseDummyRun = False, useMe
 
 
 
-    if sesh.useDLC: 
+    if sesh.useDLC:
         import deeplabcut as dlc
         sesh.dlcConfigPath =dlcConfigPath
         # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
         #sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
 
     dataFolder = Path.cwd()/'Data'
-    if dataFolder.exists() and not sesh.sessionID:
-        subfolders = [f.path for f in os.scandir(dataFolder) if f.is_dir()]  # copy-pasta from who knows where
-        sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
+    if dataFolder.exists():
+        if not sesh.sessionID: #if user has not provided a sessionID, use the most recent session
+            subfolders = [f.path for f in os.scandir(dataFolder) if f.is_dir()]  # copy-pasta from who knows where
+            sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
     else: #First time run! Make 'FreeMoCap_Data' Folder (and eventually,  prompt to download sample data)
         dataFolder.mkdir()
-        sampleDataFolder.mkdir()
 
     board = CharucoBoard(7, 5,
                         #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)
@@ -165,15 +166,26 @@ def Run(sessionID=None,stage=1,useOpenPose=True, openPoseDummyRun = False, useMe
     # %% Stage Seven
     if stage <= 7:
         print('Starting Skeleton Plotting')
-        playskeleton.ReplaySkeleton_matplotlib(
-                                    sesh,
-                                    vidType=1,
-                                    startFrame=40,
-                                    azimuth=-90, 
-                                    elevation=-80,
-                                    useOpenPose=sesh.useOpenPose,
-                                    useMediaPipe=sesh.useMediaPipe,
-                                    useDLC=sesh.useDLC)
+
+        PlaySkeletonAnimation(
+                            sesh,
+                            vidType=1,
+                            startFrame=40,
+                            azimuth=-90, 
+                            elevation=-80,
+                            useOpenPose=sesh.useOpenPose,
+                            useMediaPipe=sesh.useMediaPipe,
+                            useDLC=sesh.useDLC)
+
+        # playskeleton.ReplaySkeleton_matplotlib(
+        #                             sesh,
+        #                             vidType=1,
+        #                             startFrame=40,
+        #                             azimuth=-90, 
+        #                             elevation=-80,
+        #                             useOpenPose=sesh.useOpenPose,
+        #                             useMediaPipe=sesh.useMediaPipe,
+        #                             useDLC=sesh.useDLC)
         # fmc_pyqtgraph.PlaySkeleton(
         #                             sesh,
         #                             vidType=1,

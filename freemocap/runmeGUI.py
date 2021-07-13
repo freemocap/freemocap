@@ -45,6 +45,15 @@ class setDataPathGUI:
         self.master.destroy()
 
 
+class DLCConfigPathGUI:
+    def __init__(self):
+        
+
+        pass
+
+
+
+
 def RunChooseDataPathGUI(session):
     root = tk.Tk()
     chosenDataPath = setDataPathGUI(root, session)

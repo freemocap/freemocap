@@ -90,13 +90,27 @@ def ReplaySkeleton_matplotlib(
     pinky = np.array([0, 17, 18, 19, 20])
 
     fig = plt.figure(figsize=(11, 8))
-
+    
+    vidCapObj_list = []
     if vidType == 0: #no videos
         axMain = fig.add_subplot(111, projection="3d")
     elif vidType == 1: #one video
         numCamSubPlots = 1
         axMain = fig.add_subplot(121, projection="3d")
         axCam1 = fig.add_subplot(122)
+        vidCapObj_list.append(cv2.VideoCapture(str(syncedVidPathList[1]))) #open the video file for cam 1
+    
+    elif vidType == 2: #four video
+        figGridSpec = fig.add_gridspec(2,4)
+        axMain = fig.add_subplot(figGridSpec[:2,:2],projection='3d')
+        axCam1 = fig.add_subplot(figGridSpec[0,2])
+        axCam2 = fig.add_subplot(figGridSpec[0,3])
+        axCam3 = fig.add_subplot(figGridSpec[1,2])
+        axCam4 = fig.add_subplot(figGridSpec[1,3])
+        vidCapObj_list.append(cv2.VideoCapture(str(syncedVidPathList[1]))) #open the video file for cam 1
+        vidCapObj_list.append(cv2.VideoCapture(str(syncedVidPathList[3]))) 
+        vidCapObj_list.append(cv2.VideoCapture(str(syncedVidPathList[4]))) 
+        vidCapObj_list.append(cv2.VideoCapture(str(syncedVidPathList[6]))) 
 
     #make a list of video capture objects to load images from as needed for later plot
     for camNum in range(numCamSubPlots):
@@ -132,7 +146,14 @@ def ReplaySkeleton_matplotlib(
         sk_z = skel_fr_mar_dim[fr, :, 2]  # skeleton z data
 
         axMain.scatter3D(sk_x, sk_y, sk_z, marker=".", color="k", s=4.0)
-        axMain.plot(sk_x[head], sk_y[head], sk_z[head], linestyle="-", color="g", linewidth=1.0)
+
+        axMain.plot(
+            sk_x[head],
+            sk_y[head],
+            sk_z[head],
+            linestyle="-",
+            color="g",
+            linewidth=1.0)
         
         axMain.plot(
             sk_x[spine],
@@ -143,17 +164,26 @@ def ReplaySkeleton_matplotlib(
             linewidth=1.0,
         )
         axMain.plot(
-            sk_x[rArm], sk_y[rArm], sk_z[rArm], linestyle="-", color="r", linewidth=1.0
-        )
+            sk_x[rArm],
+            sk_y[rArm],
+            sk_z[rArm],
+            linestyle="-",
+            color="r",
+            linewidth=1.0
+            )
+
         axMain.plot(
-            sk_x[lArm], sk_y[lArm], sk_z[lArm], linestyle="-", color="b", linewidth=1.0
-        )
-        axMain.plot(
-            sk_x[rLeg], sk_y[rLeg], sk_z[rLeg], linestyle="-", color="r", linewidth=1.0
-        )
-        axMain.plot(
-            sk_x[lLeg], sk_y[lLeg], sk_z[lLeg], linestyle="-", color="b", linewidth=1.0
-        )
+            sk_x[lArm],
+            sk_y[lArm],
+            sk_z[lArm],
+            linestyle="-",
+            color="b",
+            linewidth=1.0)
+
+        axMain.plot(sk_x[rLeg], sk_y[rLeg], sk_z[rLeg], linestyle="-", color="r", linewidth=1.0)
+        
+        axMain.plot(sk_x[lLeg], sk_y[lLeg], sk_z[lLeg], linestyle="-", color="b", linewidth=1.0) 
+
         axMain.plot(
             sk_x[rFoot],
             sk_y[rFoot],
@@ -255,6 +285,7 @@ def ReplaySkeleton_matplotlib(
             color="b",
             linewidth=1.0,
         )
+
         if useMediaPipe:
             # plot mediapipe
             mp_sk_x = mediaPipe_skel_fr_mar_dim[fr, :, 0]  # skeleton x data

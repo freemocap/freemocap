@@ -37,7 +37,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
 
     if sesh.useDLC: 
         import deeplabcut as dlc
-        sesh.dlcConfigPath = dlcConfigPath
+    #    sesh.dlcConfigPath = dlcConfigPath
 
 
     #%% load user preferences if they exist, create a new preferences yaml if they don't
@@ -54,7 +54,18 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
     sesh.preferences = preferences
     sesh.preferences_path = preferences_path
         
-    #if sesh.useDLC:
+    if sesh.useDLC:
+        try:
+            saved_dlc_paths = preferences['saved']['dlc_config_paths']
+        except: 
+            saved_dlc_paths = preferences['default']['dlc_config_paths']
+
+
+        dlc_config_paths = runmeGUI.RunChooseDLCPathGUI(sesh,saved_dlc_paths)
+        
+
+        sesh.preferences['saved']['dlc_config_paths'] = dlc_config_paths
+        sesh.save_user_preferences(sesh.preferences)
 
         # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
         #sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
@@ -179,7 +190,8 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
             for vid in sesh.syncedVidPath.glob('*.mp4'):
                 sesh.syncedVidList.append(str(vid))
             
-            dlc.analyze_videos(sesh.dlcConfigPath,sesh.syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True) 
+            for config_path in dlc_config_paths:
+                dlc.analyze_videos(sesh.dlcConfigPath,sesh.syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True) 
 
             sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh)
             sesh.dlc_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.95)

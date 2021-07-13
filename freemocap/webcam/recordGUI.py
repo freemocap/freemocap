@@ -259,7 +259,7 @@ class ProceedToRecordGUI:
         self.sessionIDEntry.insert(0, self.sessionID_in)
 
 
-        pathText = 'Choose where to create your Freemocap_Data folder:'
+        pathText = 'Choose where to create your data folder:'
         pathLabel = Label(master,text=pathText)
         pathLabel.pack()
 

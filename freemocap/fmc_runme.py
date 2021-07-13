@@ -2,6 +2,7 @@ from freemocap import (
     createvideo,
     recordingconfig,
     runcams,
+    runmeGUI,
     calibrate,
     fmc_mediapipe,
     fmc_openpose,
@@ -20,7 +21,9 @@ from aniposelib.boards import CharucoBoard
 
 import numpy as np
 
-def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False):
+from ruamel.yaml import YAML
+
+def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False,setDataPath=False):
     sesh = session.Session()
 
     sesh.sessionID = sessionID
@@ -28,24 +31,69 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
     sesh.useMediaPipe = useMediaPipe
     sesh.useDLC= useDLC
     sesh.debug = debug
-  
+    sesh.setDataPath = setDataPath
 
-
+    sesh.dataFolderName = 'FreeMocap_Data'
 
     if sesh.useDLC: 
         import deeplabcut as dlc
         sesh.dlcConfigPath =dlcConfigPath
         # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
         #sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
+    if stage > 1:
+        if sesh.setDataPath == True:
+            basePath = runmeGUI.RunChooseDataPathGUI(session)
+            sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
+        else:
+            here = Path(__file__).parent
+            preferences_path = here/'user_preferences.yaml'
+            preferences_yaml = YAML()
+        
+            if not preferences_path.exists():
+                raise FileNotFoundError('The user preferences yaml could not be located. Please change setDataPath to True to manually set the path to the Data folder')
+        
+            preferences = preferences_yaml.load(preferences_path)
+            current_path_to_data = preferences['saved']['path_to_save']
+            dataFolder = Path(current_path_to_data)/sesh.dataFolderName
+            sesh.dataFolderPath = dataFolder
+        
+            if not dataFolder.exists():
+                raise FileNotFoundError('No data folder located at: ' + str(dataFolder))
+        if sesh.sessionID == None:    
+            subfolders = [f.path for f in os.scandir(sesh.dataFolderPath) if f.is_dir()]  # copy-pasta from who knows where
+            sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
+        
 
-    dataFolder = Path.cwd()/'Data'
-    if dataFolder.exists():
-        subfolders = [f.path for f in os.scandir(dataFolder) if f.is_dir()]  # copy-pasta from who knows where
-        sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
-    else: #First time run! Make 'FreeMoCap_Data' Folder (and eventually,  prompt to download sample data)
-        dataFolder.mkdir()
-        sampleDataFolder = dataFolder / '_sample_data_folder'
-        sampleDataFolder.mkdir()
+
+        
+        print('Running ' + str(sesh.sessionID) + ' from ' + str(sesh.dataFolderPath))
+        
+        # if sesh. setDataPath == True:
+        #     #run file dialog GUI (select folder where the data folder)
+        # here = Path(__file__).parent
+        # parameter_path = here/'user_preferences.yaml'
+        # if parameter_path.exists(): 
+        #     #this section looks for the Data folder at the last saved path from the user_preferences.yaml, if none exists, it raises an error
+        #     #if not, if finds the most recent session from that Data folder 
+        #     parameters_yaml = YAML()
+        #     parameters = parameters_yaml.load(parameter_path)
+        #     current_path_to_data = parameters['saved']['path_to_save']
+        #     dataFolder = Path(current_path_to_data)/'Data' 
+        #     try:
+        #         subfolders = [f.path for f in os.scandir(dataFolder) if f.is_dir()]  # copy-pasta from who knows where
+        #         sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
+        #     except FileNotFoundError:
+        #        raise FileNotFoundError('No data folder located at: ' + str(dataFolder))
+            
+        #     print('Running ' + str(sesh.sessionID) + ' from ' + str(dataFolder))
+        #     sesh.dataPath = dataFolder
+    
+    
+    
+    #else: #First time run! Make 'FreeMoCap_Data' Folder (and eventually,  prompt to download sample data)
+    #    dataFolder.mkdir()
+    #    sampleDataFolder = dataFolder / '_sample_data_folder'
+    #    sampleDataFolder.mkdir()
 
     board = CharucoBoard(7, 5,
                         #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)

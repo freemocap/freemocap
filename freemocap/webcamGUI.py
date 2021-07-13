@@ -25,26 +25,31 @@ def initialize(session, stage, board):
         session.sessionID = sessionID_in
 
     #load the parameters YAML and extract the saved parameters if possible, and the default otherwise       
-        here = Path(__file__).parent
-        parameter_path = here/'user_preferences.yaml'
-        parameters_yaml = YAML()
-        if parameter_path.exists():
-            parameters = parameters_yaml.load(parameter_path)
-        else:
-            parameters = recordingconfig.parameters_for_yaml
-            with open(parameter_path,'w') as outfile:
-                parameters_yaml.dump(parameters, outfile)
+        #here = Path(__file__).parent
+        # parameter_path = here/'user_preferences.yaml'
+        # parameters_yaml = YAML()
+        # if parameter_path.exists():
+        #     parameters = parameters_yaml.load(parameter_path)
+        # else:
+        #     parameters = recordingconfig.parameters_for_yaml
+        #     with open(parameter_path,'w') as outfile:
+        #         parameters_yaml.dump(parameters, outfile)
 
 
         try:
-            rotation_entry = parameters["saved"]["rotations"]
-            parameter_entry = parameters["saved"]["parameters"]
-            current_path_to_save = parameters['saved']['path_to_save']
+            rotation_entry = session.preferences["saved"]["rotations"]
+            parameter_entry = session.preferences["saved"]["parameters"]
         except:
             print("Could not load saved parameters, using default parameters")
-            rotation_entry = parameters['default']['rotations']
-            parameter_entry = parameters['default']['parameters']
-            current_path_to_save = parameters['default']['path_to_save']      
+            rotation_entry = session.preferences['default']['rotations']
+            parameter_entry = session.preferences['default']['parameters']
+                
+
+        try:
+            current_path_to_save = session.preferences['saved']['path_to_save']
+        except:
+            current_path_to_save = session.preferences['default']['path_to_save'] 
+
 
         proceedToRecording = False #create this boolean, set it to false, and if the user wants to record
                                    #later in the pipeline, it will be set to true
@@ -54,12 +59,13 @@ def initialize(session, stage, board):
     
     #update the saved parameters in the YAML
         #recordingconfig.rotation_settings['saved'] = rotDict
-        #recordingconfig.camera_parameters['saved'] = paramDict
-        parameters['saved']['rotations'] = rotDict
-        parameters['saved']['parameters'] = paramDict
+        #recordingconfig.camera_session.preferences['saved'] = paramDict
+        session.preferences['saved']['rotations'] = rotDict
+        session.preferences['saved']['parameters'] = paramDict
         if savepath is not None:
-            parameters['saved']['path_to_save'] = savepath
-        parameters_yaml.dump(parameters, parameter_path)
+            session.preferences['saved']['path_to_save'] = savepath
+
+        session.save_user_preferences(session.preferences)
 
     #save recording parameters to the config yaml
 
@@ -73,9 +79,8 @@ def initialize(session, stage, board):
             proceedToRecording, session.sessionID, savepath = recordGUI.RunProceedtoRecordGUI(
                 sessionID_in,current_path_to_save
             )
-            parameters['saved']['path_to_save'] = savepath
-            parameters_yaml.dump(parameters, parameter_path)
-
+            session.preferences['saved']['path_to_save'] = savepath
+            session.save_user_preferences(session.preferences)
         elif task == "record":
             proceedToRecording = True
 

@@ -81,7 +81,7 @@ def PlaySkeletonAnimation(
         animSlider.set_val(val=frameNum)
 
     # Attaching 3D axis to the figure
-    fig = plt.figure()
+    fig = plt.figure(dpi=150)
     plt.ion()
 
     ax3d = p3.Axes3D(fig)
@@ -166,8 +166,15 @@ def PlaySkeletonAnimation(
     line_animation = animation.FuncAnimation(fig, update_figure, range(200,numFrames), fargs=(),
                                     interval=1, blit=False)
 
+
+    
+    with console.status('saving video...'):
+        Writer = animation.writers['ffmpeg']
+        writer = Writer(fps=30, metadata=dict(artist='FreeMoCap'), bitrate=1800)
+        line_animation.save('out.mp4', writer = writer)
+    
+    plt.pause(0.1)
     plt.draw()
-    plt.pause(.001) # pause a bit so that plots are updated                                  
     
     console.print(":sparkle: :skull: :sparkle:")
 

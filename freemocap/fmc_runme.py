@@ -41,9 +41,15 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
         # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
         #sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
     if stage > 1:
+        #if we are rerunning a session folder
+        # 1) Check if we're using the last saved dataFolderPath, or if the user wants to choose a different one
+        #   a. if the user wants to choose one, bring up a GUI to let them decide
+        #   b. if we're using the last known path - parse the user preferences yaml (and check if that yaml exists)
+        # 2) Check that the data folder exists
+        # 3) If no sessionID was user-input, search the chosen directory for the last session created
         if sesh.setDataPath == True:
             basePath = runmeGUI.RunChooseDataPathGUI(session)
-            sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
+            #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
         else:
             here = Path(__file__).parent
             preferences_path = here/'user_preferences.yaml'
@@ -54,17 +60,16 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
         
             preferences = preferences_yaml.load(preferences_path)
             current_path_to_data = preferences['saved']['path_to_save']
-            dataFolder = Path(current_path_to_data)/sesh.dataFolderName
-            sesh.dataFolderPath = dataFolder
+            basePath = current_path_to_data
+        dataFolder = Path(basePath)/sesh.dataFolderName
+        sesh.dataFolderPath = dataFolder
         
-            if not dataFolder.exists():
-                raise FileNotFoundError('No data folder located at: ' + str(dataFolder))
+        if not dataFolder.exists():
+            raise FileNotFoundError('No data folder located at: ' + str(dataFolder))
+
         if sesh.sessionID == None:    
             subfolders = [f.path for f in os.scandir(sesh.dataFolderPath) if f.is_dir()]  # copy-pasta from who knows where
             sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
-        
-
-
         
         print('Running ' + str(sesh.sessionID) + ' from ' + str(sesh.dataFolderPath))
         

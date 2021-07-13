@@ -37,7 +37,25 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
 
     if sesh.useDLC: 
         import deeplabcut as dlc
-        sesh.dlcConfigPath =dlcConfigPath
+        sesh.dlcConfigPath = dlcConfigPath
+
+
+    #%% load user preferences if they exist, create a new preferences yaml if they don't
+    here = Path(__file__).parent
+    preferences_path = here/'user_preferences.yaml'
+    preferences_yaml = YAML()
+
+    if preferences_path.exists():
+        preferences = preferences_yaml.load(preferences_path)
+    else:
+        preferences = recordingconfig.parameters_for_yaml
+        preferences_yaml.dump(preferences, preferences_path)
+    
+    sesh.preferences = preferences
+    sesh.preferences_path = preferences_path
+        
+    #if sesh.useDLC:
+
         # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
         #sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
     if stage > 1:
@@ -51,14 +69,6 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
             basePath = runmeGUI.RunChooseDataPathGUI(session)
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
         else:
-            here = Path(__file__).parent
-            preferences_path = here/'user_preferences.yaml'
-            preferences_yaml = YAML()
-        
-            if not preferences_path.exists():
-                raise FileNotFoundError('The user preferences yaml could not be located. Please change setDataPath to True to manually set the path to the Data folder')
-        
-            preferences = preferences_yaml.load(preferences_path)
             current_path_to_data = preferences['saved']['path_to_save']
             basePath = current_path_to_data
         dataFolder = Path(basePath)/sesh.dataFolderName

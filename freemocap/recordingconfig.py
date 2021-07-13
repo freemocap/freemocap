@@ -9,7 +9,7 @@ from pathlib import Path
 
 folder_setup = ['RawVideos','SyncedVideos','CalVideos','DataArrays','DLCData','OpenPoseData','MediaPipeData','imOut']
 
-default_parameters = {'path_to_save': str(Path.cwd()),'dlcconfig_paths':[], 'rotations':{},'parameters':{'exposure':-5,'resWidth':640,'resHeight':480,'framerate':25,'codec':'DIVX'}}
+default_parameters = {'path_to_save': str(Path.cwd()),'dlc_config_paths':[], 'rotations':{},'parameters':{'exposure':-5,'resWidth':640,'resHeight':480,'framerate':25,'codec':'DIVX'}}
 saved_parameters = default_parameters
 parameters_for_yaml = {'default':default_parameters,'saved':{}}
 

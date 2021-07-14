@@ -37,7 +37,36 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
 
     if sesh.useDLC: 
         import deeplabcut as dlc
-        sesh.dlcConfigPath =dlcConfigPath
+    #    sesh.dlcConfigPath = dlcConfigPath
+
+
+    #%% load user preferences if they exist, create a new preferences yaml if they don't
+    here = Path(__file__).parent
+    preferences_path = here/'user_preferences.yaml'
+    preferences_yaml = YAML()
+
+    if preferences_path.exists():
+        preferences = preferences_yaml.load(preferences_path)
+    else:
+        preferences = recordingconfig.parameters_for_yaml
+        preferences_yaml.dump(preferences, preferences_path)
+    
+    sesh.preferences = preferences
+    sesh.preferences_path = preferences_path
+        
+    if sesh.useDLC:
+        try:
+            saved_dlc_paths = preferences['saved']['dlc_config_paths']
+        except: 
+            saved_dlc_paths = preferences['default']['dlc_config_paths']
+
+
+        dlc_config_paths = runmeGUI.RunChooseDLCPathGUI(sesh,saved_dlc_paths)
+        
+
+        sesh.preferences['saved']['dlc_config_paths'] = dlc_config_paths
+        sesh.save_user_preferences(sesh.preferences)
+
         # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
         #sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
     if stage > 1:
@@ -51,16 +80,12 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
             basePath = runmeGUI.RunChooseDataPathGUI(session)
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
         else:
-            here = Path(__file__).parent
-            preferences_path = here/'user_preferences.yaml'
-            preferences_yaml = YAML()
-        
-            if not preferences_path.exists():
-                raise FileNotFoundError('The user preferences yaml could not be located. Please change setDataPath to True to manually set the path to the Data folder')
-        
-            preferences = preferences_yaml.load(preferences_path)
-            current_path_to_data = preferences['saved']['path_to_save']
-            basePath = current_path_to_data
+            try:
+                current_path_to_data = preferences['saved']['path_to_save']
+                basePath = current_path_to_data
+            except KeyError('Saved Data path not found, please choose a new one'):
+                basePath = runmeGUI.RunChooseDataPathGUI(session)
+
         dataFolder = Path(basePath)/sesh.dataFolderName
         sesh.dataFolderPath = dataFolder
         
@@ -163,17 +188,17 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
             sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
             sesh.openPoseSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
             np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseSkel_fr_mar_dim) #save data to npy
-
+        sesh.save_session()
         sesh.syncedVidList = []
         if sesh.useDLC:
             for vid in sesh.syncedVidPath.glob('*.mp4'):
                 sesh.syncedVidList.append(str(vid))
             
-            dlc.analyze_videos(sesh.dlcConfigPath,sesh.syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True) 
-
-            sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh)
-            sesh.dlc_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.95)
-            np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_dim) #save data to npy
+            for config_path in dlc_config_paths:
+                dlc.analyze_videos(config_path,sesh.syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True) 
+                sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh, config_path)
+                sesh.dlc_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.95)
+                np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_dim) #save data to npy
         sesh.save_session()
     else:
         print('Skipping Run MediaPipe')

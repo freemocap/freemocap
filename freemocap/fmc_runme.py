@@ -80,8 +80,12 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
             basePath = runmeGUI.RunChooseDataPathGUI(session)
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
         else:
-            current_path_to_data = preferences['saved']['path_to_save']
-            basePath = current_path_to_data
+            try:
+                current_path_to_data = preferences['saved']['path_to_save']
+                basePath = current_path_to_data
+            except KeyError('Saved Data path not found, please choose a new one'):
+                basePath = runmeGUI.RunChooseDataPathGUI(session)
+
         dataFolder = Path(basePath)/sesh.dataFolderName
         sesh.dataFolderPath = dataFolder
         

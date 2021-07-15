@@ -13,8 +13,10 @@ import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.animation as animation
 from matplotlib.widgets import Slider
+import cv2 
 
 import copy
+from pathlib import Path
 
 #RICH CONSOLE STUFF
 from rich import pretty
@@ -46,7 +48,6 @@ def PlaySkeletonAnimation(
         skel_dottos = matplotlib_artist_objs['skel_dottos'] 
         skel_trajectories = figure_data['skel_trajectories|mar|fr_dim']
 
-        body_segments = matplotlib_artist_objs['body']
 
         #function to update the lines for each body segment
         def update_skel_segments(key):       
@@ -75,15 +76,28 @@ def PlaySkeletonAnimation(
             thisSkelDotto.set_data(thisTraj[ frameNum-1, 0:2])
             thisSkelDotto.set_3d_properties(thisTraj[ frameNum-1, 2])
 
-        
+        for vidNum, thisVidArtist in enumerate(vidAristList):
+            success, image = vidCapObjList[vidNum].read()
+            thisVidArtist.set_array(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
 
-        animSlider.set_val(val=frameNum)
+        # animSlider.set_val(val=frameNum)
 
-    # Attaching 3D axis to the figure
+    ##
+    ##
+    ## Create the figure for the plot
+    ##
+    ##
+
     fig = plt.figure(dpi=150)
     plt.ion()
 
+    ###
+    ###
+    ### Attaching 3D axis to the figure
+    ###
+    ###
+    
     ax3d = p3.Axes3D(fig)
     ax3d.set_position([.1, .1, .8, .8]) # [left, bottom, width, height])
 
@@ -151,30 +165,77 @@ def PlaySkeletonAnimation(
 
     ax3d.view_init(azim=azimuth, elev=elevation)
     
-    #slider
-    axControls = fig.add_subplot(2,1,2)
-    axControls.set_position([0.25, 0.01, 0.6, 0.05])
-    animSlider = Slider(
-        ax=axControls,
-        label="FrameNum",
-        valmin=10,
-        valmax=numFrames,
-        valinit=10,
-        orientation="horizontal"
-    )
+
+
+
+
+    ###
+    ###
+    ### Make Video Image subplots
+    ###
+    ###
+    syncedVidPath = Path(r'C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-07-08_131030\SyncedVideos')
+    
+    syncedVidPathList = list(sorted(syncedVidPath.glob('*.mp4')))
+    
+    #remove a few vids, 6 is too many!
+    syncedVidPathList.pop(5) 
+    syncedVidPathList.pop(1)
+    
+    vidAxesList = []
+    vidAristList = []
+    vidCapObjList = []
+    
+    vidAx_positions = []
+    vidAx_positions.append([ .5, .5, .25, .25])
+    vidAx_positions.append([.75, .5, .25, .25])
+    vidAx_positions.append([ .5, .0, .25, .25])
+    vidAx_positions.append([.75, .0, .25, .25])
+
+    for vidSubplotNum, thisVidPath in enumerate(syncedVidPathList):
+        #make subplot for figure (and set position)
+        thisVidAxis = fig.add_subplot(
+                                    position=vidAx_positions[vidSubplotNum], 
+                                    label="Vid_{}".format(str(vidSubplotNum)),
+                                    ) 
+        thisVidAxis.set_axis_off()
+
+        vidAxesList.append(thisVidAxis)
+
+        #create video capture object
+        vidCapObjList.append(cv2.VideoCapture(str(thisVidPath)))
+
+        #create artist object for each video NOTE - will need to sych this with start frame somehow
+        success, image  = vidCapObjList[-1].read()
+        assert success==True, "{} - failed to load an image".format(thisVidPath.stem) #make sure we have a frame
+        vidAristList.append(plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)))
+
+    # #slider
+    # axControls = fig.add_subplot(2,1,2)
+    # axControls.set_position([0.25, 0.01, 0.6, 0.05])
+    # animSlider = Slider(
+    #     ax=axControls,
+    #     label="FrameNum",
+    #     valmin=10,
+    #     valmax=numFrames,
+    #     valinit=10,
+    #     orientation="horizontal"
+    # )
+
     # Creating the Animation object
     line_animation = animation.FuncAnimation(fig, update_figure, range(200,numFrames), fargs=(),
                                     interval=1, blit=False)
 
 
-    
+    plt.pause(0.1)
+    plt.draw()
+
     with console.status('saving video...'):
         Writer = animation.writers['ffmpeg']
         writer = Writer(fps=30, metadata=dict(artist='FreeMoCap'), bitrate=1800)
         line_animation.save('out.mp4', writer = writer)
     
-    plt.pause(0.1)
-    plt.draw()
+
     
     console.print(":sparkle: :skull: :sparkle:")
 

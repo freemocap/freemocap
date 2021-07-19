@@ -21,11 +21,9 @@ default:
 saved:
   rotations:
     0: 90
-    1: 0
+    1: 90
     2: 90
-    3: 90
-    4: 0
-    5: 270
+    3: 270
   parameters:
     exposure: -8
     resWidth: 640

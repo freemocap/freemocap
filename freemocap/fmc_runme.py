@@ -7,7 +7,8 @@ from freemocap import (
     fmc_openpose,
     fmc_deeplabcut,
     reconstruct3D,
-    playskeleton,
+    # playskeleton,
+    play_skeleton_animation,
     session,
     webcamGUI
 )
@@ -21,7 +22,15 @@ from aniposelib.boards import CharucoBoard
 
 import numpy as np
 
-def Run(sessionID=None,stage=1,useOpenPose=True, openPoseDummyRun = False, useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False):
+def Run(sessionID=None,
+        stage=1,
+        useOpenPose=True, 
+        openPoseDummyRun = False, 
+        useMediaPipe=False,
+        useDLC=True,
+        dlcConfigPath=None,
+        recordVid = True,
+        debug=False):
     sesh = session.Session()
 
     sesh.sessionID = sessionID
@@ -33,7 +42,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True, openPoseDummyRun = False, useMe
 
 
 
-    if sesh.useDLC:
+    if sesh.useDLC and stage<=4:
         import deeplabcut as dlc
         sesh.dlcConfigPath =dlcConfigPath
         # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
@@ -167,15 +176,17 @@ def Run(sessionID=None,stage=1,useOpenPose=True, openPoseDummyRun = False, useMe
     if stage <= 7:
         print('Starting Skeleton Plotting')
 
-        PlaySkeletonAnimation(
+        play_skeleton_animation.PlaySkeletonAnimation(
                             sesh,
                             vidType=1,
-                            startFrame=40,
+                            startFrame=0,
                             azimuth=-90, 
                             elevation=-80,
+                            numCams = 4,
                             useOpenPose=sesh.useOpenPose,
                             useMediaPipe=sesh.useMediaPipe,
-                            useDLC=sesh.useDLC)
+                            useDLC=sesh.useDLC,
+                            recordVid = False)
 
         # playskeleton.ReplaySkeleton_matplotlib(
         #                             sesh,
@@ -206,13 +217,13 @@ def Run(sessionID=None,stage=1,useOpenPose=True, openPoseDummyRun = False, useMe
 
 
 
-
-    # %% Stage Eight
-    if stage <= 8:
-        print()
-        print('Starting Video Creation')
-        createvideo.createVideo(sesh)
-    else:
-        print('Skipping Video Creation')
+    ## JSM NOTE: Deprecated by 'play_skeleton_animation.py' (also, we don't need the 'imOut' folder anymore)
+    # # %% Stage Eight
+    # if stage <= 8:
+    #     print()
+    #     print('Starting Video Creation')
+    #     createvideo.createVideo(sesh)
+    # else:
+    #     print('Skipping Video Creation')
         
 

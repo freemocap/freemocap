@@ -7,6 +7,8 @@ Created on Thu Mar 11 11:54:12 2021
 
 from pathlib import Path
 
+dataFolder = 'FreeMocap_Data'
+
 folder_setup = ['RawVideos','SyncedVideos','CalVideos','DataArrays','DLCData','OpenPoseData','MediaPipeData','imOut']
 
 default_parameters = {'path_to_save': str(Path.cwd()),'dlc_config_paths':[], 'rotations':{},'parameters':{'exposure':-5,'resWidth':640,'resHeight':480,'framerate':25,'codec':'DIVX'}}

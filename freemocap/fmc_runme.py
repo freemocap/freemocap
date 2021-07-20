@@ -23,7 +23,7 @@ import numpy as np
 
 from ruamel.yaml import YAML
 
-def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False,setDataPath=False):
+def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False,setDataPath=False,userDataPath = None):
     sesh = session.Session()
 
     sesh.sessionID = sessionID
@@ -32,10 +32,10 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
     sesh.useDLC= useDLC
     sesh.debug = debug
     sesh.setDataPath = setDataPath
+    sesh.userDataPath = userDataPath
+    sesh.dataFolderName = recordingconfig.dataFolder
 
-    sesh.dataFolderName = 'FreeMocap_Data'
-
-    if sesh.useDLC: 
+    if sesh.useDLC and stage < 5: 
         import deeplabcut as dlc
     #    sesh.dlcConfigPath = dlcConfigPath
 
@@ -54,7 +54,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
     sesh.preferences = preferences
     sesh.preferences_path = preferences_path
         
-    if sesh.useDLC:
+    if sesh.useDLC and stage < 5:
         try:
             saved_dlc_paths = preferences['saved']['dlc_config_paths']
         except: 
@@ -79,6 +79,8 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
         if sesh.setDataPath == True:
             basePath = runmeGUI.RunChooseDataPathGUI(session)
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
+        elif sesh.userDataPath is not None:
+            basePath = sesh.userDataPath
         else:
             try:
                 current_path_to_data = preferences['saved']['path_to_save']
@@ -232,7 +234,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
     # %% Stage Six
     if stage <= 6:
         print ('Starting PyQT Animation')
-        createvideo.createBodyTrackingVideos(sesh)
+        #createvideo.createBodyTrackingVideos(sesh)
         displayVid = 1  
         #if displayVid = 0, will show the synced videos
         #if displayVid = 1, will show the openPosed videos
@@ -244,7 +246,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
         print('Starting Skeleton Plotting')
         playskeleton.ReplaySkeleton_matplotlib(
                                     sesh,
-                                    vidType=1,
+                                    vidType=0,
                                     startFrame=40,
                                     azimuth=-90, 
                                     elevation=-80,

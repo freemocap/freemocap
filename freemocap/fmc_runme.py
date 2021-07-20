@@ -23,7 +23,9 @@ import numpy as np
 
 from ruamel.yaml import YAML
 
+
 def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False,setDataPath=False,userDataPath = None):
+
     sesh = session.Session()
 
     sesh.sessionID = sessionID
@@ -40,6 +42,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
     #    sesh.dlcConfigPath = dlcConfigPath
 
 
+
     #%% load user preferences if they exist, create a new preferences yaml if they don't
     here = Path(__file__).parent
     preferences_path = here/'user_preferences.yaml'
@@ -54,7 +57,9 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
     sesh.preferences = preferences
     sesh.preferences_path = preferences_path
         
+
     if sesh.useDLC and stage < 5:
+
         try:
             saved_dlc_paths = preferences['saved']['dlc_config_paths']
         except: 
@@ -79,6 +84,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
         if sesh.setDataPath == True:
             basePath = runmeGUI.RunChooseDataPathGUI(session)
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
+
         elif sesh.userDataPath is not None:
             basePath = sesh.userDataPath
         else:

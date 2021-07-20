@@ -28,6 +28,8 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 * Install OpenPose (Windows Portable Demo)
   - https://github.com/CMU-Perceptual-Computing-Lab/openpose/releases/tag/v1.6.0  
 	- This can be complicated, so I'll need to add more instructions here!
+* Install ffmpeg (to save the final animation)
+  - https://www.wikihow.com/Install-FFmpeg-on-Windows
 * Two or more USB webcams attached to viable USB ports 
 	*  (USB hubs typically don't work)
 * Each recording must (for now) start with an unobstructed view of a  Charuco board generated with python commands (or equivalent):

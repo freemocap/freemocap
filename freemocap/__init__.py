@@ -11,3 +11,4 @@ def RunMe(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True
 def RunDemo():
     sample_data_location = fmc_demo.DemoSetup() #run a bunch of GUIs, get the location of the directory where the data folder with the sample data is 
     fmc_runme.Run(sessionID = 'sesh_21-07-18_170130',stage = 6,useOpenPose = True,useDLC = True, userDataPath = sample_data_location)
+

@@ -189,6 +189,12 @@ class Session: #self like "recording self"
         preferences_yaml.dump(preferences,self.preferences_path)
 
 
+    def save_user_preferences(self,preferences):
+        preferences_yaml = YAML()
+        preferences_yaml.dump(preferences,self.preferences_path)
+
+
+
         f = 2
 
     

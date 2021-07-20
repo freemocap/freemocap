@@ -7,7 +7,9 @@ Created on Thu Mar 11 11:54:12 2021
 
 from pathlib import Path
 
+
 dataFolder = 'FreeMocap_Data'
+
 
 folder_setup = ['RawVideos','SyncedVideos','CalVideos','DataArrays','DLCData','OpenPoseData','MediaPipeData','imOut']
 

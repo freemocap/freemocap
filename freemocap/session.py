@@ -162,7 +162,8 @@ class Session: #self like "recording self"
         for key,value in session_settings_dictionary['session_paths'].items():
             session_settings_dictionary['session_paths'][key] = Path(value)
 
-        self.load_session_paths(session_settings_dictionary)
+        #self.load_session_paths(session_settings_dictionary)
+        self.create_session_paths()
         self.numCams = session_settings_dictionary['recording_parameters']['numCams']
         self.numFrames = session_settings_dictionary['recording_parameters']['numFrames']
         self.numTrackedPoints = session_settings_dictionary['recording_parameters']['numTrackedPoints']
@@ -170,18 +171,18 @@ class Session: #self like "recording self"
         return session_settings_dictionary
         f = 2
     
-    def load_session_paths(self, session_settings_dict):
+    # def load_session_paths(self, session_settings_dict):
 
-        session_paths = session_settings_dict['session_paths']
+    #     session_paths = session_settings_dict['session_paths']
 
-        self.rawVidPath = session_paths['RawVideos']
-        self.syncedVidPath = session_paths['SyncedVideos']
-        self.calVidPath = session_paths['CalVideos']
-        self.mediaPipeDataPath = session_paths['MediaPipeData']
-        self.openPoseDataPath = session_paths['OpenPoseData']
-        self.dlcDataPath = session_paths['DLCData']
-        self.imOutPath = session_paths['imOut']
-        self.dataArrayPath = session_paths['DataArrays']
+    #     self.rawVidPath = session_paths['RawVideos']
+    #     self.syncedVidPath = session_paths['SyncedVideos']
+    #     self.calVidPath = session_paths['CalVideos']
+    #     self.mediaPipeDataPath = session_paths['MediaPipeData']
+    #     self.openPoseDataPath = session_paths['OpenPoseData']
+    #     self.dlcDataPath = session_paths['DLCData']
+    #     self.imOutPath = session_paths['imOut']
+    #     self.dataArrayPath = session_paths['DataArrays']
 
     def save_user_preferences(self,preferences):
         preferences_yaml = YAML()

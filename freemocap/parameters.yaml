@@ -25,7 +25,7 @@ saved:
     2: 90
     3: 270
   parameters:
-    exposure: -8
+    exposure: -9
     resWidth: 640
     resHeight: 480
     framerate: 30

@@ -111,13 +111,13 @@ def Run(sessionID=None,
         if sesh.useMediaPipe:
             fmc_mediapipe.runMediaPipe(sesh)
             sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
-            sesh.mediaPipeSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
+            sesh.mediaPipeSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.5)
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_dim) #save data to npy
 
         if sesh.useOpenPose:
             fmc_openpose.runOpenPose(sesh, dummyRun=openPoseDummyRun)
             sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
-            sesh.openPoseSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
+            sesh.openPoseSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.5)
             np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseSkel_fr_mar_dim) #save data to npy
 
         sesh.syncedVidList = []
@@ -130,7 +130,7 @@ def Run(sessionID=None,
             sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh)
             np.save(sesh.dataArrayPath / "deepLabCutData_2d.npy", sesh.dlcData_nCams_nFrames_nImgPts_XYC,)
             
-            sesh.dlc_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.95)
+            sesh.dlc_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.5)
             np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_dim) #save data to npy
         sesh.save_session()
     else:
@@ -162,15 +162,15 @@ def Run(sessionID=None,
     #sesh.config_settings = recordingconfig.load_config_yaml(sesh.yamlPath)
 
 
-    # %% Stage Six
-    if stage <= 6:
-        print ('Starting PyQT Animation')
-        createvideo.createBodyTrackingVideos(sesh)
-        displayVid = 1  
-        #if displayVid = 0, will show the synced videos
-        #if displayVid = 1, will show the openPosed videos
-        playWin = PlayerDockedWindow(sesh,displayVid)
-        playWin.animate()
+    # # %% Stage Six
+    # if stage <= 6:
+    #     print ('Starting PyQT Animation')
+    #     createvideo.createBodyTrackingVideos(sesh)
+    #     displayVid = 1  
+    #     #if displayVid = 0, will show the synced videos
+    #     #if displayVid = 1, will show the openPosed videos
+    #     playWin = PlayerDockedWindow(sesh,displayVid)
+    #     playWin.animate()
 
     # %% Stage Seven
     if stage <= 7:
@@ -179,14 +179,14 @@ def Run(sessionID=None,
         play_skeleton_animation.PlaySkeletonAnimation(
                             sesh,
                             vidType=1,
-                            startFrame=0,
+                            startFrame=40,
                             azimuth=-90, 
                             elevation=-80,
                             numCams = 4,
                             useOpenPose=sesh.useOpenPose,
                             useMediaPipe=sesh.useMediaPipe,
                             useDLC=sesh.useDLC,
-                            recordVid = False)
+                            recordVid = recordVid)
 
         # playskeleton.ReplaySkeleton_matplotlib(
         #                             sesh,

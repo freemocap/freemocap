@@ -47,9 +47,13 @@ def parseDeepLabCut(
                 dataFromOneFrame = dataTable[ii]  # Assign frame to varible
                 idx = len(dataFromOneFrame[1]) / 3  # index for reshaping data
                 sortedFrame = np.array(dataFromOneFrame[1])  # Put data in numpy array
-                dlcData_nCams_nFrames_nImgPts_XYC[nn, ii, :, :] = sortedFrame.reshape(
-                    int(idx), 3
-                )  # Reshape the data into the correct form
+                try:
+                    dlcData_nCams_nFrames_nImgPts_XYC[nn, ii, :, :] = sortedFrame.reshape(
+                        int(idx), 3
+                    )  # Reshape the data into the correct form
+                except:
+                    print('If you get an out-of-bounds error here, you may have too many DLC files in the DLCData folder - empty it out and re-run DLC to fix')
+                    #NOTE - we should fix this , i.e. by moving old DLC data to an 'oldDLCData' folder within DLCData if the user tries to run DLC when there are already files in the DLCData folder
         nn += 1
 
     if session.debug:

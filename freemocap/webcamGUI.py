@@ -25,37 +25,47 @@ def initialize(session, stage, board):
         session.sessionID = sessionID_in
 
     #load the parameters YAML and extract the saved parameters if possible, and the default otherwise       
-        here = Path(__file__).parent
-        parameter_path = here/'parameters.yaml'
-        parameters_yaml = YAML()
-        if parameter_path.exists():
-            parameters = parameters_yaml.load(parameter_path)
-        else:
-            parameters = recordingconfig.parameters_for_yaml
-            with open(parameter_path,'w') as outfile:
-                parameters_yaml.dump(parameters, outfile)
+        #here = Path(__file__).parent
+        # parameter_path = here/'user_preferences.yaml'
+        # parameters_yaml = YAML()
+        # if parameter_path.exists():
+        #     parameters = parameters_yaml.load(parameter_path)
+        # else:
+        #     parameters = recordingconfig.parameters_for_yaml
+        #     with open(parameter_path,'w') as outfile:
+        #         parameters_yaml.dump(parameters, outfile)
 
 
         try:
-            rotation_entry = parameters["saved"]["rotations"]
-            parameter_entry = parameters["saved"]["parameters"]
+            rotation_entry = session.preferences["saved"]["rotations"]
+            parameter_entry = session.preferences["saved"]["parameters"]
         except:
             print("Could not load saved parameters, using default parameters")
-            rotation_entry = parameters['default']['rotations']
-            parameter_entry = parameters['default']['parameters']      
+            rotation_entry = session.preferences['default']['rotations']
+            parameter_entry = session.preferences['default']['parameters']
+                
+
+        try:
+            current_path_to_save = session.preferences['saved']['path_to_save']
+        except:
+            current_path_to_save = session.preferences['default']['path_to_save'] 
+
 
         proceedToRecording = False #create this boolean, set it to false, and if the user wants to record
                                    #later in the pipeline, it will be set to true
 
     #run the GUI to get the tasks, the cams chosen, the camera settings, and the session ID
-        task, cam_inputs, rotDict, paramDict, session.sessionID = recordGUI.RunGUI(sessionID_in,rotation_entry,parameter_entry)
+        task, cam_inputs, rotDict, paramDict, session.sessionID,savepath = recordGUI.RunGUI(sessionID_in,rotation_entry,parameter_entry,current_path_to_save)
     
     #update the saved parameters in the YAML
         #recordingconfig.rotation_settings['saved'] = rotDict
-        #recordingconfig.camera_parameters['saved'] = paramDict
-        parameters['saved']['rotations'] = rotDict
-        parameters['saved']['parameters'] = paramDict
-        parameters_yaml.dump(parameters, parameter_path)
+        #recordingconfig.camera_session.preferences['saved'] = paramDict
+        session.preferences['saved']['rotations'] = rotDict
+        session.preferences['saved']['parameters'] = paramDict
+        if savepath is not None:
+            session.preferences['saved']['path_to_save'] = savepath
+
+        session.save_user_preferences(session.preferences)
 
     #save recording parameters to the config yaml
 
@@ -66,10 +76,11 @@ def initialize(session, stage, board):
         if task == "setup":
             # run setup processes, and then check if th user wants to proceed to recording
             camsetup.RunSetup(cam_inputs, rotation_input, paramDict)
-            proceedToRecording, session.sessionID = recordGUI.RunProceedtoRecordGUI(
-                sessionID_in
+            proceedToRecording, session.sessionID, savepath = recordGUI.RunProceedtoRecordGUI(
+                sessionID_in,current_path_to_save
             )
-
+            session.preferences['saved']['path_to_save'] = savepath
+            session.save_user_preferences(session.preferences)
         elif task == "record":
             proceedToRecording = True
 
@@ -78,6 +89,7 @@ def initialize(session, stage, board):
             session.cam_inputs = cam_inputs
             session.parameterDictionary = paramDict
             session.rotationInputs = rotation_input
+            session.basePath = Path(savepath)
 
             #create a config yaml and text file for this session
             session.start_session(session.parameterDictionary,session.rotationInputs)

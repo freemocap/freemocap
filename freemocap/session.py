@@ -33,10 +33,10 @@ class Session: #self like "recording self"
 
     def start_session(self,paramDict,rotDict):
         #start a session, create all the file paths necessary, and create a session dictionary to save settings
-        recordPath = self.basePath/'Data'
-        recordPath.mkdir(exist_ok= True)
+        dataFolderPath = self.basePath/self.dataFolderName
+        dataFolderPath.mkdir(exist_ok= True)
 
-        self.sessionPath = recordPath/self.sessionID
+        self.sessionPath = dataFolderPath/self.sessionID
         self.sessionPath.mkdir(exist_ok=True)
 
         #create all the session filepaths and settings - create and load them into a dictionary
@@ -129,10 +129,10 @@ class Session: #self like "recording self"
     def initialize(self,stage):
         #load all session settings back into the session class for this run-through of the code
         
-        recordPath = self.basePath/'Data' #create a Data folder in the filepath if none exists yet
-        recordPath.mkdir(exist_ok= True)
+        #recordPath = self.basePath/'Data' #create a Data folder in the filepath if none exists yet
+        #recordPath.mkdir(exist_ok= True)
 
-        self.sessionPath = recordPath/self.sessionID
+        self.sessionPath = self.dataFolderPath/self.sessionID
         self.sessionPath.mkdir(exist_ok=True)
 
         self.session_yaml_path = self.sessionPath/'{}_config.yaml'.format(self.sessionID)
@@ -162,7 +162,8 @@ class Session: #self like "recording self"
         for key,value in session_settings_dictionary['session_paths'].items():
             session_settings_dictionary['session_paths'][key] = Path(value)
 
-        self.load_session_paths(session_settings_dictionary)
+        #self.load_session_paths(session_settings_dictionary)
+        self.create_session_paths()
         self.numCams = session_settings_dictionary['recording_parameters']['numCams']
         self.numFrames = session_settings_dictionary['recording_parameters']['numFrames']
         self.numTrackedPoints = session_settings_dictionary['recording_parameters']['numTrackedPoints']
@@ -170,20 +171,29 @@ class Session: #self like "recording self"
         return session_settings_dictionary
         f = 2
     
-    def load_session_paths(self, session_settings_dict):
+    # def load_session_paths(self, session_settings_dict):
 
-        session_paths = session_settings_dict['session_paths']
+    #     session_paths = session_settings_dict['session_paths']
 
-        self.rawVidPath = session_paths['RawVideos']
-        self.syncedVidPath = session_paths['SyncedVideos']
-        self.calVidPath = session_paths['CalVideos']
-        self.mediaPipeDataPath = session_paths['MediaPipeData']
-        self.openPoseDataPath = session_paths['OpenPoseData']
-        self.dlcDataPath = session_paths['DLCData']
-        self.imOutPath = session_paths['imOut']
-        self.dataArrayPath = session_paths['DataArrays']
+    #     self.rawVidPath = session_paths['RawVideos']
+    #     self.syncedVidPath = session_paths['SyncedVideos']
+    #     self.calVidPath = session_paths['CalVideos']
+    #     self.mediaPipeDataPath = session_paths['MediaPipeData']
+    #     self.openPoseDataPath = session_paths['OpenPoseData']
+    #     self.dlcDataPath = session_paths['DLCData']
+    #     self.imOutPath = session_paths['imOut']
+    #     self.dataArrayPath = session_paths['DataArrays']
 
-        
+    def save_user_preferences(self,preferences):
+        preferences_yaml = YAML()
+        preferences_yaml.dump(preferences,self.preferences_path)
+
+
+    def save_user_preferences(self,preferences):
+        preferences_yaml = YAML()
+        preferences_yaml.dump(preferences,self.preferences_path)
+
+
 
         f = 2
 

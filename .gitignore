@@ -5,6 +5,7 @@ Data/
 .vscode/
 *.py[cod]
 *$py.class
+FreeMoCap_Data/
 
 # C extensions
 *.so

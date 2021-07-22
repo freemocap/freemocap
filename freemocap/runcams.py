@@ -19,11 +19,12 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     vidNames = []
     camIDs = []
     for x in numCamRange:  # create names for each of the initial untrimmed videos
-        singleCamID = "Cam{}".format(x + 1)
+        singleCamID = "Cam{}".format(x)
         camIDs.append(
             singleCamID
         )  # creates IDs for each camera based on the number of cameras entered
-        singleVidName = "raw_cam{}.mp4".format(x + 1)
+        # create video name based on camera id and session
+        singleVidName = "{}_raw_cam{}.mp4".format(session, x)
         vidNames.append(singleVidName)
 
     #%% Starting the thread recordings for each camera

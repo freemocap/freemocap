@@ -42,6 +42,6 @@ script:
   #- flake8  # Enforce code style ('relaxed' line length limit is set in .flake8 config file).
   - set -e
   - make -C docs html  # Build the documentation.
-  - pip install doctr
-  - doctr deploy --built-docs docs/build/html . #Publish the documentation
-  
+  # Publish the documentation
+  - if [ "$TRAVIS_BRANCH" = "main" ]; then pip install doctr; fi
+  - if [ "$TRAVIS_BRANCH" = "main" ]; then doctr deploy --built-docs docs/build/html .; fi

@@ -15,9 +15,10 @@ import h5py
 
 def parseDeepLabCut(
     session,
+    config_path
 ):  # NOTE this is assuming both the dlc config file and dlc data h5 foles are in the same folder specified in the session.dlcDataPath, if that is not the case either dlcconfig or h5files variable need to be changed
 
-    dlcConfig = session.dlcConfigPath  # File path for dlcConfig file
+    dlcConfig = config_path # File path for dlcConfig file
 
     with open(dlcConfig) as configFile:
         # Open the config file

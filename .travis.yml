@@ -6,7 +6,7 @@ cache:
     - $HOME/.cache/pip
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
 
-dist: focal  # use Ubuntu 20.04
+dist: bionic  # use Ubuntu 18.04
 
 env:
   global:
@@ -14,12 +14,18 @@ env:
     - secure: "XP8R3/9jzF71gUJVzg49XcPDKc5lvME0X3iOFf3dKii8IVyvBFM0bc5JBVIPwV7nVJQTHCX0AGEdZSAjT85ie+EoTSm1smD1tHx0gfPJRXfHm6AXXQch7l4kDs9LpEY8S30DVgXiQdgQKTlcl8bwNl4gCpWLG8mclJoQ9hF4OyTkPBsutUjcIiB2Jp8v02CBqXNK0/dQ7dzZzLuu8UK4IwLp80yLK7WVEQGBGF/h+X4eWelRgxpXDHbtLf/OF/YunJYm6bNNXBZnaBHSL9xbmztvn7UWB9gCoJ/9afj2enGesQqlO1pHB7Zmsmz3KsNQjPADQWdd1CXN9nGGceTn7CP0Mfph6hIFnD38nBD7OWwnV3jCKpBCCYXGmc+qwBm0Drbx/wnZOiOxYS3ih+aD4Zkh9FocPwYoKq+U9/urHxtmOxjy0N+aDR3WlzjdAbTybgyX15KCjYpXHSSHG3IIP7NuFnlyRN86XKNLREsFoZvhA0kGqKrZnPojC0OZYyZ7tJl9Plho2GSt66MArJYg8npH5ELV8S/UehlG9PGMZiyvaih1Y5gJqYWddRMBuVy4y4jPQD0FIc53qJeuXBzWLUH2TyJ97zzX5Ri9gwl8Ayr+60XjWel9mNowHLsN18IkqwLfNXElCRgli3L/1iB+LEAmDlpLNp5DnoHzM0qcBKw="
 
 before_install:
-  - sudo apt-get -y install python3-wxgtk4.0
+  # Upgrade pip to latest version to avoid problems.
+  - pip install --upgrade pip
 
 install:
-  # The versions of pip and numpy that come pre-installed are often too old and
-  # can cause problems. Upgrade them.
-  - pip install --upgrade pip numpy
+  # wxPython Linux wheels are downloaded separately
+  # https://wxpython.org/pages/downloads/
+  - pip install -U \
+    -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-18.04 \
+    wxPython
+  # The versions of numpy that come pre-installed are often too old and
+  # can cause problems. Upgrade it.
+  - pip install --upgrade numpy
   # Install this package and the packages listed in requirements.txt.
   - pip install .
   # Install extra requirements for running tests and building docs.

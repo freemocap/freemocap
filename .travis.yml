@@ -6,6 +6,8 @@ cache:
     - $HOME/.cache/pip
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
 
+dist: focal  # use Ubuntu 20.04
+
 env:
   global:
     # Doctr deploy key for jonmatthis/freemocap

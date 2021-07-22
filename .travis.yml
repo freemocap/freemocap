@@ -21,8 +21,8 @@ install:
   # wxPython Linux wheels are downloaded separately
   # https://wxpython.org/pages/downloads/
   - pip install -U
-      -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-18.04 \
-      wxPython
+      -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-18.04
+      "wxPython < 4.1"
   # The versions of numpy that come pre-installed are often too old and
   # can cause problems. Upgrade it.
   - pip install --upgrade numpy

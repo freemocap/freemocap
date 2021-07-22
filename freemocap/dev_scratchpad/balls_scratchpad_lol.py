@@ -21,8 +21,8 @@ from rich.markdown import Markdown
 
 # %% load dlc data 
 
-dlcDataPath = Path(r"C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-07-20_165209\DataArrays\deepLabCut_3d.npy")
-openPoseDataPath = Path(r"C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap\Data\sesh_21-07-20_165209\DataArrays\openPoseSkel_3d.npy")
+dlcDataPath = Path(r"C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap - Copy\Data\sesh_21-07-20_165209\DataArrays\deepLabCut_3d.npy")
+openPoseDataPath = Path(r"C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap - Copy\Data\sesh_21-07-20_165209\DataArrays\openPoseSkel_3d.npy")
 
 dlc_fr_mar_dim = np.load(dlcDataPath)
 dlc_trajectories = [dlc_fr_mar_dim[:,markerNum,:] for markerNum in range(dlc_fr_mar_dim.shape[1])]    

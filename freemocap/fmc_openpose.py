@@ -147,7 +147,7 @@ def parseOpenPose(session):
                 assert thisFrameRow.size == headerLength, ['Header is the wrong length! Should be ' +  str(headerLength) + ' but it is ' + str(thisFrameRow.size) + ' Check version of OpenPose?']
                 
                 if frameNum < openPoseData_nCams_nFrames_nImgPts_XYC.shape[1]: #NOTE: THIS SHOULDN"T BE NECESSARY. CURRENT Vid Trim Methods can (apparently) produce vids with off-by-one numbers of frames
-                    openPoseData_nCams_nFrames_nImgPts_XYC[thisCamNum, frameNum, :, :] = np.reshape(thisFrameRow, [137,3]) #hard coding b/c I'm a bad person
+                    openPoseData_nCams_nFrames_nImgPts_XYC[thisCamNum, frameNum, :, :] = np.reshape(thisFrameRow, [137,3]) #hard coding the number of OpenPose Image Points b/c I'm a bad person
                 
             
         

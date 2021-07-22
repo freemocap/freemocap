@@ -5,8 +5,13 @@ Data/
 .vscode/
 *.py[cod]
 *$py.class
+<<<<<<< HEAD
+FreeMocap_Data/
+FreeMoCap_Data/
+=======
 FreeMoCap_Data/
 
+>>>>>>> main
 # C extensions
 *.so
 
@@ -136,3 +141,4 @@ dmypy.json
 
 # other
 src/
+FreeMoCap_Data/sesh_21-07-13_110238/RawVideos/sesh_21-07-13_110238_timestamps.csv

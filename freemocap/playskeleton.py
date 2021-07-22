@@ -56,7 +56,8 @@ def ReplaySkeleton_matplotlib(
         ballTrailLen = 4
 
     if useOpenPose:
-        imgPathList = session.session_settings['openPose_imgPathList']
+        for camera_number in range(session.numCams):
+            imgPathList = session.session_settings['openPose_imgPathList']
   
     
     camImgPathList = {}

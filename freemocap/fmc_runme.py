@@ -8,7 +8,7 @@ from freemocap import (
     fmc_openpose,
     fmc_deeplabcut,
     reconstruct3D,
-    # playskeleton,
+    playskeleton,
     play_skeleton_animation,
     session,
     webcamGUI
@@ -32,10 +32,10 @@ def Run(sessionID=None,
         useMediaPipe=False,
         useDLC=True,
         dlcConfigPath=None,
-        recordVid = True,
         debug=False,
         setDataPath = False,
-        userDataPath = None):
+        userDataPath = None,
+        recordVid = True,):
     sesh = session.Session()
 
     sesh.sessionID = sessionID
@@ -250,7 +250,7 @@ def Run(sessionID=None,
     # %% Stage Six
     if stage <= 6:
         print ('Starting PyQT Animation')
-        #createvideo.createBodyTrackingVideos(sesh)
+        createvideo.createBodyTrackingVideos(sesh)
         displayVid = 1  
         #if displayVid = 0, will show the synced videos
         #if displayVid = 1, will show the openPosed videos
@@ -262,7 +262,7 @@ def Run(sessionID=None,
         print('Starting Skeleton Plotting')
         playskeleton.ReplaySkeleton_matplotlib(
                                     sesh,
-                                    vidType=0,
+                                    vidType=1,
                                     startFrame=40,
                                     azimuth=-90, 
                                     elevation=-80,
@@ -290,12 +290,12 @@ def Run(sessionID=None,
 
 
     ## JSM NOTE: Deprecated by 'play_skeleton_animation.py' (also, we don't need the 'imOut' folder anymore)
-    # # %% Stage Eight
-    # if stage <= 8:
-    #     print()
-    #     print('Starting Video Creation')
-    #     createvideo.createVideo(sesh)
-    # else:
-    #     print('Skipping Video Creation')
+    # %% Stage Eight
+    if stage <= 8:
+        print()
+        print('Starting Video Creation')
+        createvideo.createVideo(sesh)
+    else:
+        print('Skipping Video Creation')
         
 

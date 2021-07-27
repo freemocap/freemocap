@@ -54,6 +54,9 @@ def CamRecording(
     framerate = parameterDictionary.get("framerate")
     codec = parameterDictionary.get("codec")
 
+
+  
+
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, resWidth)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, resHeight)
     cam.set(cv2.CAP_PROP_EXPOSURE, exposure)

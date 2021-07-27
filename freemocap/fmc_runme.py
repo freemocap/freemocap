@@ -9,9 +9,11 @@ from freemocap import (
     fmc_deeplabcut,
     reconstruct3D,
     playskeleton,
+    play_skeleton_animation,
     session,
     webcamGUI
 )
+
 from freemocap.fmc_pyqtgraph import PlayerDockedWindow
 
 from pathlib import Path
@@ -23,9 +25,17 @@ import numpy as np
 
 from ruamel.yaml import YAML
 
-
-def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,dlcConfigPath=None,debug=False,setDataPath=False,userDataPath = None):
-
+def Run(sessionID=None,
+        stage=1,
+        useOpenPose=True, 
+        openPoseDummyRun = False, 
+        useMediaPipe=False,
+        useDLC=True,
+        dlcConfigPath=None,
+        debug=False,
+        setDataPath = False,
+        userDataPath = None,
+        recordVid = True,):
     sesh = session.Session()
 
     sesh.sessionID = sessionID
@@ -188,13 +198,13 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
         if sesh.useMediaPipe:
             fmc_mediapipe.runMediaPipe(sesh)
             sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
-            sesh.mediaPipeSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
+            sesh.mediaPipeSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.5)
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_dim) #save data to npy
 
         if sesh.useOpenPose:
-            fmc_openpose.runOpenPose(sesh, dummyRun=False)
+            fmc_openpose.runOpenPose(sesh, dummyRun=openPoseDummyRun)
             sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
-            sesh.openPoseSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.1)
+            sesh.openPoseSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.5)
             np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseSkel_fr_mar_dim) #save data to npy
         sesh.save_session()
         sesh.syncedVidList = []
@@ -240,7 +250,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
     # %% Stage Six
     if stage <= 6:
         print ('Starting PyQT Animation')
-        #createvideo.createBodyTrackingVideos(sesh)
+        createvideo.createBodyTrackingVideos(sesh)
         displayVid = 1  
         #if displayVid = 0, will show the synced videos
         #if displayVid = 1, will show the openPosed videos
@@ -252,7 +262,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
         print('Starting Skeleton Plotting')
         playskeleton.ReplaySkeleton_matplotlib(
                                     sesh,
-                                    vidType=0,
+                                    vidType=1,
                                     startFrame=40,
                                     azimuth=-90, 
                                     elevation=-80,
@@ -279,7 +289,7 @@ def Run(sessionID=None,stage=1,useOpenPose=True,useMediaPipe=False,useDLC=True,d
 
 
 
-
+    ## JSM NOTE: Deprecated by 'play_skeleton_animation.py' (also, we don't need the 'imOut' folder anymore)
     # %% Stage Eight
     if stage <= 8:
         print()

@@ -51,4 +51,4 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 
 Follow the GitHub Repository and/or Join the Discord (https://discord.gg/HX7MTprYsK) for updates!
 
-#Stay Tuned for more soon!
+# Stay Tuned for more soon!

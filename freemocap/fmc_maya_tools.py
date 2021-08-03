@@ -1,4 +1,33 @@
+"""
+# Example code for creating a data_handler
+# populating it by importing a npy dataset
+# setting mapping and parents
+# and writing the data to Maya
 
+import fmc_trackdata_handler as df
+import fmc_maya_tools as mt
+import openpose_data_mappings as data_mapping
+
+### Make empty data structure
+data_handler = df.FmcTracDataHandler()
+
+### Set mapping
+data_handler.set_parent_mapping(data_mapping.parent_mapping)
+data_handler.set_point_name_mapping(data_mapping.point_name_mapping)
+
+### Load openpose npy data into variable
+import numpy as np
+datafile_path = r"G:\Shared drives\000_projects\cl005_northeasternMarkerlessMocap\incoming\datasets\sesh_21-05-31_111833\DataArrays\openPoseSkel_3d.npy"
+data = np.load(datafile_path)
+
+### Import data into data handler as an actor. Handler can contain multiple actors
+# This step can be repeated for multiple datasets, adding each as an individual actor
+actor_name = "tester"
+data_handler.import_actor_raw_data(actor_name, data)
+
+### Write content of data_handler to Maya
+mt.write_to_maya(data_handler, slice=False)
+"""
 
 import maya.cmds as cmds
 import math
@@ -6,11 +35,12 @@ import math
 
 def write_to_maya(fmcDataObj, slice=False, sample_by = 5):
     """
-    takes an Actor dictionary dataset and and creates animated maya objects accordingly
+    Takes a trackdata handler object and creates animated maya objects accordingly
 
     input:
-        actor_dict: actor dictionary extracted from mmcap_datastructure
+        fmcDataObj: object og type FmcTracDataHandler
         slice: if not false should be an int tuple of len=2 defining start and end frame to write to Maya
+        sample_by: only write every n'th frame to Maya
     """
     for actor_name in fmcDataObj.list_actors():
         ### Creating point_names

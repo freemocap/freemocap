@@ -1,5 +1,42 @@
+"""
+### Data Handler class for wrapping and organizing OpenPose data into a more selfcontained and accessible format.
+
+### Example code:
+
+import fmc_trackdata_handler as df
+import openpose_data_mappings as data_mapping
+
+### Make empty data structure
+data_handler = df.FmcTracDataHandler()
+
+### Set mapping
+data_handler.set_parent_mapping(data_mapping.parent_mapping)
+data_handler.set_point_name_mapping(data_mapping.point_name_mapping)
+
+### Load openpose npy data into variable
+import numpy as np
+datafile_path = r"G:\Shared drives\000_projects\cl005_northeasternMarkerlessMocap\incoming\datasets\sesh_21-05-31_111833\DataArrays\openPoseSkel_3d.npy"
+data = np.load(datafile_path)
+
+### Import data into data handler as an actor.
+# This step can be repeated for multiple datasets, adding each as an individual actor
+actor_name = "tester"
+data_handler.import_actor_raw_data(actor_name, data)
+
+### Saving data handler object to file
+file_path = "/absolute/path/to/file/filename" # Suffix is being set to FILE_SUFFIX automatically
+save_obj_to_file(file_path, data_handler, override=False)
+
+### Loading data handler from file
+file_path = "/absolute/path/to/file/filename.fmcData"
+data_h = df.load_obj_from_file(file_path)
+
+"""
+
+
 import numpy as np
 from pathlib import Path
+import pickle
 
 FILE_SUFFIX = ".fmcData"
 
@@ -210,7 +247,7 @@ def load_obj_from_file(file_path):
     f = Path(file_path)
 
     if f.is_file():
-        if f.suffix.lower() == FILE_SUFFIX:
+        if f.suffix.lower() == FILE_SUFFIX.lower():
             print(f"Reading file from: {f.absolute()}")
             with open(file_path, "rb") as infile:
                 data = pickle.load(infile)
@@ -226,11 +263,11 @@ def load_obj_from_file(file_path):
 
 
 
-def save_obj_to_file(self, file_path, fmxDataObj, override=False):
+def save_obj_to_file(file_path, fmxDataObj, override=False):
     f = Path(file_path)
     f= f.with_suffix(FILE_SUFFIX)
     if f.exists() and override == False:
-        raise NotImplementedError(f"File already exists, Skipping\nFilepath: {f.absolute()}")
+        raise NotImplementedError(f"File already exists and override set to False, Skipping\nFilepath: {f.absolute()}")
     with open(f, 'wb') as handle:
         pickle.dump(fmxDataObj, handle, protocol=2)
         print(f"Saved file to: {f.absolute()}")

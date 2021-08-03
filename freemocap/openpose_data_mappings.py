@@ -1,3 +1,4 @@
+# define point parents by name. Only points listed will have a parent. If a point is not listed, it will be without parents
 # child_name : parent_name
 parent_mapping = {
     'REye': 'Nose',
@@ -70,6 +71,7 @@ parent_mapping = {
 
 
 # point name corresponding to Open Pose list indices
+# If the imported list is longer than the point_name_mapping, all residual points will be given a generic name
 point_name_mapping = [
     "Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder",               # limbs
     "LElbow", "LWrist", "MidHip", "RHip", "RKnee", "RAnkle", "LHip", "LKnee",   # limbs

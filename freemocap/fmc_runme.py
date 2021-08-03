@@ -30,7 +30,7 @@ def Run(sessionID=None,
         useOpenPose=True, 
         openPoseDummyRun = False, 
         useMediaPipe=False,
-        useDLC=True,
+        useDLC=False,
         dlcConfigPath=None,
         debug=False,
         setDataPath = False,
@@ -200,7 +200,7 @@ def Run(sessionID=None,
             sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
             sesh.mediaPipeSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.5)
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_dim) #save data to npy
-
+        sesh.save_session()
         if sesh.useOpenPose:
             fmc_openpose.runOpenPose(sesh, dummyRun=openPoseDummyRun)
             sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)

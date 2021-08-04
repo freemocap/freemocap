@@ -7,4 +7,4 @@ dlcConfigPath = Path(r"C:\Users\jonma\Dropbox\DLC_Models\PinkGreenRedJugglingBal
 if socket.gethostname() == 'DESKTOP-DCG6K4F':
      fmc.RunMe( stage=7, openPoseDummyRun=True, useDLC = True, dlcConfigPath=dlcConfigPath, recordVid = True) 
 else:
-    fmc.RunMe( useDLC = True, dlcConfigPath=dlcConfigPath, recordVid = True) 
+    fmc.RunMe(sessionID = 'sesh_21-07-29_112223',stage = 7,useOpenPose=True, useMediaPipe=True) 

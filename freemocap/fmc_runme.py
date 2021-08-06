@@ -101,8 +101,12 @@ def Run(sessionID=None,
             try:
                 current_path_to_data = preferences['saved']['path_to_save']
                 basePath = current_path_to_data
-            except KeyError('Saved Data path not found, please choose a new one'):
+            except KeyError:
+                print('Saved Data path not found, please choose a new one')
                 basePath = runmeGUI.RunChooseDataPathGUI(session)
+                sesh.preferences['saved']['path_to_save'] = str(basePath)
+                sesh.save_user_preferences(sesh.preferences)
+
 
         dataFolder = Path(basePath)/sesh.dataFolderName
         sesh.dataFolderPath = dataFolder

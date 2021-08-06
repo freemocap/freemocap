@@ -184,10 +184,6 @@ class Session: #self like "recording self"
     #     self.imOutPath = session_paths['imOut']
     #     self.dataArrayPath = session_paths['DataArrays']
 
-    def save_user_preferences(self,preferences):
-        preferences_yaml = YAML()
-        preferences_yaml.dump(preferences,self.preferences_path)
-
 
     def save_user_preferences(self,preferences):
         preferences_yaml = YAML()

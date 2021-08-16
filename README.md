@@ -3,6 +3,8 @@
 ### ( We're working on it though! Stay tuned!)
 
 # Installation
+If you're a beginner (code / python wise), [here is a screen recording of someone from my lab installing freemocap from scratch](https://vimeo.com/582630758) up until the point where you start using it (configuring,charucco board, cameras, etc).
+
 - Open an Anaconda Prompt (in Windows, or any terminal on Mac/Linux) and enter the following comands
 
 `conda create -n freemocap-env python=3.7`

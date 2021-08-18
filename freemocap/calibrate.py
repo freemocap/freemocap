@@ -12,7 +12,11 @@ from rich.progress import track
 
 
 def CalibrateCaptureVolume(session,board):
-    
+    """ 
+    Check if a previous calibration yaml exists, and if not, create a set of shortened calibration videos and run Anipose functions
+    to create a calibration yaml. Takes the 2D charuco board points and reconstructs them into 3D points that are saved out
+    into the DataArrays folder
+    """  
     session.calVidPath.mkdir(exist_ok = True)
     session.dataArrayPath.mkdir(exist_ok = True)
 
@@ -177,6 +181,10 @@ def CalibrateCaptureVolume(session,board):
 
 
 def createCalibrationVideos(session, calVideoFrameLength):
+    """ 
+    Based on the desired length of the calibration videos (for the anipose functions), create new videos trimmed 
+    to that specific length
+    """  
     vidList = os.listdir(session.syncedVidPath)
     framelist = list(range(calVideoFrameLength))
     codec = "DIVX"

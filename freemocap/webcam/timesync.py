@@ -7,10 +7,20 @@ import tkinter as tk
 from tkinter import Tk, Label, Button, Frame
 
 def TimeSync(session,timeStampData,numCamRange,camNames):    
-       
+    """
+    First creates a master timeline from the average frame length interval across all cameras. Then proceeds to compare timepoints in master timeline
+    to timestamps in each camera and find the closest matching timestamp in a camera to a point on the master timeline and create a list of
+    frame numbers.
+
+    Then loop through the list of frame numbers from each camera. Update counts for missing frames and duplicated frames. Create a table with these counts
+    and plots of statistics related to the recording
+    """     
     def CloseNeighb(camera,point): 
-            closestPoint = (np.abs(camera - point)).argmin() 
-            return closestPoint
+        """ 
+        Find the timestamp in the camera timestamp list that most closely matches the input pointin the master timeline
+        """  
+        closestPoint = (np.abs(camera - point)).argmin() 
+        return closestPoint
 
     # this section auto-finds the start and end points for our master timeline to the nearest second
     masterTimelineBegin = np.ceil(max(timeStampData.iloc[0]))
@@ -96,8 +106,8 @@ def TimeSync(session,timeStampData,numCamRange,camNames):
         
     
         #start counters for the number of buffered and deleted slides
-        bufCount = 0;
-        delCount = 0;
+        bufCount = 0
+        delCount = 0
 
         thisCamNumFrames = len(camFrames)
         postSyncTotalNumFrames.append(thisCamNumFrames)
@@ -194,6 +204,9 @@ def TimeSync(session,timeStampData,numCamRange,camNames):
 
 
 class proceedGUI:
+    """ 
+    GUI that displays all statistics from recording, and then asks for user input on whether to proceed with the rest of the pipeline
+    """  
     def __init__(self, master, results, figure):
         self.master = master
         self.results = results

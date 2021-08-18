@@ -36,6 +36,11 @@ def Run(sessionID=None,
         setDataPath = False,
         userDataPath = None,
         recordVid = True,):
+    """ 
+    Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
+    based on the specified inputs. Checks for previous user preferences and choices if they exist, or will prompt the user for new choices
+    if they don't. Runs the initialization for the system and runs each stage of the pipeline.
+    """ 
     sesh = session.Session()
 
     sesh.sessionID = sessionID

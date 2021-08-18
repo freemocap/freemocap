@@ -3,6 +3,9 @@ import cv2
 
 
 def TestDevice(source):
+    """
+    Checks to see if there is a camera available at the input
+    """
     cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
     # if cap is None or not cap.isOpened():
     # print('Warning: unable to open video source: ', source)
@@ -20,6 +23,9 @@ def TestDevice(source):
 
 
 def CreateAvailableCamList():
+    """
+    Loops through the first 20 ports (this number is overkill, really) and creates a list of ports that have a camera available on them 
+    """
     openCamList = []
     for x in tqdm(range(20)):  # range 20 right now to be safe
         openCamera = TestDevice(x)

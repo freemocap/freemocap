@@ -320,7 +320,7 @@ def ReplaySkeleton_matplotlib( session,
     if session.useMediaPipe:
         mediaPipe_skel_fr_mar_dim = np.load(session.dataArrayPath/'mediaPipeSkel_3d.npy')
         imgPathList = session.session_settings['mediaPipe_imgPathList']
-        session.numCams = len(session.mediaPipe_imgPathList)
+        #session.numCams = len(session.mediaPipe_imgPathList)
 
     if session.useOpenPose:
         skel_fr_mar_dim = np.load(session.dataArrayPath/'openPoseSkel_3d.npy')

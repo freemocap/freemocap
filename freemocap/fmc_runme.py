@@ -30,7 +30,7 @@ def Run(sessionID=None,
         useOpenPose=True, 
         openPoseDummyRun = False, 
         useMediaPipe=False,
-        useDLC=True,
+        useDLC=False,
         dlcConfigPath=None,
         debug=False,
         setDataPath = False,
@@ -101,8 +101,12 @@ def Run(sessionID=None,
             try:
                 current_path_to_data = preferences['saved']['path_to_save']
                 basePath = current_path_to_data
-            except KeyError('Saved Data path not found, please choose a new one'):
+            except KeyError:
+                print('Saved Data path not found, please choose a new one')
                 basePath = runmeGUI.RunChooseDataPathGUI(session)
+                sesh.preferences['saved']['path_to_save'] = str(basePath)
+                sesh.save_user_preferences(sesh.preferences)
+
 
         dataFolder = Path(basePath)/sesh.dataFolderName
         sesh.dataFolderPath = dataFolder
@@ -200,7 +204,7 @@ def Run(sessionID=None,
             sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
             sesh.mediaPipeSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=.5)
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_dim) #save data to npy
-
+        sesh.save_session()
         if sesh.useOpenPose:
             fmc_openpose.runOpenPose(sesh, dummyRun=openPoseDummyRun)
             sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)

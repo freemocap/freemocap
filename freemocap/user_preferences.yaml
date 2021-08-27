@@ -1,6 +1,5 @@
 default:
-
-  path_to_save: C:\Users\Rontc\Documents\GitHub\freemocap
+  path_to_save: C:\Users\aaron\Documents\GitHub\freemocap
   dlc_config_paths: []
   rotations: {}
   parameters:
@@ -9,4 +8,14 @@ default:
     resHeight: 480
     framerate: 25
     codec: DIVX
-saved: {}
+saved:
+  rotations:
+    1: 0
+    2: 90
+  parameters:
+    exposure: -6
+    resWidth: 640
+    resHeight: 480
+    framerate: 25
+    codec: DIVX
+  path_to_save: C:\Users\aaron\Documents\GitHub\freemocap

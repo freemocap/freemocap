@@ -46,53 +46,58 @@ def initialize(session, stage, board):
         #         parameters_yaml.dump(parameters, outfile)
 
 
-        try:
-            rotation_entry = session.preferences["saved"]["rotations"]
-            parameter_entry = session.preferences["saved"]["parameters"]
-        except:
-            print("Could not load saved parameters, using default parameters")
-            rotation_entry = session.preferences['default']['rotations']
-            parameter_entry = session.preferences['default']['parameters']
-                
-
-        try:
-            current_path_to_save = session.preferences['saved']['path_to_save']
-        except:
-            current_path_to_save = session.preferences['default']['path_to_save'] 
 
 
         proceedToRecording = False #create this boolean, set it to false, and if the user wants to record
                                    #later in the pipeline, it will be set to true
 
     #run the GUI to get the tasks, the cams chosen, the camera settings, and the session ID
-        task, cam_inputs, rotDict, paramDict, session.sessionID,savepath = recordGUI.RunGUI(sessionID_in,rotation_entry,parameter_entry,current_path_to_save)
-    
-    #update the saved parameters in the YAML
-        #recordingconfig.rotation_settings['saved'] = rotDict
-        #recordingconfig.camera_session.preferences['saved'] = paramDict
-        session.preferences['saved']['rotations'] = rotDict
-        session.preferences['saved']['parameters'] = paramDict
-        if savepath is not None:
-            session.preferences['saved']['path_to_save'] = savepath
+        cam_inputs, task = recordGUI.RunChoiceGUI()
+        restartSetup = True
 
-        session.save_user_preferences(session.preferences)
+        while restartSetup == True:
+            
+            try:
+                rotation_entry = session.preferences["saved"]["rotations"]
+                parameter_entry = session.preferences["saved"]["parameters"]
+            except:
+                print("Could not load saved parameters, using default parameters")
+                rotation_entry = session.preferences['default']['rotations']
+                parameter_entry = session.preferences['default']['parameters']
+                    
 
-    #save recording parameters to the config yaml
-
+            try:
+                current_path_to_save = session.preferences['saved']['path_to_save']
+            except:
+                current_path_to_save = session.preferences['default']['path_to_save'] 
+            rotDict, paramDict, session.sessionID,savepath = recordGUI.RunParametersGUI(sessionID_in, rotation_entry, parameter_entry, current_path_to_save, cam_inputs, task)
         
-    #create a list from the rotation dictionary to be used in running webcams
-        rotation_input = list(rotDict.values())
+        #update the saved parameters in the YAML
+            #recordingconfig.rotation_settings['saved'] = rotDict
+            #recordingconfig.camera_session.preferences['saved'] = paramDict
+            session.preferences['saved']['rotations'] = rotDict
+            session.preferences['saved']['parameters'] = paramDict
+            if savepath is not None:
+                session.preferences['saved']['path_to_save'] = savepath
 
-        if task == "setup":
-            # run setup processes, and then check if th user wants to proceed to recording
-            camsetup.RunSetup(cam_inputs, rotation_input, paramDict)
-            proceedToRecording, session.sessionID, savepath = recordGUI.RunProceedtoRecordGUI(
-                sessionID_in,current_path_to_save
-            )
-            session.preferences['saved']['path_to_save'] = savepath
             session.save_user_preferences(session.preferences)
-        elif task == "record":
-            proceedToRecording = True
+
+        #save recording parameters to the config yaml
+
+            
+        #create a list from the rotation dictionary to be used in running webcams
+            rotation_input = list(rotDict.values())
+
+            if task == "setup":
+                # run setup processes, and then check if th user wants to proceed to recording
+                camsetup.RunSetup(cam_inputs, rotation_input, paramDict)
+                proceedToRecording, restartSetup, session.sessionID, savepath = recordGUI.RunProceedtoRecordGUI(
+                    sessionID_in,current_path_to_save
+                )
+                session.preferences['saved']['path_to_save'] = savepath
+                session.save_user_preferences(session.preferences)
+            elif task == "record":
+                proceedToRecording = True
 
         if proceedToRecording:
             # create these session properties to be used later in the pipeline

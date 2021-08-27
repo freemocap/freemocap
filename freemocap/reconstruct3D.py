@@ -5,6 +5,9 @@ import numpy as np
 
 # @jit(nopython=True)
 def reconstruct3D(session, data_nCams_nFrames_nImgPts_XYC, confidenceThreshold=0.3):
+    """
+    Take a specifically formatted data array, and based on the camera calibration yaml, reconstruct a 3D image
+    """
 
     if (
         session.cgroup is None

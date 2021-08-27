@@ -9,6 +9,10 @@ from tkinter import Tk
 
 
 def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
+    """ 
+    Determines the number of cameras, assigns them IDs, and then starts a threaded cam recording process. Accesses the pickle file of timestamps
+    saved during recording, makes a dataframe from it and saves it to a CSV file. Updates the session class at the end with numCam variable
+    """  
     #Create RawVideos folder
     session.rawVidPath.mkdir(exist_ok = True)
 
@@ -83,6 +87,10 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     session.vidNames = vidNames
 
 def SyncCams(session, timeStampData,numCamRange,vidNames,camIDs):
+    """ 
+    Runs the time-syncing process. Accesses saved timestamps, runs the time-syncing GUI, and on user-permission, proceeds to create
+    synced videos 
+    """  
     session.syncedVidPath.mkdir(exist_ok = True)
 
     #start the timesync process

@@ -14,7 +14,8 @@ tensorflow-gpu>=2.0
 pyqt5>=5.15.4
 pyopengl>=3.1.5
 tf_slim>=1.1.0
-deeplabcut[gui]>=2.2rc3
+deeplabcut>=2.2
 ruamel.yaml>=0.15.0
 typed-ast<1.5,>=1.4.0
+numpy<=1.19
 ffmpeg

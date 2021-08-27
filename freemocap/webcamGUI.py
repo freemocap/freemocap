@@ -10,6 +10,16 @@ from freemocap import recordingconfig, fmc_anipose
 
 
 def initialize(session, stage, board):
+    """ 
+    Runs the initialization needed to either a) start a new recording from scratch (Stage 1), or b) continue a sesssion from stage 2 (time-syncing).
+    
+    If running from stage 1: create a new sessionID and attempt to load previous recording parameters (camera settings/rotations/save locations), 
+    and use default values if previous parameters are not found. Ask user to select preferences using a series of GUIs, runs the Setup option if 
+    chosen by the user, and ultimately sets a bool that dictates whether we should proceed to start the actual Stage 1 recording. Also saves parameters
+    into the session class, which gets saved into the user_preferences yaml
+
+    If running from stage 2: loads the timestamps and reads them into a dataframe, and sets up all the parameters necesary to run the pipeline
+    """ 
 
     print("Starting initialization for stage {}".format(stage))
     # if stage == 1:
@@ -21,7 +31,7 @@ def initialize(session, stage, board):
     if stage == 1:
 
         # create session ID
-        sessionID_in = datetime.datetime.now().strftime("sesh_%y-%m-%d_%H%M%S")
+        sessionID_in = datetime.datetime.now().strftime("sesh_%Y-%m-%d_%H_%M_%S")
         session.sessionID = sessionID_in
 
     #load the parameters YAML and extract the saved parameters if possible, and the default otherwise       
@@ -150,129 +160,129 @@ def initialize(session, stage, board):
         session.vidNames = vidNames
         session.numCams = numCams
 
-    if stage == 3:
+#     if stage == 3:
 
-        session.sessionPath = (
-            filepath / "Data" / session.sessionID
-        )  # create a session path based on the sessionID
+#         session.sessionPath = (
+#             filepath / "Data" / session.sessionID
+#         )  # create a session path based on the sessionID
 
-        # load the config yaml for this session, and add all the paths to the session file
-        session.yamlPath = session.sessionPath / "{}_config.yaml".format(
-            session.sessionID
-        )
+#         # load the config yaml for this session, and add all the paths to the session file
+#         session.yamlPath = session.sessionPath / "{}_config.yaml".format(
+#             session.sessionID
+#         )
 
-        if (
-            session.yamlPath.is_file()
-        ):  # if the config yaml exists (from a webcam recording)
-            session.config_settings = recordingconfig.load_config_yaml(
-                session.yamlPath
-            )  # config settings = paths and camera parameter inputs
-            recordingconfig.load_session_paths(
-                session, session.config_settings
-            )  # add paths to session class
-        else:  # if it doesn't exist (because of a GoPro/external camera recording)
-            recordingconfig.createSession(session, filepath)
+#         if (
+#             session.yamlPath.is_file()
+#         ):  # if the config yaml exists (from a webcam recording)
+#             session.config_settings = recordingconfig.load_config_yaml(
+#                 session.yamlPath
+#             )  # config settings = paths and camera parameter inputs
+#             recordingconfig.load_session_paths(
+#                 session, session.config_settings
+#             )  # add paths to session class
+#         else:  # if it doesn't exist (because of a GoPro/external camera recording)
+#             recordingconfig.createSession(session, filepath)
 
-    if stage == 4:
+#     if stage == 4:
 
-        session.sessionPath = filepath / "Data" / session.sessionID
+#         session.sessionPath = filepath / "Data" / session.sessionID
 
-        session.yamlPath = session.sessionPath / "{}_config.yaml".format(
-            session.sessionID
-        )  # path to the configuration yaml
-        session.config_settings = recordingconfig.load_config_yaml(
-            session.yamlPath
-        )  # config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(
-            session, session.config_settings
-        )  # add paths to session class
+#         session.yamlPath = session.sessionPath / "{}_config.yaml".format(
+#             session.sessionID
+#         )  # path to the configuration yaml
+#         session.config_settings = recordingconfig.load_config_yaml(
+#             session.yamlPath
+#         )  # config settings = paths and camera parameter inputs
+#         recordingconfig.load_session_paths(
+#             session, session.config_settings
+#         )  # add paths to session class
 
-        for count, thisVidPath in enumerate(
-            session.syncedVidPath.glob("*.mp4"), start=1
-        ):
-            session.numCams = count
+#         for count, thisVidPath in enumerate(
+#             session.syncedVidPath.glob("*.mp4"), start=1
+#         ):
+#             session.numCams = count
 
-    if stage == 6:
+#     if stage == 6:
 
-        session.sessionPath = filepath / "Data" / session.sessionID
+#         session.sessionPath = filepath / "Data" / session.sessionID
 
-        session.yamlPath = session.sessionPath / "{}_config.yaml".format(
-            session.sessionID
-        )  # path to the configuration yaml
-        session.config_settings = recordingconfig.load_config_yaml(
-            session.yamlPath
-        )  # config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(
-            session, session.config_settings
-        )  # add paths to session class
+#         session.yamlPath = session.sessionPath / "{}_config.yaml".format(
+#             session.sessionID
+#         )  # path to the configuration yaml
+#         session.config_settings = recordingconfig.load_config_yaml(
+#             session.yamlPath
+#         )  # config settings = paths and camera parameter inputs
+#         recordingconfig.load_session_paths(
+#             session, session.config_settings
+#         )  # add paths to session class
 
-        if session.useOpenPose:
-            session.openPose_imgPathList = session.config_settings[
-                "openPose_imgPathList"
-            ]
+#         if session.useOpenPose:
+#             session.openPose_imgPathList = session.config_settings[
+#                 "openPose_imgPathList"
+#             ]
 
-        if session.useMediaPipe:
-            session.mediaPipe_imgPathList = session.config_settings[
-                "mediaPipe_imgPathList"
-            ]
+#         if session.useMediaPipe:
+#             session.mediaPipe_imgPathList = session.config_settings[
+#                 "mediaPipe_imgPathList"
+#             ]
 
-    # if stage == 5:
+#     # if stage == 5:
 
-    #     session.sessionPath = filepath/'Data'/session.sessionID
+#     #     session.sessionPath = filepath/'Data'/session.sessionID
 
-    #     session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
-    #     session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-    #     recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
+#     #     session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
+#     #     session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+#     #     recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
 
-    #     for count,thisVidPath in enumerate(session.syncedVidPath.glob('*.mp4'),start=1):
-    #         session.numCams = count
+#     #     for count,thisVidPath in enumerate(session.syncedVidPath.glob('*.mp4'),start=1):
+#     #         session.numCams = count
 
-    #     session.mediaPipe_jsonPathList = session.config_settings['mediaPipe_jsonPathList']
-    #     session.numCams = len(session.mediaPipe_jsonPathList)
+#     #     session.mediaPipe_jsonPathList = session.config_settings['mediaPipe_jsonPathList']
+#     #     session.numCams = len(session.mediaPipe_jsonPathList)
 
-    # if stage == 6:
+#     # if stage == 6:
 
-    #     session.sessionPath = filepath/'Data'/session.sessionID
+#     #     session.sessionPath = filepath/'Data'/session.sessionID
 
-    #     session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
-    #     session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
-    #     recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
+#     #     session.yamlPath = session.sessionPath/'{}_config.yaml'.format(session.sessionID) #path to the configuration yaml
+#     #     session.config_settings = recordingconfig.load_config_yaml(session.yamlPath) #config settings = paths and camera parameter inputs
+#     #     recordingconfig.load_session_paths(session,session.config_settings) #add paths to session class
 
-    #     session.mediaPipeData_nCams_nFrames_nImgPts_XY = np.load(session.dataArrayPath/'mediaPipeData_nCams_nFrames_nImgPts_XY.npy')
+#     #     session.mediaPipeData_nCams_nFrames_nImgPts_XY = np.load(session.dataArrayPath/'mediaPipeData_nCams_nFrames_nImgPts_XY.npy')
 
-    if stage == 7:
+#     if stage == 7:
 
-        session.sessionPath = filepath / "Data" / session.sessionID
+#         session.sessionPath = filepath / "Data" / session.sessionID
 
-        session.yamlPath = session.sessionPath / "{}_config.yaml".format(
-            session.sessionID
-        )  # path to the configuration yaml
-        session.config_settings = recordingconfig.load_config_yaml(
-            session.yamlPath
-        )  # config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(
-            session, session.config_settings
-        )  # add paths to session class
+#         session.yamlPath = session.sessionPath / "{}_config.yaml".format(
+#             session.sessionID
+#         )  # path to the configuration yaml
+#         session.config_settings = recordingconfig.load_config_yaml(
+#             session.yamlPath
+#         )  # config settings = paths and camera parameter inputs
+#         recordingconfig.load_session_paths(
+#             session, session.config_settings
+#         )  # add paths to session class
 
-        session.mediaPipe_imgPathList = session.config_settings["mediaPipe_imgPathList"]
-        session.openPose_imgPathList = session.config_settings["openPose_imgPathList"]
+#         session.mediaPipe_imgPathList = session.config_settings["mediaPipe_imgPathList"]
+#         session.openPose_imgPathList = session.config_settings["openPose_imgPathList"]
 
-        # session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
-        # session.numCams = len(session.openPose_imgPathList)
+#         # session.openPose_imgPathList = session.config_settings['openPose_imgPathList']
+#         # session.numCams = len(session.openPose_imgPathList)
 
-    if stage == 8:
+#     if stage == 8:
 
-        session.sessionPath = filepath / "Data" / session.sessionID
+#         session.sessionPath = filepath / "Data" / session.sessionID
 
-        session.yamlPath = session.sessionPath / "{}_config.yaml".format(
-            session.sessionID
-        )  # path to the configuration yaml
-        session.config_settings = recordingconfig.load_config_yaml(
-            session.yamlPath
-        )  # config settings = paths and camera parameter inputs
-        recordingconfig.load_session_paths(
-            session, session.config_settings
-        )  # add paths to session class
+#         session.yamlPath = session.sessionPath / "{}_config.yaml".format(
+#             session.sessionID
+#         )  # path to the configuration yaml
+#         session.config_settings = recordingconfig.load_config_yaml(
+#             session.yamlPath
+#         )  # config settings = paths and camera parameter inputs
+#         recordingconfig.load_session_paths(
+#             session, session.config_settings
+#         )  # add paths to session class
 
 
-# %%
+# # %%

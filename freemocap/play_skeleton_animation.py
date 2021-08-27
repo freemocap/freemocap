@@ -1,4 +1,3 @@
-
 """
 ============
 ██████  ██       █████  ██    ██     ███████ ██   ██ ███████ ██      ███████ ████████  ██████  ███    ██      █████  ███    ██ ██ ███    ███  █████  ████████ ██  ██████  ███    ██ 
@@ -38,6 +37,7 @@ from matplotlib.widgets import Slider
 import cv2 
 from scipy.signal import savgol_filter
 
+
 import copy
 from pathlib import Path
 
@@ -63,21 +63,19 @@ def PlaySkeletonAnimation(
     startFrame=0,
     azimuth=-90,
     elevation=-61,
-    numCams=4,
-    useCams = None,
     useOpenPose=True,
     useMediaPipe=False,
     useDLC=False,
     recordVid = True
     ):
-###  
-###
-###      ██    ██ ██████  ██████   █████  ████████ ███████         ███████ ██  ██████  ██    ██ ██████  ███████ 
-###      ██    ██ ██   ██ ██   ██ ██   ██    ██    ██              ██      ██ ██       ██    ██ ██   ██ ██      
-###      ██    ██ ██████  ██   ██ ███████    ██    █████           █████   ██ ██   ███ ██    ██ ██████  █████   
-###      ██    ██ ██      ██   ██ ██   ██    ██    ██              ██      ██ ██    ██ ██    ██ ██   ██ ██      
-###       ██████  ██      ██████  ██   ██    ██    ███████         ██      ██  ██████   ██████  ██   ██ ███████ 
-###                                                                                                               
+    ###  
+    ###
+    ###      ██    ██ ██████  ██████   █████  ████████ ███████         ███████ ██  ██████  ██    ██ ██████  ███████ 
+    ###      ██    ██ ██   ██ ██   ██ ██   ██    ██    ██              ██      ██ ██       ██    ██ ██   ██ ██      
+    ###      ██    ██ ██████  ██   ██ ███████    ██    █████           █████   ██ ██   ███ ██    ██ ██████  █████   
+    ###      ██    ██ ██      ██   ██ ██   ██    ██    ██              ██      ██ ██    ██ ██    ██ ██   ██ ██      
+    ###       ██████  ██      ██████  ██   ██    ██    ███████         ██      ██  ██████   ██████  ██   ██ ███████ 
+    ###                                                                                                               
     def update_figure(frameNum):
         """ 
         Called by matplotlib animator for each frame.
@@ -85,6 +83,9 @@ def PlaySkeletonAnimation(
         
         skel_dottos = matplotlib_artist_objs['skel_dottos'] 
         skel_trajectories = figure_data['skel_trajectories|mar|fr_dim']
+
+        charuco_dottos = matplotlib_artist_objs['charuco_dottos'] 
+        charuco_trajectories = figure_data['charuco_trajectories|mar|fr_dim']
 
         if useDLC:
             dlc_dottos = matplotlib_artist_objs['dlc_dottos'] 
@@ -113,20 +114,27 @@ def PlaySkeletonAnimation(
         update_3d_skel_segments('lHand', skel_fr_mar_dim)
         update_3d_skel_segments('face', skel_fr_mar_dim)
 
-        update_3d_skel_segments('pinkBall', dlc_fr_mar_dim)
-        update_3d_skel_segments('redBall', dlc_fr_mar_dim)
-        update_3d_skel_segments('greenBall', dlc_fr_mar_dim)
-        update_3d_skel_segments('wobbleBoard', dlc_fr_mar_dim)
-        update_3d_skel_segments('wobbleWheel', dlc_fr_mar_dim)
+        if useDLC:
+            update_3d_skel_segments('pinkBall', dlc_fr_mar_dim)
+            update_3d_skel_segments('redBall', dlc_fr_mar_dim)
+            update_3d_skel_segments('greenBall', dlc_fr_mar_dim)
+            update_3d_skel_segments('wobbleBoard', dlc_fr_mar_dim)
+            update_3d_skel_segments('wobbleWheel', dlc_fr_mar_dim)
 
-        for bb in range(3):
-            thisTailArtist = matplotlib_artist_objs['ball_tails'][bb]
-           
-            thisTailArtist.set_data((dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 0], 
-                                    dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 1])) 
+            for bb in range(3):
+                thisTailArtist = matplotlib_artist_objs['ball_tails'][bb]
+            
+                thisTailArtist.set_data((dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 0], 
+                                        dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 1])) 
 
-            thisTailArtist.set_3d_properties(dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 2]) 
-
+                thisTailArtist.set_3d_properties(dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 2]) 
+            #dlc data
+            marNum = -1
+            for thisDotto, thisTraj in zip(dlc_dottos,dlc_trajectories):
+                marNum+=1
+                # NOTE: there is no .set_data() for 3 dim data...
+                thisDotto.set_data(thisTraj[ frameNum, 0:2])
+                thisDotto.set_3d_properties(thisTraj[ frameNum, 2])
 
         #Plots the dots!
         #openpose data
@@ -137,13 +145,18 @@ def PlaySkeletonAnimation(
             thisSkelDotto.set_data(thisTraj[ frameNum, 0:2])
             thisSkelDotto.set_3d_properties(thisTraj[ frameNum, 2])
 
-        #dlc data
-        marNum = -1
-        for thisDotto, thisTraj in zip(dlc_dottos,dlc_trajectories):
-            marNum+=1
-            # NOTE: there is no .set_data() for 3 dim data...
-            thisDotto.set_data(thisTraj[ frameNum, 0:2])
-            thisDotto.set_3d_properties(thisTraj[ frameNum, 2])
+        #charuco data
+        
+        for thisDotto, thisTraj in zip(charuco_dottos,charuco_trajectories):
+
+            if frameNum<charuco_trajectories[0].shape[0]:
+                thisDotto.set_data(thisTraj[ frameNum, 0:2])
+                thisDotto.set_3d_properties(thisTraj[ frameNum, 2])
+            else:
+                thisDotto.set_color('none')
+
+
+
         
         # function to update the lines for each body segment
         def update_2d_skel_segments(vidNum,key):       
@@ -168,7 +181,8 @@ def PlaySkeletonAnimation(
             
 
         vidNum = -1
-        for thisVidArtist, thisVidDLCArtist, thisVidOpenPoseArtist_dict in zip(vidAristList, vidDLCArtistList, list_of_vidOpenPoseArtistdicts):
+        # for thisVidArtist, thisVidDLCArtist, thisVidOpenPoseArtist_dict in zip(vidAristList, vidDLCArtistList, list_of_vidOpenPoseArtistdicts): #JSM NOTE - This for loop needs to be fixed to work when DLC is true
+        for thisVidArtist,  thisVidOpenPoseArtist_dict in zip(vidAristList,  list_of_vidOpenPoseArtistdicts):
             vidNum +=1
             vidCapObjList[vidNum].set(cv2.CAP_PROP_POS_FRAMES, frameNum)
             success, image = vidCapObjList[vidNum].read()
@@ -178,8 +192,9 @@ def PlaySkeletonAnimation(
                 vidCapObjList[vidNum].set(cv2.CAP_PROP_POS_FRAMES, 0)
                 success, image = vidCapObjList[vidNum].read()
 
-            thisVidDLCArtist[0].set_data(  dlcData_nCams_nFrames_nImgPts_XYC[vidNum,frameNum,:,0], 
-                                    dlcData_nCams_nFrames_nImgPts_XYC[vidNum,frameNum,:,1],)
+            if useDLC:
+                thisVidDLCArtist[0].set_data(  dlcData_nCams_nFrames_nImgPts_XYC[vidNum,frameNum,:,0], 
+                                        dlcData_nCams_nFrames_nImgPts_XYC[vidNum,frameNum,:,1],)
 
             update_2d_skel_segments(vidNum,'body')
             update_2d_skel_segments(vidNum,'rHand')
@@ -203,31 +218,31 @@ def PlaySkeletonAnimation(
         # fig.suptitle("nSessionID: {}, Frame: {} of {}".format(session.sessionID, frameNum, numFrames), fontsize=10)
         # animSlider.set_val(val=frameNum)
 
-####  
-####   ██████ ██████  ███████  █████  ████████ ███████     ███████ ██  ██████  ██    ██ ██████  ███████ 
-####  ██      ██   ██ ██      ██   ██    ██    ██          ██      ██ ██       ██    ██ ██   ██ ██      
-####  ██      ██████  █████   ███████    ██    █████       █████   ██ ██   ███ ██    ██ ██████  █████   
-####  ██      ██   ██ ██      ██   ██    ██    ██          ██      ██ ██    ██ ██    ██ ██   ██ ██      
-####   ██████ ██   ██ ███████ ██   ██    ██    ███████     ██      ██  ██████   ██████  ██   ██ ███████ 
-####                                                                                                    
+    ####  
+    ####   ██████ ██████  ███████  █████  ████████ ███████     ███████ ██  ██████  ██    ██ ██████  ███████ 
+    ####  ██      ██   ██ ██      ██   ██    ██    ██          ██      ██ ██       ██    ██ ██   ██ ██      
+    ####  ██      ██████  █████   ███████    ██    █████       █████   ██ ██   ███ ██    ██ ██████  █████   
+    ####  ██      ██   ██ ██      ██   ██    ██    ██          ██      ██ ██    ██ ██    ██ ██   ██ ██      
+    ####   ██████ ██   ██ ███████ ██   ██    ██    ███████     ██      ██  ██████   ██████  ██   ██ ███████ 
+    ####                                                                                                    
     
 
     fig = plt.figure(dpi=200)
     plt.ion()
 
 
-###  
-###   ██████ ██████  ███████  █████  ████████ ███████     ██████        ██████       █████  ██   ██ ██ ███████ 
-###  ██      ██   ██ ██      ██   ██    ██    ██               ██       ██   ██     ██   ██  ██ ██  ██ ██      
-###  ██      ██████  █████   ███████    ██    █████        █████  █████ ██   ██     ███████   ███   ██ ███████ 
-###  ██      ██   ██ ██      ██   ██    ██    ██               ██       ██   ██     ██   ██  ██ ██  ██      ██ 
-###   ██████ ██   ██ ███████ ██   ██    ██    ███████     ██████        ██████      ██   ██ ██   ██ ██ ███████ 
-###                                                                                                            
-###                                                                                                                                                                              
+    ###  
+    ###   ██████ ██████  ███████  █████  ████████ ███████     ██████        ██████       █████  ██   ██ ██ ███████ 
+    ###  ██      ██   ██ ██      ██   ██    ██    ██               ██       ██   ██     ██   ██  ██ ██  ██ ██      
+    ###  ██      ██████  █████   ███████    ██    █████        █████  █████ ██   ██     ███████   ███   ██ ███████ 
+    ###  ██      ██   ██ ██      ██   ██    ██    ██               ██       ██   ██     ██   ██  ██ ██  ██      ██ 
+    ###   ██████ ██   ██ ███████ ██   ██    ██    ███████     ██████        ██████      ██   ██ ██   ██ ██ ███████ 
+    ###                                                                                                            
+    ###                                                                                                                                                                              
 
     # ax3d = p3.Axes3D(fig)
     ax3d = fig.add_subplot(projection='3d')
-    ax3d.set_position([-.065, .35, .7, .7]) # [left, bottom, width, height])
+    ax3d.set_position([-.065, .28, .7, .7]) # [left, bottom, width, height])
     ax3d.set_xticklabels([])
     ax3d.set_yticklabels([])
     ax3d.set_zticklabels([])
@@ -246,21 +261,32 @@ def PlaySkeletonAnimation(
     except:
         console.warning('No openPose data found.  This iteration requires OpenPose data')
 
-    # smoothThese = np.arange(67, skel_fr_mar_dim.shape[1])
-    smoothThese = np.arange(0, skel_fr_mar_dim.shape[1])
+    try:
+        charuco_fr_mar_dim = np.load(session.dataArrayPath / 'charuco_3d_points.npy')
+    except:
+        console.warning('No charuco data found')
 
-    for mm in smoothThese:
-        if mm > 24 and mm < 67: #don't smooth the hands, or they disappear! :O
-            pass
-        else:
-            for dim in range(skel_fr_mar_dim.shape[2]):
-                skel_fr_mar_dim[:,mm,dim] = savgol_filter(skel_fr_mar_dim[:,mm,dim], 5, 3)
+    smoothData=True
+    if smoothData:
+        # smoothThese = np.arange(67, skel_fr_mar_dim.shape[1])
+        smoothThese = np.arange(0, skel_fr_mar_dim.shape[1])
+        for mm in smoothThese:
+            if mm > 24 and mm < 67: #don't smooth the hands, or they disappear! :O
+                pass
+            else:
+                for dim in range(skel_fr_mar_dim.shape[2]):
+                    skel_fr_mar_dim[:,mm,dim] = savgol_filter(skel_fr_mar_dim[:,mm,dim], 5, 3)
 
     figure_data = dict()
 
     skel_trajectories = [skel_fr_mar_dim[:,markerNum,:] for markerNum in range(skel_fr_mar_dim.shape[1])]
     figure_data['skel_trajectories|mar|fr_dim'] = skel_trajectories
     figure_data['skel_fr_mar_dim'] = skel_fr_mar_dim
+    
+    charuco_trajectories = [charuco_fr_mar_dim[:,markerNum,:] for markerNum in range(charuco_fr_mar_dim.shape[1])]
+    figure_data['charuco_trajectories|mar|fr_dim'] = charuco_trajectories
+    figure_data['charuco_fr_mar_dim'] = charuco_fr_mar_dim
+
     dict_of_openPoseSegmentIdx_dicts, dict_of_skel_lineColor = formatOpenPoseStickIndices() #these will help us draw body and hands stick figures
 
     if useDLC:
@@ -275,9 +301,9 @@ def PlaySkeletonAnimation(
         if ballTailLen > startFrame:
             startFrame = ballTailLen+1 #gotta do this, or the tail will index negative frames (without requiring annoying checks later)
     
-    dlc_trajectories = [dlc_fr_mar_dim[:,markerNum,:] for markerNum in range(dlc_fr_mar_dim.shape[1])]    
-    figure_data['dlc_trajectories|mar|fr_dim'] = dlc_trajectories
-    figure_data['dlc_fr_mar_dim'] = dlc_fr_mar_dim
+        dlc_trajectories = [dlc_fr_mar_dim[:,markerNum,:] for markerNum in range(dlc_fr_mar_dim.shape[1])]    
+        figure_data['dlc_trajectories|mar|fr_dim'] = dlc_trajectories
+        figure_data['dlc_fr_mar_dim'] = dlc_fr_mar_dim
 
     
     
@@ -350,20 +376,22 @@ def PlaySkeletonAnimation(
     matplotlib_artist_objs['lHand'] = build_3d_segment_artist_dict(skel_fr_mar_dim, dict_of_openPoseSegmentIdx_dicts['lHand'], segColor=np.append(humon_blue, 1), markerType='.', markerEdgeColor = humon_blue, lineWidth=1, marSize = 2)
     matplotlib_artist_objs['face'] = build_3d_segment_artist_dict(skel_fr_mar_dim, dict_of_openPoseSegmentIdx_dicts['face'], segColor='k', lineWidth=.5)
     
-    dict_of_dlcSegmentIdx_dicts = dict()
-    dict_of_dlcSegmentIdx_dicts['pinkBall'] = {'pinkBall': [0]}
-    dict_of_dlcSegmentIdx_dicts['greenBall'] = {'greenBall': [1]}
-    dict_of_dlcSegmentIdx_dicts['redBall'] = {'redBall': [2]}
-    dict_of_dlcSegmentIdx_dicts['wobbleBoard'] = {'wobbleboard':[3,4,5,6,3,7,5,4,7,6]}
-    dict_of_dlcSegmentIdx_dicts['wobbleWheel'] = {'wobbleWheel':[8,9]}
+    if useDLC:
+        dict_of_dlcSegmentIdx_dicts = dict()
+        dict_of_dlcSegmentIdx_dicts['pinkBall'] = {'pinkBall': [0]}
+        dict_of_dlcSegmentIdx_dicts['greenBall'] = {'greenBall': [1]}
+        dict_of_dlcSegmentIdx_dicts['redBall'] = {'redBall': [2]}
+        dict_of_dlcSegmentIdx_dicts['wobbleBoard'] = {'wobbleboard':[3,4,5,6,3,7,5,4,7,6]}
+        dict_of_dlcSegmentIdx_dicts['wobbleWheel'] = {'wobbleWheel':[8,9]}
     
-    ballColor = ['darkviolet', 'forestgreen', 'xkcd:goldenrod']
-    matplotlib_artist_objs['pinkBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['pinkBall'], segColor=ballColor[0], markerType = 'o', marSize = 6, markerEdgeColor = 'indigo')
-    matplotlib_artist_objs['redBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['redBall'], segColor=ballColor[2], markerType = 'o', marSize = 6, markerEdgeColor ='orangered')
-    matplotlib_artist_objs['greenBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['greenBall'], segColor=ballColor[1], markerType = 'o', marSize = 6, markerEdgeColor ='darkgreen')
+  
+        ballColor = ['darkviolet', 'forestgreen', 'xkcd:goldenrod']
+        matplotlib_artist_objs['pinkBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['pinkBall'], segColor=ballColor[0], markerType = 'o', marSize = 6, markerEdgeColor = 'indigo')
+        matplotlib_artist_objs['redBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['redBall'], segColor=ballColor[2], markerType = 'o', marSize = 6, markerEdgeColor ='orangered')
+        matplotlib_artist_objs['greenBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['greenBall'], segColor=ballColor[1], markerType = 'o', marSize = 6, markerEdgeColor ='darkgreen')
 
-    matplotlib_artist_objs['wobbleBoard'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['wobbleBoard'], segColor='k', lineWidth=1)
-    matplotlib_artist_objs['wobbleWheel'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['wobbleWheel'], segColor='k', lineWidth=1)
+        matplotlib_artist_objs['wobbleBoard'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['wobbleBoard'], segColor='k', lineWidth=1)
+        matplotlib_artist_objs['wobbleWheel'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['wobbleWheel'], segColor='k', lineWidth=1)
 
     skel_dottos = []
     for mm in range(67): #getcher dottos off my face!
@@ -383,13 +411,17 @@ def PlaySkeletonAnimation(
 
     matplotlib_artist_objs['skel_dottos'] = skel_dottos
 
-    matplotlib_artist_objs['dlc_dottos'] = [ax3d.plot(thisTraj[0, 0:1], thisTraj[1, 0:1], thisTraj[2, 0:1],'b.', markersize=1)[0] for thisTraj in dlc_trajectories]
+    matplotlib_artist_objs['charuco_dottos'] = [ax3d.plot(thisTraj[0, 0:1], thisTraj[1, 0:1], thisTraj[2, 0:1],'m.', markersize=1)[0] for thisTraj in charuco_trajectories]
 
-    matplotlib_artist_objs['ball_tails'] = [ax3d.plot( 
-                                            dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 0],
-                                            dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 1],
-                                            dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 2],
-                                            '-', color=ballColor[bb])[0] for bb in range(3)]
+    
+    if useDLC:
+        matplotlib_artist_objs['dlc_dottos'] = [ax3d.plot(thisTraj[0, 0:1], thisTraj[1, 0:1], thisTraj[2, 0:1],'b.', markersize=1)[0] for thisTraj in dlc_trajectories]
+
+        matplotlib_artist_objs['ball_tails'] = [ax3d.plot( 
+                                                dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 0],
+                                                dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 1],
+                                                dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 2],
+                                                '-', color=ballColor[bb])[0] for bb in range(3)]
     
 
     numFrames = skel_fr_mar_dim.shape[0]
@@ -407,83 +439,45 @@ def PlaySkeletonAnimation(
     # groundYY = np.zeros_like(groundXX)
     # groundMesh = ax3d.plot_surface(groundXX, groundZZ, groundYY, color='k', alpha=.5)
 
-    axRange = 500#session.board.square_length * 10
+    axRange = 300#session.board.square_length * 10
 
     # Setting the axes properties
     ax3d.set_xlim3d([mx-axRange, mx+axRange])
     ax3d.set_ylim3d([my-axRange, my+axRange])
-    ax3d.set_zlim3d([mz-axRange-1600, mz+axRange-1600])
+    ax3d.set_zlim3d([mz-axRange, mz+axRange])
     
-    fig.suptitle("-The FreeMoCap Project-", fontsize=14)
+    tit1 = fig.text(.5, .96, "The FreeMoCap Project", fontsize=15, horizontalalignment='center')
+    tit2 = fig.text(.5, .92, "Session: {}".format(session.sessionID), fontsize=8, horizontalalignment='center')
+
+
 
     ax3d.view_init(azim=azimuth, elev=elevation)
     
 
 
-###   
-###   
-###   ███    ███  █████  ██   ██ ███████     ██    ██ ██ ██████  ███████  ██████       █████  ██   ██ ███████ ███████ 
-###   ████  ████ ██   ██ ██  ██  ██          ██    ██ ██ ██   ██ ██      ██    ██     ██   ██  ██ ██  ██      ██      
-###   ██ ████ ██ ███████ █████   █████       ██    ██ ██ ██   ██ █████   ██    ██     ███████   ███   █████   ███████ 
-###   ██  ██  ██ ██   ██ ██  ██  ██           ██  ██  ██ ██   ██ ██      ██    ██     ██   ██  ██ ██  ██           ██ 
-###   ██      ██ ██   ██ ██   ██ ███████       ████   ██ ██████  ███████  ██████      ██   ██ ██   ██ ███████ ███████ 
-###                                                                                                                   
-###                                                                                                                   
+    ###   
+    ###   
+    ###   ███    ███  █████  ██   ██ ███████     ██    ██ ██ ██████  ███████  ██████       █████  ██   ██ ███████ ███████ 
+    ###   ████  ████ ██   ██ ██  ██  ██          ██    ██ ██ ██   ██ ██      ██    ██     ██   ██  ██ ██  ██      ██      
+    ###   ██ ████ ██ ███████ █████   █████       ██    ██ ██ ██   ██ █████   ██    ██     ███████   ███   █████   ███████ 
+    ###   ██  ██  ██ ██   ██ ██  ██  ██           ██  ██  ██ ██   ██ ██      ██    ██     ██   ██  ██ ██  ██           ██ 
+    ###   ██      ██ ██   ██ ██   ██ ███████       ████   ██ ██████  ███████  ██████      ██   ██ ██   ██ ███████ ███████ 
+    ###                                                                                                                   
+    ###                                                                                                                   
     
 
     syncedVidPathListAll = list(sorted(session.syncedVidPath.glob('*.mp4')))
-    
-    #remove a few vids, 6 is too many! NOTE - this is kinda hardcoded for the 20-07-2021 release video
-    if session.sessionID == 'sesh_21-07-08_131030':
-        useCams = [0,1,2,3]
-    #     delTheseVids = [4,1]
-    
-    if useCams: #JSM NOTE _ This might not work at all lol 
-        syncedVidPathList = [syncedVidPathListAll[camNum] for camNum in useCams]
-        dlcData_nCams_nFrames_nImgPts_XYC = dlcData_nCams_nFrames_nImgPts_XYC[useCams, :, :, :]
-        openPoseData_nCams_nFrames_nImgPts_XYC = openPoseData_nCams_nFrames_nImgPts_XYC[useCams, :, :, :]
-    else:
-        syncedVidPathList  = syncedVidPathListAll.copy()
+    numVids = len(syncedVidPathListAll)
+
+    syncedVidPathList  = syncedVidPathListAll.copy()
 
     vidAxesList = []
     vidAristList = []
     vidCapObjList = []
 
     list_of_vidOpenPoseArtistdicts = []
-    vidDLCArtistList = []
     
-    vidAx_positions = []
-
-    left = .45
-    bottom = 0.05
-    vidWidth = .38
-    vidHeight = vidWidth
-    widthScale = .6
-    heightScale = 1.2
-
-    vidAx_positions.append([
-        left, 
-        bottom, 
-        vidWidth, 
-        vidHeight])
-
-    vidAx_positions.append([
-        left+vidWidth*widthScale, 
-        bottom, 
-        vidWidth, 
-        vidHeight])
-
-    vidAx_positions.append([
-        left, 
-        bottom+vidHeight*heightScale, 
-        vidWidth, 
-        vidHeight])
-
-    vidAx_positions.append([
-        left+vidWidth*widthScale,
-        bottom+vidHeight*heightScale, 
-        vidWidth, 
-        vidHeight])
+    if useDLC: vidDLCArtistList = []    
 
     def build_2d_segment_artist_dict(vidNum, data_nCams_nFrames_nImgPts_XYC, dict_of_list_of_segment_idxs, segColor = 'k', lineWidth = 1, lineStyle = '-'):       
         """ 
@@ -530,13 +524,31 @@ def PlaySkeletonAnimation(
                                                     )[0]
         return dict_of_artist_objects
 
+    # vidImageGrid = ImageGrid(fig, [.45, 0.05, .54, .9], nrows_ncols = (2,2), axes_pad = 0.1) # https://matplotlib.org/stable/gallery/axes_grid1/simple_axesgrid.html
+    if numVids < 4:
+        numRows = numVids
+        numCols = 1
+    else:
+        numRows = int(np.ceil(numVids/2))
+        numCols = 2
 
-    for vidSubplotNum, thisVidPath in enumerate(syncedVidPathList):
+
+    vidAxGridSpec = fig.add_gridspec(numRows, numCols, left=.55, bottom=.025, right=.9, top=.9, wspace=.1, hspace=.1)
+
+
+    for thisVidNum, thisVidPath in enumerate(syncedVidPathList):
         #make subplot for figure (and set position)
-        thisVidAxis = fig.add_subplot(
-                                    position=vidAx_positions[vidSubplotNum], 
-                                    label="Vid_{}".format(str(vidSubplotNum)),
-                                    ) 
+
+        if numVids < 4:
+            thisVidAxis = fig.add_subplot(vidAxGridSpec[thisVidNum])
+        elif numVids %2 > 0: #if odd number videos plot the first vid across 2 spots
+            if thisVidNum==0:
+                thisVidAxis = fig.add_subplot(vidAxGridSpec[0,:])
+            else:
+                thisVidAxis = fig.add_subplot(vidAxGridSpec[thisVidNum+1])
+        else: 
+            thisVidAxis = fig.add_subplot(vidAxGridSpec[thisVidNum])
+
 
         thisVidAxis.set_axis_off()
 
@@ -558,17 +570,17 @@ def PlaySkeletonAnimation(
 
         if useOpenPose:
             vidOpenPoseArtist_dict = dict()            
-            vidOpenPoseArtist_dict['body'] = build_2d_segment_artist_dict(vidSubplotNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['body'], segColor = dict_of_skel_lineColor)
-            vidOpenPoseArtist_dict['rHand'] = build_2d_segment_artist_dict(vidSubplotNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['rHand'], segColor=np.append(humon_red, .75), lineWidth=.5)
-            vidOpenPoseArtist_dict['lHand'] = build_2d_segment_artist_dict(vidSubplotNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['lHand'], segColor=np.append(humon_blue, .75), lineWidth=.5)
-            vidOpenPoseArtist_dict['face'] = build_2d_segment_artist_dict(vidSubplotNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['face'], segColor = np.array([1.,1.,1.,1]), lineWidth=.25)
+            vidOpenPoseArtist_dict['body'] = build_2d_segment_artist_dict(thisVidNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['body'], segColor = dict_of_skel_lineColor)
+            vidOpenPoseArtist_dict['rHand'] = build_2d_segment_artist_dict(thisVidNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['rHand'], segColor=np.append(humon_red, .75), lineWidth=.5)
+            vidOpenPoseArtist_dict['lHand'] = build_2d_segment_artist_dict(thisVidNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['lHand'], segColor=np.append(humon_blue, .75), lineWidth=.5)
+            vidOpenPoseArtist_dict['face'] = build_2d_segment_artist_dict(thisVidNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['face'], segColor = np.array([1.,1.,1.,1]), lineWidth=.25)
             list_of_vidOpenPoseArtistdicts.append(vidOpenPoseArtist_dict)
 
         if useDLC:
             
             vidDLCArtistList.append(thisVidAxis.plot(
-                                    dlcData_nCams_nFrames_nImgPts_XYC[vidSubplotNum,startFrame,:,0], 
-                                    dlcData_nCams_nFrames_nImgPts_XYC[vidSubplotNum,startFrame,:,1],
+                                    dlcData_nCams_nFrames_nImgPts_XYC[thisVidNum,startFrame,:,0], 
+                                    dlcData_nCams_nFrames_nImgPts_XYC[thisVidNum,startFrame,:,1],
                                     linestyle='none',
                                     marker = '.',
                                     markersize = 1,
@@ -588,45 +600,27 @@ def PlaySkeletonAnimation(
     fps=30 #NOTE - This should be saved in the session Class some how
     time = np.arange(0, numFrames)/fps
     
-    rHandX = skel_trajectories[4][:,0]
-    rHandY = -skel_trajectories[4][:,1]
-    lHandX = skel_trajectories[7][:,0]
-    lHandY = -skel_trajectories[7][:,1]
+    rHandX = skel_trajectories[4][:,0]/1000 #convert mm to meters
+    rHandY = -skel_trajectories[4][:,1]/1000
+    lHandX = skel_trajectories[7][:,0]/1000
+    lHandY = -skel_trajectories[7][:,1]/1000
 
-    ballX_1 = dlc_trajectories[2][:lHandX.shape[0],0] #NOTE - Why tf aren't these the same length already?!?
-    ballY_1 = -dlc_trajectories[2][:lHandX.shape[0],1]
-    ballLineColor_1 = ballColor[2]
+    
+    linePlotWidth = .45
+    linePlotHeight = .14
 
-    # ballX_2 = dlc_trajectories[1][:lHandX.shape[0],0] #NOTE - Why tf aren't these the same length already?!?
-    # ballY_2 = -dlc_trajectories[1][:lHandX.shape[0],1]
-    # ballLineColor_2 = ballColor[1]
+    yTimeSeriesAx = fig.add_subplot(position=[.07, .225, linePlotWidth, linePlotHeight])
+    yTimeSeriesAx.set_title('Hand Position vs Time', fontsize = 7, pad=2)
 
-    # ballX_3 = dlc_trajectories[0][:lHandX.shape[0],0] #NOTE - Why tf aren't these the same length already?!?
-    # ballY_3 = -dlc_trajectories[0][:lHandX.shape[0],1]
-    # ballLineColor_3 = ballColor[0]
-
-
-    yTimeSeriesAx = fig.add_subplot(position=[.07, .25, .45, .18])
-    yTimeSeriesAx.set_title('Hand and Juggling Ball Position vs Time', fontsize = 7, pad=2)
-
-    yTimeSeriesAx.plot(time, ballY_1, color=ballLineColor_1, alpha=.99, linewidth=1.5, label='Juggling Ball')    
-    # yTimeSeriesAx.plot(time, ballY_2, color=ballLineColor_2, alpha=.99, linewidth=1.5, label='Juggling Ball')    
-    # yTimeSeriesAx.plot(time, ballY_3, color=ballLineColor_3, alpha=.99, linewidth=1.5, label='Juggling Ball')    
     yTimeSeriesAx.plot(time, rHandY, color=humon_red, linewidth=.75, label='Right Hand')
     yTimeSeriesAx.plot(time, lHandY, color=humon_blue, linewidth=.75, label='Left Hand')
     
-    
+    timeRange = 3
+    ylimRange = .6
 
-    ylimRange = 300
     yCurrTimeArtists = dict()
     yCurrTimeYdata = dict()
     yCurrTimeArtists['blackLine']  = yTimeSeriesAx.plot([startFrame/fps, startFrame/fps], [-ylimRange, ylimRange*2], color='k', linewidth=1)
-    yCurrTimeArtists['JugglingBall_1']  = yTimeSeriesAx.plot([startFrame/fps], [ballY_1[startFrame]], color=ballLineColor_1, markeredgecolor = 'orangered',marker='o', markersize=5)
-    yCurrTimeYdata['JugglingBall_1'] = ballY_1
-    # yCurrTimeArtists['JugglingBall_2']  = yTimeSeriesAx.plot([startFrame/fps], [ballY_2[startFrame]], color=ballLineColor_2, markeredgecolor = 'darkgreen',marker='o', markersize=5)
-    # yCurrTimeYdata['JugglingBall_2'] = ballY_2
-    # yCurrTimeArtists['JugglingBall_3']  = yTimeSeriesAx.plot([startFrame/fps], [ballY_3[startFrame]], color=ballLineColor_3, markeredgecolor = 'violet',marker='o', markersize=5)
-    # yCurrTimeYdata['JugglingBall_3'] = ballY_3
 
     yCurrTimeArtists['rHandDot']  = yTimeSeriesAx.plot([startFrame/fps], [rHandY[startFrame]], markeredgecolor=humon_red, markerfacecolor = 'k',marker='o', markersize=3)
     yCurrTimeYdata['rHandDot'] = rHandY
@@ -638,9 +632,9 @@ def PlaySkeletonAnimation(
     yTimeSeriesAx.tick_params(labelsize=6, direction='in', width=.5)
     yTimeSeriesAx.tick_params( pad=2)
     
-    timeRange = 3
-    yTimeSeriesAx.set_ylabel('Vertical (mm)', fontsize=7, labelpad=4)
-    yTimeSeriesAx.set_ylim([-150, 600])
+
+    yTimeSeriesAx.set_ylabel('Vertical (m)', fontsize=7, labelpad=3)
+    yTimeSeriesAx.set_ylim([-ylimRange, ylimRange])
     yTimeSeriesAx.set_xlim([(startFrame/fps)-timeRange, (startFrame/fps)+timeRange])
 
     
@@ -654,25 +648,16 @@ def PlaySkeletonAnimation(
 
 
 
-    xTimeSeriesAx = fig.add_subplot(position=[.07, 0.065, .45, .18])
+    xTimeSeriesAx = fig.add_subplot(position=[.07, 0.05, linePlotWidth, linePlotHeight])
     
-    xTimeSeriesAx.plot(time, ballX_1, color=ballLineColor_1, alpha=.99, linewidth=1.25, label='Juggling Ball')    
-    # xTimeSeriesAx.plot(time, ballX_2, color=ballLineColor_2, alpha=.99, linewidth=1.25, label='Juggling Ball')    
-    # xTimeSeriesAx.plot(time, ballX_3, color=ballLineColor_3, alpha=.99, linewidth=1.25, label='Juggling Ball')    
     xTimeSeriesAx.plot(time, rHandX, color=humon_red, linewidth=.75, label='Right Hand')
     xTimeSeriesAx.plot(time, lHandX, color=humon_blue, linewidth=.75, label='Left Hand')
     
 
-    ylimRange = 300
+
     xCurrTimeArtists = dict()
     xCurrTimeYdata = dict()
     xCurrTimeArtists['blackLine']  = xTimeSeriesAx.plot([startFrame/fps, startFrame/fps], [-ylimRange, ylimRange], color='k', linewidth=1)
-    xCurrTimeArtists['JugglingBall_1']  = xTimeSeriesAx.plot([startFrame/fps], [ballX_1[startFrame]], color=ballLineColor_1, markeredgecolor = 'orangered',marker='o', markersize=5)
-    xCurrTimeYdata['JugglingBall_1'] = ballX_1
-    # xCurrTimeArtists['JugglingBall_2']  = xTimeSeriesAx.plot([startFrame/fps], [ballX_1[startFrame]], color=ballLineColor_2, markeredgecolor = 'darkgreen',marker='o', markersize=5)
-    # xCurrTimeYdata['JugglingBall_2'] = ballX_2
-    # xCurrTimeArtists['JugglingBall_3']  = xTimeSeriesAx.plot([startFrame/fps], [ballX_1[startFrame]], color=ballLineColor_3, markeredgecolor = 'indigo',marker='o', markersize=5)
-    # xCurrTimeYdata['JugglingBall_3'] = ballX_3
     xCurrTimeArtists['rHandDot']  = xTimeSeriesAx.plot([startFrame/fps], [rHandX[startFrame]], markeredgecolor=humon_red, markerfacecolor = 'k',marker='o', markersize=3)
     xCurrTimeYdata['rHandDot'] = rHandX
     xCurrTimeArtists['lHandDot']  = xTimeSeriesAx.plot([startFrame/fps], [lHandX[startFrame]], markeredgecolor=humon_blue, markerfacecolor = 'k', marker='o', markersize=3)
@@ -683,7 +668,7 @@ def PlaySkeletonAnimation(
     xTimeSeriesAx.tick_params(labelsize=6, direction='in', width=.5)
     xTimeSeriesAx.tick_params( pad=2)
     
-    xTimeSeriesAx.set_ylabel('Left/Right (mm)', fontsize=7, labelpad=1)
+    xTimeSeriesAx.set_ylabel('Left/Right (m)', fontsize=7, labelpad=0)
     xTimeSeriesAx.set_xlabel('Time(sec)', fontsize=8, labelpad=0)
 
     xTimeSeriesAx.set_ylim([-ylimRange, ylimRange])
@@ -708,12 +693,12 @@ def PlaySkeletonAnimation(
     #     orientation="horizontal"
     # )
 
-    thisVidAxis.text(-565,1440, 'Music - artist: Neon Exdeath, song: Meowmaline, album: Jewel Tones',color=humon_green, fontsize=6)
-    thisVidAxis.text(-565,1480, 'Code - github.com/jonmatthis/freemocap || jonmatthis.com/freemocap',color=humon_green, fontsize=6)
+    # thisVidAxis.text(-565,1440, 'Music - artist: Neon Exdeath, song: Meowmaline, album: Jewel Tones',color=humon_green, fontsize=6)
+    thisVidAxis.text(-150,510, 'github.com/jonmatthis/freemocap || jonmatthis.com/freemocap',color=humon_green, fontsize=6)
 
-    logoAx = fig.add_subplot(position=[.9, .9, .1, .1])
-    logoIm = cv2.imread(r"C:\Users\jonma\Downloads\freemocap-logo-border-2.png")
-    logoAx.imshow(cv2.cvtColor(logoIm, cv2.COLOR_BGR2RGB))
+    logoAx = fig.add_subplot(position=[.85, .85, .15, .15])
+    logoIm = cv2.imread(r'freemocap\logo\fmc-logo-black-border-white-bkgd.png') #JSM NOTE - THis doesn't work, but SOMETIMES IT DOES?!
+    if logoIm is not None:  logoAx.imshow(cv2.cvtColor(logoIm, cv2.COLOR_BGR2RGB))
     logoAx.axis('off')
     
 
@@ -724,7 +709,7 @@ def PlaySkeletonAnimation(
 
     
     if recordVid:
-        vidSavePath = '{}_outVid.mp4'.format(str(session.sessionPath / session.sessionID))
+        vidSavePath = '{}_animVid.mp4'.format(str(session.sessionPath / session.sessionID))
         with console.status('Saving video - {}'.format(vidSavePath)):
             Writer = animation.writers['ffmpeg']
             writer = Writer(fps=30, metadata=dict(artist='FreeMoCap'))#, bitrate=1800)
@@ -733,23 +718,23 @@ def PlaySkeletonAnimation(
             # vidSavePath = '{}_outVid.mp4'.format(str(session.sessionPath / session.sessionID))
             # Writer.saving(fig = fig, outfile=vidSavePath, dpi=150)
 
- 
     plt.pause(0.1)
     plt.draw()
+
 
 
     console.print(":sparkle: :skull: :sparkle:")
 
 
-### 
-###    
-###    ███████  ██████  ██████  ███    ███  █████  ████████      ██████  ██████  ███████ ███    ██ ██████   ██████  ███████ ███████     ███████ ██   ██ ███████ ██      
-###    ██      ██    ██ ██   ██ ████  ████ ██   ██    ██        ██    ██ ██   ██ ██      ████   ██ ██   ██ ██    ██ ██      ██          ██      ██  ██  ██      ██      
-###    █████   ██    ██ ██████  ██ ████ ██ ███████    ██        ██    ██ ██████  █████   ██ ██  ██ ██████  ██    ██ ███████ █████       ███████ █████   █████   ██      
-###    ██      ██    ██ ██   ██ ██  ██  ██ ██   ██    ██        ██    ██ ██      ██      ██  ██ ██ ██      ██    ██      ██ ██               ██ ██  ██  ██      ██      
-###    ██       ██████  ██   ██ ██      ██ ██   ██    ██         ██████  ██      ███████ ██   ████ ██       ██████  ███████ ███████     ███████ ██   ██ ███████ ███████ 
-###                                                                                                                                                                         
-###                                                                                                                                                                         
+    ### 
+    ###    
+    ###    ███████  ██████  ██████  ███    ███  █████  ████████      ██████  ██████  ███████ ███    ██ ██████   ██████  ███████ ███████     ███████ ██   ██ ███████ ██      
+    ###    ██      ██    ██ ██   ██ ████  ████ ██   ██    ██        ██    ██ ██   ██ ██      ████   ██ ██   ██ ██    ██ ██      ██          ██      ██  ██  ██      ██      
+    ###    █████   ██    ██ ██████  ██ ████ ██ ███████    ██        ██    ██ ██████  █████   ██ ██  ██ ██████  ██    ██ ███████ █████       ███████ █████   █████   ██      
+    ###    ██      ██    ██ ██   ██ ██  ██  ██ ██   ██    ██        ██    ██ ██      ██      ██  ██ ██ ██      ██    ██      ██ ██               ██ ██  ██  ██      ██      
+    ###    ██       ██████  ██   ██ ██      ██ ██   ██    ██         ██████  ██      ███████ ██   ████ ██       ██████  ███████ ███████     ███████ ██   ██ ███████ ███████ 
+    ###                                                                                                                                                                         
+    ###                                                                                                                                                                         
 def formatOpenPoseStickIndices():
     """
     generate dictionary of arrays, each containing the 'connect-the-dots' order to draw a given body segment

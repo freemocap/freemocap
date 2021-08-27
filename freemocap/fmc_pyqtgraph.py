@@ -220,6 +220,7 @@ class PlaySkeletonWidget:
 
         # Plot Mr. Skreleton :D
         # Plots the dots
+        
         self.skelScatterItem.setData(
             pos=self.skel_fr_mar_dim[self.currentFrameNumber, :, :]
         )

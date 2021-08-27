@@ -31,7 +31,7 @@ def initialize(session, stage, board):
     if stage == 1:
 
         # create session ID
-        sessionID_in = datetime.datetime.now().strftime("sesh_%y-%m-%d_%H%M%S")
+        sessionID_in = datetime.datetime.now().strftime("sesh_%Y-%m-%d_%H_%M_%S")
         session.sessionID = sessionID_in
 
     #load the parameters YAML and extract the saved parameters if possible, and the default otherwise       

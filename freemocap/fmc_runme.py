@@ -93,6 +93,7 @@ def Run(sessionID=None,
         # 3) If no sessionID was user-input, search the chosen directory for the last session created
         if sesh.setDataPath == True:
             basePath = runmeGUI.RunChooseDataPathGUI(session)
+            sesh.basePath = Path(basePath)
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
 
         elif sesh.userDataPath is not None:
@@ -104,7 +105,7 @@ def Run(sessionID=None,
             except KeyError('Saved Data path not found, please choose a new one'):
                 basePath = runmeGUI.RunChooseDataPathGUI(session)
 
-        dataFolder = Path(basePath)/sesh.dataFolderName
+        dataFolder = Path(sesh.basePath)/sesh.dataFolderName
         sesh.dataFolderPath = dataFolder
         
         if not dataFolder.exists():
@@ -262,7 +263,7 @@ def Run(sessionID=None,
         print('Starting Skeleton Plotting')
         playskeleton.ReplaySkeleton_matplotlib(
                                     sesh,
-                                    vidType=1,
+                                    vidType=0,
                                     startFrame=40,
                                     azimuth=-90, 
                                     elevation=-80,

@@ -11,17 +11,25 @@ from rich.progress import track
 
 
 
-def CalibrateCaptureVolume(session,board):
-    
+def CalibrateCaptureVolume(session,board, calVideoFrameLength = 120):
+    """ 
+    Check if a previous calibration yaml exists, and if not, create a set of shortened calibration videos and run Anipose functions
+    to create a calibration yaml. Takes the 2D charuco board points and reconstructs them into 3D points that are saved out
+    into the DataArrays folder
+    """  
     session.calVidPath.mkdir(exist_ok = True)
     session.dataArrayPath.mkdir(exist_ok = True)
 
-    calVideoFrameLength = 60
-    createCalibrationVideos(session, calVideoFrameLength)
+    if calVideoFrameLength < 0:
+        calVideoFrameLength = session.numFrames
+        calibrationVideoPath = session.syncedVidPath
+    else:    
+        createCalibrationVideos(session, calVideoFrameLength)
+        calibrationVideoPath = session.calVidPath
 
     vidnames = []
     cam_names = []
-    for count, thisVidPath in enumerate(session.calVidPath.glob("*.mp4"), start=1):
+    for count, thisVidPath in enumerate(calibrationVideoPath.glob("*.mp4"), start=1):
         vidnames.append([str(thisVidPath)])
         cam_names.append(str(count))
         session.numCams = count
@@ -46,9 +54,9 @@ def CalibrateCaptureVolume(session,board):
     """Takes as input a list of list of video filenames, one list of each camera.
     Also takes a board which specifies what should be detected in the videos"""
 
-    all_rows = cgroup.get_rows_videos(vidnames, board, verbose=True)
+    # all_rows = cgroup.get_rows_videos(vidnames, board, verbose=True)
 
-    cgroup.set_camera_sizes_videos(vidnames)
+    # cgroup.set_camera_sizes_videos(vidnames)
 
     if session.debug:
         fig = plt.figure(47290)
@@ -90,7 +98,7 @@ def CalibrateCaptureVolume(session,board):
 
 
     session.cgroup = cgroup
-    n_frames = 40
+    n_frames = calVideoFrameLength
     startframe = 0
     n_trackedPoints = 24
     framelist = range(startframe, startframe + n_frames)
@@ -105,7 +113,7 @@ def CalibrateCaptureVolume(session,board):
             try:
                 charucoarray[cam][count] = data[frame][cam]["filled"]
             except:
-                print("failed frame:", frame)
+                # print("failed frame:", frame)
                 continue
     charuco_nCams_nFrames_nImgPts_XY = np.squeeze(np.array(charucoarray))
 
@@ -172,11 +180,15 @@ def CalibrateCaptureVolume(session,board):
         plt.show()
 
     path_to_charuco_array = session.dataArrayPath/'charuco_3d_points.npy'
-    np.save(path_to_charuco_array, mean_charuco_fr_mar_dim)
+    np.save(path_to_charuco_array, charuco_fr_mar_dim)
     return cgroup, mean_charuco_fr_mar_dim
 
 
 def createCalibrationVideos(session, calVideoFrameLength):
+    """ 
+    Based on the desired length of the calibration videos (for the anipose functions), create new videos trimmed 
+    to that specific length
+    """  
     vidList = os.listdir(session.syncedVidPath)
     framelist = list(range(calVideoFrameLength))
     codec = "DIVX"

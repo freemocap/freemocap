@@ -37,6 +37,12 @@ class CamRecordingThread(threading.Thread):
 def CamRecording(
     session, camID, camInput, videoName, rawVidPath, beginTime, parameterDictionary
 ):
+    """
+    Runs the recording process for each threaded camera instance. Saves a video to the RawVideos folder.
+    Saves a timestamp for each frame into a pickle file. Checks for whether the global variable 'flag' 
+    has been set to True to end the recording (the first camera to end sets the flag to True, which
+    means the rest of the cameras will quit in short order)
+    """
     # the flag is triggered when the user shuts down one webcam to shut down the rest.
     # normally I'd try to avoid global variables, but in this case it's
     # necessary, since each webcam runs as it's own object.

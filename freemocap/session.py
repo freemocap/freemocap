@@ -32,7 +32,10 @@ class Session: #self like "recording self"
         self.openPose_imgPathList = None
 
     def start_session(self,paramDict,rotDict):
-        #start a session, create all the file paths necessary, and create a session dictionary to save settings
+        """ 
+        When starting a session from stage 1, create all the file paths necessary, and create a session dictionary to save settings.
+        Calls the create_session_paths and create_session_dictionary function
+        """         
         dataFolderPath = self.basePath/self.dataFolderName
         dataFolderPath.mkdir(exist_ok= True)
 
@@ -49,9 +52,10 @@ class Session: #self like "recording self"
 
 
     def create_session_paths(self):
-        #creates Path objects to each folder created in a recording self and adds them all to the pathList variable
-        #folders for these paths are created at the start of each stage where they are needed 
-
+        """ 
+        Creates Path objects to each folder created in a recording self and adds them all to the pathList variable
+        folders for these paths are created at the start of each stage where they are needed 
+        """         
         pathList = []
 
         self.rawVidPath = self.sessionPath/'RawVideos'
@@ -81,7 +85,10 @@ class Session: #self like "recording self"
         return pathList
 
     def create_session_dictionary(self):
-        #creates a dictionary of settings that should be saved into a YAML throughout each self
+        """ 
+        Creates a dictionary of settings that should be saved into a YAML through each session
+        """                
+    
 
         recording_parameters = {'numCams': self.numCams, 'numFrames': self.numFrames, 'numTrackedPoints': self.numTrackedPoints}
 
@@ -99,7 +106,9 @@ class Session: #self like "recording self"
 
 
     def create_session_txt(self,paramDict,rotDict):
-    #create a text file listing recording parameters
+        """ 
+        Create a text file listing recording parameters
+        """    
         parameter_text = self.sessionPath/'sessionSettings.txt' 
         text = open(parameter_text, 'w')
         text.write("Session ID = %s\n" %(self.sessionID))
@@ -108,10 +117,10 @@ class Session: #self like "recording self"
         text.close()
 
     def save_session(self):
-        #save the self settings you want to keep from self to self into a yaml
-        #because some items are not yaml-able, a copy of the sessionDictionary is made and adjusted to be fully yaml-able
-            #Adjustments Made:
-                #pathLib objects are all converted to strings
+        """ 
+        Save the settings needed to rerun the session at a later point into a dictionary, and then save it into a YAML
+        """           
+        
         session_dictionary_to_save = self.session_settings
 
         for key,value in session_dictionary_to_save['session_paths'].items():
@@ -127,6 +136,10 @@ class Session: #self like "recording self"
 
    
     def initialize(self,stage):
+        """ 
+        When starting a session from Stage 3 onwards, modify the current session class instance with all necessary 
+        attributes needed to run the rest of the pipeline 
+        """  
         #load all session settings back into the session class for this run-through of the code
         
         #recordPath = self.basePath/'Data' #create a Data folder in the filepath if none exists yet
@@ -150,6 +163,10 @@ class Session: #self like "recording self"
 
    
     def load_session(self):
+        """ 
+        Called by the self.initialize function - reads the session yaml and loads the number of cameras and frames, and then 
+        creates all necessary session paths
+        """  
 
         #session_yaml_path = self.sessionPath/'{}_config.yaml'.format(self.sessionID)
         session_yaml = YAML(typ='safe', pure=True)
@@ -183,10 +200,6 @@ class Session: #self like "recording self"
     #     self.dlcDataPath = session_paths['DLCData']
     #     self.imOutPath = session_paths['imOut']
     #     self.dataArrayPath = session_paths['DataArrays']
-
-    def save_user_preferences(self,preferences):
-        preferences_yaml = YAML()
-        preferences_yaml.dump(preferences,self.preferences_path)
 
 
     def save_user_preferences(self,preferences):

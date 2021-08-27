@@ -141,8 +141,8 @@ def runMediaPipe(session, dummyRun=False):
     session.mediaPipe_jsonPathList = mediaPipe_jsonPathList
     session.mediaPipe_imgPathList = mediaPipe_imgPathList
 
-    session.session_settings['mediaPipe_imgPathList'] = str(mediaPipe_imgPathList)
-    session.session_settings['mediaPipe_jsonPathList'] = str(mediaPipe_jsonPathList)
+    session.session_settings['mediaPipe_imgPathList'] = mediaPipe_imgPathList_yaml
+    session.session_settings['mediaPipe_jsonPathList'] = mediaPipe_jsonPathList_yaml
 
     #yaml = YAML()
     #data = yaml.load(session.yamlPath)

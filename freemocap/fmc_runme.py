@@ -102,6 +102,7 @@ def RunMe(sessionID=None,
         # 3) If no sessionID was user-input, search the chosen directory for the last session created
         if sesh.setDataPath == True:
             basePath = runmeGUI.RunChooseDataPathGUI(session)
+            sesh.basePath = Path(basePath)
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
 
         elif sesh.userDataPath is not None:
@@ -117,7 +118,7 @@ def RunMe(sessionID=None,
                 sesh.save_user_preferences(sesh.preferences)
 
 
-        dataFolder = Path(basePath)/sesh.dataFolderName
+        dataFolder = Path(sesh.basePath)/sesh.dataFolderName
         sesh.dataFolderPath = dataFolder
         
         if not dataFolder.exists():
@@ -239,7 +240,6 @@ def RunMe(sessionID=None,
     # %% Stage Five - Make Skreleton Animation
     if stage <= 5:
         print('Starting Skeleton Plotting')
-     
         play_skeleton_animation.PlaySkeletonAnimation(
                                 sesh,
                                 startFrame=0,

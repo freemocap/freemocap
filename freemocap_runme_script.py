@@ -3,11 +3,10 @@ from pathlib import Path
 import socket 
 
 
-
-fmc.RunMe(  stage=5, 
+fmc.RunMe(  stage=5,
             useOpenPose=True, 
             openPoseDummyRun=True, 
-            useMediaPipe=True, 
+            useMediaPipe=False, 
             useDLC=False, 
             recordVid = True,
             reconstructionConfidenceThreshold = 0.2,

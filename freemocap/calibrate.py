@@ -54,47 +54,9 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 120):
     """Takes as input a list of list of video filenames, one list of each camera.
     Also takes a board which specifies what should be detected in the videos"""
 
-    # all_rows = cgroup.get_rows_videos(vidnames, board, verbose=True)
+    error,charuco_data, charuco_frames = cgroup.calibrate_videos(vidnames, board)
+    cgroup.dump(session.cameraCalFilePath) #JSM NOTE  - let's just use .yaml's unless there is some reason to use .toml
 
-    # cgroup.set_camera_sizes_videos(vidnames)
-
-    if session.debug:
-        fig = plt.figure(47290)
-        for camNum in range(len(all_rows)):
-            ax = fig.add_subplot(2, 2, camNum + 1)
-            # cap = cv2.VideoCapture(vidnames[camNum][0]) #this is crazy inefficient - we should save out the first image somewhere and save it in an accessible location
-            # ret, frame = cap.read()
-            # plt.imshow(frame)
-            # cap.release()
-            for frNum in range(len(all_rows[camNum])):
-                corners = np.squeeze(all_rows[camNum][frNum]["filled"])
-                plt.plot(corners[:, 0], corners[:, 1], ".-")
-            # xmin = np.nanmin(corners[:,0])*.9
-            # xmax = np.nanmax(corners[:,0])*1.1
-            # ymin = np.nanmin(corners[:,1])*.9
-            # ymax = np.nanmax(corners[:,1])*1.1
-            # ax.set_xlim(xmin, xmax)
-            # ax.set_xlim(ymin, ymax)
-        plt.show()
-
-    #%% This next bit is a copy-paste of the inner bits of `cgroup.calibrate_videos` - Part 2 of 2
-    # error, merged = cgroup.calibrate_rows(all_rows, board,
-    #                            init_intrinsics=True,
-    #                            init_extrinsics=True)
-    #%% End of the copy-paste of the inner bits of `cgroup.calibrate_videos` - END
-
-
-    #JSM NOTE - need add method to extract Charuco board points from the calibrate_videos pipeline
-
-        ## if you need to save and load
-        ## example saving and loading for later
-    if not session.cameraCalFilePath.is_file(): 
-        error,merged = cgroup.calibrate_videos(vidnames, board)
-        cgroup.dump(session.cameraCalFilePath) #JSM NOTE  - let's just use .yaml's unless there is some reason to use .toml
-        mergename = session.dataArrayPath/'charuco_2d_points.npy'
-        np.save(mergename,merged)
-    else: 
-        cgroup = CameraGroup.load(session.cameraCalFilePath) #load previous calibration config
 
 
     session.cgroup = cgroup
@@ -103,19 +65,19 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 120):
     n_trackedPoints = 24
     framelist = range(startframe, startframe + n_frames)
 
-    charucoarray = np.empty([session.numCams, n_frames, n_trackedPoints, 1, 2])
-    charucoarray[:] = np.nan
-
-    data = np.load(session.dataArrayPath/'charuco_2d_points.npy',allow_pickle = True)
+    charuco_nCams_nFrames_nImgPts_XY = np.empty([session.numCams, n_frames, n_trackedPoints,  2])
+    charuco_nCams_nFrames_nImgPts_XY[:] = np.nan
 
     for cam in range(session.numCams):
-        for count, frame in enumerate(framelist):
+        for charCount, thisCharFrame in enumerate(charuco_frames):
             try:
-                charucoarray[cam][count] = data[frame][cam]["filled"]
+                charuco_nCams_nFrames_nImgPts_XY[cam, thisCharFrame, :,:] = np.squeeze(charuco_data[charCount][cam]["filled"])
             except:
                 # print("failed frame:", frame)
                 continue
-    charuco_nCams_nFrames_nImgPts_XY = np.squeeze(np.array(charucoarray))
+    
+    charuco2d_filename = session.dataArrayPath/'charuco_2d_points.npy'
+    np.save(charuco2d_filename,charuco_nCams_nFrames_nImgPts_XY)
 
     session.charuco_nCams_nFrames_nImgPts_XY = charuco_nCams_nFrames_nImgPts_XY
 

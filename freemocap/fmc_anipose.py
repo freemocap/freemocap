@@ -1679,6 +1679,8 @@ class CameraGroup:
         for i, (row, cam) in enumerate(zip(all_rows, self.cameras)):
             all_rows[i] = board.estimate_pose_rows(cam, row)
 
+        charuco_frames = [f['framenum'][1] for f in all_rows[0]]
+
         merged = merge_rows(all_rows)
         imgp, extra = extract_points(merged, board, min_cameras=2)
 
@@ -1692,7 +1694,7 @@ class CameraGroup:
 
         error = self.bundle_adjust_iter(imgp, extra, verbose=verbose, **kwargs)
 
-        return error, merged
+        return error, merged, charuco_frames
 
     def get_rows_videos(self, videos, board, verbose=True):
         all_rows = []
@@ -1734,7 +1736,7 @@ class CameraGroup:
         if init_extrinsics:
             self.set_camera_sizes_videos(videos)
 
-        error, merged = self.calibrate_rows(
+        error, merged, charuco_frames = self.calibrate_rows(
             all_rows,
             board,
             init_intrinsics=init_intrinsics,
@@ -1742,7 +1744,7 @@ class CameraGroup:
             verbose=verbose,
             **kwargs
         )
-        return error, merged
+        return error, merged, charuco_frames
 
     def get_dicts(self):
         out = []

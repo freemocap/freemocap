@@ -101,20 +101,20 @@ def RunMe(sessionID=None,
         # 2) Check that the data folder exists
         # 3) If no sessionID was user-input, search the chosen directory for the last session created
         if sesh.setDataPath == True:
-            basePath = runmeGUI.RunChooseDataPathGUI(session)
-            sesh.basePath = Path(basePath)
+            sesh.basePath = runmeGUI.RunChooseDataPathGUI(session)
+            sesh.basePath = Path(sesh.basePath)
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
 
         elif sesh.userDataPath is not None:
-            basePath = sesh.userDataPath
+            sesh.basePath = sesh.userDataPath
         else:
             try:
                 current_path_to_data = preferences['saved']['path_to_save']
-                basePath = current_path_to_data
+                sesh.basePath = current_path_to_data
             except KeyError:
                 print('Saved Data path not found, please choose a new one')
-                basePath = runmeGUI.RunChooseDataPathGUI(session)
-                sesh.preferences['saved']['path_to_save'] = str(basePath)
+                sesh.basePath = runmeGUI.RunChooseDataPathGUI(session)
+                sesh.preferences['saved']['path_to_save'] = str(sesh.basePath)
                 sesh.save_user_preferences(sesh.preferences)
 
 

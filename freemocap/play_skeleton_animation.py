@@ -697,7 +697,7 @@ def PlaySkeletonAnimation(
     thisVidAxis.text(-150,510, 'github.com/jonmatthis/freemocap || jonmatthis.com/freemocap',color=humon_green, fontsize=6)
 
     logoAx = fig.add_subplot(position=[.85, .85, .15, .15])
-    logoIm = cv2.imread(r'freemocap\logo\fmc-logo-black-border-white-bkgd.png') #JSM NOTE - THis doesn't work, but SOMETIMES IT DOES?!
+    logoIm = cv2.imread(r'logo\fmc-logo-black-border-white-bkgd.png') #JSM NOTE - THis doesn't work, but SOMETIMES IT DOES?!
     if logoIm is not None:  logoAx.imshow(cv2.cvtColor(logoIm, cv2.COLOR_BGR2RGB))
     logoAx.axis('off')
     
@@ -718,8 +718,12 @@ def PlaySkeletonAnimation(
             # vidSavePath = '{}_outVid.mp4'.format(str(session.sessionPath / session.sessionID))
             # Writer.saving(fig = fig, outfile=vidSavePath, dpi=150)
 
-    plt.pause(0.1)
-    plt.draw()
+
+    try:
+        plt.pause(0.1)
+        plt.draw()
+    except:
+        pass
 
 
 

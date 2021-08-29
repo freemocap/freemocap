@@ -25,8 +25,8 @@ class Session: #self like "recording self"
 
         self.cgroup = None
 
-        self.mean_charuco_fr_mar_dim = None
-        self.skel_fr_mar_dim = None
+        self.mean_charuco_fr_mar_xyz = None
+        self.skel_fr_mar_xyz = None
 
         self.mediaPipe_imgPathList = None
         self.openPose_imgPathList = None

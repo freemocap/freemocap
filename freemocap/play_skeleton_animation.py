@@ -81,8 +81,13 @@ def PlaySkeletonAnimation(
         Called by matplotlib animator for each frame.
         """
         
-        skel_dottos = matplotlib_artist_objs['skel_dottos'] 
-        skel_trajectories = figure_data['skel_trajectories|mar|fr_dim']
+        if useOpenPose:
+            op_skel_dottos = matplotlib_artist_objs['op_skel_dottos'] 
+            op_skel_trajectories = figure_data['openPose_skel_trajectories|mar|fr_dim']
+
+        if useMediaPipe:
+            mp_skel_dottos = matplotlib_artist_objs['mp_skel_dottos'] 
+            mp_skel_trajectories = figure_data['mediaPipe_skel_trajectories|mar|fr_dim']
 
         charuco_dottos = matplotlib_artist_objs['charuco_dottos'] 
         charuco_trajectories = figure_data['charuco_trajectories|mar|fr_dim']
@@ -92,34 +97,48 @@ def PlaySkeletonAnimation(
             dlc_trajectories = figure_data['dlc_trajectories|mar|fr_dim']
 
         #function to update the lines for each 3d body segment
-        def update_3d_skel_segments(key, data_fr_mar_dim):       
+        def update_3d_skel_segments(key, data_fr_mar_xyz):       
             """ 
             updates the Artist of each body segment with the current frame data.
             """    
-            try:   
+            split = key.split('_')
+
+            if split[0] == 'op':
                 dict_of_segments_idxs = dict_of_openPoseSegmentIdx_dicts[key]
-            except: 
+            if split[0] == 'mp':
+                dict_of_segments_idxs = dict_of_mediaPipeSegmentIdx_dicts[key]
+            elif split[0] == 'dlc':
                 dict_of_segments_idxs = dict_of_dlcSegmentIdx_dicts[key]
 
-            dict_of_artists = matplotlib_artist_objs[key] 
+            try:
+                dict_of_artists = matplotlib_artist_objs[key] 
+            except:
+                print('KeyError:', key)
+                
 
             for thisItem in dict_of_segments_idxs.items():
                 segName = thisItem[0]
                 segArtist = dict_of_artists[segName]
-                segArtist.set_data((data_fr_mar_dim[frameNum, dict_of_segments_idxs[segName], 0], data_fr_mar_dim[frameNum, dict_of_segments_idxs[segName], 1]))
-                segArtist.set_3d_properties(data_fr_mar_dim[frameNum, dict_of_segments_idxs[segName], 2])                
-            
-        update_3d_skel_segments('body', skel_fr_mar_dim)
-        update_3d_skel_segments('rHand', skel_fr_mar_dim)
-        update_3d_skel_segments('lHand', skel_fr_mar_dim)
-        update_3d_skel_segments('face', skel_fr_mar_dim)
+                segArtist.set_data((data_fr_mar_xyz[frameNum, dict_of_segments_idxs[segName], 0], data_fr_mar_xyz[frameNum, dict_of_segments_idxs[segName], 1]))
+                segArtist.set_3d_properties(data_fr_mar_xyz[frameNum, dict_of_segments_idxs[segName], 2])                
+
+        if useOpenPose:    
+            update_3d_skel_segments('op_body', openPose_skel_fr_mar_xyz)
+            update_3d_skel_segments('op_rHand', openPose_skel_fr_mar_xyz)
+            update_3d_skel_segments('op_lHand', openPose_skel_fr_mar_xyz)
+            update_3d_skel_segments('op_face', openPose_skel_fr_mar_xyz)
+
+        if useMediaPipe:
+            update_3d_skel_segments('mp_body', mediaPipe_skel_fr_mar_xyz)
+            update_3d_skel_segments('mp_rHand', mediaPipe_skel_fr_mar_xyz)
+            update_3d_skel_segments('mp_lHand', mediaPipe_skel_fr_mar_xyz)
 
         if useDLC:
-            update_3d_skel_segments('pinkBall', dlc_fr_mar_dim)
-            update_3d_skel_segments('redBall', dlc_fr_mar_dim)
-            update_3d_skel_segments('greenBall', dlc_fr_mar_dim)
-            update_3d_skel_segments('wobbleBoard', dlc_fr_mar_dim)
-            update_3d_skel_segments('wobbleWheel', dlc_fr_mar_dim)
+            update_3d_skel_segments('dlc_pinkBall', dlc_fr_mar_xyz)
+            update_3d_skel_segments('dlc_redBall', dlc_fr_mar_xyz)
+            update_3d_skel_segments('dlc_greenBall', dlc_fr_mar_xyz)
+            update_3d_skel_segments('dlc_wobbleBoard', dlc_fr_mar_xyz)
+            update_3d_skel_segments('dlc_wobbleWheel', dlc_fr_mar_xyz)
 
             for bb in range(3):
                 thisTailArtist = matplotlib_artist_objs['ball_tails'][bb]
@@ -138,15 +157,26 @@ def PlaySkeletonAnimation(
 
         #Plots the dots!
         #openpose data
-        marNum = -1
-        for thisSkelDotto, thisTraj in zip(skel_dottos,skel_trajectories):
-            marNum+=1
-            # NOTE: there is no .set_data() for 3 dim data...
-            thisSkelDotto.set_data(thisTraj[ frameNum, 0:2])
-            thisSkelDotto.set_3d_properties(thisTraj[ frameNum, 2])
-
-        #charuco data
+        if useOpenPose:
+            marNum = -1
+            for thisSkelDotto, thisTraj in zip(op_skel_dottos,op_skel_trajectories):
+                marNum+=1
+                # NOTE: there is no .set_data() for 3 dim data...
+                thisSkelDotto.set_data(thisTraj[ frameNum, 0:2])
+                thisSkelDotto.set_3d_properties(thisTraj[ frameNum, 2])
         
+        #mediapipe data
+        if useMediaPipe:
+            marNum = -1
+            for thisSkelDotto, thisTraj in zip(mp_skel_dottos,mp_skel_trajectories):
+                marNum+=1
+                # NOTE: there is no .set_data() for 3 dim data...
+                thisSkelDotto.set_data(thisTraj[ frameNum, 0:2])
+                thisSkelDotto.set_3d_properties(thisTraj[ frameNum, 2])
+
+
+
+        #charuco data        
         for thisDotto, thisTraj in zip(charuco_dottos,charuco_trajectories):
 
             if frameNum<charuco_trajectories[0].shape[0]:
@@ -163,45 +193,59 @@ def PlaySkeletonAnimation(
             """ 
             updates the Artist of each body segment with the current frame data.
             """       
-            dict_of_segments_idxs = dict_of_openPoseSegmentIdx_dicts[key]
-            dict_of_artists = thisVidOpenPoseArtist_dict[key] 
+            split = key.split('_')
+            if split[0] == 'op':
+                dict_of_segments_idxs = dict_of_openPoseSegmentIdx_dicts[key]
+                dict_of_artists = thisVidOpenPoseArtist_dict[key] 
+            elif split[0] == 'mp':
+                dict_of_segments_idxs = dict_of_mediaPipeSegmentIdx_dicts[key]
+                dict_of_artists = thisVidMediaPipeArtist_dict[key] 
 
 
             for thisItem in dict_of_segments_idxs.items():
                 segName = thisItem[0]
                 segArtist = dict_of_artists[segName]
-
-                xData = openPoseData_nCams_nFrames_nImgPts_XYC[vidNum, frameNum, dict_of_segments_idxs[segName],0]
-                yData = openPoseData_nCams_nFrames_nImgPts_XYC[vidNum, frameNum, dict_of_segments_idxs[segName],1]
+    
+                if split[0] == 'op':
+                    xData = openPose_nCams_nFrames_nImgPts_XYC[vidNum, frameNum, dict_of_segments_idxs[segName],0]
+                    yData = openPose_nCams_nFrames_nImgPts_XYC[vidNum, frameNum, dict_of_segments_idxs[segName],1]
+                elif split[0] == 'mp':
+                    xData = mediaPipe_nCams_nFrames_nImgPts_XYC[vidNum, frameNum, dict_of_segments_idxs[segName],0]
+                    yData = mediaPipe_nCams_nFrames_nImgPts_XYC[vidNum, frameNum, dict_of_segments_idxs[segName],1]
 
                 xDataMasked = np.ma.masked_array(xData, mask=(xData==0))
                 yDataMasked = np.ma.masked_array(yData, mask=(xData==0))
                 segArtist.set_data(xDataMasked,yDataMasked)
                 
             
-
-        vidNum = -1
-        # for thisVidArtist, thisVidDLCArtist, thisVidOpenPoseArtist_dict in zip(vidAristList, vidDLCArtistList, list_of_vidOpenPoseArtistdicts): #JSM NOTE - This for loop needs to be fixed to work when DLC is true
-        for thisVidArtist,  thisVidOpenPoseArtist_dict in zip(vidAristList,  list_of_vidOpenPoseArtistdicts):
-            vidNum +=1
+        #update video frames 
+        for vidNum, thisVidArtist in enumerate(vidAristList):
             vidCapObjList[vidNum].set(cv2.CAP_PROP_POS_FRAMES, frameNum)
             success, image = vidCapObjList[vidNum].read()
+
             if success:
                 thisVidArtist.set_array(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
             else:
                 vidCapObjList[vidNum].set(cv2.CAP_PROP_POS_FRAMES, 0)
                 success, image = vidCapObjList[vidNum].read()
 
-            if useDLC:
+            if useOpenPose:
+                thisVidOpenPoseArtist_dict = list_of_vidOpenPoseArtistdicts[vidNum]
+                update_2d_skel_segments(vidNum,'op_body')
+                update_2d_skel_segments(vidNum,'op_rHand')
+                update_2d_skel_segments(vidNum,'op_lHand')
+                update_2d_skel_segments(vidNum,'op_face')
+            
+            if useMediaPipe:
+                thisVidMediaPipeArtist_dict = list_of_vidMediaPipeArtistdicts[vidNum]
+                update_2d_skel_segments(vidNum,'mp_body')
+                update_2d_skel_segments(vidNum,'mp_rHand')
+                update_2d_skel_segments(vidNum,'mp_lHand')
+
+            if useDLC: #JSM NOTE - this one won't work, we'll need to fix it the next time we get DLC data
                 thisVidDLCArtist[0].set_data(  dlcData_nCams_nFrames_nImgPts_XYC[vidNum,frameNum,:,0], 
                                         dlcData_nCams_nFrames_nImgPts_XYC[vidNum,frameNum,:,1],)
 
-            update_2d_skel_segments(vidNum,'body')
-            update_2d_skel_segments(vidNum,'rHand')
-            update_2d_skel_segments(vidNum,'lHand')
-            update_2d_skel_segments(vidNum,'face')
-            # thisVidOpenPoseArtist_dict[0].set_data(  openPoseData_nCams_nFrames_nImgPts_XYC[vidNum,frameNum,:,0], 
-            #                         openPoseData_nCams_nFrames_nImgPts_XYC[vidNum,frameNum,:,1],)
 
         #shift timeseries xlims along with the frameNum
         xTimeSeriesAx.set_xlim([(frameNum/fps)-timeRange, (frameNum/fps)+timeRange])
@@ -255,60 +299,83 @@ def PlaySkeletonAnimation(
 
     ax3d.tick_params(length=0) # WHY DOESNT THIS WORK? I HATE THOSE TICK MARKS >:(
     
-    try:
-        skel_fr_mar_dim = np.load(session.dataArrayPath / 'openPoseSkel_3d.npy')
-        openPoseData_nCams_nFrames_nImgPts_XYC = np.load(session.dataArrayPath / 'openPoseData_2d.npy')
-    except:
-        console.warning('No openPose data found.  This iteration requires OpenPose data')
+    smoothData=True
+    smoothWinLength = 5
+    smoothOrder = 3
+
+    if useOpenPose:
+        try:
+            openPose_skel_fr_mar_xyz = np.load(session.dataArrayPath / 'openPoseSkel_3d.npy')
+            openPose_nCams_nFrames_nImgPts_XYC = np.load(session.dataArrayPath / 'openPoseData_2d.npy')
+        except:
+            print('No openPose data found.')
+
+        if smoothData:
+            for dim in range(openPose_skel_fr_mar_xyz.shape[2]):
+                for mm in range(openPose_skel_fr_mar_xyz.shape[1]):
+                    openPose_skel_fr_mar_xyz[:,mm,dim] = savgol_filter(openPose_skel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
+
+    if useMediaPipe:
+        try:
+            mediaPipe_skel_fr_mar_xyz = np.load(session.dataArrayPath / 'mediaPipeSkel_3d.npy')
+            mediaPipe_nCams_nFrames_nImgPts_XYC = np.load(session.dataArrayPath / 'mediaPipe_2d.npy')            
+        except:
+            print('No mediaPipe data found.')
+                
+        if smoothData:
+            for dim in range(mediaPipe_skel_fr_mar_xyz.shape[2]):
+                for mm in range(mediaPipe_skel_fr_mar_xyz.shape[1]):
+                    mediaPipe_skel_fr_mar_xyz[:,mm,dim] = savgol_filter(mediaPipe_skel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
 
     try:
-        charuco_fr_mar_dim = np.load(session.dataArrayPath / 'charuco_3d_points.npy')
+        charuco_fr_mar_xyz = np.load(session.dataArrayPath / 'charuco_3d_points.npy')
     except:
         console.warning('No charuco data found')
 
-    smoothData=True
-    if smoothData:
-        # smoothThese = np.arange(67, skel_fr_mar_dim.shape[1])
-        smoothThese = np.arange(0, skel_fr_mar_dim.shape[1])
-        for mm in smoothThese:
-            if mm > 24 and mm < 67: #don't smooth the hands, or they disappear! :O
-                pass
-            else:
-                for dim in range(skel_fr_mar_dim.shape[2]):
-                    skel_fr_mar_dim[:,mm,dim] = savgol_filter(skel_fr_mar_dim[:,mm,dim], 5, 3)
+    
+
 
     figure_data = dict()
+    if useOpenPose:
+        figure_data['openPose_skel_trajectories|mar|fr_dim'] = [openPose_skel_fr_mar_xyz[:,markerNum,:] for markerNum in range(openPose_skel_fr_mar_xyz.shape[1])]
+        figure_data['openPose_skel_fr_mar_xyz'] = openPose_skel_fr_mar_xyz
 
-    skel_trajectories = [skel_fr_mar_dim[:,markerNum,:] for markerNum in range(skel_fr_mar_dim.shape[1])]
-    figure_data['skel_trajectories|mar|fr_dim'] = skel_trajectories
-    figure_data['skel_fr_mar_dim'] = skel_fr_mar_dim
+        dict_of_openPoseSegmentIdx_dicts, dict_of_op_skel_lineColor = formatOpenPoseStickIndices() #these will help us draw body and hands stick figures
+
     
-    charuco_trajectories = [charuco_fr_mar_dim[:,markerNum,:] for markerNum in range(charuco_fr_mar_dim.shape[1])]
-    figure_data['charuco_trajectories|mar|fr_dim'] = charuco_trajectories
-    figure_data['charuco_fr_mar_dim'] = charuco_fr_mar_dim
+    if useMediaPipe:
+        mediaPipe_trajectories = [mediaPipe_skel_fr_mar_xyz[:,markerNum,:] for markerNum in range(mediaPipe_skel_fr_mar_xyz.shape[1])]
+        figure_data['mediaPipe_skel_trajectories|mar|fr_dim'] = [mediaPipe_skel_fr_mar_xyz[:,markerNum,:] for markerNum in range(mediaPipe_skel_fr_mar_xyz.shape[1])]
+        figure_data['mediaPipe_skel_fr_mar_xyz'] = mediaPipe_skel_fr_mar_xyz
 
-    dict_of_openPoseSegmentIdx_dicts, dict_of_skel_lineColor = formatOpenPoseStickIndices() #these will help us draw body and hands stick figures
+        dict_of_mediaPipeSegmentIdx_dicts, dict_of_mp_skel_lineColor = formatMediaPipeStickIndices() #these will help us draw body and hands stick figures
+
+    
+    charuco_trajectories = [charuco_fr_mar_xyz[:,markerNum,:] for markerNum in range(charuco_fr_mar_xyz.shape[1])]
+    figure_data['charuco_trajectories|mar|fr_dim'] = charuco_trajectories
+    figure_data['charuco_fr_mar_xyz'] = charuco_fr_mar_xyz
+
 
     if useDLC:
-        dlc_fr_mar_dim = np.load(session.dataArrayPath / "deepLabCut_3d.npy")
+        dlc_fr_mar_xyz = np.load(session.dataArrayPath / "deepLabCut_3d.npy")
         dlcData_nCams_nFrames_nImgPts_XYC = np.load(session.dataArrayPath / "deepLabCutData_2d.npy")
         
-        for mm in range(dlc_fr_mar_dim.shape[1]):
-            for dim in range(dlc_fr_mar_dim.shape[2]):
-                dlc_fr_mar_dim[:,mm,dim] = savgol_filter(dlc_fr_mar_dim[:,mm,dim], 11, 3)
+        for mm in range(dlc_fr_mar_xyz.shape[1]):
+            for dim in range(dlc_fr_mar_xyz.shape[2]):
+                dlc_fr_mar_xyz[:,mm,dim] = savgol_filter(dlc_fr_mar_xyz[:,mm,dim], 11, 3)
 
         ballTailLen = 6
         if ballTailLen > startFrame:
             startFrame = ballTailLen+1 #gotta do this, or the tail will index negative frames (without requiring annoying checks later)
     
-        dlc_trajectories = [dlc_fr_mar_dim[:,markerNum,:] for markerNum in range(dlc_fr_mar_dim.shape[1])]    
+        dlc_trajectories = [dlc_fr_mar_xyz[:,markerNum,:] for markerNum in range(dlc_fr_mar_xyz.shape[1])]    
         figure_data['dlc_trajectories|mar|fr_dim'] = dlc_trajectories
-        figure_data['dlc_fr_mar_dim'] = dlc_fr_mar_dim
+        figure_data['dlc_fr_mar_xyz'] = dlc_fr_mar_xyz
 
     
     
     
-    def build_3d_segment_artist_dict(data_fr_mar_dim,
+    def build_3d_segment_artist_dict(data_fr_mar_xyz,
                                      dict_of_list_of_segment_idxs, 
                                      segColor = 'k', 
                                      lineWidth = 1, 
@@ -356,9 +423,9 @@ def PlaySkeletonAnimation(
 
 
             dict_of_artist_objects[segName]  = ax3d.plot(
-                                                    data_fr_mar_dim[startFrame, idxs ,0], 
-                                                    data_fr_mar_dim[startFrame, idxs ,1], 
-                                                    data_fr_mar_dim[startFrame, idxs ,2],
+                                                    data_fr_mar_xyz[startFrame, idxs ,0], 
+                                                    data_fr_mar_xyz[startFrame, idxs ,1], 
+                                                    data_fr_mar_xyz[startFrame, idxs ,2],
                                                     linestyle=lineStyle,
                                                     linewidth=lineWidth,
                                                     markerSize = marSize,
@@ -371,11 +438,18 @@ def PlaySkeletonAnimation(
     
 
     matplotlib_artist_objs = dict()
-    matplotlib_artist_objs['body'] = build_3d_segment_artist_dict(skel_fr_mar_dim, dict_of_openPoseSegmentIdx_dicts['body'], segColor = dict_of_skel_lineColor)
-    matplotlib_artist_objs['rHand'] = build_3d_segment_artist_dict(skel_fr_mar_dim, dict_of_openPoseSegmentIdx_dicts['rHand'], segColor=np.append(humon_red, 1), markerType='.', markerEdgeColor = humon_red, lineWidth=1, marSize = 2)
-    matplotlib_artist_objs['lHand'] = build_3d_segment_artist_dict(skel_fr_mar_dim, dict_of_openPoseSegmentIdx_dicts['lHand'], segColor=np.append(humon_blue, 1), markerType='.', markerEdgeColor = humon_blue, lineWidth=1, marSize = 2)
-    matplotlib_artist_objs['face'] = build_3d_segment_artist_dict(skel_fr_mar_dim, dict_of_openPoseSegmentIdx_dicts['face'], segColor='k', lineWidth=.5)
-    
+
+    if useOpenPose:
+        matplotlib_artist_objs['op_body'] = build_3d_segment_artist_dict(openPose_skel_fr_mar_xyz, dict_of_openPoseSegmentIdx_dicts['op_body'], segColor = dict_of_op_skel_lineColor)
+        matplotlib_artist_objs['op_rHand'] = build_3d_segment_artist_dict(openPose_skel_fr_mar_xyz, dict_of_openPoseSegmentIdx_dicts['op_rHand'], segColor=np.append(humon_red, 1), markerType='.', markerEdgeColor = humon_red, lineWidth=1, marSize = 2)
+        matplotlib_artist_objs['op_lHand'] = build_3d_segment_artist_dict(openPose_skel_fr_mar_xyz, dict_of_openPoseSegmentIdx_dicts['op_lHand'], segColor=np.append(humon_blue, 1), markerType='.', markerEdgeColor = humon_blue, lineWidth=1, marSize = 2)
+        matplotlib_artist_objs['op_face'] = build_3d_segment_artist_dict(openPose_skel_fr_mar_xyz, dict_of_openPoseSegmentIdx_dicts['op_face'], segColor='k', lineWidth=.5)
+
+    if useMediaPipe:
+        matplotlib_artist_objs['mp_body'] = build_3d_segment_artist_dict(mediaPipe_skel_fr_mar_xyz, dict_of_mediaPipeSegmentIdx_dicts['mp_body'], segColor = dict_of_mp_skel_lineColor)
+        matplotlib_artist_objs['mp_rHand'] = build_3d_segment_artist_dict(mediaPipe_skel_fr_mar_xyz, dict_of_mediaPipeSegmentIdx_dicts['mp_rHand'], segColor=np.append(humon_red, 1), markerType='.', markerEdgeColor = humon_red, lineWidth=1, marSize = 2)
+        matplotlib_artist_objs['mp_lHand'] = build_3d_segment_artist_dict(mediaPipe_skel_fr_mar_xyz, dict_of_mediaPipeSegmentIdx_dicts['mp_lHand'], segColor=np.append(humon_blue, 1), markerType='.', markerEdgeColor = humon_blue, lineWidth=1, marSize = 2)
+
     if useDLC:
         dict_of_dlcSegmentIdx_dicts = dict()
         dict_of_dlcSegmentIdx_dicts['pinkBall'] = {'pinkBall': [0]}
@@ -386,30 +460,34 @@ def PlaySkeletonAnimation(
     
   
         ballColor = ['darkviolet', 'forestgreen', 'xkcd:goldenrod']
-        matplotlib_artist_objs['pinkBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['pinkBall'], segColor=ballColor[0], markerType = 'o', marSize = 6, markerEdgeColor = 'indigo')
-        matplotlib_artist_objs['redBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['redBall'], segColor=ballColor[2], markerType = 'o', marSize = 6, markerEdgeColor ='orangered')
-        matplotlib_artist_objs['greenBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['greenBall'], segColor=ballColor[1], markerType = 'o', marSize = 6, markerEdgeColor ='darkgreen')
+        matplotlib_artist_objs['pinkBall'] = build_3d_segment_artist_dict(dlc_fr_mar_xyz, dict_of_dlcSegmentIdx_dicts['pinkBall'], segColor=ballColor[0], markerType = 'o', marSize = 6, markerEdgeColor = 'indigo')
+        matplotlib_artist_objs['redBall'] = build_3d_segment_artist_dict(dlc_fr_mar_xyz, dict_of_dlcSegmentIdx_dicts['redBall'], segColor=ballColor[2], markerType = 'o', marSize = 6, markerEdgeColor ='orangered')
+        matplotlib_artist_objs['greenBall'] = build_3d_segment_artist_dict(dlc_fr_mar_xyz, dict_of_dlcSegmentIdx_dicts['greenBall'], segColor=ballColor[1], markerType = 'o', marSize = 6, markerEdgeColor ='darkgreen')
 
-        matplotlib_artist_objs['wobbleBoard'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['wobbleBoard'], segColor='k', lineWidth=1)
-        matplotlib_artist_objs['wobbleWheel'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['wobbleWheel'], segColor='k', lineWidth=1)
+        matplotlib_artist_objs['wobbleBoard'] = build_3d_segment_artist_dict(dlc_fr_mar_xyz, dict_of_dlcSegmentIdx_dicts['wobbleBoard'], segColor='k', lineWidth=1)
+        matplotlib_artist_objs['wobbleWheel'] = build_3d_segment_artist_dict(dlc_fr_mar_xyz, dict_of_dlcSegmentIdx_dicts['wobbleWheel'], segColor='k', lineWidth=1)
 
-    skel_dottos = []
-    for mm in range(67): #getcher dottos off my face!
-        thisTraj = skel_fr_mar_dim[:, mm, :]
-        if mm==15:
-            col = 'r'
-            markerSize = 2
-        elif mm == 16:
-            col = 'b'
-            markerSize = 2
-        else:
-            col = 'k'
-            markerSize = 1
+    if useOpenPose:
+        op_skel_dottos = []
+        for mm in range(67): #getcher dottos off my face!
+            thisTraj = openPose_skel_fr_mar_xyz[:, mm, :]
+            if mm==15:
+                col = 'r'
+                markerSize = 2
+            elif mm == 16:
+                col = 'b'
+                markerSize = 2
+            else:
+                col = 'k'
+                markerSize = 1
 
-        thisDotto =ax3d.plot(thisTraj[0, 0:1], thisTraj[1, 0:1], thisTraj[2, 0:1][0],'.', markersize=markerSize, color = col)
-        skel_dottos.append(thisDotto[0])
+            thisDotto =ax3d.plot(thisTraj[0, 0:1], thisTraj[1, 0:1], thisTraj[2, 0:1][0],'.', markersize=markerSize, color = col)
+            op_skel_dottos.append(thisDotto[0])
 
-    matplotlib_artist_objs['skel_dottos'] = skel_dottos
+            matplotlib_artist_objs['op_skel_dottos'] = op_skel_dottos
+
+    if useMediaPipe:
+        matplotlib_artist_objs['mp_skel_dottos'] = [ax3d.plot(thisTraj[0, 0:1], thisTraj[1, 0:1], thisTraj[2, 0:1],'m.', markersize=1)[0] for thisTraj in mediaPipe_trajectories]
 
     matplotlib_artist_objs['charuco_dottos'] = [ax3d.plot(thisTraj[0, 0:1], thisTraj[1, 0:1], thisTraj[2, 0:1],'m.', markersize=1)[0] for thisTraj in charuco_trajectories]
 
@@ -424,22 +502,26 @@ def PlaySkeletonAnimation(
                                                 '-', color=ballColor[bb])[0] for bb in range(3)]
     
 
-    numFrames = skel_fr_mar_dim.shape[0]
-   
+    if useOpenPose:
+        numFrames = openPose_skel_fr_mar_xyz.shape[0]
+        mx = np.nanmean(openPose_skel_fr_mar_xyz[int(numFrames/2),:,0])
+        my = np.nanmean(openPose_skel_fr_mar_xyz[int(numFrames/2),:,1])
+        mz = np.nanmean(openPose_skel_fr_mar_xyz[int(numFrames/2),:,2])
 
+    if useMediaPipe:
+        numFrames = mediaPipe_skel_fr_mar_xyz.shape[0]
+        mx = np.nanmean(mediaPipe_skel_fr_mar_xyz[int(numFrames/2),:,0])
+        my = np.nanmean(mediaPipe_skel_fr_mar_xyz[int(numFrames/2),:,1])
+        mz = np.nanmean(mediaPipe_skel_fr_mar_xyz[int(numFrames/2),:,2])
 
-
-    mx = np.nanmean(skel_fr_mar_dim[int(numFrames/2),:,0])
-    my = np.nanmean(skel_fr_mar_dim[int(numFrames/2),:,1])
-    mz = np.nanmean(skel_fr_mar_dim[int(numFrames/2),:,2])
-
+    
     # groundX = np.arange(mx-100,mx+100)
     # groundZ = np.arange(my-100,my+100)
     # groundXX, groundZZ = np.meshgrid(groundX, groundZ)
     # groundYY = np.zeros_like(groundXX)
     # groundMesh = ax3d.plot_surface(groundXX, groundZZ, groundYY, color='k', alpha=.5)
 
-    axRange = 300#session.board.square_length * 10
+    axRange = 500#session.board.square_length * 10
 
     # Setting the axes properties
     ax3d.set_xlim3d([mx-axRange, mx+axRange])
@@ -476,6 +558,7 @@ def PlaySkeletonAnimation(
     vidCapObjList = []
 
     list_of_vidOpenPoseArtistdicts = []
+    list_of_vidMediaPipeArtistdicts = []
     
     if useDLC: vidDLCArtistList = []    
 
@@ -570,11 +653,19 @@ def PlaySkeletonAnimation(
 
         if useOpenPose:
             vidOpenPoseArtist_dict = dict()            
-            vidOpenPoseArtist_dict['body'] = build_2d_segment_artist_dict(thisVidNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['body'], segColor = dict_of_skel_lineColor)
-            vidOpenPoseArtist_dict['rHand'] = build_2d_segment_artist_dict(thisVidNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['rHand'], segColor=np.append(humon_red, .75), lineWidth=.5)
-            vidOpenPoseArtist_dict['lHand'] = build_2d_segment_artist_dict(thisVidNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['lHand'], segColor=np.append(humon_blue, .75), lineWidth=.5)
-            vidOpenPoseArtist_dict['face'] = build_2d_segment_artist_dict(thisVidNum, openPoseData_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['face'], segColor = np.array([1.,1.,1.,1]), lineWidth=.25)
+            vidOpenPoseArtist_dict['op_body'] = build_2d_segment_artist_dict(thisVidNum, openPose_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['op_body'], segColor = dict_of_op_skel_lineColor)
+            vidOpenPoseArtist_dict['op_rHand'] = build_2d_segment_artist_dict(thisVidNum, openPose_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['op_rHand'], segColor=np.append(humon_red, .75), lineWidth=.5)
+            vidOpenPoseArtist_dict['op_lHand'] = build_2d_segment_artist_dict(thisVidNum, openPose_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['op_lHand'], segColor=np.append(humon_blue, .75), lineWidth=.5)
+            vidOpenPoseArtist_dict['op_face'] = build_2d_segment_artist_dict(thisVidNum, openPose_nCams_nFrames_nImgPts_XYC, dict_of_openPoseSegmentIdx_dicts['op_face'], segColor = np.array([1.,1.,1.,1]), lineWidth=.25)
             list_of_vidOpenPoseArtistdicts.append(vidOpenPoseArtist_dict)
+
+        if useMediaPipe:
+            vidMediaPipeArtist_dict = dict()            
+            vidMediaPipeArtist_dict['mp_body'] = build_2d_segment_artist_dict(thisVidNum, mediaPipe_nCams_nFrames_nImgPts_XYC, dict_of_mediaPipeSegmentIdx_dicts['mp_body'], segColor = 'g')
+            vidMediaPipeArtist_dict['mp_rHand'] = build_2d_segment_artist_dict(thisVidNum, mediaPipe_nCams_nFrames_nImgPts_XYC, dict_of_mediaPipeSegmentIdx_dicts['mp_rHand'], segColor=np.append(humon_red, .75), lineWidth=.5)
+            vidMediaPipeArtist_dict['mp_lHand'] = build_2d_segment_artist_dict(thisVidNum, mediaPipe_nCams_nFrames_nImgPts_XYC, dict_of_mediaPipeSegmentIdx_dicts['mp_lHand'], segColor=np.append(humon_blue, .75), lineWidth=.5)
+            list_of_vidMediaPipeArtistdicts.append(vidMediaPipeArtist_dict)
+
 
         if useDLC:
             
@@ -586,6 +677,7 @@ def PlaySkeletonAnimation(
                                     markersize = 1,
                                     color='w',
                                     markerfacecolor='none' ))
+
     ###               
     ###   
     ###   ███    ███  █████  ██   ██ ███████     ██      ██ ███    ██ ███████     ██████  ██       ██████  ████████      █████  ██   ██ ███████ ███████ 
@@ -599,11 +691,17 @@ def PlaySkeletonAnimation(
 
     fps=30 #NOTE - This should be saved in the session Class some how
     time = np.arange(0, numFrames)/fps
-    
-    rHandX = skel_trajectories[4][:,0]/1000 #convert mm to meters
-    rHandY = -skel_trajectories[4][:,1]/1000
-    lHandX = skel_trajectories[7][:,0]/1000
-    lHandY = -skel_trajectories[7][:,1]/1000
+    if useMediaPipe:
+        rHandX = mediaPipe_skel_fr_mar_xyz[:,4,0]/1000 #convert mm to meters
+        rHandY = -mediaPipe_skel_fr_mar_xyz[:,4,1]/1000
+        lHandX = mediaPipe_skel_fr_mar_xyz[:,7,0]/1000
+        lHandY = -mediaPipe_skel_fr_mar_xyz[:,7,1]/1000
+
+    if useOpenPose:
+        rHandX = openPose_skel_fr_mar_xyz[:,4,0]/1000 #convert mm to meters
+        rHandY = -openPose_skel_fr_mar_xyz[:,4,1]/1000
+        lHandX = openPose_skel_fr_mar_xyz[:,7,0]/1000
+        lHandY = -openPose_skel_fr_mar_xyz[:,7,1]/1000
 
     
     linePlotWidth = .45
@@ -745,29 +843,29 @@ def formatOpenPoseStickIndices():
     
     returns:
     openPoseBodySegmentIds= a dictionary of arrays containing indices of individual body segments (Note, a lot of markerless mocap comp sci types like to say 'pose' instead of 'body'. They also use 'pose' to refer to camera 6 DoF position sometimes. Comp sci is frustrating like that lol)
-    openPoseHandIds = a dictionary of arrays containing indices of individual hand segments, along with offset to know where to start in the 'skel_fr_mar_dim.shape[1]' part of the array
-    dict_of_skel_lineColor = a dictionary of arrays, each containing the color (RGBA) to use for a given body segment
+    openPoseHandIds = a dictionary of arrays containing indices of individual hand segments, along with offset to know where to start in the 'skel_fr_mar_xyz.shape[1]' part of the array
+    dict_of_op_skel_lineColor = a dictionary of arrays, each containing the color (RGBA) to use for a given body segment
     """
     dict_of_openPoseSegmentIdx_dicts = dict()
 
     #make body dictionary
     openPoseBodySegmentIds = dict()
-    openPoseBodySegmentIds['head'] = [17, 15, 0, 1,0, 16, 18, ]
-    openPoseBodySegmentIds['spine'] = [1,8,5,1, 2, 12, 8, 9, 5, 1, 2, 8]
-    openPoseBodySegmentIds['rArm'] = [1, 2, 3, 4, ]
-    openPoseBodySegmentIds['lArm'] = [1, 5, 6, 7, ]
-    openPoseBodySegmentIds['rLeg'] = [8, 9, 10, 11, 22, 23, 11, 24, ]
-    openPoseBodySegmentIds['lLeg'] = [8,12, 13, 14, 19, 20, 14, 21,]
-    dict_of_openPoseSegmentIdx_dicts['body'] = openPoseBodySegmentIds
+    openPoseBodySegmentIds['op_head'] = [17, 15, 0, 1,0, 16, 18, ]
+    openPoseBodySegmentIds['op_spine'] = [1,8,5,1, 2, 12, 8, 9, 5, 1, 2, 8]
+    openPoseBodySegmentIds['op_rArm'] = [1, 2, 3, 4, ]
+    openPoseBodySegmentIds['op_lArm'] = [1, 5, 6, 7, ]
+    openPoseBodySegmentIds['op_rLeg'] = [8, 9, 10, 11, 22, 23, 11, 24, ]
+    openPoseBodySegmentIds['op_lLeg'] = [8,12, 13, 14, 19, 20, 14, 21,]
+    dict_of_openPoseSegmentIdx_dicts['op_body'] = openPoseBodySegmentIds
 
 
-    dict_of_skel_lineColor = dict()
-    dict_of_skel_lineColor['head'] = np.append(humon_dark, 0.5)
-    dict_of_skel_lineColor['spine'] = np.append(humon_dark, 1)
-    dict_of_skel_lineColor['rArm'] = np.append(humon_red, 1)
-    dict_of_skel_lineColor['lArm'] = np.append(humon_blue, 1)
-    dict_of_skel_lineColor['rLeg'] = np.append(humon_red, 1)
-    dict_of_skel_lineColor['lLeg'] = np.append(humon_blue, 1)
+    dict_of_op_skel_lineColor = dict()
+    dict_of_op_skel_lineColor['op_head'] = np.append(humon_dark, 0.5)
+    dict_of_op_skel_lineColor['op_spine'] = np.append(humon_dark, 1)
+    dict_of_op_skel_lineColor['op_rArm'] = np.append(humon_red, 1)
+    dict_of_op_skel_lineColor['op_lArm'] = np.append(humon_blue, 1)
+    dict_of_op_skel_lineColor['op_rLeg'] = np.append(humon_red, 1)
+    dict_of_op_skel_lineColor['op_lLeg'] = np.append(humon_blue, 1)
 
 
     # Make some handy maps ;D
@@ -775,11 +873,11 @@ def formatOpenPoseStickIndices():
     rHandIDstart = 25
     lHandIDstart = rHandIDstart + 21
 
-    openPoseHandIds['thumb'] = np.array([0, 1, 2, 3, 4,  ]) 
-    openPoseHandIds['index'] = np.array([0, 5, 6, 7, 8, ])
-    openPoseHandIds['bird']= np.array([0, 9, 10, 11, 12, ])
-    openPoseHandIds['ring']= np.array([0, 13, 14, 15, 16, ])
-    openPoseHandIds['pinky'] = np.array([0, 17, 18, 19, 20, ])
+    openPoseHandIds['op_thumb'] = np.array([0, 1, 2, 3, 4,  ]) 
+    openPoseHandIds['op_index'] = np.array([0, 5, 6, 7, 8, ])
+    openPoseHandIds['op_bird']= np.array([0, 9, 10, 11, 12, ])
+    openPoseHandIds['op_ring']= np.array([0, 13, 14, 15, 16, ])
+    openPoseHandIds['op_pinky'] = np.array([0, 17, 18, 19, 20, ])
     
 
     rHand_dict = copy.deepcopy(openPoseHandIds.copy()) #copy.deepcopy() is necessary to make sure the dicts are independent of each other
@@ -789,30 +887,114 @@ def formatOpenPoseStickIndices():
         rHand_dict[key] += rHandIDstart 
         lHand_dict[key] += lHandIDstart 
 
-    dict_of_openPoseSegmentIdx_dicts['rHand'] = rHand_dict
-    dict_of_openPoseSegmentIdx_dicts['lHand'] = lHand_dict
+    dict_of_openPoseSegmentIdx_dicts['op_rHand'] = rHand_dict
+    dict_of_openPoseSegmentIdx_dicts['op_lHand'] = lHand_dict
 
     
     #how to face --> :D <--
     openPoseFaceIDs = dict()
     faceIDStart = 67
     #define face parts
-    openPoseFaceIDs['jaw'] = np.arange(0,16) + faceIDStart 
-    openPoseFaceIDs['rBrow'] = np.arange(17,21) + faceIDStart
-    openPoseFaceIDs['lBrow'] = np.arange(22,26) + faceIDStart
-    openPoseFaceIDs['noseRidge'] = np.arange(27,30) + faceIDStart
-    openPoseFaceIDs['noseBot'] = np.arange(31,35) + faceIDStart
-    openPoseFaceIDs['rEye'] = np.concatenate((np.arange(36,41), [36])) + faceIDStart
-    openPoseFaceIDs['lEye'] = np.concatenate((np.arange(42,47), [42])) + faceIDStart    
-    openPoseFaceIDs['upperLip'] = np.concatenate((np.arange(48,54), np.flip(np.arange(60, 64)), [48])) + faceIDStart
-    openPoseFaceIDs['lowerLip'] = np.concatenate(([60], np.arange(64,67), np.arange(54, 59), [48], [60])) + faceIDStart
-    openPoseFaceIDs['rPupil'] = np.array([68]) + faceIDStart
-    openPoseFaceIDs['lPupil'] = np.array([69]) + faceIDStart #nice
+    openPoseFaceIDs['op_jaw'] = np.arange(0,16) + faceIDStart 
+    openPoseFaceIDs['op_rBrow'] = np.arange(17,21) + faceIDStart
+    openPoseFaceIDs['op_lBrow'] = np.arange(22,26) + faceIDStart
+    openPoseFaceIDs['op_noseRidge'] = np.arange(27,30) + faceIDStart
+    openPoseFaceIDs['op_noseBot'] = np.arange(31,35) + faceIDStart
+    openPoseFaceIDs['op_rEye'] = np.concatenate((np.arange(36,41), [36])) + faceIDStart
+    openPoseFaceIDs['op_lEye'] = np.concatenate((np.arange(42,47), [42])) + faceIDStart    
+    openPoseFaceIDs['op_upperLip'] = np.concatenate((np.arange(48,54), np.flip(np.arange(60, 64)), [48])) + faceIDStart
+    openPoseFaceIDs['op_lowerLip'] = np.concatenate(([60], np.arange(64,67), np.arange(54, 59), [48], [60])) + faceIDStart
+    openPoseFaceIDs['op_rPupil'] = np.array([68]) + faceIDStart
+    openPoseFaceIDs['op_lPupil'] = np.array([69]) + faceIDStart #nice
 
-    dict_of_openPoseSegmentIdx_dicts['face'] = openPoseFaceIDs
+    dict_of_openPoseSegmentIdx_dicts['op_face'] = openPoseFaceIDs
     
-    return dict_of_openPoseSegmentIdx_dicts, dict_of_skel_lineColor
+    return dict_of_openPoseSegmentIdx_dicts, dict_of_op_skel_lineColor
 
+
+
+###  
+###  ███████  ██████  ██████  ███    ███  █████  ████████     ███    ███ ███████ ██████  ██  █████  ██████  ██ ██████  ███████     ███████ ██   ██ ███████ ██      
+###  ██      ██    ██ ██   ██ ████  ████ ██   ██    ██        ████  ████ ██      ██   ██ ██ ██   ██ ██   ██ ██ ██   ██ ██          ██      ██  ██  ██      ██      
+###  █████   ██    ██ ██████  ██ ████ ██ ███████    ██        ██ ████ ██ █████   ██   ██ ██ ███████ ██████  ██ ██████  █████       ███████ █████   █████   ██      
+###  ██      ██    ██ ██   ██ ██  ██  ██ ██   ██    ██        ██  ██  ██ ██      ██   ██ ██ ██   ██ ██      ██ ██      ██               ██ ██  ██  ██      ██      
+###  ██       ██████  ██   ██ ██      ██ ██   ██    ██        ██      ██ ███████ ██████  ██ ██   ██ ██      ██ ██      ███████     ███████ ██   ██ ███████ ███████ 
+###                                                                                                                                                                
+###                                                                                                                                                                                                                                                                                                                                       
+def formatMediaPipeStickIndices():
+    """
+    generate dictionary of arrays, each containing the 'connect-the-dots' order to draw a given body segment
+    
+    returns:
+    mediaPipeBodySegmentIds= a dictionary of arrays containing indices of individual body segments (Note, a lot of markerless mocap comp sci types like to say 'pose' instead of 'body'. They also use 'pose' to refer to camera 6 DoF position sometimes. Comp sci is frustrating like that lol)
+    mediaPipeHandIds = a dictionary of arrays containing indices of individual hand segments, along with offset to know where to start in the 'skel_fr_mar_xyz.shape[1]' part of the array
+    dict_of_mp_skel_lineColor = a dictionary of arrays, each containing the color (RGBA) to use for a given body segment
+    """
+    dict_of_mediaPipeSegmentIdx_dicts = dict()
+
+    #make body dictionary
+    mediaPipeBodySegmentIds = dict()
+    mediaPipeBodySegmentIds['mp_head'] = [8, 6, 5, 4, 0, 10, 9, 0, 1, 2, 3, 7 ]
+    mediaPipeBodySegmentIds['mp_tors'] = [12, 11, 24, 23, 12]
+    mediaPipeBodySegmentIds['mp_rArm'] = [12, 14, 16, 18, 20, 16, 22 ]
+    mediaPipeBodySegmentIds['mp_lArm'] = [11, 13, 15, 17, 19, 15, 21]
+    mediaPipeBodySegmentIds['mp_rLeg'] = [24, 26, 28, 30, 32, 28, ]
+    mediaPipeBodySegmentIds['mp_lLeg'] = [23, 25, 27, 29, 31, 27, ]
+    dict_of_mediaPipeSegmentIdx_dicts['mp_body'] = mediaPipeBodySegmentIds
+
+
+    dict_of_mp_skel_lineColor = dict()
+    greenshift = [0, .2, 0]
+    dict_of_mp_skel_lineColor['mp_head'] = np.append(humon_dark+greenshift, 1)
+    dict_of_mp_skel_lineColor['mp_tors'] = np.append(humon_dark+greenshift, 1)
+    dict_of_mp_skel_lineColor['mp_rArm'] = np.append(humon_red+greenshift, 1)
+    dict_of_mp_skel_lineColor['mp_lArm'] = np.append([humon_blue+greenshift], 1)
+    dict_of_mp_skel_lineColor['mp_rLeg'] = np.append(humon_red+greenshift, 1)
+    dict_of_mp_skel_lineColor['mp_lLeg'] = np.append(humon_blue+greenshift, 1)
+
+
+    # Make some handy maps ;D
+    mediaPipeHandIds = dict()
+    rHandIDstart = 33
+    lHandIDstart = rHandIDstart + 21
+
+    mediaPipeHandIds['mp_thumb'] = np.array([0, 1, 2, 3, 4,  ]) 
+    mediaPipeHandIds['mp_index'] = np.array([0, 5, 6, 7, 8, ])
+    mediaPipeHandIds['mp_bird']= np.array([0, 9, 10, 11, 12, ])
+    mediaPipeHandIds['mp_ring']= np.array([0, 13, 14, 15, 16, ])
+    mediaPipeHandIds['mp_pinky'] = np.array([0, 17, 18, 19, 20, ])
+    
+
+    rHand_dict = copy.deepcopy(mediaPipeHandIds.copy()) #copy.deepcopy() is necessary to make sure the dicts are independent of each other
+    lHand_dict = copy.deepcopy(rHand_dict)
+
+    for key in rHand_dict: 
+        rHand_dict[key] += rHandIDstart 
+        lHand_dict[key] += lHandIDstart 
+
+    dict_of_mediaPipeSegmentIdx_dicts['mp_rHand'] = rHand_dict
+    dict_of_mediaPipeSegmentIdx_dicts['mp_lHand'] = lHand_dict
+
+    
+    # #how to face --> :D <--
+    # mediaPipeFaceIDs = dict()
+    # faceIDStart = 67
+    # #define face parts
+    # mediaPipeFaceIDs['mp_jaw'] = np.arange(0,16) + faceIDStart 
+    # mediaPipeFaceIDs['mp_rBrow'] = np.arange(17,21) + faceIDStart
+    # mediaPipeFaceIDs['mp_lBrow'] = np.arange(22,26) + faceIDStart
+    # mediaPipeFaceIDs['mp_noseRidge'] = np.arange(27,30) + faceIDStart
+    # mediaPipeFaceIDs['mp_noseBot'] = np.arange(31,35) + faceIDStart
+    # mediaPipeFaceIDs['mp_rEye'] = np.concatenate((np.arange(36,41), [36])) + faceIDStart
+    # mediaPipeFaceIDs['mp_lEye'] = np.concatenate((np.arange(42,47), [42])) + faceIDStart    
+    # mediaPipeFaceIDs['mp_upperLip'] = np.concatenate((np.arange(48,54), np.flip(np.arange(60, 64)), [48])) + faceIDStart
+    # mediaPipeFaceIDs['mp_lowerLip'] = np.concatenate(([60], np.arange(64,67), np.arange(54, 59), [48], [60])) + faceIDStart
+    # mediaPipeFaceIDs['mp_rPupil'] = np.array([68]) + faceIDStart
+    # mediaPipeFaceIDs['mp_lPupil'] = np.array([69]) + faceIDStart #nice
+
+    # dict_of_mediaPipeSegmentIdx_dicts['mp_face'] = mediaPipeFaceIDs
+    
+    return dict_of_mediaPipeSegmentIdx_dicts, dict_of_mp_skel_lineColor
 
 
 if __name__ == '__main__':

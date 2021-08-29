@@ -81,18 +81,18 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 120):
 
     session.charuco_nCams_nFrames_nImgPts_XY = charuco_nCams_nFrames_nImgPts_XY
 
-    charuco_fr_mar_dim = reconstruct3D.reconstruct3D(
+    charuco_fr_mar_xyz, charuco_reprojErr= reconstruct3D.reconstruct3D(
         session, charuco_nCams_nFrames_nImgPts_XY
     )
 
-    mean_charuco_fr_mar_dim = np.nanmean(charuco_fr_mar_dim, axis=0)
+    mean_charuco_fr_mar_xyz = np.nanmean(charuco_fr_mar_xyz, axis=0)
 
     # charry_reshaped = charucoarray.reshape(session.numCams, -1, 2)
 
     # char_flat = cgroup.triangulate(charry_reshaped, progress=True)
     # charReprojerr_flat = cgroup.reprojection_error(char_flat, charry_reshaped, mean=True)
 
-    # char_fr_mar_dim = char_flat.reshape(n_frames, n_trackedPoints, 3)
+    # char_fr_mar_xyz = char_flat.reshape(n_frames, n_trackedPoints, 3)
     # charReprojErr_fr_mar_err = charReprojerr_flat.reshape(n_frames, n_trackedPoints)
 
     if session.debug:
@@ -100,9 +100,9 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 120):
         # mean charuco position
         ax1 = fig.add_subplot(111, projection="3d")
         ax1.cla()
-        x = mean_charuco_fr_mar_dim[:][:, 0]
-        y = mean_charuco_fr_mar_dim[:][:, 1]
-        z = mean_charuco_fr_mar_dim[:][:, 2]
+        x = mean_charuco_fr_mar_xyz[:][:, 0]
+        y = mean_charuco_fr_mar_xyz[:][:, 1]
+        z = mean_charuco_fr_mar_xyz[:][:, 2]
         mx = np.nanmean(x)
         my = np.nanmean(y)
         mz = np.nanmean(z)
@@ -135,15 +135,16 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 120):
         # #charuco points over time
         # ax2 = fig.add_subplot(122)
         # ax2.cla()
-        # numPts = charuco_fr_mar_dim.shape[1]
+        # numPts = charuco_fr_mar_xyz.shape[1]
         # for pp in range(numPts):
-        #     ax2.plot(charuco_fr_mar_dim[:,pp,:])
+        #     ax2.plot(charuco_fr_mar_xyz[:,pp,:])
         # ax2.set_title('Charuco Point positions over time')
         plt.show()
 
-    path_to_charuco_array = session.dataArrayPath/'charuco_3d_points.npy'
-    np.save(path_to_charuco_array, charuco_fr_mar_dim)
-    return cgroup, mean_charuco_fr_mar_dim
+    np.save(session.dataArrayPath/'charuco_3d_points.npy', charuco_fr_mar_xyz)
+    np.save(session.dataArrayPath/'charuco_3d_reprojErr.npy', charuco_reprojErr)
+
+    return cgroup, charuco_fr_mar_xyz
 
 
 def createCalibrationVideos(session, calVideoFrameLength):

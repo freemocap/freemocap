@@ -29,10 +29,10 @@ class FMC_OT_loadMarkerEmpties(bpy.types.Operator): #setting the type as "FMC" f
         dataPath = sessionPath / 'outData' / 'saveData.npz'
         sessionData = np.load(str(dataPath))
 
-        skel_fr_mar_dim = sessionData['skel_fr_mar_dim']
+        skel_fr_mar_xyz = sessionData['skel_fr_mar_xyz']
         
         startFr = 0
-        numFrames = skel_fr_mar_dim.shape[0]-1
+        numFrames = skel_fr_mar_xyz.shape[0]-1
         
 
         #names of markers 
@@ -44,8 +44,8 @@ class FMC_OT_loadMarkerEmpties(bpy.types.Operator): #setting the type as "FMC" f
         #%% _______________________________________________________________________
         # Skreleton data!
         print('Loading Skeleton Markers!')
-        for marNum in range(len(skel_fr_mar_dim[startFr,:,0])):
-            thisMarLoc = skel_fr_mar_dim[startFr,marNum,:]
+        for marNum in range(len(skel_fr_mar_xyz[startFr,:,0])):
+            thisMarLoc = skel_fr_mar_xyz[startFr,marNum,:]
             
             #these will define the size of teh body, hand, and face markers
             bms = self.emptySize
@@ -75,6 +75,6 @@ class FMC_OT_loadMarkerEmpties(bpy.types.Operator): #setting the type as "FMC" f
 
             #loop through each frame (after the first [0th] frame) to set the keyframes for this marker
             for fr in range(1, numFrames):
-                thisMarker.location = skel_fr_mar_dim[fr,marNum,:]
+                thisMarker.location = skel_fr_mar_xyz[fr,marNum,:]
                 thisMarker.keyframe_insert(data_path="location", frame=fr)
         return{'FINISHED'}        

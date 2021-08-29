@@ -10,11 +10,11 @@ from pathlib import Path
 # from numba import jit
 
 
-def runOpenPose(session, dummyRun=False):
+def runOpenPose(session, runOpenPose=False):
     """
     Run OpenPose on synced videos, and save bdoy tracking data to be parsed
     """
-    if not dummyRun:
+    if runOpenPose:
         os.chdir(session.openPoseExePath)
 
     openPose_jsonPathList = []  # list to hold the paths to the json files
@@ -42,7 +42,7 @@ def runOpenPose(session, dummyRun=False):
             openPose_imgPathList.append(imgPath)
             openPose_imgPathList_yaml.append(str(imgPath))
             openPose_jsonPathList_yaml.append(str(jsonPath))
-            if not dummyRun:
+            if runOpenPose:
                 subprocess.run(
                     [
                         "bin\OpenPoseDemo.exe",

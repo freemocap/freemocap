@@ -28,9 +28,10 @@ from ruamel.yaml import YAML
 def RunMe(sessionID=None,
         stage=1,
         useOpenPose=True, 
-        openPoseDummyRun = False, 
+        runOpenPose = False, 
         useMediaPipe=False,
         useDLC=False,
+        runMediaPipe=False,
         dlcConfigPath=None,
         debug=False,
         setDataPath = False,
@@ -202,7 +203,7 @@ def RunMe(sessionID=None,
     if stage <= 3:
         print()
         print('Starting Calibration')
-        sesh.cgroup, sesh.mean_charuco_fr_mar_dim = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
+        sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
     else:
         print('Skipping Calibration')
 
@@ -211,17 +212,21 @@ def RunMe(sessionID=None,
 
         print('Starting Track Image Points')
         if sesh.useMediaPipe:
-            fmc_mediapipe.runMediaPipe(sesh)
+            if runMediaPipe:
+                fmc_mediapipe.runMediaPipe(sesh)
+
             sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
-            sesh.mediaPipeSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_dim) #save data to npy
+            sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipe_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+            np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipe_reprojErr) #save data to npy            
         sesh.save_session()
 
         if sesh.useOpenPose:
-            fmc_openpose.runOpenPose(sesh, dummyRun=openPoseDummyRun)
+            fmc_openpose.runOpenPose(sesh, runOpenPose=runOpenPose)
             sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
-            sesh.openPoseSkel_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
-            np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseSkel_fr_mar_dim) #save data to npy
+            sesh.openPoseSkel_fr_mar_xyz, sesh.openPose_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+            np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseSkel_fr_mar_xyz) #save data to npy
+            np.save(sesh.dataArrayPath/'openPoseSkel_reprojErr.npy', sesh.openPoseSkel_reprojErr) #save data to npy
         sesh.save_session()
         sesh.syncedVidList = []
         if sesh.useDLC:
@@ -231,8 +236,9 @@ def RunMe(sessionID=None,
             for config_path in dlc_config_paths:
                 dlc.analyze_videos(config_path,sesh.syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True) 
                 sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh, config_path)
-                sesh.dlc_fr_mar_dim = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
-                np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_dim) #save data to npy
+                sesh.dlc_fr_mar_xyz, sesh.dlc_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+                np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_xyz) #save data to npy
+                np.save(sesh.dataArrayPath/'deepLabCut_reprojErr.npy', sesh.dlc_reprojErr) #save data to npy
         sesh.save_session()
     else:
         print('Skipping Run MediaPipe')
@@ -245,9 +251,9 @@ def RunMe(sessionID=None,
                                 startFrame=0,
                                 azimuth=-90,
                                 elevation=-81,
-                                useOpenPose=True,
-                                useMediaPipe=False,
-                                useDLC=False,
+                                useOpenPose=useOpenPose,
+                                useMediaPipe=useMediaPipe,
+                                useDLC=useDLC,
                                 recordVid = recordVid
                                 )
         # print ('Starting PyQT Animation')

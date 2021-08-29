@@ -19,39 +19,45 @@ def reconstruct3D(session, data_nCams_nFrames_nImgPts_XYC, confidenceThreshold=0
     nCams, nFrames, nImgPts, nDims = data_nCams_nFrames_nImgPts_XYC.shape
 
     if nDims == 3:
+        dataOG = data_nCams_nFrames_nImgPts_XYC.copy()
 
-        data_nCams_nFrames_nImgPts_X = np.squeeze(
-            data_nCams_nFrames_nImgPts_XYC[:, :, :, 0].copy()
-        )
-        data_nCams_nFrames_nImgPts_Y = np.squeeze(
-            data_nCams_nFrames_nImgPts_XYC[:, :, :, 1].copy()
-        )
-        confidence = np.squeeze(data_nCams_nFrames_nImgPts_XYC[:, :, :, 2].copy())
+        for camNum in range(nCams):
+                          
+            thisCamX = data_nCams_nFrames_nImgPts_XYC[camNum, :, :,0 ]
+            thisCamY = data_nCams_nFrames_nImgPts_XYC[camNum, :, :,1 ]
+            thisCamConf = data_nCams_nFrames_nImgPts_XYC[camNum, :, :, 2]
 
-        data_nCams_nFrames_nImgPts_X[
-            confidence < confidenceThreshold
-        ] = np.nan  # replace low confidence points with 'nan'
-        data_nCams_nFrames_nImgPts_Y[confidence < confidenceThreshold] = np.nan
-        data_nCams_nFrames_nImgPts_XY = np.stack(
-            (data_nCams_nFrames_nImgPts_X, data_nCams_nFrames_nImgPts_Y), axis=3
-        )
+            thisCamX[thisCamConf < confidenceThreshold] = np.nan
+            thisCamY[thisCamConf < confidenceThreshold] = np.nan
+
+            if session.debug:
+                import matplotlib.pyplot as plt
+                fig = plt.figure(8000+camNum)
+                fig.suptitle("3d reconstruction Confidence thresholding - cam{}".format(camNum))               
+                axOG = fig.add_subplot(1,2,1)
+                axOG.imshow(dataOG[0,:,:,0])
+                axOG.set_title("Original Data")
+                axTh = fig.add_subplot(1,2,2)
+                axTh.imshow(thisCamX)
+                axTh.set_title("Thresholded Data (there should be NEW and EXCITING gaps :O")
+                
+
+                
+
 
     if nDims == 2:
         data_nCams_nFrames_nImgPts_XY = data_nCams_nFrames_nImgPts_XYC
+    elif nDims == 3:
+        data_nCams_nFrames_nImgPts_XY = np.squeeze(data_nCams_nFrames_nImgPts_XYC[:, :, :, 0:2])
 
-    dataFlat_nCams_nTotalPoints_XY = data_nCams_nFrames_nImgPts_XY.reshape(
-        nCams, -1, 2
-    )  # reshape data to collapse across 'frames' so it becomes [numCams, numFrames*numPoints, XY]
+    dataFlat_nCams_nTotalPoints_XY = data_nCams_nFrames_nImgPts_XY.reshape(nCams, -1, 2)  # reshape data to collapse across 'frames' so it becomes [numCams, numFrames*numPoints, XY]
 
-    data3d_flat = session.cgroup.triangulate(
-        dataFlat_nCams_nTotalPoints_XY, progress=True
-    )
-    dataReprojerr_flat = session.cgroup.reprojection_error(
-        data3d_flat, dataFlat_nCams_nTotalPoints_XY, mean=True
-    )
+    data3d_flat = session.cgroup.triangulate(dataFlat_nCams_nTotalPoints_XY, progress=True)
+
+    dataReprojerr_flat = session.cgroup.reprojection_error( data3d_flat, dataFlat_nCams_nTotalPoints_XY, mean=True)
 
     ##return:
-    data_fr_mar_dim = data3d_flat.reshape(nFrames, nImgPts, 3)
-    dataReprojErr_fr_mar_err = dataReprojerr_flat.reshape(nFrames, nImgPts)
+    data_fr_mar_xyz = data3d_flat.reshape(nFrames, nImgPts, 3)
+    dataReprojErr = dataReprojerr_flat.reshape(nFrames, nImgPts)
 
-    return data_fr_mar_dim
+    return data_fr_mar_xyz, dataReprojErr

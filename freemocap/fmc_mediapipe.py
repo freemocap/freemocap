@@ -10,7 +10,6 @@ import mediapipe as mp
 # from numba import jit
 
 mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
 mp_holistic = mp.solutions.holistic
 
 
@@ -106,10 +105,7 @@ def runMediaPipe(session, dummyRun=False):
                                 mp_drawing.draw_landmarks(
                                     annotated_image,
                                     results.face_landmarks,
-                                    mp_holistic.FACEMESH_TESSELATION,
-                                    landmark_drawing_spec=None,
-                                    connection_drawing_spec=mp_drawing_styles
-                                    .get_default_face_mesh_tesselation_style()
+                                    mp_holistic.FACE_CONNECTIONS,
                                 )
                                 mp_drawing.draw_landmarks(
                                     annotated_image,

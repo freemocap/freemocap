@@ -542,6 +542,7 @@ class CameraGroup:
             subp = points[:, ip, :]
             good = ~np.isnan(subp[:, 0])
             if np.sum(good) >= 2:
+
                 out[ip] = triangulate_simple(subp[good], cam_mats[good])
 
         if one_point:
@@ -1656,6 +1657,9 @@ class CameraGroup:
         verbose=True,
         **kwargs
     ):
+
+        all_rowsOG = all_rows.copy()
+
         """Assumes camera sizes are set properly"""
         for rows, camera in zip(all_rows, self.cameras):
             size = camera.get_size()
@@ -1688,9 +1692,18 @@ class CameraGroup:
             rtvecs = extract_rtvecs(merged)
             if verbose:
                 pprint(get_connections(rtvecs, self.get_names()))
-            rvecs, tvecs = get_initial_extrinsics(rtvecs)
-            self.set_rotations(rvecs)
-            self.set_translations(tvecs)
+
+                
+                for camNum in range(rtvecs.shape[0]):
+                    if np.sum(np.isnan(rtvecs[camNum,:,:])) == rtvecs[camNum,:,:].size:
+                        rtvecsOG = rtvecs.copy() #for posterity
+                        rtvecs = np.delete(rtvecs, 0,0)
+                        print('REMOVING CAM# {} BECAUSE ANIPOSE HAD IT AS NaNs FOR SOME UNKNOWN REASON'.format(camNum))
+                        
+                rvecs, tvecs = get_initial_extrinsics(rtvecs)
+                self.set_rotations(rvecs)
+                self.set_translations(tvecs)
+
 
         error = self.bundle_adjust_iter(imgp, extra, verbose=verbose, **kwargs)
 

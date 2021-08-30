@@ -16,7 +16,7 @@ saved:
     3: 0
   parameters:
     exposure: -7
-    resWidth: 640
-    resHeight: 480
+    resWidth: 960
+    resHeight: 720
     framerate: 30
     codec: DIVX

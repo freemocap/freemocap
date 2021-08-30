@@ -692,16 +692,20 @@ def PlaySkeletonAnimation(
     fps=30 #NOTE - This should be saved in the session Class some how
     time = np.arange(0, numFrames)/fps
     if useMediaPipe:
-        rHandX = mediaPipe_skel_fr_mar_xyz[:,4,0]/1000 #convert mm to meters
-        rHandY = -mediaPipe_skel_fr_mar_xyz[:,4,1]/1000
-        lHandX = mediaPipe_skel_fr_mar_xyz[:,7,0]/1000
-        lHandY = -mediaPipe_skel_fr_mar_xyz[:,7,1]/1000
+        rHandIdx = 20
+        lHandIdx = 19
+        rHandX = mediaPipe_skel_fr_mar_xyz[:,rHandIdx,0]/1000 #convert mm to meters
+        rHandY = -mediaPipe_skel_fr_mar_xyz[:,rHandIdx,1]/1000
+        lHandX = mediaPipe_skel_fr_mar_xyz[:,lHandIdx,0]/1000
+        lHandY = -mediaPipe_skel_fr_mar_xyz[:,lHandIdx,1]/1000
 
     if useOpenPose:
-        rHandX = openPose_skel_fr_mar_xyz[:,4,0]/1000 #convert mm to meters
-        rHandY = -openPose_skel_fr_mar_xyz[:,4,1]/1000
-        lHandX = openPose_skel_fr_mar_xyz[:,7,0]/1000
-        lHandY = -openPose_skel_fr_mar_xyz[:,7,1]/1000
+        rHandIdx = 4
+        lHandIdx = 7
+        rHandX = openPose_skel_fr_mar_xyz[:,rHandIdx,0]/1000 #convert mm to meters
+        rHandY = -openPose_skel_fr_mar_xyz[:,rHandIdx,1]/1000
+        lHandX = openPose_skel_fr_mar_xyz[:,lHandIdx,0]/1000
+        lHandY = -openPose_skel_fr_mar_xyz[:,lHandIdx,1]/1000
 
     
     linePlotWidth = .45

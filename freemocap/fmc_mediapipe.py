@@ -98,7 +98,7 @@ def runMediaPipe(session, dummyRun=False):
                                 results
                             )  # Append data to mediapipe data list
 
-                            saveImages = True
+                            saveImages = False
                             if saveImages:
                                 # Draw pose, left and right hands, and face landmarks on the image.
                                 annotated_image = image.copy()

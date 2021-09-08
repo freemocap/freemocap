@@ -1691,15 +1691,7 @@ class CameraGroup:
         if init_extrinsics:
             rtvecs = extract_rtvecs(merged)
             if verbose:
-                pprint(get_connections(rtvecs, self.get_names()))
-
-                
-                for camNum in range(rtvecs.shape[0]):
-                    if np.sum(np.isnan(rtvecs[camNum,:,:])) == rtvecs[camNum,:,:].size:
-                        rtvecsOG = rtvecs.copy() #for posterity
-                        rtvecs = np.delete(rtvecs, 0,0)
-                        print('REMOVING CAM# {} BECAUSE ANIPOSE HAD IT AS NaNs FOR SOME UNKNOWN REASON'.format(camNum))
-                        
+                pprint(get_connections(rtvecs, self.get_names()))   
                 rvecs, tvecs = get_initial_extrinsics(rtvecs)
                 self.set_rotations(rvecs)
                 self.set_translations(tvecs)

@@ -863,13 +863,18 @@ def formatOpenPoseStickIndices():
     dict_of_openPoseSegmentIdx_dicts['op_body'] = openPoseBodySegmentIds
 
 
+    #make colors dictionary
+    openPoseBodyColor = np.array([50, 89, 0])/255
+    openPoseRightColor = np.array([230, 50, 0])/255
+    openPoseLeftColor = np.array([0, 50, 230])/255
+    
     dict_of_op_skel_lineColor = dict()
-    dict_of_op_skel_lineColor['op_head'] = np.append(humon_dark, 0.5)
-    dict_of_op_skel_lineColor['op_spine'] = np.append(humon_dark, 1)
-    dict_of_op_skel_lineColor['op_rArm'] = np.append(humon_red, 1)
-    dict_of_op_skel_lineColor['op_lArm'] = np.append(humon_blue, 1)
-    dict_of_op_skel_lineColor['op_rLeg'] = np.append(humon_red, 1)
-    dict_of_op_skel_lineColor['op_lLeg'] = np.append(humon_blue, 1)
+    dict_of_op_skel_lineColor['op_head'] = np.append(openPoseBodyColor, 0.5)
+    dict_of_op_skel_lineColor['op_spine'] = np.append(openPoseBodyColor, 1)
+    dict_of_op_skel_lineColor['op_rArm'] = np.append(openPoseRightColor, 1)
+    dict_of_op_skel_lineColor['op_lArm'] = np.append(openPoseLeftColor, 1)
+    dict_of_op_skel_lineColor['op_rLeg'] = np.append(openPoseRightColor, 1)
+    dict_of_op_skel_lineColor['op_lLeg'] = np.append(openPoseLeftColor, 1)
 
 
     # Make some handy maps ;D
@@ -946,15 +951,18 @@ def formatMediaPipeStickIndices():
     mediaPipeBodySegmentIds['mp_lLeg'] = [23, 25, 27, 29, 31, 27, ]
     dict_of_mediaPipeSegmentIdx_dicts['mp_body'] = mediaPipeBodySegmentIds
 
-
+    #make colors dictionary
+    mediaPipeBodyColor = np.array([125,106,0])/255
+    mediaPipeRightColor = np.array([230, 0, 169])/255
+    mediaPipeLeftColor = np.array([0, 176, 176])/255
     dict_of_mp_skel_lineColor = dict()
-    greenshift = [0, .2, 0]
-    dict_of_mp_skel_lineColor['mp_head'] = np.append(humon_dark+greenshift, 1)
-    dict_of_mp_skel_lineColor['mp_tors'] = np.append(humon_dark+greenshift, 1)
-    dict_of_mp_skel_lineColor['mp_rArm'] = np.append(humon_red+greenshift, 1)
-    dict_of_mp_skel_lineColor['mp_lArm'] = np.append([humon_blue+greenshift], 1)
-    dict_of_mp_skel_lineColor['mp_rLeg'] = np.append(humon_red+greenshift, 1)
-    dict_of_mp_skel_lineColor['mp_lLeg'] = np.append(humon_blue+greenshift, 1)
+    
+    dict_of_mp_skel_lineColor['mp_head'] = np.append(mediaPipeBodyColor, .5)
+    dict_of_mp_skel_lineColor['mp_tors'] = np.append(mediaPipeBodyColor, 1)
+    dict_of_mp_skel_lineColor['mp_rArm'] = np.append(mediaPipeRightColor, 1)
+    dict_of_mp_skel_lineColor['mp_lArm'] = np.append(mediaPipeLeftColor, 1)
+    dict_of_mp_skel_lineColor['mp_rLeg'] = np.append(mediaPipeRightColor, 1)
+    dict_of_mp_skel_lineColor['mp_lLeg'] = np.append(mediaPipeLeftColor, 1)
 
 
     # Make some handy maps ;D

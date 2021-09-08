@@ -98,6 +98,7 @@ def initialize(session, stage, board):
                 session.save_user_preferences(session.preferences)
             elif task == "record":
                 proceedToRecording = True
+                restartSetup = False
 
         if proceedToRecording:
             # create these session properties to be used later in the pipeline

@@ -2,6 +2,7 @@ from pathlib import Path
 from ruamel.yaml import YAML
 
 from freemocap import recordingconfig
+from freemocap.webcam import timesync
 
 class Session: #self like "recording self"
     def __init__(self):

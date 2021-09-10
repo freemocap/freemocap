@@ -1,5 +1,5 @@
 default:
-  path_to_save: C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap
+  path_to_save: C:\Users\aaron\Documents\GitHub\freemocap
   dlc_config_paths: []
   rotations: {}
   parameters:
@@ -9,16 +9,13 @@ default:
     framerate: 25
     codec: DIVX
 saved:
-  path_to_save: C:/Users/jonma/Dropbox/FreeMoCapProject
+  path_to_save: C:\Users\aaron\Documents\GitHub\freemocap
   rotations:
     0: 0
     1: 0
-    2: 0
-    3: 0
-    4: 0
   parameters:
-    exposure: -7
+    exposure: -5
     resWidth: 640
     resHeight: 480
-    framerate: 30
+    framerate: 25
     codec: DIVX

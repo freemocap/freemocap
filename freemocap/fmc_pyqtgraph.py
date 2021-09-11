@@ -24,172 +24,182 @@ class PlaySkeletonWidget:
         # load data to be plotted
         self.useOpenPose = session.useOpenPose
         if self.useOpenPose:
-            self.skel_fr_mar_dim = np.load(
+            self.skel_fr_mar_xyz = np.load(
                 session.dataArrayPath / "openPoseSkel_3d.npy"
             )
             self.skelScatterItem = gl.GLScatterPlotItem(
-                pos=self.skel_fr_mar_dim, color=(1, 0, 1, 0.8), size=10, pxMode=False
+                pos=self.skel_fr_mar_xyz, color=(1, 0, 1, 0.8), size=10, pxMode=False
+            )
+
+            self.Skel3dViewWidget.addItem(self.skelScatterItem)
+
+        elif session.useMediaPipe:
+            self.skel_fr_mar_xyz = np.load(
+                session.dataArrayPath / "mediaPipeSkel_3d.npy"
+            )
+            self.skelScatterItem = gl.GLScatterPlotItem(
+                pos=self.skel_fr_mar_xyz, color=(1, 0, 1, 0.8), size=10, pxMode=False
             )
 
             self.Skel3dViewWidget.addItem(self.skelScatterItem)
 
             # make skeleton line plots (numbers specify what order to connects the dots)
-            self.head = [17, 15, 0, 1, 0, 16, 18]
-            self.spine = [1, 8]
-            self.rArm = [17, 15, 0, 16, 18]
-            self.rArm = [4, 3, 2, 1]
-            self.lArm = [1, 5, 6, 7]
-            self.rLeg = [11, 10, 9, 8]
-            self.lLeg = [14, 13, 12, 8]
-            self.rFoot = [11, 23, 22, 11, 24]
-            self.lFoot = [14, 20, 19, 14, 21]
+        #     self.head = [17, 15, 0, 1, 0, 16, 18]
+        #     self.spine = [1, 8]
+        #     self.rArm = [17, 15, 0, 16, 18]
+        #     self.rArm = [4, 3, 2, 1]
+        #     self.lArm = [1, 5, 6, 7]
+        #     self.rLeg = [11, 10, 9, 8]
+        #     self.lLeg = [14, 13, 12, 8]
+        #     self.rFoot = [11, 23, 22, 11, 24]
+        #     self.lFoot = [14, 20, 19, 14, 21]
 
-            # Make some handy maps ;D
-            rHandIDstart = 25
-            lHandIDstart = rHandIDstart + 21
+        #     # Make some handy maps ;D
+        #     rHandIDstart = 25
+        #     lHandIDstart = rHandIDstart + 21
 
-            self.rHand = (
-                np.array(
-                    [
-                        0,
-                        1,
-                        2,
-                        3,
-                        4,
-                        False,
-                        0,
-                        5,
-                        6,
-                        7,
-                        8,
-                        False,
-                        0,
-                        9,
-                        10,
-                        11,
-                        12,
-                        False,
-                        0,
-                        13,
-                        14,
-                        15,
-                        16,
-                        False,
-                        0,
-                        17,
-                        18,
-                        19,
-                        20,
-                    ]
-                )
-                + rHandIDstart
-            )
-            self.lHand = self.rHand + lHandIDstart
+        #     self.rHand = (
+        #         np.array(
+        #             [
+        #                 0,
+        #                 1,
+        #                 2,
+        #                 3,
+        #                 4,
+        #                 False,
+        #                 0,
+        #                 5,
+        #                 6,
+        #                 7,
+        #                 8,
+        #                 False,
+        #                 0,
+        #                 9,
+        #                 10,
+        #                 11,
+        #                 12,
+        #                 False,
+        #                 0,
+        #                 13,
+        #                 14,
+        #                 15,
+        #                 16,
+        #                 False,
+        #                 0,
+        #                 17,
+        #                 18,
+        #                 19,
+        #                 20,
+        #             ]
+        #         )
+        #         + rHandIDstart
+        #     )
+        #     self.lHand = self.rHand + lHandIDstart
 
-            self.headLineItem = gl.GLLinePlotItem(
-                pos=self.skel_fr_mar_dim[:, self.head, :],
-                color=(1, 1, 1, 0.2),
-                width=4.0,
-                antialias=True,
-            )
-            self.Skel3dViewWidget.addItem(self.headLineItem)
+        #     self.headLineItem = gl.GLLinePlotItem(
+        #         pos=self.skel_fr_mar_xyz[:, self.head, :],
+        #         color=(1, 1, 1, 0.2),
+        #         width=4.0,
+        #         antialias=True,
+        #     )
+        #     self.Skel3dViewWidget.addItem(self.headLineItem)
 
-            self.spineLineItem = gl.GLLinePlotItem(
-                pos=self.skel_fr_mar_dim[:, self.spine, :],
-                color=(1, 1, 1, 0.9),
-                width=4.0,
-                antialias=True,
-            )
-            self.Skel3dViewWidget.addItem(self.spineLineItem)
+        #     self.spineLineItem = gl.GLLinePlotItem(
+        #         pos=self.skel_fr_mar_xyz[:, self.spine, :],
+        #         color=(1, 1, 1, 0.9),
+        #         width=4.0,
+        #         antialias=True,
+        #     )
+        #     self.Skel3dViewWidget.addItem(self.spineLineItem)
 
-            self.rArmLineItem = gl.GLLinePlotItem(
-                pos=self.skel_fr_mar_dim[:, self.rArm, :],
-                color=(1, 0.2, 0.15, 0.9),
-                width=4.0,
-                antialias=True,
-            )
-            self.Skel3dViewWidget.addItem(self.rArmLineItem)
+        #     self.rArmLineItem = gl.GLLinePlotItem(
+        #         pos=self.skel_fr_mar_xyz[:, self.rArm, :],
+        #         color=(1, 0.2, 0.15, 0.9),
+        #         width=4.0,
+        #         antialias=True,
+        #     )
+        #     self.Skel3dViewWidget.addItem(self.rArmLineItem)
 
-            self.lArmLineItem = gl.GLLinePlotItem(
-                pos=self.skel_fr_mar_dim[:, self.lArm, :],
-                color=(0.4, 0.6, 1, 0.9),
-                width=4.0,
-                antialias=True,
-            )
-            self.Skel3dViewWidget.addItem(self.lArmLineItem)
+        #     self.lArmLineItem = gl.GLLinePlotItem(
+        #         pos=self.skel_fr_mar_xyz[:, self.lArm, :],
+        #         color=(0.4, 0.6, 1, 0.9),
+        #         width=4.0,
+        #         antialias=True,
+        #     )
+        #     self.Skel3dViewWidget.addItem(self.lArmLineItem)
 
-            self.rLegLineItem = gl.GLLinePlotItem(
-                pos=self.skel_fr_mar_dim[:, self.rLeg, :],
-                color=(1, 0.2, 0.15, 0.9),
-                width=4.0,
-                antialias=True,
-            )
-            self.Skel3dViewWidget.addItem(self.rLegLineItem)
+        #     self.rLegLineItem = gl.GLLinePlotItem(
+        #         pos=self.skel_fr_mar_xyz[:, self.rLeg, :],
+        #         color=(1, 0.2, 0.15, 0.9),
+        #         width=4.0,
+        #         antialias=True,
+        #     )
+        #     self.Skel3dViewWidget.addItem(self.rLegLineItem)
 
-            self.lLegLineItem = gl.GLLinePlotItem(
-                pos=self.skel_fr_mar_dim[:, self.lLeg, :],
-                color=(0.4, 0.6, 1, 0.9),
-                width=4.0,
-                antialias=True,
-            )
-            self.Skel3dViewWidget.addItem(self.lLegLineItem)
+        #     self.lLegLineItem = gl.GLLinePlotItem(
+        #         pos=self.skel_fr_mar_xyz[:, self.lLeg, :],
+        #         color=(0.4, 0.6, 1, 0.9),
+        #         width=4.0,
+        #         antialias=True,
+        #     )
+        #     self.Skel3dViewWidget.addItem(self.lLegLineItem)
 
-            self.rFootLineItem = gl.GLLinePlotItem(
-                pos=self.skel_fr_mar_dim[:, self.rFoot, :],
-                color=(1, 0.2, 0.15, 0.9),
-                width=4.0,
-                antialias=True,
-            )
-            self.Skel3dViewWidget.addItem(self.rFootLineItem)
+        #     self.rFootLineItem = gl.GLLinePlotItem(
+        #         pos=self.skel_fr_mar_xyz[:, self.rFoot, :],
+        #         color=(1, 0.2, 0.15, 0.9),
+        #         width=4.0,
+        #         antialias=True,
+        #     )
+        #     self.Skel3dViewWidget.addItem(self.rFootLineItem)
 
-            self.lFootLineItem = gl.GLLinePlotItem(
-                pos=self.skel_fr_mar_dim[:, self.lFoot, :],
-                color=(0.4, 0.6, 1, 0.9),
-                width=4.0,
-                antialias=True,
-            )
-            self.Skel3dViewWidget.addItem(self.lFootLineItem)
+        #     self.lFootLineItem = gl.GLLinePlotItem(
+        #         pos=self.skel_fr_mar_xyz[:, self.lFoot, :],
+        #         color=(0.4, 0.6, 1, 0.9),
+        #         width=4.0,
+        #         antialias=True,
+        #     )
+        #     self.Skel3dViewWidget.addItem(self.lFootLineItem)
 
-            # plot handybois
-            self.rHandLineItem = gl.GLLinePlotItem(
-                pos=self.skel_fr_mar_dim[:, self.rHand, :],
-                color=(0.2, 0.4, 1, 0.9),
-                width=1.0,
-                antialias=True,
-            )
-            # self.Skel3dViewWidget.addItem(self.rHandLineItem)
+        #     # plot handybois
+        #     self.rHandLineItem = gl.GLLinePlotItem(
+        #         pos=self.skel_fr_mar_xyz[:, self.rHand, :],
+        #         color=(0.2, 0.4, 1, 0.9),
+        #         width=1.0,
+        #         antialias=True,
+        #     )
+        #     # self.Skel3dViewWidget.addItem(self.rHandLineItem)
 
-            self.lHandLineItem = gl.GLLinePlotItem(
-                pos=self.skel_fr_mar_dim[:, self.lHand, :],
-                color=(1, 0.1, 0.05, 0.9),
-                width=1.0,
-                antialias=True,
-            )
-            # self.Skel3dViewWidget.addItem(self.lHandLineItem)
+        #     self.lHandLineItem = gl.GLLinePlotItem(
+        #         pos=self.skel_fr_mar_xyz[:, self.lHand, :],
+        #         color=(1, 0.1, 0.05, 0.9),
+        #         width=1.0,
+        #         antialias=True,
+        #     )
+        #     # self.Skel3dViewWidget.addItem(self.lHandLineItem)
 
         self.useDLC = session.useDLC
         if self.useDLC:
-            # self.dlc_fr_mar_dim = np.load(session.dataArrayPath/'mediaPipeSkel_3d.npy')
-            self.dlc_fr_mar_dim = np.load(session.dataArrayPath / "deepLabCut_3d.npy")
+            # self.dlc_fr_mar_xyz = np.load(session.dataArrayPath/'mediaPipeSkel_3d.npy')
+            self.dlc_fr_mar_xyz = np.load(session.dataArrayPath / "deepLabCut_3d.npy")
             self.dlcScatterItem = gl.GLScatterPlotItem(
-                pos=self.dlc_fr_mar_dim, color=(1, 0, 0, 0.8), size=60, pxMode=False
+                pos=self.dlc_fr_mar_xyz, color=(1, 0, 0, 0.8), size=60, pxMode=False
             )
             self.Skel3dViewWidget.addItem(self.dlcScatterItem)
 
             self.dlc0LineItem = gl.GLLinePlotItem(
-                pos=self.dlc_fr_mar_dim[:, 0, :],
+                pos=self.dlc_fr_mar_xyz[:, 0, :],
                 color=(0, 1, 1, 0.5),
                 width=4.0,
                 antialias=True,
             )
             self.dlc1LineItem = gl.GLLinePlotItem(
-                pos=self.dlc_fr_mar_dim[:, 1, :],
+                pos=self.dlc_fr_mar_xyz[:, 1, :],
                 color=(1, 0, 1, 0.5),
                 width=4.0,
                 antialias=True,
             )
             self.dlc2LineItem = gl.GLLinePlotItem(
-                pos=self.dlc_fr_mar_dim[:, 2, :],
+                pos=self.dlc_fr_mar_xyz[:, 2, :],
                 color=(1, 1, 0, 0.5),
                 width=4.0,
                 antialias=True,
@@ -220,47 +230,49 @@ class PlaySkeletonWidget:
 
         # Plot Mr. Skreleton :D
         # Plots the dots
+        
         self.skelScatterItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, :, :]
+            pos=self.skel_fr_mar_xyz[self.currentFrameNumber, :, :]
         )
 
         # connect the dottos
-        self.headLineItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, self.head, :]
-        )
-        self.spineLineItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, self.spine, :]
-        )
-        self.rArmLineItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, self.rArm, :]
-        )
-        self.lArmLineItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, self.lArm, :]
-        )
-        self.rLegLineItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, self.rLeg, :]
-        )
-        self.lLegLineItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, self.lLeg, :]
-        )
-        self.rFootLineItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, self.rFoot, :]
-        )
-        self.lFootLineItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, self.lFoot, :]
-        )
+        if self.useOpenPose:
+            self.headLineItem.setData(
+                pos=self.skel_fr_mar_xyz[self.currentFrameNumber, self.head, :]
+            )
+            self.spineLineItem.setData(
+                pos=self.skel_fr_mar_xyz[self.currentFrameNumber, self.spine, :]
+            )
+            self.rArmLineItem.setData(
+                pos=self.skel_fr_mar_xyz[self.currentFrameNumber, self.rArm, :]
+            )
+            self.lArmLineItem.setData(
+                pos=self.skel_fr_mar_xyz[self.currentFrameNumber, self.lArm, :]
+            )
+            self.rLegLineItem.setData(
+                pos=self.skel_fr_mar_xyz[self.currentFrameNumber, self.rLeg, :]
+            )
+            self.lLegLineItem.setData(
+                pos=self.skel_fr_mar_xyz[self.currentFrameNumber, self.lLeg, :]
+            )
+            self.rFootLineItem.setData(
+                pos=self.skel_fr_mar_xyz[self.currentFrameNumber, self.rFoot, :]
+            )
+            self.lFootLineItem.setData(
+                pos=self.skel_fr_mar_xyz[self.currentFrameNumber, self.lFoot, :]
+            )
 
-        self.rHandLineItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, self.rHand, :]
-        )
-        self.lHandLineItem.setData(
-            pos=self.skel_fr_mar_dim[self.currentFrameNumber, self.lHand, :]
-        )
+            self.rHandLineItem.setData(
+                pos=self.skel_fr_mar_xyz[self.currentFrameNumber, self.rHand, :]
+            )
+            self.lHandLineItem.setData(
+                pos=self.skel_fr_mar_xyz[self.currentFrameNumber, self.lHand, :]
+            )
 
         if self.useDLC:
             # Plot DeepLabCut data
             self.dlcScatterItem.setData(
-                pos=self.dlc_fr_mar_dim[self.currentFrameNumber, :, :]
+                pos=self.dlc_fr_mar_xyz[self.currentFrameNumber, :, :]
             )
 
             if self.currentFrameNumber > self.tailLength:
@@ -268,17 +280,17 @@ class PlaySkeletonWidget:
                     self.currentFrameNumber - self.tailLength, self.currentFrameNumber
                 )
                 self.dlc0LineItem.setData(
-                    pos=self.dlc_fr_mar_dim[self.tailIndexes, 0, :]
+                    pos=self.dlc_fr_mar_xyz[self.tailIndexes, 0, :]
                 )
                 self.dlc1LineItem.setData(
-                    pos=self.dlc_fr_mar_dim[self.tailIndexes, 1, :]
+                    pos=self.dlc_fr_mar_xyz[self.tailIndexes, 1, :]
                 )
                 self.dlc2LineItem.setData(
-                    pos=self.dlc_fr_mar_dim[self.tailIndexes, 2, :]
+                    pos=self.dlc_fr_mar_xyz[self.tailIndexes, 2, :]
                 )
 
         self.currentFrameNumber += 1
-        if self.currentFrameNumber >= self.skel_fr_mar_dim.shape[0]:
+        if self.currentFrameNumber >= self.skel_fr_mar_xyz.shape[0]:
             self.currentFrameNumber = 0
 
     def animate(self):

@@ -4,6 +4,9 @@ import imutils
 
 
 class VideoSetup(threading.Thread):
+    """
+    Class to run and thread webcams for preview purposes
+    """
     def __init__(self, camID, parameterDictionary, rotNum):
         self.camID = camID
         self.parameterDictionary = parameterDictionary
@@ -59,6 +62,9 @@ class VideoSetup(threading.Thread):
 
 
 def RunSetup(cam_inputs, rotation_input, paramDict):
+    """
+    Start video setup by threading instances of the VideoSetup class
+    """
     if not cam_inputs:
         raise ValueError("Camera input list (cam_inputs) is empty")
 

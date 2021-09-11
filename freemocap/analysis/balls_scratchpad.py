@@ -1,4 +1,4 @@
-#%%
+#%% lol
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -24,11 +24,11 @@ from rich.markdown import Markdown
 dlcDataPath = Path(r"C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap - Copy\Data\sesh_21-07-20_165209\DataArrays\deepLabCut_3d.npy")
 openPoseDataPath = Path(r"C:\Users\jonma\Dropbox\GitKrakenRepos\freemocap - Copy\Data\sesh_21-07-20_165209\DataArrays\openPoseSkel_3d.npy")
 
-dlc_fr_mar_dim = np.load(dlcDataPath)
-dlc_trajectories = [dlc_fr_mar_dim[:,markerNum,:] for markerNum in range(dlc_fr_mar_dim.shape[1])]    
+dlc_fr_mar_xyz = np.load(dlcDataPath)
+dlc_trajectories = [dlc_fr_mar_xyz[:,markerNum,:] for markerNum in range(dlc_fr_mar_xyz.shape[1])]    
 
-skel_fr_mar_dim = np.load(openPoseDataPath)
-skel_trajectories = [skel_fr_mar_dim[:,markerNum,:] for markerNum in range(skel_fr_mar_dim.shape[1])]    
+skel_fr_mar_xyz = np.load(openPoseDataPath)
+skel_trajectories = [skel_fr_mar_xyz[:,markerNum,:] for markerNum in range(skel_fr_mar_xyz.shape[1])]    
 
 # %% hand/ball vs time
 fig1 = plt.figure()

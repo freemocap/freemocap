@@ -14,6 +14,9 @@ mp_holistic = mp.solutions.holistic
 
 
 def runMediaPipe(session, dummyRun=False):
+    """ 
+    Run MediaPipe on synced videos, and save body tracking data to be parsed 
+    """  
 
     session.mediaPipeDataPath.mkdir(exist_ok = True)
 
@@ -95,7 +98,7 @@ def runMediaPipe(session, dummyRun=False):
                                 results
                             )  # Append data to mediapipe data list
 
-                            saveImages = True
+                            saveImages = False
                             if saveImages:
                                 # Draw pose, left and right hands, and face landmarks on the image.
                                 annotated_image = image.copy()
@@ -141,8 +144,8 @@ def runMediaPipe(session, dummyRun=False):
     session.mediaPipe_jsonPathList = mediaPipe_jsonPathList
     session.mediaPipe_imgPathList = mediaPipe_imgPathList
 
-    session.session_settings['mediaPipe_imgPathList'] = str(mediaPipe_imgPathList)
-    session.session_settings['mediaPipe_jsonPathList'] = str(mediaPipe_jsonPathList)
+    session.session_settings['mediaPipe_imgPathList'] = mediaPipe_imgPathList_yaml
+    session.session_settings['mediaPipe_jsonPathList'] = mediaPipe_jsonPathList_yaml
 
     #yaml = YAML()
     #data = yaml.load(session.yamlPath)
@@ -154,6 +157,9 @@ def runMediaPipe(session, dummyRun=False):
 
 
 def parseMediaPipe(session):
+    """ 
+    Parse through saved MediaPipe data, and save out a numpy array of 2D points
+    """  
     numCams = len(session.mediaPipeData)  # Get number of cameras
     numFrames = len(session.mediaPipeData[0])  # Get number of frames
     # numBodyPoints = len(np.max(session.mediaPipeData[0][:].pose_landmarks.landmark[:]))#Get number of body points
@@ -298,6 +304,7 @@ def parseMediaPipe(session):
     )
 
     return mediaPipeData_nCams_nFrames_nImgPts_XYC
+    
 # #def parseMediaPipe2(session):
 
 #         #numCams = len(session.mediaPipeData) #Get number of cameras

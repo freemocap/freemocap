@@ -63,7 +63,7 @@ setup(
         ]
     },
     install_requires=requirements,
-    license="BSD (3-clause)",
+    license="AGPLv3",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Natural Language :: English",

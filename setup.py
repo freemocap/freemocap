@@ -26,7 +26,7 @@ pip install --upgrade pip
 
 here = path.abspath(path.dirname(__file__))
 
-with open(path.join(here, "README.rst"), encoding="utf-8") as readme_file:
+with open(path.join(here, "README.md"), encoding="utf-8") as readme_file:
     readme = readme_file.read()
 
 with open(path.join(here, "requirements.txt")) as requirements_file:
@@ -42,7 +42,7 @@ setup(
     name="freemocap",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description="The FreeMoCap Project: A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture system and platform for decentralized scientific research, education, and training",
+    description="The FreeMoCap Project: A free-and-open-source, hardware-and-software-agnostic, research-grade, minimal-cost motion capture system and platform for decentralized scientific research, education, and training",
     long_description=readme,
     author="Jonathan Samir Matthis",
     author_email="jonmatthis@gmail.com",
@@ -63,10 +63,6 @@ setup(
         ]
     },
     install_requires=requirements,
-    extras_require={"dlc": ["tensorflow-gpu>=2.0",
-                            "tf_slim>=1.1.0",
-                            "deeplabcut>=2.2",
-                            "typed-ast<1.5,>=1.4.0"]},
     license="AGPLv3",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",

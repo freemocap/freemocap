@@ -1,0 +1,10 @@
+
+git commit --allow-empty -m "REL: v0.0.29"
+git tag -a v0.0.29  # Don't forget the leading v
+git push origin main
+git push origin v0.0.29
+python3 -m pip install --upgrade wheel
+git clean -dfx
+python setup.py sdist
+python setup.py bdist_wheel
+twine upload dist/*

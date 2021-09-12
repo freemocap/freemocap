@@ -7,5 +7,7 @@ opencv-contrib-python~=3.4.14.51
 pandas~=1.2.5
 rich~=10.4.0
 tqdm~=4.61.1
-ruamel.yaml<0.17
+ruamel.yaml>=0.15.0
 numpy<=1.19
+typed-ast<1.5,>=1.4.0
+moviepy

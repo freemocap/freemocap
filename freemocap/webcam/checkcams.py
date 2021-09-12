@@ -6,7 +6,7 @@ def TestDevice(source):
     """
     Checks to see if there is a camera available at the input
     """
-    cap = cv2.VideoCapture(source, cv2.CAP_ANY)
+    cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
     # if cap is None or not cap.isOpened():
     # print('Warning: unable to open video source: ', source)
 

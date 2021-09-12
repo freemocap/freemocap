@@ -65,8 +65,7 @@ setup(
     install_requires=requirements,
     extras_require={"dlc": ["tensorflow-gpu>=2.0",
                             "tf_slim>=1.1.0",
-                            "deeplabcut>=2.2",
-                            "typed-ast<1.5,>=1.4.0"]},
+                            "deeplabcut>=2.2",]},
     license="AGPLv3",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",

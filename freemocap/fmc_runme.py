@@ -27,9 +27,9 @@ from ruamel.yaml import YAML
 
 def RunMe(sessionID=None,
         stage=1,
-        useOpenPose=True, 
-        runOpenPose = False, 
-        useMediaPipe=False,
+        useOpenPose=False, 
+        runOpenPose = True, 
+        useMediaPipe=True,
         useDLC=False,
         runMediaPipe=False,
         dlcConfigPath=None,
@@ -37,7 +37,7 @@ def RunMe(sessionID=None,
         setDataPath = False,
         userDataPath = None,
         recordVid = True,
-        reconstructionConfidenceThreshold = .8,
+        reconstructionConfidenceThreshold = .7,
         charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
         calVideoFrameLength = 120,
         ):

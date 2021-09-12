@@ -50,7 +50,7 @@ def CamRecording(
     flag = False
 
     cv2.namedWindow(camID)  # name the preview window for the camera its showing
-    cam = cv2.VideoCapture(camInput, cv2.CAP_DSHOW)  # create the video capture object
+    cam = cv2.VideoCapture(camInput, cv2.CAP_ANY)  # create the video capture object
     # if not cam.isOpened():
     #         raise RuntimeError('No camera found at input '+ str(camID))
     # pulling out all the dictionary paramters

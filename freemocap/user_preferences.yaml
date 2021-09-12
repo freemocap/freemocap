@@ -12,8 +12,10 @@ saved:
   path_to_save: C:/Users/jonma/Dropbox/FreeMoCapProject
   rotations:
     0: 0
+    1: 0
     2: 0
     3: 0
+    4: 0
   parameters:
     exposure: -7
     resWidth: 640

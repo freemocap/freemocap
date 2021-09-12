@@ -24,7 +24,7 @@ class VideoSetup(threading.Thread):
         camName = "Camera" + str(self.camID)
 
         cv2.namedWindow(camName)
-        cap = cv2.VideoCapture(self.camID, cv2.CAP_ANY)
+        cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, resWidth)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, resHeight)
         cap.set(cv2.CAP_PROP_EXPOSURE, exposure)

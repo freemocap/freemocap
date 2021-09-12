@@ -36,8 +36,9 @@ import matplotlib.animation as animation
 from matplotlib.widgets import Slider
 import cv2 
 from scipy.signal import savgol_filter
+import moviepy.editor as mp
 
-
+import os
 import copy
 from pathlib import Path
 
@@ -811,14 +812,20 @@ def PlaySkeletonAnimation(
 
     
     if recordVid:
-        vidSavePath = '{}_animVid.mp4'.format(str(session.sessionPath / session.sessionID))
-        with console.status('Saving video - {}'.format(vidSavePath)):
-            Writer = animation.writers['ffmpeg']
-            writer = Writer(fps=30, metadata=dict(artist='FreeMoCap'))#, bitrate=1800)
-            line_animation.save(vidSavePath, writer = writer)
+        # vidSavePath = '{}_animVid.mp4'.format(str(session.sessionPath / session.sessionID))
+        gifSavePath = '{}_animVid.gif'.format(str(session.sessionPath / session.sessionID)) #NOTE - saving as a gif first then converting to MP4, because saving directly to MP4 requires users to install ffmpeg (independently of the pip install)
+        with console.status('Saving animation for {}'.format(session.sessionID)):
+            # Writer = animation.writers['ffmpeg']
+            Writer = animation.writers['pillow']            
+            writer = Writer(fps=fps, metadata=dict(artist='FreeMoCap'))#, bitrate=1800)
+            line_animation.save(gifSavePath, writer = writer)
             # Writer = animation.FFMpegWriter(fps=30, metadata=dict(artist='FreeMoCap', comment=session.sessionID), bitrate=1800)
             # vidSavePath = '{}_outVid.mp4'.format(str(session.sessionPath / session.sessionID))
             # Writer.saving(fig = fig, outfile=vidSavePath, dpi=150)
+        
+        gif_filepath = mp.VideoFileClip(gifSavePath)
+        gif_filepath.write_videofile(gifSavePath.replace('.gif','.mp4'))
+        os.remove(gifSavePath)
 
 
     try:

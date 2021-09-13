@@ -1,5 +1,4 @@
 from freemocap import (
-    createvideo,
     recordingconfig,
     runcams,
     runmeGUI,
@@ -8,13 +7,11 @@ from freemocap import (
     fmc_openpose,
     fmc_deeplabcut,
     reconstruct3D,
-    playskeleton,
     play_skeleton_animation,
     session,
     webcamGUI
 )
 
-from freemocap.fmc_pyqtgraph import PlayerDockedWindow
 
 from pathlib import Path
 import os

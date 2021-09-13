@@ -1,6 +1,7 @@
 import threading
 import cv2
 import imutils
+import os
 
 
 class VideoSetup(threading.Thread):
@@ -24,7 +25,12 @@ class VideoSetup(threading.Thread):
         camName = "Camera" + str(self.camID)
 
         cv2.namedWindow(camName)
-        cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
+
+        if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
+            cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
+        else:
+            cap = cv2.VideoCapture(self.camID, cv2.CAP_ANY)
+
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, resWidth)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, resHeight)
         cap.set(cv2.CAP_PROP_EXPOSURE, exposure)

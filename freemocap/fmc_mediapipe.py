@@ -25,7 +25,11 @@ def runMediaPipe(session, dummyRun=False):
     mediaPipe_imgPathList_yaml = []
     mediaPipe_jsonPathList_yaml = []
 
-    with mp_holistic.Holistic() as holistic:
+    with mp_holistic.Holistic(
+                            static_image_mode = True, #use 'static image mode' to avoid system getting 'stuck' on ghost skeletons
+                            model_complexity = 2, #in this house, we turn the Speed/Accuracy dial all the way towards accuracy \o/) as holistic:
+                            ) as holistic:
+                            
         eachCamerasData = []  # Create an empty list that holds each cameras data
         for (
             thisVidPath
@@ -73,8 +77,8 @@ def runMediaPipe(session, dummyRun=False):
                             image_height, image_width, _ = image.shape
 
                             results = holistic.process(
-                                cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                            )  # THIS IS WHERE THE MAGIC HAPENS (ps. Convert the BGR image to RGB before processing.)
+                                cv2.cvtColor(image, cv2.COLOR_BGR2RGB), #Convert the BGR image to RGB before processing
+                            )  # NOTE: THIS IS WHERE THE MAGIC HAPENS 
 
                             try:
                                 results.pose_landmarks.landmark

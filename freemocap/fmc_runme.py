@@ -38,6 +38,7 @@ def RunMe(sessionID=None,
         reconstructionConfidenceThreshold = .7,
         charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
         calVideoFrameLength = 120,
+        startFrame = 0
         ):
     """ 
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -54,6 +55,7 @@ def RunMe(sessionID=None,
     sesh.setDataPath = setDataPath
     sesh.userDataPath = userDataPath
     sesh.dataFolderName = recordingconfig.dataFolder
+    sesh.startFrame = startFrame
 
     # %% Startup 
     startup.get_user_preferences(sesh,stage)
@@ -158,7 +160,7 @@ def RunMe(sessionID=None,
         print('Starting Skeleton Plotting')
         play_skeleton_animation.PlaySkeletonAnimation(
                                 sesh,
-                                startFrame=0,
+                                startFrame=sesh.startFrame,
                                 azimuth=-90,
                                 elevation=-81,
                                 useOpenPose=useOpenPose,

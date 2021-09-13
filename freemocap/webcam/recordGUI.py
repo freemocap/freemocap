@@ -60,12 +60,14 @@ class recordGUI:
                 self.master, text=option, padx=20, variable=self.currentTask, value=val
             ).pack(anchor=tk.W)
 
-        self.sub_button = Button(bottom_frame, text="Submit", command=self.Submit)
-        self.sub_button.pack(side=tk.RIGHT)
-
         self.refresh_button = Button(bottom_frame, text="Refresh", command=self.Refresh)
         self.refresh_button.pack(side=tk.RIGHT)
 
+        
+        self.sub_button = Button(bottom_frame, text="Submit", command=self.Submit)
+        self.sub_button.pack(side=tk.RIGHT)
+
+        
     def Submit(self):
         self.taskChoice = self.currentTask.get()
         self.selected = [

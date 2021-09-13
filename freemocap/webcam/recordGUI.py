@@ -10,6 +10,7 @@ from freemocap.webcam import checkcams
 import pickle
 import datetime
 from pathlib import Path
+import sys
 
 
 class recordGUI:
@@ -301,6 +302,7 @@ class ProceedToRecordGUI:
 
     def stop(self):
         self.master.destroy()
+        sys.exit("Quitting Program")
 
     def change_params(self):
         self.restart_setup = True

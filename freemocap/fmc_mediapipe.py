@@ -26,10 +26,10 @@ def runMediaPipe(session, dummyRun=False):
     mediaPipe_jsonPathList_yaml = []
 
     with mp_holistic.Holistic(
-                            static_image_mode = True, #use 'static image mode' to avoid system getting 'stuck' on ghost skeletons
-                            model_complexity = 2, #in this house, we turn the Speed/Accuracy dial all the way towards accuracy \o/) as holistic:
+                            static_image_mode = False, #use 'static image mode' to avoid system getting 'stuck' on ghost skeletons?
+                            model_complexity = 2, #in this house, we turn the Speed/Accuracy dial all the way towards accuracy \o/)
                             ) as holistic:
-                            
+
         eachCamerasData = []  # Create an empty list that holds each cameras data
         for (
             thisVidPath

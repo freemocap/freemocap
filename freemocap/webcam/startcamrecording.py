@@ -2,7 +2,7 @@ import threading
 import cv2
 import time
 import pickle
-
+import os
 
 class CamRecordingThread(threading.Thread):
     def __init__(
@@ -50,7 +50,13 @@ def CamRecording(
     flag = False
 
     cv2.namedWindow(camID)  # name the preview window for the camera its showing
-    cam = cv2.VideoCapture(camInput, cv2.CAP_DSHOW)  # create the video capture object
+
+    if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
+        cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
+    else:
+        cap = cv2.VideoCapture(self.camID, cv2.CAP_ANY)
+
+
     # if not cam.isOpened():
     #         raise RuntimeError('No camera found at input '+ str(camID))
     # pulling out all the dictionary paramters

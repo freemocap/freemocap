@@ -52,9 +52,9 @@ def CamRecording(
     cv2.namedWindow(camID)  # name the preview window for the camera its showing
 
     if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
-        cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
+        cam = cv2.VideoCapture(camInput, cv2.CAP_DSHOW)
     else:
-        cap = cv2.VideoCapture(self.camID, cv2.CAP_ANY)
+        cam = cv2.VideoCapture(camInput, cv2.CAP_ANY)
 
 
     # if not cam.isOpened():

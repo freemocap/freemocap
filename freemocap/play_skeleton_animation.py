@@ -516,6 +516,10 @@ def PlaySkeletonAnimation(
         mz = np.nanmean(mediaPipe_skel_fr_mar_xyz[int(numFrames/2),:,2])
 
     
+    if np.isnan(mx) or np.isnan(my) or np.isnan(mz):
+        mx = 0
+        my = 0
+        mz = 0
     # groundX = np.arange(mx-100,mx+100)
     # groundZ = np.arange(my-100,my+100)
     # groundXX, groundZZ = np.meshgrid(groundX, groundZ)

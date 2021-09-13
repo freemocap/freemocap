@@ -1,12 +1,16 @@
 from tqdm import tqdm
 import cv2
-
+import os
 
 def TestDevice(source):
     """
     Checks to see if there is a camera available at the input
     """
-    cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
+    if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
+        cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
+    else:
+        cap = cv2.VideoCapture(self.camID, cv2.CAP_ANY)
+        
     # if cap is None or not cap.isOpened():
     # print('Warning: unable to open video source: ', source)
 

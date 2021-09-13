@@ -1,7 +1,6 @@
 from freemocap import (
     recordingconfig,
     runcams,
-    runmeGUI,
     calibrate,
     fmc_mediapipe,
     fmc_openpose,
@@ -9,9 +8,11 @@ from freemocap import (
     reconstruct3D,
     play_skeleton_animation,
     session,
-    webcamGUI
 )
 
+
+from freemocap.fmc_startup import startup
+from freemocap.webcam import camera_settings, timesync
 
 from pathlib import Path
 import os
@@ -54,106 +55,22 @@ def RunMe(sessionID=None,
     sesh.userDataPath = userDataPath
     sesh.dataFolderName = recordingconfig.dataFolder
 
-    if sesh.useDLC and stage < 5: 
-        import deeplabcut as dlc
-    #    sesh.dlcConfigPath = dlcConfigPath
+    # %% Startup 
+    startup.get_user_preferences(sesh,stage)
 
+    if sesh.useDLC and stage<5:
+         import deeplabcut as dlc
+         dlc_config_paths = startup.get_dlc_paths(session)
 
-
-    #%% load user preferences if they exist, create a new preferences yaml if they don't
-    here = Path(__file__).parent
-    preferences_path = here/'user_preferences.yaml'
-    preferences_yaml = YAML()
-
-    if preferences_path.exists():
-        preferences = preferences_yaml.load(preferences_path)
-    else:
-        preferences = recordingconfig.parameters_for_yaml
-        preferences_yaml.dump(preferences, preferences_path)
-    
-    sesh.preferences = preferences
-    sesh.preferences_path = preferences_path
-        
-
-    if sesh.useDLC and stage < 5:
-
-        try:
-            saved_dlc_paths = preferences['saved']['dlc_config_paths']
-        except: 
-            saved_dlc_paths = preferences['default']['dlc_config_paths']
-
-
-        dlc_config_paths = runmeGUI.RunChooseDLCPathGUI(sesh,saved_dlc_paths)
-        
-
-        sesh.preferences['saved']['dlc_config_paths'] = dlc_config_paths
-        sesh.save_user_preferences(sesh.preferences)
-
-        # sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Dropbox\\GitKrakenRepos\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml")
-        #sesh.dlcConfigPath = Path("C:\\Users\\jonma\\Desktop\\freemocap\\DLC_Models\\PinkGreenRedJugglingBalls-JSM-2021-05-31\\config.yaml") 
     if stage > 1:
-        #if we are rerunning a session folder
-        # 1) Check if we're using the last saved dataFolderPath, or if the user wants to choose a different one
-        #   a. if the user wants to choose one, bring up a GUI to let them decide
-        #   b. if we're using the last known path - parse the user preferences yaml (and check if that yaml exists)
-        # 2) Check that the data folder exists
-        # 3) If no sessionID was user-input, search the chosen directory for the last session created
-        if sesh.setDataPath == True:
-            sesh.basePath = runmeGUI.RunChooseDataPathGUI(session)
-            sesh.basePath = Path(sesh.basePath)
-            #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
-
-        elif sesh.userDataPath is not None:
-            sesh.basePath = sesh.userDataPath
-        else:
-            try:
-                current_path_to_data = preferences['saved']['path_to_save']
-                sesh.basePath = current_path_to_data
-            except KeyError:
-                print('Saved Data path not found, please choose a new one')
-                sesh.basePath = runmeGUI.RunChooseDataPathGUI(session)
-                sesh.preferences['saved']['path_to_save'] = str(sesh.basePath)
-                sesh.save_user_preferences(sesh.preferences)
-
-
-        dataFolder = Path(sesh.basePath)/sesh.dataFolderName
-        sesh.dataFolderPath = dataFolder
-        
-        if not dataFolder.exists():
-            raise FileNotFoundError('No data folder located at: ' + str(dataFolder))
-
+        startup.get_data_folder_path(sesh)
+    
         if sesh.sessionID == None:    
             subfolders = [f.path for f in os.scandir(sesh.dataFolderPath) if f.is_dir()]  # copy-pasta from who knows where
             sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
         
         print('Running ' + str(sesh.sessionID) + ' from ' + str(sesh.dataFolderPath))
-        
-        # if sesh. setDataPath == True:
-        #     #run file dialog GUI (select folder where the data folder)
-        # here = Path(__file__).parent
-        # parameter_path = here/'user_preferences.yaml'
-        # if parameter_path.exists(): 
-        #     #this section looks for the Data folder at the last saved path from the user_preferences.yaml, if none exists, it raises an error
-        #     #if not, if finds the most recent session from that Data folder 
-        #     parameters_yaml = YAML()
-        #     parameters = parameters_yaml.load(parameter_path)
-        #     current_path_to_data = parameters['saved']['path_to_save']
-        #     dataFolder = Path(current_path_to_data)/'Data' 
-        #     try:
-        #         subfolders = [f.path for f in os.scandir(dataFolder) if f.is_dir()]  # copy-pasta from who knows where
-        #         sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
-        #     except FileNotFoundError:
-        #        raise FileNotFoundError('No data folder located at: ' + str(dataFolder))
-            
-        #     print('Running ' + str(sesh.sessionID) + ' from ' + str(dataFolder))
-        #     sesh.dataPath = dataFolder
-    
-    
-    
-    #else: #First time run! Make 'FreeMoCap_Data' Folder (and eventually,  prompt to download sample data)
-    #    dataFolder.mkdir()
-    #    sampleDataFolder = dataFolder / '_sample_data_folder'
-    #    sampleDataFolder.mkdir()
+
 
     board = CharucoBoard(7, 5,
                         #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)
@@ -163,17 +80,13 @@ def RunMe(sessionID=None,
                         square_length = charucoSquareSize,#mm
                         marker_length = charucoSquareSize*.8,#mm
                         marker_bits=4, dict_size=250)
-
-
     sesh.board = board
-    #sesh.input_stage = stage
-
-
 
     # %% Initialization
-    #sesh.initialize(stage)
-    if stage ==2 or stage == 1:
-        webcamGUI.initialize(sesh,stage,board)
+    if stage == 1:
+        camera_settings.initialize(sesh,stage,board)
+    elif stage ==2:
+        timesync.time_sync_initialize(sesh)
     else:
         sesh.initialize(stage)
 

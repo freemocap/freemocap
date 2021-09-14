@@ -137,3 +137,4 @@ dmypy.json
 
 update_pip.txt
 freemocap/user_preferences.yaml
+freemocap/fmc_startup/user_preferences.yaml

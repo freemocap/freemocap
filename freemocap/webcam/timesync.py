@@ -235,3 +235,42 @@ class proceedGUI:
     def destroy(self):
         self.proceed = True
         self.master.destroy()
+
+
+
+
+def time_sync_initialize(session):
+    """
+    Initialize settings specific to the time syncing stage if running stage 2
+    """
+    #from the config settings add the camera input parameters to parameter dictionary
+    session.initialize(stage = 2)
+    session.parameterDictionary = session.session_settings['recording_parameters']['ParameterDict']
+    rotationDict = session.session_settings['recording_parameters']['RotationInputs']
+    session.rotationInputs = list(rotationDict.values())
+    #initialize the path to the timestamp csv
+    csvName = session.sessionID + '_timestamps.csv'
+    csvPath = session.rawVidPath/csvName
+
+    #read CSV data, turn it into a data frame
+    timeStampData = pd.read_csv (csvPath)
+    timeStampData = timeStampData.iloc[:,1:]
+
+    #get the camIDs and number of cameras (numCamRange) from the dataframe
+    camIDs = list(timeStampData.columns)
+    numCams = len(camIDs)
+    numCamRange = range(len(camIDs)) 
+    
+    #create names for each of the raw videos  
+    vidNames = []
+    for x in numCamRange:
+        singleVidName = 'raw_cam{}.mp4'.format(x+1)
+        vidNames.append(singleVidName)    
+
+
+    #initialize all the session variables we'll need to run the rest of the pipeline
+    session.timeStampData = timeStampData
+    session.camIDs = camIDs
+    session.numCamRange = numCamRange
+    session.vidNames = vidNames
+    session.numCams = numCams

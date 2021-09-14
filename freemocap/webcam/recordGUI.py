@@ -10,6 +10,7 @@ from freemocap.webcam import checkcams
 import pickle
 import datetime
 from pathlib import Path
+import sys
 
 
 class recordGUI:
@@ -59,12 +60,14 @@ class recordGUI:
                 self.master, text=option, padx=20, variable=self.currentTask, value=val
             ).pack(anchor=tk.W)
 
-        self.sub_button = Button(bottom_frame, text="Submit", command=self.Submit)
-        self.sub_button.pack(side=tk.RIGHT)
-
         self.refresh_button = Button(bottom_frame, text="Refresh", command=self.Refresh)
         self.refresh_button.pack(side=tk.RIGHT)
 
+        
+        self.sub_button = Button(bottom_frame, text="Submit", command=self.Submit)
+        self.sub_button.pack(side=tk.RIGHT)
+
+        
     def Submit(self):
         self.taskChoice = self.currentTask.get()
         self.selected = [
@@ -301,6 +304,7 @@ class ProceedToRecordGUI:
 
     def stop(self):
         self.master.destroy()
+        sys.exit("Quitting Program")
 
     def change_params(self):
         self.restart_setup = True

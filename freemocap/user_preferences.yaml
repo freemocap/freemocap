@@ -13,6 +13,7 @@ saved:
   rotations:
     0: 0
     2: 0
+    3: 0
   parameters:
     exposure: -7
     resWidth: 640

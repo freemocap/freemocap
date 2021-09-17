@@ -4,14 +4,22 @@ import zipfile
 from pathlib import Path
 import tkinter as tk
 from tkinter import Tk, Label, Button, Frame, Listbox, Entry, filedialog
+import requests
+import io
 
 def DemoSetup():
 
     
     download_data = runDataDownloadGUI() #ask for user input on downloading
     
+    zip_file_url = "https://ndownloader.figshare.com/files/28927743"
+
     if  download_data: #if they want to download
         #code to download stuff from online will go here
+        r = requests.get(zip_file_url)
+        z = zipfile.ZipFile(io.BytesIO(r.content))
+        #z.extractall()
+        #error seems to expect the sample session to still be a zip file even though it is unzipped below
 
 
         #run the GUI to get the directory locations of the zipped folder, and where to extract it to

@@ -69,12 +69,12 @@ class OMC_OT_loadOpenMoCapSession(bpy.types.Operator): #setting the type as "OMC
         #  Load in data
 
         loadedData  = np.load(r"C:\Users\jonma\Dropbox\GitKrakenRepos\OpenMoCap\Data\test6_01_21a\outData\saveData.npz")
-        skel_fr_mar_dim = loadedData['skel_fr_mar_dim'] #OpenPose skeleton data
-        dlcPts_fr_mar_dim = loadedData['dlcPts_fr_mar_dim']
+        skel_fr_mar_xyz = loadedData['skel_fr_mar_xyz'] #OpenPose skeleton data
+        dlcPts_fr_mar_xyz = loadedData['dlcPts_fr_mar_xyz']
         charucoCorners_pt_XYZ = loadedData['charucoCornersXYZ']
 
         startFr = 0
-        numFrames = skel_fr_mar_dim.shape[0]-1
+        numFrames = skel_fr_mar_xyz.shape[0]-1
 
         #names of markers 
         skel_markerID = ["Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder",
@@ -115,8 +115,8 @@ class OMC_OT_loadOpenMoCapSession(bpy.types.Operator): #setting the type as "OMC
         # C.scene.collection.children.link(charColl) #link the newly created collection to the Blender Scene (so it will show up in the outliner)
         
         print('Loading DLC Markers')
-        for marNum in range(len(dlcPts_fr_mar_dim[0,:,0])):
-            thisMarLoc = dlcPts_fr_mar_dim[0,marNum,:]
+        for marNum in range(len(dlcPts_fr_mar_xyz[0,:,0])):
+            thisMarLoc = dlcPts_fr_mar_xyz[0,marNum,:]
             ms = self.dlcMar_size
             
             if self.meshType == 'uv_sphere':
@@ -129,7 +129,7 @@ class OMC_OT_loadOpenMoCapSession(bpy.types.Operator): #setting the type as "OMC
 
             #loop through each frame (after the first [0th] frame) to set the keyframes for this marker
             for fr in range(1, numFrames):
-                thisMarker.location = dlcPts_fr_mar_dim[fr,marNum,:]
+                thisMarker.location = dlcPts_fr_mar_xyz[fr,marNum,:]
                 thisMarker.keyframe_insert(data_path="location", frame=fr)
 
 
@@ -142,8 +142,8 @@ class OMC_OT_loadOpenMoCapSession(bpy.types.Operator): #setting the type as "OMC
 
         # C.scene.collection.children.link(charColl) #link the newly created collection to the Blender Scene (so it will show up in the outliner)
         print('Loading Skeleton Markers!')
-        for marNum in range(len(skel_fr_mar_dim[startFr,:,0])):
-            thisMarLoc = skel_fr_mar_dim[startFr,marNum,:]
+        for marNum in range(len(skel_fr_mar_xyz[startFr,:,0])):
+            thisMarLoc = skel_fr_mar_xyz[startFr,marNum,:]
             
             #these will define the size of teh body, hand, and face markers
             bms = self.bodyMar_size
@@ -177,7 +177,7 @@ class OMC_OT_loadOpenMoCapSession(bpy.types.Operator): #setting the type as "OMC
 
             #loop through each frame (after the first [0th] frame) to set the keyframes for this marker
             for fr in range(1, numFrames):
-                thisMarker.location = skel_fr_mar_dim[fr,marNum,:]
+                thisMarker.location = skel_fr_mar_xyz[fr,marNum,:]
                 thisMarker.keyframe_insert(data_path="location", frame=fr)
 
         return{'FINISHED'}    

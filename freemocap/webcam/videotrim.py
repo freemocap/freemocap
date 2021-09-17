@@ -6,6 +6,10 @@ import os
 
 
 def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRange):
+    """ 
+    From the list of saved frames from the time-syncing function, create synced videos by pulling those specific 
+    frames from the original raw videos into new videos, replacing any duplicate frames with a black 'buffer' slide
+    """  
     camList = list(
         ft.columns[1 : len(vidList) + 1]
     )  # grab the camera identifiers from the data frame
@@ -75,6 +79,7 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
 
 
 def createCalibrationVideos(session,calVideoFrameLength,parameterDictionary):
+
     vidList = os.listdir(session.syncedVidPath)
     framelist = list(range(calVideoFrameLength))
     codec = parameterDictionary.get("codec")

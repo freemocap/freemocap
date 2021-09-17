@@ -1,9 +1,16 @@
 from tqdm import tqdm
 import cv2
-
+import os
 
 def TestDevice(source):
-    cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
+    """
+    Checks to see if there is a camera available at the input
+    """
+    if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
+        cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
+    else:
+        cap = cv2.VideoCapture(source, cv2.CAP_ANY)
+        
     # if cap is None or not cap.isOpened():
     # print('Warning: unable to open video source: ', source)
 
@@ -20,6 +27,9 @@ def TestDevice(source):
 
 
 def CreateAvailableCamList():
+    """
+    Loops through the first 20 ports (this number is overkill, really) and creates a list of ports that have a camera available on them 
+    """
     openCamList = []
     for x in tqdm(range(20)):  # range 20 right now to be safe
         openCamera = TestDevice(x)

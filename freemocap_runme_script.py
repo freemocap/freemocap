@@ -1,10 +1,18 @@
+from freemocap.fmc_mediapipe import runMediaPipe
 import freemocap as fmc
 from pathlib import Path
-import socket 
+import sys
 
-dlcConfigPath = Path(r"C:\Users\jonma\Dropbox\DLC_Models\PinkGreenRedJugglingBalls-JSM-2021-05-31\config.yaml")
-
-if socket.gethostname() == 'DESKTOP-DCG6K4F':
-     fmc.RunMe( stage=7, openPoseDummyRun=True, useDLC = True, dlcConfigPath=dlcConfigPath, recordVid = True) 
-else:
-    fmc.RunMe( useDLC = True, dlcConfigPath=dlcConfigPath, recordVid = True) 
+fmc.RunMe(stage=4)
+#     # sessionID = 'sesh_2021-08-29_17_55_45',
+#     sessionID=None,
+#     stage = 1,
+#     useOpenPose=False, 
+#     runOpenPose=True, 
+#     useMediaPipe=True,
+#     runMediaPipe = True,
+#     useDLC=False, 
+#     recordVid = True ,
+#     reconstructionConfidenceThreshold = 0.7,
+#     calVideoFrameLength = -1,
+# )

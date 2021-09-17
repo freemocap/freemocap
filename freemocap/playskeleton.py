@@ -38,21 +38,21 @@ def ReplaySkeleton_matplotlib(
 ):
 
     
-    mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_3d_points.npy')
+    mean_charuco_fr_mar_xyz = np.load(session.dataArrayPath/'charuco_3d_points.npy')
 
     if useOpenPose:
-        skel_fr_mar_dim = np.load(session.dataArrayPath / "openPoseSkel_3d.npy")
+        skel_fr_mar_xyz = np.load(session.dataArrayPath / "openPoseSkel_3d.npy")
 
     if useMediaPipe:
-        mediaPipe_skel_fr_mar_dim = np.load(
+        mediaPipe_skel_fr_mar_xyz = np.load(
             session.dataArrayPath / "mediaPipeSkel_3d.npy"
         )
 
     if useDLC:
-        dlc_fr_mar_dim = np.load(session.dataArrayPath / "deepLabCut_3d.npy")
-        dlc0 = np.squeeze(dlc_fr_mar_dim[:, 0, :])
-        dlc1 = np.squeeze(dlc_fr_mar_dim[:, 1, :])
-        dlc2 = np.squeeze(dlc_fr_mar_dim[:, 2, :])
+        dlc_fr_mar_xyz = np.load(session.dataArrayPath / "deepLabCut_3d.npy")
+        dlc0 = np.squeeze(dlc_fr_mar_xyz[:, 0, :])
+        dlc1 = np.squeeze(dlc_fr_mar_xyz[:, 1, :])
+        dlc2 = np.squeeze(dlc_fr_mar_xyz[:, 2, :])
         ballTrailLen = 4
 
     if useOpenPose:
@@ -106,15 +106,15 @@ def ReplaySkeleton_matplotlib(
         if vidType == 1:
             axCam1.cla()
 
-        char_x = mean_charuco_fr_mar_dim[:][:, 0]
-        char_y = mean_charuco_fr_mar_dim[:][:, 1]
-        char_z = mean_charuco_fr_mar_dim[:][:, 2]
+        char_x = mean_charuco_fr_mar_xyz[:][:, 0]
+        char_y = mean_charuco_fr_mar_xyz[:][:, 1]
+        char_z = mean_charuco_fr_mar_xyz[:][:, 2]
 
         # plot skeleton (openPose by default)
 
-        sk_x = skel_fr_mar_dim[fr, :, 0]  # skeleton x data
-        sk_y = skel_fr_mar_dim[fr, :, 1]  # skeleton y data
-        sk_z = skel_fr_mar_dim[fr, :, 2]  # skeleton z data
+        sk_x = skel_fr_mar_xyz[fr, :, 0]  # skeleton x data
+        sk_y = skel_fr_mar_xyz[fr, :, 1]  # skeleton y data
+        sk_z = skel_fr_mar_xyz[fr, :, 2]  # skeleton z data
 
         axMain.scatter3D(sk_x, sk_y, sk_z, marker=".", color="k", s=4.0)
         axMain.plot(
@@ -243,16 +243,16 @@ def ReplaySkeleton_matplotlib(
         )
 
         # plot mediapipe
-        mp_sk_x = mediaPipe_skel_fr_mar_dim[fr, :, 0]  # skeleton x data
-        mp_sk_y = mediaPipe_skel_fr_mar_dim[fr, :, 1]  # skeleton y data
-        mp_sk_z = mediaPipe_skel_fr_mar_dim[fr, :, 2]  # skeleton z data
+        mp_sk_x = mediaPipe_skel_fr_mar_xyz[fr, :, 0]  # skeleton x data
+        mp_sk_y = mediaPipe_skel_fr_mar_xyz[fr, :, 1]  # skeleton y data
+        mp_sk_z = mediaPipe_skel_fr_mar_xyz[fr, :, 2]  # skeleton z data
         axMain.scatter3D(mp_sk_x, mp_sk_y, mp_sk_z, marker=".", color="g", s=8.0)
 
         # plot deeplabcut
 
-        dlc_x = dlc_fr_mar_dim[fr, :, 0]
-        dlc_y = dlc_fr_mar_dim[fr, :, 1]
-        dlc_z = dlc_fr_mar_dim[fr, :, 2]
+        dlc_x = dlc_fr_mar_xyz[fr, :, 0]
+        dlc_y = dlc_fr_mar_xyz[fr, :, 1]
+        dlc_z = dlc_fr_mar_xyz[fr, :, 2]
 
         axMain.scatter3D(dlc_x, dlc_y, dlc_z, marker="o", color="r", s=24.0)
 
@@ -314,24 +314,24 @@ def ReplaySkeleton_matplotlib( session,
                     useDLC=False):
 
     session.imOutPath.mkdir(exist_ok = True)
-    mean_charuco_fr_mar_dim = np.load(session.dataArrayPath/'charuco_3d_points.npy')
+    mean_charuco_fr_mar_xyz = np.load(session.dataArrayPath/'charuco_3d_points.npy')
 
 
     if session.useMediaPipe:
-        mediaPipe_skel_fr_mar_dim = np.load(session.dataArrayPath/'mediaPipeSkel_3d.npy')
+        mediaPipe_skel_fr_mar_xyz = np.load(session.dataArrayPath/'mediaPipeSkel_3d.npy')
         imgPathList = session.session_settings['mediaPipe_imgPathList']
-        session.numCams = len(session.mediaPipe_imgPathList)
+        #session.numCams = len(session.mediaPipe_imgPathList)
 
     if session.useOpenPose:
-        skel_fr_mar_dim = np.load(session.dataArrayPath/'openPoseSkel_3d.npy')
+        skel_fr_mar_xyz = np.load(session.dataArrayPath/'openPoseSkel_3d.npy')
         imgPathList = session.session_settings['openPose_imgPathList']
         #session.numCams = len(session.openPose_imgPathList)    
         
     if session.useDLC:
-        dlc_fr_mar_dim = np.load(session.dataArrayPath / "deepLabCut_3d.npy")
-        dlc0 = np.squeeze(dlc_fr_mar_dim[:, 0, :])
-        dlc1 = np.squeeze(dlc_fr_mar_dim[:, 1, :])
-        dlc2 = np.squeeze(dlc_fr_mar_dim[:, 2, :])
+        dlc_fr_mar_xyz = np.load(session.dataArrayPath / "deepLabCut_3d.npy")
+        dlc0 = np.squeeze(dlc_fr_mar_xyz[:, 0, :])
+        dlc1 = np.squeeze(dlc_fr_mar_xyz[:, 1, :])
+        dlc2 = np.squeeze(dlc_fr_mar_xyz[:, 2, :])
         ballTrailLen = 4
 
     camImgPathList = {}
@@ -379,15 +379,15 @@ def ReplaySkeleton_matplotlib( session,
         if vidType == 1:
             axCam1.cla()
 
-        char_x = mean_charuco_fr_mar_dim[:][:, 0]
-        char_y = mean_charuco_fr_mar_dim[:][:, 1]
-        char_z = mean_charuco_fr_mar_dim[:][:, 2]
+        char_x = mean_charuco_fr_mar_xyz[:][:, 0]
+        char_y = mean_charuco_fr_mar_xyz[:][:, 1]
+        char_z = mean_charuco_fr_mar_xyz[:][:, 2]
 
         # plot skeleton (openPose by default)
         if session.useOpenPose:
-            sk_x = skel_fr_mar_dim[fr, :, 0]  # skeleton x data
-            sk_y = skel_fr_mar_dim[fr, :, 1]  # skeleton y data
-            sk_z = skel_fr_mar_dim[fr, :, 2]  # skeleton z data
+            sk_x = skel_fr_mar_xyz[fr, :, 0]  # skeleton x data
+            sk_y = skel_fr_mar_xyz[fr, :, 1]  # skeleton y data
+            sk_z = skel_fr_mar_xyz[fr, :, 2]  # skeleton z data
 
             axMain.scatter3D(sk_x, sk_y, sk_z, marker=".", color="k", s=4.0)
             axMain.plot(
@@ -542,16 +542,16 @@ def ReplaySkeleton_matplotlib( session,
 
         # plot mediapipe
         if session.useMediaPipe:
-            mp_sk_x = mediaPipe_skel_fr_mar_dim[fr, :, 0]  # skeleton x data
-            mp_sk_y = mediaPipe_skel_fr_mar_dim[fr, :, 1]  # skeleton y data
-            mp_sk_z = mediaPipe_skel_fr_mar_dim[fr, :, 2]  # skeleton z data
+            mp_sk_x = mediaPipe_skel_fr_mar_xyz[fr, :, 0]  # skeleton x data
+            mp_sk_y = mediaPipe_skel_fr_mar_xyz[fr, :, 1]  # skeleton y data
+            mp_sk_z = mediaPipe_skel_fr_mar_xyz[fr, :, 2]  # skeleton z data
             axMain.scatter3D(mp_sk_x, mp_sk_y, mp_sk_z, marker=".", color="g", s=8.0)
 
         # plot deeplabcut
         if session.useDLC:
-            dlc_x = dlc_fr_mar_dim[fr, :, 0]
-            dlc_y = dlc_fr_mar_dim[fr, :, 1]
-            dlc_z = dlc_fr_mar_dim[fr, :, 2]
+            dlc_x = dlc_fr_mar_xyz[fr, :, 0]
+            dlc_y = dlc_fr_mar_xyz[fr, :, 1]
+            dlc_z = dlc_fr_mar_xyz[fr, :, 2]
 
             axMain.scatter3D(dlc_x, dlc_y, dlc_z, marker="o", color="r", s=24.0)
 

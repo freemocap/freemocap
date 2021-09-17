@@ -7,10 +7,20 @@ import tkinter as tk
 from tkinter import Tk, Label, Button, Frame
 
 def TimeSync(session,timeStampData,numCamRange,camNames):    
-       
+    """
+    First creates a master timeline from the average frame length interval across all cameras. Then proceeds to compare timepoints in master timeline
+    to timestamps in each camera and find the closest matching timestamp in a camera to a point on the master timeline and create a list of
+    frame numbers.
+
+    Then loop through the list of frame numbers from each camera. Update counts for missing frames and duplicated frames. Create a table with these counts
+    and plots of statistics related to the recording
+    """     
     def CloseNeighb(camera,point): 
-            closestPoint = (np.abs(camera - point)).argmin() 
-            return closestPoint
+        """ 
+        Find the timestamp in the camera timestamp list that most closely matches the input pointin the master timeline
+        """  
+        closestPoint = (np.abs(camera - point)).argmin() 
+        return closestPoint
 
     # this section auto-finds the start and end points for our master timeline to the nearest second
     masterTimelineBegin = np.ceil(max(timeStampData.iloc[0]))
@@ -96,8 +106,8 @@ def TimeSync(session,timeStampData,numCamRange,camNames):
         
     
         #start counters for the number of buffered and deleted slides
-        bufCount = 0;
-        delCount = 0;
+        bufCount = 0
+        delCount = 0
 
         thisCamNumFrames = len(camFrames)
         postSyncTotalNumFrames.append(thisCamNumFrames)
@@ -194,6 +204,9 @@ def TimeSync(session,timeStampData,numCamRange,camNames):
 
 
 class proceedGUI:
+    """ 
+    GUI that displays all statistics from recording, and then asks for user input on whether to proceed with the rest of the pipeline
+    """  
     def __init__(self, master, results, figure):
         self.master = master
         self.results = results
@@ -222,3 +235,42 @@ class proceedGUI:
     def destroy(self):
         self.proceed = True
         self.master.destroy()
+
+
+
+
+def time_sync_initialize(session):
+    """
+    Initialize settings specific to the time syncing stage if running stage 2
+    """
+    #from the config settings add the camera input parameters to parameter dictionary
+    session.initialize(stage = 2)
+    session.parameterDictionary = session.session_settings['recording_parameters']['ParameterDict']
+    rotationDict = session.session_settings['recording_parameters']['RotationInputs']
+    session.rotationInputs = list(rotationDict.values())
+    #initialize the path to the timestamp csv
+    csvName = session.sessionID + '_timestamps.csv'
+    csvPath = session.rawVidPath/csvName
+
+    #read CSV data, turn it into a data frame
+    timeStampData = pd.read_csv (csvPath)
+    timeStampData = timeStampData.iloc[:,1:]
+
+    #get the camIDs and number of cameras (numCamRange) from the dataframe
+    camIDs = list(timeStampData.columns)
+    numCams = len(camIDs)
+    numCamRange = range(len(camIDs)) 
+    
+    #create names for each of the raw videos  
+    vidNames = []
+    for x in numCamRange:
+        singleVidName = 'raw_cam{}.mp4'.format(x+1)
+        vidNames.append(singleVidName)    
+
+
+    #initialize all the session variables we'll need to run the rest of the pipeline
+    session.timeStampData = timeStampData
+    session.camIDs = camIDs
+    session.numCamRange = numCamRange
+    session.vidNames = vidNames
+    session.numCams = numCams

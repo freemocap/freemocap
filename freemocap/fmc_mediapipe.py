@@ -297,15 +297,13 @@ def parseMediaPipe(session):
             mediaPipeData_nCams_nFrames_nImgPts_XYC[camNum, frNum, :, 1] = thisFrame_Y
             mediaPipeData_nCams_nFrames_nImgPts_XYC[camNum, frNum, :, 2] = thisFrame_C
 
+
     # convert from normalized screen coordinates to pixel coordinates
     mediaPipeData_nCams_nFrames_nImgPts_XYC[:, :, :, 0] *= session.image_width
     mediaPipeData_nCams_nFrames_nImgPts_XYC[:, :, :, 1] *= session.image_height
     mediaPipeData_nCams_nFrames_nImgPts_XYC[:, :, 34:, 2] = 1
 
-    np.save(
-        session.dataArrayPath / "mediaPipe_2d.npy",
-        mediaPipeData_nCams_nFrames_nImgPts_XYC,
-    )
+    np.save(session.dataArrayPath / "mediaPipe_2d.npy", mediaPipeData_nCams_nFrames_nImgPts_XYC,)
 
     return mediaPipeData_nCams_nFrames_nImgPts_XYC
     

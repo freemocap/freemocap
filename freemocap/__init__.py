@@ -4,6 +4,7 @@ __version__ = get_versions()["version"]
 del get_versions
 
 from freemocap.fmc_runme import RunMe
+from freemocap import fmc_demo, fmc_runme
 
 # from freemocap import fmc_runme, fmc_demo #JSM NOTE - there's gotta be a better way to do this lol
 
@@ -40,6 +41,6 @@ def RunDemo():
     """ 
     Will (eventually) download sample data from Figshare, and run the animation for it
     """  
-    sample_data_location = fmc_demo.DemoSetup() #run a bunch of GUIs, get the location of the directory where the data folder with the sample data is 
-    fmc_runme.Run(sessionID = 'sesh_21-07-18_170130',stage = 6,useOpenPose = True,useDLC = True, userDataPath = sample_data_location)
+    sample_data_location, sample_data_name = fmc_demo.DemoSetup() #run a bunch of GUIs, get the location of the directory where the data folder with the sample data is 
+    #fmc_runme.RunMe(sessionID = sample_data_name,stage = 5,useOpenPose = False, useMediaPipe = True,useDLC = True, userDataPath = sample_data_location)
 

@@ -13,46 +13,68 @@ def DemoSetup():
     download_data = runDataDownloadGUI() #ask for user input on downloading
     
     zip_file_url = "https://ndownloader.figshare.com/files/28927743"
+    sample_session_name = 'sesh_21-07-20_165209_noOpenPose'
+    sample_session_zip = sample_session_name + '.zip'
 
     if  download_data: #if they want to download
+        download_it = True
         #code to download stuff from online will go here
-        r = requests.get(zip_file_url)
-        z = zipfile.ZipFile(io.BytesIO(r.content))
-        #z.extractall()
-        #error seems to expect the sample session to still be a zip file even though it is unzipped below
+        destinationPath = runDemoGUI() 
 
+        if destinationPath == None:
+            print('Please choose where to save your sample data')
+            download_it = False
+            extractToPath = None
+        #error seems to expect the sample session to still be a zip file even though it is unzipped below
+    if download_it == True:
+        currentPath = Path(destinationPath)/sample_session_name
+
+        if 'FreeMocap_Data' in str(destinationPath):
+            if currentPath.exists():
+                extractToPath = None 
+                print('There is already a sample data folder at: ' + str(currentPath))
+                download_it = False
+            #extractToPath = destinationPath/sample_session_zip
+            extractToPath = destinationPath
+        else:
+            extractToFolder = Path(destinationPath)/recordingconfig.dataFolder #append the name of the data folder to the destination path
+            extractToFolder.mkdir(exist_ok=True) #make the data folder if it doesn't current exist
+            extractToPath = extractToFolder
+            
+            checkPath = extractToFolder/sample_session_name
+            if checkPath.exists():
+                print('There is already a sample data folder at: ' + str(checkPath))
+                extractToPath = None 
+                download_it = False
+            #extractToPath = extractToFolder/sample_session_name
+   
 
         #run the GUI to get the directory locations of the zipped folder, and where to extract it to
-        locationPath, destinationPath = runDemoGUI() 
-        zipPath = Path(locationPath)/'sesh_21-07-18_170130.zip' #append the name of the zipped sample file to the path to find it
-        extractToPath = Path(destinationPath)/recordingconfig.dataFolder #append the name of the data folder to the destination path
-        extractToPath.mkdir(exist_ok=True) #make the data folder if it doesn't current exist
-        
-        with zipfile.ZipFile(zipPath,'r') as zip_ref:
-            zip_ref.extractall(extractToPath) #extract stuff to the data folder
-    else:
-        root = tk.Tk() #brinng up a window to select the data folder directory
-        root.withdraw()
-        destinationPath = filedialog.askdirectory( title='Select the directory where the Freemocap_data folder with the sample data is located',
-            initialdir= Path.cwd())
+        #locationPath, destinationPath = runDemoGUI() 
+        #zipPath = Path(locationPath)/'sesh_21-07-18_170130.zip' #append the name of the zipped sample file to the path to find it
+ 
+        if download_it:
+            print('Starting demo session download')
+            r = requests.get(zip_file_url)
+            z = zipfile.ZipFile(io.BytesIO(r.content))
+            z.extractall(extractToPath)
+            print('Demo session downloaded to: ' + str(extractToPath) + '/' + str(sample_session_name))
+        #with zipfile.ZipFile(zipPath,'r') as zip_ref:
+        #    zip_ref.extractall(extractToPath) #extract stuff to the data folder
+    # else:
+    #     root = tk.Tk() #bring up a window to select the data folder directory
+    #     root.withdraw()
+    #     destinationPath = filedialog.askdirectory( title='Select the directory where the Freemocap_data folder with the sample data is located',
+    #         initialdir= Path.cwd())
 
 
-    return destinationPath #take the path to the directory where the data folder is located
+    return extractToPath, sample_session_name #take the path to the directory where the data folder is located
 
 class DemoGUI(): #GUI to pick the location and the destination directories for the sample data 
         def __init__(self, master):
             self.master = master
             
-            dataText = "Select the directory where your sample data is located"
-            dataLable = Label(master, text=dataText)
-            dataLable.pack(side="top")
-
-            self.locationPathVar = tk.StringVar()
-            savedLocationLabel = Label(master,textvariable=self.locationPathVar)
-            savedLocationLabel.pack()
-
-            dataButton = Button(master,text = 'Select the current sample data location',command = self.openLocationDialog)
-            dataButton.pack()
+            self.destinationPath = None
 
             sampleDestinationText = "If a {} folder already exists, choose the directory where it is located. \n Otherwise, choose a directory to create a {} folder".format(recordingconfig.dataFolder,recordingconfig.dataFolder)
             sampleDestinationLabel = Label(master, text=sampleDestinationText)
@@ -68,15 +90,7 @@ class DemoGUI(): #GUI to pick the location and the destination directories for t
             submitButton = Button(master,text = 'Submit',command = self.submit)
             submitButton.pack()
 
-        def openLocationDialog(self):
-     
-            self.locationPath = filedialog.askdirectory(
-            title='Select the directory where the sample data zip file is located',
-            initialdir= Path.cwd())
 
-            self.locationPathVar.set(self.locationPath)
-            f = 2
-        
         def openDestinationDialog(self):
      
             self.destinationPath = filedialog.askdirectory(
@@ -124,11 +138,9 @@ def runDemoGUI():
     root = tk.Tk()
     pathchoices = DemoGUI(root)
     root.mainloop()
-
-    locationPath = pathchoices.locationPath
     destinationPath = pathchoices.destinationPath
 
-    return locationPath,destinationPath
+    return destinationPath
 
 def runDataDownloadGUI():
     root = tk.Tk()

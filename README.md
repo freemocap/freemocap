@@ -1,6 +1,5 @@
 # This is all very much a work in progress! More to come!
-## (FYI - This still isn't *really* in a state that's usable for outside users yet 😅)
-### ( We're working on it though! Stay tuned!)
+## ( We're working on it though! Stay tuned!)
 
 # Installation
 - Open an Anaconda Prompt (in Windows, or any terminal on Mac/Linux) and enter the following comands
@@ -15,21 +14,15 @@
 
 ```Python Console
 import freemocap as fmc
-fmc.RunMe() #this is where the magic happens. Also, as of 2021-07-08, is likely going to be pretty crashy/buggy
+fmc.RunMe() #this is where the magic happens.
 ```
 
 https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-9328-3be27a4b1ea4.mp4
 
 ## Prerequisites - 
-* Install Anaconda
- 	- https://www.anaconda.com/products/individual#Downloads
-* Install CUDA
- 	- https://developer.nvidia.com/cuda-downloads
-* Install OpenPose (Windows Portable Demo)
-  - https://github.com/CMU-Perceptual-Computing-Lab/openpose/releases/tag/v1.6.0  
-	- This can be complicated, so I'll need to add more instructions here!
-* Install ffmpeg (to save the final animation)
-  - https://www.wikihow.com/Install-FFmpeg-on-Windows
+**Required**
+* A Python 3.7 environment: We recommend installing Anaconda from here (https://www.anaconda.com/products/individual#Downloads) to create your Python environment.
+
 * Two or more USB webcams attached to viable USB ports 
 	*  (USB hubs typically don't work)
 * Each recording must (for now) start with an unobstructed view of a  Charuco board generated with python commands (or equivalent):
@@ -45,9 +38,14 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 	cv2.imwrite('charuco_board_image.png',charuco_board_image)
 	
 	```
+**Optional**
+If you would like to use OpenPose for body tracking, install Cude and the Windows Portable Demo of OpenPose. 
 
+Install CUDA
+https://developer.nvidia.com/cuda-downloads
 
-
+Install OpenPose (Windows Portable Demo)
+https://github.com/CMU-Perceptual-Computing-Lab/openpose/releases/tag/v1.6.0
 
 Follow the GitHub Repository and/or Join the Discord (https://discord.gg/HX7MTprYsK) for updates!
 

@@ -303,7 +303,7 @@ def parseMediaPipe(session):
     mediaPipeData_nCams_nFrames_nImgPts_XYC[:, :, :, 1] *= session.image_height
     mediaPipeData_nCams_nFrames_nImgPts_XYC[:, :, 34:, 2] = 1
 
-    np.save(session.dataArrayPath / "mediaPipe_2d.npy", mediaPipeData_nCams_nFrames_nImgPts_XYC,)
+    np.save(session.dataArrayPath / "mediaPipeData_2d.npy", mediaPipeData_nCams_nFrames_nImgPts_XYC,)
 
     return mediaPipeData_nCams_nFrames_nImgPts_XYC
     

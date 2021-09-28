@@ -1,4 +1,4 @@
-aniposelib~=0.4.1
+aniposelib==0.4.1
 h5py>=3.1.0
 imutils~=0.5.4
 matplotlib~=3.1.3

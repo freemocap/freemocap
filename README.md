@@ -41,11 +41,9 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 **Optional**
 If you would like to use OpenPose for body tracking, install Cude and the Windows Portable Demo of OpenPose. 
 
-Install CUDA
-https://developer.nvidia.com/cuda-downloads
+* Install CUDA: https://developer.nvidia.com/cuda-downloads
 
-Install OpenPose (Windows Portable Demo)
-https://github.com/CMU-Perceptual-Computing-Lab/openpose/releases/tag/v1.6.0
+* Install OpenPose (Windows Portable Demo): https://github.com/CMU-Perceptual-Computing-Lab/openpose/releases/tag/v1.6.0
 
 Follow the GitHub Repository and/or Join the Discord (https://discord.gg/HX7MTprYsK) for updates!
 

@@ -11,9 +11,8 @@ def DemoSetup():
 
     
     download_data = runDataDownloadGUI() #ask for user input on downloading
-    
-    zip_file_url = "https://ndownloader.figshare.com/files/28927743"
-    sample_session_name = 'sesh_21-07-20_165209_noOpenPose'
+    zip_file_url = 'https://figshare.com/ndownloader/files/30913897'
+    sample_session_name = 'sesh_21-07-20_165209'
     sample_session_zip = sample_session_name + '.zip'
 
     if  download_data: #if they want to download
@@ -58,7 +57,9 @@ def DemoSetup():
             r = requests.get(zip_file_url)
             z = zipfile.ZipFile(io.BytesIO(r.content))
             z.extractall(extractToPath)
-            print('Demo session downloaded to: ' + str(extractToPath) + '/' + str(sample_session_name))
+            extractedPath = Path(extractToPath)/sample_session_name
+            print('Demo session downloaded to: ' + str(extractedPath))
+            print('You can find the animation in the sample data folder as {}_outvid.mp4'.format(sample_session_name))
         #with zipfile.ZipFile(zipPath,'r') as zip_ref:
         #    zip_ref.extractall(extractToPath) #extract stuff to the data folder
     # else:
@@ -76,7 +77,7 @@ class DemoGUI(): #GUI to pick the location and the destination directories for t
             
             self.destinationPath = None
 
-            sampleDestinationText = "If a {} folder already exists, choose the directory where it is located. \n Otherwise, choose a directory to create a {} folder".format(recordingconfig.dataFolder,recordingconfig.dataFolder)
+            sampleDestinationText = "Select your {} folder to save the sample data into. \n If you don't have a {} folder, choose where you'd like to create one. Your sample data will be saved into it.".format(recordingconfig.dataFolder,recordingconfig.dataFolder)
             sampleDestinationLabel = Label(master, text=sampleDestinationText)
             sampleDestinationLabel.pack()
 

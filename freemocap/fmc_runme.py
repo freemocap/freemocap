@@ -37,7 +37,7 @@ def RunMe(sessionID=None,
         recordVid = True,
         reconstructionConfidenceThreshold = .7,
         charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
-        calVideoFrameLength = 120,
+        calVideoFrameLength = -1,
         startFrame = 0
         ):
     """ 

@@ -3,7 +3,6 @@ from pathlib import Path
 
 import numpy as np
 from rich.progress import Progress
-from ruamel.yaml import YAML
 import cv2
 import mediapipe as mp
 

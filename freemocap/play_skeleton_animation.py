@@ -319,7 +319,7 @@ def PlaySkeletonAnimation(
     if useMediaPipe:
         try:
             mediaPipe_skel_fr_mar_xyz = np.load(session.dataArrayPath / 'mediaPipeSkel_3d.npy')
-            mediaPipe_nCams_nFrames_nImgPts_XYC = np.load(session.dataArrayPath / 'mediaPipe_2d.npy')            
+            mediaPipe_nCams_nFrames_nImgPts_XYC = np.load(session.dataArrayPath / 'mediaPipeData_2d.npy')            
         except:
             print('No mediaPipe data found.')
                 

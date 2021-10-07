@@ -1,3 +1,26 @@
+
+from freemocap.fmc_startup import startup
+from freemocap.webcam import camera_settings, timesync
+
+from pathlib import Path
+import os
+
+from aniposelib.boards import CharucoBoard
+
+import numpy as np
+
+from ruamel.yaml import YAML
+
+#Rich stuff
+from rich import print
+from rich.console import Console
+console = Console()
+from rich.markdown import Markdown
+from rich.traceback import install
+install(show_locals=True)
+from rich import inspect
+
+
 from freemocap import (
     recordingconfig,
     runcams,
@@ -11,17 +34,7 @@ from freemocap import (
 )
 
 
-from freemocap.fmc_startup import startup
-from freemocap.webcam import camera_settings, timesync
 
-from pathlib import Path
-import os
-
-from aniposelib.boards import CharucoBoard
-
-import numpy as np
-
-from ruamel.yaml import YAML
 
 def RunMe(sessionID=None,
         stage=1,
@@ -45,6 +58,10 @@ def RunMe(sessionID=None,
     based on the specified inputs. Checks for previous user preferences and choices if they exist, or will prompt the user for new choices
     if they don't. Runs the initialization for the system and runs each stage of the pipeline.
     """ 
+    
+    welcome_md = Markdown("""# Welcome to FreeMoCap ✨💀✨ """)
+    console.print(welcome_md)
+    
     sesh = session.Session()
 
     sesh.sessionID = sessionID

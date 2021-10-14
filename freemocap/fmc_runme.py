@@ -1,9 +1,10 @@
 
-from freemocap.fmc_startup import startup
+from freemocap.fmc_startup import startup, startupGUI
 from freemocap.webcam import camera_settings, timesync
 
 from pathlib import Path
 import os
+import subprocess
 
 from aniposelib.boards import CharucoBoard
 
@@ -51,7 +52,8 @@ def RunMe(sessionID=None,
         reconstructionConfidenceThreshold = .7,
         charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
         calVideoFrameLength = -1,
-        startFrame = 0
+        startFrame = 0,
+        useBlender = False
         ):
     """ 
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -90,7 +92,8 @@ def RunMe(sessionID=None,
         
         print('Running ' + str(sesh.sessionID) + ' from ' + str(sesh.dataFolderPath))
 
-
+    if useBlender == True:
+        blenderPath = startupGUI.RunChooseBlenderPathGUI(session)
     board = CharucoBoard(7, 5,
                         #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)
                         #marker_length=.8,
@@ -196,7 +199,9 @@ def RunMe(sessionID=None,
     else:
         print('Skipping Skeleton Plotting')
 
-
+    if useBlender == True:
+        output = subprocess.run([str(blenderPath), "--background", "--python", "fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
+        print(output)
 
         
 

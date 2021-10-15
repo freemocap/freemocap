@@ -53,7 +53,8 @@ def RunMe(sessionID=None,
         charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
         calVideoFrameLength = -1,
         startFrame = 0,
-        useBlender = False
+        useBlender = False,
+        resetBlenderExe = False
         ):
     """ 
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -93,7 +94,11 @@ def RunMe(sessionID=None,
         print('Running ' + str(sesh.sessionID) + ' from ' + str(sesh.dataFolderPath))
 
     if useBlender == True:
-        blenderPath = startupGUI.RunChooseBlenderPathGUI(session)
+        here = Path(__file__).parent
+        subprocessPath = here/'fmc_blender.py'
+        blenderEXEpath = startup.get_blender_path(sesh,resetBlenderExe)
+
+ 
     board = CharucoBoard(7, 5,
                         #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)
                         #marker_length=.8,
@@ -175,6 +180,15 @@ def RunMe(sessionID=None,
     else:
         print('Skipping Run MediaPipe')
 
+
+
+
+    if useBlender == True:
+        #blenderExePath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
+        #os.chdir(blenderExePath)
+        output = subprocess.run([blenderEXEpath, "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
+        print(output)        
+
     # %% Stage Five - Make Skreleton Animation
     if stage <= 5:
         print('Starting Skeleton Plotting')
@@ -199,9 +213,6 @@ def RunMe(sessionID=None,
     else:
         print('Skipping Skeleton Plotting')
 
-    if useBlender == True:
-        output = subprocess.run([str(blenderPath), "--background", "--python", "fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
-        print(output)
 
         
 

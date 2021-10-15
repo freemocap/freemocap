@@ -101,6 +101,7 @@ for frame in range(scene.frame_start, scene.frame_end):
 
 #set export path
 export_path = str(Path(__file__).parent.resolve() / "exported_animation_from_script")
+export_path = r'C:\Users\aaron\Documents\GitHub\freemocap\FreeMocap_Data\sesh_2021-10-14_17_28_30'
 
 #Select objects to export
 col = bpy.data.collections.get("Collection")
@@ -110,10 +111,10 @@ if col:
            obj.select_set(True)
 
 #save blender file
-bpy.ops.wm.save_as_mainfile(filepath= export_path + "_blender_data.blend")
+bpy.ops.wm.save_as_mainfile(filepath= export_path + "/blender_data.blend")
 
 #export FBX
-bpy.ops.export_scene.fbx(filepath=export_path + ".fbx", path_mode='RELATIVE', bake_anim=True, use_selection=True, object_types={'MESH'}, use_mesh_modifiers = False, add_leaf_bones = False, axis_forward = '-X', axis_up = 'Z', bake_anim_use_all_bones = False, bake_anim_use_nla_strips = False, bake_anim_use_all_actions = False, bake_anim_force_startend_keying = False) 
+bpy.ops.export_scene.fbx(filepath=export_path + "/exported_fbx_animation_from_script.fbx", path_mode='RELATIVE', bake_anim=True, use_selection=True, object_types={'MESH'}, use_mesh_modifiers = False, add_leaf_bones = False, axis_forward = '-X', axis_up = 'Z', bake_anim_use_all_bones = False, bake_anim_use_nla_strips = False, bake_anim_use_all_actions = False, bake_anim_force_startend_keying = False) 
 
 #export GLTF
-bpy.ops.export_scene.gltf(filepath=export_path + ".gltf", export_format='GLTF_EMBEDDED', export_selected=True, ui_tab='ANIMATION', export_nla_strips=False)
+bpy.ops.export_scene.gltf(filepath=export_path + "/exported_gltf_animation_from_script.gltf", export_format='GLTF_EMBEDDED', export_selected=True, ui_tab='ANIMATION', export_nla_strips=False)

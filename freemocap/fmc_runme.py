@@ -17,7 +17,7 @@ from rich.console import Console
 console = Console()
 from rich.markdown import Markdown
 from rich.traceback import install
-install(show_locals=True)
+install(show_locals=False)
 from rich import inspect
 
 

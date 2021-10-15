@@ -24,7 +24,7 @@ bpy.context.scene.render.fps = 30
 #-----------------------------------------------------------------------------------   
 
 # set project unit 
-bpy.context.scene.unit_settings.length_unit = 'MILLIMETERS'
+bpy.context.scene.unit_settings.length_unit = 'METERS'
 #iterate through arr and create an empty object at that location for each element
 for col in markers_list:
     # parse string float value into floats, create Vector, set position to Vector
@@ -34,7 +34,7 @@ for col in markers_list:
         col[1] = 0.0
     if math.isnan(col[2]):
         col[2] = 0.0
-    coord = Vector(((float(col[0])), (float(col[2])), (float(col[1]))* -1.0))
+    coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
     #add icosphere
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.01, enter_editmode=False, location=coord)
     sphere = bpy.context.active_object  
@@ -72,7 +72,7 @@ def my_handler(scene):
             col[1] = 0.0
         if math.isnan(col[2]):
             col[2] = 0.0
-        coord = Vector(((float(col[0])), (float(col[2])), (float(col[1]))* -1.0))
+        coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
         sphere = order_of_icospheres[current_marker] 
         sphere.location = coord
         sphere.keyframe_insert(data_path='location',frame=scene.frame_current)
@@ -100,7 +100,7 @@ for frame in range(scene.frame_start, scene.frame_end):
    scene.frame_set(frame)
 
 #set export path
-export_path = str(Path(__file__).parent.resolve().parent.resolve() / "/")
+export_path = str(Path(__file__).parent.resolve() / "exported_animation_from_script")
 
 #Select objects to export
 col = bpy.data.collections.get("Collection")
@@ -110,10 +110,10 @@ if col:
            obj.select_set(True)
 
 #save blender file
-bpy.ops.wm.save_as_mainfile(filepath= export_path + "blender_data.blend")
+bpy.ops.wm.save_as_mainfile(filepath= export_path + "_blender_data.blend")
 
 #export FBX
-#bpy.ops.export_scene.fbx(filepath=export_path + "exported_animation_from_script.fbx", path_mode='RELATIVE', bake_anim=True, use_selection=True, object_types={'MESH'}, use_mesh_modifiers = False, add_leaf_bones = False, axis_forward = '-X', axis_up = 'Z', bake_anim_use_all_bones = False, bake_anim_use_nla_strips = False, bake_anim_use_all_actions = False, bake_anim_force_startend_keying = False) 
+bpy.ops.export_scene.fbx(filepath=export_path + ".fbx", path_mode='RELATIVE', bake_anim=True, use_selection=True, object_types={'MESH'}, use_mesh_modifiers = False, add_leaf_bones = False, axis_forward = '-X', axis_up = 'Z', bake_anim_use_all_bones = False, bake_anim_use_nla_strips = False, bake_anim_use_all_actions = False, bake_anim_force_startend_keying = False) 
 
 #export GLTF
-bpy.ops.export_scene.gltf(filepath=export_path + "exported_animation_from_script.gltf", export_format='GLTF_EMBEDDED', export_selected=True, ui_tab='ANIMATION', export_nla_strips=False)
+bpy.ops.export_scene.gltf(filepath=export_path + ".gltf", export_format='GLTF_EMBEDDED', export_selected=True, ui_tab='ANIMATION', export_nla_strips=False)

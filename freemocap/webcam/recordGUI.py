@@ -100,6 +100,7 @@ class SettingsGUI:
         self.sessionID_in = sessionID_in
         self.task = task
         self.currentPath = current_path_to_save
+        self.mediaPipeOverlay = False
         # check if any previous parameters exist
         if self.parameter_dictionary is not None:
             existing_parameters = True
@@ -168,6 +169,10 @@ class SettingsGUI:
         codecLabel = Label(parametersFrame, text="codec").pack(side="left")
         self.codecEntry = Entry(parametersFrame)
         self.codecEntry.pack(side="left")
+        
+        self.var1 = tk.IntVar()
+        c1 = tk.Checkbutton(parametersFrame, text='Mediapipe Overlay',variable=self.var1, onvalue=1, offvalue=0)
+        c1.pack(side = 'right')
 
         # ---SessionID entry- default is the date/time
         if self.task == "record":
@@ -232,6 +237,10 @@ class SettingsGUI:
             "framerate": int(self.FPSEntry.get()),
             "codec": str(self.codecEntry.get()),
         }
+
+        if self.var1.get()==1:
+            self.mediaPipeOverlay=True
+
         # spit out the sessionID
         if self.task == "record":
             self.sessionID_out = self.sessionIDEntry.get()
@@ -359,7 +368,7 @@ def RunParametersGUI(sessionID_in, rotation_entry, parameter_entry,current_path_
         sessionID = None
         savepath = None
 
-    return recording_settings.rotation_output, paramDict, sessionID,savepath
+    return recording_settings.rotation_output, paramDict, sessionID,savepath, recording_settings.mediaPipeOverlay
 
 
 def RunProceedtoRecordGUI(sessionID_in,current_path_to_save):

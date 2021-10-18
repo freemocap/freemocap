@@ -1,9 +1,8 @@
-aniposelib~=0.4.1
-numba~=0.50.1
+aniposelib==0.4.3
 h5py>=3.1.0
 imutils~=0.5.4
 matplotlib~=3.1.3
-mediapipe==0.8.6
+mediapipe==0.8.8
 opencv-contrib-python~=3.4.14.51 
 pandas~=1.2.5
 rich~=10.4.0

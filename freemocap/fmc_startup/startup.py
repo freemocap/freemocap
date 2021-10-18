@@ -5,6 +5,10 @@ from ruamel.yaml import YAML
 from freemocap import recordingconfig
 from freemocap.fmc_startup import startupGUI
 
+import tkinter as tk
+from tkinter import filedialog
+
+
 def get_user_preferences(session,stage):
     """
     load user preferences if they exist, create a new preferences yaml if they don't
@@ -67,4 +71,21 @@ def get_data_folder_path(session):
         if not dataFolder.exists():
             raise FileNotFoundError('No data folder located at: ' + str(dataFolder))
 
+def get_blender_path(session, resetBlenderExe):
+    if  resetBlenderExe == True:
+        print('resetting blender.exe path')
+        session.preferences['saved']['blenderEXEpath'] = None
+    if session.preferences['saved']['blenderEXEpath'] == None:
+        print('Please select your blender.exe file')
+        root = tk.Tk()
+        root.withdraw()
+        blender_file_path = filedialog.askopenfilename(title = 'Open your Blender executable')
+        print('Using blender executable located at:', blender_file_path)
+        session.preferences['saved']['blenderEXEpath'] = blender_file_path
+        session.save_user_preferences(session.preferences)
+    else:
+        blender_file_path = session.preferences['saved']['blenderEXEpath']
+        print('Using blender executable located at:', blender_file_path)
+
+    return blender_file_path
 

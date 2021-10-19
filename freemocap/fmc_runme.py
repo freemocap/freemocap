@@ -92,8 +92,7 @@ def RunMe(sessionID=None,
         
         print('Running ' + str(sesh.sessionID) + ' from ' + str(sesh.dataFolderPath))
 
-    if useBlender == True:
-        blenderPath = startupGUI.RunChooseBlenderPathGUI(session)
+
     board = CharucoBoard(7, 5,
                         #square_length=1, # here, in mm but any unit works (JSM NOTE - just using '1' so resulting units will be in 'charuco squarelenghts`)
                         #marker_length=.8,
@@ -177,6 +176,12 @@ def RunMe(sessionID=None,
 
     # %% Stage Five - Make Skreleton Animation
     if stage <= 5:
+        if useBlender == True:
+            blenderPath = startupGUI.RunChooseBlenderPathGUI(session)
+            print("Saving out FreeMoCap Data as, like, a bunch of different formats I hope?")
+            output = subprocess.run([str(blenderPath), "--background", "--python", "fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
+            print(output)
+
         print('Starting Skeleton Plotting')
         play_skeleton_animation.PlaySkeletonAnimation(
                                 sesh,
@@ -199,9 +204,6 @@ def RunMe(sessionID=None,
     else:
         print('Skipping Skeleton Plotting')
 
-    if useBlender == True:
-        output = subprocess.run([str(blenderPath), "--background", "--python", "fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
-        print(output)
 
         
 

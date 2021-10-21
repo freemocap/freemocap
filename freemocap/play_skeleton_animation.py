@@ -69,6 +69,10 @@ def PlaySkeletonAnimation(
     useDLC=False,
     recordVid = True
     ):
+
+
+
+
     ###  
     ###
     ###      ██    ██ ██████  ██████   █████  ████████ ███████         ███████ ██  ██████  ██    ██ ██████  ███████ 
@@ -259,9 +263,11 @@ def PlaySkeletonAnimation(
                 xCurrTimeArtists[thisArtistKey][0].set_ydata(xCurrTimeYdata[thisArtistKey][frameNum] ) 
                 yCurrTimeArtists[thisArtistKey][0].set_ydata(yCurrTimeYdata[thisArtistKey][frameNum] ) 
                 
-        
-        # fig.suptitle("nSessionID: {}, Frame: {} of {}".format(session.sessionID, frameNum, numFrames), fontsize=10)
-        # animSlider.set_val(val=frameNum)
+        # if recordVid:
+        #     thisFramePath = str(animationFramePath) + '/'+ str(session.sessionID) + "_frame_" + str(frameNum).zfill(6) + ".png"
+        #     plt.savefig(thisFramePath)
+        #     # fig.suptitle("nSessionID: {}, Frame: {} of {}".format(session.sessionID, frameNum, numFrames), fontsize=10)
+        #     # animSlider.set_val(val=frameNum)
 
     ####  
     ####   ██████ ██████  ███████  █████  ████████ ███████     ███████ ██  ██████  ██    ██ ██████  ███████ 
@@ -526,7 +532,7 @@ def PlaySkeletonAnimation(
     # groundYY = np.zeros_like(groundXX)
     # groundMesh = ax3d.plot_surface(groundXX, groundZZ, groundYY, color='k', alpha=.5)
 
-    axRange = 500#session.board.square_length * 10
+    axRange = 750#session.board.square_length * 10
 
     # Setting the axes properties
     ax3d.set_xlim3d([mx-axRange, mx+axRange])
@@ -808,6 +814,9 @@ def PlaySkeletonAnimation(
     if logoIm is not None:  logoAx.imshow(cv2.cvtColor(logoIm, cv2.COLOR_BGR2RGB))
     logoAx.axis('off')
     
+    # if recordVid:
+    #     animationFramePath = session.sessionPath / "animationFrames"
+    #     animationFramePath.mkdir(parents=True, exist_ok=True)
 
     # Creating the Animation object
     line_animation = animation.FuncAnimation(fig, update_figure, range(startFrame,numFrames), fargs=(),

@@ -13,8 +13,8 @@ def get_user_preferences(session,stage):
     """
     load user preferences if they exist, create a new preferences yaml if they don't
     """
-    here = Path(__file__).parent
-    preferences_path = here/'user_preferences.yaml' 
+    path_to_this_py_file = Path(__file__).parent
+    preferences_path = path_to_this_py_file/'user_preferences.yaml' 
     preferences_yaml = YAML()
 
     #check for a user preferences yaml, if it doesn't exist, build one using the default parameters in recordingconfig.py   
@@ -48,7 +48,6 @@ def get_data_folder_path(session):
         # 3) If no sessionID was user-input, search the chosen directory for the last session created
         if session.setDataPath == True:
             session.basePath = startupGUI.RunChooseDataPathGUI(session)
-            session.basePath = Path(session.basePath)
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
 
         elif session.userDataPath is not None:
@@ -57,17 +56,22 @@ def get_data_folder_path(session):
         else:
             try:
                 current_path_to_data = session.preferences['saved']['path_to_save']
-                session.basePath = current_path_to_data
+                session.basePath = Path(current_path_to_data)
             except KeyError:
                 print('Saved Data path not found, please choose a new one')
                 session.basePath = startupGUI.RunChooseDataPathGUI(session)
                 session.preferences['saved']['path_to_save'] = str(session.basePath)
                 session.save_user_preferences(session.preferences)
 
-
-        dataFolder = Path(session.basePath)/session.dataFolderName
+    
+        if session.basePath.stem == session.dataFolderName: #don't recursively craete 'FreeMoCap_Data' folders!
+            dataFolder = session.basePath
+        else:
+            dataFolder = session.basePath/session.dataFolderName
+    
         session.dataFolderPath = dataFolder
-        
+
+
         if not dataFolder.exists():
             raise FileNotFoundError('No data folder located at: ' + str(dataFolder))
 

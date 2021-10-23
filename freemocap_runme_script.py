@@ -1,3 +1,3 @@
 import freemocap as fmc
-fmc.RunMe(sessionID = 'sesh_2021-10-19_18_40_12', stage=5, useOpenPose=True, setDataPath=False)
+fmc.RunMe(sessionID = 'sesh_2021-10-15_18_09_48_goPro', stage=5,  )
 

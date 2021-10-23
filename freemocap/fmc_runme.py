@@ -182,15 +182,15 @@ def RunMe(sessionID=None,
 
 
 
-
-    if useBlender == True:
-        #blenderExePath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
-        #os.chdir(blenderExePath)
-        output = subprocess.run([blenderEXEpath, "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
-        print(output)        
+    if stage <=5:
+        if useBlender == True:
+            #blenderExePath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
+            #os.chdir(blenderExePath)
+            output = subprocess.run([blenderEXEpath, "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
+            print(output)        
 
     # %% Stage Five - Make Skreleton Animation
-    if stage <= 5:
+    if stage <= 6:
         print('Starting Skeleton Plotting')
         play_skeleton_animation.PlaySkeletonAnimation(
                                 sesh,

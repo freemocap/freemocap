@@ -18,12 +18,7 @@ def runMediaPipe(session, dummyRun=False):
     Run MediaPipe on synced videos, and save body tracking data to be parsed 
     """  
 
-    session.mediaPipeDataPath.mkdir(exist_ok = True)
 
-    mediaPipe_jsonPathList = []  # list to hold the paths to the json files
-    mediaPipe_imgPathList = []
-    mediaPipe_imgPathList_yaml = []
-    mediaPipe_jsonPathList_yaml = []
 
     with mp_holistic.Holistic(
                             static_image_mode = False, #use 'static image mode' to avoid system getting 'stuck' on ghost skeletons?
@@ -31,26 +26,10 @@ def runMediaPipe(session, dummyRun=False):
                             ) as holistic:
 
         eachCamerasData = []  # Create an empty list that holds each cameras data
-        for (
-            thisVidPath
-        ) in (
-            session.syncedVidPath.iterdir()
-        ):  # Run MediaPipe 'Holistic' (body, hands, face) tracker on each video in the raw video folder
-            if (
-                thisVidPath.suffix == ".mp4"
-            ):  # NOTE - at some point we should build some list of 'synced video names' and check against that
+        for (  thisVidPath ) in ( session.syncedVidPath.iterdir() ):  # Run MediaPipe 'Holistic' (body, hands, face) tracker on each video in the raw video folder
+            if ( thisVidPath.suffix.lower() == ".mp4" ):  # NOTE - at some point we should build some list of 'synced video names' and check against that
 
-                vidPath = session.mediaPipeDataPath / thisVidPath.stem
-                jsonPath = vidPath / "json"
-                jsonPath.mkdir(
-                    parents=True, exist_ok=True
-                )  # this camera's json files (with keypoints)
-                imgPath = vidPath / "images"
-                imgPath.mkdir(parents=True, exist_ok=True)
-                mediaPipe_jsonPathList.append(jsonPath)
-                mediaPipe_imgPathList.append(imgPath)
-                mediaPipe_imgPathList_yaml.append(str(imgPath))
-                mediaPipe_jsonPathList_yaml.append(str(jsonPath))
+                
                 mediaPipe_dataList = []  # Create an empty list for mediapipes data
                 if not dummyRun:
                     cap = cv2.VideoCapture(str(thisVidPath))
@@ -80,82 +59,18 @@ def runMediaPipe(session, dummyRun=False):
                                 cv2.cvtColor(image, cv2.COLOR_BGR2RGB), #Convert the BGR image to RGB before processing
                             )  # NOTE: THIS IS WHERE THE MAGIC HAPENS 
 
-                            try:
-                                results.pose_landmarks.landmark
-                                try:
-                                    results.left_hand_landmarks.landmark
-                                    try:
-                                        results.right_hand_landmarks.landmark
-                                        try:
-                                            results.face_landmarks.landmark
-                                            f = 9
-                                        except:
-                                            pass
-                                    except:
-                                        pass
-                                except:
-                                    pass
-                            except:
-                                pass
-
                             mediaPipe_dataList.append(
                                 results
                             )  # Append data to mediapipe data list
 
-                            saveImages = False
-                            if saveImages:
-                                # Draw pose, left and right hands, and face landmarks on the image.
-                                annotated_image = image.copy()
-                                mp_drawing.draw_landmarks(
-                                    annotated_image,
-                                    results.face_landmarks,
-                                    mp_holistic.FACE_CONNECTIONS,
-                                )
-                                mp_drawing.draw_landmarks(
-                                    annotated_image,
-                                    results.left_hand_landmarks,
-                                    mp_holistic.HAND_CONNECTIONS,
-                                )
-                                mp_drawing.draw_landmarks(
-                                    annotated_image,
-                                    results.right_hand_landmarks,
-                                    mp_holistic.HAND_CONNECTIONS,
-                                )
-                                mp_drawing.draw_landmarks(
-                                    annotated_image,
-                                    results.pose_landmarks,
-                                    mp_holistic.POSE_CONNECTIONS,
-                                )
-
-                                # save annotated image
-                                frameName = str(frameNum).zfill(6)
-
-                                cv2.imwrite(
-                                    str(imgPath) + "/" + frameName + ".png",
-                                    annotated_image,
-                                )
-
                             # load the next image (will break `while-loop` on the last frame)
                             success, image = cap.read()  # load next image from video
-                            f = 9
                 eachCamerasData.append(
                     mediaPipe_dataList
                 )  # Append that cameras data for every frame to the camera datalist
 
     session.image_height = image_height
     session.image_width = image_width
-
-    session.mediaPipe_jsonPathList = mediaPipe_jsonPathList
-    session.mediaPipe_imgPathList = mediaPipe_imgPathList
-
-    session.session_settings['mediaPipe_imgPathList'] = mediaPipe_imgPathList_yaml
-    session.session_settings['mediaPipe_jsonPathList'] = mediaPipe_jsonPathList_yaml
-
-    #yaml = YAML()
-    #data = yaml.load(session.yamlPath)
-    #data["mediaPipe_imgPathList"] = mediaPipe_imgPathList_yaml
-    #data["mediaPipe_jsonPathList"] = mediaPipe_jsonPathList_yaml
-    #yaml.dump(data, session.yamlPath)
     session.mediaPipeData = eachCamerasData
 
 

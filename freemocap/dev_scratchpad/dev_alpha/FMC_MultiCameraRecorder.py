@@ -270,7 +270,7 @@ class FMC_MultiCameraRecorder:
         if self._save_to_mp4:
             self._output_video_object.release()
         self.rich_console.log('Shutting down MultiCamera Viewer')
-        selfmulti_cam.exit_event.set() #send the 'Exit' signal to everyone   
+        self.exit_event.set() #send the 'Exit' signal to everyone   
     
     ###  
     ###          
@@ -350,7 +350,7 @@ class FMC_MultiCameraRecorder:
     ### ███████    ██     ██████     ██ ██ ██ 
     ###                                       
     
-        def __enter__(self):
+    def __enter__(self):
         """Context manager -  No need to do anything special on start"""
         return self
 

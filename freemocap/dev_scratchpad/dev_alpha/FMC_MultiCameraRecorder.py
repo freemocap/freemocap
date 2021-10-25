@@ -1,3 +1,14 @@
+##   
+##   
+##   ███████ ███    ███  ██████     ███    ███ ██    ██ ██      ████████ ██        ██████  █████  ███    ███ ███████ ██████   █████  
+##   ██      ████  ████ ██          ████  ████ ██    ██ ██         ██    ██       ██      ██   ██ ████  ████ ██      ██   ██ ██   ██ 
+##   █████   ██ ████ ██ ██          ██ ████ ██ ██    ██ ██         ██    ██ █████ ██      ███████ ██ ████ ██ █████   ██████  ███████ 
+##   ██      ██  ██  ██ ██          ██  ██  ██ ██    ██ ██         ██    ██       ██      ██   ██ ██  ██  ██ ██      ██   ██ ██   ██ 
+##   ██      ██      ██  ██████     ██      ██  ██████  ███████    ██    ██        ██████ ██   ██ ██      ██ ███████ ██   ██ ██   ██ 
+##                                                                                                                                   
+##                                                                                                                                   
+
+
 from os import mkdir
 from fmc_camera import FMC_Camera
 
@@ -25,7 +36,16 @@ from rich.progress import track
 
 
 class FMC_MultiCameraRecorder:
-    
+    ##  
+    ##  
+    ##                  ██ ███    ██ ██ ████████                 
+    ##                  ██ ████   ██ ██    ██                    
+    ##                  ██ ██ ██  ██ ██    ██                    
+    ##                  ██ ██  ██ ██ ██    ██                    
+    ##  ███████ ███████ ██ ██   ████ ██    ██    ███████ ███████ 
+    ##                                                           
+    ##  
+    ##  
     def __init__(
                 self,
                 rec_name = None,
@@ -78,6 +98,16 @@ class FMC_MultiCameraRecorder:
 
         self.start_multi_cam_thread_pool()
     
+    ###   
+    ###   
+    ###   ██████  ██████   ██████  ██████  ███████ ██████  ████████ ██ ███████ ███████ 
+    ###   ██   ██ ██   ██ ██    ██ ██   ██ ██      ██   ██    ██    ██ ██      ██      
+    ###   ██████  ██████  ██    ██ ██████  █████   ██████     ██    ██ █████   ███████ 
+    ###   ██      ██   ██ ██    ██ ██      ██      ██   ██    ██    ██ ██           ██ 
+    ###   ██      ██   ██  ██████  ██      ███████ ██   ██    ██    ██ ███████ ███████ 
+    ###                                                                                
+    ###                                                                                
+
     @property
     def num_cams(self):
         """How many cameras to use"""        
@@ -107,16 +137,16 @@ class FMC_MultiCameraRecorder:
     @property
     def each_cam_timestamps_unix_ns(self): #not really a property though?
         return self._each_cam_timestamps_unix_ns
+    ###   
+    ###   
+    ###   ███    ███ ███████ ████████ ██   ██  ██████  ██████  ███████ 
+    ###   ████  ████ ██         ██    ██   ██ ██    ██ ██   ██ ██      
+    ###   ██ ████ ██ █████      ██    ███████ ██    ██ ██   ██ ███████ 
+    ###   ██  ██  ██ ██         ██    ██   ██ ██    ██ ██   ██      ██ 
+    ###   ██      ██ ███████    ██    ██   ██  ██████  ██████  ███████ 
+    ###                                                                
+    ###                                                                    
 
-    
-    def __enter__(self):
-        """Context manager -  No need to do anything special on start"""
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        """Context manager -  on exit, set `self.exit_event` to activate shutdown sequence """
-        self.create_diagnostic_images()
-        return self
 
     def find_available_cameras(self):
         """find available webcams and return IDs in list."""
@@ -141,7 +171,15 @@ class FMC_MultiCameraRecorder:
         
         self.num_cams = len(self._cams_to_use_list)
         return self.cams_to_use_list
-
+    ###  
+    ###  
+    ###  ███████ ████████  █████  ██████  ████████     ████████ ██   ██ ██████  ███████  █████  ██████      ██████   ██████   ██████  ██      
+    ###  ██         ██    ██   ██ ██   ██    ██           ██    ██   ██ ██   ██ ██      ██   ██ ██   ██     ██   ██ ██    ██ ██    ██ ██      
+    ###  ███████    ██    ███████ ██████     ██           ██    ███████ ██████  █████   ███████ ██   ██     ██████  ██    ██ ██    ██ ██      
+    ###       ██    ██    ██   ██ ██   ██    ██           ██    ██   ██ ██   ██ ██      ██   ██ ██   ██     ██      ██    ██ ██    ██ ██      
+    ###  ███████    ██    ██   ██ ██   ██    ██           ██    ██   ██ ██   ██ ███████ ██   ██ ██████      ██       ██████   ██████  ███████ 
+    ###                                                                                                                                       
+    ###                                                                                                                                       
 
     def start_multi_cam_thread_pool(self):
         """creates a threading.ThreadPoolExecutor that creates an `FMC_Camera` object for each camera in `self.cams_to_use_list` and sets each to trigger `run_in_thread` mode
@@ -162,6 +200,17 @@ class FMC_MultiCameraRecorder:
                 for  this_cam_num in self.cams_to_use_list: #i feel like there is some cooler way to do this using 'map' and 'zip' or whatever, but this feels easier on the ol' brain noggin lol
                     self._cam_thread[this_cam_num] = executor.submit(FMC_Camera, cam_num=this_cam_num, frame_queue = self.cam_frame_queue, thread_barrier = self.thread_barrier, exit_event = self.exit_event, console=self.rich_console)
                 executor.submit(self.show_multi_cam_cv2)
+    
+    ###  
+    ###  
+    ###   ██████  ██████   █████  ██████      ██ ███    ██  ██████  ██████  ███    ███ ██ ███    ██  ██████      ████████ ██    ██ ██████  ██      ███████ ███████ 
+    ###  ██       ██   ██ ██   ██ ██   ██     ██ ████   ██ ██      ██    ██ ████  ████ ██ ████   ██ ██              ██    ██    ██ ██   ██ ██      ██      ██      
+    ###  ██   ███ ██████  ███████ ██████      ██ ██ ██  ██ ██      ██    ██ ██ ████ ██ ██ ██ ██  ██ ██   ███        ██    ██    ██ ██████  ██      █████   ███████ 
+    ###  ██    ██ ██   ██ ██   ██ ██   ██     ██ ██  ██ ██ ██      ██    ██ ██  ██  ██ ██ ██  ██ ██ ██    ██        ██    ██    ██ ██      ██      ██           ██ 
+    ###   ██████  ██   ██ ██   ██ ██████      ██ ██   ████  ██████  ██████  ██      ██ ██ ██   ████  ██████         ██     ██████  ██      ███████ ███████ ███████ 
+    ###                                                                                                                                                            
+    ###                                                                                                                                                            
+
 
     def grab_incoming_cam_tuples(self):
         """grab incoming cam_tuples, put them into a multi_cam_tuple and stuff that into the multi_cam_tuple_queue"""
@@ -184,9 +233,16 @@ class FMC_MultiCameraRecorder:
         multi_cam_image = np.hstack(these_images_list)  #create multiFrame_image by stitching together incoming camera images
         self.multi_cam_image_queue.put(multi_cam_image)
         # self.rich_console.log('Created a multi_cam_image')
-                
-
-
+    
+    ###                  
+    ###  
+    ###  ███████ ██   ██  ██████  ██     ██     ██    ██ ██ ██████  
+    ###  ██      ██   ██ ██    ██ ██     ██     ██    ██ ██ ██   ██ 
+    ###  ███████ ███████ ██    ██ ██  █  ██     ██    ██ ██ ██   ██ 
+    ###       ██ ██   ██ ██    ██ ██ ███ ██      ██  ██  ██ ██   ██ 
+    ###  ███████ ██   ██  ██████   ███ ███        ████   ██ ██████  
+    ###                                                             
+    ###                                                             
     
     def show_multi_cam_cv2(self):
         """display multi_cam_image using `cv2.imshow` and maybe save it to mp4, who knows?
@@ -215,7 +271,17 @@ class FMC_MultiCameraRecorder:
             self._output_video_object.release()
         self.rich_console.log('Shutting down MultiCamera Viewer')
         selfmulti_cam.exit_event.set() #send the 'Exit' signal to everyone   
-        
+    
+    ###  
+    ###          
+    ###  ██ ███    ██ ██ ████████      ██████  ██    ██ ████████     ██    ██ ██ ██████  
+    ###  ██ ████   ██ ██    ██        ██    ██ ██    ██    ██        ██    ██ ██ ██   ██ 
+    ###  ██ ██ ██  ██ ██    ██        ██    ██ ██    ██    ██        ██    ██ ██ ██   ██ 
+    ###  ██ ██  ██ ██ ██    ██        ██    ██ ██    ██    ██         ██  ██  ██ ██   ██ 
+    ###  ██ ██   ████ ██    ██         ██████   ██████     ██          ████   ██ ██████  
+    ###                                                                                  
+    ###                                                                                  
+
     def initialize_video(self, multi_cam_image):
         """use  the multi_cam_image to initialize the video
             multicam image will be of size  [cam_resolution_width*num_cams by cam_resolution_height]
@@ -230,6 +296,15 @@ class FMC_MultiCameraRecorder:
         self._outputVid_fileName = str(self._save_path / self._rec_name) + '_outVid.mp4'
         fps = 30 #this is a bad and stupid guess, but it's actually kinda tricky to guess what is the right thing to put here. I'll fix this later and expect videos to be a bit faster than usual :(
         self._output_video_object = cv2.VideoWriter(self._outputVid_fileName, fourcc, fps, self.multi_cam_image_size)
+    ##   
+    ##   
+    ##   ██████  ██       ██████  ████████     ████████ ██ ███    ███ ███████ ███████ ████████  █████  ███    ███ ██████  ███████ 
+    ##   ██   ██ ██      ██    ██    ██           ██    ██ ████  ████ ██      ██         ██    ██   ██ ████  ████ ██   ██ ██      
+    ##   ██████  ██      ██    ██    ██           ██    ██ ██ ████ ██ █████   ███████    ██    ███████ ██ ████ ██ ██████  ███████ 
+    ##   ██      ██      ██    ██    ██           ██    ██ ██  ██  ██ ██           ██    ██    ██   ██ ██  ██  ██ ██           ██ 
+    ##   ██      ███████  ██████     ██           ██    ██ ██      ██ ███████ ███████    ██    ██   ██ ██      ██ ██      ███████ 
+    ##                                                                                                                            
+    ##                                                                                                                            
 
     def create_diagnostic_images(self):
         """plot some diagnostics to assess quality of camera sync"""
@@ -266,10 +341,32 @@ class FMC_MultiCameraRecorder:
         plt.savefig(str(self._save_path / 'recording_diagnostics.png'))  
         plt.show()
         f=9
+    
+    ### 
+    ### ███████ ████████  ██████              
+    ### ██         ██    ██                   
+    ### █████      ██    ██                   
+    ### ██         ██    ██                   
+    ### ███████    ██     ██████     ██ ██ ██ 
+    ###                                       
+    
+        def __enter__(self):
+        """Context manager -  No need to do anything special on start"""
+        return self
 
-
-            
-
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        """Context manager -  on exit, set `self.exit_event` to activate shutdown sequence """
+        self.create_diagnostic_images()
+        return self
+###   
+###               
+###   ██ ███████                     ███    ███  █████  ██ ███    ██                 
+###   ██ ██                          ████  ████ ██   ██ ██ ████   ██                 
+###   ██ █████                       ██ ████ ██ ███████ ██ ██ ██  ██                 
+###   ██ ██                          ██  ██  ██ ██   ██ ██ ██  ██ ██                 
+###   ██ ██          ███████ ███████ ██      ██ ██   ██ ██ ██   ████ ███████ ███████ 
+###                                                                                  
+###                                                                                  
 
 
 if __name__ == '__main__':

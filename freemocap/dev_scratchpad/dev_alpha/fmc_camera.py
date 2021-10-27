@@ -34,17 +34,28 @@ cap_default_parameters_dict = {
 class FMC_Camera:
     """Simple class to open a cv2.VideoCapture object, with parts to connect to a `MutliCamRecorder` object
     """
+    ##  
+    ##  
+    ##                  ██ ███    ██ ██ ████████                 
+    ##                  ██ ████   ██ ██    ██                    
+    ##                  ██ ██ ██  ██ ██    ██                    
+    ##                  ██ ██  ██ ██ ██    ██                    
+    ##  ███████ ███████ ██ ██   ████ ██    ██    ███████ ███████ 
+    ##                                                           
+    ##  
+    ##  
+
     def __init__(
                 self, 
                 cam_num=0, 
-                cap_parameters_dict = cap_default_parameters_dict,
-                vid_save_path=None,  
                 frame_queue = None,
-                thread_barrier = None,
+                barrier = None,
                 exit_event = None,
                 show_cam_stream = False,  
-                console = None,       
+                rich_console = None,       
                 show_console = False,       
+                cap_parameters_dict = cap_default_parameters_dict,
+                vid_save_path=None,  
                 ):
         """Open a camera stream using `cv2.VideoCapture()`. 
         If `Windows`, use `cv2.VideoCapture(camNum, cv2.CAP_DSHOW)` to make video initialize much faster. Otherwise, use `cv2.VideoCapture(camNum, cv2.CAP_ANY)
@@ -65,18 +76,18 @@ class FMC_Camera:
         self._cap_parameters_dict = cap_parameters_dict
 
         self._frame_queue = frame_queue
-        self._thread_barrier = thread_barrier
+        self._barrier = barrier
         self._exit_event = exit_event
         self._vid_save_path = vid_save_path
         self._show_console = show_console
-        self.rich_console = console # a console object from the Rich python package
+        self.rich_console = rich_console # a console object from the Rich python package
 
 
         if vid_save_path:
             self._vid_save_path = Path(vid_save_path)
         
 
-        if not console:
+        if not self.rich_console:
             self.rich_console = Console()
         
         self.open() #open VideoCapture Object
@@ -187,13 +198,17 @@ class FMC_Camera:
 
         self.cv2_cap.set(cv2.CAP_PROP_EXPOSURE, self._cap_parameters_dict['exposure'])
         self.cv2_cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._cap_parameters_dict['cap_resolution_width'])
-        self.cv2_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._cap_parameters_dict['exposure'])
+        self.cv2_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._cap_parameters_dict['cap_resolution_height'])
+
+        self.video_exposure = self.cv2_cap.get(cv2.CAP_PROP_EXPOSURE)
+        self.video_resolution_width = self.cv2_cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        self.video_resolution_height = self.cv2_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
         if not self.cv2_cap.isOpened():
             self.rich_console.log("Camera# "+str(self._cam_num)+" failed to open :(")
             
         else:
-            self.rich_console.log("Camera# "+str(self._cam_num)+" VideoCapture started successfully")
+            self.rich_console.log("Camera# "+str(self._cam_num)+"  started - Exposure:{} - Resolution(width, height):({},{}) ".format(self.video_exposure, self.video_resolution_width, self.video_resolution_height))
             self._vid_cap_start_time_unix = time.time_ns() #the precision is aspirational, lol
             self._vid_cap_timestamps_unix_ns = np.empty(0)
     
@@ -239,20 +254,23 @@ class FMC_Camera:
         """run camera in a thread
          put incoming images into an tuple containing camNum_image_timestamp_tuple and stuff it into `self._frame_queue`
         """
+        # with self.rich_console.status('Camera# {} is running'.format(self.cam_num)):
         while not self._exit_event.is_set():
             try:
                 success, image, timestamp = self.read_next_frame()
                 cam_image_timestamp_tuple = (self.cam_num, image, timestamp)
-                               
+                            
                 self._frame_queue.put(cam_image_timestamp_tuple) #stuff this frame tuple packet into this camera's Queueue object
 
                 # log_msg = self.cam_name+" got a frame at timestamp:"+ str(timestamp) + ' queue size: ' + str(self._frame_queue.qsize())
                 # self.rich_console.log(log_msg)
 
-                self._thread_barrier.wait()
+                self._barrier.wait() #wait until other cams have grabbed a frame (and the frame_grabber has frame grabbed them)
             except:
                 self.rich_console.print_exception()
 
+    def run_in_subprocess(self):
+        self.run_in_thread()
 
     ###     
     ###         

@@ -332,7 +332,7 @@ class FMC_MultiCameraRecorder:
         if self._save_to_mp4:
             self._output_video_object.release()
         rich_console.rule('Shutting down MultiCamera Viewer')
-        self.exit_event.set() #send the 'Exit' signal to everyone   
+        self.exit_event.set() #send the 'Exit' signal to everyone.
     
     ###  
     ###          

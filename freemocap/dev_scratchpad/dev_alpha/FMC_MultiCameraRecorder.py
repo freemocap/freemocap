@@ -7,6 +7,7 @@
 ##   ██      ██      ██  ██████     ██      ██  ██████  ███████    ██    ██        ██████ ██   ██ ██      ██ ███████ ██   ██ ██   ██ 
 ##                                                                                                                                   
 ##                                                                                                                                   
+#Font - ANSI Regular - https://patorjk.com/software/taag/#p=display&f=ANSI%20Regular&t=Play%20Skeleton%20Animation
 
 
 from os import mkdir
@@ -212,8 +213,17 @@ class FMC_MultiCameraRecorder:
                 for  this_cam_num in self.cams_to_use_list: #i feel like there is some cooler way to do this using 'map' and 'zip' or whatever, but this feels easier on the ol' brain noggin lol
                     self._cam_thread[this_cam_num] = executor.submit(FMC_Camera, cam_num=this_cam_num, frame_queue = self.cam_frame_queue, barrier = self.barrier, exit_event = self.exit_event)
                 executor.submit(self.show_multi_cam_cv2)
-    
 
+###   
+###   
+###   ███████ ████████  █████  ██████  ████████     ██████  ██████   ██████   ██████ ███████ ███████ ███████     ██████   ██████   ██████  ██      
+###   ██         ██    ██   ██ ██   ██    ██        ██   ██ ██   ██ ██    ██ ██      ██      ██      ██          ██   ██ ██    ██ ██    ██ ██      
+###   ███████    ██    ███████ ██████     ██        ██████  ██████  ██    ██ ██      █████   ███████ ███████     ██████  ██    ██ ██    ██ ██      
+###        ██    ██    ██   ██ ██   ██    ██        ██      ██   ██ ██    ██ ██      ██           ██      ██     ██      ██    ██ ██    ██ ██      
+###   ███████    ██    ██   ██ ██   ██    ██        ██      ██   ██  ██████   ██████ ███████ ███████ ███████     ██       ██████   ██████  ███████ 
+###                                                                                                                                                
+###                                                                                                                                                
+###   
     def start_multi_cam_process_pool(self):
         """
         reates a ProcessPoolExecutor that creates an `FMC_Camera` object for each camera in `self.cams_to_use_list` and sets each to trigger `run_in_process`  mode (which just passes to `run_in_thread` mode)
@@ -249,13 +259,6 @@ class FMC_MultiCameraRecorder:
             incoming_frame_grabber_thread.start()
             self.show_multi_cam_cv2()
 
-            # self._cam_thread = pp_pool.map(FMC_Camera, cam_input_dict)
-            # pool.submit(self.show_multi_cam_cv2)
-        # for this_cam_num in range(self.num_cams):
-        #     cam_input_dict['cam_num'] = this_cam_num
-        #     self._cam_process[this_cam_num]=mp.Process(target=FMC_Camera, args=(this_cam_num,), kwargs=cam_input_dict )
-        #     self._cam_process[this_cam_num].start()
-        #     self._cam_process[this_cam_num].join()
 
 
     ###  
@@ -294,7 +297,7 @@ class FMC_MultiCameraRecorder:
 
             multi_cam_image = np.hstack(these_images_list)  #create multiFrame_image by stitching together incoming camera images
             self.multi_cam_image_queue.put(multi_cam_image)
-            rich_console.log('Created a multi_cam_image - queue size: {}'.format(self.multi_cam_image_queue.qsize()))
+            # rich_console.log('Created a multi_cam_image - queue size: {}'.format(self.multi_cam_image_queue.qsize()))
     
     ###                  
     ###  
@@ -372,7 +375,11 @@ class FMC_MultiCameraRecorder:
         """plot some diagnostics to assess quality of camera sync"""
         try:
             camTimestamps = (self.each_cam_timestamps_unix_ns-self.init_start_time)/1e9 #subtract start time and convert to sec
-            np.save(str(self._save_path /'multi_cam_timestamps_frameNum_camNum.npy'), camTimestamps)
+            
+            npy_save_path = self._save_path /'multi_cam_timestamps_frameNum_camNum.npy'
+            np.save(str(npy_save_path), camTimestamps)
+            rich_console.log('saving timestamp data to - ' + str(npy_save_path) )
+            
             meanMultiFrameTimestamp = np.mean(camTimestamps, axis=1)
             meanMultiFrameTimespan = np.max(camTimestamps, axis=1) - np.min(camTimestamps, axis=1) #what was the timespan covered by each frame
             plt.ion()
@@ -400,8 +407,11 @@ class FMC_MultiCameraRecorder:
             ax6.hist(np.diff(meanMultiFrameTimespan), bins=np.arange(0,max_frame_duration,.001), density=True, alpha=0.5, color='orangered', label='Frame Timespan')
             ax5.legend()
         
-            plt.savefig(str(self._save_path / 'recording_diagnostics.png'))  
+            fig_save_path = self._save_path / 'recording_diagnostics.png'
+            plt.savefig(str(fig_save_path))  
+            rich_console.log('Saving diagnostic figure to - '+str(fig_save_path))
             plt.show()
+            plt.waitforbuttonpress()
         except:
             rich_console.print_exception()
         f=9

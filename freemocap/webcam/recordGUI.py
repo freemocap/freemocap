@@ -170,9 +170,10 @@ class SettingsGUI:
         self.codecEntry = Entry(parametersFrame)
         self.codecEntry.pack(side="left")
         
-        self.var1 = tk.IntVar()
-        c1 = tk.Checkbutton(parametersFrame, text='Mediapipe Overlay',variable=self.var1, onvalue=1, offvalue=0)
-        c1.pack(side = 'right')
+        if self.task == "setup":
+            self.var1 = tk.IntVar()
+            c1 = tk.Checkbutton(parametersFrame, text='Mediapipe Overlay',variable=self.var1, onvalue=1, offvalue=0)
+            c1.pack(side = 'right')
 
         # ---SessionID entry- default is the date/time
         if self.task == "record":
@@ -237,9 +238,10 @@ class SettingsGUI:
             "framerate": int(self.FPSEntry.get()),
             "codec": str(self.codecEntry.get()),
         }
-
-        if self.var1.get()==1:
-            self.mediaPipeOverlay=True
+        
+        if self.task == "setup":
+            if self.var1.get()==1:
+                self.mediaPipeOverlay=True
 
         # spit out the sessionID
         if self.task == "record":

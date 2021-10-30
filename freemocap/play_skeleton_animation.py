@@ -67,7 +67,8 @@ def PlaySkeletonAnimation(
     useOpenPose=True,
     useMediaPipe=False,
     useDLC=False,
-    recordVid = True
+    recordVid = True,
+    showAnimation =True,
     ):
 
 
@@ -845,14 +846,15 @@ def PlaySkeletonAnimation(
 
 
     try:
-        plt.pause(0.1)
-        plt.draw()
+        if showAnimation:
+            plt.pause(0.1)
+            plt.draw()
     except:
         pass
 
 
 
-    console.print(":sparkle: :skull: :sparkle:")
+  
 
 
     ### 

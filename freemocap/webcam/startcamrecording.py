@@ -3,6 +3,7 @@ import cv2
 import time
 import pickle
 import os
+import platform
 
 class CamRecordingThread(threading.Thread):
     def __init__(
@@ -51,7 +52,7 @@ def CamRecording(
 
     cv2.namedWindow(camID)  # name the preview window for the camera its showing
 
-    if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
+    if platform.system() == 'Windows':
         cam = cv2.VideoCapture(camInput, cv2.CAP_DSHOW)
     else:
         cam = cv2.VideoCapture(camInput, cv2.CAP_ANY)

@@ -214,18 +214,6 @@ def RunMe(sessionID=None,
 
 
 
-<<<<<<< Updated upstream
-    # if stage <=5:
-    #     if useBlender == True:
-    #         #blenderExePath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
-    #         #os.chdir(blenderExePath)
-    #         output = subprocess.run([blenderEXEpath, "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
-    #         print(output)        
-
-    # %% Stage Five - Make Skreleton Animation
-    if stage <= 5:
-        print('Starting Skeleton Plotting')
-=======
     if stage <=5:
         if useBlender == True:
             
@@ -244,10 +232,9 @@ def RunMe(sessionID=None,
 
         console.rule()
         console.rule('Creating the Skelton animation!')
-        console.rule()('The video creation is very slow. This whole animation maker is crazy slow, tbh. Sorry about that. Future iterations will be better :sweat_smile:')
+        console.rule('The video creation is very slow. This whole animation maker is crazy slow, tbh. Sorry about that :sweat_smile:')
         console.rule()
 
->>>>>>> Stashed changes
         play_skeleton_animation.PlaySkeletonAnimation(
                                 sesh,
                                 startFrame=sesh.startFrame,
@@ -272,6 +259,8 @@ def RunMe(sessionID=None,
 
 
     console.rule('All Done! Data folder is at: ' + str(sesh.basePath))
-
-    console.print(Markdown("""# ✨💀✨ """))
+    console.rule()
+    console.rule()
+    console.rule('~✨💀✨~')
+    console.rule()
 

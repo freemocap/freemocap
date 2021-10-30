@@ -2,6 +2,7 @@ import threading
 import cv2
 import imutils
 import os
+import platform
 
 import mediapipe as mp
 
@@ -31,7 +32,7 @@ class VideoSetup(threading.Thread):
 
         cv2.namedWindow(camName)
 
-        if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
+        if platform.system() == 'Windows':
             cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
         else:
             cap = cv2.VideoCapture(self.camID, cv2.CAP_ANY)
@@ -94,7 +95,7 @@ class MediaPipeVideoSetup(threading.Thread):
 
         cv2.namedWindow(camName)
 
-        if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
+        if platform.system() == 'Windows':
             cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
         else:
             cap = cv2.VideoCapture(self.camID, cv2.CAP_ANY)

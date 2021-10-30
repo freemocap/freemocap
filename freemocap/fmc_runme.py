@@ -49,6 +49,7 @@ def RunMe(sessionID=None,
         setDataPath = False,
         userDataPath = None,
         recordVid = True,
+        showAnimation = True,
         reconstructionConfidenceThreshold = .7,
         charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
         calVideoFrameLength = -1,
@@ -109,6 +110,10 @@ def RunMe(sessionID=None,
                         marker_bits=4, dict_size=250)
     sesh.board = board
 
+    console.rule()    
+    console.rule('Finding available webcams')
+    console.rule()    
+
     # %% Initialization
     if stage == 1:
         camera_settings.initialize(sesh,stage,board)
@@ -119,18 +124,22 @@ def RunMe(sessionID=None,
 
     # %% Stage One
     if stage <= 1:
-        print()
-        print('Starting Video Recordings')
+        console.rule()    
+        console.rule('Starting Video Recordings')
+        console.rule()    
+
         runcams.RecordCams(sesh, sesh.cam_inputs, sesh.parameterDictionary, sesh.rotationInputs)
         sesh.save_session()
     else:
-        print('Skipping Video Recording')
+         console.rule('Skipping Video Recording')
 
 
     # %% Stage Two
     if stage <= 2:
-        print()
-        print('Starting Video Syncing')
+        console.rule()    
+        console.rule('Synchronizing Recorded Videos')
+        console.rule()    
+
         runcams.SyncCams(sesh, sesh.timeStampData,sesh.numCamRange,sesh.vidNames,sesh.camIDs)
         sesh.save_session()
     else:
@@ -138,17 +147,30 @@ def RunMe(sessionID=None,
 
     # %% Stage Three
     if stage <= 3:
-        print()
-        print('Starting Calibration')
-        sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
+        console.rule()    
+        console.rule('Starting Anipose Calibration')
+        console.rule('Identifying 6 DoF position of each camera based on detected charuco boards')
+        console.rule()    
+
+        print('See https://anipose.org for details')
+        sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength, spoof_anipose_fail_bool=False)
+        print('Anipose Calibration Successful!')
     else:
         print('Skipping Calibration')
 
     # %% Stage Four
     if stage <= 4:
+        console.rule()    
+        console.rule('Starting 2D Point Trackers')
+        console.rule('This step impolements the machine learning driven computer vision convolutional neural networks that track the skeleton, etc')
+        console.rule('This part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible.')
+        console.rule()    
 
-        print('Starting Track Image Points')
         if sesh.useMediaPipe:
+            console.rule()
+            console.rule('Running MediaPipe skeleton tracker - https://google.github.io/mediapipe')
+            console.rule()
+
             if runMediaPipe:
                 fmc_mediapipe.runMediaPipe(sesh)
 
@@ -159,6 +181,10 @@ def RunMe(sessionID=None,
         sesh.save_session()
 
         if sesh.useOpenPose:
+            console.rule()
+            console.rule('Running OpenPose skeleton tracker - https://github.com/CMU-Perceptual-Computing-Lab/openpose')
+            console.rule()
+
             fmc_openpose.runOpenPose(sesh, runOpenPose=runOpenPose)
             sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
             sesh.openPoseSkel_fr_mar_xyz, sesh.openPoseSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
@@ -166,7 +192,13 @@ def RunMe(sessionID=None,
             np.save(sesh.dataArrayPath/'openPoseSkel_reprojErr.npy', sesh.openPoseSkel_reprojErr) #save data to npy
         sesh.save_session()
         sesh.syncedVidList = []
+
         if sesh.useDLC:
+            
+            console.rule()
+            console.rule('Running DeepLabCut :mouse: - https://deeplabcut.org')
+            console.rule()
+
             for vid in sesh.syncedVidPath.glob('*.mp4'):
                 sesh.syncedVidList.append(str(vid))
             
@@ -178,10 +210,11 @@ def RunMe(sessionID=None,
                 np.save(sesh.dataArrayPath/'deepLabCut_reprojErr.npy', sesh.dlc_reprojErr) #save data to npy
         sesh.save_session()
     else:
-        print('Skipping Run MediaPipe')
+        print('Skipping 2d point tracking')
 
 
 
+<<<<<<< Updated upstream
     # if stage <=5:
     #     if useBlender == True:
     #         #blenderExePath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
@@ -192,6 +225,29 @@ def RunMe(sessionID=None,
     # %% Stage Five - Make Skreleton Animation
     if stage <= 5:
         print('Starting Skeleton Plotting')
+=======
+    if stage <=5:
+        if useBlender == True:
+            
+            console.rule()
+            console.rule('Exporting Files...')
+            console.rule('Hijacking Blender\'s file format converters to export FreeMoCap data as various file format (.blend, .usd, .gltf, .fbx)')
+            console.rule()
+
+            #blenderExePath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
+            #os.chdir(blenderExePath)
+            output = subprocess.run([blenderEXEpath, "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
+            print(output)        
+
+    # %% Stage Five - Make Skreleton Animation
+    if stage <= 6:
+
+        console.rule()
+        console.rule('Creating the Skelton animation!')
+        console.rule()('The video creation is very slow. This whole animation maker is crazy slow, tbh. Sorry about that. Future iterations will be better :sweat_smile:')
+        console.rule()
+
+>>>>>>> Stashed changes
         play_skeleton_animation.PlaySkeletonAnimation(
                                 sesh,
                                 startFrame=sesh.startFrame,
@@ -200,7 +256,8 @@ def RunMe(sessionID=None,
                                 useOpenPose=useOpenPose,
                                 useMediaPipe=useMediaPipe,
                                 useDLC=useDLC,
-                                recordVid = recordVid
+                                recordVid = recordVid,
+                                showAnimation=showAnimation,
                                 )
         # print ('Starting PyQT Animation')
         # createvideo.createBodyTrackingVideos(sesh)
@@ -214,5 +271,7 @@ def RunMe(sessionID=None,
         print('Skipping Skeleton Plotting')
 
 
-        
+    console.rule('All Done! Data folder is at: ' + str(sesh.basePath))
+
+    console.print(Markdown("""# ✨💀✨ """))
 

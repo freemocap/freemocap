@@ -1,3 +1,3 @@
 import freemocap as fmc
-fmc.RunMe(stage=6)
+fmc.RunMe(stage=2)
 

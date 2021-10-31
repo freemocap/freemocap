@@ -3,6 +3,7 @@ import copy
 
 from aniposelib.cameras import CameraGroup
 from aniposelib.utils import load_pose2d_fnames
+from numba.core.types.misc import StringLiteral
 import numpy as np
 import cv2
 
@@ -11,6 +12,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from freemocap import reconstruct3D, fmc_anipose
 from rich.progress import track
 from rich import print
+from rich.console import Console
+console = Console()
 
 
 def CalibrateCaptureVolume(session,board, calVideoFrameLength = .25, spoof_anipose_fail_bool=False):
@@ -60,7 +63,7 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = .25, spoof_anipo
             anipose_success = False
     except:
         anipose_success = False
-        print('Anipose Calibration Failed for frame range {} - {}'.format(calVideoFrameLength[0], calVideoFrameLength[1]))
+        console.rule('Anipose Calibration Failed for frame range {} - {}'.format(calVideoFrameLength[0], calVideoFrameLength[1]), style="color({})".format(3))
 
     anipose_iter = -1
     if not anipose_success: #%% run anipose calibration, and if it fails, re-make calibration vids with different frame range and try again
@@ -69,18 +72,18 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = .25, spoof_anipo
         cal_video_frame_range = [0, frame_window_size]
         while not anipose_success:
                 anipose_iter += 1
-                print('Anipose - Reprocessing - Iteration #{}'.format(anipose_iter))
+                console.rule('Anipose Failed - Reprocessing - Iteration #{}'.format(anipose_iter), style="color({})".format(3))
                 
                 if cal_video_frame_range[1] > session.numFrames:
-                    print('We moved the window all the way through the videos and Anipose still isn\'t happy, starting again from the begining with a shorter frame window')
+                    console.rule('We moved the window all the way through the videos and Anipose still isn\'t happy, starting again from the begining with a shorter frame window', style="color({})".format(3))
                     frame_window_size = round(frame_window_size/2)
                     cal_video_frame_range = [0, frame_window_size]
                                     
-                    if round(cal_video_frame_range[-1] * session.numFrames) < 1:
+                    if round(cal_video_frame_range[-1] * session.numFrames) < 1 or anipose_iter > 20:
                         Exception('Sorry, we weren\'t able to get AniPose to run successfully :( - Make sure your Charuco board was visible to each camera (not necessarily at the same time) and that there wasn\'t, like, a bunch of glare on it')
-                        break
+                        return
             
-                print('Trying Anipose calibration again with frame range {} - {}'.format(cal_video_frame_range[0], cal_video_frame_range[1]))
+                console.rule('Trying Anipose calibration again with frame range {} - {}'.format(cal_video_frame_range[0], cal_video_frame_range[1]), style="color({})".format(3))
                 createCalibrationVideos(session, cal_video_frame_range)
 
                 try:

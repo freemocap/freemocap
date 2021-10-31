@@ -847,8 +847,9 @@ def PlaySkeletonAnimation(
 
     try:
         if showAnimation:
-            plt.pause(0.1)
-            plt.draw()
+            with console.status('Playing Skeleton animation! Close the `matplotlib` window to continue...'):
+                plt.pause(0.1)
+                plt.draw()
     except:
         pass
 

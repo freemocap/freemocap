@@ -28,9 +28,8 @@ class VideoSetup(threading.Thread):
         exposure = parameterDictionary.get("exposure")
         resWidth = parameterDictionary.get("resWidth")
         resHeight = parameterDictionary.get("resHeight")
-        camName = "Camera" + str(self.camID)
-
-        cv2.namedWindow(camName)
+        camWindowName = "Camera" + str(self.camID)+' Preview - Press ESC to exit Setup'
+        cv2.namedWindow(camWindowName)
 
         if platform.system() == 'Windows':
             cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
@@ -64,14 +63,15 @@ class VideoSetup(threading.Thread):
             if ret1 == True:
                 if rotNum is not None:
                     frame1 = imutils.rotate_bound(frame1, angle=rotNum)
-                cv2.imshow(camName, frame1)
+                
+                cv2.imshow(camWindowName, frame1)
                 if cv2.waitKey(1) & 0xFF == 27:
                     # == ord('q') for q
                     break
 
             else:
                 break
-        cv2.destroyWindow(camName)
+        cv2.destroyWindow(camWindowName)
 
 class MediaPipeVideoSetup(threading.Thread):
     """
@@ -91,9 +91,9 @@ class MediaPipeVideoSetup(threading.Thread):
         exposure = parameterDictionary.get("exposure")
         resWidth = parameterDictionary.get("resWidth")
         resHeight = parameterDictionary.get("resHeight")
-        camName = "Camera" + str(self.camID)
+        camWindowName = "RECORDING - Camera" + str(self.camID)+' - Press ESC to exit'
 
-        cv2.namedWindow(camName)
+        cv2.namedWindow(camWindowName)
 
         if platform.system() == 'Windows':
             cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
@@ -146,14 +146,14 @@ class MediaPipeVideoSetup(threading.Thread):
                         .get_default_pose_landmarks_style())
                     if rotNum is not None:
                         frame1 = imutils.rotate_bound(frame1, angle=rotNum)
-                    cv2.imshow(camName, frame1)
+                    cv2.imshow(camWindowName, frame1)
                     if cv2.waitKey(1) & 0xFF == 27:
                         # == ord('q') for q
                         break
 
                 else:
                     break
-            cv2.destroyWindow(camName)
+            cv2.destroyWindow(camWindowName)
 
 
 

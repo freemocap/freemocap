@@ -49,8 +49,8 @@ def CamRecording(
     # necessary, since each webcam runs as it's own object.
     global flag
     flag = False
-
-    cv2.namedWindow(camID)  # name the preview window for the camera its showing
+    camWindowName = "RECORDING - " + str(camID)+' - Press ESC to exit'
+    cv2.namedWindow(camWindowName)  # name the preview window for the camera its showing
 
     if platform.system() == 'Windows':
         cam = cv2.VideoCapture(camInput, cv2.CAP_DSHOW)
@@ -99,7 +99,7 @@ def CamRecording(
             break
         success, frame = cam.read()
 
-        cv2.imshow(camID, frame)
+        cv2.imshow(camWindowName, frame)
         frame_sized = cv2.resize(frame, (resWidth, resHeight))
         # frame_sized = frame
         out.write(frame_sized)
@@ -111,7 +111,7 @@ def CamRecording(
             with open(session.rawVidPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)  # dump the data
             break
-    cv2.destroyWindow(camID)
+    cv2.destroyWindow(camWindowName)
     return timeStamps
 
 

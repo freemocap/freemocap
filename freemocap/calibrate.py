@@ -16,7 +16,7 @@ from rich.console import Console
 console = Console()
 
 
-def CalibrateCaptureVolume(session,board, calVideoFrameLength = .25):
+def CalibrateCaptureVolume(session,board, calVideoFrameLength = .5):
     """ 
     Check if a previous calibration yaml exists, and if not, create a set of shortened calibration videos and run Anipose functions
     to create a calibration yaml. Takes the 2D charuco board points and reconstructs them into 3D points that are saved out
@@ -31,15 +31,18 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = .25):
 
     if type(calVideoFrameLength)==int or type(calVideoFrameLength)==float:
         if calVideoFrameLength < 0: # if '-1' use the whole video
-            calVideoFrameLength = [0, session.numFrames]
+            cal_vid_frame_range = [0, session.numFrames]
             calibrationVideoPath = session.calVidPath
         else:
             if calVideoFrameLength>0 and calVideoFrameLength<1: #if between 0 and 1, use as a percentage of the total video length
-                calVideoFrameLength = [0, round(calVideoFrameLength * session.numFrames)]
+                cal_vid_frame_range = [0, round(calVideoFrameLength * session.numFrames)]
             else: #otherwise, just use the input value as the number of frames to use        
-                calVideoFrameLength = [0, calVideoFrameLength]
+                cal_vid_frame_range = [0, calVideoFrameLength]
+    elif type(calVideoFrameLength)==list:
+        if len(calVideoFrameLength) ==2:
+            cal_vid_frame_range = calVideoFrameLength
 
-    createCalibrationVideos(session, calVideoFrameLength)
+    createCalibrationVideos(session, cal_vid_frame_range)
 
 
 
@@ -108,7 +111,7 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = .25):
 
 
     session.cgroup = cgroup
-    n_frames = calVideoFrameLength[1]-calVideoFrameLength[0]
+    n_frames = cal_vid_frame_range[1]-cal_vid_frame_range[0]
     startframe = 0
     n_trackedPoints = 24
 

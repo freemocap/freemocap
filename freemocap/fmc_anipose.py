@@ -1736,8 +1736,10 @@ class CameraGroup:
     ):
         """Takes as input a list of list of video filenames, one list of each camera.
         Also takes a board which specifies what should be detected in the videos"""
+        
+        print('Detecting Charuco boards in each video...')
 
-        all_rows = self.get_rows_videos(videos, board, verbose=verbose)
+        all_rows = self.get_rows_videos(videos, board, verbose=True)
         if init_extrinsics:
             self.set_camera_sizes_videos(videos)
 

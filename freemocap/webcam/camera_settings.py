@@ -20,9 +20,9 @@ def initialize(session, stage, board):
 
     """ 
     
-    console.rule(style="color({})".format(stage))    
-    console.rule('Finding available webcams',style="color({})".format(stage))
-    console.rule(style="color({})".format(stage)) 
+    console.rule(style="color({})".format(13))    
+    console.rule('Finding available webcams',style="color({})".format(13))
+    console.rule(style="color({})".format(13)) 
 
     # if stage == 1:
     filepath = Path.cwd()

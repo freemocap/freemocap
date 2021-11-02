@@ -1,4 +1,5 @@
 
+from scipy.ndimage.measurements import center_of_mass
 from freemocap.fmc_startup import startup, startupGUI
 from freemocap.webcam import camera_settings, timesync
 
@@ -54,7 +55,7 @@ def RunMe(sessionID=None,
         showAnimation = True,
         reconstructionConfidenceThreshold = .7,
         charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
-        calVideoFrameLength = -1,
+        calVideoFrameLength = .5,
         startFrame = 0,
         useBlender = False,
         resetBlenderExe = False,
@@ -128,9 +129,9 @@ def RunMe(sessionID=None,
     
     if stage <= 1:
         thisStage=1
-        console.rule(style="color({})".format(thisStage))    
-        console.rule('Starting Video Recordings'.upper(), style="color({})".format(thisStage))   
-        console.rule(style="color({})".format(thisStage))    
+        console.rule(style="color({})".format(14))    
+        console.rule('Starting Video Recordings'.upper(), style="color({})".format(14))   
+        console.rule(style="color({})".format(14))    
 
         runcams.RecordCams(sesh, sesh.cam_inputs, sesh.parameterDictionary, sesh.rotationInputs)
         sesh.save_session()
@@ -156,11 +157,47 @@ def RunMe(sessionID=None,
         console.rule(style="color({})".format(thisStage))    
         console.rule('Starting Capture Volume Calibration'.upper(),style="color({})".format(thisStage))    
         console.rule(style="color({})".format(thisStage))  
-        console.print(Padding('Using Anipose to calculate 6 degree-of-freedom position (and distortion coeffs) of each camera based on detected charuco boards. This information is used to create a Camera Projection Matrix for each camera, which is later used in the 3d reconstruction stage', (1,4)), overflow="fold", justify='center')
+        console.print(Padding('Using Anipose to calculate 6 degree-of-freedom position (and distortion coeffs) of each camera based on detected charuco boards. This information is used to create a Camera Projection Matrix for each camera, which is later used in the 3d reconstruction stage', (1,4)), overflow="fold", justify='center',style="color({})".format(thisStage))
         console.rule('See https://anipose.org for details', style="color({})".format(thisStage))  
         console.rule(style="color({})".format(thisStage))    
 
-        sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength, spoof_anipose_fail_bool=False)
+
+        sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
+
+        ##this is supposed to cycle through tyhe videos with different windows to try to get Anipose to work. I can't get the dang thing working because something weird happens where a Thread will get spawned in one of the inner functions (maybe related to tqdm?) and that iteration will jump out of the try/except 
+        # try:
+        #     sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
+        #     # anipose_success = True
+        #     anipose_success = False
+        # except:
+        #     console.print_exception()
+        #     console.print('[bold red] - Anipose Calibration failed with user-provided (or default) `calVideoFrameLength` value! Trying again with other parts of the videos')
+        #     anipose_success = False
+
+        # if not anipose_success:
+        #     if calVideoFrameLength ==.25:
+        #         cal_video_frame_range = [round(sesh.numFrames*.25), round(sesh.numFrames*.5)]
+        #     else:
+        #         cal_video_frame_range = [0, round(sesh.numFrames*.25)]
+            
+        #     for anipose_iter in range(4):
+                
+        #         console.rule('Anipose Failed - Reprocessing - Iteration #{}'.format(anipose_iter), style="color({})".format(thisStage))
+        #         console.rule('Trying again with frame range {} - {}'.format(cal_video_frame_range[0], cal_video_frame_range[1]), style="color({})".format(thisStage))
+
+        #         try:
+        #             sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, cal_video_frame_range)
+        #             break
+        #         except:
+        #             console.print_exception()
+        #             cal_video_frame_range = [cal_video_frame_range[0]+round(sesh.numFrames*.25), cal_video_frame_range[0]+round(sesh.numFrames*.5)]
+                
+        #         if cal_video_frame_range[1] > sesh.numFrames:
+        #             console.print('[bold red] -Sorry, we couldn\'t get Anipose calibration to complete sucessfully. Are you using a Charuco board made with the parameters described in the ReadMe (here\s a sample png -https://github.com/jonmatthis/freemocap/blob/main/charuco_board_image.png ). Is the board clearly visible to each camera? Is there glare on it from from any of the camera\'s perspective? Is it too far away from the cameras? Is your `exposure` set low enough that the black squares are black (not grey)?')
+
+                
+
+
         print('Anipose Calibration Successful!')
     else:
         print('Skipping Calibration')
@@ -169,9 +206,9 @@ def RunMe(sessionID=None,
     if stage <= 4:
         thisStage=4
         console.rule(style="color({})".format(thisStage))    
-        console.rule('Starting 2D Point Trackers'.upper(),style="color({})".format(thisStage))    
-        console.rule('This step impolements the machine learning driven computer vision convolutional neural networks that track the skeleton, etc', style="color({})".format(thisStage))    
-        console.rule('This part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible.', style="color({})".format(thisStage))    
+        console.rule('Starting 2D Point Trackers'.upper(),style="color({})".format(thisStage))  
+        stage4_msg ='This step implements various  computer vision that track the skeleton (and other objects) in the 2d videos, to produce the data that will be combined with the `camera projection matrices` from the calibration stage to produce the estimates of 3d movement. \n \n Each algorithm is different, but most involve using [bold magenta] convolutional neural networks [/bold magenta] trained from labeled videos to produce a 2d probability map of the likelihood that the tracked bodypart/object/feature (e.g. \'LeftElbow\') is in a given location. \n \n The peak of that distrubtion on each frame is recorded as the pixel-location of that item on that frame (e.g. \'LeftElbow(pixel-x, pixel-y, confidence\') where the a confidence value proportional to the underlying probability distribution (i.e. tall peaks in the probablitiy distribution -> high confidence that the LeftElbow actually is at this pixel-x, pixel-y location) \n \nThis part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible ✨'
+        console.print(Padding(stage4_msg, (1,4)), overflow="fold", justify='center',style="color({})".format(thisStage))
         console.rule(style="color({})".format(thisStage))      
         time.sleep(pauseBetweenStages)  
 
@@ -240,12 +277,12 @@ def RunMe(sessionID=None,
             output = subprocess.run([blenderEXEpath, "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
             print(output)        
 
-    # %% Stage Five - Make Skreleton Animation
+    # %% Stage Five - Make  Animation
     if stage <= 6:
         thisStage=6
         console.rule(style="color({})".format(thisStage))    
-        console.rule('Creating the Skelton animation!'.upper(),style="color({})".format(thisStage))    
-        console.rule('The video creation is very slow. This whole animation maker is crazy slow, tbh. Sorry about that :sweat_smile:',style="color({})".format(thisStage))    
+        console.rule('Creating the Skreleton animation!'.upper(),style="color({})".format(thisStage))    
+        console.print('The video creation is very slow. This whole animation maker is crazy slow, tbh. Sorry about that, future iterations will be better lol :sweat_smile:',overflow="fold", justify='center',style="color({})".format(thisStage))    
         console.rule(style="color({})".format(thisStage))    
         time.sleep(pauseBetweenStages)  
         
@@ -271,12 +308,11 @@ def RunMe(sessionID=None,
     console.rule('Session Data folder is at: ', style="color({})".format(13))    
     console.rule(str(sesh.sessionPath), style="color({})".format(13))    
     console.rule(style="color({})".format(13))    
-    console.rule("Thank you for supporting the FreeMoCap Project", style="color({})".format(13))    
+    console.rule(style="color({})".format(10))    
+    console.rule("Thank you for supporting the FreeMoCap Project", style="color({})".format(10))    
+    console.rule(style="color({})".format(10))    
     console.rule(style="color({})".format(13))    
+    console.print('~✨💀✨~',justify="center") 
+    console.print('❤️', justify="center") 
     console.rule(style="color({})".format(13))    
-    console.rule('~✨💀✨~',style="color({})".format(0)) 
-    time.sleep(.1) #Maybe helps so that rich doesn't print a newline after a rule with an emoji?
-    console.rule('❤️',style="color({})".format(0)) 
-    console.rule(style="color({})".format(13))    
-    console.rule(style="color({})".format(13))    
-
+    console.rule(style="color({})".format(14))    

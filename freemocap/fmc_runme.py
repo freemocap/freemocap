@@ -259,6 +259,7 @@ def RunMe(sessionID=None,
                 np.save(sesh.dataArrayPath/'deepLabCut_reprojErr.npy', sesh.dlc_reprojErr) #save data to npy
         sesh.save_session()
     else:
+
         print('Skipping 2d point tracking')
 
 
@@ -286,6 +287,7 @@ def RunMe(sessionID=None,
         console.rule(style="color({})".format(thisStage))    
         time.sleep(pauseBetweenStages)  
         
+
         play_skeleton_animation.PlaySkeletonAnimation(
                                 sesh,
                                 startFrame=sesh.startFrame,

@@ -1,11 +1,12 @@
 
+from scipy.ndimage.measurements import center_of_mass
 from freemocap.fmc_startup import startup, startupGUI
 from freemocap.webcam import camera_settings, timesync
 
 from pathlib import Path
 import os
 import subprocess
-
+import time 
 from aniposelib.boards import CharucoBoard
 
 import numpy as np
@@ -20,6 +21,7 @@ from rich.markdown import Markdown
 from rich.traceback import install
 install(show_locals=False)
 from rich import inspect
+from rich.padding import Padding
 
 
 from freemocap import (
@@ -36,6 +38,7 @@ from freemocap import (
 
 
 
+thisStage = 0 #global
 
 def RunMe(sessionID=None,
         stage=1,
@@ -49,12 +52,14 @@ def RunMe(sessionID=None,
         setDataPath = False,
         userDataPath = None,
         recordVid = True,
+        showAnimation = True,
         reconstructionConfidenceThreshold = .7,
         charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
-        calVideoFrameLength = -1,
+        calVideoFrameLength = .5,
         startFrame = 0,
         useBlender = False,
-        resetBlenderExe = False
+        resetBlenderExe = False,
+        pauseBetweenStages =1
         ):
     """ 
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -91,8 +96,9 @@ def RunMe(sessionID=None,
             subfolders = [f.path for f in os.scandir(sesh.dataFolderPath) if f.is_dir()]  # copy-pasta from who knows where
             sesh.sessionID = Path(subfolders[-1]).stem  # grab the name of the last folder in the list of subfolders
         
+        console.rule()
         print('Running ' + str(sesh.sessionID) + ' from ' + str(sesh.dataFolderPath))
-
+        console.rule()
     if useBlender == True:
         here = Path(__file__).parent
         subprocessPath = here/'fmc_blender.py'
@@ -109,6 +115,8 @@ def RunMe(sessionID=None,
                         marker_bits=4, dict_size=250)
     sesh.board = board
 
+   
+
     # %% Initialization
     if stage == 1:
         camera_settings.initialize(sesh,stage,board)
@@ -118,9 +126,13 @@ def RunMe(sessionID=None,
         sesh.initialize(stage)
 
     # %% Stage One
+    
     if stage <= 1:
-        print()
-        print('Starting Video Recordings')
+        thisStage=1
+        console.rule(style="color({})".format(14))    
+        console.rule('Starting Video Recordings'.upper(), style="color({})".format(14))   
+        console.rule(style="color({})".format(14))    
+
         runcams.RecordCams(sesh, sesh.cam_inputs, sesh.parameterDictionary, sesh.rotationInputs)
         sesh.save_session()
     else:
@@ -129,8 +141,11 @@ def RunMe(sessionID=None,
 
     # %% Stage Two
     if stage <= 2:
-        print()
-        print('Starting Video Syncing')
+        thisStage=2
+        console.rule(style="color({})".format(thisStage))        
+        console.rule('Synchronizing Recorded Videos'.upper(),style="color({})".format(thisStage))    
+        console.rule(style="color({})".format(thisStage))    
+        time.sleep(pauseBetweenStages)  
         runcams.SyncCams(sesh, sesh.timeStampData,sesh.numCamRange,sesh.vidNames,sesh.camIDs)
         sesh.save_session()
     else:
@@ -138,17 +153,71 @@ def RunMe(sessionID=None,
 
     # %% Stage Three
     if stage <= 3:
-        print()
-        print('Starting Calibration')
+        thisStage=3
+        console.rule(style="color({})".format(thisStage))    
+        console.rule('Starting Capture Volume Calibration'.upper(),style="color({})".format(thisStage))    
+        console.rule(style="color({})".format(thisStage))  
+        console.print(Padding('Using Anipose to calculate 6 degree-of-freedom position (and distortion coeffs) of each camera based on detected charuco boards. This information is used to create a Camera Projection Matrix for each camera, which is later used in the 3d reconstruction stage', (1,4)), overflow="fold", justify='center',style="color({})".format(thisStage))
+        console.rule('See https://anipose.org for details', style="color({})".format(thisStage))  
+        console.rule(style="color({})".format(thisStage))    
+
+
         sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
+
+        ##this is supposed to cycle through tyhe videos with different windows to try to get Anipose to work. I can't get the dang thing working because something weird happens where a Thread will get spawned in one of the inner functions (maybe related to tqdm?) and that iteration will jump out of the try/except 
+        # try:
+        #     sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
+        #     # anipose_success = True
+        #     anipose_success = False
+        # except:
+        #     console.print_exception()
+        #     console.print('[bold red] - Anipose Calibration failed with user-provided (or default) `calVideoFrameLength` value! Trying again with other parts of the videos')
+        #     anipose_success = False
+
+        # if not anipose_success:
+        #     if calVideoFrameLength ==.25:
+        #         cal_video_frame_range = [round(sesh.numFrames*.25), round(sesh.numFrames*.5)]
+        #     else:
+        #         cal_video_frame_range = [0, round(sesh.numFrames*.25)]
+            
+        #     for anipose_iter in range(4):
+                
+        #         console.rule('Anipose Failed - Reprocessing - Iteration #{}'.format(anipose_iter), style="color({})".format(thisStage))
+        #         console.rule('Trying again with frame range {} - {}'.format(cal_video_frame_range[0], cal_video_frame_range[1]), style="color({})".format(thisStage))
+
+        #         try:
+        #             sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, cal_video_frame_range)
+        #             break
+        #         except:
+        #             console.print_exception()
+        #             cal_video_frame_range = [cal_video_frame_range[0]+round(sesh.numFrames*.25), cal_video_frame_range[0]+round(sesh.numFrames*.5)]
+                
+        #         if cal_video_frame_range[1] > sesh.numFrames:
+        #             console.print('[bold red] -Sorry, we couldn\'t get Anipose calibration to complete sucessfully. Are you using a Charuco board made with the parameters described in the ReadMe (here\s a sample png -https://github.com/jonmatthis/freemocap/blob/main/charuco_board_image.png ). Is the board clearly visible to each camera? Is there glare on it from from any of the camera\'s perspective? Is it too far away from the cameras? Is your `exposure` set low enough that the black squares are black (not grey)?')
+
+                
+
+
+        print('Anipose Calibration Successful!')
     else:
         print('Skipping Calibration')
 
     # %% Stage Four
     if stage <= 4:
+        thisStage=4
+        console.rule(style="color({})".format(thisStage))    
+        console.rule('Starting 2D Point Trackers'.upper(),style="color({})".format(thisStage))  
+        stage4_msg ='This step implements various  computer vision that track the skeleton (and other objects) in the 2d videos, to produce the data that will be combined with the `camera projection matrices` from the calibration stage to produce the estimates of 3d movement. \n \n Each algorithm is different, but most involve using [bold magenta] convolutional neural networks [/bold magenta] trained from labeled videos to produce a 2d probability map of the likelihood that the tracked bodypart/object/feature (e.g. \'LeftElbow\') is in a given location. \n \n The peak of that distrubtion on each frame is recorded as the pixel-location of that item on that frame (e.g. \'LeftElbow(pixel-x, pixel-y, confidence\') where the a confidence value proportional to the underlying probability distribution (i.e. tall peaks in the probablitiy distribution -> high confidence that the LeftElbow actually is at this pixel-x, pixel-y location) \n \nThis part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible ✨'
+        console.print(Padding(stage4_msg, (1,4)), overflow="fold", justify='center',style="color({})".format(thisStage))
+        console.rule(style="color({})".format(thisStage))      
+        time.sleep(pauseBetweenStages)  
 
-        print('Starting Track Image Points')
         if sesh.useMediaPipe:
+            console.rule(style="color({})".format(thisStage))    
+            console.rule('Running MediaPipe skeleton tracker - https://google.github.io/mediapipe', style="color({})".format(thisStage))    
+            console.rule(style="color({})".format(thisStage))    
+            time.sleep(pauseBetweenStages)  
+
             if runMediaPipe:
                 fmc_mediapipe.runMediaPipe(sesh)
 
@@ -159,6 +228,11 @@ def RunMe(sessionID=None,
         sesh.save_session()
 
         if sesh.useOpenPose:
+            console.rule(style="color({})".format(thisStage))    
+            console.rule('Running OpenPose skeleton tracker - https://github.com/CMU-Perceptual-Computing-Lab/openpose', style="color({})".format(thisStage))    
+            console.rule(style="color({})".format(thisStage))
+            time.sleep(pauseBetweenStages)      
+
             fmc_openpose.runOpenPose(sesh, runOpenPose=runOpenPose)
             sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
             sesh.openPoseSkel_fr_mar_xyz, sesh.openPoseSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
@@ -166,7 +240,14 @@ def RunMe(sessionID=None,
             np.save(sesh.dataArrayPath/'openPoseSkel_reprojErr.npy', sesh.openPoseSkel_reprojErr) #save data to npy
         sesh.save_session()
         sesh.syncedVidList = []
+
         if sesh.useDLC:
+            
+            console.rule(style="color({})".format(thisStage))    
+            console.rule('Running DeepLabCut :mouse: - https://deeplabcut.org', style="color({})".format(thisStage))    
+            console.rule(style="color({})".format(thisStage)) 
+            time.sleep(pauseBetweenStages)     
+
             for vid in sesh.syncedVidPath.glob('*.mp4'):
                 sesh.syncedVidList.append(str(vid))
             
@@ -178,26 +259,35 @@ def RunMe(sessionID=None,
                 np.save(sesh.dataArrayPath/'deepLabCut_reprojErr.npy', sesh.dlc_reprojErr) #save data to npy
         sesh.save_session()
     else:
-        print('Skipping Run MediaPipe')
+
+        print('Skipping 2d point tracking')
 
 
 
-
-    # if useBlender == True:
-    #     #blenderExePath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
-    #     #os.chdir(blenderExePath)
-    #     output = subprocess.run([blenderEXEpath, "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
-    #     print(output)        
-
-    # %% Stage Five - Make Skreleton Animation
-    if stage <= 5:
+    if stage <=5:
         if useBlender == True:
-            blenderPath = startupGUI.RunChooseBlenderPathGUI(session)
-            print("Saving out FreeMoCap Data as, like, a bunch of different formats I hope?")
-            output = subprocess.run([str(blenderPath), "--background", "--python", "fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
-            print(output)
+            thisStage=5
+            console.rule(style="color({})".format(thisStage))    
+            console.rule('Exporting Files...'.upper(), style="color({})".format(thisStage))    
+            console.rule('Hijacking Blender\'s file format converters to export FreeMoCap data as various file format (.blend, .usd, .gltf, .fbx)', style="color({})".format(thisStage))    
+            console.rule(style="color({})".format(thisStage))    
+            time.sleep(pauseBetweenStages)  
 
-        print('Starting Skeleton Plotting')
+            #blenderExePath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
+            #os.chdir(blenderExePath)
+            output = subprocess.run([blenderEXEpath, "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
+            print(output)        
+
+    # %% Stage Five - Make  Animation
+    if stage <= 6:
+        thisStage=6
+        console.rule(style="color({})".format(thisStage))    
+        console.rule('Creating the Skreleton animation!'.upper(),style="color({})".format(thisStage))    
+        console.print('The video creation is very slow. This whole animation maker is crazy slow, tbh. Sorry about that, future iterations will be better lol :sweat_smile:',overflow="fold", justify='center',style="color({})".format(thisStage))    
+        console.rule(style="color({})".format(thisStage))    
+        time.sleep(pauseBetweenStages)  
+        
+
         play_skeleton_animation.PlaySkeletonAnimation(
                                 sesh,
                                 startFrame=sesh.startFrame,
@@ -206,19 +296,25 @@ def RunMe(sessionID=None,
                                 useOpenPose=useOpenPose,
                                 useMediaPipe=useMediaPipe,
                                 useDLC=useDLC,
-                                recordVid = recordVid
+                                recordVid = recordVid,
+                                showAnimation=showAnimation,
                                 )
-        # print ('Starting PyQT Animation')
-        # createvideo.createBodyTrackingVideos(sesh)
-        # displayVid = 1  
-        # #if displayVid = 0, will show the synced videos
-        # #if displayVid = 1, will show the openPosed videos
-        # playWin = PlayerDockedWindow(sesh,displayVid)
-        # playWin.animate()
-
+        console.rule(style="color({})".format(thisStage))    
     else:
         print('Skipping Skeleton Plotting')
 
 
-        
-
+    console.rule(style="color({})".format(13))      
+    console.rule('All Done!'.upper(), style="color({})".format(13))    
+    console.rule(style="color({})".format(13))    
+    console.rule('Session Data folder is at: ', style="color({})".format(13))    
+    console.rule(str(sesh.sessionPath), style="color({})".format(13))    
+    console.rule(style="color({})".format(13))    
+    console.rule(style="color({})".format(10))    
+    console.rule("Thank you for supporting the FreeMoCap Project", style="color({})".format(10))    
+    console.rule(style="color({})".format(10))    
+    console.rule(style="color({})".format(13))    
+    console.print('~✨💀✨~',justify="center") 
+    console.print('❤️', justify="center") 
+    console.rule(style="color({})".format(13))    
+    console.rule(style="color({})".format(14))    

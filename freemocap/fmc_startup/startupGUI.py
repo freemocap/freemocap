@@ -161,7 +161,7 @@ def RunChooseDataPathGUI(session):
     chosenDataPath = setDataPathGUI(root, session)
     root.mainloop()
 
-    return chosenDataPath.dataPath
+    return Path(chosenDataPath.dataPath)
 
 
 def RunChooseDLCPathGUI(session,saved_dlc_paths):

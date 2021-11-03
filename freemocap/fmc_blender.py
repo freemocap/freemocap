@@ -527,6 +527,7 @@ if col:
        if "Armature" == obj.name:
             obj.select_set(True)
 
+
 #Bake the skeletal animation
 # ensure that only the armature is selected in Object mode
 bpy.ops.object.mode_set(mode='OBJECT')
@@ -553,6 +554,7 @@ while empties:
 
 order_of_markers = []
 
+
 #Select objects to export
 col = bpy.data.collections.get("Collection")
 if col:
@@ -563,6 +565,7 @@ if col:
             bpy.data.objects.remove(obj)
             
 #save blender file
+
 bpy.ops.wm.save_as_mainfile(filepath= sesh_path + "skeletal_animation_session.blend")
 
 #export FBX
@@ -573,3 +576,4 @@ bpy.ops.export_scene.gltf(filepath=sesh_path + "skeletal_animation_session.gltf"
 
 #export USD
 bpy.ops.wm.usd_export(filepath=sesh_path + 'skeletal_animation_session.usdc', selected_objects_only=True, export_animation=True)
+

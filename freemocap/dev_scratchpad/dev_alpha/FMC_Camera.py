@@ -21,8 +21,7 @@ import numpy as np
 #python rich stuff - https://rich.readthedocs.io/
 from rich import print
 from rich.console import Console
-from rich.live import Live
-from rich.table import Table    
+
 
 
 cap_default_parameters_dict = {

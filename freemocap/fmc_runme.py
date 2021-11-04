@@ -282,7 +282,7 @@ def RunMe(sessionID=None,
         thisStage=6
         console.rule(style="color({})".format(thisStage))    
         console.rule('Creating the Skreleton animation!'.upper(),style="color({})".format(thisStage))    
-        console.print('The video creation is very slow. This whole animation maker is crazy slow, tbh. Sorry about that, future iterations will be better lol :sweat_smile:',overflow="fold", justify='center',style="color({})".format(thisStage))    
+        console.print('The video creation is very slow. All of the animation making code is crazy slow, tbh. Sorry about that, future iterations will be better lol :sweat_smile:',overflow="fold", justify='center',style="color({})".format(thisStage))    
         console.rule(style="color({})".format(thisStage))    
         time.sleep(pauseBetweenStages)  
         

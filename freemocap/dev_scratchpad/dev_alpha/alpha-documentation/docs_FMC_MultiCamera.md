@@ -10,6 +10,7 @@ ____
 ## Run as __Main__ file - Code sequence chart
 
 ```mermaid
+%%{init: {"securityLevel": "loose","theme": "base", "themeVariables": { "primaryColor": "#fff4dd", "primaryBorderColor":"#Fffff0","primaryTextColor":"#FFF", "actorBkg":"#FF0000", "loopTextColor":"#fff000","activationBkgColor":"#000FFF", "sequenceNumberColor":"#000000"}}}%%
 sequenceDiagram
 autonumber
     participant M as __Main__
@@ -33,19 +34,24 @@ autonumber
     M->>+S:multi_cam.start(standalone_mode=True)
     deactivate M
     activate S
+    rect rgb(10,150,150,.5)  
     alt if self.cams_to_use_list is None
+
         S->>+F:Find Available Cameras
         deactivate S
         F->>+S: return(cams_to_use_list)
         deactivate F
         end
+        end
         S->>-P: self.start_multi_cam_process_pool
         activate P
         Note over P:CREATE cam_frame_q, multi_frame_tuple_queue, barrier(num_cams+1), exit_event
-        Note over P:Write 'starting multi_cam_process_pool' to console
+        Note over P:Write </br>'starting multi_cam_process_pool' to console
+        rect rgb(150,150,150,.5)   
         loop with pathos_mp.ProcessingPool as self.cam_process_pool
             
             par MULTIPROCESS Camera0 
+              rect rgb(150,10,15,.5)  
                 P->>CI:initiate camera as subprocess
                 Note over CI: if init received a 'queue' object, launch 'self.run_in_thread'
                 CI->>CT:run cam in 'thread' mode
@@ -58,27 +64,60 @@ autonumber
                     CR->>+FQ:frame_tuple into frame_queue
                     Note over CR: Barrier.wait() (will release after frame_grabber grabs tuple)                                       
                 end
+            end
+            and MULTIPROCESS Camera1 
+              rect rgb(10,150,15,.5)  
+                P->>CI:initiate camera as subprocess
+                Note over CI: if init received a 'queue' object, launch 'self.run_in_thread'
+                CI->>CT:run cam in 'thread' mode
+                P->>CI:initiate camera as subprocess
+                CI->>CT:run cam in 'thread' mode 
+                loop while: not exit_event.is_set()
+                    CT->>CR:self.read_next_frame
+                    CR->>CT:return(success, image, timestamp)
+                    Note over CR: CREATE tuple(cam_num,image,timestamp) into self._frame_queue
+                    CR->>FQ:frame_tuple into frame_queue
+                    Note over CR: Barrier.wait() (will release after frame_grabber grabs tuple)                                       
+                end
+            end
+            and MULTIPROCESS CameraN 
+              rect rgb(10,15,150,.5)  
+                P->>CI:initiate camera as subprocess
+                Note over CI: if init received a 'queue' object, launch 'self.run_in_thread'
+                CI->>CT:run cam in 'thread' mode
+                P->>CI:initiate camera as subprocess
+                CI->>CT:run cam in 'thread' mode 
+                loop while: not exit_event.is_set()
+                    CT->>CR:self.read_next_frame
+                    CR->>CT:return(success, image, timestamp)
+                    Note over CR: CREATE tuple(cam_num,image,timestamp) into self._frame_queue
+                    CR->>FQ:frame_tuple into frame_queue
+                    Note over CR: Barrier.wait() (will release after frame_grabber grabs tuple)                                       
+                end
+            end
 
-            and MULTIPROCESS  ...
-                Note over P, FQ: one process per camera
-            and MULTIPROCESS  CameraN 
-                Note over P, FQ: one process per camera
             and THREAD Incoming_frame_grabber
+                rect rgb(150,180,15,.5)  
+
                 loop exit_event is not set
                     FQ->>FG:grab frame_tuples
                     deactivate FQ
                     Note over FG: Release Barrier.wait()                    
                     Note over FG: CREATE multi_cam_tuple
-                    FG->>MQ:multi_cam_tuple into multi_cam_tuple_queue
+                    FG->>+MQ:multi_cam_tuple into multi_cam_tuple_queue
+                end
                 end
             and show_stream_opencv
+                rect rgb(210,25,210,.5)  
+
             alt if show_stream or standalont
                 P->>SM:start multi cam stream
-                MQ->>SM: Grab frame
+                MQ->>-SM: Grab frame
                 Note over SM: Also stitch multi frame, and init out vid
             end
-            
-            end                        
+            end
+            end     
+        end                   
     end
 ```
 

@@ -26,7 +26,6 @@ import datetime
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import h5py
 from pathlib import Path
 
 from rich import print
@@ -276,9 +275,10 @@ class FMC_MultiCamera:
             for cam_num in range(self.num_cams):
                 this_cam_image_timestamp_tuple = self.cam_frame_queue.get()
                 this_cam_num = this_cam_image_timestamp_tuple[0]
-                these_images_list[this_cam_num] = this_cam_image_timestamp_tuple[1]
-                these_timestamps[this_cam_num] = this_cam_image_timestamp_tuple[2]
-                this_multi_cam_tuple_as_a_list[this_cam_num] = this_cam_image_timestamp_tuple
+                this_cam_index = self.cams_to_use_list.index(this_cam_num)
+                these_images_list[this_cam_index] = this_cam_image_timestamp_tuple[1]
+                these_timestamps[this_cam_index] = this_cam_image_timestamp_tuple[2]
+                this_multi_cam_tuple_as_a_list[this_cam_index] = this_cam_image_timestamp_tuple
             
             this_multi_cam_tuple = tuple(this_multi_cam_tuple_as_a_list)
 
@@ -290,7 +290,7 @@ class FMC_MultiCamera:
             self.multi_cam_tuple_queue.put(this_multi_cam_tuple, np.mean(these_timestamps))
             
             
-            rich_console.log('Created a multi_cam_tuple - queue size: {}'.format(self.multi_cam_tuple_queue.qsize()))
+            # rich_console.log('Created a multi_cam_tuple - queue size: {}'.format(self.multi_cam_tuple_queue.qsize()))
     
     def stitch_multicam_image(self, multi_cam_tuple):
         """Take in a multi-cam-tuple (containing images from each camera during the period of time defined by the attached timestamps)

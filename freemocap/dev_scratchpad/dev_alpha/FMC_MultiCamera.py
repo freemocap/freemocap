@@ -100,7 +100,7 @@ class FMC_MultiCamera:
         self._show_multi_cam_stream = show_multi_cam_stream
         
         
-        rich_console.rule('Starting FreeMoCap MultiCam Recorder!')
+        rich_console.rule('Starting FreeMoCap MultiCam!')
 
 
         
@@ -243,10 +243,10 @@ class FMC_MultiCamera:
                         tuple(in_barrier_list), 
                         tuple(in_exit_event_list),
                         )
-            self.incoming_frame_grabber_thread = threading.Thread(target=self.grab_incoming_cam_tuples, name='Incoming Frame Grabber Thread')
-            self.incoming_frame_grabber_thread.start()
-            if self._show_multi_cam_stream:
-                self.show_multi_cam_cv2()
+            self.incoming_tuple_grabber_thread = threading.Thread(target=self.grab_incoming_cam_tuples, name='Incoming Frame Tuple Grabber Thread')
+            self.incoming_tuple_grabber_thread.start()
+            if self._show_multi_cam_stream or self.standalone_mode:
+                self.show_multi_cam_opencv()
 
 
 
@@ -288,7 +288,7 @@ class FMC_MultiCamera:
                 self._each_cam_timestamps_unix_ns =  np.vstack((self._each_cam_timestamps_unix_ns, these_timestamps)) #result will be numpy array with `num_frames` rows and `num_cams` columns
 
             self.multi_cam_tuple_queue.put(this_multi_cam_tuple, np.mean(these_timestamps))
-            multi_cam_image = np.hstack(these_images_list)  #create multiFrame_image by stitching together incoming camera images
+            
             
             rich_console.log('Created a multi_cam_tuple - queue size: {}'.format(self.multi_cam_tuple_queue.qsize()))
     
@@ -306,7 +306,7 @@ class FMC_MultiCamera:
            
 
         for this_cam_num in range(self.num_cams):                                
-            these_images_list[this_cam_num] = multi_cam_tuple[this_cam_num][0] #and that's how you navigate nested tuples, lol                                
+            these_images_list[this_cam_num] = multi_cam_tuple[this_cam_num][1] #and that's how you navigate nested tuples, lol                                
         
         multi_cam_image = np.hstack(these_images_list)  #create multiFrame_image by stitching together (horizontally stacking) incoming camera images (matrices)
         return multi_cam_image
@@ -321,9 +321,9 @@ class FMC_MultiCamera:
     ###       ██ ██   ██ ██    ██ ██ ███ ██      ██  ██  ██ ██   ██ 
     ###  ███████ ██   ██  ██████   ███ ███        ████   ██ ██████  
     ###                                                             
-    ###                                                             
+    ###                                                             6
     
-    def show_multi_cam_cv2(self):
+    def show_multi_cam_opencv(self):
         """display multi_cam_image using `cv2.imshow` and maybe save it to mp4, who knows?
         """
         rich_console.rule('Launching Multi Cam Viewer')
@@ -463,8 +463,8 @@ if __name__ == '__main__':
     pathos_mp_helper.freeze_support()
     console = Console() #create rich console to catch and print exceptions
     try:
-        fmc_multi_cam_recorder = FMC_MultiCamera()
-        fmc_multi_cam_recorder.start(standalone_mode=True)        
+        multi_cam = FMC_MultiCamera()
+        multi_cam.start(standalone_mode=True)        
                                  
     except Exception:
         console.print_exception()

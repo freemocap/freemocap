@@ -52,7 +52,7 @@ class recordGUI:
 
         # ---create the task radiobutton
         tk.Label(
-            self.master, text="""Choose your task""", justify=tk.LEFT, padx=20
+            self.master, text="""Select 'Setup' to preview cameras \n or \n 'Record' to create recording""", justify=tk.CENTER
         ).pack()
 
         for option, val in options:
@@ -60,7 +60,7 @@ class recordGUI:
                 self.master, text=option, padx=20, variable=self.currentTask, value=val
             ).pack(anchor=tk.W)
 
-        self.refresh_button = Button(bottom_frame, text="Refresh", command=self.Refresh)
+        self.refresh_button = Button(bottom_frame, text="Re-detect Cameras", command=self.Refresh)
         self.refresh_button.pack(side=tk.RIGHT)
 
         
@@ -170,9 +170,10 @@ class SettingsGUI:
         self.codecEntry = Entry(parametersFrame)
         self.codecEntry.pack(side="left")
         
-        self.var1 = tk.IntVar()
-        c1 = tk.Checkbutton(parametersFrame, text='Mediapipe Overlay',variable=self.var1, onvalue=1, offvalue=0)
-        c1.pack(side = 'right')
+        if self.task == "setup":
+            self.var1 = tk.IntVar()
+            c1 = tk.Checkbutton(parametersFrame, text='Mediapipe Overlay',variable=self.var1, onvalue=1, offvalue=0)
+            c1.pack(side = 'right')
 
         # ---SessionID entry- default is the date/time
         if self.task == "record":
@@ -212,7 +213,7 @@ class SettingsGUI:
             self.FPSEntry.insert(0, parameter_dictionary["framerate"])
 
         # ---Submit button to hit when things are finalized
-        self.sub_button = Button(bottomFrame, text="Submit", command=self.Submit)
+        self.sub_button = Button(bottomFrame, text="Submit - Start Cameras", command=self.Submit)
         self.sub_button.pack(side=tk.BOTTOM)
 
     def openFileDialog(self):
@@ -237,9 +238,10 @@ class SettingsGUI:
             "framerate": int(self.FPSEntry.get()),
             "codec": str(self.codecEntry.get()),
         }
-
-        if self.var1.get()==1:
-            self.mediaPipeOverlay=True
+        
+        if self.task == "setup":
+            if self.var1.get()==1:
+                self.mediaPipeOverlay=True
 
         # spit out the sessionID
         if self.task == "record":
@@ -273,7 +275,7 @@ class ProceedToRecordGUI:
         self.sessionID_out = ""
         self.currentPath = current_path_to_save
 
-        sessionText = "Proceed to recording with this sessionID?"
+        sessionText = "Proceed to recording? \n sessionID:"
         sessionLabel = Label(master, text=sessionText)
         sessionLabel.pack(side="top")
 
@@ -296,7 +298,7 @@ class ProceedToRecordGUI:
         changepath_button.pack(side = 'left')
 
             # master.title("Proceed to Recording?")
-        self.proceed_button = Button(text="Proceed", command=self.proceed)
+        self.proceed_button = Button(text="Begin Recording!", command=self.proceed)
         self.change_button = Button(text = "Change Parameters", command = self.change_params)
         self.stop_button = Button(text="Quit", command=self.stop)
         self.stop_button.pack(side=tk.RIGHT)

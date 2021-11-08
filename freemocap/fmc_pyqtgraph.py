@@ -228,7 +228,7 @@ class PlaySkeletonWidget:
 
     def update(self):
 
-        # Plot Mr. Skreleton :D
+        # Plots up Mr. Skreleton :D
         # Plots the dots
         
         self.skelScatterItem.setData(

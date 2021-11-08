@@ -6,7 +6,9 @@ import numpy as np
 
 from freemocap.webcam import recordGUI, camsetup
 from freemocap import recordingconfig, fmc_anipose
+from rich.console import Console
 
+console = Console()
 
 def initialize(session, stage, board):
     """ 
@@ -17,8 +19,11 @@ def initialize(session, stage, board):
     into the session class, which gets saved into the user_preferences yaml
 
     """ 
+    
+    console.rule(style="color({})".format(13))    
+    console.rule('Finding available webcams',style="color({})".format(13))
+    console.rule(style="color({})".format(13)) 
 
-    print("Starting initialization for stage {}".format(stage))
     # if stage == 1:
     filepath = Path.cwd()
 

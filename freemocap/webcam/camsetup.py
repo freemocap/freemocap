@@ -2,6 +2,7 @@ import threading
 import cv2
 import imutils
 import os
+import platform
 
 import mediapipe as mp
 
@@ -27,11 +28,10 @@ class VideoSetup(threading.Thread):
         exposure = parameterDictionary.get("exposure")
         resWidth = parameterDictionary.get("resWidth")
         resHeight = parameterDictionary.get("resHeight")
-        camName = "Camera" + str(self.camID)
+        camWindowName = "Camera" + str(self.camID)+' Preview - Press ESC to exit Setup'
+        cv2.namedWindow(camWindowName)
 
-        cv2.namedWindow(camName)
-
-        if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
+        if platform.system() == 'Windows':
             cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
         else:
             cap = cv2.VideoCapture(self.camID, cv2.CAP_ANY)
@@ -63,14 +63,15 @@ class VideoSetup(threading.Thread):
             if ret1 == True:
                 if rotNum is not None:
                     frame1 = imutils.rotate_bound(frame1, angle=rotNum)
-                cv2.imshow(camName, frame1)
+                
+                cv2.imshow(camWindowName, frame1)
                 if cv2.waitKey(1) & 0xFF == 27:
                     # == ord('q') for q
                     break
 
             else:
                 break
-        cv2.destroyWindow(camName)
+        cv2.destroyWindow(camWindowName)
 
 class MediaPipeVideoSetup(threading.Thread):
     """
@@ -90,11 +91,11 @@ class MediaPipeVideoSetup(threading.Thread):
         exposure = parameterDictionary.get("exposure")
         resWidth = parameterDictionary.get("resWidth")
         resHeight = parameterDictionary.get("resHeight")
-        camName = "Camera" + str(self.camID)
+        camWindowName = "RECORDING - Camera" + str(self.camID)+' - Press ESC to exit'
 
-        cv2.namedWindow(camName)
+        cv2.namedWindow(camWindowName)
 
-        if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
+        if platform.system() == 'Windows':
             cap = cv2.VideoCapture(self.camID, cv2.CAP_DSHOW)
         else:
             cap = cv2.VideoCapture(self.camID, cv2.CAP_ANY)
@@ -145,14 +146,14 @@ class MediaPipeVideoSetup(threading.Thread):
                         .get_default_pose_landmarks_style())
                     if rotNum is not None:
                         frame1 = imutils.rotate_bound(frame1, angle=rotNum)
-                    cv2.imshow(camName, frame1)
+                    cv2.imshow(camWindowName, frame1)
                     if cv2.waitKey(1) & 0xFF == 27:
                         # == ord('q') for q
                         break
 
                 else:
                     break
-            cv2.destroyWindow(camName)
+            cv2.destroyWindow(camWindowName)
 
 
 

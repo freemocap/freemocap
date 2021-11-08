@@ -11,6 +11,7 @@
 
 
 
+from rich.repr import T
 from FMC_Camera import FMC_Camera
 
 import concurrent.futures
@@ -56,8 +57,9 @@ class FMC_MultiCamera:
                 num_cams = 0,
                 cams_to_use_list = None,
                 rotation_codes_list = None,
-                show_multi_cam_stream = True,
-                save_to_mp4 = True,
+                show_multi_cam_stream_bool = True,
+                save_multi_cam_to_mp4 = False,
+                save_each_cam_to_mp4 = True,
                 save_to_h5 = False,
                 save_log_file = False
                 ):
@@ -65,7 +67,7 @@ class FMC_MultiCamera:
         self._init_start_time = time.time_ns()#the precision is aspirational, lol
 
         if rec_name is None:
-            self._rec_name = datetime.datetime.now().strftime("FMC_MultiCamRecording_%Y-%b-%d_%H_%M_%S")
+            self._rec_name = datetime.datetime.now().strftime("FMC_MultiCamRecording_%Y-%m-%d_%H_%M_%S")
         else:
             self._rec_name = rec_name
 
@@ -75,13 +77,18 @@ class FMC_MultiCamera:
         else:
             self._save_path = Path(save_path)
         
-        if save_path or save_to_mp4 or save_to_h5 or save_log_file:
-            self._save_path.mkdir(parents=True)
+        if save_path or save_multi_cam_to_mp4 or save_to_h5 or save_log_file or save_each_cam_to_mp4:
+            self._save_path.mkdir(parents=True, exist_ok=True)
             self._path_to_log_file = Path(str(self._save_path / self._rec_name) + '_log.txt')
 
-        self._save_to_mp4 = save_to_mp4
-        if self._save_to_mp4:            
-            self._output_video_object = None #build this after we get the first multi_frame_image
+        self._save_multi_cam_to_mp4 = save_multi_cam_to_mp4        
+        if self._save_multi_cam_to_mp4:            
+            self._output_multi_cam_video_object = None #build this after we get the first multi_frame_image
+
+        self._save_each_cam_to_mp4 = save_each_cam_to_mp4
+        if self._save_each_cam_to_mp4:            
+            self._each_cam_video_writer_object_list = None #build this after we get the first multi_frame_image
+
 
         # log_file_obj = open(self._path_to_log_file,'w+')
         # rich_console = Console(file=log_file_obj)
@@ -91,12 +98,11 @@ class FMC_MultiCamera:
         self._cams_to_use_list = cams_to_use_list
         
         if rotation_codes_list:
-            assert len(rotation_codes_list) == self.num_cams, 'Rotation Codes list must be same length as the number of cameras'
             self._rotation_codes_list = rotation_codes_list
         else:
             self._rotation_codes_list = [None] * self.num_cams            
 
-        self._show_multi_cam_stream = show_multi_cam_stream
+        self._show_multi_cam_stream_bool = show_multi_cam_stream_bool
         
         
         rich_console.rule('Starting FreeMoCap MultiCam!')
@@ -167,6 +173,7 @@ class FMC_MultiCamera:
         self.standalone_mode = standalone_mode
         if self.cams_to_use_list is None:
             self.find_available_cameras()
+                
         
         # pathos_pool = ProcessPool(nodes=1)
         # pathos_pool.map(self.start_multi_cam_thread_pool)
@@ -191,11 +198,16 @@ class FMC_MultiCamera:
             capBackend = cv2.CAP_ANY
 
         self._cams_to_use_list = []
-        for camNum in track(range(num_cams_to_check), description='[green]Finding available cameras...' ):
+        for camNum in range(num_cams_to_check):#track(range(num_cams_to_check), description='[green]Finding available cameras...' ):
+            print('ATTEMPTING TO OPEN CAMERA AT PORT# {}'.format(camNum))
             cap =  cv2.VideoCapture(camNum, capBackend)
             if cap.isOpened():
+                rich_console.print('SUCCESS - CAMERA FOUND at # {}'.format(camNum), style="bold cyan")
                 self._cams_to_use_list.append(camNum)
-            cap.release()
+                cap.release()
+            else:
+                rich_console.print('No CAMERA FOUND at # {}'.format(camNum), style="magenta")
+
         rich_console.print("Found cameras at ", self._cams_to_use_list)
         
         self.num_cams = len(self._cams_to_use_list)
@@ -238,13 +250,14 @@ class FMC_MultiCamera:
             self.cam_process_pool.amap(
                         FMC_Camera, 
                         tuple(self.cams_to_use_list), 
+                        tuple(self._rotation_codes_list),
                         tuple(in_frame_q_list), 
                         tuple(in_barrier_list), 
                         tuple(in_exit_event_list),
                         )
             self.incoming_tuple_grabber_thread = threading.Thread(target=self.grab_incoming_cam_tuples, name='Incoming Frame Tuple Grabber Thread')
             self.incoming_tuple_grabber_thread.start()
-            if self._show_multi_cam_stream or self.standalone_mode:
+            if self._show_multi_cam_stream_bool or self.standalone_mode:
                 self.show_multi_cam_opencv()
 
 
@@ -331,12 +344,22 @@ class FMC_MultiCamera:
             if not self.multi_cam_tuple_queue.empty():
                 
                 this_multi_cam_tuple = self.multi_cam_tuple_queue.get()
+                self.save_synchronized_videos(this_multi_cam_tuple)
                 this_multi_cam_image = self.stitch_multicam_image(this_multi_cam_tuple)
 
-                if self._save_to_mp4:
-                    if self._output_video_object is None:
-                        self.initialize_video(this_multi_cam_image)
-                    self._output_video_object.write(this_multi_cam_image)
+                if self._save_multi_cam_to_mp4:
+                    if self._output_multi_cam_video_object is None:
+                        self.initialize_multi_cam_output_video(this_multi_cam_image)
+                    
+
+                    self._output_multi_cam_video_object.write(this_multi_cam_image)
+                
+                if self._save_each_cam_to_mp4:
+                    if self._each_cam_video_writer_object_list is None:
+                        self.initialize_each_cam_output_video(this_multi_cam_tuple)
+                    
+                    for this_cam_num in range(self.num_cams):
+                        self._each_cam_video_writer_object_list[this_cam_num].write(this_multi_cam_tuple[this_cam_num][1])
 
                 cv2.imshow(self._rec_name, this_multi_cam_image)
                 key = cv2.waitKey(1)
@@ -348,11 +371,26 @@ class FMC_MultiCamera:
                     self.exit_event.set()   
 
         cv2.destroyAllWindows()
-        if self._save_to_mp4:
-            self._output_video_object.release()
+        if self._save_multi_cam_to_mp4:
+            self._output_multi_cam_video_object.release()
+            if self._save_each_cam_to_mp4:
+                for this_cam_num in range(self.num_cams):
+                    self._each_cam_video_writer_object_list[this_cam_num].release()
+
         rich_console.rule('Shutting down MultiCamera Viewer')
         self.exit_event.set() #send the 'Exit' signal to everyone.
     
+    def save_synchronized_videos(self, multi_cam_tuple):
+        """save camera streams into individual videos (that can be processed with pre-alpha freemocap"""
+        these_images_list = [None]*self.num_cams #empty list of size (numCam)
+           
+        for this_cam_num in range(self.num_cams):                                
+            this_cam_image = multi_cam_tuple[this_cam_num][1] #and that's how you navigate nested tuples, lol         
+
+        
+        
+
+
     ###  
     ###          
     ###  ██ ███    ██ ██ ████████      ██████  ██    ██ ████████     ██    ██ ██ ██████  
@@ -363,7 +401,7 @@ class FMC_MultiCamera:
     ###                                                                                  
     ###                                                                                  
 
-    def initialize_video(self, multi_cam_image):
+    def initialize_multi_cam_output_video(self, multi_cam_image):
         """use  the multi_cam_image to initialize the video
             multicam image will be of size  [cam_resolution_width*num_cams by cam_resolution_height]
         Args:
@@ -374,9 +412,32 @@ class FMC_MultiCamera:
 
         self.multi_cam_image_size = ( self._multi_cam_image_width, self._multi_cam_image_height)
         fourcc = cv2.VideoWriter_fourcc(*'DIVX')
-        self._outputVid_fileName = str(self._save_path / self._rec_name) + '_outVid.mp4'
-        fps = 30 #this is a bad and stupid guess, but it's actually kinda tricky to guess what is the right thing to put here. I'll fix this later and expect videos to be a bit faster than usual :(
-        self._output_video_object = cv2.VideoWriter(self._outputVid_fileName, fourcc, fps, self.multi_cam_image_size)
+        self._output_multi_cam_vid_fileName = str(self._save_path / self._rec_name) + '_outVid.mp4'
+        fps = 25 #this is a bad and stupid guess, but it's actually kinda tricky to guess what is the right thing to put here. I'll fix this later and expect videos to be a bit faster than usual :(
+        self._output_multi_cam_video_object = cv2.VideoWriter(self._output_multi_cam_vid_fileName, fourcc, fps, self.multi_cam_image_size)
+    
+    
+    def initialize_each_cam_output_video(self, multi_cam_tuple):
+        
+        self._each_cam_video_writer_object_list=[None]*self.num_cams
+        self._each_cam_video_filename_list=[None]*self.num_cams
+
+        self.syncedVidsPath = self._save_path / self._rec_name / 'SyncedVids'
+        self.syncedVidsPath.mkdir(parents=True)
+
+        for this_cam_num in range(self.num_cams):
+            #create video save object
+            this_cam_image = multi_cam_tuple[this_cam_num][1]
+            this_cam_timestamp_unix_ns = multi_cam_tuple[this_cam_num][2]
+            self._cam_image_height, self._cam_image_width, channels = this_cam_image.shape
+
+            self._cam_image_size = ( self._cam_image_width, self._cam_image_height)
+            fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+            
+            self._each_cam_video_filename_list[this_cam_num] = str(self.syncedVidsPath) + '/Cam_'+str(this_cam_num)+'_synchronized.mp4'
+            fps = 25 #this is a bad and stupid guess, but it's actually kinda tricky to guess what is the right thing to put here. I'll fix this later and expect videos to be a bit faster than usual :(
+            self._each_cam_video_writer_object_list[this_cam_num] = cv2.VideoWriter(self._each_cam_video_filename_list[this_cam_num], fourcc, fps, self._cam_image_size)
+    ##   
     ##   
     ##   
     ##   ██████  ██       ██████  ████████     ████████ ██ ███    ███ ███████ ███████ ████████  █████  ███    ███ ██████  ███████ 
@@ -462,8 +523,19 @@ class FMC_MultiCamera:
 if __name__ == '__main__':
     pathos_mp_helper.freeze_support()
     console = Console() #create rich console to catch and print exceptions
+
+    import socket
+    this_computer_name = socket.gethostname()
+
+    if this_computer_name=='jon-hallway-XPS-8930':
+        freemocap_data_path = Path('/home/jon/Dropbox/FreeMoCapProject/FreeMocap_Data')
+        in_rotation_codes_list = ['cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', ]
+    else:
+        freemocap_data_path=None
+        in_rotation_codes_list=None
+
     try:
-        multi_cam = FMC_MultiCamera()
+        multi_cam = FMC_MultiCamera(save_path=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
         multi_cam.start(standalone_mode=True)        
                                  
     except Exception:

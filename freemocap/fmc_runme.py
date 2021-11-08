@@ -12,6 +12,7 @@ from aniposelib.boards import CharucoBoard
 import numpy as np
 
 from ruamel.yaml import YAML
+import cv2
 
 #Rich stuff
 from rich import print
@@ -161,6 +162,10 @@ def RunMe(sessionID=None,
         console.rule('See https://anipose.org for details', style="color({})".format(thisStage))  
         console.rule(style="color({})".format(thisStage))    
 
+        if sesh.numFrames is None:
+            a_sync_vid_path = list(sesh.syncedVidPath.glob('*.mp4'))
+            temp_cap = cv2.VideoCapture(str(a_sync_vid_path[0]))
+            sesh.numFrames = temp_cap.get(cv2.CAP_PROP_FRAME_COUNT)
 
         sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
 

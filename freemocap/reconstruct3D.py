@@ -1,5 +1,7 @@
 from freemocap import fmc_anipose
 import numpy as np
+from rich.console import Console
+console=Console()
 
 # from numba import jit
 
@@ -52,6 +54,7 @@ def reconstruct3D(session, data_nCams_nFrames_nImgPts_XYC, confidenceThreshold=0
 
     dataFlat_nCams_nTotalPoints_XY = data_nCams_nFrames_nImgPts_XY.reshape(nCams, -1, 2)  # reshape data to collapse across 'frames' so it becomes [numCams, numFrames*numPoints, XY]
 
+    console.print('Reconstructing 3d points...')
     data3d_flat = session.cgroup.triangulate(dataFlat_nCams_nTotalPoints_XY, progress=True)
 
     dataReprojerr_flat = session.cgroup.reprojection_error( data3d_flat, dataFlat_nCams_nTotalPoints_XY, mean=True)

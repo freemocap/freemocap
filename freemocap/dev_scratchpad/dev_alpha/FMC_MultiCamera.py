@@ -97,10 +97,9 @@ class FMC_MultiCamera:
         self._num_cams = num_cams
         self._cams_to_use_list = cams_to_use_list
         
-        if rotation_codes_list:
-            self._rotation_codes_list = rotation_codes_list
-        else:
-            self._rotation_codes_list = [None] * self.num_cams            
+
+        self._rotation_codes_list = rotation_codes_list
+  
 
         self._show_multi_cam_stream_bool = show_multi_cam_stream_bool
         
@@ -201,7 +200,8 @@ class FMC_MultiCamera:
         for camNum in range(num_cams_to_check):#track(range(num_cams_to_check), description='[green]Finding available cameras...' ):
             print('ATTEMPTING TO OPEN CAMERA AT PORT# {}'.format(camNum))
             cap =  cv2.VideoCapture(camNum, capBackend)
-            if cap.isOpened():
+            success, image = cap.read()
+            if success: #this is apparently a more power check than `cap.isOpened()` which sometimes returns false positives for unknown reason. Will lose the first frame if this method is ever applied to reading in videos instead of streaming from cameras                
                 rich_console.print('SUCCESS - CAMERA FOUND at # {}'.format(camNum), style="bold cyan")
                 self._cams_to_use_list.append(camNum)
                 cap.release()
@@ -242,9 +242,10 @@ class FMC_MultiCamera:
         in_frame_q_list = [self.cam_frame_queue]*self.num_cams
         in_barrier_list = [self.barrier]*self.num_cams
         in_exit_event_list = [self.exit_event]*self.num_cams
-        # nsole_list = [self.rich_console]*self.num_cams
-
-
+        
+        if self._rotation_codes_list is None:
+            self._rotation_codes_list = [None]*self.num_cams
+            
         num_jobs = self.num_cams
         with pathos_mp.ProcessingPool(num_jobs) as self.cam_process_pool: 
             self.cam_process_pool.amap(
@@ -365,17 +366,19 @@ class FMC_MultiCamera:
                 key = cv2.waitKey(1)
 
                 if key == 27:  # exit on ESC                        
-                    self.exit_event.set()
+                    break
                 
                 if cv2.getWindowProperty(self._rec_name, cv2.WND_PROP_VISIBLE) < 1: #break loop if window closed
-                    self.exit_event.set()   
+                    break
 
         cv2.destroyAllWindows()
+        
         if self._save_multi_cam_to_mp4:
             self._output_multi_cam_video_object.release()
-            if self._save_each_cam_to_mp4:
-                for this_cam_num in range(self.num_cams):
-                    self._each_cam_video_writer_object_list[this_cam_num].release()
+            
+        if self._save_each_cam_to_mp4:
+            for this_cam_num in range(self.num_cams):
+                self._each_cam_video_writer_object_list[this_cam_num].release()
 
         rich_console.rule('Shutting down MultiCamera Viewer')
         self.exit_event.set() #send the 'Exit' signal to everyone.
@@ -422,7 +425,7 @@ class FMC_MultiCamera:
         self._each_cam_video_writer_object_list=[None]*self.num_cams
         self._each_cam_video_filename_list=[None]*self.num_cams
 
-        self.syncedVidsPath = self._save_path / self._rec_name / 'SyncedVids'
+        self.syncedVidsPath = self._save_path / self._rec_name / 'SyncedVideos'
         self.syncedVidsPath.mkdir(parents=True)
 
         for this_cam_num in range(self.num_cams):
@@ -527,12 +530,15 @@ if __name__ == '__main__':
     import socket
     this_computer_name = socket.gethostname()
 
+    freemocap_data_path=None
+    in_rotation_codes_list=None
+        
     if this_computer_name=='jon-hallway-XPS-8930':
         freemocap_data_path = Path('/home/jon/Dropbox/FreeMoCapProject/FreeMocap_Data')
         in_rotation_codes_list = ['cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', ]
-    else:
-        freemocap_data_path=None
-        in_rotation_codes_list=None
+    elif this_computer_name == 'DESKTOP-DCG6K4F':
+        freemocap_data_path = Path(r'C:\Users\jonma\Dropbox\FreeMoCapProject\FreeMocap_Data')
+
 
     try:
         multi_cam = FMC_MultiCamera(save_path=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)

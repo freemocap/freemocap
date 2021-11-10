@@ -13,7 +13,7 @@ class setDataPathGUI:
         chooseLabel = Label(master, text=chooseText)
         chooseLabel.pack(side="top")
 
-        self.currentPath = Path.cwd()
+        self.currentPath = Path.cwd() #JSM NOTE - Why is this referencing `current working directory?` shouldn't it show what the current data path is set to?
         text = 'Current file path: ' + str(self.currentPath)
         self.currentPathText = tk.StringVar()
         self.currentPathText.set(text)

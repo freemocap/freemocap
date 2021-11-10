@@ -102,7 +102,7 @@ def RunMe(sessionID=None,
     if useBlender == True:
         here = Path(__file__).parent
         subprocessPath = here/'fmc_blender.py'
-        blenderEXEpath = startup.get_blender_path(sesh,resetBlenderExe)
+        blenderPath = startup.get_blender_path(sesh,resetBlenderExe)
 
  
     board = CharucoBoard(7, 5,
@@ -272,9 +272,9 @@ def RunMe(sessionID=None,
             console.rule(style="color({})".format(thisStage))    
             time.sleep(pauseBetweenStages)  
 
-            #blenderExePath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
+            #blenderPath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
             #os.chdir(blenderExePath)
-            output = subprocess.run([blenderEXEpath, "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
+            output = subprocess.run([str(blenderPath), "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy'), str(sesh.dataArrayPath)], capture_output=True, text=True, check=True)
             print(output)        
 
     # %% Stage Five - Make  Animation

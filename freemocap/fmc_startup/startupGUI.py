@@ -13,7 +13,7 @@ class setDataPathGUI:
         chooseLabel = Label(master, text=chooseText)
         chooseLabel.pack(side="top")
 
-        self.currentPath = Path.cwd()
+        self.currentPath = session.preferences['saved']['path_to_save'] 
         text = 'Current file path: ' + str(self.currentPath)
         self.currentPathText = tk.StringVar()
         self.currentPathText.set(text)

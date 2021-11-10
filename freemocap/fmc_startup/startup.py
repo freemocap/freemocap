@@ -48,6 +48,8 @@ def get_data_folder_path(session):
         # 3) If no sessionID was user-input, search the chosen directory for the last session created
         if session.setDataPath == True:
             session.basePath = startupGUI.RunChooseDataPathGUI(session)
+            session.preferences['saved']['path_to_save'] = str(session.basePath)
+            session.save_user_preferences(session.preferences)
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
 
         elif session.userDataPath is not None:

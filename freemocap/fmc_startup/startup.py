@@ -50,6 +50,7 @@ def get_data_folder_path(session):
             session.basePath = startupGUI.RunChooseDataPathGUI(session)
             session.preferences['saved']['path_to_save'] = str(session.basePath)
             session.save_user_preferences(session.preferences)
+            
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
 
         elif session.userDataPath is not None:
@@ -75,7 +76,20 @@ def get_data_folder_path(session):
 
 
         if not dataFolder.exists():
-            raise FileNotFoundError('No data folder located at: ' + str(dataFolder))
+            print('Data folder not found at this path. Please choose another path.')
+            session.basePath = startupGUI.RunChooseDataPathGUI(session)
+            session.preferences['saved']['path_to_save'] = str(session.basePath)
+            session.save_user_preferences(session.preferences)
+
+            if session.basePath.stem == session.dataFolderName: #don't recursively craete 'FreeMoCap_Data' folders!
+                dataFolder = session.basePath
+            else:
+                dataFolder = session.basePath/session.dataFolderName
+            session.dataFolderPath = dataFolder
+
+
+
+       
 
 def get_blender_path(session, resetBlenderExe):
     if  resetBlenderExe == True:

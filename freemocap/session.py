@@ -211,6 +211,8 @@ class Session: #self like "recording self"
                 self.numFrames = int(thisCamFrames)
                 self.session_settings['recording_parameters'].update({'numFrames':self.numFrames})
                 self.numCams = len(a_sync_vid_path)
+                self.session_settings['recording_parameters'].update({'numCams':self.numCams})
+                self.save_session()
             else:
                 raise ValueError('The number of frames in each video are not equal. Frame counts per video are are: ' + str(frames_per_cam))
         

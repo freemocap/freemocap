@@ -29,7 +29,16 @@ class VIEW3D_PT_freemocap(bpy.types.Panel):
 
         ui_column_1.operator('fmc.load_marker_empties',
             text='Load Marker Empties!',
-            icon = 'ARMATURE_DATA')
+            icon = 'EMPTY_AXIS')
+
+
+        #######################################################
+        # UI_COLUMN_1  # The part of the panel where you load in the marker data
+        ui_as_bones_button = self.layout.column(align=True)
+
+        ui_as_bones_button.operator('fmc.load_raw_mocap_data_as_bones',
+            text='Load raw mocap data as bones!',
+            icon = 'GROUP_BONE')
 
         #######################################################
         # UI_COLUMN_2  # The part of the panel where you load in the videos

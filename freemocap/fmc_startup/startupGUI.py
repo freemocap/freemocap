@@ -9,7 +9,7 @@ class setDataPathGUI:
         self.master = master
         self.session = session
     
-        chooseText = "Choose the directory where your data folder is located"
+        chooseText = "Please choose the directory your FreeMoCap_data folder is located in"
         chooseLabel = Label(master, text=chooseText)
         chooseLabel.pack(side="top")
 

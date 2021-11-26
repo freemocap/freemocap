@@ -13,18 +13,21 @@ class VIEW3D_PT_freemocap(bpy.types.Panel):
 
         #######################################################
         # UI_COLUMN_0 - The part of the panel where you specify the Session Folder        
-        ui_column_0 = layout.column(align=True)
-        ui_column_0.prop(context.scene, 'fmc_session_config_path' )
+        ui_set_session_path = layout.column(align=True)
+        ui_set_session_path.prop(context.scene, 'fmc_session_path' )
         
-        if context.scene.fmc_session_config_path : #once you set the config path
-            configPath = Path(context.scene.fmc_session_config_path)
-            ui_column_0.label(text=f'Session Config File: {configPath.name}') 
+        if context.scene.fmc_session_path : #once you set the config path            
+            session_path = Path(context.scene.fmc_session_path)
+            if session_path.is_dir():                #JSM NOTE - This is kinda sloppy, but I don't know how to alter the actual session path variable. I want there to be a way to enforce that the 'session_path' value points to the whole session folder, NOT a file within that folder
+                ui_set_session_path.label(text=f'Session Path: {str(session_path)}') 
+            else:
+                ui_set_session_path.label(text=f'Session Path: {str(session_path.parent)}') 
         else: 
-            ui_column_0.label(text='-No Session Config Loaded-')
-        ui_column_0.label(text='_______')
+            ui_set_session_path.label(text='-No Session Config Loaded-')
+        ui_set_session_path.label(text='_______')
         
         #######################################################
-        # UI_COLUMN_1  # The part of the panel where you load in the marker data
+        
         ui_column_1 = self.layout.column(align=True)
 
         ui_column_1.operator('fmc.load_marker_empties',
@@ -33,7 +36,7 @@ class VIEW3D_PT_freemocap(bpy.types.Panel):
 
 
         #######################################################
-        # UI_COLUMN_1  # The part of the panel where you load in the marker data
+        
         ui_as_bones_button = self.layout.column(align=True)
 
         ui_as_bones_button.operator('fmc.load_raw_mocap_data_as_bones',
@@ -41,11 +44,21 @@ class VIEW3D_PT_freemocap(bpy.types.Panel):
             icon = 'GROUP_BONE')
 
         #######################################################
-        # UI_COLUMN_2  # The part of the panel where you load in the videos
+        
+        ui_build_armature= self.layout.column(align=True)
+
+        ui_build_armature.operator('fmc.build_armature_from_raw_mocap_data',
+            text='build armature from raw mocap data',
+            icon = 'ARMATURE_DATA')
+
+
+
+
+        #######################################################
         ui_column_2= self.layout.column(align=True)
 
         ui_column_2.operator('fmc.load_nsynced_videos',
-            text='Load nSynced Videos!',
+            text='Load nSynced Videos!!',
             icon = 'CAMERA_DATA')
 
         # properties_0 = ui_column_2.operator('fmc.load_session_data',

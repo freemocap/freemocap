@@ -31,18 +31,9 @@ def register():
     
     #define 'custom properties' - https://youtu.be/9fuFDHR-UkE 
 
-    bpy.types.Scene.fmc_session_config_path = bpy.props.StringProperty(
-        name = 'FMC Session Config File Path',
+    bpy.types.Scene.fmc_session_path = bpy.props.StringProperty(
+        name = 'FMC Session Path',
         subtype= 'FILE_PATH'
-    )
-
-    bpy.types.Scene.omc_session_config_fname = bpy.props.StringProperty(
-        name = 'FMC Session Config File',
-        subtype= 'FILE_NAME'
-    )
-
-    bpy.types.Scene.fmc_session_id = bpy.props.StringProperty(
-        name = 'FMC Session ID',
     )
 
     auto_load.register()

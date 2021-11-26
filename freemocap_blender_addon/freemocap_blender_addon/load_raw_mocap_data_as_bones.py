@@ -1,6 +1,5 @@
 import bpy 
 import numpy as np 
-from ruamel.yaml import YAML
 from pathlib import Path
 
 class FMC_OT_load_raw_mocap_data_as_bones(bpy.types.Operator): #setting the type as "FMC" for "FreeMoCap"
@@ -17,7 +16,7 @@ class FMC_OT_load_raw_mocap_data_as_bones(bpy.types.Operator): #setting the type
     )
 
     def execute(self, context):
-        configPath = Path(context.scene.fmc_session_config_path)        
+        configPath = Path(context.scene.fmc_session_path)        
         sessionPath = configPath.parent
         
         try:

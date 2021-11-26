@@ -3,8 +3,9 @@
 
 import bpy 
 import numpy as np 
-from ruamel.yaml import YAML
 from pathlib import Path
+import math
+from mathutils import Vector
 
 class FMC_OT_build_armature_from_raw_mocap_data(bpy.types.Operator): #setting the type as "FMC" for "FreeMoCap"
     """ Load marker data via FMC yaml config and place empties in Blender scene """
@@ -12,176 +13,535 @@ class FMC_OT_build_armature_from_raw_mocap_data(bpy.types.Operator): #setting th
     bl_label = "Build an armature from raw mocap data (in development)"
     bl_options = {'REGISTER', 'UNDO'}
 
-    bone_size: bpy.props.FloatProperty(
-        name = 'Bone size',
-        description = 'Size of the bones',
-        default = .2,
-        min = 0, soft_max =1,
-    )
-
-    def execute(self, context):
-        configPath = Path(context.scene.fmc_session_config_path)        
-        sessionPath = configPath.parent
-        
-        try:
-            openpose_3d_data_path = sessionPath / 'DataArrays' / 'openPoseSkel_3d.npy'
-            openpose_skel_fr_mar_xyz = np.load(str(openpose_3d_data_path))
-            #convert to meters
-            openpose_skel_fr_mar_xyz = openpose_skel_fr_mar_xyz/1000
-            #names of markers 
-            openpose_skel_marker_names = ["Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder",
-            "LElbow", "LWrist", "MidHip", "RHip", "RKnee", "RAnkle", "LHip", "LKnee",
-            "LAnkle", "REye", "LEye", "REar", "LEar", "LBigToe", "LSmallToe", "LHeel",
-            "RBigToe", "RSmallToe", "RHeel"]
-            openpose_bool = True
-        except:
-            openpose_bool = False
-            print('No OpenPose Data Found')
-
-        try:
-            mediapipe_3d_data_path = sessionPath / 'DataArrays' / 'mediapipeSkel_3d.npy'
-            mediapipe_skel_fr_mar_xyz = np.load(str(mediapipe_3d_data_path))
-            #convert to meters
-            mediapipe_skel_fr_mar_xyz = mediapipe_skel_fr_mar_xyz/1000
-            #names of markers 
-            mediapipe_skel_marker_names = [ "nose",
-                                           
-                                            "left_eye_inner",
-                                            "left_eye",
-                                            "left_eye_outer",
-                                           
-                                            "right_eye_inner",
-                                            "right_eye",
-                                            "right_eye_outer",
-                                           
-                                            "left_ear",
-                                            "right_ear",
-                                           
-                                            "mouth_left",
-                                            "mouth_right",
-                                           
-                                            "left_shoulder",
-                                            "right_shoulder",
-                                           
-                                            "left_elbow",
-                                            "right_elbow",
-                                           
-                                            "left_wrist",
-                                            "right_wrist",
-                                           
-                                            "left_pinky",
-                                            "right_pinky",
-                                            
-                                            "left_index",
-                                            "right_index",
-                                            
-                                            "left_thumb",
-                                            "right_thumb",
-                                            
-                                            "left_hip",
-                                            "right_hip",
-                                            
-                                            "left_knee",
-                                            "right_knee",
-                                            
-                                            "left_ankle",
-                                            "right_ankle",
-                                            
-                                            "left_heel",
-                                            "right_heel",
-                                            
-                                            "left_foot_index",
-                                            "right_foot_index",   
-                                            ]
-            mediapipe_hand_marker_names = ["wrist",
-                                           "thumb_cmc",
-                                           "thumb_mcp",
-                                           "thumb_ip",
-                                           "thumb_tip",
-                                           
-                                           "index_finger_cmc",
-                                           "index_finger_mcp",
-                                           "index_finger_ip",
-                                           "index_finger_tip",
-                                           
-                                           "middle_finger_cmc",
-                                           "middle_finger_mcp",
-                                           "middle_finger_ip",
-                                           "middle_finger_tip",
-                                                                                      
-                                           "ring_finger_cmc",
-                                           "ring_finger_mcp",
-                                           "ring_finger_ip",
-                                           "ring_finger_tip",
-                                           
-                                           "pinky_cmc",
-                                           "pinky_mcp",
-                                           "pinky_ip",
-                                           "pinky_tip",
-                                           
-                                           
-                                            ]
-            mediapipe_bool = True
-        except:
-            mediapipe_bool = False
-            print('No mediapipe Data Found')
-
-        
-        startFr = 0
-        numFrames = mediapipe_skel_fr_mar_xyz.shape[0]-1
-        
-        bpy.context.scene.frame_end = numFrames
-        
-        #%% _______________________________________________________________________
-        # Skreleton data!
-        print('Loading raw motion capture data as bones!')
-        face_iter = 0
-
-        # for marNum in range(len(mediapipe_skel_fr_mar_xyz[startFr,:,0])): #all dottos
-        for marNum in range(len(mediapipe_skel_marker_names)): #only the body                            
-            
-            thisMarLoc = mediapipe_skel_fr_mar_xyz[startFr,marNum,:]
-            
-            #these will define the size of teh body, hand, and face markers
-            bms = self.bone_size
-            hms = bms *.5
-            fms = bms *.5
-
-            
-
-            bpy.ops.object.armature_add(align='WORLD', location=thisMarLoc, scale=(bms, bms, bms))
-            this_bone = context.active_object
-
-            
-            if marNum < len(mediapipe_skel_marker_names) : #body 
-                this_bone.name = mediapipe_skel_marker_names[marNum]
-                this_bone.scale = (bms, bms, bms)
-                
-            elif marNum < len(mediapipe_skel_marker_names) + 2*len(mediapipe_hand_marker_names): #hands
-                
-                if marNum <  len(mediapipe_skel_marker_names) +len(mediapipe_hand_marker_names):         
-                    this_hand_prefix = 'right_hand_'
-                    this_hand_prefix = 'right_hand_'
-                    marker_num_offset = len(mediapipe_skel_marker_names)
-                else:
-                    this_hand_prefix = 'left_hand_'
-                    marker_num_offset = len(mediapipe_skel_marker_names) + len(mediapipe_hand_marker_names)
-                    
-                this_bone.name = this_hand_prefix + mediapipe_hand_marker_names[marNum-marker_num_offset]
-                    
-                this_bone.scale=(hms, hms, hms)
-
-            else:  #face
-                this_bone.name = 'face_'+str(face_iter).zfill(4)
-                face_iter += 1
-                this_bone.scale=(fms, fms, fms)
   
-            #loop through each frame (after the first [0th] frame) to set the keyframes for this marker
-            for fr in range(1, numFrames):
-                this_bone.location = mediapipe_skel_fr_mar_xyz[fr,marNum,:]
-                this_bone.keyframe_insert(data_path="location", frame=fr)
-            print('loaded marker: '+ this_bone.name)
+    def execute(self, context):
+        session_path = Path(context.scene.fmc_session_path)        
+         
+        if not session_path.is_dir():
+            session_path = session_path.parent
+        
+        input_npy = session_path / 'DataArrays' / 'mediaPipeSkel_3d.npy'
+        ##########
+        #### Begin Copy for fmc_blender 
+        ##########
+        
+        #the path of the npy build data file 
+        build_data = Path(__file__).parent.resolve() / "build_data.npy"
+
+        #3D array holding [[[x, y, z], [x, y, z]], [[x, y, z], [x, y, z]]] 
+        arr = np.load(input_npy)
+
+        # Saved clean frame where all points are visible and not NANs 
+        markers_list = np.load(build_data)
+
+        #a list containing empty objects
+        order_of_markers = []
+
+        #frame rate 
+        bpy.context.scene.render.fps = 30
+
+        #dictionary corresponding to marker numbers and body parts
+        body_dict = {
+            0:"head1", 
+            11:"shoulder_L", 
+            12:"shoulder_R", 
+            13:"elbow_L", 
+            14:"elbow_R", 
+            23:"hip_L",
+            24:"hip_R", 
+            25:"knee_L", 
+            26:"knee_R",
+            27:"ankle_L",
+            28:"ankle_R",
+            29:"heel_L", 
+            30:"heel_R",
+            31:"toe_L",
+            32:"toe_R" }
+
+        #-----------------------------------------------------------------------------------   
+
+        # set project unit 
+        bpy.context.scene.unit_settings.length_unit = 'METERS'
+        #iterate through arr and create an empty object at that location for each element
+        for index, col in enumerate(markers_list):
+            # parse string float value into floats, create Vector, set position to Vector
+
+            if math.isnan(col[0]):
+                col[0] = 0.0
+            if math.isnan(col[1]):
+                col[1] = 0.0
+            if math.isnan(col[2]):
+                col[2] = 0.0
+            coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
+                
+            #empties
+            bpy.ops.object.add(type='EMPTY', location=coord)  
+            mt = bpy.context.active_object  
+            mt.name = "mt_" + str(index)
+            if index in body_dict.keys():
+                mt.name += "_" + str(body_dict[index])
+            order_of_markers.append(mt)
+            #link empty to scene
+            bpy.context.scene.collection.objects.link( mt )
+            #set location 
+            mt.location = coord
+            #set the display size of the empty
+            mt.empty_display_size = 0.02
             
-        print('Done!')    
+        #--------------------------------------------------------------
+        #Virtual Markers!
+
+        # marker relationships:
+
+        # - "weight": the weighted average of multiple markers. the virtual_markers[x] contains the 
+        #list of markers that affect this virtual one. the weights[x] contains their corresponding weights in order.
+
+        bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
+
+        #Create virtual marker where parameters are the name of the marker, the markers that affect its position, and each of their weights.
+        def create_marker_weight(name, markers, weighted):
+            center = Vector((0, 0, 0))
+            weight_iter = 0
+            for x in markers:
+                center += x.location*weighted[weight_iter]
+                weight_iter += 1
+            coord = Vector((float(center[0]), float(center[1]), float(center[2])))
+            bpy.ops.object.add(type='EMPTY', location=coord)
+            mt = bpy.context.active_object  
+            mt.name = name
+            bpy.context.scene.collection.objects.link( mt )
+            mt.location = coord
+            mt.empty_display_size = 0.02
+            virtual_markers.append(mt)
+
+        #Keeping track of virtual marker info using arrays, where each marker is an index in each array
+        v_relationship = []
+        virtual_markers = []
+        surrounding_markers = []
+        weights = []
+
+        #updates data and creates virtual marker
+        def update_virtual_data(relationship, surrounding, vweights, vname):
+            v_relationship.append(relationship)
+            surrounding_markers.append(surrounding)
+            weights.append(vweights)
+            create_marker_weight(vname, surrounding, vweights)
+                
+        #-----------------------------------------------------------------
+        #Define relationships and create virtual markers
+
+        #Neck Base: Halfway between order_of_markers[12] shoulder_L and order_of_markers[12] shoulder_R
+        l0 = [order_of_markers[12], order_of_markers[11]]
+        w0 = [0.5, 0.5]
+        update_virtual_data("weight", l0, w0, "m_neck")
+
+        #Waist Base: Halfway between order_of_markers[24] and order_of_markers[23] 
+        l0 = [order_of_markers[24], order_of_markers[23]]
+        w0 = [0.5, 0.5]
+        update_virtual_data("weight", l0, w0, "m_neck")
+
+        #Update the location of virtual markers on each frame
+        def update_virtual_marker(index):
+            if(v_relationship[index] == "weight"):
+                center = Vector((0, 0, 0))
+                weight_iter = 0
+                for x in surrounding_markers[index]:
+                    center += x.location*weights[index][weight_iter]
+                    weight_iter += 1
+                coord = Vector((float(center[0]), float(center[1]), float(center[2])))
+            virtual_markers[index].location = coord
+            
+        #-----------------------------------------------------------------------------------
+        # Bones! 
+            
+        #adds child bone given corresponding parent and empty
+        #bone tail will appear at the location of empty
+        def add_child_bone(bone_name, empty1, empty2):
+            #Set armature selected
+            armature_data.select_set(state=True)
+            #Set edit mode
+            bpy.ops.object.mode_set(mode='EDIT', toggle=False)
+            #Create a new bone
+            new_bone = armature_data.data.edit_bones.new(bone_name)
+            #Set bone's size
+            new_bone.head = (0,0,0)
+            new_bone.tail = (0,0.1,0)
+            #Set bone's location to wheel
+            new_bone.matrix = empty2.matrix_world
+            #set location of bone head
+            new_bone.head =  empty1.location
+            #set location of bone tail
+            new_bone.tail = empty2.location
+            return new_bone
+
+        #Create armature object
+        armature = bpy.data.armatures.new('Armature')
+        armature_object = bpy.data.objects.new('Armature', armature)
+        #Link armature object to our scene
+        bpy.context.collection.objects.link(armature_object)
+        #Make armature variable
+        armature_data = bpy.data.objects[armature_object.name]
+        #Set armature active
+        bpy.context.view_layer.objects.active = armature_data
+        #Set armature selected
+        armature_data.select_set(state=True)
+        #Set edit mode
+        bpy.ops.object.mode_set(mode='EDIT', toggle=False)
+        #Set bones in front and show axis
+        armature_data.show_in_front = True
+        #True to show axis orientation of bones and false to hide it
+        armature_data.data.show_axes = False
+
+        #get armature object
+        def get_armature():
+            for ob in bpy.data.objects:
+                if ob.type == 'ARMATURE':
+                    armature = ob
+                    break
+            return armature
+
+        armature = get_armature()
+
+        #a list of tuples where each element represents the info for one bone, and 
+        #the tuple contains the bone name, the marker of the head, and the marker of the tail
+        list_of_bones_order = [('upper_arm_L', order_of_markers[11], order_of_markers[13]),
+                ('upper_arm_R', order_of_markers[12], order_of_markers[14]),
+                ('lower_arm_L', order_of_markers[13], order_of_markers[15]),
+                ('lower_arm_R', order_of_markers[14], order_of_markers[16]),
+                ('upper_leg_L', order_of_markers[23], order_of_markers[25]),
+                ('upper_leg_R', order_of_markers[24], order_of_markers[26]),
+                ('lower_leg_L', order_of_markers[25], order_of_markers[27]),
+                ('lower_leg_R', order_of_markers[26], order_of_markers[28]),
+                ('heel_L', order_of_markers[27], order_of_markers[29]),
+                ('heel_R', order_of_markers[28], order_of_markers[30]),
+                ('foot_L', order_of_markers[29], order_of_markers[31]),
+                ('foot_R', order_of_markers[30], order_of_markers[32]),
+                ('neck', order_of_markers[0], virtual_markers[0]),
+                ('eye_L', order_of_markers[0], order_of_markers[2]),
+                ('ear_L', order_of_markers[2], order_of_markers[7]),
+                ('eye_R', order_of_markers[0], order_of_markers[5]),
+                ('ear_R', order_of_markers[5], order_of_markers[8]),
+                ('shoulder_L', virtual_markers[0], order_of_markers[11]),
+                ('shoulder_R', virtual_markers[0], order_of_markers[12]),
+                ('torso', virtual_markers[1], virtual_markers[0]),
+                ('hip_L', virtual_markers[1], order_of_markers[23]),
+                ('hip_R', virtual_markers[1], order_of_markers[24]),
+                ]
+                
+        #based on marker # from order_of_markers array add bones for hands:
+        left_hand_offset = 54
+        left_hand = [('handL0', order_of_markers[0+left_hand_offset], order_of_markers[1+left_hand_offset]),
+            ('handL1', order_of_markers[1+left_hand_offset], order_of_markers[2+left_hand_offset]),
+            ('handL2', order_of_markers[2+left_hand_offset], order_of_markers[3+left_hand_offset]),
+            ('handL3', order_of_markers[3+left_hand_offset], order_of_markers[4+left_hand_offset]),
+            ('handL5', order_of_markers[1+left_hand_offset], order_of_markers[5+left_hand_offset]),
+            ('handL6', order_of_markers[5+left_hand_offset], order_of_markers[6+left_hand_offset]),
+            ('handL7', order_of_markers[6+left_hand_offset], order_of_markers[7+left_hand_offset]),
+            ('handL8', order_of_markers[7+left_hand_offset], order_of_markers[8+left_hand_offset]),
+            ('handL9', order_of_markers[5+left_hand_offset], order_of_markers[9+left_hand_offset]),
+            ('handL10', order_of_markers[9+left_hand_offset], order_of_markers[10+left_hand_offset]),
+            ('handL11', order_of_markers[10+left_hand_offset], order_of_markers[11+left_hand_offset]),
+            ('handL12', order_of_markers[11+left_hand_offset], order_of_markers[12+left_hand_offset]),
+            ('handL13', order_of_markers[9+left_hand_offset], order_of_markers[13+left_hand_offset]),
+            ('handL14', order_of_markers[13+left_hand_offset], order_of_markers[14+left_hand_offset]),
+            ('handL15', order_of_markers[14+left_hand_offset], order_of_markers[15+left_hand_offset]),
+            ('handL16', order_of_markers[15+left_hand_offset], order_of_markers[16+left_hand_offset]),
+            ('handL17', order_of_markers[13+left_hand_offset], order_of_markers[0+left_hand_offset]),
+            ('handL18', order_of_markers[0+left_hand_offset], order_of_markers[17+left_hand_offset]),
+            ('handL19', order_of_markers[17+left_hand_offset], order_of_markers[18+left_hand_offset]),
+            ('handL20', order_of_markers[18+left_hand_offset], order_of_markers[19+left_hand_offset]),
+            ('wristL', order_of_markers[15], order_of_markers[0+left_hand_offset]),
+            ('handL21', order_of_markers[19+left_hand_offset], order_of_markers[20+left_hand_offset]),]
+            
+        right_hand_offset = 33
+
+        right_hand = [('handR0', order_of_markers[18], order_of_markers[1+right_hand_offset]),
+            ('handR1', order_of_markers[1+right_hand_offset], order_of_markers[2+right_hand_offset]),
+            ('handR2', order_of_markers[2+right_hand_offset], order_of_markers[3+right_hand_offset]),
+            ('handR3', order_of_markers[3+right_hand_offset], order_of_markers[4+right_hand_offset]),
+            ('handR5', order_of_markers[1+right_hand_offset], order_of_markers[5+right_hand_offset]),
+            ('handR6', order_of_markers[5+right_hand_offset], order_of_markers[6+right_hand_offset]),
+            ('handR7', order_of_markers[6+right_hand_offset], order_of_markers[7+right_hand_offset]),
+            ('handR8', order_of_markers[7+right_hand_offset], order_of_markers[8+right_hand_offset]),
+            ('handR9', order_of_markers[5+right_hand_offset], order_of_markers[9+right_hand_offset]),
+            ('handR10', order_of_markers[9+right_hand_offset], order_of_markers[10+right_hand_offset]),
+            ('handR11', order_of_markers[10+right_hand_offset], order_of_markers[11+right_hand_offset]),
+            ('handR12', order_of_markers[11+right_hand_offset], order_of_markers[12+right_hand_offset]),
+            ('handR13', order_of_markers[9+right_hand_offset], order_of_markers[13+right_hand_offset]),
+            ('handR14', order_of_markers[13+right_hand_offset], order_of_markers[14+right_hand_offset]),
+            ('handR15', order_of_markers[14+right_hand_offset], order_of_markers[15+right_hand_offset]),
+            ('handR16', order_of_markers[15+right_hand_offset], order_of_markers[16+right_hand_offset]),
+            ('handR17', order_of_markers[18], order_of_markers[13+right_hand_offset]),
+            ('handR18', order_of_markers[18], order_of_markers[17+right_hand_offset]),
+            ('handR19', order_of_markers[17+right_hand_offset], order_of_markers[18+right_hand_offset]),
+            ('handR20', order_of_markers[18+right_hand_offset], order_of_markers[19+right_hand_offset]),
+            ('wristR', order_of_markers[16], order_of_markers[18]),
+            ('handR21', order_of_markers[19+right_hand_offset], order_of_markers[20+right_hand_offset]),]
+
+        #helper to create armature from list of tuples
+        def tuple_to_armature(bones):
+            for bone_name, bone_head, bone_tail in bones:
+                add_child_bone(bone_name, bone_head, bone_tail)
+                
+        #Set armature selected
+        armature_data.select_set(state=True)
+        #Set edit mode
+        bpy.ops.object.mode_set(mode='EDIT', toggle=False)
+                
+        #create all bones for skeleton body and hands
+        tuple_to_armature(list_of_bones_order)
+        tuple_to_armature(right_hand)
+        tuple_to_armature(left_hand)
+
+        #parent heads and tails to empties
+        #use bone constraints 
+        def parent_to_empties(bone_name, head, tail):
+            #enter pose mode
+            bpy.ops.object.posemode_toggle()
+            marker = armature.data.bones[bone_name]
+            #Set marker selected
+            marker.select = True
+            #Set marker active
+            bpy.context.object.data.bones.active = marker
+            bone = bpy.context.object.pose.bones[bone_name]
+            #Copy Location Pose constraint: makes the bone's head follow the given empty
+            bpy.ops.pose.constraint_add(type='COPY_LOCATION')
+            bone.constraints["Copy Location"].target = head
+            #Stretch To Pose constraint: makes the bone's tail follow the given empty
+            #stretches the bones to reach the tail to that empty so head location is not affected
+            bpy.ops.pose.constraint_add(type='STRETCH_TO')
+            bone.constraints["Stretch To"].target = tail
+            #exit pose mode
+            bpy.ops.object.posemode_toggle()
+            
+        #set parents of heads and tails for each bone 
+        def tuple_to_parented(bones):
+            for bone_name, bone_head, bone_tail in bones:
+                parent_to_empties(bone_name, bone_head, bone_tail)
+
+        tuple_to_parented(list_of_bones_order)
+        tuple_to_parented(right_hand)
+        tuple_to_parented(left_hand)
+
+        #-----------------------------------------------------------------------------------
+        # Animate! 
+        #find number of frames in animation
+        num_frames = len(arr)
+
+        #change start frame of animation
+        bpy.context.scene.frame_start = 1
+        #change end frame of animation
+        bpy.context.scene.frame_end = num_frames - 1
+
+        #create a new handler to change empty positions every frame
+        def my_handler(scene): 
+            bpy.ops.object.mode_set(mode='OBJECT')
+            #keep track of current_marker
+            current_marker = 0
+            #find the current frame number
+            frame = scene.frame_current
+            #get the list of marker points from the current frame
+            markers_list = arr[frame]
+            #iterate through list of markers in this frame
+            for col in markers_list:
+                frame = scene.frame_current
+                if math.isnan(col[0]):
+                    col[0] = 0.0
+                if math.isnan(col[1]):
+                    col[1] = 0.0
+                if math.isnan(col[2]):
+                    col[2] = 0.0
+                coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
+                if len(order_of_markers) > 0:
+                    empty = order_of_markers[current_marker]
+                    empty.location = coord
+                    current_marker += 1 
+                    for index in range(len(virtual_markers)):
+                        update_virtual_marker(index)
+            
+            
+            #keyframe bones
+            #Goes through each bone
+            for editBone in get_armature().data.edit_bones:
+                boneName = editBone.name
+                poseBone = arm.pose.bones[boneName]
+                poseBone.keyframe_insert('rotation_euler', frame=scene.frame_current)
+                poseBone.keyframe_insert('location', frame=scene.frame_current)
+                poseBone.keyframe_insert('scale', frame=scene.frame_current)
+
+        #-----------------------------------------------------------------------------------
+        #script to create a mesh of the armature 
+        def CreateMesh():
+            obj = get_armature()
+
+            if obj == None:
+                print( "No selection" )
+            elif obj.type != 'ARMATURE':
+                print( "Armature expected" )
+            else:
+                return processArmature( bpy.context, obj )
+
+        #Use armature to create base object
+        def armToMesh( arm ):
+            name = arm.name + "_mesh"
+            dataMesh = bpy.data.meshes.new( name + "Data" )
+            mesh = bpy.data.objects.new( name, dataMesh )
+            mesh.matrix_world = arm.matrix_world.copy()
+            return mesh
+
+        #Make vertices and faces 
+        def boneGeometry( l1, l2, x, z, baseSize, l1Size, l2Size, base ):
+            x1 = x  * baseSize * l1Size * 0.8
+            z1 = z  * baseSize * l2Size * 0.8
+            
+            x2 = Vector( (0, 0, 0) )
+            z2 = Vector( (0, 0, 0) )
+
+            verts = [
+                l1 - x1 + z1,
+                l1 + x1 + z1,
+                l1 - x1 - z1,
+                l1 + x1 - z1,
+                l2 - x2 + z2,
+                l2 + x2 + z2,
+                l2 - x2 - z2,
+                l2 + x2 - z2
+                ] 
+
+            faces = [
+                (base+3, base+1, base+0, base+2),
+                (base+6, base+4, base+5, base+7),
+                (base+4, base+0, base+1, base+5),
+                (base+7, base+3, base+2, base+6),
+                (base+5, base+1, base+3, base+7),
+                (base+6, base+2, base+0, base+4)
+                ]
+
+            return verts, faces
+
+        #Process the armature, goes through its bones and creates the mesh
+        def processArmature(context, arm, genVertexGroups = True):
+            print("processing armature {0}".format(arm.name))
+
+            #Creates the mesh object
+            meshObj = armToMesh( arm )
+            context.collection.objects.link( meshObj )
+
+            verts = []
+            edges = []
+            faces = []
+            vertexGroups = {}
+
+            bpy.ops.object.mode_set(mode='EDIT')
+
+            try:
+                #Goes through each bone
+                for editBone in get_armature().data.edit_bones:
+                    boneName = editBone.name
+                    if boneName == "":
+                        editBone.name = "bone"
+                        boneName = "bone"
+                    poseBone = arm.pose.bones[boneName]
+
+                    #Gets edit bone informations
+                    editBoneHead = editBone.head
+                    editBoneTail = editBone.tail
+                    editBoneVector = editBoneTail - editBoneHead
+                    editBoneSize = editBoneVector.dot( editBoneVector )
+                    editBoneRoll = editBone.roll
+                    editBoneX = editBone.x_axis
+                    editBoneZ = editBone.z_axis
+                    editBoneHeadRadius = editBone.head_radius
+                    editBoneTailRadius = editBone.tail_radius
+
+                    #Creates the mesh data for the bone
+                    baseIndex = len(verts)
+                    baseSize = math.sqrt( editBoneSize )
+                    newVerts, newFaces = boneGeometry( editBoneHead, editBoneTail, editBoneX, editBoneZ, baseSize, editBoneHeadRadius, editBoneTailRadius, baseIndex )
+                    verts.extend( newVerts )
+                    faces.extend( newFaces )
+
+                    #Creates the weights for the vertex groups
+                    vertexGroups[boneName] = [(x, 1.0) for x in range(baseIndex, len(verts))]
+                #Assigns the geometry to the mesh
+                meshObj.data.from_pydata(verts, edges, faces)
+
+            except:
+                bpy.ops.object.mode_set(mode='OBJECT')
+            else:
+                bpy.ops.object.mode_set(mode='OBJECT')
+            #Assigns the vertex groups
+            if genVertexGroups:
+                for name1, vertexGroup in vertexGroups.items():
+                    groupObject = meshObj.vertex_groups.new(name = name1)
+                    for (index, weight) in vertexGroup:
+                        groupObject.add([index], weight, 'REPLACE')
+
+            #Creates the armature modifier
+            modifier = meshObj.modifiers.new('ArmatureMod', 'ARMATURE')
+            modifier.object = arm
+            modifier.use_bone_envelopes = False
+            modifier.use_vertex_groups = True
+
+            meshObj.data.update()
+
+            return meshObj
+
+        mesh_obob = CreateMesh()
+
+        #-----------------------------------------------------------------------------------
+        # Clean up the mesh by removing duplicate vertices, make sure all faces are quads, etc
+
+        checked = set()
+        for selected_object in bpy.data.objects:
+            if selected_object.type != 'MESH':
+                continue
+            meshdata = selected_object.data
+            if meshdata in checked:
+                continue
+            else:
+                checked.add(meshdata)
+            bpy.context.view_layer.objects.active = selected_object
+            bpy.ops.object.editmode_toggle()
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.remove_doubles()
+            bpy.ops.mesh.tris_convert_to_quads()
+            bpy.ops.mesh.normals_make_consistent()
+            bpy.ops.object.editmode_toggle()
+        #Set armature active
+        bpy.context.view_layer.objects.active = armature_data
+        #Set armature selected
+        armature_data.select_set(state=True)
+        #-----------------------------------------------------------------------------------
+        #function to register custom handler
+        bpy.app.handlers.frame_change_post.clear()
+        def register():
+            bpy.app.handlers.frame_change_post.append(my_handler)
+        
+        def unregister():
+            bpy.app.handlers.frame_change_post.remove(my_handler)
+            
+        register()
+
+        scene = bpy.context.scene
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        #set keyframes for whole animation
+        for frame in range(scene.frame_start, scene.frame_end):
+            scene.frame_set(frame)
+        
+        #Select objects to export
+        col = bpy.data.collections.get("Collection")
+        if col:
+            for obj in col.objects:
+                if "Armature" == obj.name:
+                        obj.select_set(True)
+
+        
+        ##########
+        #### end Copy for fmc_blender ^^^
+        ##########
+        
         return{'FINISHED'}        
 

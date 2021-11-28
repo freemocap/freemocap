@@ -40,35 +40,47 @@ ___
 ___
 # Basic   Usage
 
+
+
  ##  HOW TO CREATE A *NEW* `FreeMoCap` RECORDING SESSION
 
+tl;dr- Activate the the freemocap Python environment and run the following lines of code (either in a script or in a console)
+
+```python
+import freemocap as fmc
+fmc.RunMe()
+```
+
+This two-line script is a copy of the `freemocap_runme_script.py` file, which can be run by entering the following command into a command prompt or powershell: 
+```
+(freemoocap-env)$ python freemocap_runme_script.py
+```
+## In a bit more detail- 
+
  ### 1)  In an Anaconda enabled Command Prompt, PowerShell, or Windows Terminal window 
-  - You will know if it's `Anaconda Enabled` because you will see a little `(base)` to the left of each line, which denotes that your `(base)` environment is currently active.
-  - We recommend Windows Terminal so you can enjoy all the [Rich](https://github.com/willmcgugan/rich)✨ formatted text output, but you'll need to do a bit of work to connect it to Anaconda (e.g. [these instructions](https://dev.to/azure/easily-add-anaconda-prompt-in-windows-terminal-to-make-life-better-3p6j) )
-    - If that seems intimidating (or just too much work), just press the `Windows` key, type `Anaconda Prompt` and run everything from there.
-### 2) Activate your freemocap environment 
+- You will know if it's `Anaconda Enabled` because you will see a little `(base)` to the left of each line, which denotes that your `(base)` environment is currently active.
+-  We recommend Windows Terminal so you can enjoy all the [Rich](https://github.com/willmcgugan/rich)✨ formatted text output, but you'll need to do a bit of work to connect it to Anaconda (e.g. [these instructions](https://dev.to/azure/easily-add-anaconda-prompt-in-windows-terminal-to-make-life-better-3p6j) )
+   - If that seems intimidating (or just too much work), just press the `Windows` key, type `Anaconda Prompt` and run everything from there.
+   
+ ###  2) Activate your freemocap environment 
   - e.g. if your freemocap environment is named `freemocap-env`, type:
   ```
   (base)$ conda activate freemocap-env
   ```
   - If successful, the `(base)` to the left of each line will change to `(freemocap-env)`, indicating that your freemocap environment is now active (type `conda info --envs` or `conda info -e` for a list of all available environments)
 
-### 3) Activate an `ipython` console and run `fmc.RunMe()`
-
-### 3A)  Activate  an instance of an `ipython` console
+### 3) Activate an `ipython` console
+   - Activate  an instance of an `ipython` console by typing `ipython` into the command window and pressing 'Enter'
 ```
 (freemocap-env)$ ipython
 ```
-
-Verify that the resulting console is running `Python 3.7`. If you run into problems, try using a regular python console by typing `python` in the previous step (instead of `ipython`)
-
-### 3B) Within the `ipython` console, import the `freemocap` package as `fmc`
+### 4)  Within the `ipython` console, import the `freemocap` package as `fmc`
 
 ```Python
 [1]: import freemocap as fmc
 ```
 
-### 3C) Execute the `fmc.RunMe()` command (with default parameters, see below for more info)
+### 5) Execute the `fmc.RunMe()` command (with default parameters, see #runme-input-parameters for more info)
 
 ```python
 [2]: fmc.RunMe() #<-this is where the magic happens!
@@ -119,7 +131,7 @@ ___
     -   NOTE - you might think it would make sense to separate the 2d tracking and 3d reconstruction into different stages, but the way the code is currently set up it's cleaner to combine them into the same processing stage ¯\\\_(ツ)_/¯
 <br>
 <br>
--   **Stage 5 - Use Blender to generate output data files (EXPERMENTAL, optional, requires [Blender](https://blender.org) installed)**
+-   **Stage 5 - Use Blender to generate output data files (EXPERMENTAL, optional, requires [Blender](https://blender.org) installed. set `fmc.RunMe(useBlender=False)` to skip)**
     -   Hijack a user-installed version of [Blender](https://blender.org) to format raw mocap data into various other formats, including `.blend`, `.fbx`, `.usd`, `.gltf`, etc.
     -   Save each filetype to main session folder
     -   NOTE - This is a new feature and still in a active development (as of 2021-11-28). It is still experimental and will be updating soon!
@@ -133,9 +145,10 @@ ___
      
 ____
 ____
-## SPECIFIYING RECORDING SESSION PARAMETERS
+## `fmc.RunMe()` Specify recording session  paramters 
+___
+The `fmc.RunMe()` function takes a number of parameters that can be used to alter it's default behavior in important ways. Here are the default parameters along with a followed by a brief description of each one. 
 
-The `fmc.RunMe()` function takes a number of parameters that can be used to alter it's default behavior in important ways. Here are the default parameters along with a followed by a brief description of each one:
 
 ### RunMe - Default parameters
 ```python
@@ -162,7 +175,7 @@ def RunMe(sessionID=None,
         ):
 ```
 
-### RunMe input parameters
+### [RunMe input parameters](#runme-input-parameters)
 - `sessionID`
   - Type - (str) 
   - [Default] - None.
@@ -297,3 +310,6 @@ If you would like to use OpenPose for body tracking, install Cuda and the Window
 Follow the GitHub Repository and/or Join the Discord (https://discord.gg/HX7MTprYsK) for updates!
 
 # Stay Tuned for more soon!
+
+
+✨💀✨

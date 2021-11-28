@@ -99,7 +99,7 @@ def get_blender_path(session, resetBlenderExe):
         print('Please select your blender.exe file')
         root = tk.Tk()
         root.withdraw()
-        blender_file_path = filedialog.askopenfilename(title = 'Open your Blender executable')
+        blender_file_path = filedialog.askopenfilename(title = 'Select your Blender executable (usually somehwere like `C:/Program Files/Blender Foundation/2.93/blender.exe')
         print('Using blender executable located at:', blender_file_path)
         session.preferences['saved']['blenderEXEpath'] = blender_file_path
         session.save_user_preferences(session.preferences)

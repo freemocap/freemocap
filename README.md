@@ -80,7 +80,7 @@ This two-line script is a copy of the `freemocap_runme_script.py` file, which ca
 [1]: import freemocap as fmc
 ```
 
-### 5) Execute the `fmc.RunMe()` command (with default parameters, see #runme-input-parameters for more info)
+### 5) Execute the `fmc.RunMe()` command (with default parameters, see [#runme-input-parameters](#runme-input-parameters) for more info)
 
 ```python
 [2]: fmc.RunMe() #<-this is where the magic happens!

@@ -111,32 +111,30 @@ ___
  - **Stage 1 - Record Videos**
    -  Record raw videos from attached USB webcams and timestamps for each frame 
    -  Raw Videos saved to `FreeMoCap_Data/[Session Folder]/RawVideos`
-<br>
-<br>
+
  - **Stage 2 - Synchronize Videos**
    - Use recorded timestamps to re-save raw videos as synchronized videos (same start and end and same number of frames). Videos saved to 
    - Synchronized Videos saved to `FreeMoCap_Data/[Session Folder]/SynchedVideos`
-<br>
-<br>
+
+
  - **Stage 3 - Calibrate Capture Volume**
    -   Use [Anipose](https://anipose.org)'s [Charuco-based](https://docs.opencv.org/3.4/df/d4a/tutorial_charuco_detection.html) calibration method to determine the location of each camera during a recording session and calibrate the capture volume
    -   Calibration info saved to `[sessionID]_calibration.toml` and `[sessionID]_calibration.pickle` 
-<br>
-<br>
+
+
 -   **Stage 4 - Track 2D points in videos and Reconstruct 3D** <-This is where the magic happens ✨
     -   Apply user specified tracking algorithms to Synchronized videos (currently supporting MediaPipe, OpenPose, and DeepLabCut) to generate 2D data 
         -   Save to `FreeMoCap_Data/[Session Folder]/DataArrays/` folder (e.g. `mediaPipeData_2d.npy`)
     -   Combine 2d data from each camera with calibration data from Stage 3 to reconstruct the 3d trajectory of each tracked point
         -   Save to `/DataArrays` folder (e.g. `openPoseSkel_3d.npy`)
     -   NOTE - you might think it would make sense to separate the 2d tracking and 3d reconstruction into different stages, but the way the code is currently set up it's cleaner to combine them into the same processing stage ¯\\\_(ツ)_/¯
-<br>
-<br>
+
 -   **Stage 5 - Use Blender to generate output data files (EXPERMENTAL, optional, requires [Blender](https://blender.org) installed. set `fmc.RunMe(useBlender=False)` to skip)**
     -   Hijack a user-installed version of [Blender](https://blender.org) to format raw mocap data into various other formats, including `.blend`, `.fbx`, `.usd`, `.gltf`, etc.
     -   Save each filetype to main session folder
     -   NOTE - This is a new feature and still in a active development (as of 2021-11-28). It is still experimental and will be updating soon!
-<br>
-<br>
+
+
 -   **Stage 6 - Save Skeleton Animation!**
     -   Create a [Matplotlib](https://matplotlib.org) based output animation video.
     -   System will first attempt to use an [ffmpeg](https://ffmpeg.org) based video exporter, and if that fails (usually because ffmpeg is not installed) it will revert to a (much slower) alternative and print instructions on how to install `ffmpeg`

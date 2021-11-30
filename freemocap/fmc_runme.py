@@ -57,7 +57,7 @@ def RunMe(sessionID=None,
         charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
         calVideoFrameLength = .5,
         startFrame = 0,
-        useBlender = True,
+        useBlender = False,
         resetBlenderExe = False,
         ):
     """ 

@@ -39,8 +39,17 @@ class Session: #self like "recording self"
         When starting a session from stage 1, create all the file paths necessary, and create a session dictionary to save settings.
         Calls the create_session_paths and create_session_dictionary function
         """         
-        dataFolderPath = self.basePath/self.dataFolderName
+        #dataFolderPath = self.basePath/self.dataFolderName
+     
+
+        if self.basePath.stem == self.dataFolderName: #don't recursively craete 'FreeMoCap_Data' folders!
+            dataFolderPath = self.basePath
+        else:
+            dataFolderPath = self.basePath/self.dataFolderName
+        
         dataFolderPath.mkdir(exist_ok= True)
+            
+    
 
         self.sessionPath = dataFolderPath/self.sessionID
         self.sessionPath.mkdir(exist_ok=True)
@@ -151,6 +160,8 @@ class Session: #self like "recording self"
         self.sessionPath = self.dataFolderPath/self.sessionID
         self.sessionPath.mkdir(exist_ok=True)
 
+
+        
         self.session_yaml_path = self.sessionPath/'{}_config.yaml'.format(self.sessionID)
 
         # if stage == 3:
@@ -200,6 +211,8 @@ class Session: #self like "recording self"
                 self.numFrames = int(thisCamFrames)
                 self.session_settings['recording_parameters'].update({'numFrames':self.numFrames})
                 self.numCams = len(a_sync_vid_path)
+                self.session_settings['recording_parameters'].update({'numCams':self.numCams})
+                self.save_session()
             else:
                 raise ValueError('The number of frames in each video are not equal. Frame counts per video are are: ' + str(frames_per_cam))
         

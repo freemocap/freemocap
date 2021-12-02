@@ -1,5 +1,7 @@
 import os
 import copy
+import json
+import pickle 
 
 from aniposelib.cameras import CameraGroup
 from aniposelib.utils import load_pose2d_fnames
@@ -55,7 +57,7 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = .5):
 
     cgroup = fmc_anipose.CameraGroup.from_names( cam_names, fisheye=True  )  # Looking through their code... it looks lke the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)
 
-    calibrationFile = "{}_calibration.yaml".format(session.sessionID)
+    calibrationFile = "{}_calibration.toml".format(session.sessionID)
 
     session.cameraCalFilePath = session.sessionPath / calibrationFile
 
@@ -106,8 +108,23 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = .5):
     #                 cal_video_frame_range[1] = cal_video_frame_range[1] + round(session.numFrames*.1)
 
 
-    cgroup.dump(session.cameraCalFilePath) #JSM NOTE  - let's just use .yaml's unless there is some reason to use .toml
+    cgroup.dump(session.cameraCalFilePath) 
 
+    camera_calibration_info_dict = cgroup.get_dicts()
+    camera_calibration_pickle_path = session.sessionPath / "{}_calibration.pickle".format(session.sessionID)
+    
+    with open(str(camera_calibration_pickle_path), 'wb') as pickle_file:
+        pickle.dump(camera_calibration_info_dict, pickle_file)
+        
+    # camera_calibration_json_filename = "{}_calibration.json".format(session.sessionID)
+    # camera_calibration_json_path = session.sessionPath / camera_calibration_json_filename
+    
+    # with open(camera_calibration_json_path, "w") as outfile:
+    #     for camera_number, this_cam_calib_info in enumerate(camera_calibration_info_dict):
+    #         camera_name = "camera_"+str(camera_number)
+    #         this_cam_dict = {}
+    #         this_cam_dict[camera_name] = this_cam_calib_info
+    #         json.dumps(this_cam_dict, outfile)    
 
 
     session.cgroup = cgroup

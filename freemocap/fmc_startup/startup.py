@@ -48,6 +48,9 @@ def get_data_folder_path(session):
         # 3) If no sessionID was user-input, search the chosen directory for the last session created
         if session.setDataPath == True:
             session.basePath = startupGUI.RunChooseDataPathGUI(session)
+            session.preferences['saved']['path_to_save'] = str(session.basePath)
+            session.save_user_preferences(session.preferences)
+            
             #sesh.dataFolderPath = Path(basePath)/sesh.dataFolderName
 
         elif session.userDataPath is not None:
@@ -73,7 +76,20 @@ def get_data_folder_path(session):
 
 
         if not dataFolder.exists():
-            raise FileNotFoundError('No data folder located at: ' + str(dataFolder))
+            print('Data folder not found at this path. Please choose another path.')
+            session.basePath = startupGUI.RunChooseDataPathGUI(session)
+            session.preferences['saved']['path_to_save'] = str(session.basePath)
+            session.save_user_preferences(session.preferences)
+
+            if session.basePath.stem == session.dataFolderName: #don't recursively craete 'FreeMoCap_Data' folders!
+                dataFolder = session.basePath
+            else:
+                dataFolder = session.basePath/session.dataFolderName
+            session.dataFolderPath = dataFolder
+
+
+
+       
 
 def get_blender_path(session, resetBlenderExe):
     if  resetBlenderExe == True:
@@ -83,7 +99,7 @@ def get_blender_path(session, resetBlenderExe):
         print('Please select your blender.exe file')
         root = tk.Tk()
         root.withdraw()
-        blender_file_path = filedialog.askopenfilename(title = 'Open your Blender executable')
+        blender_file_path = filedialog.askopenfilename(title = 'Select your Blender executable (usually somehwere like `C:/Program Files/Blender Foundation/2.93/blender.exe')
         print('Using blender executable located at:', blender_file_path)
         session.preferences['saved']['blenderEXEpath'] = blender_file_path
         session.save_user_preferences(session.preferences)

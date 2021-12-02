@@ -25,7 +25,7 @@ from rich.console import Console
 
 
 cap_default_parameters_dict = {
-                            'exposure': -6,
+                            'exposure': -8,
                             'cap_resolution_width': 640,
                             'cap_resolution_height': 480,
                             }

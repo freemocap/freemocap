@@ -9,11 +9,11 @@ class setDataPathGUI:
         self.master = master
         self.session = session
     
-        chooseText = "Choose the directory where your data folder is located"
+        chooseText = "Please choose the directory your FreeMoCap_data folder is located in"
         chooseLabel = Label(master, text=chooseText)
         chooseLabel.pack(side="top")
 
-        self.currentPath = Path.cwd()
+        self.currentPath = session.preferences['saved']['path_to_save'] 
         text = 'Current file path: ' + str(self.currentPath)
         self.currentPathText = tk.StringVar()
         self.currentPathText.set(text)

@@ -90,9 +90,7 @@ def CamRecording(
     else:
         success = False
 
-    while (
-        success
-    ):  # while the camera is opened, record the data until the escape button is hit
+    while ( success):  # while the camera is opened, record the data until the escape button is hit
         if flag:  # when the flag is triggered, stop recording and dump the data
             with open(session.rawVidPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)
@@ -100,9 +98,9 @@ def CamRecording(
         success, frame = cam.read()
 
         cv2.imshow(camWindowName, frame)
-        frame_sized = cv2.resize(frame, (resWidth, resHeight))
+        # frame_sized = cv2.resize(frame, (resWidth, resHeight))
         # frame_sized = frame
-        out.write(frame_sized)
+        out.write(frame)
         timeStamps.append(time.time() - beginTime)  # add each timestamp to the list
 
         key = cv2.waitKey(20)

@@ -14,9 +14,7 @@
 from rich.repr import T
 from FMC_Camera import FMC_Camera
 
-import concurrent.futures
-import logging
-import queue
+
 import threading
 import pathos.multiprocessing as pathos_mp
 from pathos.helpers import mp as pathos_mp_helper
@@ -67,7 +65,7 @@ class FMC_MultiCamera:
         self._init_start_time = time.time_ns()#the precision is aspirational, lol
 
         if rec_name is None:
-            self._rec_name = datetime.datetime.now().strftime("FMC_MultiCamRecording_%Y-%m-%d_%H_%M_%S")
+            self._rec_name = datetime.datetime.now().strftime("sesh_%Y-%m-%d_%H_%M_%S_mc")
         else:
             self._rec_name = rec_name
 
@@ -75,7 +73,7 @@ class FMC_MultiCamera:
         if save_path is None:
             self._save_path = Path('data/' + self._rec_name)
         else:
-            self._save_path = Path(save_path)
+            self._save_path = Path(save_path) / self._rec_name
         
         if save_path or save_multi_cam_to_mp4 or save_to_h5 or save_log_file or save_each_cam_to_mp4:
             self._save_path.mkdir(parents=True, exist_ok=True)
@@ -105,6 +103,7 @@ class FMC_MultiCamera:
         
         
         rich_console.rule('Starting FreeMoCap MultiCam!')
+ 
 
 
         

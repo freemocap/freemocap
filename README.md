@@ -15,8 +15,8 @@ ___
 
 * Two or more USB webcams attached to viable USB ports 
 	*  USB hubs typically don't work
-	*  Note that two cameras is the minimum reuired for 3d reconstruction. GHowever, with just two views, many points will be occluded/not visible to both cameras. For better performance, use three or four cameras
-* Each recording must (for now)  an unobstructed view of a  Charuco board within the first few seconds of recording (See below).
+	*  Note that two cameras is the minimum required for 3d reconstruction. However, with just two views, many points will be occluded/not visible to both cameras. For better performance, use three or four cameras
+* Each recording must (for now) have an unobstructed view of a  Charuco board within the first few seconds of recording (See below).
 ____
 ____
 # Installation
@@ -145,7 +145,7 @@ ____
 ____
 ## `fmc.RunMe()` Specify recording session  paramters 
 ___
-The `fmc.RunMe()` function takes a number of parameters that can be used to alter it's default behavior in important ways. Here are the default parameters along with a followed by a brief description of each one. 
+The `fmc.RunMe()` function takes a number of parameters that can be used to alter its default behavior in important ways. Here are the default parameters followed by a brief description of each one. 
 
 
 ### RunMe - Default parameters
@@ -178,13 +178,13 @@ def RunMe(sessionID=None,
   - Type - (str) 
   - [Default] - None.
   - Indentifying string to use for this session. 
-  - If creating a new session, default behavior is to autogerate SessionID is based on date and time that the session was recorded
+  - If creating a new session, default behavior is to autogenerate SessionID based on date and time that the session was recorded
   - If re-processing a previously recorded session, this value specifies which session to reprocess (must be the name of a folder within the `FreeMoCap_Data` folder)
   - 
 - `stage`
   - [Type] - Int 
   - [Default] - 1
-  - Which processing stage to start from. Processing stages are deined in more  detail in [#processing-stages](#processing-stages) 
+  - Which processing stage to start from. Processing stages are defined in more  detail in [#processing-stages](#processing-stages) 
   
   ```
   stage 1 - Record Raw Videos
@@ -280,7 +280,7 @@ ___
 
   * IMPORTANT The Charuco board shown to the camera MUST be generated with the `cv2.aruco.DICT_4X4_250` dictionary! 
   
-  * Ah high resoultion `png` of this Charuco board is in this repository at `/charuco_board_image_highRes.png`
+  * A high resolution `png` of this Charuco board is in this repository at `/charuco_board_image_highRes.png`
 * 
   * To generate your own board, use the following python commands (or equivalent). DO NOT CHANGE THE PARAMETERS OR THE CALIBRATION WILL NOT WORK:
 	``` python

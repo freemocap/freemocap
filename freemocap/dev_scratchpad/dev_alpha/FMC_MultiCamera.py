@@ -101,6 +101,7 @@ class FMC_MultiCamera:
 
         self._show_multi_cam_stream_bool = show_multi_cam_stream_bool
         
+        self.num_frames = 0
         
         rich_console.rule('Starting FreeMoCap MultiCam!')
  
@@ -180,7 +181,16 @@ class FMC_MultiCamera:
         if standalone_mode:
             self.create_diagnostic_images()
 
-    
+    ##        
+    ##        
+    ##    ███████ ██ ███    ██ ██████       ██████  █████  ███    ███ ███████ 
+    ##    ██      ██ ████   ██ ██   ██     ██      ██   ██ ████  ████ ██      
+    ##    █████   ██ ██ ██  ██ ██   ██     ██      ███████ ██ ████ ██ ███████ 
+    ##    ██      ██ ██  ██ ██ ██   ██     ██      ██   ██ ██  ██  ██      ██ 
+    ##    ██      ██ ██   ████ ██████       ██████ ██   ██ ██      ██ ███████ 
+    ##                                                                        
+    ##                                                                        
+    ##        
 
     def find_available_cameras(self):
         """find available webcams and return IDs in list."""
@@ -197,15 +207,16 @@ class FMC_MultiCamera:
 
         self._cams_to_use_list = []
         for camNum in range(num_cams_to_check):#track(range(num_cams_to_check), description='[green]Finding available cameras...' ):
-            print('ATTEMPTING TO OPEN CAMERA AT PORT# {}'.format(camNum))
+            # print('ATTEMPTING TO OPEN CAMERA AT PORT# {}'.format(camNum))
             cap =  cv2.VideoCapture(camNum, capBackend)
             success, image = cap.read()
             if success: #this is apparently a more power check than `cap.isOpened()` which sometimes returns false positives for unknown reason. Will lose the first frame if this method is ever applied to reading in videos instead of streaming from cameras                
-                rich_console.print('SUCCESS - CAMERA FOUND at # {}'.format(camNum), style="bold cyan")
+                # rich_console.print('SUCCESS - CAMERA FOUND at # {}'.format(camNum), style="bold cyan")
                 self._cams_to_use_list.append(camNum)
                 cap.release()
-            else:
-                rich_console.print('No CAMERA FOUND at # {}'.format(camNum), style="magenta")
+        else:
+            pass
+            # rich_console.print('No CAMERA FOUND at # {}'.format(camNum), style="magenta")
 
         rich_console.print("Found cameras at ", self._cams_to_use_list)
         
@@ -281,6 +292,8 @@ class FMC_MultiCamera:
         while not self.exit_event.is_set():
             self.barrier.wait() #wait until each camera has grabbed an image and tagged their `barrier.wait()` signals
 
+            self.num_frames += 1
+            
             these_images_list = [None]*self.num_cams #empty list of size (numCam)
             this_multi_cam_tuple_as_a_list = [None]*self.num_cams
             these_timestamps = np.ndarray(self.num_cams)
@@ -304,6 +317,7 @@ class FMC_MultiCamera:
             
             
             # rich_console.log('Created a multi_cam_tuple - queue size: {}'.format(self.multi_cam_tuple_queue.qsize()))
+        
     
     def stitch_multicam_image(self, multi_cam_tuple):
         """Take in a multi-cam-tuple (containing images from each camera during the period of time defined by the attached timestamps)
@@ -424,7 +438,7 @@ class FMC_MultiCamera:
         self._each_cam_video_writer_object_list=[None]*self.num_cams
         self._each_cam_video_filename_list=[None]*self.num_cams
 
-        self.syncedVidsPath = self._save_path / self._rec_name / 'SyncedVideos'
+        self.syncedVidsPath = self._save_path / 'SyncedVideos'
         self.syncedVidsPath.mkdir(parents=True)
 
         for this_cam_num in range(self.num_cams):
@@ -436,9 +450,11 @@ class FMC_MultiCamera:
             self._cam_image_size = ( self._cam_image_width, self._cam_image_height)
             fourcc = cv2.VideoWriter_fourcc(*'DIVX')
             
-            self._each_cam_video_filename_list[this_cam_num] = str(self.syncedVidsPath) + '/Cam_'+str(this_cam_num)+'_synchronized.mp4'
+            this_cam_vid_filename = 'Cam_'+str(this_cam_num)+'_synchronized.mp4'
+            self._each_cam_video_filename_list[this_cam_num] = self.syncedVidsPath  / this_cam_vid_filename
+            
             fps = 25 #this is a bad and stupid guess, but it's actually kinda tricky to guess what is the right thing to put here. I'll fix this later and expect videos to be a bit faster than usual :(
-            self._each_cam_video_writer_object_list[this_cam_num] = cv2.VideoWriter(self._each_cam_video_filename_list[this_cam_num], fourcc, fps, self._cam_image_size)
+            self._each_cam_video_writer_object_list[this_cam_num] = cv2.VideoWriter(str(self._each_cam_video_filename_list[this_cam_num]), fourcc, fps, self._cam_image_size)
     ##   
     ##   
     ##   

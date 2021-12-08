@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
 
     try:
-        multi_cam = FMC_MultiCamera(save_path=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
+        multi_cam = FMC_MultiCamera(freemocap_data_folder=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
         multi_cam.start(standalone_mode=True)        
     except Exception:
         console.print_exception()

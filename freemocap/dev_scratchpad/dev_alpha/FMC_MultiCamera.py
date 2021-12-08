@@ -51,7 +51,7 @@ class FMC_MultiCamera:
     def __init__(
                 self,
                 rec_name = None,
-                save_path = None,
+                freemocap_data_folder = None,
                 num_cams = 0,
                 cams_to_use_list = None,
                 rotation_codes_list = None,
@@ -70,12 +70,12 @@ class FMC_MultiCamera:
             self._rec_name = rec_name
 
 
-        if save_path is None:
+        if freemocap_data_folder is None:
             self._save_path = Path('data/' + self._rec_name)
         else:
-            self._save_path = Path(save_path) / self._rec_name
+            self._save_path = Path(freemocap_data_folder) / self._rec_name
         
-        if save_path or save_multi_cam_to_mp4 or save_to_h5 or save_log_file or save_each_cam_to_mp4:
+        if freemocap_data_folder or save_multi_cam_to_mp4 or save_to_h5 or save_log_file or save_each_cam_to_mp4:
             self._save_path.mkdir(parents=True, exist_ok=True)
             self._path_to_log_file = Path(str(self._save_path / self._rec_name) + '_log.txt')
 
@@ -438,7 +438,7 @@ class FMC_MultiCamera:
         self._each_cam_video_writer_object_list=[None]*self.num_cams
         self._each_cam_video_filename_list=[None]*self.num_cams
 
-        self.syncedVidsPath = self._save_path / 'SyncedVideos'
+        self.syncedVidsPath = self._save_path / 'Synchronized_Videos'
         self.syncedVidsPath.mkdir(parents=True)
 
         for this_cam_num in range(self.num_cams):
@@ -450,7 +450,7 @@ class FMC_MultiCamera:
             self._cam_image_size = ( self._cam_image_width, self._cam_image_height)
             fourcc = cv2.VideoWriter_fourcc(*'DIVX')
             
-            this_cam_vid_filename = 'Cam_'+str(this_cam_num)+'_synchronized.mp4'
+            this_cam_vid_filename = self._rec_name + '_Camera_'+str(this_cam_num)+'_synchronized.mp4'
             self._each_cam_video_filename_list[this_cam_num] = self.syncedVidsPath  / this_cam_vid_filename
             
             fps = 25 #this is a bad and stupid guess, but it's actually kinda tricky to guess what is the right thing to put here. I'll fix this later and expect videos to be a bit faster than usual :(
@@ -556,7 +556,7 @@ if __name__ == '__main__':
 
 
     try:
-        multi_cam = FMC_MultiCamera(save_path=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
+        multi_cam = FMC_MultiCamera(freemocap_data_folder=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
         multi_cam.start(standalone_mode=True)        
                                  
     except Exception:

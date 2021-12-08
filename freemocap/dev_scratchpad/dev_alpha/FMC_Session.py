@@ -9,6 +9,8 @@
 ## https://patorjk.com/software/taag/#p=display&f=ANSI%20Regular&t=FMC%20Session
 
 from FMC_MultiCamera import FMC_MultiCamera
+from FMC_Visualizer import FMC_Visualizer
+
 import datetime
 from pathlib import Path
 import pickle 
@@ -34,13 +36,10 @@ class FMC_Session:
     ##                                                          
     ## 
 
-    def __init_(self):
+    def __init__(self):
         
-        self.sessionID = datetime.datetime.now().strftime("FreeMoCap_Session_%Y-%b-%d_%H_%M_%S")
-        self.save_path = Path('data/' + self._rec_name)
-        self.save_path.mkdir(parents=True)
-        self.path_to_log_file = Path(str(self.save_path / self.sessionID) + '_log.txt')
-    
+        self.sessionID = datetime.datetime.now().strftime("FreeMoCap_Session_%Y-%m-%d_%H_%M_%S")
+        
     ##   
     ##   ██████  ███████  ██████     ███    ███ ██    ██ ██      ████████ ██      ██████  █████  ███    ███ 
     ##   ██   ██ ██      ██          ████  ████ ██    ██ ██         ██    ██     ██      ██   ██ ████  ████ 
@@ -50,8 +49,8 @@ class FMC_Session:
     ##                                                                                                      
     ##                                                                                                      
             
-    def record_multi_cam(self,save_path=None, rotation_codes_list=None):
-        self.multi_cam = FMC_MultiCamera(save_path=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list )
+    def record_multi_cam(self,freemocap_data_folder=None, rotation_codes_list=None):
+        self.multi_cam = FMC_MultiCamera(freemocap_data_folder=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list, rec_name=self.sessionID )
         self.multi_cam.start()    
     
     ##          
@@ -80,14 +79,14 @@ class FMC_Session:
         
         
         
-        video_paths_list = self.multi_cam._each_cam_video_filename_list
+        self.synched_video_path_list = self.multi_cam._each_cam_video_filename_list
         
         video_paths_list_of_list_of_strings = []
         
-        for this_path in video_paths_list:
+        for this_path in self.synched_video_path_list:
             video_paths_list_of_list_of_strings.append([str(this_path)])#anipose needs this to be a list of lists (which is annoying by whatevs)
 
-        cam_names = ['cam_'+str(cam_num) for cam_num in range(len(video_paths_list))]
+        cam_names = ['cam_'+str(cam_num) for cam_num in range(len(self.synched_video_path_list))]
         
         self.anipose_camera_calibration = fmc_anipose.CameraGroup.from_names(cam_names, fisheye=True  )  # Looking through their code... it looks lke the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)    
         error,charuco_frame_data, charuco_frame_numbers = self.anipose_camera_calibration.calibrate_videos(video_paths_list_of_list_of_strings, board)   
@@ -127,7 +126,7 @@ class FMC_Session:
     ####                                                                                                                      
     ####                                                                                                                      
 
-    def reconstruct3D(self, data_nCams_nFrames_nImgPts_XYC, calibration_toml_path = None, confidence_threshold=0):
+    def reconstruct3D(self, data_nCams_nFrames_nImgPts_XYC, calibration_toml_path = None, confidence_threshold=0.3):
                 
         if calibration_toml_path: #if the user specified a calibration toml (from a previous Anipose-based calibration) - load it here. Otherwise, assume the calibration is included in `self`                        
             self.anipose_camera_calibration = fmc_anipose.CameraGroup.load(str(calibration_toml_path))
@@ -164,6 +163,36 @@ class FMC_Session:
         dataReprojErr = dataReprojerr_flat.reshape(num_frames, num_img_points)
 
         return data_fr_mar_xyz, dataReprojErr
+    
+    ###    
+    ###    
+    ###   ████████ ██████   █████   ██████ ██   ██ ██ ███    ██  ██████  
+    ###      ██    ██   ██ ██   ██ ██      ██  ██  ██ ████   ██ ██       
+    ###      ██    ██████  ███████ ██      █████   ██ ██ ██  ██ ██   ███ 
+    ###      ██    ██   ██ ██   ██ ██      ██  ██  ██ ██  ██ ██ ██    ██ 
+    ###      ██    ██   ██ ██   ██  ██████ ██   ██ ██ ██   ████  ██████  
+    ###                                                                                       
+    ###                                                                                       
+    def run_tracking_methods(self, use_media_pipe_bool=True, reconstruct3D_bool = True, save_to_npy_bool=True):
+
+        if use_media_pipe_bool:
+            from tracking_methods.fmc_mediapipe_alpha import run_mediapipe
+            
+            self.mediapipe_nCams_nFrames_nImgPts_XY = run_mediapipe(self.synched_video_path_list)
+            
+            if reconstruct3D_bool:
+                self.mediapipe_nFrames_nTrackedPoints_XYZ, self.mediapipe_reprojection_error = self.reconstruct3D(self.mediapipe_nCams_nFrames_nImgPts_XY)
+            
+            if save_to_npy_bool:
+                mediapipe3d_filename = self.multi_cam._save_path/'mediapipe_3d_points.npy'
+                np.save(mediapipe3d_filename,self.medipipe_nFrames_nTrackedPoints_XYZ)
+                
+        f=9
+
+    
+
+
+
     ###         
     ### ███████ ████████  ██████              
     ### ██         ██    ██                   
@@ -210,11 +239,16 @@ if __name__ == "__main__":
     
     try:
         sesh =  FMC_Session()
-        sesh.record_multi_cam(save_path=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
+        sesh.record_multi_cam(freemocap_data_folder=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
         sesh.calibrate_capture_volume(charucoSquareSize = this_charucoSquareSize)
         sesh.charuco_nFrames_nTrackedPoints_XYZ, sesh.charuco_reprojection_error = sesh.reconstruct3D(sesh.charuco_nCams_nFrames_nImgPts_XY)
-        f=9
+        
         charuco3d_filename = sesh.multi_cam._save_path/'charuco_3d_points.npy'
         np.save(charuco3d_filename,sesh.charuco_nFrames_nTrackedPoints_XYZ)
+        
+        sesh.run_tracking_methods()
+        visualizer = FMC_Visualizer(fmc_session_obj=sesh)
+        visualizer.start()
+        
     except:
         console.print_exception()

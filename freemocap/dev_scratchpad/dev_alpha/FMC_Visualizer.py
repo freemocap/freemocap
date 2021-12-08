@@ -31,8 +31,8 @@ class FMC_Visualizer:
             if recording_session_path: 
                 self.recording_session_path = Path(recording_session_path)
             else:
-                pass
                 #JSM NOTE - add something to load the last recorded session if nothing is specified
+                pass
                 
             # load charuco data
             self.charuco_3d_path = self.recording_session_path / "charuco_3d_points.npy"
@@ -56,9 +56,17 @@ class FMC_Visualizer:
 
         self.charuco_gl_scatter_item = gl.GLScatterPlotItem(pos=self.charuco_nFrames_nTrackedPoints_XYZ[self.frame_num,:,:], color=(1,1,1,.3), size=.1, pxMode=False)
         self.gl_view_widget.addItem(self.charuco_gl_scatter_item)
+        
+        self.charuco_gl_lineplot_item = gl.GLLinePlotItem(pos=self.charuco_nFrames_nTrackedPoints_XYZ[self.frame_num,:,:], color=(0,1,1,1), width=1., antialias=True)
+        self.gl_view_widget.addItem(self.charuco_gl_lineplot_item)
+
 
         self.mediapipe_gl_scatter_item = gl.GLScatterPlotItem(pos=self.mediapipe_nFrames_nTrackedPoints_XYZ[self.frame_num,:,:], color=(1,0,1,.3), size=.1, pxMode=False)
         self.gl_view_widget.addItem(self.mediapipe_gl_scatter_item)
+
+        self.mediapipe_gl_lineplot_item = gl.GLLinePlotItem(pos=self.mediapipe_nFrames_nTrackedPoints_XYZ[self.frame_num,:,:], color=(1,0,1,1), width=1., antialias=True)
+        self.gl_view_widget.addItem(self.mediapipe_gl_lineplot_item)
+
 
         self.qt_timer = QtCore.QTimer()
         self.qt_timer.timeout.connect(self.update)
@@ -74,7 +82,11 @@ class FMC_Visualizer:
         
             
         self.charuco_gl_scatter_item.setData(pos=self.charuco_nFrames_nTrackedPoints_XYZ[self.frame_num,:,:])
+        self.charuco_gl_lineplot_item.setData(pos=self.charuco_nFrames_nTrackedPoints_XYZ[self.frame_num,:,:])
+        
         self.mediapipe_gl_scatter_item.setData(pos=self.mediapipe_nFrames_nTrackedPoints_XYZ[self.frame_num,:,:])
+        self.mediapipe_gl_lineplot_item.setData(pos=self.mediapipe_nFrames_nTrackedPoints_XYZ[self.frame_num,:,:])
+        
         
         if self.frame_num % 10 == 0:
             print("Frame Num : " + str(self.frame_num))
@@ -85,4 +97,6 @@ class FMC_Visualizer:
 
 
 if __name__ == '__main__':
-    pg.exec()
+        visualizer = FMC_Visualizer(recording_session_path = "C:/Users/jonma/Dropbox/FreeMoCapProject/FreeMocap_Data/sesh_2021-12-06_10_35_06_mc")
+        visualizer.start()
+        

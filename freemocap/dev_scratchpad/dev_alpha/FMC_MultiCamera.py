@@ -396,6 +396,7 @@ class FMC_MultiCamera:
         rich_console.rule('Shutting down MultiCamera Viewer')
         self.exit_event.set() #send the 'Exit' signal to everyone.
     
+    
     def save_synchronized_videos(self, multi_cam_tuple):
         """save camera streams into individual videos (that can be processed with pre-alpha freemocap"""
         these_images_list = [None]*self.num_cams #empty list of size (numCam)
@@ -403,7 +404,7 @@ class FMC_MultiCamera:
         for this_cam_num in range(self.num_cams):                                
             this_cam_image = multi_cam_tuple[this_cam_num][1] #and that's how you navigate nested tuples, lol         
 
-        
+
         
 
 

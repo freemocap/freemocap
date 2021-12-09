@@ -271,6 +271,10 @@ class FMC_Camera:
                 self._barrier.wait() #wait until other cams have grabbed a frame (and the frame_grabber has frame grabbed them)
             except:
                 self.rich_console.print_exception()
+        
+        #shut down when 'exit_event' is tripped
+        self.close()
+        
 
     def run_in_subprocess(self):
         self.run_in_thread()
@@ -333,6 +337,7 @@ class FMC_Camera:
         close the video
         """
         self.cv2_cap.release()
+        self.rich_console.log("Camera# "+str(self._cam_num)+" shutting down")
 
     
     def wait_key(self):

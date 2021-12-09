@@ -1,4 +1,5 @@
 from pathlib import Path
+import copy 
 
 import numpy as np
 from rich.progress import Progress
@@ -162,6 +163,8 @@ def run_mediapipe(synched_video_path_list, dummyRun=False):
     mediaPipeData_nCams_nFrames_nImgPts_XYC[:, :, 34:, 2] = 1 #hand and face data don't get 'visibility'/'confidence' scores, so we'll just set them all to 1
 
     return mediaPipeData_nCams_nFrames_nImgPts_XYC
+
+
 
 
 if __name__ == "__main__":

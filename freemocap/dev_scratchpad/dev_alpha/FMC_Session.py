@@ -36,10 +36,26 @@ class FMC_Session:
     ##                                                          
     ## 
 
-    def __init__(self):
+    def __init__(self, sessionID=None,  freemocap_data_folder=None, rotation_codes_list=None):
         
-        self.sessionID = datetime.datetime.now().strftime("FreeMoCap_Session_%Y-%m-%d_%H_%M_%S")
-        
+        if freemocap_data_path is None:
+            user_home_directory = Path.home()
+            self.freemocap_data_path = user_home_directory /'FreeMoCap_Data'
+            
+            if self.freemocap_data_path.exists():
+                rich_console.log("FreeMoCap_Data folder found in User home directory - " + str(self.freemocap_data_path))
+            elif not self.freemocap_data_path.exists():
+                self.freemocap_data_path.mkdir(exist_ok=True)
+                rich_console.log("FreeMoCap_Data CREATED in  User home directory - " + str(self.freemocap_data_path))
+                rich_console.rule("To create a FreeMoCap_Data folder in a different place, use `FMC_Session(freemocap_data_folder=\"path_to_folder\")`")
+        else:
+            self.freemocap_data_path = freemocap_data_path
+           
+        if sessionID is None:
+            self.sessionID = datetime.datetime.now().strftime("FreeMoCap_Session_%Y-%m-%d_%H_%M_%S")
+        else:
+            self.sessionID = sessionID
+
     ##   
     ##   ██████  ███████  ██████     ███    ███ ██    ██ ██      ████████ ██      ██████  █████  ███    ███ 
     ##   ██   ██ ██      ██          ████  ████ ██    ██ ██         ██    ██     ██      ██   ██ ████  ████ 
@@ -63,7 +79,7 @@ class FMC_Session:
     ##                                                                                               
     ##  
     
-    def calibrate_capture_volume(self, charucoSquareSize=36):
+    def camera_capture_volume_calibration(self, calibration_method="anipose_charuco", charucoSquareSize=36):
         
         num_charuco_rows = 7
         num_charuco_cols = 5
@@ -180,12 +196,14 @@ class FMC_Session:
             
             self.mediapipe_nCams_nFrames_nImgPts_XY = run_mediapipe(self.synched_video_path_list)
             
+            
             if reconstruct3D_bool:
                 self.mediapipe_nFrames_nTrackedPoints_XYZ, self.mediapipe_reprojection_error = self.reconstruct3D(self.mediapipe_nCams_nFrames_nImgPts_XY)
-            
+                
+                            
             if save_to_npy_bool:
                 mediapipe3d_filename = self.multi_cam._save_path/'mediapipe_3d_points.npy'
-                np.save(mediapipe3d_filename,self.medipipe_nFrames_nTrackedPoints_XYZ)
+                np.save(mediapipe3d_filename,self.mediapipe_nFrames_nTrackedPoints_XYZ)
                 
         f=9
 
@@ -238,9 +256,9 @@ if __name__ == "__main__":
         this_charucoSquareSize = 123
     
     try:
-        sesh =  FMC_Session()
-        sesh.record_multi_cam(freemocap_data_folder=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
-        sesh.calibrate_capture_volume(charucoSquareSize = this_charucoSquareSize)
+        sesh =  FMC_Session(sessionID = None, freemocap_data_folder=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
+        sesh.record_multi_cam()
+        sesh.camera_capture_volume_calibration(charucoSquareSize = this_charucoSquareSize)
         sesh.charuco_nFrames_nTrackedPoints_XYZ, sesh.charuco_reprojection_error = sesh.reconstruct3D(sesh.charuco_nCams_nFrames_nImgPts_XY)
         
         charuco3d_filename = sesh.multi_cam._save_path/'charuco_3d_points.npy'

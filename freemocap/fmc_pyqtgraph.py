@@ -9,7 +9,7 @@ import numpy as np
 from pathlib import Path
 import sys
 
-
+ 
 class PlaySkeletonWidget:
     def __init__(self, session):
 

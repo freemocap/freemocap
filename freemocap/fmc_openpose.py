@@ -117,7 +117,7 @@ def parseOpenPose(session):
     ## %% 
     ## load in data from json files
     #numFrames = int(len(list(Path(session.openPose_jsonPathList[0]).glob('*')))) #lol
-    numFrames = session.numFrames
+    numFrames = int(session.numFrames)
     numMarkers= int(int(len(dataFrameHeader)/3))
     numCams = int(session.numCams) #rebuilding numCams here instead of using session.numCams in case 
 

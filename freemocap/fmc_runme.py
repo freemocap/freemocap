@@ -163,8 +163,9 @@ def RunMe(sessionID=None,
 
         if sesh.numFrames is None:
             a_sync_vid_path = list(sesh.syncedVidPath.glob('*.mp4'))
-            with  cv2.VideoCapture(str(a_sync_vid_path[0])) as temp_cap:
-                sesh.numFrames = temp_cap.get(cv2.CAP_PROP_FRAME_COUNT)
+            temp_cap =   cv2.VideoCapture(str(a_sync_vid_path[0]))
+            sesh.numFrames = temp_cap.get(cv2.CAP_PROP_FRAME_COUNT)
+            temp_cap.release()
 
         sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
 
@@ -224,11 +225,11 @@ def RunMe(sessionID=None,
 
             if runMediaPipe:
                 fmc_mediapipe.runMediaPipe(sesh)
-
-            sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
-            sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy            
+                sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
+                sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy            
+                
         sesh.save_session()
 
         if sesh.useOpenPose:

@@ -565,6 +565,8 @@ if col:
             bpy.data.objects.remove(obj)
             
 #save blender file
+blend_file_save_path = sesh_path + "skeletal_animation_session.blend"
+print('saving .blend file to - ' +  blend_file_save_path)
 
 bpy.ops.wm.save_as_mainfile(filepath= sesh_path + "skeletal_animation_session.blend")
 

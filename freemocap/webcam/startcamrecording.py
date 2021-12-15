@@ -98,8 +98,8 @@ def CamRecording(
         success, frame = cam.read()
 
         cv2.imshow(camWindowName, frame)
-        # frame_sized = cv2.resize(frame, (resWidth, resHeight))
-        # frame_sized = frame
+        frame_sized = cv2.resize(frame, (resWidth, resHeight))
+        frame_sized = frame
         out.write(frame)
         timeStamps.append(time.time() - beginTime)  # add each timestamp to the list
 

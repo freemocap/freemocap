@@ -199,6 +199,9 @@ class FMC_Camera:
         self.cv2_cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._cap_parameters_dict['cap_resolution_width'])
         self.cv2_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._cap_parameters_dict['cap_resolution_height'])
 
+        self.cv2_cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')) 
+
+
         self.video_exposure = self.cv2_cap.get(cv2.CAP_PROP_EXPOSURE)
         self.video_resolution_width = self.cv2_cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         self.video_resolution_height = self.cv2_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)

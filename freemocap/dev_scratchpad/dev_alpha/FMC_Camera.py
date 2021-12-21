@@ -31,7 +31,8 @@ cap_default_parameters_dict = {
                             }
 
 class FMC_Camera:
-    """Simple class to open a cv2.VideoCapture object, with parts to connect to a `MutliCamRecorder` object
+    """ Class to open a cv2.VideoCapture object, with parts to connect to a `FMC_MutliCam` object as part of a FMC_Session. 
+    Note, this class was made in service of the needs of the FreeMoCap project, at some point I'd love to develop this into a fully generic and useful 'camera' object, right now it's designed with that application (and only that application) in mind
     """
     ##  
     ##  
@@ -47,6 +48,7 @@ class FMC_Camera:
     def __init__(
                 self, 
                 cam_num=0, 
+                rotation_code=None,
                 frame_queue = None,
                 barrier = None,
                 exit_event = None,
@@ -73,6 +75,8 @@ class FMC_Camera:
         self._vid_cap_start_time_unix = None
 
         self._cap_parameters_dict = cap_parameters_dict
+        
+        self._rotation_code = rotation_code
 
         self._frame_queue = frame_queue
         self._barrier = barrier
@@ -210,7 +214,7 @@ class FMC_Camera:
             self.rich_console.log("Camera# "+str(self._cam_num)+" failed to open :(")
             
         else:
-            self.rich_console.log("Camera# "+str(self._cam_num)+"  started - Exposure:{} - Resolution(width, height):({},{}) ".format(self.video_exposure, self.video_resolution_width, self.video_resolution_height))
+            self.rich_console.log("Camera# "+str(self._cam_num)+"  started - Exposure:({}) - Resolution(width, height):({},{}) ".format(self.video_exposure, self.video_resolution_width, self.video_resolution_height))
             self._vid_cap_start_time_unix = time.time_ns() #the precision is aspirational, lol
             self._vid_cap_timestamps_unix_ns = np.empty(0)
     
@@ -270,6 +274,10 @@ class FMC_Camera:
                 self._barrier.wait() #wait until other cams have grabbed a frame (and the frame_grabber has frame grabbed them)
             except:
                 self.rich_console.print_exception()
+        
+        #shut down when 'exit_event' is tripped
+        self.close()
+        
 
     def run_in_subprocess(self):
         self.run_in_thread()
@@ -311,6 +319,18 @@ class FMC_Camera:
         timestamp = time.time_ns() #the precision is aspirational, lol
         if success:
             self._vid_cap_timestamps_unix_ns = np.append(self._vid_cap_timestamps_unix_ns, time.time_ns()) #the precision is aspirational, lol
+
+            if self._rotation_code is None:
+                pass
+            elif self._rotation_code == 'cv2.ROTATE_90_CLOCKWISE':                
+                image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+            elif self._rotation_code == 'cv2.ROTATE_90_COUNTERCLOCKWISE':                
+                image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            elif self._rotation_code == 'cv2.ROTATE_180':                
+                image = cv2.rotate(image, cv2.ROTATE_180)
+            else:
+                Exception, 'Invalid rotation code entered for FMC_Camera: {}'.format(self.cam_name)
+
             return success, image, timestamp
         else:
             return success, success, success
@@ -320,6 +340,7 @@ class FMC_Camera:
         close the video
         """
         self.cv2_cap.release()
+        self.rich_console.log("Camera# "+str(self._cam_num)+" shutting down")
 
     
     def wait_key(self):

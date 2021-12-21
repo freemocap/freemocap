@@ -203,7 +203,7 @@ class Session: #self like "recording self"
                 temp_cap = cv2.VideoCapture(str(vid))
                 thisCamFrames = temp_cap.get(cv2.CAP_PROP_FRAME_COUNT)
                 frames_per_cam[str(vid)] = thisCamFrames
-            temp_cap.release()
+                temp_cap.release()
             frame_check = len(list(set(list(frames_per_cam.values())))) == 1 # using set() to remove duplicates and check for values count
             
 

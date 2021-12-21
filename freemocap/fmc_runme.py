@@ -12,6 +12,7 @@ from aniposelib.boards import CharucoBoard
 import numpy as np
 
 from ruamel.yaml import YAML
+import cv2
 
 #Rich stuff
 from rich import print
@@ -160,6 +161,11 @@ def RunMe(sessionID=None,
         console.rule('See https://anipose.org for details', style="color({})".format(thisStage))  
         console.rule(style="color({})".format(thisStage))    
 
+        if sesh.numFrames is None:
+            a_sync_vid_path = list(sesh.syncedVidPath.glob('*.mp4'))
+            temp_cap =   cv2.VideoCapture(str(a_sync_vid_path[0]))
+            sesh.numFrames = temp_cap.get(cv2.CAP_PROP_FRAME_COUNT)
+            temp_cap.release()
 
         sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
 
@@ -206,7 +212,7 @@ def RunMe(sessionID=None,
         thisStage=4
         console.rule(style="color({})".format(thisStage))    
         console.rule('Starting 2D Point Trackers'.upper(),style="color({})".format(thisStage))  
-        stage4_msg ='This step implements various  computer vision that track the skeleton (and other objects) in the 2d videos, to produce the data that will be combined with the `camera projection matrices` from the calibration stage to produce the estimates of 3d movement. \n \n Each algorithm is different, but most involve using [bold magenta] convolutional neural networks [/bold magenta] trained from labeled videos to produce a 2d probability map of the likelihood that the tracked bodypart/object/feature (e.g. \'LeftElbow\') is in a given location. \n \n The peak of that distrubtion on each frame is recorded as the pixel-location of that item on that frame (e.g. \'LeftElbow(pixel-x, pixel-y, confidence\') where the a confidence value proportional to the underlying probability distribution (i.e. tall peaks in the probablitiy distribution -> high confidence that the LeftElbow actually is at this pixel-x, pixel-y location) \n \nThis part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible ✨'
+        stage4_msg ='This step implements various  computer vision that track the skeleton (and other objects) in the 2d videos, to produce the data that will be combined with the `camera projection matrices` from the calibration stage to produce the estimates of 3d movement. \n \n Each algorithm is different, but most involve using [bold magenta] convolutional neural networks [/bold magenta] trained from labeled videos to produce a 2d probability map of the likelihood that the tracked bodypart/object/feature (e.g. \'LeftElbow\') is in a given location. \n \n The peak of that distrubtion on each frame is recorded as the pixel-location of that item on that frame (e.g. \'LeftElbow(pixel-x, pixel-y, confidence\') where the a confidence value proportional to the underlying probability distribution (i.e. tall peaks in the probablitiy distribution indicate high confidence that the LeftElbow actually is at this pixel-x, pixel-y location) \n \nThis part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible ✨'
         console.print(Padding(stage4_msg, (1,4)), overflow="fold", justify='center',style="color({})".format(thisStage))
         console.rule(style="color({})".format(thisStage))      
         
@@ -219,11 +225,11 @@ def RunMe(sessionID=None,
 
             if runMediaPipe:
                 fmc_mediapipe.runMediaPipe(sesh)
-
-            sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
-            sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy            
+                sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
+                sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy            
+                
         sesh.save_session()
 
         if sesh.useOpenPose:

@@ -51,6 +51,14 @@ vb.addItem(pg_img)
 
 
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+cap.set(cv2.CAP_PROP_EXPOSURE, -7)
+
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')) 
+
 success, image = cap.read()
 assert success, 'Camera Failed to load image'
 vidWidth, vidHeight, vidNumColorChannels = image.shape

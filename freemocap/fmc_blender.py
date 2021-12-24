@@ -56,13 +56,8 @@ bpy.context.scene.unit_settings.length_unit = 'METERS'
 for index, col in enumerate(markers_list):
     # parse string float value into floats, create Vector, set position to Vector
 
-    if math.isnan(col[0]):
-        col[0] = 0.0
-    if math.isnan(col[1]):
-        col[1] = 0.0
-    if math.isnan(col[2]):
-        col[2] = 0.0
-    coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
+    if not math.isnan(col[0]):
+      coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
         
     #empties
     bpy.ops.object.add(type='EMPTY', location=coord)  

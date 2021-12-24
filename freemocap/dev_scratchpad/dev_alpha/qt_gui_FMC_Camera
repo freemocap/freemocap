@@ -1,0 +1,83 @@
+from PyQt5.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
+
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.widgets.RawImageWidget import RawImageGLWidget
+
+from time import perf_counter
+
+import cv2
+import numpy as np
+
+if RawImageGLWidget is not None:
+    # don't limit frame rate to vsync
+    sfmt = QtGui.QSurfaceFormat()
+    sfmt.setSwapInterval(0)
+    QtGui.QSurfaceFormat.setDefaultFormat(sfmt)
+
+app = QApplication([])
+app.setApplicationName("FMC_Camera QT GUI")
+
+qt_window = QWidget()
+qt_window.setWindowTitle('FMC_Camera')
+
+layout = QVBoxLayout()
+
+qt_raw_image_gl_widget = RawImageGLWidget()
+layout.addWidget(qt_raw_image_gl_widget)
+
+qt_fps_label = QLabel()
+layout.addWidget(qt_fps_label)
+
+qt_window.setLayout(layout)
+qt_window.show()
+
+
+
+# create open-cv video capture object
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+cap.set(cv2.CAP_PROP_EXPOSURE, -7)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')) 
+
+success, image = cap.read()
+assert success, 'Camera Failed to load image'
+vidWidth, vidHeight, vidNumColorChannels = image.shape
+
+
+
+ptr = 0
+lastTime = perf_counter()
+fps = None
+def update():
+    global lastTime, fps
+    
+    #read image from camera
+    success, image = cap.read()
+    if success:
+        print('image loaded')
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) #convert image from BGR to RGB color format
+    
+    qt_raw_image_gl_widget.setImage(image)
+
+        
+
+    now = perf_counter()
+    dt = now - lastTime
+    lastTime = now
+    if fps is None:
+        fps = 1.0/dt
+    else:
+        s = np.clip(dt*3., 0, 1)
+        fps = fps * (1-s) + (1.0/dt) * s
+    qt_fps_label.setText('%0.2f fps' % fps)
+    app.processEvents()  ## force complete redraw for every plot
+
+timer = QtCore.QTimer()
+timer.timeout.connect(update)
+timer.start(0)
+
+if __name__ == '__main__':
+    app.exec()

@@ -5,6 +5,7 @@ import math
 import sys
 from pathlib import Path
 
+
 # get arguments
 argv = sys.argv
 argv = argv[argv.index("--") + 1:] 
@@ -149,8 +150,8 @@ def add_child_bone(bone_name, empty1, empty2):
     #Create a new bone
     new_bone = armature_data.data.edit_bones.new(bone_name)
     #Set bone's size
-    new_bone.head = (0,0,0)
-    new_bone.tail = (0,0.1,0)
+    new_bone.head = (np.nan,np.nan,np.nan)
+    new_bone.tail = (np.nan,np.nan,np.nan)
     #Set bone's location to wheel
     new_bone.matrix = empty2.matrix_world
     #set location of bone head
@@ -330,12 +331,12 @@ def my_handler(scene):
     #iterate through list of markers in this frame
     for col in markers_list:
         frame = scene.frame_current
-        if math.isnan(col[0]):
-            col[0] = 0.0
-        if math.isnan(col[1]):
-            col[1] = 0.0
-        if math.isnan(col[2]):
-            col[2] = 0.0
+        # if math.isnan(col[0]):
+        #     col[0] = 0.0
+        # if math.isnan(col[1]):
+        #     col[1] = 0.0
+        # if math.isnan(col[2]):
+        #     col[2] = 0.0
         coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
         if len(order_of_markers) > 0:
             empty = order_of_markers[current_marker]
@@ -379,8 +380,8 @@ def boneGeometry( l1, l2, x, z, baseSize, l1Size, l2Size, base ):
     x1 = x  * baseSize * l1Size * 0.8
     z1 = z  * baseSize * l2Size * 0.8
     
-    x2 = Vector( (0, 0, 0) )
-    z2 = Vector( (0, 0, 0) )
+    x2 = Vector( (np.nan, np.nan, np.nan) )
+    z2 = Vector( (np.nan, np.nan, np.nan) )
 
     verts = [
         l1 - x1 + z1,

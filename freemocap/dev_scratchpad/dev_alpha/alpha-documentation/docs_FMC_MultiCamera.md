@@ -50,11 +50,9 @@ autonumber
         rect rgb(150,150,150,.5)   
         loop with pathos_mp.ProcessingPool as self.cam_process_pool
             
-            par MULTIPROCESS Camera0 
+            par MULTIPROCESS Camera0 ... CameraN 
               rect rgb(150,10,15,.5)  
-                P->>CI:initiate camera as subprocess
                 Note over CI: if init received a 'queue' object, launch 'self.run_in_thread'
-                CI->>CT:run cam in 'thread' mode
                 P->>CI:initiate camera as subprocess
                 CI->>CT:run cam in 'thread' mode 
                 loop while: not exit_event.is_set()
@@ -62,36 +60,6 @@ autonumber
                     CR->>CT:return(success, image, timestamp)
                     Note over CR: CREATE tuple(cam_num,image,timestamp) into self._frame_queue
                     CR->>+FQ:frame_tuple into frame_queue
-                    Note over CR: Barrier.wait() (will release after frame_grabber grabs tuple)                                       
-                end
-            end
-            and MULTIPROCESS Camera1 
-              rect rgb(10,150,15,.5)  
-                P->>CI:initiate camera as subprocess
-                Note over CI: if init received a 'queue' object, launch 'self.run_in_thread'
-                CI->>CT:run cam in 'thread' mode
-                P->>CI:initiate camera as subprocess
-                CI->>CT:run cam in 'thread' mode 
-                loop while: not exit_event.is_set()
-                    CT->>CR:self.read_next_frame
-                    CR->>CT:return(success, image, timestamp)
-                    Note over CR: CREATE tuple(cam_num,image,timestamp) into self._frame_queue
-                    CR->>FQ:frame_tuple into frame_queue
-                    Note over CR: Barrier.wait() (will release after frame_grabber grabs tuple)                                       
-                end
-            end
-            and MULTIPROCESS CameraN 
-              rect rgb(10,15,150,.5)  
-                P->>CI:initiate camera as subprocess
-                Note over CI: if init received a 'queue' object, launch 'self.run_in_thread'
-                CI->>CT:run cam in 'thread' mode
-                P->>CI:initiate camera as subprocess
-                CI->>CT:run cam in 'thread' mode 
-                loop while: not exit_event.is_set()
-                    CT->>CR:self.read_next_frame
-                    CR->>CT:return(success, image, timestamp)
-                    Note over CR: CREATE tuple(cam_num,image,timestamp) into self._frame_queue
-                    CR->>FQ:frame_tuple into frame_queue
                     Note over CR: Barrier.wait() (will release after frame_grabber grabs tuple)                                       
                 end
             end

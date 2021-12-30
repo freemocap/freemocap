@@ -535,7 +535,7 @@ def PlaySkeletonAnimation(
     # groundYY = np.zeros_like(groundXX)
     # groundMesh = ax3d.plot_surface(groundXX, groundZZ, groundYY, color='k', alpha=.5)
 
-    axRange = 400#session.board.square_length * 10
+    axRange = 1000#session.board.square_length * 10
 
     # Setting the axes properties
     ax3d.set_xlim3d([mx-axRange, mx+axRange])

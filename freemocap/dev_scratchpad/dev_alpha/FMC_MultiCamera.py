@@ -554,7 +554,8 @@ if __name__ == '__main__':
         in_rotation_codes_list = ['cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', ]
     elif this_computer_name == 'DESKTOP-DCG6K4F':
         freemocap_data_path = Path(r'C:\Users\jonma\Dropbox\FreeMoCapProject\FreeMocap_Data')
-
+    elif this_computer_name == 'Jons-MacBook-Pro.local':
+        freemocap_data_path = Path('/Users/jon/Dropbox/FreeMoCapProject')
 
     try:
         multi_cam = FMC_MultiCamera(freemocap_data_folder=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)

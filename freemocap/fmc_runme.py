@@ -194,7 +194,7 @@ def RunMe(sessionID=None,
         if useBlender == True:
             blenderPath = startupGUI.RunChooseBlenderPathGUI(session)
             print("Saving out FreeMoCap Data as, like, a bunch of different formats I hope?")
-            output = subprocess.run([str(blenderPath), "--background", "--python", "fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy')], capture_output=True, text=True, check=True)
+            output = subprocess.run([str(blenderPath), "--background", "--python", "fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
             print(output)
 
         print('Starting Skeleton Plotting')

@@ -6,7 +6,9 @@ import numpy as np
 
 from freemocap.webcam import recordGUI, camsetup
 from freemocap import recordingconfig, fmc_anipose
+from rich.console import Console
 
+console = Console()
 
 def initialize(session, stage, board):
     """ 
@@ -17,8 +19,11 @@ def initialize(session, stage, board):
     into the session class, which gets saved into the user_preferences yaml
 
     """ 
+    
+    console.rule(style="color({})".format(13))    
+    console.rule('Finding available webcams',style="color({})".format(13))
+    console.rule(style="color({})".format(13)) 
 
-    print("Starting initialization for stage {}".format(stage))
     # if stage == 1:
     filepath = Path.cwd()
 
@@ -67,7 +72,7 @@ def initialize(session, stage, board):
             current_path_to_save = session.preferences['saved']['path_to_save']
         except:
             current_path_to_save = session.preferences['default']['path_to_save'] 
-        rotDict, paramDict, session.sessionID,savepath = recordGUI.RunParametersGUI(sessionID_in, rotation_entry, parameter_entry, current_path_to_save, cam_inputs, task)
+        rotDict, paramDict, session.sessionID,savepath, mediaPipeOverlay = recordGUI.RunParametersGUI(sessionID_in, rotation_entry, parameter_entry, current_path_to_save, cam_inputs, task)
     
     #update the saved parameters in the YAML
         #recordingconfig.rotation_settings['saved'] = rotDict
@@ -87,7 +92,7 @@ def initialize(session, stage, board):
 
         if task == "setup":
             # run setup processes, and then check if th user wants to proceed to recording
-            camsetup.RunSetup(cam_inputs, rotation_input, paramDict)
+            camsetup.RunSetup(cam_inputs, rotation_input, paramDict,mediaPipeOverlay)
             proceedToRecording, restartSetup, session.sessionID, savepath = recordGUI.RunProceedtoRecordGUI(
                 sessionID_in,current_path_to_save
             )

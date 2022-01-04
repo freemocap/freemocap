@@ -658,7 +658,7 @@ class CameraGroup:
             points_ransac, undistort=undistort, min_cams=min_cams, progress=progress
         )
 
-    @jit(nopython=True, parallel=True, forceobj=True)
+    @jit(parallel=True, forceobj=True)
     def reprojection_error(self, p3ds, p2ds, mean=False):
         """Given an Nx3 array of 3D points and an CxNx2 array of 2D points,
         where N is the number of points and C is the number of cameras,
@@ -887,7 +887,7 @@ class CameraGroup:
         error = self.average_error(p2ds)
         return error
 
-    @jit(nopython=True, parallel=True, forceobj=True)
+    @jit(parallel=True, forceobj=True)
     def _error_fun_bundle(self, params, p2ds, n_cam_params, extra):
         """Error function for bundle adjustment"""
         good = ~np.isnan(p2ds)
@@ -1312,7 +1312,7 @@ class CameraGroup:
 
         return self.optim_points(points, p3ds, **kwargs)
 
-    @jit(nopython=True, forceobj=True, parallel=True)
+    @jit(forceobj=True, parallel=True)
     def _error_fun_triangulation(
         self,
         params,
@@ -1736,8 +1736,10 @@ class CameraGroup:
     ):
         """Takes as input a list of list of video filenames, one list of each camera.
         Also takes a board which specifies what should be detected in the videos"""
+        
+        print('Detecting Charuco boards in each video...')
 
-        all_rows = self.get_rows_videos(videos, board, verbose=verbose)
+        all_rows = self.get_rows_videos(videos, board, verbose=True)
         if init_extrinsics:
             self.set_camera_sizes_videos(videos)
 

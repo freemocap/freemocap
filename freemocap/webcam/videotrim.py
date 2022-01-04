@@ -22,8 +22,9 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
     postTrimmingTotalNumFrames = []
 
     for vid,cam,camNum in zip(vidList,camList,numCamRange): #iterate in parallel through camera identifiers and matching videos
-        print('Editing '+cam+' from ' +vid)
-        cap = cv2.VideoCapture(str(session.rawVidPath/vid)) #initialize OpenCV capture
+        this_vid_path = session.rawVidPath/vid
+        print('synchronizing video at - ' + str(this_vid_path))
+        cap = cv2.VideoCapture(str(this_vid_path)) #initialize OpenCV capture
         frameTable = ft[cam] #grab the frames needed for that camera
         success, image = cap.read() #start reading frames
         fourcc = cv2.VideoWriter_fourcc(*codec)

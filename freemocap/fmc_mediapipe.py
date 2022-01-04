@@ -26,6 +26,7 @@ def runMediaPipe(session, dummyRun=False):
                             ) as holistic:
 
         eachCamerasData = []  # Create an empty list that holds each cameras data
+        eachCameraResolution = {'Height':[],'Width':[]}
         for (  thisVidPath ) in ( session.syncedVidPath.iterdir() ):  # Run MediaPipe 'Holistic' (body, hands, face) tracker on each video in the raw video folder
             if ( thisVidPath.suffix.lower() == ".mp4" ):  # NOTE - at some point we should build some list of 'synced video names' and check against that
 
@@ -65,6 +66,10 @@ def runMediaPipe(session, dummyRun=False):
 
                             # load the next image (will break `while-loop` on the last frame)
                             success, image = cap.read()  # load next image from video
+
+                eachCameraResolution["Height"].append(image_height)
+                eachCameraResolution["Width"].append(image_width)
+
                 eachCamerasData.append(
                     mediaPipe_dataList
                 )  # Append that cameras data for every frame to the camera datalist
@@ -72,6 +77,7 @@ def runMediaPipe(session, dummyRun=False):
     session.image_height = image_height
     session.image_width = image_width
     session.mediaPipeData = eachCamerasData
+    session.eachCameraResolution = eachCameraResolution
 
 
 
@@ -214,8 +220,12 @@ def parseMediaPipe(session):
 
 
     # convert from normalized screen coordinates to pixel coordinates
-    mediaPipeData_nCams_nFrames_nImgPts_XYC[:, :, :, 0] *= session.image_width
-    mediaPipeData_nCams_nFrames_nImgPts_XYC[:, :, :, 1] *= session.image_height
+    for camera in range(numCams):
+        mediaPipeData_nCams_nFrames_nImgPts_XYC[camera, :, :, 0] *= session.eachCameraResolution['Width'][camera] 
+        mediaPipeData_nCams_nFrames_nImgPts_XYC[camera, :, :, 1] *= session.eachCameraResolution['Height'][camera] 
+
+
+
     mediaPipeData_nCams_nFrames_nImgPts_XYC[:, :, 34:, 2] = 1
 
     np.save(session.dataArrayPath / "mediaPipeData_2d.npy", mediaPipeData_nCams_nFrames_nImgPts_XYC,)

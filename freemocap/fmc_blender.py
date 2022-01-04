@@ -7,6 +7,7 @@ from pathlib import Path
 import csv
 from math import degrees
 
+
 # get arguments
 argv = sys.argv
 argv = argv[argv.index("--") + 1:] 
@@ -75,6 +76,7 @@ for index, col in enumerate(markers_list):
     if math.isnan(col[2]):
         col[2] = np.nan
     coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
+
         
     #empties
     bpy.ops.object.add(type='EMPTY', location=coord)  
@@ -172,9 +174,12 @@ def add_child_bone(bone_name, empty_child, empty_parent):
     #Create a new bone
     new_bone = armature_data.data.edit_bones.new(bone_name)
     #Set bone's size
-    new_bone.head = (0,0,0)
-    new_bone.tail = (0,0.1,0)
+
+    new_bone.head = (np.nan,np.nan,np.nan)
+    new_bone.tail = (np.nan,np.nan,np.nan)
+    #Set bone's location to wheel
     new_bone.matrix = empty_parent.matrix_world
+
     #set location of bone head
     new_bone.head =  empty_child.location
     #set location of bone tail
@@ -355,6 +360,7 @@ def my_handler(scene):
     #iterate through list of markers in this frame
     for col in markers_list:
         frame = scene.frame_current
+
         if math.isnan(col[0]) and math.isnan(col[1]) and math.isnan(col[2]):
            #marker was not tracked, pass
            pass
@@ -367,6 +373,7 @@ def my_handler(scene):
                 for index in range(len(virtual_markers)):
                     update_virtual_marker(index)
         current_marker += 1 
+
     
     #keyframe bones
     #Goes through each bone
@@ -402,8 +409,8 @@ def boneGeometry( l1, l2, x, z, baseSize, l1Size, l2Size, base ):
     x1 = x  * baseSize * l1Size * 0.8
     z1 = z  * baseSize * l2Size * 0.8
     
-    x2 = Vector( (0, 0, 0) )
-    z2 = Vector( (0, 0, 0) )
+    x2 = Vector( (np.nan, np.nan, np.nan) )
+    z2 = Vector( (np.nan, np.nan, np.nan) )
 
     verts = [
         l1 - x1 + z1,
@@ -738,6 +745,7 @@ for e in empties:
             
 #save blender file
 bpy.ops.wm.save_as_mainfile(filepath= sesh_path + sesh_ID + '.blend')
+
 
 #export FBX
 bpy.ops.export_scene.fbx(filepath= sesh_path + sesh_ID + '.fbx', path_mode='RELATIVE', bake_anim=True, use_selection=True, object_types={'MESH', 'ARMATURE', 'EMPTY'}, use_mesh_modifiers = False, add_leaf_bones = False, axis_forward = '-X', axis_up = 'Z', bake_anim_use_all_bones = False, bake_anim_use_nla_strips = False, bake_anim_use_all_actions = False, bake_anim_force_startend_keying = False) 

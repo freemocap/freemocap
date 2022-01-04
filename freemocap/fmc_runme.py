@@ -10,8 +10,10 @@ import time
 from aniposelib.boards import CharucoBoard
 
 import numpy as np
+from scipy.signal import savgol_filter
 
 from ruamel.yaml import YAML
+import cv2
 
 #Rich stuff
 from rich import print
@@ -59,7 +61,6 @@ def RunMe(sessionID=None,
         startFrame = 0,
         useBlender = False,
         resetBlenderExe = False,
-        pauseBetweenStages =1
         ):
     """ 
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -145,7 +146,7 @@ def RunMe(sessionID=None,
         console.rule(style="color({})".format(thisStage))        
         console.rule('Synchronizing Recorded Videos'.upper(),style="color({})".format(thisStage))    
         console.rule(style="color({})".format(thisStage))    
-        time.sleep(pauseBetweenStages)  
+        
         runcams.SyncCams(sesh, sesh.timeStampData,sesh.numCamRange,sesh.vidNames,sesh.camIDs)
         sesh.save_session()
     else:
@@ -161,6 +162,11 @@ def RunMe(sessionID=None,
         console.rule('See https://anipose.org for details', style="color({})".format(thisStage))  
         console.rule(style="color({})".format(thisStage))    
 
+        if sesh.numFrames is None:
+            a_sync_vid_path = list(sesh.syncedVidPath.glob('*.mp4'))
+            temp_cap =   cv2.VideoCapture(str(a_sync_vid_path[0]))
+            sesh.numFrames = temp_cap.get(cv2.CAP_PROP_FRAME_COUNT)
+            temp_cap.release()
 
         sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
 
@@ -207,31 +213,40 @@ def RunMe(sessionID=None,
         thisStage=4
         console.rule(style="color({})".format(thisStage))    
         console.rule('Starting 2D Point Trackers'.upper(),style="color({})".format(thisStage))  
-        stage4_msg ='This step implements various  computer vision that track the skeleton (and other objects) in the 2d videos, to produce the data that will be combined with the `camera projection matrices` from the calibration stage to produce the estimates of 3d movement. \n \n Each algorithm is different, but most involve using [bold magenta] convolutional neural networks [/bold magenta] trained from labeled videos to produce a 2d probability map of the likelihood that the tracked bodypart/object/feature (e.g. \'LeftElbow\') is in a given location. \n \n The peak of that distrubtion on each frame is recorded as the pixel-location of that item on that frame (e.g. \'LeftElbow(pixel-x, pixel-y, confidence\') where the a confidence value proportional to the underlying probability distribution (i.e. tall peaks in the probablitiy distribution -> high confidence that the LeftElbow actually is at this pixel-x, pixel-y location) \n \nThis part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible ✨'
+        stage4_msg ='This step implements various  computer vision that track the skeleton (and other objects) in the 2d videos, to produce the data that will be combined with the `camera projection matrices` from the calibration stage to produce the estimates of 3d movement. \n \n Each algorithm is different, but most involve using [bold magenta] convolutional neural networks [/bold magenta] trained from labeled videos to produce a 2d probability map of the likelihood that the tracked bodypart/object/feature (e.g. \'LeftElbow\') is in a given location. \n \n The peak of that distrubtion on each frame is recorded as the pixel-location of that item on that frame (e.g. \'LeftElbow(pixel-x, pixel-y, confidence\') where the a confidence value proportional to the underlying probability distribution (i.e. tall peaks in the probablitiy distribution indicate high confidence that the LeftElbow actually is at this pixel-x, pixel-y location) \n \nThis part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible ✨'
         console.print(Padding(stage4_msg, (1,4)), overflow="fold", justify='center',style="color({})".format(thisStage))
         console.rule(style="color({})".format(thisStage))      
-        time.sleep(pauseBetweenStages)  
+        
 
         if sesh.useMediaPipe:
             console.rule(style="color({})".format(thisStage))    
             console.rule('Running MediaPipe skeleton tracker - https://google.github.io/mediapipe', style="color({})".format(thisStage))    
             console.rule(style="color({})".format(thisStage))    
-            time.sleep(pauseBetweenStages)  
+            
 
             if runMediaPipe:
                 fmc_mediapipe.runMediaPipe(sesh)
+                sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
+                sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy            
 
-            sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
-            sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy            
+
+                smoothWinLength = 5
+                smoothOrder = 3
+                for dim in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[2]):
+                    for mm in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[1]):
+                        sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim] = savgol_filter(sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
+
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+
         sesh.save_session()
 
         if sesh.useOpenPose:
             console.rule(style="color({})".format(thisStage))    
             console.rule('Running OpenPose skeleton tracker - https://github.com/CMU-Perceptual-Computing-Lab/openpose', style="color({})".format(thisStage))    
             console.rule(style="color({})".format(thisStage))
-            time.sleep(pauseBetweenStages)      
+                
 
             fmc_openpose.runOpenPose(sesh, runOpenPose=runOpenPose)
             sesh.openPoseData_nCams_nFrames_nImgPts_XYC = fmc_openpose.parseOpenPose(sesh)
@@ -246,7 +261,7 @@ def RunMe(sessionID=None,
             console.rule(style="color({})".format(thisStage))    
             console.rule('Running DeepLabCut :mouse: - https://deeplabcut.org', style="color({})".format(thisStage))    
             console.rule(style="color({})".format(thisStage)) 
-            time.sleep(pauseBetweenStages)     
+               
 
             for vid in sesh.syncedVidPath.glob('*.mp4'):
                 sesh.syncedVidList.append(str(vid))
@@ -263,29 +278,34 @@ def RunMe(sessionID=None,
         print('Skipping 2d point tracking')
 
 
-
+    # %% Stage 5 - Use Blender to create output data files
     if stage <=5:
-        if useBlender == True:
-            thisStage=5
-            console.rule(style="color({})".format(thisStage))    
-            console.rule('Exporting Files...'.upper(), style="color({})".format(thisStage))    
-            console.rule('Hijacking Blender\'s file format converters to export FreeMoCap data as various file format (.blend, .usd, .gltf, .fbx)', style="color({})".format(thisStage))    
-            console.rule(style="color({})".format(thisStage))    
-            time.sleep(pauseBetweenStages)  
+        try:
+            if useBlender == True:
+                thisStage=5
+                console.rule(style="color({})".format(thisStage))    
+                console.rule('Exporting Files...'.upper(), style="color({})".format(thisStage))    
+                console.rule('Hijacking Blender\'s file format converters to export FreeMoCap data as various file format (.blend, .usd, .gltf, .fbx)', style="color({})".format(thisStage))    
+                console.rule(style="color({})".format(thisStage))    
+                
 
-            #blenderPath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
-            #os.chdir(blenderExePath)
-            output = subprocess.run([str(blenderPath), "--background", "--python", "fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
-            print(output)        
 
-    # %% Stage Five - Make  Animation
+                #blenderPath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
+                #os.chdir(blenderExePath)
+              output = subprocess.run([str(blenderPath), "--background", "--python", "fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
+                print(output)        
+        except:
+            console.print_exception()
+            
+
+    # %% Stage 6 - Make  Animation
     if stage <= 6:
         thisStage=6
         console.rule(style="color({})".format(thisStage))    
         console.rule('Creating the Skreleton animation!'.upper(),style="color({})".format(thisStage))    
-        console.print('The video creation is very slow. This whole animation maker is crazy slow, tbh. Sorry about that, future iterations will be better lol :sweat_smile:',overflow="fold", justify='center',style="color({})".format(thisStage))    
+        console.print('The video creation is very slow. All of the animation making code is crazy slow, tbh. Sorry about that, future iterations will be better lol :sweat_smile:',overflow="fold", justify='center',style="color({})".format(thisStage))    
         console.rule(style="color({})".format(thisStage))    
-        time.sleep(pauseBetweenStages)  
+        
         
 
         play_skeleton_animation.PlaySkeletonAnimation(

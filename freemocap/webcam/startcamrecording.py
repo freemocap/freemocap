@@ -73,15 +73,15 @@ def CamRecording(
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, resWidth)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, resHeight)
     cam.set(cv2.CAP_PROP_EXPOSURE, exposure)
+    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')) 
     fourcc = cv2.VideoWriter_fourcc(*codec)
     # rawPath = filepath/'RawVideos' #creating a RawVideos folder
     # rawPath.mkdir(parents = True, exist_ok = True)
     width = cam.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = cam.get(cv2.CAP_PROP_FRAME_HEIGHT)
     print("width:", width, "height:", height)
-    saveRawVidPath = str(
-        rawVidPath / videoName
-    )  # create a save path for each video to the RawVideos folders
+    saveRawVidPath = str( rawVidPath / videoName)  # create a save path for each video to the RawVideos folders
+    
     out = cv2.VideoWriter(saveRawVidPath, fourcc, framerate, (resWidth, resHeight))
     timeStamps = []  # holds the timestamps
 
@@ -90,9 +90,7 @@ def CamRecording(
     else:
         success = False
 
-    while (
-        success
-    ):  # while the camera is opened, record the data until the escape button is hit
+    while ( success):  # while the camera is opened, record the data until the escape button is hit
         if flag:  # when the flag is triggered, stop recording and dump the data
             with open(session.rawVidPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)
@@ -101,8 +99,8 @@ def CamRecording(
 
         cv2.imshow(camWindowName, frame)
         frame_sized = cv2.resize(frame, (resWidth, resHeight))
-        # frame_sized = frame
-        out.write(frame_sized)
+        frame_sized = frame
+        out.write(frame)
         timeStamps.append(time.time() - beginTime)  # add each timestamp to the list
 
         key = cv2.waitKey(20)

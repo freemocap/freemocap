@@ -2,22 +2,16 @@ import bpy
 import numpy as np 
 from pathlib import Path
 
-class FMC_OT_loadMarkerEmpties(bpy.types.Operator): #setting the type as "FMC" for "OpenMoCap"
+class FMC_OT_load_raw_mocap_data_as_bones(bpy.types.Operator): #setting the type as "FMC" for "FreeMoCap"
     """ Load marker data via FMC yaml config and place empties in Blender scene """
-    bl_idname = "fmc.load_marker_empties"
-    bl_label = "Load Marker Empties"
+    bl_idname = "fmc.load_raw_mocap_data_as_bones"
+    bl_label = "Load raw motion capture data as bones"
     bl_options = {'REGISTER', 'UNDO'}
 
-    emptyType: bpy.props.StringProperty(
-        name = 'Empty Type',
-        description = 'Type of empty to draw at marker locations (just `sphere` for now)',
-        default = 'SPHERE',
-    )
-
-    emptySize: bpy.props.FloatProperty(
-        name = 'Empty size',
-        description = 'Size of the empty markers',
-        default = .01,
+    bone_size: bpy.props.FloatProperty(
+        name = 'Bone size',
+        description = 'Size of the bones',
+        default = .2,
         min = 0, soft_max =1,
     )
 
@@ -136,30 +130,30 @@ class FMC_OT_loadMarkerEmpties(bpy.types.Operator): #setting the type as "FMC" f
         
         #%% _______________________________________________________________________
         # Skreleton data!
-        print('Loading Skeleton Markers!')
+        print('Loading raw motion capture data as bones!')
         face_iter = 0
 
-        for marNum in range(len(mediapipe_skel_fr_mar_xyz[startFr,:,0])):
-            
-            
+        # for marNum in range(len(mediapipe_skel_fr_mar_xyz[startFr,:,0])): #all dottos
+        for marNum in range(len(mediapipe_skel_marker_names)): #only the body                            
             
             thisMarLoc = mediapipe_skel_fr_mar_xyz[startFr,marNum,:]
             
             #these will define the size of teh body, hand, and face markers
-            bms = self.emptySize
+            bms = self.bone_size
             hms = bms *.5
             fms = bms *.5
 
-            emptyType = self.emptyType
+            
 
-            bpy.ops.object.empty_add(type=self.emptyType, align='WORLD', location=thisMarLoc, scale=(bms, bms, bms))
-            thisMarker = context.active_object
+            bpy.ops.object.armature_add(align='WORLD', location=thisMarLoc, scale=(bms, bms, bms))
+            this_bone = context.active_object
 
-            #get names of body markers from name array "skel_markerID" (and build hand and face names from there)
-            if marNum < len(mediapipe_skel_marker_names) :
-                thisMarker.name = mediapipe_skel_marker_names[marNum]
-                thisMarker.scale = (bms, bms, bms)
-            elif marNum < len(mediapipe_skel_marker_names) + 2*len(mediapipe_hand_marker_names):            
+            
+            if marNum < len(mediapipe_skel_marker_names) : #body 
+                this_bone.name = mediapipe_skel_marker_names[marNum]
+                this_bone.scale = (bms, bms, bms)
+                
+            elif marNum < len(mediapipe_skel_marker_names) + 2*len(mediapipe_hand_marker_names): #hands
                 
                 if marNum <  len(mediapipe_skel_marker_names) +len(mediapipe_hand_marker_names):         
                     this_hand_prefix = 'right_hand_'
@@ -169,25 +163,20 @@ class FMC_OT_loadMarkerEmpties(bpy.types.Operator): #setting the type as "FMC" f
                     this_hand_prefix = 'left_hand_'
                     marker_num_offset = len(mediapipe_skel_marker_names) + len(mediapipe_hand_marker_names)
                     
-                try:
-                    print('this hand marnum is ' + str(marNum-marker_num_offset))
-                    thisMarker.name = this_hand_prefix + mediapipe_hand_marker_names[marNum-marker_num_offset]
-                except:
-                    print('something weired in hand town for marker num' + str(marNum))
-                    f=9
+                this_bone.name = this_hand_prefix + mediapipe_hand_marker_names[marNum-marker_num_offset]
                     
-                thisMarker.scale=(hms, hms, hms)
+                this_bone.scale=(hms, hms, hms)
 
-            else:                
-                thisMarker.name = 'face_'+str(face_iter).zfill(4)
+            else:  #face
+                this_bone.name = 'face_'+str(face_iter).zfill(4)
                 face_iter += 1
-                thisMarker.scale=(fms, fms, fms)
+                this_bone.scale=(fms, fms, fms)
   
             #loop through each frame (after the first [0th] frame) to set the keyframes for this marker
             for fr in range(1, numFrames):
-                thisMarker.location = mediapipe_skel_fr_mar_xyz[fr,marNum,:]
-                thisMarker.keyframe_insert(data_path="location", frame=fr)
-            print('loaded marker: '+ thisMarker.name)
+                this_bone.location = mediapipe_skel_fr_mar_xyz[fr,marNum,:]
+                this_bone.keyframe_insert(data_path="location", frame=fr)
+            print('loaded marker: '+ this_bone.name)
             
         print('Done!')    
         return{'FINISHED'}        

@@ -16,13 +16,17 @@ def TestDevice(source):
     # print('Warning: unable to open video source: ', source)
 
     if cap.isOpened():
-        # print('Opened: ',source)
-        # print('Exposure: '+ str(cap.get(cv2.CAP_PROP_EXPOSURE)))
-        # time.sleep(3)
-        cap.release()
-        cv2.destroyAllWindows()
-        open_cam = source
-        return open_cam
+        success, image = cap.read()
+        if success:
+            # print('Opened: ',source)
+            # print('Exposure: '+ str(cap.get(cv2.CAP_PROP_EXPOSURE)))
+            # time.sleep(3)
+            cap.release()
+            cv2.destroyAllWindows()
+            open_cam = source
+            return open_cam
+        else:
+            return None
     else:
         return None
 

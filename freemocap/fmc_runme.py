@@ -275,7 +275,7 @@ def RunMe(sessionID=None,
 
             #blenderPath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
             #os.chdir(blenderExePath)
-            output = subprocess.run([str(blenderPath), "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy'), str(sesh.dataArrayPath)], capture_output=True, text=True, check=True)
+            output = subprocess.run([str(blenderPath), "--background", "--python", "fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
             print(output)        
 
     # %% Stage Five - Make  Animation

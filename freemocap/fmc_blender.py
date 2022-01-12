@@ -337,7 +337,7 @@ def my_handler(scene):
         #     col[1] = 0.0
         # if math.isnan(col[2]):
         #     col[2] = 0.0
-        coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
+        coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* 0.001))
         if len(order_of_markers) > 0:
             empty = order_of_markers[current_marker]
             empty.location = coord

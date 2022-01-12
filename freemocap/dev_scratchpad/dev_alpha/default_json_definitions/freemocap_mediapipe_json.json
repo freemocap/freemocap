@@ -1,5 +1,4 @@
 {
-  "mediapipe_skel_info": {
     "body": {
       "body_mass_segments": {
         "head": {
@@ -457,94 +456,280 @@
         "right_hip",
         "left_knee",
         "right_knee",
+        "right_ankle",
         "left_ankle",
         "left_heel",
         "right_heel",
         "left_foot_index",
         "right_foot_index"
-      ]
-    },
-    "hands": {
-      "body_segments": {
-        "constrain_length_bool": false,
-        "left_upper_arm": {
-          "parent": "left_shoulder",
-          "child": "left_elbow",
-          "anthropometric_definition": {
-            "proportional_length": 0.186,
-            "proportional_mass": 0.028,
-            "center_of_mass_proximal": 0.436,
-            "center_of_mass_distal": 0.564
+      ],
+      "tracked_point_to_rigify_fk_rig_bone_connections":{
+        "nose": {
+          "head": {
+            "track_type":"bone_tail",
+            "weight":1.0
           },
-          "spherical_joint_limits": {
-            "azimuth": [
-              0,
-              360
-            ],
-            "elevation": [
-              0,
-              360
-            ]
-          }
+        "left_eye_inner": {},
+        "left_eye": {},
+        "left_eye_outer": {},
+        "right_eye_inner": {},
+        "right_eye": {},
+        "right_eye_outer": {},
+        "left_ear": {},
+        "right_ear": {},
+      "mouth_left": {},
+      "mouth_right": {},
+      "left_shoulder": {
+        "shoulder.L": {
+          "track_type":"bone_tail",
+          "weight":1.0  
         },
-        "etc": {}
-      },
-      "virtual_markers": {
-        "neck": {
-          "left_shoulder": 0.5,
-          "right_shoudler": 0.5
-        },
-        "center_of_mass": {
-          "etc": 0.9
+        "upper_arm.L": {
+          "track_type":"bone_head",
+          "weight":1.0  
         }
       },
-      "dotto_names": [
-        "nose",
-        "left_eye_inner",
-        "butt",
-        "etc"
-      ]
-    },
-    "face": {
-      "body_segments": {
-        "constrain_length_bool": false,
-        "left_upper_arm": {
-          "parent": "left_shoulder",
-          "child": "left_elbow",
-          "anthropometric_definition": {
-            "proportional_length": 0.186,
-            "proportional_mass": 0.028,
-            "center_of_mass_proximal": 0.436,
-            "center_of_mass_distal": 0.564
-          },
-          "spherical_joint_limits": {
-            "azimuth": [
-              0,
-              360
-            ],
-            "elevation": [
-              0,
-              360
-            ]
-          }
+      "right_shoulder": {
+        "shoulder.R": {
+          "track_type":"bone_tail",
+          "weight":1.0  
         },
-        "etc": {}
-      },
-      "virtual_markers": {
-        "neck": {
-          "left_shoulder": 0.5,
-          "right_shoudler": 0.5
-        },
-        "center_of_mass": {
-          "etc": 0.9
+        "upper_arm.R": {
+          "track_type":"bone_head",
+          "weight":1.0  
         }
       },
-      "dotto_names": [
-        "nose",
-        "left_eye_inner",
-        "butt",
-        "etc"
-      ]
+      "left_elbow": {
+        "upper_arm.L": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "forearm.L": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "right_elbow": {
+        "upper_arm.R": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "forearm.R": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "left_wrist": {
+        "forearm.L": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "hand.L": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "right_wrist": {
+        "forearm.R": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "hand.R": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "left_pinky": {
+        "hand.L": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        }
+      },
+      "right_pinky": {
+        "hand.R": {
+          "track_type":"bone_tail",
+          "weight":1.0          
+        }
+      },
+      "left_index": {},
+      "right_index": {},
+      "left_thumb": {},
+      "right_thumb": {},
+      "left_hip": {
+        "pelvis.L": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "thigh.L": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "right_hip": {
+        "pelvis.R": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "thigh.R": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "left_knee": {
+        "thigh.L": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "shin.L": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "right_knee": {
+        "shin.R": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "foot.R": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "right_ankle": {
+        "shin.R": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "foot.R": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "left_ankle": {
+        "shin.L": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "foot.L": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "left_heel": {
+        "foot.L": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "toe.L": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "right_heel": {
+        "foot.R": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        },
+        "toe.R": {
+          "track_type":"bone_head",
+          "weight":1.0  
+        }
+      },
+      "left_foot_index": {
+        "toe.L": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        }
+      },
+      "right_foot_index":{
+        "toe.R": {
+          "track_type":"bone_tail",
+          "weight":1.0  
+        }
+      }
     }
+  }
+},
+  "hands": {
+    "body_segments": {
+      "constrain_length_bool": false,
+      "left_upper_arm": {
+        "parent": "left_shoulder",
+        "child": "left_elbow",
+        "anthropometric_definition": {
+          "proportional_length": 0.186,
+          "proportional_mass": 0.028,
+          "center_of_mass_proximal": 0.436,
+          "center_of_mass_distal": 0.564
+        },
+        "spherical_joint_limits": {
+          "azimuth": [
+            0,
+            360
+          ],
+          "elevation": [
+            0,
+            360
+          ]
+        }
+      },
+      "etc": {}
+    },
+    "virtual_markers": {
+      "neck": {
+        "left_shoulder": 0.5,
+        "right_shoudler": 0.5
+      },
+      "center_of_mass": {
+        "etc": 0.9
+      }
+    },
+    "dotto_names": [
+      "nose",
+      "left_eye_inner",
+      "butt",
+      "etc"
+    ]
+  },
+  "face": {
+    "body_segments": {
+      "constrain_length_bool": false,
+      "left_upper_arm": {
+        "parent": "left_shoulder",
+        "child": "left_elbow",
+        "anthropometric_definition": {
+          "proportional_length": 0.186,
+          "proportional_mass": 0.028,
+          "center_of_mass_proximal": 0.436,
+          "center_of_mass_distal": 0.564
+        },
+        "spherical_joint_limits": {
+          "azimuth": [
+            0,
+            360
+          ],
+          "elevation": [
+            0,
+            360
+          ]
+        }
+      },
+      "etc": {}
+    },
+    "virtual_markers": {
+      "neck": {
+        "left_shoulder": 0.5,
+        "right_shoudler": 0.5
+      },
+      "center_of_mass": {
+        "etc": 0.9
+      }
+    },
+    "dotto_names": [
+      "nose",
+      "left_eye_inner",
+      "butt",
+      "etc"
+    ]
   }
 }

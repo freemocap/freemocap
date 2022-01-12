@@ -316,7 +316,7 @@ class FMC_MultiCamera:
             self.multi_cam_tuple_queue.put(this_multi_cam_tuple, np.mean(these_timestamps))
             
             
-            # rich_console.log('Created a multi_cam_tuple - queue size: {}'.format(self.multi_cam_tuple_queue.qsize()))
+            rich_console.log('Created a multi_cam_tuple - queue size: {}'.format(self.multi_cam_tuple_queue.qsize()))
         
     
     def stitch_multicam_image(self, multi_cam_tuple):

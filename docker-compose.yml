@@ -7,5 +7,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "57000:8080"
+    command:
+      - "./bin/run_uvicorn_server.sh"
     volumes:
       - .:/workspace

@@ -12,9 +12,9 @@ from tqdm import trange
 from pprint import pprint
 import time
 
-from .boards import merge_rows, extract_points, \
+from aniposelib.boards import merge_rows, extract_points, \
     extract_rtvecs, get_video_params
-from .utils import get_initial_extrinsics, make_M, get_rtvec, \
+from aniposelib.utils import get_initial_extrinsics, make_M, get_rtvec, \
     get_connections
 
 @jit(nopython=True, parallel=True)

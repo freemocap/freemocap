@@ -36,8 +36,18 @@ order_of_markers = []
 bpy.context.scene.render.fps = 30
 
 #dictionary corresponding to marker numbers and body parts
-body_dict = {
-    0:"head1", 
+mediapipe_tracked_point_names = {
+    0:"nose",
+    1:"left_eye_inner",
+    2:"left_eye",
+    3:"left_eye_outer",
+    4:"right_eye_inner",
+    5:"right_eye",
+    6:"right_eye_outer",
+    7:"left_ear",
+    8:"right_ear",
+    9:"mouth_left",
+    10:"mouth_right",
     11:"shoulder_L", 
     12:"shoulder_R", 
     13:"elbow_L", 
@@ -59,7 +69,7 @@ body_dict = {
 bpy.context.scene.unit_settings.length_unit = 'METERS'
 
 #create sub-collection of empties
-cname = "Empty_Objects"
+cname = "mediapipe_empty_objects"
 empty_collection = bpy.data.collections.new(cname)
 bpy.data.collections.get("Collection").children.link(empty_collection)
 master_collection = bpy.data.collections.get("Collection")
@@ -75,15 +85,24 @@ for index, col in enumerate(markers_list):
         col[1] = np.nan
     if math.isnan(col[2]):
         col[2] = np.nan
-    coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
+    coord = Vector(((float(col[0])*0.001), (float(col[1])*0.001), (float(col[2]))* 0.001))
 
         
     #empties
     bpy.ops.object.add(type='EMPTY', location=coord)  
     this_empty = bpy.context.active_object  
-    this_empty.name = "mt_" + str(index)
-    if index in body_dict.keys():
-        this_empty.name += "_" + str(body_dict[index])
+    this_empty.name = "empty_" + str(index)
+    
+    if index in mediapipe_tracked_point_names.keys():
+        this_empty.name += "_" + str(mediapipe_tracked_point_names[index])
+    else:
+        if index > 32 and index < 54:
+            this_empty.name += "_" + str("right_hand")
+        elif index >= 54 and index < 76:
+            this_empty.name += "_" + str("left_hand")
+        else:
+            this_empty.name += "_" + str("face")
+            
     order_of_markers.append(this_empty)
 
     #link this empty to the scene's Empty collection
@@ -143,12 +162,12 @@ def update_virtual_data(relationship, surrounding, vweights, vname):
 #Neck Base: Halfway between order_of_markers[12] shoulder_L and order_of_markers[12] shoulder_R
 l0 = [order_of_markers[12], order_of_markers[11]]
 w0 = [0.5, 0.5]
-update_virtual_data("weight", l0, w0, "mt_neck")
+update_virtual_data("weight", l0, w0, "empty_neck")
 
 #Waist Base: Halfway between order_of_markers[24] and order_of_markers[23] 
 l0 = [order_of_markers[24], order_of_markers[23]]
 w0 = [0.5, 0.5]
-update_virtual_data("weight", l0, w0, "mt_waist")
+update_virtual_data("weight", l0, w0, "empty_waist")
 
 #Update the location of virtual markers on each frame
 def update_virtual_marker(index):
@@ -363,10 +382,12 @@ def my_handler(scene):
 
         if math.isnan(col[0]) and math.isnan(col[1]) and math.isnan(col[2]):
            #marker was not tracked, pass
+           nan_frame = True
            pass
         else:
            #Flip y and z coordinates, and negate y to account for different coordinate system
-           coord = Vector(((float(col[0])*0.001), (float(col[2])*0.001), (float(col[1]))* -0.001))
+           nan_frame = False
+           coord = Vector(((float(col[0])*0.001), (float(col[1])*0.001), (float(col[2]))* 0.001))
            if len(order_of_markers) > 0:
                 empty = order_of_markers[current_marker]
                 empty.location = coord
@@ -377,12 +398,13 @@ def my_handler(scene):
     
     #keyframe bones
     #Goes through each bone
-    for editBone in get_armature().data.edit_bones:
-        boneName = editBone.name
-        poseBone = arm.pose.bones[boneName]
-        poseBone.keyframe_insert('rotation_euler', frame=scene.frame_current)
-        poseBone.keyframe_insert('location', frame=scene.frame_current)
-        poseBone.keyframe_insert('scale', frame=scene.frame_current)
+    if not nan_frame:
+        for editBone in get_armature().data.edit_bones:
+            boneName = editBone.name
+            poseBone = arm.pose.bones[boneName]
+            poseBone.keyframe_insert('rotation_euler', frame=scene.frame_current)
+            poseBone.keyframe_insert('location', frame=scene.frame_current)
+            poseBone.keyframe_insert('scale', frame=scene.frame_current)
 
 #-----------------------------------------------------------------------------------
 #script to create a mesh of the armature 

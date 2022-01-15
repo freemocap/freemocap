@@ -47,3 +47,4 @@ To learn React, check out the [React documentation](https://reactjs.org/).
 ## Relevant links
 
 - https://web.dev/how-to-use-local-https/
+- https://stackoverflow.com/questions/27420581/get-maximum-video-resolution-with-getusermedia

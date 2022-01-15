@@ -1,11 +1,11 @@
 import * as React from 'react';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import {createTheme, ThemeProvider} from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Box from '@mui/material/Box';
-import { Navigator } from './Navigator';
+import {Navigator} from './Navigator';
 import {Copyright} from "./Copyright";
-import {EmptyContent} from "./EmptyContent";
-
+import {BaseContent} from "./content/BaseContent";
+import {BrowserRouter} from 'react-router-dom';
 
 let theme = createTheme({
   palette: {
@@ -152,7 +152,7 @@ theme = {
 
 const drawerWidth = 256;
 
-export const Paperbase = function() {
+export const Paperbase = function () {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const isSmUp = useMediaQuery(theme.breakpoints.up('sm'));
 
@@ -162,33 +162,35 @@ export const Paperbase = function() {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <Box
-          component="nav"
-          sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-        >
-          {isSmUp ? null : (
+      <BrowserRouter>
+        <Box sx={{display: 'flex', minHeight: '100vh'}}>
+          <Box
+            component="nav"
+            sx={{width: {sm: drawerWidth}, flexShrink: {sm: 0}}}
+          >
+            {isSmUp ? null : (
+              <Navigator
+                PaperProps={{style: {width: drawerWidth}}}
+                variant="temporary"
+                open={mobileOpen}
+                onClose={handleDrawerToggle}
+              />
+            )}
             <Navigator
-              PaperProps={{ style: { width: drawerWidth } }}
-              variant="temporary"
-              open={mobileOpen}
-              onClose={handleDrawerToggle}
+              PaperProps={{style: {width: drawerWidth}}}
+              sx={{display: {sm: 'block', xs: 'none'}}}
             />
-          )}
-          <Navigator
-            PaperProps={{ style: { width: drawerWidth } }}
-            sx={{ display: { sm: 'block', xs: 'none' } }}
-          />
-        </Box>
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <Box component="main" sx={{ flex: 1, bgcolor: '#eaeff1' }}>
-            <EmptyContent />
           </Box>
-          <Box component="footer" sx={{ p: 2, bgcolor: '#eaeff1' }}>
-            <Copyright />
+          <Box sx={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+            <Box component="main" sx={{flex: 1, bgcolor: '#eaeff1'}}>
+              <BaseContent />
+            </Box>
+            <Box component="footer" sx={{p: 2, bgcolor: '#eaeff1'}}>
+              <Copyright />
+            </Box>
           </Box>
         </Box>
-      </Box>
+      </BrowserRouter>
     </ThemeProvider>
   );
 }

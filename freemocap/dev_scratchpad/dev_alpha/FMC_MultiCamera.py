@@ -10,7 +10,6 @@
 #Font - ANSI Regular - https://patorjk.com/software/taag/#p=display&f=ANSI%20Regular&t=Play%20Skeleton%20Animation
 
 
-
 from rich.repr import T
 from FMC_Camera import FMC_Camera
 
@@ -558,7 +557,7 @@ if __name__ == '__main__':
         freemocap_data_path = Path('/Users/jon/Dropbox/FreeMoCapProject')
 
     try:
-        multi_cam = FMC_MultiCamera(freemocap_data_folder=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
+        multi_cam = FMC_MultiCamera(freemocap_data_folder=str(freemocap_data_path), save_each_cam_to_mp4 = True, rotation_codes_list=in_rotation_codes_list)
         multi_cam.start(standalone_mode=True)        
                                  
     except Exception:

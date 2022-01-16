@@ -25,9 +25,9 @@ from rich.console import Console
 
 
 cap_default_parameters_dict = {
-                            'exposure': -6,
-                            'cap_resolution_width': 640,
-                            'cap_resolution_height': 480,
+                            'exposure': -5,
+                            'cap_resolution_width': 1280,
+                            'cap_resolution_height': 720,
                             }
 
 class FMC_Camera:

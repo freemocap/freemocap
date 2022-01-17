@@ -8,7 +8,8 @@ import glob
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import yaml
+from ruamel.yaml import YAML
+
 from pathlib import Path
 import h5py
 
@@ -19,7 +20,8 @@ def parseDeepLabCut(
 ):  # NOTE this is assuming both the dlc config file and dlc data h5 foles are in the same folder specified in the session.dlcDataPath, if that is not the case either dlcconfig or h5files variable need to be changed
 
     dlcConfig = config_path # File path for dlcConfig file
-
+    yaml=YAML()
+    
     with open(dlcConfig) as configFile:
         # Open the config file
         configList = yaml.load(configFile, Loader=yaml.FullLoader)

@@ -42,7 +42,7 @@ setup(
     name="freemocap",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description="The FreeMoCap Project: A free-and-open-source, hardware-and-software-agnostic, research-grade, minimal-cost motion capture system and platform for decentralized scientific research, education, and training",
+    description="The FreeMoCap Project: A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture system and platform for decentralized scientific research, education, and training",
     long_description=readme,
     author="Jonathan Samir Matthis",
     author_email="jonmatthis@gmail.com",
@@ -63,7 +63,10 @@ setup(
         ]
     },
     install_requires=requirements,
-    license="BSD (3-clause)",
+    extras_require={"dlc": ["tensorflow-gpu>=2.0",
+                            "tf_slim>=1.1.0",
+                            "deeplabcut>=2.2",]},
+    license="AGPLv3",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Natural Language :: English",

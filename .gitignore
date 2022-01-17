@@ -6,6 +6,7 @@ Data/
 *.py[cod]
 *$py.class
 FreeMoCap_Data/
+freemocap\user_preferences.yaml
 
 # C extensions
 *.so
@@ -134,6 +135,6 @@ dmypy.json
 .vscode/launch.json
 
 
-# other
-src/
-FreeMoCap_Data/sesh_21-07-13_110238/RawVideos/sesh_21-07-13_110238_timestamps.csv
+update_pip.txt
+freemocap/user_preferences.yaml
+freemocap/fmc_startup/user_preferences.yaml

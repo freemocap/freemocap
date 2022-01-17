@@ -12,5 +12,7 @@ recursive-include docs *.rst conf.py Makefile make.bat
 include versioneer.py
 include freemocap/_version.py
 
+include freemocap/logo/*
 # If including data files in the package, add them like:
 # include path/to/data_file
+

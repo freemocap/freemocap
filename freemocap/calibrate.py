@@ -11,17 +11,25 @@ from rich.progress import track
 
 
 
-def CalibrateCaptureVolume(session,board):
-    
+def CalibrateCaptureVolume(session,board, calVideoFrameLength = 120):
+    """ 
+    Check if a previous calibration yaml exists, and if not, create a set of shortened calibration videos and run Anipose functions
+    to create a calibration yaml. Takes the 2D charuco board points and reconstructs them into 3D points that are saved out
+    into the DataArrays folder
+    """  
     session.calVidPath.mkdir(exist_ok = True)
     session.dataArrayPath.mkdir(exist_ok = True)
 
-    calVideoFrameLength = 60
-    createCalibrationVideos(session, calVideoFrameLength)
+    if calVideoFrameLength < 0:
+        calVideoFrameLength = session.numFrames
+        calibrationVideoPath = session.syncedVidPath
+    else:    
+        createCalibrationVideos(session, calVideoFrameLength)
+        calibrationVideoPath = session.calVidPath
 
     vidnames = []
     cam_names = []
-    for count, thisVidPath in enumerate(session.calVidPath.glob("*.mp4"), start=1):
+    for count, thisVidPath in enumerate(calibrationVideoPath.glob("*.mp4"), start=1):
         vidnames.append([str(thisVidPath)])
         cam_names.append(str(count))
         session.numCams = count
@@ -46,83 +54,45 @@ def CalibrateCaptureVolume(session,board):
     """Takes as input a list of list of video filenames, one list of each camera.
     Also takes a board which specifies what should be detected in the videos"""
 
-    all_rows = cgroup.get_rows_videos(vidnames, board, verbose=True)
+    error,charuco_data, charuco_frames = cgroup.calibrate_videos(vidnames, board)
+    cgroup.dump(session.cameraCalFilePath) #JSM NOTE  - let's just use .yaml's unless there is some reason to use .toml
 
-    cgroup.set_camera_sizes_videos(vidnames)
-
-    if session.debug:
-        fig = plt.figure(47290)
-        for camNum in range(len(all_rows)):
-            ax = fig.add_subplot(2, 2, camNum + 1)
-            # cap = cv2.VideoCapture(vidnames[camNum][0]) #this is crazy inefficient - we should save out the first image somewhere and save it in an accessible location
-            # ret, frame = cap.read()
-            # plt.imshow(frame)
-            # cap.release()
-            for frNum in range(len(all_rows[camNum])):
-                corners = np.squeeze(all_rows[camNum][frNum]["filled"])
-                plt.plot(corners[:, 0], corners[:, 1], ".-")
-            # xmin = np.nanmin(corners[:,0])*.9
-            # xmax = np.nanmax(corners[:,0])*1.1
-            # ymin = np.nanmin(corners[:,1])*.9
-            # ymax = np.nanmax(corners[:,1])*1.1
-            # ax.set_xlim(xmin, xmax)
-            # ax.set_xlim(ymin, ymax)
-        plt.show()
-
-    #%% This next bit is a copy-paste of the inner bits of `cgroup.calibrate_videos` - Part 2 of 2
-    # error, merged = cgroup.calibrate_rows(all_rows, board,
-    #                            init_intrinsics=True,
-    #                            init_extrinsics=True)
-    #%% End of the copy-paste of the inner bits of `cgroup.calibrate_videos` - END
-
-
-    #JSM NOTE - need add method to extract Charuco board points from the calibrate_videos pipeline
-
-        ## if you need to save and load
-        ## example saving and loading for later
-    if not session.cameraCalFilePath.is_file(): 
-        error,merged = cgroup.calibrate_videos(vidnames, board)
-        cgroup.dump(session.cameraCalFilePath) #JSM NOTE  - let's just use .yaml's unless there is some reason to use .toml
-        mergename = session.dataArrayPath/'charuco_2d_points.npy'
-        np.save(mergename,merged)
-    else: 
-        cgroup = CameraGroup.load(session.cameraCalFilePath) #load previous calibration config
 
 
     session.cgroup = cgroup
-    n_frames = 40
+    n_frames = calVideoFrameLength
     startframe = 0
     n_trackedPoints = 24
     framelist = range(startframe, startframe + n_frames)
 
-    charucoarray = np.empty([session.numCams, n_frames, n_trackedPoints, 1, 2])
-    charucoarray[:] = np.nan
-
-    data = np.load(session.dataArrayPath/'charuco_2d_points.npy',allow_pickle = True)
+    charuco_nCams_nFrames_nImgPts_XY = np.empty([session.numCams, n_frames, n_trackedPoints,  2])
+    charuco_nCams_nFrames_nImgPts_XY[:] = np.nan
 
     for cam in range(session.numCams):
-        for count, frame in enumerate(framelist):
+        for charCount, thisCharFrame in enumerate(charuco_frames):
             try:
-                charucoarray[cam][count] = data[frame][cam]["filled"]
+                charuco_nCams_nFrames_nImgPts_XY[cam, thisCharFrame, :,:] = np.squeeze(charuco_data[charCount][cam]["filled"])
             except:
-                print("failed frame:", frame)
+                # print("failed frame:", frame)
                 continue
-    charuco_nCams_nFrames_nImgPts_XY = np.squeeze(np.array(charucoarray))
+    
+    charuco2d_filename = session.dataArrayPath/'charuco_2d_points.npy'
+    np.save(charuco2d_filename,charuco_nCams_nFrames_nImgPts_XY)
 
     session.charuco_nCams_nFrames_nImgPts_XY = charuco_nCams_nFrames_nImgPts_XY
 
-    charuco_fr_mar_dim = reconstruct3D.reconstruct3D(
+    charuco_fr_mar_xyz, charuco_reprojErr= reconstruct3D.reconstruct3D(
         session, charuco_nCams_nFrames_nImgPts_XY
     )
 
-    mean_charuco_fr_mar_dim = np.nanmean(charuco_fr_mar_dim, axis=0)
+    mean_charuco_fr_mar_xyz = np.nanmean(charuco_fr_mar_xyz, axis=0)
 
     # charry_reshaped = charucoarray.reshape(session.numCams, -1, 2)
 
     # char_flat = cgroup.triangulate(charry_reshaped, progress=True)
     # charReprojerr_flat = cgroup.reprojection_error(char_flat, charry_reshaped, mean=True)
 
-    # char_fr_mar_dim = char_flat.reshape(n_frames, n_trackedPoints, 3)
+    # char_fr_mar_xyz = char_flat.reshape(n_frames, n_trackedPoints, 3)
     # charReprojErr_fr_mar_err = charReprojerr_flat.reshape(n_frames, n_trackedPoints)
 
     if session.debug:
@@ -130,9 +100,9 @@ def CalibrateCaptureVolume(session,board):
         # mean charuco position
         ax1 = fig.add_subplot(111, projection="3d")
         ax1.cla()
-        x = mean_charuco_fr_mar_dim[:][:, 0]
-        y = mean_charuco_fr_mar_dim[:][:, 1]
-        z = mean_charuco_fr_mar_dim[:][:, 2]
+        x = mean_charuco_fr_mar_xyz[:][:, 0]
+        y = mean_charuco_fr_mar_xyz[:][:, 1]
+        z = mean_charuco_fr_mar_xyz[:][:, 2]
         mx = np.nanmean(x)
         my = np.nanmean(y)
         mz = np.nanmean(z)
@@ -165,18 +135,23 @@ def CalibrateCaptureVolume(session,board):
         # #charuco points over time
         # ax2 = fig.add_subplot(122)
         # ax2.cla()
-        # numPts = charuco_fr_mar_dim.shape[1]
+        # numPts = charuco_fr_mar_xyz.shape[1]
         # for pp in range(numPts):
-        #     ax2.plot(charuco_fr_mar_dim[:,pp,:])
+        #     ax2.plot(charuco_fr_mar_xyz[:,pp,:])
         # ax2.set_title('Charuco Point positions over time')
         plt.show()
 
-    path_to_charuco_array = session.dataArrayPath/'charuco_3d_points.npy'
-    np.save(path_to_charuco_array, mean_charuco_fr_mar_dim)
-    return cgroup, mean_charuco_fr_mar_dim
+    np.save(session.dataArrayPath/'charuco_3d_points.npy', charuco_fr_mar_xyz)
+    np.save(session.dataArrayPath/'charuco_3d_reprojErr.npy', charuco_reprojErr)
+
+    return cgroup, charuco_fr_mar_xyz
 
 
 def createCalibrationVideos(session, calVideoFrameLength):
+    """ 
+    Based on the desired length of the calibration videos (for the anipose functions), create new videos trimmed 
+    to that specific length
+    """  
     vidList = os.listdir(session.syncedVidPath)
     framelist = list(range(calVideoFrameLength))
     codec = "DIVX"

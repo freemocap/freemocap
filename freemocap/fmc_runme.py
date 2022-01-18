@@ -42,6 +42,7 @@ from freemocap import (
 
 thisStage = 0 #global
 
+# TODO: Replace the below functions with the RunMe options.
 def RunMe(sessionID=None,
         stage=1,
         useOpenPose=False, 

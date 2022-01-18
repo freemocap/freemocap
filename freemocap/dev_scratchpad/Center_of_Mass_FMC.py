@@ -121,12 +121,13 @@ with mp_pose.Pose(min_detection_confidence=0.7, min_tracking_confidence=0.7) as 
             # COM of Hands, creating third metacarple point by taking 1/3 of the disatance of the segment between index and pinky landmarks
             # then adding that distance to the index. Palm segment will be from wrist joint to 3rd metacarple joint.
             # dictionary values arranged in [wrist, index, pinky, com_proximal_multiplier, com_x, com_y] in that order. 
+            fmc_COM_array = np.empty()
             Hands = {
                 'L_hand' : [landmarks[15], landmarks[19], landmarks[17], hand_multiplier_f, 0, 0],
                 'R_hand' : [landmarks[16],landmarks[20], landmarks[18], hand_multiplier_f, 0, 0],
                 
             }
-            Hands_2 = {}
+            #Hands_2 = {}
             for key in Hands:
                 #Knuckle_width is defined as the segment from the distal ends of the second to fifth metacarples (index to pinky landmarks)
                 wrist_x = Hands[key][0].x

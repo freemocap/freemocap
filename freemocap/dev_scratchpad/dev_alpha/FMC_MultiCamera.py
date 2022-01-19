@@ -553,6 +553,8 @@ if __name__ == '__main__':
         in_rotation_codes_list = ['cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', ]
     elif this_computer_name == 'DESKTOP-DCG6K4F':
         freemocap_data_path = Path(r'C:\Users\jonma\Dropbox\FreeMoCapProject\FreeMocap_Data')
+    elif this_computer_name == 'DESKTOP-V3D343U':
+        freemocap_data_path = Path(r'C:\Users\WindowsPC_Hallway\Dropbox\FreeMoCapProject\FreeMocap_Data')
     elif this_computer_name == 'Jons-MacBook-Pro.local':
         freemocap_data_path = Path('/Users/jon/Dropbox/FreeMoCapProject')
 

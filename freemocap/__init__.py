@@ -43,4 +43,3 @@ def RunDemo():
     """  
     sample_data_location, sample_data_name = fmc_demo.DemoSetup() #run a bunch of GUIs, get the location of the directory where the data folder with the sample data is 
     #fmc_runme.RunMe(sessionID = sample_data_name,stage = 5,useOpenPose = False, useMediaPipe = True,useDLC = True, userDataPath = sample_data_location)
-

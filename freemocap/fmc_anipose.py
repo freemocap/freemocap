@@ -1548,6 +1548,7 @@ class CameraGroup:
             if init_intrinsics:
                 objp, imgp = board.get_all_calibration_points(rows)
                 mixed = [(o, i) for (o, i) in zip(objp, imgp) if len(o) >= 7]
+                assert len(objp) != 0 and len(imgp) != 0, "No Charuco board points detected"
                 objp, imgp = zip(*mixed)
                 matrix = cv2.initCameraMatrix2D(objp, imgp, tuple(size))
                 camera.set_camera_matrix(matrix)
@@ -1555,6 +1556,7 @@ class CameraGroup:
         for i, (row, cam) in enumerate(zip(all_rows, self.cameras)):
             all_rows[i] = board.estimate_pose_rows(cam, row)
 
+        charuco_frames = [f['framenum'][1] for f in all_rows[0]]
         merged = merge_rows(all_rows)
         imgp, extra = extract_points(merged, board, min_cameras=2)
 
@@ -1562,13 +1564,13 @@ class CameraGroup:
             rtvecs = extract_rtvecs(merged)
             if verbose:
                 pprint(get_connections(rtvecs, self.get_names()))
-            rvecs, tvecs = get_initial_extrinsics(rtvecs, self.get_names())
+            rvecs, tvecs = get_initial_extrinsics(rtvecs)
             self.set_rotations(rvecs)
             self.set_translations(tvecs)
 
         error = self.bundle_adjust_iter(imgp, extra, verbose=verbose, **kwargs)
 
-        return error
+        return error,merged,charuco_frames 
 
     def get_rows_videos(self, videos, board, verbose=True):
         all_rows = []
@@ -1602,11 +1604,11 @@ class CameraGroup:
         if init_extrinsics:
             self.set_camera_sizes_videos(videos)
 
-        error = self.calibrate_rows(all_rows, board,
+        error,merged,charuco_frames = self.calibrate_rows(all_rows, board,
                                     init_intrinsics=init_intrinsics,
                                     init_extrinsics=init_extrinsics,
                                     verbose=verbose, **kwargs)
-        return error, all_rows
+        return error, merged, charuco_frames
 
     def get_dicts(self):
         out = []

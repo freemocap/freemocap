@@ -17,3 +17,5 @@ uvicorn==0.16.0
 fastapi==0.71.0
 gunicorn==20.1.0
 requests==2.27.1
+# opencv-python-headless==4.5.5.62
+# opencv-python

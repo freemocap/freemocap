@@ -28,7 +28,7 @@ def runOpenPose(session, runOpenPose=False):
         session.syncedVidPath.iterdir()
     ):  # Run OpenPose ('Windows Portable Demo') on each video in the raw video folder
         if (
-            thisVidPath.suffix == ".mp4"
+            thisVidPath.suffix == ".mp4" or thisVidPath.suffix == ".MP4"
         ):  # NOTE - build some list of 'synced video names' and check against that
             print("OpenPosing: ", thisVidPath.name)
             vidPath = session.openPoseDataPath / thisVidPath.stem
@@ -50,10 +50,6 @@ def runOpenPose(session, runOpenPose=False):
                         str(thisVidPath),
                         "--write_json",
                         str(jsonPath),
-                        "--write_images",
-                        str(imgPath),
-                        "--write_images_format",
-                        "png",
                         "--net_resolution",
                         "-1x320",
                         "--hand",
@@ -121,13 +117,13 @@ def parseOpenPose(session):
     ## %% 
     ## load in data from json files
     #numFrames = int(len(list(Path(session.openPose_jsonPathList[0]).glob('*')))) #lol
-    numFrames = session.numFrames
+    numFrames = int(session.numFrames)
     numMarkers= int(int(len(dataFrameHeader)/3))
-    numCams = int(session.numCams)
+    numCams = int(session.numCams) #rebuilding numCams here instead of using session.numCams in case 
 
     openPoseData_nCams_nFrames_nImgPts_XYC = np.ndarray([numCams,numFrames,numMarkers,3]) #hardcoding for now because I am a bad person
 
-    for thisCams_JsonFolderPath in track(session.openPose_jsonPathList, description='Parsing json\'s into a dataframe (per cam)' ):
+    for thisCams_JsonFolderPath in track(session.openPose_jsonPathList, description='Parsing json\'s intow a dataframe (per cam)' ):
         thisCamNum += 1
         # print('Parsing into a dataframe: ', thisCams_JsonFolderPath.name )
         jsonPaths = sorted(Path(thisCams_JsonFolderPath).glob('*.json')) #glob is a "generator(?)" for paths to all the jason for THIS camara            

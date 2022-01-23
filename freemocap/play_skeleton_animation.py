@@ -63,12 +63,17 @@ def PlaySkeletonAnimation(
     vidType=1,
     startFrame=0,
     azimuth=-90,
-    elevation=-61,
+    elevation=-70,
     useOpenPose=True,
     useMediaPipe=False,
     useDLC=False,
-    recordVid = True
+    recordVid = True,
+    showAnimation =True,
     ):
+
+
+
+
     ###  
     ###
     ###      ██    ██ ██████  ██████   █████  ████████ ███████         ███████ ██  ██████  ██    ██ ██████  ███████ 
@@ -258,10 +263,14 @@ def PlaySkeletonAnimation(
             if not thisArtistKey == 'blackLine':
                 xCurrTimeArtists[thisArtistKey][0].set_ydata(xCurrTimeYdata[thisArtistKey][frameNum] ) 
                 yCurrTimeArtists[thisArtistKey][0].set_ydata(yCurrTimeYdata[thisArtistKey][frameNum] ) 
-                
-        
-        # fig.suptitle("nSessionID: {}, Frame: {} of {}".format(session.sessionID, frameNum, numFrames), fontsize=10)
-        # animSlider.set_val(val=frameNum)
+
+        yCurrTimeArtists['frameNumber'].set_x(frameNum/fps+3/fps) 
+        yCurrTimeArtists['frameNumber'].set_text('Frame# '+ str(frameNum))
+        # if recordVid:
+        #     thisFramePath = str(animationFramePath) + '/'+ str(session.sessionID) + "_frame_" + str(frameNum).zfill(6) + ".png"
+        #     plt.savefig(thisFramePath)
+        #     # fig.suptitle("nSessionID: {}, Frame: {} of {}".format(session.sessionID, frameNum, numFrames), fontsize=10)
+        #     # animSlider.set_val(val=frameNum)
 
     ####  
     ####   ██████ ██████  ███████  █████  ████████ ███████     ███████ ██  ██████  ██    ██ ██████  ███████ 
@@ -319,7 +328,7 @@ def PlaySkeletonAnimation(
     if useMediaPipe:
         try:
             mediaPipe_skel_fr_mar_xyz = np.load(session.dataArrayPath / 'mediaPipeSkel_3d.npy')
-            mediaPipe_nCams_nFrames_nImgPts_XYC = np.load(session.dataArrayPath / 'mediaPipe_2d.npy')            
+            mediaPipe_nCams_nFrames_nImgPts_XYC = np.load(session.dataArrayPath / 'mediaPipeData_2d.npy')            
         except:
             print('No mediaPipe data found.')
                 
@@ -526,7 +535,7 @@ def PlaySkeletonAnimation(
     # groundYY = np.zeros_like(groundXX)
     # groundMesh = ax3d.plot_surface(groundXX, groundZZ, groundYY, color='k', alpha=.5)
 
-    axRange = 500#session.board.square_length * 10
+    axRange = 1000#session.board.square_length * 10
 
     # Setting the axes properties
     ax3d.set_xlim3d([mx-axRange, mx+axRange])
@@ -733,8 +742,9 @@ def PlaySkeletonAnimation(
     yCurrTimeYdata['rHandDot'] = rHandY
     yCurrTimeArtists['lHandDot']  = yTimeSeriesAx.plot([startFrame/fps], [lHandY[startFrame]], markeredgecolor=humon_blue, markerfacecolor = 'k', marker='o', markersize=3)
     yCurrTimeYdata['lHandDot'] = lHandY
-
-
+    
+    
+    yCurrTimeArtists['frameNumber'] = yTimeSeriesAx.text(startFrame/fps+3/fps, ylimRange*.7, "Frame# " + str(startFrame), fontsize=6)
 
     yTimeSeriesAx.tick_params(labelsize=6, direction='in', width=.5)
     yTimeSeriesAx.tick_params( pad=2)
@@ -801,13 +811,16 @@ def PlaySkeletonAnimation(
     # )
 
     # thisVidAxis.text(-565,1440, 'Music - artist: Neon Exdeath, song: Meowmaline, album: Jewel Tones',color=humon_green, fontsize=6)
-    thisVidAxis.text(-150,510, 'github.com/jonmatthis/freemocap || jonmatthis.com/freemocap',color=humon_green, fontsize=6)
+    thisVidAxis.text(0,thisVidCap.get(cv2.CAP_PROP_FRAME_HEIGHT)*1.06, 'github.com/jonmatthis/freemocap || freemocap.org',color=humon_green, fontsize=6)
 
     logoAx = fig.add_subplot(position=[.85, .85, .15, .15])
     logoIm = cv2.imread(r'logo\fmc-logo-black-border-white-bkgd.png') #JSM NOTE - THis doesn't work, but SOMETIMES IT DOES?!
     if logoIm is not None:  logoAx.imshow(cv2.cvtColor(logoIm, cv2.COLOR_BGR2RGB))
     logoAx.axis('off')
     
+    # if recordVid:
+    #     animationFramePath = session.sessionPath / "animationFrames"
+    #     animationFramePath.mkdir(parents=True, exist_ok=True)
 
     # Creating the Animation object
     line_animation = animation.FuncAnimation(fig, update_figure, range(startFrame,numFrames), fargs=(),
@@ -833,14 +846,16 @@ def PlaySkeletonAnimation(
 
 
     try:
-        plt.pause(0.1)
-        plt.draw()
+        if showAnimation:
+            with console.status('Playing Skeleton animation! Close the `matplotlib` window to continue...'):
+                plt.pause(0.1)
+                plt.draw()
     except:
         pass
 
 
 
-    console.print(":sparkle: :skull: :sparkle:")
+  
 
 
     ### 

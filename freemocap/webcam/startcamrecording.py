@@ -3,6 +3,7 @@ import cv2
 import time
 import pickle
 import os
+import platform
 
 class CamRecordingThread(threading.Thread):
     def __init__(
@@ -48,10 +49,10 @@ def CamRecording(
     # necessary, since each webcam runs as it's own object.
     global flag
     flag = False
+    camWindowName = "RECORDING - " + str(camID)+' - Press ESC to exit'
+    cv2.namedWindow(camWindowName)  # name the preview window for the camera its showing
 
-    cv2.namedWindow(camID)  # name the preview window for the camera its showing
-
-    if os.name == 'nt': #use CAP_DSHOW for windows, CAP_ANY otherwise (*might* make things ubuntu/mac compatible, but not sure. See https://github.com/jonmatthis/freemocap/issues/52)
+    if platform.system() == 'Windows':
         cam = cv2.VideoCapture(camInput, cv2.CAP_DSHOW)
     else:
         cam = cv2.VideoCapture(camInput, cv2.CAP_ANY)
@@ -72,15 +73,15 @@ def CamRecording(
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, resWidth)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, resHeight)
     cam.set(cv2.CAP_PROP_EXPOSURE, exposure)
+    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')) 
     fourcc = cv2.VideoWriter_fourcc(*codec)
     # rawPath = filepath/'RawVideos' #creating a RawVideos folder
     # rawPath.mkdir(parents = True, exist_ok = True)
     width = cam.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = cam.get(cv2.CAP_PROP_FRAME_HEIGHT)
     print("width:", width, "height:", height)
-    saveRawVidPath = str(
-        rawVidPath / videoName
-    )  # create a save path for each video to the RawVideos folders
+    saveRawVidPath = str( rawVidPath / videoName)  # create a save path for each video to the RawVideos folders
+    
     out = cv2.VideoWriter(saveRawVidPath, fourcc, framerate, (resWidth, resHeight))
     timeStamps = []  # holds the timestamps
 
@@ -89,19 +90,17 @@ def CamRecording(
     else:
         success = False
 
-    while (
-        success
-    ):  # while the camera is opened, record the data until the escape button is hit
+    while ( success):  # while the camera is opened, record the data until the escape button is hit
         if flag:  # when the flag is triggered, stop recording and dump the data
             with open(session.rawVidPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)
             break
         success, frame = cam.read()
 
-        cv2.imshow(camID, frame)
+        cv2.imshow(camWindowName, frame)
         frame_sized = cv2.resize(frame, (resWidth, resHeight))
-        # frame_sized = frame
-        out.write(frame_sized)
+        frame_sized = frame
+        out.write(frame)
         timeStamps.append(time.time() - beginTime)  # add each timestamp to the list
 
         key = cv2.waitKey(20)
@@ -110,7 +109,7 @@ def CamRecording(
             with open(session.rawVidPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)  # dump the data
             break
-    cv2.destroyWindow(camID)
+    cv2.destroyWindow(camWindowName)
     return timeStamps
 
 

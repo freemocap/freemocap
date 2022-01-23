@@ -9,7 +9,7 @@ import numpy as np
 from pathlib import Path
 import sys
 
-
+ 
 class PlaySkeletonWidget:
     def __init__(self, session):
 
@@ -228,7 +228,7 @@ class PlaySkeletonWidget:
 
     def update(self):
 
-        # Plot Mr. Skreleton :D
+        # Plots up Mr. Skreleton :D
         # Plots the dots
         
         self.skelScatterItem.setData(

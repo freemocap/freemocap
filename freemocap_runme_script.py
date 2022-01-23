@@ -1,9 +1,7 @@
-from freemocap.fmc_mediapipe import runMediaPipe
 import freemocap as fmc
-from pathlib import Path
-import sys
+fmc.RunMe()
 
-fmc.RunMe('F:\Videos for Matthis Lab\Go Pro Recordings\11_25_21_GGBY\Session1\GGBY_Sesh_1_Processed_Videos', stage=3)
+fmc.RunMe("F:\Videos for Matthis Lab\Go Pro Recordings\11_25_21_GGBY\Session1\GGBY_Sesh_1_Processed_Videos", stage=4)
 #     # sessionID = 'sesh_2021-08-29_17_55_45',
 #     sessionID=None,
 #     stage = 1,

@@ -25,9 +25,9 @@ from rich.console import Console
 
 
 cap_default_parameters_dict = {
-                            'exposure': -6,
-                            'cap_resolution_width': 640,
-                            'cap_resolution_height': 480,
+                            'exposure': -5,
+                            'cap_resolution_width': 1280,
+                            'cap_resolution_height': 720,
                             }
 
 class FMC_Camera:
@@ -202,6 +202,9 @@ class FMC_Camera:
         self.cv2_cap.set(cv2.CAP_PROP_EXPOSURE, self._cap_parameters_dict['exposure'])
         self.cv2_cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._cap_parameters_dict['cap_resolution_width'])
         self.cv2_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._cap_parameters_dict['cap_resolution_height'])
+
+        self.cv2_cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')) 
+
 
         self.video_exposure = self.cv2_cap.get(cv2.CAP_PROP_EXPOSURE)
         self.video_resolution_width = self.cv2_cap.get(cv2.CAP_PROP_FRAME_WIDTH)

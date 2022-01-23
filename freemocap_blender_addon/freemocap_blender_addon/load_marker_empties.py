@@ -1,6 +1,5 @@
 import bpy 
 import numpy as np 
-from ruamel.yaml import YAML
 from pathlib import Path
 
 class FMC_OT_loadMarkerEmpties(bpy.types.Operator): #setting the type as "FMC" for "OpenMoCap"

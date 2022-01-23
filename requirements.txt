@@ -12,3 +12,10 @@ numpy<=1.19
 typed-ast<1.5,>=1.4.0
 moviepy ~=1.0.3
 ipython
+pydantic==1.9.0
+uvicorn==0.16.0
+fastapi==0.71.0
+gunicorn==20.1.0
+requests==2.27.1
+# opencv-python-headless==4.5.5.62
+# opencv-python

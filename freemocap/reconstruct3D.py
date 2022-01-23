@@ -14,7 +14,7 @@ def reconstruct3D(session, data_nCams_nFrames_nImgPts_XYC, confidenceThreshold=0
     if (
         session.cgroup is None
     ):  # load the calibration settings into the session class if it hasn't been already
-        calibrationFile = "{}_calibration.yaml".format(session.sessionID)
+        calibrationFile = "{}_calibration.toml".format(session.sessionID)
         session.cameraConfigFilePath = session.sessionPath / calibrationFile
         session.cgroup = fmc_anipose.CameraGroup.load(session.cameraConfigFilePath)
 

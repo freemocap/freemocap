@@ -10,6 +10,7 @@ import time
 from aniposelib.boards import CharucoBoard
 
 import numpy as np
+from scipy.signal import savgol_filter
 
 from ruamel.yaml import YAML
 import cv2
@@ -41,6 +42,7 @@ from freemocap import (
 
 thisStage = 0 #global
 
+# TODO: Replace the below functions with the RunMe options.
 def RunMe(sessionID=None,
         stage=1,
         useOpenPose=False, 
@@ -229,7 +231,16 @@ def RunMe(sessionID=None,
                 sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
                 np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
                 np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy            
-                
+
+
+                smoothWinLength = 5
+                smoothOrder = 3
+                for dim in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[2]):
+                    for mm in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[1]):
+                        sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim] = savgol_filter(sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
+
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+
         sesh.save_session()
 
         if sesh.useOpenPose:
@@ -243,6 +254,15 @@ def RunMe(sessionID=None,
             sesh.openPoseSkel_fr_mar_xyz, sesh.openPoseSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.openPoseData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
             np.save(sesh.dataArrayPath/'openPoseSkel_3d.npy', sesh.openPoseSkel_fr_mar_xyz) #save data to npy
             np.save(sesh.dataArrayPath/'openPoseSkel_reprojErr.npy', sesh.openPoseSkel_reprojErr) #save data to npy
+            
+            smoothWinLength = 5
+            smoothOrder = 3
+            for dim in range(sesh.openPoseSkel_fr_mar_xyz.shape[2]):
+                for mm in range(sesh.openPoseSkel_fr_mar_xyz.shape[1]):
+                    sesh.openPoseSkel_fr_mar_xyz[:,mm,dim] = savgol_filter(sesh.openPoseSkel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
+
+            np.save(sesh.dataArrayPath/'openPoseSkel_3d_smoothed.npy', sesh.openPoseSkel_fr_mar_xyz) #save data to npy
+                
         sesh.save_session()
         sesh.syncedVidList = []
 
@@ -279,10 +299,11 @@ def RunMe(sessionID=None,
                 console.rule(style="color({})".format(thisStage))    
                 
 
+
                 #blenderPath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
                 #os.chdir(blenderExePath)
-                output = subprocess.run([str(blenderPath), "--background", "--python", str(subprocessPath), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d.npy'), str(sesh.dataArrayPath)], capture_output=True, text=True, check=True)
-                print(output)        
+            output = subprocess.run([str(blenderPath), "--background", "--python", "freemocap/fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
+            print(output)        
         except:
             console.print_exception()
             

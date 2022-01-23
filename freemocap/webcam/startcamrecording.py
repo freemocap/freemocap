@@ -73,15 +73,15 @@ def CamRecording(
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, resWidth)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, resHeight)
     cam.set(cv2.CAP_PROP_EXPOSURE, exposure)
+    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')) 
     fourcc = cv2.VideoWriter_fourcc(*codec)
     # rawPath = filepath/'RawVideos' #creating a RawVideos folder
     # rawPath.mkdir(parents = True, exist_ok = True)
     width = cam.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = cam.get(cv2.CAP_PROP_FRAME_HEIGHT)
     print("width:", width, "height:", height)
-    saveRawVidPath = str(
-        rawVidPath / videoName
-    )  # create a save path for each video to the RawVideos folders
+    saveRawVidPath = str( rawVidPath / videoName)  # create a save path for each video to the RawVideos folders
+    
     out = cv2.VideoWriter(saveRawVidPath, fourcc, framerate, (resWidth, resHeight))
     timeStamps = []  # holds the timestamps
 

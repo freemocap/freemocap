@@ -3,7 +3,7 @@ import freemocap as fmc
 from pathlib import Path
 import sys
 
-fmc.RunMe(stage=4)
+fmc.RunMe('F:\Videos for Matthis Lab\Go Pro Recordings\11_25_21_GGBY\Session1\GGBY_Sesh_1_Processed_Videos', stage=3)
 #     # sessionID = 'sesh_2021-08-29_17_55_45',
 #     sessionID=None,
 #     stage = 1,

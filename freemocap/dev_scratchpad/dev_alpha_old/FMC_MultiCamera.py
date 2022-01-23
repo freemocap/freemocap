@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
-from rich import print
+from rich import print 
 from rich import inspect
 from rich.progress import track
 from rich.traceback import install

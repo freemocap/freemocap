@@ -1,15 +1,15 @@
 ##
 ##
-##  ███████ ███    ███  ██████          ██████  █████  ███    ███ ███████ ██████   █████  
-##  ██      ████  ████ ██              ██      ██   ██ ████  ████ ██      ██   ██ ██   ██ 
-##  █████   ██ ████ ██ ██              ██      ███████ ██ ████ ██ █████   ██████  ███████ 
-##  ██      ██  ██  ██ ██              ██      ██   ██ ██  ██  ██ ██      ██   ██ ██   ██ 
-##  ██      ██      ██  ██████          ██████ ██   ██ ██      ██ ███████ ██   ██ ██   ██ 
+##  ███████ ███    ███  ██████          ██████  █████  ███    ███ ███████ ██████   █████
+##  ██      ████  ████ ██              ██      ██   ██ ████  ████ ██      ██   ██ ██   ██
+##  █████   ██ ████ ██ ██              ██      ███████ ██ ████ ██ █████   ██████  ███████
+##  ██      ██  ██  ██ ██              ██      ██   ██ ██  ██  ██ ██      ██   ██ ██   ██
+##  ██      ██      ██  ██████          ██████ ██   ██ ██      ██ ███████ ██   ██ ██   ██
 ##
 ##
 #Font - ANSI Regular - https://patorjk.com/software/taag/#p=display&f=ANSI%20Regular&t=Play%20Skeleton%20Animation
-                                                                                      
-                                                                                      
+
+
 
 import platform
 from pathlib import Path
@@ -31,34 +31,34 @@ cap_default_parameters_dict = {
                             }
 
 class FMC_Camera:
-    """ Class to open a cv2.VideoCapture object, with parts to connect to a `FMC_MutliCam` object as part of a FMC_Session. 
+    """ Class to open a cv2.VideoCapture object, with parts to connect to a `FMC_MutliCam` object as part of a FMC_Session.
     Note, this class was made in service of the needs of the FreeMoCap project, at some point I'd love to develop this into a fully generic and useful 'camera' object, right now it's designed with that application (and only that application) in mind
     """
-    ##  
-    ##  
-    ##                  ██ ███    ██ ██ ████████                 
-    ##                  ██ ████   ██ ██    ██                    
-    ##                  ██ ██ ██  ██ ██    ██                    
-    ##                  ██ ██  ██ ██ ██    ██                    
-    ##  ███████ ███████ ██ ██   ████ ██    ██    ███████ ███████ 
-    ##                                                           
-    ##  
-    ##  
+    ##
+    ##
+    ##                  ██ ███    ██ ██ ████████
+    ##                  ██ ████   ██ ██    ██
+    ##                  ██ ██ ██  ██ ██    ██
+    ##                  ██ ██  ██ ██ ██    ██
+    ##  ███████ ███████ ██ ██   ████ ██    ██    ███████ ███████
+    ##
+    ##
+    ##
 
     def __init__(
-                self, 
-                cam_num=0, 
+                self,
+                cam_num=0,
                 rotation_code=None,
                 frame_queue = None,
                 barrier = None,
                 exit_event = None,
-                show_cam_stream = False,  
-                rich_console = None,       
-                show_console = False,       
+                show_cam_stream = False,
+                rich_console = None,
+                show_console = False,
                 cap_parameters_dict = cap_default_parameters_dict,
-                vid_save_path=None,  
+                vid_save_path=None,
                 ):
-        """Open a camera stream using `cv2.VideoCapture()`. 
+        """Open a camera stream using `cv2.VideoCapture()`.
         If `Windows`, use `cv2.VideoCapture(camNum, cv2.CAP_DSHOW)` to make video initialize much faster. Otherwise, use `cv2.VideoCapture(camNum, cv2.CAP_ANY)
 
         Args:
@@ -71,11 +71,11 @@ class FMC_Camera:
         self._cam_num = cam_num
         self._cam_name = 'Camera_{}'.format(str(self._cam_num).zfill(2))
         self._cam_short_name = 'cam{}'.format(self._cam_name)
-        
+
         self._vid_cap_start_time_unix = None
 
         self._cap_parameters_dict = cap_parameters_dict
-        
+
         self._rotation_code = rotation_code
 
         self._frame_queue = frame_queue
@@ -88,47 +88,47 @@ class FMC_Camera:
 
         if vid_save_path:
             self._vid_save_path = Path(vid_save_path)
-        
+
 
         if not self.rich_console:
             self.rich_console = Console()
-        
+
         self.open() #open VideoCapture Object
 
         self._show_cam_stream = show_cam_stream
         if self._show_cam_stream:
             self.show()#display camera stream
 
-        if self._frame_queue: 
+        if self._frame_queue:
             self.run_in_thread() #launch in thread (or process?) mode
-    ##   
-    ##   ██████  ██████   ██████  ██████  ███████ ██████  ████████ ██ ███████ ███████ 
-    ##   ██   ██ ██   ██ ██    ██ ██   ██ ██      ██   ██    ██    ██ ██      ██      
-    ##   ██████  ██████  ██    ██ ██████  █████   ██████     ██    ██ █████   ███████ 
-    ##   ██      ██   ██ ██    ██ ██      ██      ██   ██    ██    ██ ██           ██ 
-    ##   ██      ██   ██  ██████  ██      ███████ ██   ██    ██    ██ ███████ ███████ 
-    ##                                                                                
-    ##                                                                                
+    ##
+    ##   ██████  ██████   ██████  ██████  ███████ ██████  ████████ ██ ███████ ███████
+    ##   ██   ██ ██   ██ ██    ██ ██   ██ ██      ██   ██    ██    ██ ██      ██
+    ##   ██████  ██████  ██    ██ ██████  █████   ██████     ██    ██ █████   ███████
+    ##   ██      ██   ██ ██    ██ ██      ██      ██   ██    ██    ██ ██           ██
+    ##   ██      ██   ██  ██████  ██      ███████ ██   ██    ██    ██ ███████ ███████
+    ##
+    ##
     @property
     def cam_num(self):
         return self._cam_num
-    
+
     @property
     def cam_name(self):
         return self._cam_name
-    
+
     @property
     def cam_short_name(self):
         return self._cam_short_name
 
     @property
     def vid_save_path(self):
-        return self._vid_save_path 
+        return self._vid_save_path
 
     @property
     def show_cam_stream(self):
         return self._show_cam_stream
-    
+
     @show_cam_stream.setter
     def show_cam_stream(self, input_bool):
         self._show_cam_stream = input_bool
@@ -144,21 +144,21 @@ class FMC_Camera:
     @property
     def show_console(self):
         return self._show_console
-    
+
     @show_console.setter
     def show_console(self, input_bool):
         self._show_console = input_bool
-    
+
     ###
-    ###   
-    ###   ███    ███ ███████ ████████ ██   ██  ██████  ██████  ███████     ███    ███  █████  ███    ██ 
-    ###   ████  ████ ██         ██    ██   ██ ██    ██ ██   ██ ██          ████  ████ ██   ██ ████   ██ 
-    ###   ██ ████ ██ █████      ██    ███████ ██    ██ ██   ██ ███████     ██ ████ ██ ███████ ██ ██  ██ 
-    ###   ██  ██  ██ ██         ██    ██   ██ ██    ██ ██   ██      ██     ██  ██  ██ ██   ██ ██  ██ ██ 
-    ###   ██      ██ ███████    ██    ██   ██  ██████  ██████  ███████     ██      ██ ██   ██ ██   ████ 
-    ###                                                                                                 
     ###
-    ###                                                                                                 
+    ###   ███    ███ ███████ ████████ ██   ██  ██████  ██████  ███████     ███    ███  █████  ███    ██
+    ###   ████  ████ ██         ██    ██   ██ ██    ██ ██   ██ ██          ████  ████ ██   ██ ████   ██
+    ###   ██ ████ ██ █████      ██    ███████ ██    ██ ██   ██ ███████     ██ ████ ██ ███████ ██ ██  ██
+    ###   ██  ██  ██ ██         ██    ██   ██ ██    ██ ██   ██      ██     ██  ██  ██ ██   ██ ██  ██ ██
+    ###   ██      ██ ███████    ██    ██   ██  ██████  ██████  ███████     ██      ██ ██   ██ ██   ████
+    ###
+    ###
+    ###
 
     def show_cam_stream(self, show_cam_stream_bool=True):
         """whether to open a window showing camera stream
@@ -181,14 +181,14 @@ class FMC_Camera:
             self.close()
 
         return self._show_cam_stream
-    ###   
-    ###    ██████  ██████  ███████ ███    ██     ██    ██ ██ ██████       ██████  █████  ██████  
-    ###   ██    ██ ██   ██ ██      ████   ██     ██    ██ ██ ██   ██     ██      ██   ██ ██   ██ 
-    ###   ██    ██ ██████  █████   ██ ██  ██     ██    ██ ██ ██   ██     ██      ███████ ██████  
-    ###   ██    ██ ██      ██      ██  ██ ██      ██  ██  ██ ██   ██     ██      ██   ██ ██      
-    ###    ██████  ██      ███████ ██   ████       ████   ██ ██████       ██████ ██   ██ ██      
-    ###                                                                                          
-    ###                                                                                          
+    ###
+    ###    ██████  ██████  ███████ ███    ██     ██    ██ ██ ██████       ██████  █████  ██████
+    ###   ██    ██ ██   ██ ██      ████   ██     ██    ██ ██ ██   ██     ██      ██   ██ ██   ██
+    ###   ██    ██ ██████  █████   ██ ██  ██     ██    ██ ██ ██   ██     ██      ███████ ██████
+    ###   ██    ██ ██      ██      ██  ██ ██      ██  ██  ██ ██   ██     ██      ██   ██ ██
+    ###    ██████  ██      ███████ ██   ████       ████   ██ ██████       ██████ ██   ██ ██
+    ###
+    ###
     def open(self):
         """
         Open Video Capture Object and dispaly in little video
@@ -203,7 +203,7 @@ class FMC_Camera:
         self.cv2_cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._cap_parameters_dict['cap_resolution_width'])
         self.cv2_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._cap_parameters_dict['cap_resolution_height'])
 
-        self.cv2_cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')) 
+        self.cv2_cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 
 
         self.video_exposure = self.cv2_cap.get(cv2.CAP_PROP_EXPOSURE)
@@ -212,50 +212,50 @@ class FMC_Camera:
 
         if not self.cv2_cap.isOpened():
             self.rich_console.log("Camera# "+str(self._cam_num)+" failed to open :(")
-            
+
         else:
             self.rich_console.log("Camera# "+str(self._cam_num)+"  started - Exposure:({}) - Resolution(width, height):({},{}) ".format(self.video_exposure, self.video_resolution_width, self.video_resolution_height))
             self._vid_cap_start_time_unix = time.time_ns() #the precision is aspirational, lol
             self._vid_cap_timestamps_unix_ns = np.empty(0)
-    
+
     ###
-    ###  ███████ ██   ██  ██████  ██     ██     ██    ██ ██ ██████  
-    ###  ██      ██   ██ ██    ██ ██     ██     ██    ██ ██ ██   ██ 
-    ###  ███████ ███████ ██    ██ ██  █  ██     ██    ██ ██ ██   ██ 
-    ###       ██ ██   ██ ██    ██ ██ ███ ██      ██  ██  ██ ██   ██ 
-    ###  ███████ ██   ██  ██████   ███ ███        ████   ██ ██████  
+    ###  ███████ ██   ██  ██████  ██     ██     ██    ██ ██ ██████
+    ###  ██      ██   ██ ██    ██ ██     ██     ██    ██ ██ ██   ██
+    ###  ███████ ███████ ██    ██ ██  █  ██     ██    ██ ██ ██   ██
+    ###       ██ ██   ██ ██    ██ ██ ███ ██      ██  ██  ██ ██   ██
+    ###  ███████ ██   ██  ██████   ███ ███        ████   ██ ██████
     ###
-                                                                                                                                                          
+
     def show(self):
         """
         display the camera stream, press ESC to close (and release the `cv2_cap`)
         """
         success, image, timestamp = self.read_next_frame()
-                    
+
         while success:
             cv2.imshow(self._cam_name, image)
-            
+
             success, image, timestamp = self.read_next_frame()
 
             console_msg = self.cam_name +  " read an image at {:.4f}".format(timestamp)
             self.update_console(console_msg)
             self._vid_cap_timestamps_unix_ns = np.append(self.vid_cap_timestamps_unix_ns, timestamp)
 
-            if self.wait_key() == 27:  # exit on ESC                        
+            if self.wait_key() == 27:  # exit on ESC
                 self.close()
-            
+
             if cv2.getWindowProperty(self._cam_name, cv2.WND_PROP_VISIBLE) < 1: #break loop if window closed
-                break   
+                break
         cv2.destroyAllWindows()
 
-    ###  
-    ###  ██████  ██    ██ ███    ██     ██ ███    ██     ████████ ██   ██ ██████  ███████  █████  ██████  
-    ###  ██   ██ ██    ██ ████   ██     ██ ████   ██        ██    ██   ██ ██   ██ ██      ██   ██ ██   ██ 
-    ###  ██████  ██    ██ ██ ██  ██     ██ ██ ██  ██        ██    ███████ ██████  █████   ███████ ██   ██ 
-    ###  ██   ██ ██    ██ ██  ██ ██     ██ ██  ██ ██        ██    ██   ██ ██   ██ ██      ██   ██ ██   ██ 
-    ###  ██   ██  ██████  ██   ████     ██ ██   ████        ██    ██   ██ ██   ██ ███████ ██   ██ ██████  
-    ###                                                                                                   
-    ###                                                                                                   
+    ###
+    ###  ██████  ██    ██ ███    ██     ██ ███    ██     ████████ ██   ██ ██████  ███████  █████  ██████
+    ###  ██   ██ ██    ██ ████   ██     ██ ████   ██        ██    ██   ██ ██   ██ ██      ██   ██ ██   ██
+    ###  ██████  ██    ██ ██ ██  ██     ██ ██ ██  ██        ██    ███████ ██████  █████   ███████ ██   ██
+    ###  ██   ██ ██    ██ ██  ██ ██     ██ ██  ██ ██        ██    ██   ██ ██   ██ ██      ██   ██ ██   ██
+    ###  ██   ██  ██████  ██   ████     ██ ██   ████        ██    ██   ██ ██   ██ ███████ ██   ██ ██████
+    ###
+    ###
     def run_in_thread(self):
         """run camera in a thread
          put incoming images into an tuple containing camNum_image_timestamp_tuple and stuff it into `self._frame_queue`
@@ -265,7 +265,7 @@ class FMC_Camera:
             try:
                 success, image, timestamp = self.read_next_frame()
                 cam_image_timestamp_tuple = (self.cam_num, image, timestamp)
-                            
+
                 self._frame_queue.put(cam_image_timestamp_tuple) #stuff this frame tuple packet into this camera's Queueue object
 
                 # log_msg = self.cam_name+" got a frame at timestamp:"+ str(timestamp) + ' queue size: ' + str(self._frame_queue.qsize())
@@ -274,32 +274,32 @@ class FMC_Camera:
                 self._barrier.wait() #wait until other cams have grabbed a frame (and the frame_grabber has frame grabbed them)
             except:
                 self.rich_console.print_exception()
-        
+
         #shut down when 'exit_event' is tripped
         self.close()
-        
+
 
     def run_in_subprocess(self):
         self.run_in_thread()
 
-    ###     
-    ###         
-    ###     ███████ ████████  ██████          
-    ###     ██         ██    ██               
-    ###     █████      ██    ██               
-    ###     ██         ██    ██               
-    ###     ███████    ██     ██████ ██ ██ ██ 
-    ###     
-    ###     
-    
+    ###
+    ###
+    ###     ███████ ████████  ██████
+    ###     ██         ██    ██
+    ###     █████      ██    ██
+    ###     ██         ██    ██
+    ###     ███████    ██     ██████ ██ ██ ██
+    ###
+    ###
 
-    
+
+
     def __enter__(self):
         """Context manager -  No need to do anything special on start"""
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        """Context manager -  close `self.cv2_cap` on exit"""         
+        """Context manager -  close `self.cv2_cap` on exit"""
         self.close()
         return self
 
@@ -322,11 +322,11 @@ class FMC_Camera:
 
             if self._rotation_code is None:
                 pass
-            elif self._rotation_code == 'cv2.ROTATE_90_CLOCKWISE':                
+            elif self._rotation_code == 'cv2.ROTATE_90_CLOCKWISE':
                 image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-            elif self._rotation_code == 'cv2.ROTATE_90_COUNTERCLOCKWISE':                
+            elif self._rotation_code == 'cv2.ROTATE_90_COUNTERCLOCKWISE':
                 image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-            elif self._rotation_code == 'cv2.ROTATE_180':                
+            elif self._rotation_code == 'cv2.ROTATE_180':
                 image = cv2.rotate(image, cv2.ROTATE_180)
             else:
                 Exception, 'Invalid rotation code entered for FMC_Camera: {}'.format(self.cam_name)
@@ -334,7 +334,7 @@ class FMC_Camera:
             return success, image, timestamp
         else:
             return success, success, success
-    
+
     def close(self):
         """
         close the video
@@ -342,25 +342,25 @@ class FMC_Camera:
         self.cv2_cap.release()
         self.rich_console.log("Camera# "+str(self._cam_num)+" shutting down")
 
-    
+
     def wait_key(self):
 
         if self.show_cam_stream:
-            self._wait_key = cv2.waitKey(1)            
-        else: 
+            self._wait_key = cv2.waitKey(1)
+        else:
             self._wait_key = 27
 
         return self._wait_key
 
 
-### 
-### ██ ███████                     ███    ███  █████  ██ ███    ██                 
-### ██ ██                          ████  ████ ██   ██ ██ ████   ██                 
-### ██ █████                       ██ ████ ██ ███████ ██ ██ ██  ██                 
-### ██ ██                          ██  ██  ██ ██   ██ ██ ██  ██ ██                 
-### ██ ██          ███████ ███████ ██      ██ ██   ██ ██ ██   ████ ███████ ███████ 
-### 
-###                                                                                                                                                               
+###
+### ██ ███████                     ███    ███  █████  ██ ███    ██
+### ██ ██                          ████  ████ ██   ██ ██ ████   ██
+### ██ █████                       ██ ████ ██ ███████ ██ ██ ██  ██
+### ██ ██                          ██  ██  ██ ██   ██ ██ ██  ██ ██
+### ██ ██          ███████ ███████ ██      ██ ██   ██ ██ ██   ████ ███████ ███████
+###
+###
 if __name__ == '__main__':
 
     with FMC_Camera() as cam:

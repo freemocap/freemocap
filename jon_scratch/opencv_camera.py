@@ -8,14 +8,7 @@ import cv2
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
-
-MAX_PORTS_TO_CHECK = 20
-
-# class CameraFrame(BaseModel):
-#     success: bool
-#     image: List
-#     timestamp_ns: int #mean of timestamps taken before and after `grab`
-#     timestamp: float #timestamp in floating point (seconds), e.g. timestamp_ns / 1e9
+logger.level = logging.INFO
 
 
 class NoCameraAvailableException(Exception):
@@ -24,45 +17,47 @@ class NoCameraAvailableException(Exception):
 class FailedFrameGrabException(Exception):
     pass
 
+class TweakedModel(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+        
 # OpenCV Implementation of interacting with a camera
-class OpenCVCamera:
+class OpenCVCamera(TweakedModel):
     port_number: int=0
     name: str = 'camera0' # `camera{}`.format(port_number)
     exposure: int = -6
     resolution_width: int = 1280
     resolution_height: int = 720
-
+    opencv_video_capture_object: cv2.VideoCapture = None
+    
     def connect(self)->bool:
         if platform.system() == 'Windows':
             cap_backend  = cv2.CAP_DSHOW
         else:
             cap_backend  = cv2.CAP_ANY
 
-        logger.info('Starting to look for an available camera')
-        success = False
 
-        while not success and self.port_number<MAX_PORTS_TO_CHECK:
-            self.port_number+=1
-            self.opencv_video_capture_object = cv2.VideoCapture(self.port_number, cap_backend)
-            success, image = self.opencv_video_capture_object.read()
+        self.opencv_video_capture_object = cv2.VideoCapture(self.port_number, cap_backend)
+        success, image = self.opencv_video_capture_object.read()
 
-            #set camera stream paramters
-            self.opencv_video_capture_object.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
-            self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width)
-            self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height)
+        #set camera stream paramters
+        self.opencv_video_capture_object.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
+        self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width)
+        self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height)
 
-            self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 
         if success:
             logger.error('Camera found at port number {}'.format(self.port_number))
             self.name = 'camera{}'.format(self.port_number)
             return success
         else:
-            NoCameraAvailableException()
-            logger.error('No camera was available!')
+            # raise NoCameraAvailableException()
+            logger.error('Could not connect to a camera at port# {}'.format(self.port_number))
             return success
-
+        
     def get_next_frame(self)->dict:
+
         timestamp_ns_pre_grab = time.time_ns()
         grab_success = self.opencv_video_capture_object.grab() #Why grab not read? see -> https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
         timestamp_ns_post_grab = time.time_ns()
@@ -72,9 +67,8 @@ class OpenCVCamera:
             success, image =  self.opencv_video_capture_object.retrieve()
             logger.info('{} successfully grabbed a frame at timestamp {}'.format(self.name, timestamp_ns/1e9))
         else:
-            FailedFrameGrabException()
+            # raise FailedFrameGrabException()
             logger.error('{} failed to grab a frame at timestamp {}'.format(timestamp_ns/1e9))
-
         return success, image, timestamp_ns
 
     def close(self):

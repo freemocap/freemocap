@@ -103,12 +103,12 @@ if __name__ == '__main__':
 
     # start the MainThread loop
     approx_start_time = time.time()
-    end_after_seconds = 10 #or on pressing ESC
+    end_after_seconds = 30 #or on pressing ESC
 
 
-    while thread_exit_event.is_set() is False:
+    while not thread_exit_event.is_set():
         time_elapsed = time.time() - approx_start_time
-        print('Time remaining: {:.2f}'.format(end_after_seconds - time_elapsed))
+        print('Time remaining: {:.2f} - Queueue size: {}'.format(end_after_seconds - time_elapsed, incoming_frames_queue.qsize()))
         if time_elapsed > end_after_seconds:
             thread_exit_event.set()
             cv2.destroyAllWindows()
@@ -170,9 +170,9 @@ if __name__ == '__main__':
     ideal_timestamps = np.linspace(approx_start_time, ideal_end_time, number_of_frames)
 
     ideal_line_label = 'ideal for {}fps'.format(ideal_framerate)
-    ax_timestamps.plot(ideal_timestamps, '--', color='black', label=ideal_line_label)
     ax_frame_duration.hlines(1/ideal_framerate, 0, number_of_frames, linestyles='dashed', label=ideal_line_label)
     ax_histogram.vlines(ideal_framerate, 0, number_of_frames, linestyles='dashed', label=ideal_line_label)
+    ax_timestamps.plot(ideal_timestamps, '--', color='black', linewidth=.5, label=ideal_line_label)
     ax_frame_duration.legend()
 
     plt.show()

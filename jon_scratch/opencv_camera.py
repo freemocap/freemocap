@@ -24,7 +24,7 @@ class TweakedModel(BaseModel):
 # OpenCV Implementation of interacting with a camera
 class OpenCVCamera(TweakedModel):
     port_number: int=0
-    name: str = 'camera0' # `camera{}`.format(port_number)
+    name: str = 'Camera0' # `camera{}`.format(port_number)
     exposure: int = -6
     resolution_width: int = 1280
     resolution_height: int = 720
@@ -49,7 +49,7 @@ class OpenCVCamera(TweakedModel):
 
         if success:
             logger.error('Camera found at port number {}'.format(self.port_number))
-            self.name = 'camera{}'.format(self.port_number)
+            self.name = 'Camera{}'.format(self.port_number)
             return success
         else:
             # raise NoCameraAvailableException()

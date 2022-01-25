@@ -111,7 +111,7 @@ if __name__ == '__main__':
     
     #%% Plot up them bad bois
     # where 'bad boi'  is defined as a timestamp from each camera
-    plt.ion()
+    # plt.ion()
     figure = plt.figure(3214, figsize=(15,5))
     ax_timestamps = figure.add_subplot(131)    
     ax_timestamps.set_xlabel('frame number')

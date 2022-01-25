@@ -24,7 +24,10 @@ logger.level = logging.INFO
 
 MAX_NUMBER_OF_CAMERAS = 20
 
+
+
 def stuff_incoming_frames_into_a_queue(camera: OpenCVCamera, thread_queue: queue.Queue):
+
     print('stuff_incoming_frames_into_a_queue starting for {}'.format(camera.name))
 
     while thread_exit_event.is_set() is False:
@@ -46,7 +49,20 @@ def start_camera_thread(camera: OpenCVCamera, incoming_frames_queue: queue.Queue
     camera_thread.start()
     return camera_thread
 
+def display_image_on_its_cv2_named_window(cam_window_name: str, image: np.ndarray, ):
+    cv2.imshow(cam_window_name, image)
+    key = cv2.waitKey(1)
 
+    if key == 27: #esc key kills all streams, I think
+        thread_exit_event.set()
+
+    if thread_exit_event.is_set():
+        cv2.destroyAllWindows()
+
+def create_video_viewing_window(camera_name:str = 'Cam'):
+    window_name = camera_name + " - Press ESC to exit"
+    cv2.namedWindow(window_name)
+    return window_name
 
 
 if __name__ == '__main__':
@@ -71,8 +87,7 @@ if __name__ == '__main__':
     for this_camera in camera_list:
         camera_thread_list[this_camera.port_number] = start_camera_thread(this_camera, incoming_frames_queue)
 
-    #%% timestamp diagnosis etc
-
+    #%% setting up to grab incoming timestamps etc
     dict_of_timestamp_lists = {}
     dict_of_fps_mean_lists = {}
     dict_of_fps_std_lists = {}
@@ -81,17 +96,28 @@ if __name__ == '__main__':
         dict_of_fps_mean_lists[this_camera.name] = []
         dict_of_fps_std_lists[this_camera.name] = []
 
-    start_time = time.time()
-    end_after_seconds = 5
+    #create cv2 named windows where we'll display incoming frames
+    cam_window_name_dict = {}
+    for this_camera in camera_list:
+        cam_window_name_dict[this_camera.name] = create_video_viewing_window(this_camera.name)
+
+    # start the MainThread loop
+    approx_start_time = time.time()
+    end_after_seconds = 10 #or on pressing ESC
+
+
     while thread_exit_event.is_set() is False:
-        time_elapsed = time.time() - start_time
+        time_elapsed = time.time() - approx_start_time
         print('Time remaining: {:.2f}'.format(end_after_seconds - time_elapsed))
         if time_elapsed > end_after_seconds:
             thread_exit_event.set()
+            cv2.destroyAllWindows()
 
         if not incoming_frames_queue.empty():
-            this_frame_tuple = incoming_frames_queue.get()
+            this_frame_tuple = incoming_frames_queue.get() #<- grab the most recent frame_tuple and do stuff with it
             this_success_bool, this_camera_name, this_image, this_timestamp_ns = this_frame_tuple
+
+            display_image_on_its_cv2_named_window(cam_window_name_dict[this_camera_name], this_image)
 
             this_timestamp_sec = this_timestamp_ns/1e9
 
@@ -101,41 +127,54 @@ if __name__ == '__main__':
     for this_camera in camera_list:
         this_cam_timestamps = np.array(dict_of_timestamp_lists[this_camera.name])
 
-    shortest_list_length = np.min([len(dict_of_timestamp_lists[this_key]) for this_key in dict_of_timestamp_lists ])
+    number_of_frames = np.min([len(dict_of_timestamp_lists[this_key]) for this_key in dict_of_timestamp_lists ]) #truncate all timestamp lists to match frame count of shortest
     out_timestamp_dict = {}
 
     for this_cam_num, this_camera in enumerate(camera_list):
-        out_timestamp_dict[this_camera.name] = np.array(dict_of_timestamp_lists[this_camera.name][:shortest_list_length])
+        out_timestamp_dict[this_camera.name] = np.array(dict_of_timestamp_lists[this_camera.name][:number_of_frames])
     out_dataframe = pd.DataFrame(out_timestamp_dict)
     out_dataframe.to_csv('~/timestamps.csv')
-    
+
     #%% Plot up them bad bois
     # where 'bad boi'  is defined as a timestamp from each camera
-    # plt.ion()
+    # plt.ion() #<- allows for fiddling, but need to set breakpoint and call plt.show() to see the plots
     figure = plt.figure(3214, figsize=(15,5))
-    ax_timestamps = figure.add_subplot(131)    
+    ax_timestamps = figure.add_subplot(131)
     ax_timestamps.set_xlabel('frame number')
     ax_timestamps.set_ylabel('timestamp (unix epoch, sec)')
-    ax_timestamps.legend()
-    
-    ax_framerate = figure.add_subplot(132)
-    ax_framerate.set_xlabel('frame number')
-    ax_framerate.set_ylabel('framerate (1/np.diff(timestamp, frames/sec)')
-    ax_framerate.set_ylim(0, 50)
-    ax_framerate.hlines(30, 0, shortest_list_length, linestyles='dashed')    
-    
+
+    ax_frame_duration = figure.add_subplot(132)
+    ax_frame_duration.set_xlabel('frame number')
+    ax_frame_duration.set_ylabel('framerate (1/np.diff(timestamp, frames/sec)')
+    ax_frame_duration.set_ylim(0, .1)
+
     ax_histogram = figure.add_subplot(133)
     ax_histogram.set_xlabel('bins (fps)')
-    ax_histogram.set_ylabel('histogram count(out of {} frames'.format(shortest_list_length))    
-    ax_histogram.vlines(30, 0, shortest_list_length, linestyles='dashed')    
-    
-    
+    ax_histogram.set_ylabel('histogram count(out of {} frames'.format(number_of_frames))
+
+
+
     for this_camera in camera_list:
         this_cam_timestamps = out_timestamp_dict[this_camera.name]
-        this_cam_framerate = 1/np.diff(out_timestamp_dict[this_camera.name])
-        ax_timestamps.plot(this_cam_timestamps, linewidth=1, marker='.',markersize=1, label=this_camera.name)
-        ax_framerate.plot(this_cam_framerate,linewidth=1, marker='.', markersize=1, label=this_camera.name)
-        ax_histogram.hist(this_cam_framerate, bins=np.arange(0,50,1), label=this_camera.name)
+        this_cam_frame_duration = np.diff(out_timestamp_dict[this_camera.name])
+        this_cam_framerate = 1/this_cam_frame_duration
+
+        ax_timestamps.plot(this_cam_timestamps, 'o',markersize=1, alpha=.5, label=this_camera.name)
+        ax_frame_duration.plot(this_cam_frame_duration, '-o', markersize=1, alpha=.5, label=this_camera.name)
+        ax_histogram.hist(this_cam_framerate, bins=np.arange(0,50,1), alpha=.5,label=this_camera.name)
+
+    #reference lines (i.e. 'ideal' numbers)
+    ideal_framerate = 30
+    approx_start_time = this_cam_timestamps[0] #just for the last camera, but it's fine for this visualization
+    ideal_end_time = approx_start_time + number_of_frames/ideal_framerate
+    ideal_timestamps = np.linspace(approx_start_time, ideal_end_time, number_of_frames)
+
+    ideal_line_label = 'ideal for {}fps'.format(ideal_framerate)
+    ax_timestamps.plot(ideal_timestamps, '--', color='black', label=ideal_line_label)
+    ax_frame_duration.hlines(1/ideal_framerate, 0, number_of_frames, linestyles='dashed', label=ideal_line_label)
+    ax_histogram.vlines(ideal_framerate, 0, number_of_frames, linestyles='dashed', label=ideal_line_label)
+    ax_frame_duration.legend()
+
     plt.show()
     plt.pause(0.1)
-    f=9
+    f=9 #put a breakpoint here to view/interact with figure if `plt.ion()` is active

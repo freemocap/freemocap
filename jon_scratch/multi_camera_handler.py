@@ -103,12 +103,14 @@ if __name__ == '__main__':
 
     # start the MainThread loop
     approx_start_time = time.time()
-    end_after_seconds = 30 #or on pressing ESC
-
-
+    end_after_seconds = 15 #or on pressing ESC
+    image_scale = 1 #downsize images if the queue starts to fill up
+    qsize = []
     while not thread_exit_event.is_set():
         time_elapsed = time.time() - approx_start_time
-        print('Time remaining: {:.2f} - Queueue size: {}'.format(end_after_seconds - time_elapsed, incoming_frames_queue.qsize()))
+        this_qsize = incoming_frames_queue.qsize()
+        qsize.append(this_qsize)
+        print('Time remaining: {:.2f} - Queueue size: {} - Image scale: {}'.format(end_after_seconds - time_elapsed, this_qsize, image_scale))
         if time_elapsed > end_after_seconds:
             thread_exit_event.set()
             cv2.destroyAllWindows()
@@ -117,7 +119,13 @@ if __name__ == '__main__':
             this_frame_tuple = incoming_frames_queue.get() #<- grab the most recent frame_tuple and do stuff with it
             this_success_bool, this_camera_name, this_image, this_timestamp_ns = this_frame_tuple
 
-            display_image_on_its_cv2_named_window(cam_window_name_dict[this_camera_name], this_image)
+            if this_qsize < 10:
+                image_height, image_width, image_channels = this_image.shape
+                scale_factor = 4
+                scale_height = int(image_height/scale_factor)
+                scale_width = int(image_width/scale_factor)
+                
+                display_image_on_its_cv2_named_window(cam_window_name_dict[this_camera_name], cv2.resize(this_image, (image_width, image_height)))
 
             this_timestamp_sec = this_timestamp_ns/1e9
 
@@ -139,20 +147,23 @@ if __name__ == '__main__':
     # where 'bad boi'  is defined as a timestamp from each camera
     # plt.ion() #<- allows for fiddling, but need to set breakpoint and call plt.show() to see the plots
     figure = plt.figure(3214, figsize=(15,5))
-    ax_timestamps = figure.add_subplot(131)
+    ax_timestamps = figure.add_subplot(141)
     ax_timestamps.set_xlabel('frame number')
     ax_timestamps.set_ylabel('timestamp (unix epoch, sec)')
 
-    ax_frame_duration = figure.add_subplot(132)
+    ax_frame_duration = figure.add_subplot(142)
     ax_frame_duration.set_xlabel('frame number')
     ax_frame_duration.set_ylabel('framerate (1/np.diff(timestamp, frames/sec)')
     ax_frame_duration.set_ylim(0, .1)
 
-    ax_histogram = figure.add_subplot(133)
+    ax_histogram = figure.add_subplot(143)
     ax_histogram.set_xlabel('bins (fps)')
     ax_histogram.set_ylabel('histogram count(out of {} frames'.format(number_of_frames))
 
-
+    ax_qsize = figure.add_subplot(144)
+    ax_qsize.set_xlabel('frame/loop count')
+    ax_qsize.set_ylabel('incoming frames queueue size')
+    ax_qsize.plot(qsize)
 
     for this_camera in camera_list:
         this_cam_timestamps = out_timestamp_dict[this_camera.name]

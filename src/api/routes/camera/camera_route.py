@@ -9,4 +9,4 @@ camera_router = APIRouter()
 @camera_router.get("/camera/detect")
 def camera_detect():
     dpc = DetectPossibleCameras()
-    return dpc.find_available_cameras()
+    return dpc.getSerialNumber()

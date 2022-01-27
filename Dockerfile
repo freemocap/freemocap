@@ -18,7 +18,10 @@ RUN rm -rf /etc/apt/apt.conf.d/docker-clean
 COPY ./bin/builds/ .
 
 RUN --mount=type=cache,target=/var/cache/apt ./install_packages \
-    dumb-init
+    dumb-init \
+    tk \
+    libgl1-mesa-glx \
+    libglib2.0-0
 
 # Install pip packages
 ENV PATH=/root/.local/bin:$PATH

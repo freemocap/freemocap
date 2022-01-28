@@ -48,22 +48,22 @@ def calculate_hand_COM_y(wrist_y, index_y, pinky_y, com_proximal_multiplier):
     return COM_hand_y
 
 def calculate_total_COM_x(COM_Segments):
-    Segement_COM_List_x = []
+    Segment_COM_List_x = []
 
     for key in COM_Segments:
         COM_of_Segment = COM_Segments[key][2]*COM_Segments[key][0]
-        Segement_COM_List_x.append(COM_of_Segment)
-    COM_total_x = sum(Segement_COM_List_x)
-    return COM_total_x
+        Segment_COM_List_x.append(COM_of_Segment)
+    COM_total_x = sum(Segment_COM_List_x)
+    return COM_total_x,Segment_COM_List_x
 
 def calculate_total_COM_y(COM_Segments):
-    Segement_COM_List_y = []
+    Segment_COM_List_y = []
 
     for key in COM_Segments:
         COM_of_Segment = COM_Segments[key][2]*COM_Segments[key][1]
-        Segement_COM_List_y.append(COM_of_Segment)
-    COM_total_y = sum(Segement_COM_List_y)
-    return COM_total_y
+        Segment_COM_List_y.append(COM_of_Segment)
+    COM_total_y = sum(Segment_COM_List_y)
+    return COM_total_y, Segment_COM_List_y
 #### 
 
 ## Multipliers are percent of segment length from the proximal end point. 
@@ -121,7 +121,7 @@ print(nframes_list)
 nImages = 15 #there are 15 COM points to plot
 nImages_list = list(range(0, nImages+1)) 
 print(nImages_list)
-FMC_COM_array_ncams_nFrames_nImgPts_X_Y = np.empty((nframe*15*ncams_list[-1], 5), float) 
+FMC_COM_array_ncams_nFrames_nImgPts_X_Y = np.empty((nframe*nImages*ncams_list[-1], 5), float) 
 print(np.shape(FMC_COM_array_ncams_nFrames_nImgPts_X_Y))
 #there are 15 COM points to plot, and 5 columns (for now, will add Confidence column later, need to cacluclate it first)
 
@@ -255,8 +255,14 @@ with mp_pose.Pose(min_detection_confidence=0.7, min_tracking_confidence=0.7) as 
 
             cv2.circle(image, center=tuple(np.multiply((COM_total_x, COM_total_y), [vid_res_width, vid_res_height]).astype(int)), radius=1, color=(0,255,0), thickness=5)
             
-            #Create FMC Array
-            
+            #Create FMC Array (Currently in development)
+            # zip together Segment_COM_List_x and Segment_COM_List_y to create Full_COM_Point_List
+            for x in ncams_list:
+                for y in nframes_list:
+                    for z in nImages_list:
+                        index = 0
+                        # FMC_COM_array_ncams_nFrames_nImgPts_X_Y[index]=[x, y, z, Full_COM_Point_List[z][0], Full_COM_Point_List[z][1]]
+                        index = index + 1
             
 
         except:

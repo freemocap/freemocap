@@ -302,8 +302,11 @@ def RunMe(sessionID=None,
 
                 #blenderPath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
                 #os.chdir(blenderExePath)
-            output = subprocess.run([str(blenderPath), "--background", "--python", "freemocap/fmc_blender.py", "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
-            print(output)        
+            path_to_this_py_file = Path(__file__).parent.resolve()
+            fmc_blender_script_path = path_to_this_py_file /'fmc_blender.py'
+            with console.status('Stuffing data into a Blender scene...'):
+                output = subprocess.run([str(blenderPath), "--background", "--python", str(fmc_blender_script_path), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
+                print(output)        
         except:
             console.print_exception()
             

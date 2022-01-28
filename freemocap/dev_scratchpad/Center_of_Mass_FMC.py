@@ -6,6 +6,15 @@ mp_drawing = mp.solutions.drawing_utils #gives us all our drawing capabilities
 mp_pose = mp.solutions.pose #importing our pose estimatino models
 
 ### center of mass functions
+def count_frames(cap):
+    nframe = 0
+    while True:
+        (grabbed, frame) = cap.read()
+        if not grabbed:
+            break
+        nframe += 1
+    return nframe
+
 def calculateCOM_x(x1, x2, com_proximal_multiplier):
     segment_length_x = x2-x1
     COM_x = x1+com_proximal_multiplier*segment_length_x
@@ -94,7 +103,7 @@ foot_mass_percent_f = 0.0129
 foot_mass_percent_m = 0.0137
 
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture("C:/Users/kiley/Desktop/Mediapipe_Output_Videos/Processed_Video_2.avi")
 
 if cap.isOpened():
     vid_res_width = cap.get(3)
@@ -103,9 +112,22 @@ if cap.isOpened():
 print('width', vid_res_width)
 print('height', vid_res_height)
 
+# Building array to fit COM points into FMC 3D reconstruction code
+ncams_list = [1] #replace this eventually with a way to count how many cameras there are. For now, we only have 1
+nframe = count_frames(cap) #extract the number of frames in each video
+print(nframe)
+nframes_list = list(range(1, nframe+1))#create a list from 0 to nframes+1, incrementing by 1. nframes+1 because range function doesn't include the final number. 
+print(nframes_list)
+nImages = 15 #there are 15 COM points to plot
+nImages_list = list(range(0, nImages+1)) 
+print(nImages_list)
+FMC_COM_array_ncams_nFrames_nImgPts_X_Y = np.empty((nframe*15*ncams_list[-1], 5), float) 
+print(np.shape(FMC_COM_array_ncams_nFrames_nImgPts_X_Y))
+#there are 15 COM points to plot, and 5 columns (for now, will add Confidence column later, need to cacluclate it first)
+
 with mp_pose.Pose(min_detection_confidence=0.7, min_tracking_confidence=0.7) as pose:
-    while cap.isOpened():
-        ret, frame = cap.read()
+    while cap.isOpened(): #loop through feed
+        ret, frame = cap.read() #getting an image from feed, 'frame' is our video feed variable
         
         image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) #recolor image into the RGB format (for mediapipe)
         image.flags.writeable = False
@@ -232,6 +254,9 @@ with mp_pose.Pose(min_detection_confidence=0.7, min_tracking_confidence=0.7) as 
                 
 
             cv2.circle(image, center=tuple(np.multiply((COM_total_x, COM_total_y), [vid_res_width, vid_res_height]).astype(int)), radius=1, color=(0,255,0), thickness=5)
+            
+            #Create FMC Array
+            
             
 
         except:

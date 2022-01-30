@@ -23,7 +23,7 @@ export const WebcamCapture = () => {
       {devices.map((device, key) => (
         <div>
           <Webcam audio={false} videoConstraints={{ deviceId: device.deviceId }} />
-          {device.label || `Device ${key + 1}`}
+          {device.label || `Device ${device.deviceId}`}
         </div>
 
       ))}

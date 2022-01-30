@@ -17,12 +17,14 @@ RUN rm -rf /etc/apt/apt.conf.d/docker-clean
 
 COPY ./bin/builds/ .
 
+# Apt-get install packages here since we're using Debian as a root OS for this particular Dockerfile.
 RUN --mount=type=cache,target=/var/cache/apt ./install_packages \
     dumb-init \
     tk \
     libgl1-mesa-glx \
     libglib2.0-0 \
     imagemagick
+
 
 # Install pip packages
 ENV PATH=/root/.local/bin:$PATH

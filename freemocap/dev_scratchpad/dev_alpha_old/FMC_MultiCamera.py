@@ -303,7 +303,7 @@ class FMC_MultiCamera:
             for cam_num in range(self.num_cams):
                 this_cam_image_timestamp_tuple = self.cam_frame_queue.get()
                 this_cam_num = this_cam_image_timestamp_tuple[0]
-                this_cam_index = self.cams_to_use_list.index(this_cam_num)
+                this_cam_index = self.cams_to_use_list.port_number(this_cam_num)
                 these_images_list[this_cam_index] = this_cam_image_timestamp_tuple[1]
                 these_timestamps[this_cam_index] = this_cam_image_timestamp_tuple[2]
                 this_multi_cam_tuple_as_a_list[this_cam_index] = this_cam_image_timestamp_tuple

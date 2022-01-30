@@ -161,7 +161,7 @@ while not thread_exit_event.is_set():
     time_elapsed = time.time() - approx_start_time
     this_qsize = incoming_frames_queue.qsize()
     qsize.append(this_qsize)
-    print('Time remaining: {:3.2f} - Queueue size: {:3.0f} '.format(end_after_seconds - time_elapsed, this_qsize))
+    print('Time remaining: {:3.2f} - Queue size: {:3.0f} '.format(end_after_seconds - time_elapsed, this_qsize))
     if time_elapsed > end_after_seconds:
         thread_exit_event.set()
         cv2.destroyAllWindows()

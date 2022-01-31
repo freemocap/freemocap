@@ -46,7 +46,7 @@ thisStage = 0 #global
 def RunMe(sessionID=None,
         stage=1,
         useOpenPose=False, 
-        runOpenPose = False, 
+        runOpenPose = True, 
         useMediaPipe=True,
         runMediaPipe=True,
         useDLC=False,
@@ -57,9 +57,11 @@ def RunMe(sessionID=None,
         recordVid = True,
         showAnimation = True,
         reconstructionConfidenceThreshold = .7,
-        charucoSquareSize = 73,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
-        calVideoFrameLength = 120,
-        startFrame = 0
+        charucoSquareSize = 123,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
+        calVideoFrameLength = .5,
+        startFrame = 0,
+        useBlender = False,
+        resetBlenderExe = False,
         ):
     """ 
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)

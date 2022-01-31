@@ -3,7 +3,7 @@ import mediapipe as mp
 import numpy as np
 import math
 mp_drawing = mp.solutions.drawing_utils #gives us all our drawing capabilities
-mp_pose = mp.solutions.pose #importing our pose estimatino models
+mp_pose = mp.solutions.pose #importing our pose estimation models
 
 #MAKE DETECTIONS
 cap = cv2.VideoCapture(0)

@@ -3,6 +3,8 @@ import {Route, Routes} from "react-router-dom";
 import {ShowCameras} from "../../views/ShowCameras";
 import {WebcamStreamCapture} from "../../views/Capture";
 import {ConfigView} from "../../views/Config";
+import {WebcamJonTest} from "../../views/WebcamJonTest";
+import {PythonToJsTest} from "../../views/PythonToJsTest";
 
 export const Router = () => {
   return (
@@ -10,6 +12,8 @@ export const Router = () => {
       <Route path={'/'} element={<React.Fragment />} />
       <Route path={'/show_cameras'} element={<WebcamStreamCapture />} />
       <Route path={'/config'} element={<ConfigView />} />
+      <Route path={'/jontestplayground'} element={<WebcamJonTest />} />
+      <Route path={'/pythonToJs'} element={<PythonToJsTest />} />
     </Routes>
   )
 }

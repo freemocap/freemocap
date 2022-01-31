@@ -19,3 +19,4 @@ gunicorn==20.1.0
 requests==2.27.1
 pyudev==0.22.0
 python-multipart==0.0.5
+websockets==10.1

@@ -23,9 +23,10 @@
     "react-router-dom": "^6.2.1",
     "react-scripts": "5.0.0",
     "react-use": "^17.3.2",
+    "react-use-websocket": "^2.9.1",
     "react-webcam": "^6.0.0",
     "reflect-metadata": "^0.1.13",
-    "typescript": "4.1.5"
+    "typescript": "4.5.5"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.16.1",

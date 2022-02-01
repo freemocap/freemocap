@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional, Dict
 import platform
 import time
 
@@ -25,17 +24,20 @@ class TweakedModel(BaseModel):
 # OpenCV Implementation of interacting with a camera
 class OpenCVCamera(TweakedModel):
     port_number: int=0
-    name: str = 'Camera0' # `camera{}`.format(port_number)
+    name: str = f'Camera{port_number}'  # `camera{}`.format(port_number)
+    # exposure: int = 0
     exposure: int = -6
-    resolution_width: int = 1280
-    resolution_height: int = 720
+    resolution_width: int = 800
+    resolution_height: int = 600
+    # resolution_width: int = 1280
+    # resolution_height: int = 720
     opencv_video_capture_object: cv2.VideoCapture = None
     
-    def connect(self)->bool:
+    def connect(self):
         if platform.system() == 'Windows':
-            cap_backend  = cv2.CAP_DSHOW
+            cap_backend = cv2.CAP_DSHOW
         else:
-            cap_backend  = cv2.CAP_ANY
+            cap_backend = cv2.CAP_ANY
 
 
         self.opencv_video_capture_object = cv2.VideoCapture(self.port_number, cap_backend)

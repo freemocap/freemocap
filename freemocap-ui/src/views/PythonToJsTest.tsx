@@ -11,6 +11,10 @@ export const PythonToJsTest = () => {
     const port_numbers = response.data.cams_to_use.map(x => x.port_number);
     const sockets: WebSocket[] = port_numbers.map(port => new WebSocket(`ws://localhost:8080/ws/${port}`));
     sockets.forEach((socket, index) => {
+      window.onbeforeunload = function() {
+        socket.onclose = function () {}; // disable onclose handler first
+        socket.close();
+      };
       socket.onmessage = async (ev: MessageEvent<Blob>) => {
         const byteData = await ev.data.text();
         setData(prev => {
@@ -22,6 +26,7 @@ export const PythonToJsTest = () => {
       }
     })
   }, []);
+
   if (!data) {
     return null;
   }

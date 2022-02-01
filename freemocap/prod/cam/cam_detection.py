@@ -50,3 +50,15 @@ class DetectPossibleCameras:
             return cv2.CAP_DSHOW
         else:
             return cv2.CAP_ANY
+
+
+_available_cameras = None
+
+
+def get_or_create_cams():
+    global _available_cameras
+    if _available_cameras is None:
+        d = DetectPossibleCameras()
+        _available_cameras = d.find_available_cameras()
+
+    return _available_cameras

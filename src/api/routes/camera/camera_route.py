@@ -4,7 +4,7 @@ import numpy as np
 from fastapi import APIRouter
 from starlette.requests import Request
 
-from freemocap.prod.cam.cam_detection import DetectPossibleCameras
+from freemocap.prod.cam.cam_detection import get_or_create_cams
 
 camera_router = APIRouter()
 
@@ -24,6 +24,4 @@ async def stream_camera_bytes(request: Request):
 
 @camera_router.get("/camera/detect")
 async def get_cameras():
-    d = DetectPossibleCameras()
-    cams = d.find_available_cameras()
-    return cams
+    return get_or_create_cams()

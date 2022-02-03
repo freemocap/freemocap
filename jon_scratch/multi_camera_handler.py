@@ -81,6 +81,7 @@ while camera_found_bool:
 
 number_of_cameras = len(camera_list)
 
+#%% prepare thread stuff
 global thread_exit_event
 thread_exit_event = threading.Event()
 loop_count = 0
@@ -97,7 +98,7 @@ for this_camera in camera_list:
     dict_of_fps_mean_lists[this_camera.name] = []
     dict_of_fps_std_lists[this_camera.name] = []
 
-# #create cv2 named windows where we'll display incoming frames
+#%% create cv2 named windows where we'll display incoming frames
 cam_window_name_dict = {}
 display_image_scale_factor = 2
 scaled_image_width = int(camera_list[0].resolution_width/display_image_scale_factor)
@@ -115,6 +116,8 @@ for this_camera in camera_list:
         window_location_y = scaled_image_height*2
     print('Creating window for {} at ({},{})'.format(this_camera.name, str(window_location_x), str(window_location_y)))
     cam_window_name_dict[this_camera.name] = create_video_viewing_window(this_camera.name, (window_location_x, window_location_y))
+
+#long story short, don't make a big multi frame window, just make a window for each camera
 
 # multi_cam_widow_name = create_video_viewing_window('MultiCamera')
 

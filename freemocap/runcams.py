@@ -22,11 +22,16 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     numCamRange = range(numCams)  # a range for the number of cameras that we have
     vidNames = []
     camIDs = []
+    unix_camIDs = []
     for x in numCamRange:  # create names for each of the initial untrimmed videos
         singleCamID = "Cam{}".format(x + 1)
         camIDs.append(
             singleCamID
         )  # creates IDs for each camera based on the number of cameras entered
+        
+        unix_camID = singleCamID + '_unix_timestamps'
+        unix_camIDs.append(unix_camID)
+
         singleVidName = "raw_cam{}.mp4".format(x + 1)
         vidNames.append(singleVidName)
 
@@ -36,6 +41,7 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
         camRecordings = startcamrecording.CamRecordingThread(
             session,
             camIDs[n],
+            unix_camIDs[n],
             camInputs[n],
             vidNames[n],
             session.rawVidPath,
@@ -52,6 +58,7 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     print("finished recordings")
 
     timeStampList = []
+    unix_timeStampList = []
 
     for (
         e
@@ -61,8 +68,12 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
         with open(session.rawVidPath/camIDs[e], "rb") as f:
             camTimeList = pickle.load(f)
             timeStampList.append(camTimeList)
+        with open(session.rawVidPath/unix_camIDs[e], "rb") as g:
+            unix_camTimeList = pickle.load(g)
+            unix_timeStampList.append(unix_camTimeList)
 
-        timeDictionary = {}
+    timeDictionary = {}
+    unix_timeDictionary = {}
 
     id_and_time = zip(camIDs, timeStampList)
 
@@ -70,7 +81,6 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
         timeDictionary[cam] = np.array(
             data
         )  # create a dictionary that holds the timestamps for each camera
-
     df = pd.DataFrame.from_dict(
         timeDictionary, orient="index"
     )  # create a data frame from this dictionary
@@ -78,6 +88,18 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     csvName = session.sessionID + "_timestamps.csv" 
     csvPath = session.rawVidPath / csvName
     timeStampData.to_csv(csvPath)  # turn dataframe into a CSV
+
+    id_and_unix_time = zip(unix_camIDs,unix_timeStampList)
+    
+    for cam_unix, data_unix in id_and_unix_time:
+        unix_timeDictionary[cam_unix] = np.array(data_unix)
+    df_unix = pd.DataFrame.from_dict(
+    unix_timeDictionary, orient="index"
+    )  # create a data frame from this dictionary
+    unix_timeStampData = df_unix.transpose()
+    unix_csvName = session.sessionID + "_unix_timestamps.csv"
+    unix_csvPath = session.rawVidPath / unix_csvName
+    unix_timeStampData.to_csv(unix_csvPath)
 
     session.numCams = numCams
     session.session_settings['recording_parameters'].update({'numCams':session.numCams})

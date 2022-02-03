@@ -7,10 +7,11 @@ import platform
 
 class CamRecordingThread(threading.Thread):
     def __init__(
-        self, session, camID, camInput, videoName, rawVidPath, beginTime, parameterDictionary
+        self, session, camID, unix_camID, camInput, videoName, rawVidPath, beginTime, parameterDictionary
     ):
         threading.Thread.__init__(self)
         self.camID = camID
+        self.unix_camID = unix_camID
         self.camInput = camInput
         self.videoName = videoName
         self.rawVidPath = rawVidPath
@@ -23,6 +24,7 @@ class CamRecordingThread(threading.Thread):
         self.timeStamps = CamRecording(
             self.session,
             self.camID,
+            self.unix_camID,
             self.camInput,
             self.videoName,
             self.rawVidPath,
@@ -36,7 +38,7 @@ class CamRecordingThread(threading.Thread):
 
 # the recording function that each threaded camera object runs
 def CamRecording(
-    session, camID, camInput, videoName, rawVidPath, beginTime, parameterDictionary
+    session, camID, unix_camID, camInput, videoName, rawVidPath, beginTime, parameterDictionary
 ):
     """
     Runs the recording process for each threaded camera instance. Saves a video to the RawVideos folder.
@@ -80,20 +82,25 @@ def CamRecording(
     width = cam.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = cam.get(cv2.CAP_PROP_FRAME_HEIGHT)
     print("width:", width, "height:", height)
-    saveRawVidPath = str( rawVidPath / videoName)  # create a save path for each video to the RawVideos folders
+    saveRawVidPath = str(rawVidPath / videoName)  # create a save path for each video to the RawVideos folders
     
     out = cv2.VideoWriter(saveRawVidPath, fourcc, framerate, (resWidth, resHeight))
     timeStamps = []  # holds the timestamps
+    timeStamps_unix = [] 
+ 
 
     if cam.isOpened():
         success, frame = cam.read()
     else:
         success = False
 
-    while ( success):  # while the camera is opened, record the data until the escape button is hit
+    while (success):  # while the camera is opened, record the data until the escape button is hit
         if flag:  # when the flag is triggered, stop recording and dump the data
             with open(session.rawVidPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)
+
+            with open(session.rawVidPath/unix_camID,"wb") as g:
+                pickle.dump(timeStamps_unix,g)
             break
         success, frame = cam.read()
 
@@ -102,15 +109,18 @@ def CamRecording(
         frame_sized = frame
         out.write(frame)
         timeStamps.append(time.time() - beginTime)  # add each timestamp to the list
+        timeStamps_unix.append(time.time())
 
         key = cv2.waitKey(20)
         if key == 27:  # exit on ESC
             flag = True  # set flag to true to shut down all other webcams
             with open(session.rawVidPath/camID, "wb") as f:
                 pickle.dump(timeStamps, f)  # dump the data
+            with open(session.rawVidPath/unix_camID,"wb") as g:
+                pickle.dump(timeStamps_unix,g)
             break
     cv2.destroyWindow(camWindowName)
-    return timeStamps
+    return timeStamps,timeStamps_unix
 
 
 # this is how we sync our time frames, based on our recorded timestamps

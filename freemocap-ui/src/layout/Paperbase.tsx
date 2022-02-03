@@ -6,6 +6,7 @@ import {Navigator} from './Navigator';
 import {Copyright} from "./Copyright";
 import {BaseContent} from "./content/BaseContent";
 import {BrowserRouter} from 'react-router-dom';
+import {CssBaseline} from "@mui/material";
 
 let theme = createTheme({
   palette: {
@@ -162,6 +163,7 @@ export const Paperbase = function () {
 
   return (
     <ThemeProvider theme={theme}>
+      <CssBaseline />
       <BrowserRouter>
         <Box sx={{display: 'flex', minHeight: '100vh'}}>
           <Box

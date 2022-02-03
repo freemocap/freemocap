@@ -44,7 +44,7 @@ export class RecorderManager {
     const deviceIds = this._deviceIds;
     deviceIds.forEach(deviceId => {
       const recorder = this._recorders[deviceId];
-      recorder.start(10)
+      recorder.start(this._timesliceInMs)
     })
   }
 

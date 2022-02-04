@@ -62,6 +62,7 @@ def RunMe(sessionID=None,
         startFrame = 0,
         useBlender = False,
         resetBlenderExe = False,
+        get_synced_unix_timestamps = False,
         ):
     """ 
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -83,6 +84,7 @@ def RunMe(sessionID=None,
     sesh.userDataPath = userDataPath
     sesh.dataFolderName = recordingconfig.dataFolder
     sesh.startFrame = startFrame
+    sesh.get_synced_unix_timestamps = get_synced_unix_timestamps
 
     # %% Startup 
     startup.get_user_preferences(sesh,stage)
@@ -302,11 +304,11 @@ def RunMe(sessionID=None,
 
                 #blenderPath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
                 #os.chdir(blenderExePath)
-            path_to_this_py_file = Path(__file__).parent.resolve()
-            fmc_blender_script_path = path_to_this_py_file /'fmc_blender.py'
-            with console.status('Stuffing data into a Blender scene...'):
-                output = subprocess.run([str(blenderPath), "--background", "--python", str(fmc_blender_script_path), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
-                print(output)        
+                path_to_this_py_file = Path(__file__).parent.resolve()
+                fmc_blender_script_path = path_to_this_py_file /'fmc_blender.py'
+                with console.status('Stuffing data into a Blender scene...'):
+                    output = subprocess.run([str(blenderPath), "--background", "--python", str(fmc_blender_script_path), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
+                    print(output)        
         except:
             console.print_exception()
             

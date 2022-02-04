@@ -18,6 +18,7 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
 
     #%% Setting up recordings
     beginTime = time.time()
+    session.beginTime = beginTime
     numCams = len(camInputs)  # number of cameras
     numCamRange = range(numCams)  # a range for the number of cameras that we have
     vidNames = []
@@ -107,6 +108,7 @@ def RecordCams(session,camInputs,parameterDictionary,rotationInputs):
     session.camIDs = camIDs
     session.numCamRange = numCamRange
     session.vidNames = vidNames
+    
 
 def SyncCams(session, timeStampData,numCamRange,vidNames,camIDs):
     """ 
@@ -116,7 +118,7 @@ def SyncCams(session, timeStampData,numCamRange,vidNames,camIDs):
     session.syncedVidPath.mkdir(exist_ok = True)
 
     #start the timesync process
-    frameTable,timeTable,frameRate,resultsTable,plots = timesync.TimeSync(session,timeStampData,numCamRange,camIDs) 
+    frameTable,timeTable,unix_synced_timeTable,frameRate,resultsTable,plots = timesync.TimeSync(session,timeStampData,numCamRange,camIDs) 
     
     #this message shows you your percentages and asks if you would like to continue or not. shuts down the program if no
     root = Tk()
@@ -125,6 +127,11 @@ def SyncCams(session, timeStampData,numCamRange,vidNames,camIDs):
     )  # create a GUI instance called proceed
     root.mainloop()
 
+    if session.get_synced_unix_timestamps == True:
+        unix_synced_timestamps_csvName = 'unix_synced_timestamps.csv'
+        unix_synced_timestamps_csvPath = session.sessionPath/unix_synced_timestamps_csvName
+        unix_synced_timeTable.to_csv(unix_synced_timestamps_csvPath)
+
     if proceed.proceed == True:
         print()
         print('Starting editing')
@@ -132,3 +139,4 @@ def SyncCams(session, timeStampData,numCamRange,vidNames,camIDs):
         session.session_settings['recording_parameters'].update({'numFrames':session.numFrames})
         #videotrim.createCalibrationVideos(session,60,parameterDictionary)
         print('all done')
+

@@ -87,7 +87,7 @@ def CamRecording(
     out = cv2.VideoWriter(saveRawVidPath, fourcc, framerate, (resWidth, resHeight))
     timeStamps = []  # holds the timestamps
     timeStamps_unix = [] 
- 
+    timeStamps_unix.append(beginTime) #the first timestamp for each camera in the unix CSV will always be the begin time
 
     if cam.isOpened():
         success, frame = cam.read()

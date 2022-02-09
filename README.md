@@ -86,8 +86,8 @@ This two-line script is a copy of the `freemocap_runme_script.py` file, which ca
 [2]: fmc.RunMe() #<-this is where the magic happens!
 ```
 
-### 3D) Follow instructions in the Command window and pop-up GUI windows!
-✨💀✨
+### 6) Follow instructions in the Command window and pop-up GUI windows!
+---✨💀✨---.
 
 ---
 ___

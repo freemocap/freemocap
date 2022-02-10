@@ -92,7 +92,7 @@ class MediaPipeVideoSetup(threading.Thread):
         exposure = parameterDictionary.get("exposure")
         resWidth = parameterDictionary.get("resWidth")
         resHeight = parameterDictionary.get("resHeight")
-        camWindowName = "RECORDING - Camera" + str(self.camID)+' - Press ESC to exit'
+        camWindowName = "Camera" + str(self.camID)+' - Press ESC to exit'
 
         cv2.namedWindow(camWindowName)
 

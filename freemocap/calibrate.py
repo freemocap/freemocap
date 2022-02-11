@@ -1,7 +1,8 @@
 import os
 import copy
 import json
-import pickle 
+import pickle
+import glob 
 
 from aniposelib.cameras import CameraGroup
 from aniposelib.utils import load_pose2d_fnames
@@ -219,7 +220,7 @@ def createCalibrationVideos(session, calVideoFrameLength):
     Based on the desired length of the calibration videos (for the anipose functions), create new videos trimmed 
     to that specific length
     """  
-    vidList = os.listdir(session.syncedVidPath)
+    vidList =  glob.glob(str(session.syncedVidPath) + "/*.mp4")
     if len(calVideoFrameLength)==1:
         framelist = list(range(calVideoFrameLength))
     elif len(calVideoFrameLength)==2:
@@ -230,7 +231,7 @@ def createCalibrationVideos(session, calVideoFrameLength):
     codec = "DIVX"
     for count, vid in enumerate(vidList, start=1):
         cam_name = "Cam{}".format(count)
-        cap = cv2.VideoCapture(str(session.syncedVidPath / vid))
+        cap = cv2.VideoCapture(vid)
         fourcc = cv2.VideoWriter_fourcc(*codec)
 
         # grab resolution parameters from the videos

@@ -27,5 +27,5 @@ async def websocket_endpoint(websocket: WebSocket, webcam_id: str):
                 continue
             await websocket.send_bytes(base64.b64encode(frame.tobytes()))
     except:
-        logger.info("Close the camera being used")
+        logger.info(f"Camera {webcam_id} is now closed.")
         cam.close()

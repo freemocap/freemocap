@@ -4,7 +4,7 @@ import numpy as np
 from fastapi import APIRouter
 from starlette.requests import Request
 
-from freemocap.prod.cam.cam_detection import get_or_create_cams
+from freemocap.prod.cam.detection.cam_singleton import get_or_create_cams
 
 camera_router = APIRouter()
 

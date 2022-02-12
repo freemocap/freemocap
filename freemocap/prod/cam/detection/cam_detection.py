@@ -1,23 +1,13 @@
 import logging
 import platform
-from typing import List
 
 import cv2
-from pydantic import BaseModel
+
+from freemocap.prod.cam.detection.dto import FindAvailableResponse, RawCamera
 
 CAM_CHECK_NUM = 5
 
 logger = logging.getLogger(__name__)
-
-
-class RawCamera(BaseModel):
-    port_number: int
-
-
-class FindAvailableResponse(BaseModel):
-    camera_found_count: int
-    cams_to_use: List[RawCamera]
-    cv2_backend: int
 
 
 class DetectPossibleCameras:
@@ -51,14 +41,3 @@ class DetectPossibleCameras:
         else:
             return cv2.CAP_ANY
 
-
-_available_cameras = None
-
-
-def get_or_create_cams():
-    global _available_cameras
-    if _available_cameras is None:
-        d = DetectPossibleCameras()
-        _available_cameras = d.find_available_cameras()
-
-    return _available_cameras

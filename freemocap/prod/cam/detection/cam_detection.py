@@ -20,12 +20,10 @@ class DetectPossibleCameras:
             cap = cv2.VideoCapture(camNum, cv2_backend)
             success, image = cap.read()
             if success:
-                logger.info(f"We found one: {camNum}")
                 try:
                     cams_to_use_list.append(RawCamera(
                         port_number=camNum,
                     ))
-                    logger.info(cap.get(cv2.CAP_PROP_SETTINGS))
                 finally:
                     cap.release()
 

@@ -20,3 +20,7 @@ requests==2.27.1
 pyudev==0.22.0
 python-multipart==0.0.5
 websockets==10.1
+sqlalchemy==1.4.31
+singleton-decorator==1.0.0
+
+# Requirements for core-processor

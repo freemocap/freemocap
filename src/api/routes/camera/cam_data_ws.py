@@ -15,6 +15,7 @@ async def websocket_endpoint(websocket: WebSocket, webcam_id: str):
     await websocket.accept()
     cam = OpenCVCamera(port_number=webcam_id)
     cam.connect()
+
     try:
         while True:
             success, image, timestamp = cam.get_next_frame()

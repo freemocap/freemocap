@@ -5,7 +5,7 @@ from src.api.middleware.cors import cors
 from src.api.routes import enabled_routers
 
 
-def create_app():
+def create_app(*args, **kwargs):
     _app = FastAPI()
 
     cors(_app)

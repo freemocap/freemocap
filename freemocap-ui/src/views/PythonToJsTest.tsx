@@ -36,7 +36,9 @@ export const PythonToJsTest = () => {
     <Box>
       {
         keys.map(k => {
-          return <img src={`data:image/png;base64,${data[k]}`}/>
+          return (
+            <img src={`data:image/png;base64,${data[k]}`} alt={"video capture"}/>
+          )
         })
       }
     </Box>

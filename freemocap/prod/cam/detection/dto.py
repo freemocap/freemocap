@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 class RawCamera(BaseModel):
-    port_number: int
+    port_number: str
 
 
 class FindAvailableResponse(BaseModel):

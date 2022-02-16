@@ -22,5 +22,5 @@ python-multipart==0.0.5
 websockets==10.1
 sqlalchemy==1.4.31
 singleton-decorator==1.0.0
-
+orjson==3.6.7
 # Requirements for core-processor

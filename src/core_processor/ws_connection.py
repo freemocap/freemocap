@@ -1,6 +1,7 @@
 import logging
 
 import websockets
+from orjson import orjson
 
 from src.core_processor.app_events.app_queue import AppQueue
 
@@ -20,7 +21,9 @@ class WSConnection:
         async for websocket in websockets.connect(uri, max_size=None, ping_timeout=None):
             try:
                 async for message in websocket:
-                    await queue.put(message)
+                    # How expensive is it to parse a json string?
+                    asJson = orjson.loads(message)
+                    await queue.put(asJson)
                     print(f"webcam_id: {webcam_id}, msg rcv")
             except websockets.ConnectionClosed as e:
                 logger.error(e)

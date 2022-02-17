@@ -8,5 +8,5 @@ class BoardDetection:
     def __init__(self):
         pass
 
-    def process(self, message, *args, **kwargs):
-        print(message["timestamp"])
+    async def process(self, message, *args, **kwargs):
+        logger.info(message["timestamp"])

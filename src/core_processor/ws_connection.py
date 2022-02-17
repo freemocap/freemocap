@@ -24,7 +24,7 @@ class WSConnection:
                     # How expensive is it to parse a json string?
                     asJson = orjson.loads(message)
                     await queue.put(asJson)
-                    print(f"webcam_id: {webcam_id}, msg rcv")
+                    # print(f"webcam_id: {webcam_id}, msg rcv")
             except websockets.ConnectionClosed as e:
                 logger.error(e)
                 continue

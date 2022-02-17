@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from src.core_processor.app_events.app_queue import AppQueue
@@ -21,12 +20,11 @@ class EventNotifier:
     async def notify_all_subscribers(self):
         while True:
             for webcam_id in self._webcam_ids:
-                queue = self._app_queues.get_by_webcam_id(webcam_id)  # type: asyncio.Queue
+                queue = self._app_queues.get_by_webcam_id(webcam_id)
                 try:
                     message = await queue.get()
-                    queue.task_done()
                     for worker in self._workers:
-                        worker.process(message)
+                        await worker.process(message)
                 except Exception as e:
                     logger.error(e)
                     logger.error("Notifier dead")

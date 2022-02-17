@@ -51,7 +51,7 @@ class OpenCVCamera(TweakedModel):
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 
         if success:
-            logger.error('Camera found at port number {}'.format(self.port_number))
+            logger.info('Camera found at port number {}'.format(self.port_number))
             self.name = 'Camera{}'.format(self.port_number)
             return success
         else:

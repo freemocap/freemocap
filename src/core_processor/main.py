@@ -1,14 +1,24 @@
 #!/usr/bin/env python
 
 import asyncio
+import logging
 from typing import List, Optional
 
+from aiomultiprocess.core import Process, get_manager
+
 from freemocap.prod.cam.detection.cam_detection import DetectPossibleCameras
+from src.core_processor.app_events.app_queue import AppQueue
 from src.core_processor.app_events.event_notify import EventNotifier
 from src.core_processor.log_setup import logging_setup
 from src.core_processor.ws_connection import WSConnection
 
-loop = asyncio.get_event_loop()
+logger = logging.getLogger(__name__)
+
+
+async def start(webcam_id: str, queue):
+    logging_setup()
+    main_conn = WSConnection()
+    await main_conn.connect(webcam_id, queue)
 
 
 async def begin_webcam_capture(webcam_ids: Optional[List[str]] = None):
@@ -16,23 +26,28 @@ async def begin_webcam_capture(webcam_ids: Optional[List[str]] = None):
         cams = DetectPossibleCameras().find_available_cameras().cams_to_use
         webcam_ids = [cam.port_number for cam in cams]
 
-    main_conn = WSConnection()
-    tasks = [
-        loop.create_task(main_conn.connect(wb_id))
-        for wb_id in webcam_ids
-    ]
+    manager = get_manager()
+    ev = EventNotifier(webcam_ids)
+    app_queue = AppQueue(manager)
+    app_queue.create_all(webcam_ids)
 
-    notify_coroutine = EventNotifier(webcam_ids).notify_all_subscribers()
-    tasks.append(
-        loop.create_task(notify_coroutine)
-    )
+    tasks = []
+    for webcam_id in webcam_ids:
+        queue = app_queue.get_by_webcam_id(webcam_id)
+        p = Process(target=start, args=(webcam_id, queue))
+        p.start()
+        tasks.append(p.join())
 
-    await asyncio.wait_for(
-        asyncio.gather(*tasks),
-        timeout=None,
-    )
+    for webcam_id in webcam_ids:
+        queue = app_queue.get_by_webcam_id(webcam_id)
+        p = Process(target=ev.notify_all_subscribers, args=(queue,))
+        p.start()
+        tasks.append(p.join())
+
+    logger.info(f"Process count: {len(tasks)}")
+    return await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":
-    logging_setup()
+    loop = asyncio.get_event_loop()
     loop.run_until_complete(begin_webcam_capture())

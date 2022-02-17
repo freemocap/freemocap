@@ -19,7 +19,9 @@ class DetectPossibleCameras:
         for camNum in range(CAM_CHECK_NUM):
             cap = cv2.VideoCapture(camNum, cv2_backend)
             success, image = cap.read()
+
             if success:
+                logger.info(f"camera at port {camNum} found an image with shape {image.shape}")
                 try:
                     cams_to_use_list.append(RawCamera(
                         port_number=camNum,

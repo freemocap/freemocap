@@ -9,4 +9,5 @@ class BoardDetection:
         pass
 
     async def process(self, message, *args, **kwargs):
+        # logger.info(message)
         logger.info(message["timestamp"])

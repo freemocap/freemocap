@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import multiprocessing
 
@@ -16,12 +15,11 @@ class EventNotifier:
     async def notify_all_subscribers(self, queue: multiprocessing.Queue):
         while True:
             try:
-                message = queue.get(timeout=1)
+                message = queue.get(timeout=.1)
                 for worker in self._workers:
                     await worker.process(message)
             except Exception as e:
-                print(e)
-                logger.error("Notifier dead")
+                pass
 
     def _construct(self):
         return [sub() for sub in subscribers]

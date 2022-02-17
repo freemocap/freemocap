@@ -25,5 +25,5 @@ singleton-decorator==1.0.0
 orjson==3.6.7
 aiomultiprocess==0.9.0
 # faster-fifo==1.3.0
-# viztracer==0.14.5
+#viztracer==0.14.5
 # Requirements for core-processor

@@ -1,25 +1,43 @@
-import base64
+import asyncio
 import logging
-
-import cv2
-import orjson
-from fastapi import APIRouter, WebSocket
 from time import perf_counter
 
+import orjson
+from aiomultiprocess.core import get_manager
+from fastapi import APIRouter, WebSocket
+
 from jon_scratch.opencv_camera import OpenCVCamera
+from src.core_processor.board_detection.detect import BoardDetection
+from src.core_processor.processor import open_process
 
 logger = logging.getLogger(__name__)
+
 cam_ws_router = APIRouter()
+
+
+@cam_ws_router.post("/start_realtime_capture")
+async def start_realtime_capture():
+    pass
+
+
+@cam_ws_router.get("/begin_board_detection")
+async def begin_board_detection():
+    manager = get_manager()
+    queue = manager.Queue()
+    d = BoardDetection()
+    await asyncio.gather(
+        open_process(queue),
+        d.process(queue)
+    )
 
 
 @cam_ws_router.websocket("/ws/{webcam_id}")
 async def websocket_endpoint(websocket: WebSocket, webcam_id: str):
     await websocket.accept()
     # TODO: Consider Spawning a new Process here - alleviate main thread issues
-    # We could spawn a new Process here directlu
+    # We could spawn a new Process here directly
     cam = OpenCVCamera(port_number=webcam_id)
     cam.connect()
-
     try:
         while True:
             t1_start = perf_counter()
@@ -28,18 +46,18 @@ async def websocket_endpoint(websocket: WebSocket, webcam_id: str):
                 continue
             if image is None:
                 continue
-            success, frame = cv2.imencode('.png', image)
+            # success, frame = cv2.imencode('.png', image)
             if not success:
                 continue
             d = {
-                "frameData": str(frame.tobytes()),
+                "frameData": str(image.tobytes()),
                 # "frameData": base64.b64encode(frame.tobytes()),
                 "timestamp": timestamp,
             }
             d = orjson.dumps(d)
             await websocket.send_bytes(d)
             t1_stop = perf_counter()
-            print("Elapsed time per frame:", t1_stop-t1_start)
+            print("Elapsed time per frame:", t1_stop - t1_start)
     except:
         logger.info(f"Camera {webcam_id} is now closed.")
         cam.close()

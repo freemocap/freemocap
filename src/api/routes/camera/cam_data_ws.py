@@ -4,6 +4,7 @@ import logging
 import cv2
 import orjson
 from fastapi import APIRouter, WebSocket
+from time import perf_counter
 
 from jon_scratch.opencv_camera import OpenCVCamera
 
@@ -21,6 +22,7 @@ async def websocket_endpoint(websocket: WebSocket, webcam_id: str):
 
     try:
         while True:
+            t1_start = perf_counter()
             success, image, timestamp = cam.get_next_frame()
             if not success:
                 continue
@@ -36,6 +38,8 @@ async def websocket_endpoint(websocket: WebSocket, webcam_id: str):
             }
             d = orjson.dumps(d)
             await websocket.send_bytes(d)
+            t1_stop = perf_counter()
+            print("Elapsed time per frame:", t1_stop-t1_start)
     except:
         logger.info(f"Camera {webcam_id} is now closed.")
         cam.close()

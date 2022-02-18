@@ -2,8 +2,8 @@ import logging
 import platform
 import time
 
-import numpy as np
 import cv2
+import numpy as np
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -13,8 +13,10 @@ logger.level = logging.INFO
 class NoCameraAvailableException(Exception):
     pass
 
+
 class FailedFrameGrabException(Exception):
     pass
+
 
 class TweakedModel(BaseModel):
     class Config:
@@ -23,8 +25,8 @@ class TweakedModel(BaseModel):
 
 # OpenCV Implementation of interacting with a camera
 class OpenCVCamera(TweakedModel):
-    port_number: int=0
-    name: str = f'Camera{port_number}'  # `camera{}`.format(port_number)
+    port_number: int = 0
+    name: str = f'Camera {port_number}'
     # exposure: int = 0
     exposure: int = -6
     resolution_width: int = 800
@@ -32,44 +34,51 @@ class OpenCVCamera(TweakedModel):
     # resolution_width: int = 1280
     # resolution_height: int = 720
     opencv_video_capture_object: cv2.VideoCapture = None
-    
+
     def connect(self):
         if platform.system() == 'Windows':
             cap_backend = cv2.CAP_DSHOW
         else:
             cap_backend = cv2.CAP_ANY
 
-
         self.opencv_video_capture_object = cv2.VideoCapture(self.port_number, cap_backend)
         success, image = self.opencv_video_capture_object.read()
 
-        #set camera stream paramters
+        if not success:
+            # raise NoCameraAvailableException()
+            logger.error('Could not connect to a camera at port# {}'.format(self.port_number))
+            return success
+
+        # set camera stream paramters
         self.opencv_video_capture_object.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width)
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height)
 
-        self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC,
+            cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 
         if success:
+<<<<<<< HEAD
             logger.info('Camera found at port number {}'.format(self.port_number))
             self.name = 'Camera{}'.format(self.port_number)
+=======
+            logger.debug(f'Camera found at port number {self.port_number}')
+            self.name = f'Camera {self.port_number}'
+>>>>>>> 734b77bf722ff1013763105d94f9a579c75ce5d9
             return success
-        else:
-            # raise NoCameraAvailableException()
-            logger.error('Could not connect to a camera at port# {}'.format(self.port_number))
-            return success
-        
-    def get_next_frame(self):
 
+    def get_next_frame(self):
         timestamp_ns_pre_grab = time.time_ns()
-        # Why grab not read? see -> https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
+        # Why grab not read? see ->
+        # https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
         grab_success = self.opencv_video_capture_object.grab()
         timestamp_ns_post_grab = time.time_ns()
-        timestamp_ns = (timestamp_ns_pre_grab + timestamp_ns_post_grab)/2
+        timestamp_ns = (timestamp_ns_pre_grab + timestamp_ns_post_grab) / 2
 
         if grab_success:
             success, image = self.opencv_video_capture_object.retrieve()
-            # logger.info('{} successfully grabbed a frame at timestamp {}'.format(self.name, timestamp_ns/1e9))
+            # logger.info('{} successfully grabbed a frame at timestamp {}'.format(self.name,
+            # timestamp_ns/1e9))
             return success, image, timestamp_ns
 
         return False, None, None
@@ -81,31 +90,27 @@ class OpenCVCamera(TweakedModel):
 
 if __name__ == '__main__':
     from rich.console import Console
+
     console = Console()
     timestamps = []
     try:
         # Test the camera
-        camera =  OpenCVCamera()
+        camera = OpenCVCamera()
         camera.connect()
 
         while True:
-            success, image, timestamp_ns = camera.get_next_frame()
-            timestamps.append(timestamp_ns/1e9)
-            if success:
-                mean_fps = 1/np.mean(np.diff(timestamps))
-                console.print('{} grabbed a frame at timestamp {} : mean fps = {}'.format(camera.name, timestamp_ns/1e9, mean_fps))
+            isSuccessful, image, timestamp_ns = camera.get_next_frame()
+            timestamps.append(timestamp_ns / 1e9)
+            if isSuccessful:
+                mean_fps = 1 / np.mean(np.diff(timestamps))
+                console.print(f'{camera.name} grabbed a frame at timestamp {timestamp_ns / 1e9} : mean fps = {mean_fps}')
             else:
-                console.print('{} failed to grab a frame at timestamp {} : mean fps = {}'.format(camera.name, timestamp_ns/1e9, mean_fps))
-            cv2.imshow(camera.name+'- Press ESC to close', image)
+                console.print(f'{camera.name} failed to grab a frame at timestamp {timestamp_ns / 1e9} : mean fps = {mean_fps}')
+            cv2.imshow(camera.name + ' - Press ESC to close', image)
             exit_key = cv2.waitKey(1)
-            if exit_key ==27:
+            if exit_key == 27:
                 break
         cv2.destroyAllWindows()
         camera.close()
     except:
         console.print_exception()
-
-
-
-
-

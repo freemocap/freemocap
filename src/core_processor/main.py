@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import asyncio
 import logging
 from typing import List, Optional
@@ -30,8 +29,6 @@ async def begin_realtime_processing(webcam_ids: Optional[List[str]] = None):
     app_queue = AppQueue(manager)
     app_queue.create_all(webcam_ids)
 
-    ev = EventNotifier(webcam_ids)
-
     tasks = []
     for webcam_id in webcam_ids:
         queue = app_queue.get_by_webcam_id(webcam_id)
@@ -39,11 +36,12 @@ async def begin_realtime_processing(webcam_ids: Optional[List[str]] = None):
         p.start()
         tasks.append(p.join())
 
-    for webcam_id in webcam_ids:
-        queue = app_queue.get_by_webcam_id(webcam_id)
-        p = Process(target=ev.notify_all_subscribers, args=(queue,))
-        p.start()
-        tasks.append(p.join())
+    ev = EventNotifier(webcam_ids)
+    # for webcam_id in webcam_ids:
+    #     queue = app_queue.get_by_webcam_id(webcam_id)
+    #     p = Process(target=ev.notify_all_subscribers, args=(queue,))
+    #     p.start()
+    #     tasks.append(p.join())
 
     logger.info(f"Process count: {len(tasks)}")
     return await asyncio.gather(*tasks)

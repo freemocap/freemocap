@@ -1,6 +1,7 @@
 import logging
 from time import perf_counter
 
+import aiomultiprocess
 import orjson
 from fastapi import APIRouter, WebSocket
 

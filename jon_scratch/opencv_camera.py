@@ -26,7 +26,7 @@ class TweakedModel(BaseModel):
 # OpenCV Implementation of interacting with a camera
 class OpenCVCamera(TweakedModel):
     port_number: int = 0
-    name: str = f'Camera{port_number}'
+    name: str = f'Camera {port_number}'
     # exposure: int = 0
     exposure: int = -6
     resolution_width: int = 800
@@ -63,10 +63,9 @@ class OpenCVCamera(TweakedModel):
             return success
 
     def get_next_frame(self):
-
         timestamp_ns_pre_grab = time.time_ns()
-        # Why grab not read? see -> https://stackoverflow.com/questions/57716962/difference
-        # -between-video-capture-read-and-grab
+        # Why grab not read? see ->
+        # https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
         grab_success = self.opencv_video_capture_object.grab()
         timestamp_ns_post_grab = time.time_ns()
         timestamp_ns = (timestamp_ns_pre_grab + timestamp_ns_post_grab) / 2

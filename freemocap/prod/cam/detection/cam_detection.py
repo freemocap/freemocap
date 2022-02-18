@@ -27,6 +27,7 @@ class DetectPossibleCameras:
                 finally:
                     cap.release()
 
+        print(cams_to_use_list)
         return FindAvailableResponse(
             camera_found_count=len(cams_to_use_list),
             cams_to_use=cams_to_use_list,

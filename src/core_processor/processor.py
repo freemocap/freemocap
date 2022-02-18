@@ -1,11 +1,12 @@
 import logging
 import time
+from typing import Dict
 
 from aiomultiprocess import Process
-from orjson import orjson
 
 from freemocap.prod.cam.detection.cam_singleton import get_or_create_cams
 from jon_scratch.opencv_camera import OpenCVCamera
+from src.core_processor.app_events.app_queue import CameraFrameQueue
 
 
 def create_opencv_cams():
@@ -26,12 +27,14 @@ async def capture_cam_images_new_process(queue):
     await p.join()
 
 
-async def _start_camera_capture(queue):
+async def _start_camera_capture(queues: Dict[str, CameraFrameQueue]):
     cv_cams = create_opencv_cams()
     logger = logging.getLogger(__name__)
     # threading could be added here!
     while True:
         for cv_cam in cv_cams:
+            webcam_id = str(cv_cam.port_number)
+            queue = queues[webcam_id].queue
             t1_start = time.perf_counter()
             success, image, timestamp = cv_cam.get_next_frame()
             if not success:

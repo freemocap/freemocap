@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import asyncio
 import logging
 from typing import List, Optional
@@ -21,13 +20,12 @@ async def start(webcam_id: str, queue):
     await main_conn.connect(webcam_id, queue)
 
 
-async def begin_webcam_capture(webcam_ids: Optional[List[str]] = None):
+async def begin_realtime_processing(webcam_ids: Optional[List[str]] = None):
     if not webcam_ids:
         cams = DetectPossibleCameras().find_available_cameras().cams_to_use
         webcam_ids = [cam.port_number for cam in cams]
 
     manager = get_manager()
-    ev = EventNotifier(webcam_ids)
     app_queue = AppQueue(manager)
     app_queue.create_all(webcam_ids)
 
@@ -38,11 +36,12 @@ async def begin_webcam_capture(webcam_ids: Optional[List[str]] = None):
         p.start()
         tasks.append(p.join())
 
-    for webcam_id in webcam_ids:
-        queue = app_queue.get_by_webcam_id(webcam_id)
-        p = Process(target=ev.notify_all_subscribers, args=(queue,))
-        p.start()
-        tasks.append(p.join())
+    ev = EventNotifier(webcam_ids)
+    # for webcam_id in webcam_ids:
+    #     queue = app_queue.get_by_webcam_id(webcam_id)
+    #     p = Process(target=ev.notify_all_subscribers, args=(queue,))
+    #     p.start()
+    #     tasks.append(p.join())
 
     logger.info(f"Process count: {len(tasks)}")
     return await asyncio.gather(*tasks)
@@ -50,4 +49,4 @@ async def begin_webcam_capture(webcam_ids: Optional[List[str]] = None):
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(begin_webcam_capture())
+    loop.run_until_complete(begin_realtime_processing())

@@ -58,13 +58,8 @@ class OpenCVCamera(TweakedModel):
             cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 
         if success:
-<<<<<<< HEAD
-            logger.info('Camera found at port number {}'.format(self.port_number))
-            self.name = 'Camera{}'.format(self.port_number)
-=======
             logger.debug(f'Camera found at port number {self.port_number}')
             self.name = f'Camera {self.port_number}'
->>>>>>> 734b77bf722ff1013763105d94f9a579c75ce5d9
             return success
 
     def get_next_frame(self):

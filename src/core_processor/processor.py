@@ -1,8 +1,9 @@
 import logging
-import time
-from typing import Dict
+from typing import Dict, List, NamedTuple
 
+import numpy as np
 from aiomultiprocess import Process
+from aiomultiprocess.types import Queue
 
 from freemocap.prod.cam.detection.cam_singleton import get_or_create_cams
 from jon_scratch.opencv_camera import OpenCVCamera
@@ -21,27 +22,49 @@ def create_opencv_cams():
     return cv_cams
 
 
-async def capture_cam_images_new_process(queue):
-    p = Process(target=_start_camera_capture, args=(queue,))
-    p.start()
-    await p.join()
+async def start_camera_capture(queue: Queue):
+    processes = []
+    creator = CameraCaptureProcess()
+    process = Process(
+        target=creator.run,
+        args=(queue,)
+    )
+    process.start()
+    processes.append(process)
 
 
-async def _start_camera_capture(queues: Dict[str, CameraFrameQueue]):
-    cv_cams = create_opencv_cams()
-    logger = logging.getLogger(__name__)
-    # threading could be added here!
-    while True:
-        for cv_cam in cv_cams:
-            webcam_id = str(cv_cam.port_number)
-            queue = queues[webcam_id].queue
-            t1_start = time.perf_counter()
-            success, image, timestamp = cv_cam.get_next_frame()
-            if not success:
-                continue
-            if image is None:
-                continue
-            queue.put_nowait((image, timestamp))
-            t1_stop = time.perf_counter()
-            logger.info(f"Elapsed time per insert into queue: {t1_stop - t1_start}")
+class FramePayload(NamedTuple):
+    port_number: int
+    image: np.ndarray
+    timestamp: int
 
+
+class ImagePayload(NamedTuple):
+    frames: List[FramePayload]
+
+
+class CameraCaptureProcess:
+    async def run(self, queue):
+        cv_cams = create_opencv_cams()
+        _queue = queue
+        _logger = logging.getLogger(__name__)
+
+        while True:
+            image_list: List[FramePayload] = []
+            for cv_cam in cv_cams:
+                success, image, timestamp = cv_cam.get_next_frame()
+                if not success:
+                    continue
+                if image is None:
+                    continue
+                image_list.append(
+                    FramePayload(
+                        port_number=cv_cam.port_number,
+                        image=image,
+                        timestamp=timestamp
+                    )
+                )
+            _queue.put(
+                ImagePayload(frames=image_list)
+            )
+            # _logger.info("Im printing stuff")

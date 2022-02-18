@@ -1,14 +1,11 @@
-import asyncio
 import logging
 from time import perf_counter
 
 import orjson
-from aiomultiprocess.core import get_manager
 from fastapi import APIRouter, WebSocket
 
 from jon_scratch.opencv_camera import OpenCVCamera
-from src.core_processor.board_detection.detect import BoardDetection
-from src.core_processor.processor import open_process
+from src.api.services.board_detect_service import BoardDetectService
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +19,11 @@ async def start_realtime_capture():
 
 @cam_ws_router.get("/begin_board_detection")
 async def begin_board_detection():
-    manager = get_manager()
-    queue = manager.Queue()
-    d = BoardDetection()
-    await asyncio.gather(
-        open_process(queue),
-        d.process(queue)
-    )
+    service = BoardDetectService()
+    await service.run()
 
 
+## This is for the frontend - this is for showing cam data to something external. nothing else
 @cam_ws_router.websocket("/ws/{webcam_id}")
 async def websocket_endpoint(websocket: WebSocket, webcam_id: str):
     await websocket.accept()

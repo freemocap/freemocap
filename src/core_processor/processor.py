@@ -38,13 +38,7 @@ async def _start_camera_capture(queue):
                 continue
             if image is None:
                 continue
-            # Whats the performance difference between tuple queue passing vs dict
-            d = {
-                "image": image,
-                "timestamp": timestamp,
-            }
-            d = orjson.dumps(d)
-            queue.put_nowait(d)
+            queue.put_nowait((image, timestamp))
             t1_stop = time.perf_counter()
             logger.info(f"Elapsed time per insert into queue: {t1_stop - t1_start}")
 

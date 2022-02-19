@@ -15,6 +15,7 @@ def create_opencv_cams():
     cv_cams = [
         OpenCVCamera(port_number=webcam.port_number)
         for webcam in raw_webcam_obj
+        if int(webcam.port_number) < 3
     ]
     for cv_cam in cv_cams:
         cv_cam.connect()
@@ -47,12 +48,12 @@ class CameraCaptureProcess:
         cv_cams = create_opencv_cams()
         _queue = queue
         _logger = logging.getLogger(__name__)
-
+        _logger.info("Beginning Camera Capture Process")
         while True:
             image_list: List[FramePayload] = []
             for cv_cam in cv_cams:
                 success, image, timestamp = cv_cam.get_next_frame()
-                
+
                 if not success:
                     continue
                 if image is None:
@@ -64,7 +65,8 @@ class CameraCaptureProcess:
                         timestamp=timestamp
                     )
                 )
+
             _queue.put(
                 ImagePayload(frames=image_list)
             )
-            _logger.info("Im printing stuff")
+

@@ -9,6 +9,9 @@ from aiomultiprocess.types import Queue
 from src.core_processor.processor import ImagePayload
 
 
+from rich import inspect
+
+
 aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
 charuco_length = 7
 charuco_width = 5
@@ -27,22 +30,27 @@ class BoardDetection:
     async def process(self, queue: Queue):
         logger = logging.getLogger(__name__)
         while True:
-            message: ImagePayload = ImagePayload(frames=[])
+            message = None
             try:
                 message = queue.get(timeout=1)  # type: ImagePayload
             except Exception as e:
                 pass
+            print('got message from the queue')
 
             if not message:
                 continue
 
-            for f in message.frames:
+            frames = message.frames
+
+            for f in frames:
+                print(f'got image of shape {f.image.shape}')
                 charuco_corners, charuco_ids, aruco_square_corners, aruco_square_ids = self.detect_charuco_board(f.image)
                 cv2.polylines(f.image, np.int32([charuco_corners]), True, (0,100,255), 2)
                 cv2.imshow(str(f.port_number), f.image)
                 exit_key = cv2.waitKey(1)
                 if exit_key == 27:
                     break
+
 
     def detect_charuco_board(self, image):
         """

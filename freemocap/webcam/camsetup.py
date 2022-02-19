@@ -3,8 +3,10 @@ import cv2
 import imutils
 import os
 import platform
+import time 
 
 import mediapipe as mp
+import numpy as np
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -102,8 +104,8 @@ class MediaPipeVideoSetup(threading.Thread):
             cap = cv2.VideoCapture(self.camID, cv2.CAP_ANY)
 
         with mp_holistic.Holistic(
-            static_image_mode=True,
-            model_complexity=0,
+            static_image_mode=False,
+            model_complexity=2,
             enable_segmentation=True) as holistic:
 
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, resWidth)
@@ -127,12 +129,19 @@ class MediaPipeVideoSetup(threading.Thread):
             print("CAP_PROP_GAIN  : '{}'".format(cap.get(cv2.CAP_PROP_GAIN)))
             print("CAP_PROP_CONVERT_RGB : '{}'".format(cap.get(cv2.CAP_PROP_CONVERT_RGB)))
             print("__________________________________________")
-
+            timestamps = []
             while True:
                 ret1, frame1 = cap.read()
+                timestamps.append(time.time())
+                
+                print(f"mean fps for cam {self.camID} is {1/np.mean(np.diff(timestamps))}")
+                
                 if ret1 == True:
                     frame1.flags.writeable = False
-                    results = holistic.process(cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB))
+                    try:
+                        results = holistic.process(cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB))
+                    except Exception as e:
+                        print(e)
                     mp_drawing.draw_landmarks(
                         frame1,
                         results.face_landmarks,
@@ -146,6 +155,18 @@ class MediaPipeVideoSetup(threading.Thread):
                         mp_holistic.POSE_CONNECTIONS,
                         landmark_drawing_spec=mp_drawing_styles
                         .get_default_pose_landmarks_style())
+                    mp_drawing.draw_landmarks(
+                        frame1,
+                        results.left_hand_landmarks,
+                        mp_holistic.HAND_CONNECTIONS,
+                        landmark_drawing_spec=mp_drawing_styles
+                        .get_default_hand_landmarks_style())
+                    mp_drawing.draw_landmarks(
+                        frame1,
+                        results.right_hand_landmarks,
+                        mp_holistic.HAND_CONNECTIONS,
+                        landmark_drawing_spec=mp_drawing_styles
+                        .get_default_hand_landmarks_style())
                     if rotNum is not None:
                         frame1 = imutils.rotate_bound(frame1, angle=rotNum)
                     cv2.imshow(camWindowName, frame1)

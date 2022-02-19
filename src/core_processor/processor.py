@@ -55,8 +55,10 @@ class CameraCaptureProcess:
                 success, image, timestamp = cv_cam.get_next_frame()
 
                 if not success:
+                    print(f'failed to read frame from camera at port {str(cv_cam.port_number)}')
                     continue
                 if image is None:
+                    print(f'Read `None` frame from camera at port {str(cv_cam.port_number)}')
                     continue
                 image_list.append(
                     FramePayload(

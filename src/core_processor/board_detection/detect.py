@@ -9,15 +9,12 @@ from aiomultiprocess.types import Queue
 from src.core_processor.processor import ImagePayload
 
 
-from rich import inspect
+aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
+charuco_length = 7
+charuco_width = 5
 
-
-# aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
-# charuco_length = 7
-# charuco_width = 5
-
-# board = cv2.aruco.CharucoBoard_create(charuco_length, charuco_width, 1, .8, aruco_dict)
-# num_charuco_corners = (charuco_length-1) * (charuco_width-1)
+board = cv2.aruco.CharucoBoard_create(charuco_length, charuco_width, 1, .8, aruco_dict)
+num_charuco_corners = (charuco_length-1) * (charuco_width-1)
 
 
 class BoardDetection:
@@ -30,30 +27,22 @@ class BoardDetection:
     async def process(self, queue: Queue):
         logger = logging.getLogger(__name__)
         while True:
-            message = None
+            message: ImagePayload = ImagePayload(frames=[])
             try:
                 message = queue.get(timeout=1)  # type: ImagePayload
             except Exception as e:
                 pass
-            print('got message from the queue')
-            
 
-            
             if not message:
                 continue
-            
-            frames = message.frames
-            print(f'got image of shape {f.image.shape}')
-            
-            for f in frames:
-                # charuco_corners, charuco_ids, aruco_square_corners, aruco_square_ids = self.detect_charuco_board(f.image)
-                # cv2.polylines(f.image, np.int32([charuco_corners]), True, (0,100,255), 2)
 
+            for f in message.frames:
+                charuco_corners, charuco_ids, aruco_square_corners, aruco_square_ids = self.detect_charuco_board(f.image)
+                cv2.polylines(f.image, np.int32([charuco_corners]), True, (0,100,255), 2)
                 cv2.imshow(str(f.port_number), f.image)
                 exit_key = cv2.waitKey(1)
                 if exit_key == 27:
                     break
-
 
     def detect_charuco_board(self, image):
         """

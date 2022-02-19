@@ -52,7 +52,7 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
                         blankFrame, angle=rotationState[camNum]
                     )
                     blankFrame = cv2.resize(blankFrame, (resWidth, resHeight))
-                out.write(blankFrame)  # write that frame to the video
+                out.write(prev_image)  # write that frame to the video
                 count += 1
             else:
                 cap.set(

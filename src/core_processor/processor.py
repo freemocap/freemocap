@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, NamedTuple
+from typing import List, NamedTuple
 
 import numpy as np
 from aiomultiprocess import Process
@@ -7,7 +7,6 @@ from aiomultiprocess.types import Queue
 
 from freemocap.prod.cam.detection.cam_singleton import get_or_create_cams
 from jon_scratch.opencv_camera import OpenCVCamera
-from src.core_processor.app_events.app_queue import CameraFrameQueue
 
 
 def create_opencv_cams():

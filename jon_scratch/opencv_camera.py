@@ -49,7 +49,7 @@ class OpenCVCamera(TweakedModel):
             logger.error('Could not connect to a camera at port# {}'.format(self.port_number))
             return success
 
-        # set camera stream paramters
+        # set camera stream parameters
         self.opencv_video_capture_object.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width)
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height)

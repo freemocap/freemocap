@@ -24,16 +24,25 @@ class TweakedModel(BaseModel):
 # OpenCV Implementation of interacting with a camera
 class OpenCVCamera(TweakedModel):
     port_number: int=0
-    name: str = f'Camera{port_number}'  # `camera{}`.format(port_number)
-    # exposure: int = 0
-    exposure: int = -6
-    resolution_width: int = 800
-    resolution_height: int = 600
-    # resolution_width: int = 1280
-    # resolution_height: int = 720
+    name: str = 'Camera0' # `camera{}`.format(port_number)
+    exposure: int = -8
+    resolution_width: int = 1280
+    resolution_height: int = 720
+    framerate: int = 30
     opencv_video_capture_object: cv2.VideoCapture = None
+    opencv_video_writer_object: cv2.VideoWriter = None
     
-    def connect(self):
+    
+    def initialize_video_writer(self, output_file_path: str, ):
+        self.opencv_video_writer_object = cv2.VideoWriter(
+            output_file_path,
+            cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 
+            self.framerate, 
+            (self.resolution_width, self.resolution_height))
+        
+        logger.info('Initialized video writer for {}'.format(self.name))
+        
+    def connect(self)->bool:
         if platform.system() == 'Windows':
             cap_backend = cv2.CAP_DSHOW
         else:
@@ -47,9 +56,8 @@ class OpenCVCamera(TweakedModel):
         self.opencv_video_capture_object.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width)
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height)
-
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-
+        
         if success:
             logger.error('Camera found at port number {}'.format(self.port_number))
             self.name = 'Camera{}'.format(self.port_number)

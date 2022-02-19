@@ -7,6 +7,7 @@ from fastapi import APIRouter, WebSocket
 
 from jon_scratch.opencv_camera import OpenCVCamera
 from src.api.services.board_detect_service import BoardDetectService
+from src.api.services.mediapipe_detect_service import MediapipeSkeletonDetectionService
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,15 @@ async def start_realtime_capture():
 @cam_ws_router.get("/begin_board_detection")
 async def begin_board_detection():
     service = BoardDetectService()
+    await service.run()
+
+@cam_ws_router.get("/begin_mediapipe_skeleton_detection")
+async def begin_mediapipe_skeleton_detection(model_complexity=2):
+    """
+    model_complexity can be 1 (faster, less accurate) or 2 (slower, more accurate)
+    """
+    service = MediapipeSkeletonDetectionService()
+    service.model_complexity = model_complexity
     await service.run()
 
 

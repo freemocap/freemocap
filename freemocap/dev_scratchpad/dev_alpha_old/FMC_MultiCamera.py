@@ -550,19 +550,22 @@ if __name__ == '__main__':
 
     freemocap_data_path=None
     in_rotation_codes_list=None
+    in_cams_to_use_list = None
 
     if this_computer_name=='jon-hallway-XPS-8930':
         freemocap_data_path = Path('/home/jon/Dropbox/FreeMoCapProject/FreeMocap_Data')
-        in_rotation_codes_list = ['cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', ]
+        
     elif this_computer_name == 'DESKTOP-DCG6K4F':
         freemocap_data_path = Path(r'C:\Users\jonma\Dropbox\FreeMoCapProject\FreeMocap_Data')
+        in_rotation_codes_list = ['cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', ]
+        in_cams_to_use_list = [0,1,2,3,4]
     elif this_computer_name == 'DESKTOP-V3D343U':
         freemocap_data_path = Path(r'C:\Users\WindowsPC_Hallway\Dropbox\FreeMoCapProject\FreeMocap_Data')
     elif this_computer_name == 'Jons-MacBook-Pro.local':
         freemocap_data_path = Path('/Users/jon/Dropbox/FreeMoCapProject')
 
     try:
-        multi_cam = FMC_MultiCamera(freemocap_data_folder=str(freemocap_data_path), save_each_cam_to_mp4 = True, rotation_codes_list=in_rotation_codes_list)
+        multi_cam = FMC_MultiCamera(freemocap_data_folder=str(freemocap_data_path), save_each_cam_to_mp4 = True, rotation_codes_list=in_rotation_codes_list, cams_to_use_list=in_cams_to_use_list)
         multi_cam.start(standalone_mode=True)
 
     except Exception:

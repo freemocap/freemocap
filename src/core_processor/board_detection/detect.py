@@ -33,9 +33,10 @@ class BoardDetection:
             message = None
             try:
                 message = queue.get(timeout=1)  # type: ImagePayload
+
             except Exception as e:
                 pass
-            print('got message from the queue')
+
 
             if not message:
                 continue
@@ -43,8 +44,11 @@ class BoardDetection:
             frames = message.frames
 
             for f in frames:
-                print(f'got image of shape {f.image.shape}')
+                print(f'got image of shape {f.image.shape} from camera at port {f.port_number}, queueue size: {queue.qsize()}')
                 charuco_corners, charuco_ids, aruco_square_corners, aruco_square_ids = self.detect_charuco_board(f.image)
+                #TODO - Pull out timestamps per frame and calculate fps to display on image
+                success_bool = self.annotate_image_with_charuco_data(f.image, f.port_number, charuco_corners, charuco_ids)
+
                 cv2.polylines(f.image, np.int32([charuco_corners]), True, (0,100,255), 2)
                 cv2.imshow(str(f.port_number), f.image)
                 exit_key = cv2.waitKey(1)
@@ -84,3 +88,74 @@ class BoardDetection:
     
         return charuco_corners, charuco_ids, aruco_square_corners, aruco_square_ids
 
+    def annotate_image_with_charuco_data(self, image, port_number, charuco_corners, charuco_ids)->bool:
+
+        full_charuco_detected_on_this_frame = False
+        if len(charuco_ids) == num_charuco_corners:
+            full_charuco_detected_on_this_frame = True
+
+        image_w_markers = cv2.aruco.drawDetectedCornersCharuco(image,
+                                                               np.array(charuco_corners),
+                                                               np.array(charuco_ids),
+                                                               (0,255,125,255)) #yellow? I think cv2 uses BGR instead of RGB?
+
+        this_cam_name = "Camera " + str(port_number)
+
+        text_to_write_on_this_camera = ''
+        current_cam_corner_count_str = this_cam_name + ": " + str(
+            len(charuco_ids)) + " of " + str(
+            num_charuco_corners) + " ChAruco Corner Points detected | Full Board Detected: " + str(
+            full_charuco_detected_on_this_frame)
+        # TODO - Determine 'shared views' (i.e. frames in which a full board is detected by 2 cameras)
+        # TODO - self.determine_shared_charuco_board_views()
+        # this_cam_shared_views_str = " | Shared Views: " + str(
+        #     each_cameras_shared_board_view_count_total)
+        text_to_write_on_this_camera = current_cam_corner_count_str
+
+        position = (10, 50)
+        cv2.putText(
+            image_w_markers,  # numpy array on which text is written
+            text_to_write_on_this_camera,  # text
+            position,  # position at which writing has to start
+            cv2.FONT_HERSHEY_SIMPLEX,  # font family
+            .5,  # font size
+            (30, 10, 0, 255),  # font color
+            2)  # font stroke (draw a darker heavier font beneath a lighter/thinner copy for readability)
+
+        cv2.putText(
+            image_w_markers,  # numpy array on which text is written
+            text_to_write_on_this_camera,  # text
+            position,  # position at which writing has to start
+            cv2.FONT_HERSHEY_SIMPLEX,  # font family (very limited selection, i think there's some interesting CV history here...)
+            .5,  # font size
+            (209, 180, 0, 255),  # font color
+            1 ) # font stroke
+
+        if full_charuco_detected_on_this_frame:
+            cv2.polylines(image_w_markers, np.int32([charuco_corners]), False, (0, 100, 255), 2)
+            # for these_corners in charuco_points_from_previous_frames:
+            # if len(these_corners)>0:
+            #     cv2.polylines(image_w_markers, np.int32([these_corners]), True, (0,100,255,255/2), 2)
+
+        return True
+
+
+    def determine_shared_charuco_board_views(self):
+        pass
+        # # determine paired board views
+        # for this_cam_num in range(multi_cam.num_cams):
+        #     if full_charuco_detected_on_this_frame[this_cam_num]:
+        #         for this_other_camera_num in range(multi_cam.num_cams):
+        #             if this_other_camera_num != this_cam_num:
+        #                 if full_charuco_detected_on_this_frame[this_other_camera_num]:
+        #                     each_cameras_shared_board_view_count_array[this_cam_num, this_other_camera_num] += 1
+        # each_cameras_shared_board_view_count_total = np.sum(each_cameras_shared_board_view_count_array, axis=1)
+        # # print(each_cameras_shared_board_view_count)
+        #
+        # for this_pair_num, this_cam_pair in enumerate(camera_pair_list):
+        #     camera_one_id = this_cam_pair[0]
+        #     camera_two_id = this_cam_pair[1]
+        #
+        #     if full_charuco_detected_on_this_frame[camera_one_id] and full_charuco_detected_on_this_frame[
+        #         camera_two_id]:
+        #         camera_pair_joint_view_count[this_pair_num] += 1

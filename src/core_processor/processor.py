@@ -53,6 +53,7 @@ class CameraCaptureProcess:
             image_list: List[FramePayload] = []
             for cv_cam in cv_cams:
                 success, image, timestamp = cv_cam.get_next_frame()
+                
                 if not success:
                     continue
                 if image is None:
@@ -67,4 +68,4 @@ class CameraCaptureProcess:
             _queue.put(
                 ImagePayload(frames=image_list)
             )
-            # _logger.info("Im printing stuff")
+            _logger.info("Im printing stuff")

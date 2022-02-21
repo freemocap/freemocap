@@ -8,7 +8,7 @@ from src.core_processor.processor import start_camera_capture
 
 
 class MediapipeSkeletonDetectionService:
-    model_complexity: int=1
+    model_complexity: int = 1
 
     async def run(self):
         queue = get_manager().Queue()

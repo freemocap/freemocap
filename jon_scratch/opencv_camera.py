@@ -1,10 +1,12 @@
 import logging
 import platform
+import threading
 import time
+from typing import Any, List
 
 import cv2
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 
 logger = logging.getLogger(__name__)
 logger.level = logging.INFO
@@ -35,6 +37,10 @@ class OpenCVCamera(TweakedModel):
     # resolution_height: int = 720
     opencv_video_capture_object: cv2.VideoCapture = None
 
+    _is_capturing_frames: bool = PrivateAttr(False)
+    _running_thread = PrivateAttr(None)
+    _last_100_frames: List[Any] = PrivateAttr([])
+
     def connect(self):
         if platform.system() == 'Windows':
             cap_backend = cv2.CAP_DSHOW
@@ -50,17 +56,40 @@ class OpenCVCamera(TweakedModel):
             return success
 
         # set camera stream parameters
-        self.opencv_video_capture_object.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
-        self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width)
-        self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height)
-
-        self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC,
-            cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        # self.opencv_video_capture_object.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
+        # self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width)
+        # self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height)
+        #
+        # self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC,
+        #     cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 
         if success:
             logger.debug(f'Camera found at port number {self.port_number}')
             self.name = f'Camera {self.port_number}'
             return success
+
+    def start_frame_capture(self):
+        t = threading.Thread(
+            target=self._start_frame_loop
+        )
+        t.daemon = True
+        t.start()
+        self._running_thread = t
+
+    def stop_frame_capture(self):
+        self._is_capturing_frames = False
+        print("Thread should be stopped")
+
+    def latest_frame(self):
+        if self._last_100_frames:
+            return self._last_100_frames[-1]
+        return False, None, None
+
+    def _start_frame_loop(self):
+        self._is_capturing_frames = True
+        while self._is_capturing_frames:
+            success, image, timestamp = self.get_next_frame()
+            self._last_100_frames.append((success, image, timestamp))
 
     def get_next_frame(self):
         timestamp_ns_pre_grab = time.time_ns()

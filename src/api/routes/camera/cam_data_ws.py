@@ -1,7 +1,6 @@
 import logging
 from time import perf_counter
 
-import aiomultiprocess
 import orjson
 from fastapi import APIRouter, WebSocket
 
@@ -23,6 +22,7 @@ async def start_realtime_capture():
 async def begin_board_detection():
     service = BoardDetectService()
     await service.run()
+
 
 @cam_ws_router.get("/begin_mediapipe_skeleton_detection")
 async def begin_mediapipe_skeleton_detection(model_complexity=2):

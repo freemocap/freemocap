@@ -40,7 +40,7 @@ class FramePayload(NamedTuple):
 
 
 class ImagePayload(NamedTuple):
-    frames: List[FramePayload]
+    frames: List[FramePayload] = None
 
 
 class CameraCaptureProcess:
@@ -68,7 +68,7 @@ class CameraCaptureProcess:
                     )
                 )
 
-            _queue.put(
+            _queue.put_nowait(
                 ImagePayload(frames=image_list)
             )
 

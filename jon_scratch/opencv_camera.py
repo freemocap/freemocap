@@ -7,6 +7,7 @@ from typing import Any, List
 import cv2
 import numpy as np
 from pydantic import BaseModel, PrivateAttr
+from collections import deque
 
 logger = logging.getLogger(__name__)
 logger.level = logging.INFO
@@ -39,7 +40,7 @@ class OpenCVCamera(TweakedModel):
 
     _is_capturing_frames: bool = PrivateAttr(False)
     _running_thread = PrivateAttr(None)
-    _last_100_frames: List[Any] = PrivateAttr([])
+    _last_100_frames: deque = PrivateAttr(deque(maxlen=100))
 
     def connect(self):
         if platform.system() == 'Windows':
@@ -82,7 +83,7 @@ class OpenCVCamera(TweakedModel):
 
     def latest_frame(self):
         if self._last_100_frames:
-            return self._last_100_frames[-1]
+            return self._last_100_frames.pop()
         return False, None, None
 
     def _start_frame_loop(self):

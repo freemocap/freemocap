@@ -29,7 +29,7 @@ class TweakedModel(BaseModel):
 # OpenCV Implementation of interacting with a camera
 class OpenCVCamera(TweakedModel):
     port_number: int = 0
-    name: str = f'Camera {port_number}'
+    name: str = f"Camera {port_number}"
     # exposure: int = 0
     exposure: int = -6
     resolution_width: int = 800
@@ -43,37 +43,43 @@ class OpenCVCamera(TweakedModel):
     _last_100_frames: deque = PrivateAttr(deque(maxlen=100))
 
     def connect(self):
-        if platform.system() == 'Windows':
+        if platform.system() == "Windows":
             cap_backend = cv2.CAP_DSHOW
         else:
             cap_backend = cv2.CAP_ANY
 
-        self.opencv_video_capture_object = cv2.VideoCapture(self.port_number, cap_backend)
+        self.opencv_video_capture_object = cv2.VideoCapture(
+            self.port_number, cap_backend
+        )
         success, image = self.opencv_video_capture_object.read()
 
         if not success:
             # raise NoCameraAvailableException()
-            logger.error('Could not connect to a camera at port# {}'.format(self.port_number))
+            logger.error(
+                "Could not connect to a camera at port# {}".format(self.port_number)
+            )
             return success
 
         # set camera stream parameters
         # self.opencv_video_capture_object.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
-        # self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width)
-        # self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height)
-        #
-        # self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC,
-        #     cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        # self.opencv_video_capture_object.set(
+        #     cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width
+        # )
+        # self.opencv_video_capture_object.set(
+        #     cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height
+        # )
+
+        self.opencv_video_capture_object.set(
+            cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc("M", "J", "P", "G")
+        )
 
         if success:
-            logger.debug(f'Camera found at port number {self.port_number}')
-            self.name = f'Camera {self.port_number}'
+            logger.debug(f"Camera found at port number {self.port_number}")
+            self.name = f"Camera {self.port_number}"
             return success
 
     def start_frame_capture(self):
-        t = threading.Thread(
-            target=self._start_frame_loop
-        )
-        t.daemon = True
+        t = threading.Thread(target=self._start_frame_loop, daemon=True)
         t.start()
         self._running_thread = t
 
@@ -110,10 +116,10 @@ class OpenCVCamera(TweakedModel):
 
     def close(self):
         self.opencv_video_capture_object.release()
-        logger.info('Closed camera{}'.format(self.name))
+        logger.info("Closed camera{}".format(self.name))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from rich.console import Console
 
     console = Console()
@@ -128,10 +134,14 @@ if __name__ == '__main__':
             timestamps.append(timestamp_ns / 1e9)
             if isSuccessful:
                 mean_fps = 1 / np.mean(np.diff(timestamps))
-                console.print(f'{camera.name} grabbed a frame at timestamp {timestamp_ns / 1e9} : mean fps = {mean_fps}')
+                console.print(
+                    f"{camera.name} grabbed a frame at timestamp {timestamp_ns / 1e9} : mean fps = {mean_fps}"
+                )
             else:
-                console.print(f'{camera.name} failed to grab a frame at timestamp {timestamp_ns / 1e9} : mean fps = {mean_fps}')
-            cv2.imshow(camera.name + ' - Press ESC to close', image)
+                console.print(
+                    f"{camera.name} failed to grab a frame at timestamp {timestamp_ns / 1e9} : mean fps = {mean_fps}"
+                )
+            cv2.imshow(camera.name + " - Press ESC to close", image)
             exit_key = cv2.waitKey(1)
             if exit_key == 27:
                 break

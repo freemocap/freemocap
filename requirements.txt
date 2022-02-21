@@ -26,4 +26,5 @@ orjson==3.6.7
 aiomultiprocess==0.9.0
 # faster-fifo==1.3.0
 #viztracer==0.14.5
+pre-commit==2.17.0
 # Requirements for core-processor

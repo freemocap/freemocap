@@ -41,6 +41,13 @@ class OpenCVCamera(TweakedModel):
     _is_capturing_frames: bool = PrivateAttr(False)
     _running_thread = PrivateAttr(None)
     _last_100_frames: deque = PrivateAttr(deque(maxlen=100))
+    _fps: float = PrivateAttr(0)
+    _num_frames_processed: int = PrivateAttr(0)
+    _frame: tuple = PrivateAttr(None)
+
+    @property
+    def current_fps(self):
+        return self._fps
 
     def connect(self):
         if platform.system() == "Windows":
@@ -88,15 +95,20 @@ class OpenCVCamera(TweakedModel):
         print("Thread should be stopped")
 
     def latest_frame(self):
-        if self._last_100_frames:
-            return self._last_100_frames.pop()
-        return False, None, None
+        if not self._frame:
+            return False, None, None
+        return self._frame
 
     def _start_frame_loop(self):
         self._is_capturing_frames = True
+        start = time.time()
         while self._is_capturing_frames:
             success, image, timestamp = self.get_next_frame()
+            self._frame = (success, image, timestamp)
             self._last_100_frames.append((success, image, timestamp))
+            self._num_frames_processed += 1
+            elapsed = time.time() - start
+            self._fps = self._num_frames_processed / elapsed
 
     def get_next_frame(self):
         timestamp_ns_pre_grab = time.time_ns()

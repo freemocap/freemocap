@@ -4,14 +4,14 @@ import numpy as np
 from fastapi import APIRouter
 from starlette.requests import Request
 
-from freemocap.prod.cam.detection.cam_singleton import get_or_create_cams
+from src.cameras.cam_singleton import get_or_create_cams
 
 camera_router = APIRouter()
 
 
-@camera_router.post('/camera/upload')
+@camera_router.post("/camera/upload")
 async def stream_camera_bytes(request: Request):
-    body = b''
+    body = b""
     with open(f"{uuid.uuid4().hex}.webm", "wb") as fd:
         async for chunk in request.stream():
             body += chunk

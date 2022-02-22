@@ -5,17 +5,19 @@ import threading
 import time
 
 import cv2
-import numpy as np
 from pydantic import BaseModel, PrivateAttr
 from collections import deque
 
 logger = logging.getLogger(__name__)
 
 
-# OpenCV Implementation of interacting with a camera
 class OpenCVCamera(BaseModel):
-    port_number: int = 0
-    name: str = f"Camera {port_number}"
+    """
+    Performant implementation of video capture against webcams
+    """
+
+    webcam_id: int = 0
+    name: str = f"Camera {webcam_id}"
     exposure: int = -6
     resolution_width: int = 800
     resolution_height: int = 600
@@ -33,6 +35,10 @@ class OpenCVCamera(BaseModel):
         arbitrary_types_allowed = True
 
     @property
+    def webcam_id_as_str(self):
+        return self.webcam_id_as_str
+
+    @property
     def current_fps(self):
         if self._elapsed <= 0:
             return 0
@@ -46,14 +52,12 @@ class OpenCVCamera(BaseModel):
         else:
             cap_backend = cv2.CAP_ANY
 
-        self.opencv_video_capture_object = cv2.VideoCapture(
-            self.port_number, cap_backend
-        )
+        self.opencv_video_capture_object = cv2.VideoCapture(self.webcam_id, cap_backend)
         success, image = self.opencv_video_capture_object.read()
 
         if not success:
             logger.error(
-                "Could not connect to a camera at port# {}".format(self.port_number)
+                "Could not connect to a camera at port# {}".format(self.webcam_id)
             )
             return success
 
@@ -71,8 +75,8 @@ class OpenCVCamera(BaseModel):
         )
 
         if success:
-            logger.debug(f"Camera found at port number {self.port_number}")
-            self.name = f"Camera {self.port_number}"
+            logger.debug(f"Camera found at port number {self.webcam_id}")
+            self.name = f"Camera {self.webcam_id}"
             fps_input_stream = int(self.opencv_video_capture_object.get(5))
             print("FPS of webcam hardware/input stream: {}".format(fps_input_stream))
             return success

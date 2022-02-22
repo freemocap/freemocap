@@ -23,7 +23,7 @@ async def start(webcam_id: str, queue):
 async def begin_realtime_processing(webcam_ids: Optional[List[str]] = None):
     if not webcam_ids:
         cams = DetectPossibleCameras().find_available_cameras().cams_to_use
-        webcam_ids = [cam.port_number for cam in cams]
+        webcam_ids = [cam.webcam_id for cam in cams]
 
     manager = get_manager()
     app_queue = AppQueue(manager)

@@ -4,11 +4,11 @@ import logging
 import cv2
 import numpy as np
 
+from src.cameras.cam_factory import create_opencv_cams
 from src.core_processor.board_detection.base_pose_estimation import detect_charuco_board
 from src.core_processor.board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
 )
-from src.core_processor.processor import create_opencv_cams
 
 
 class BoardDetection:
@@ -26,12 +26,11 @@ class BoardDetection:
             for cv_cam in cv_cams:
                 success, frame, timestamp = cv_cam.latest_frame()
                 if not success:
-                    print("fail")
+                    logger.error("CV2 failed to grab a frame")
                     continue
                 if frame is None:
-                    print("no frame found")
+                    logger.error("Frame is empty")
                     continue
-                port_number = str(cv_cam.port_number)
                 # print(
                 #     f"got image of shape {frame.shape} from camera at port {port_number}"
                 # )
@@ -43,14 +42,14 @@ class BoardDetection:
                 ) = detect_charuco_board(frame)
                 # TODO - Pull out timestamps per frame and calculate fps to display on image
                 success_bool = annotate_image_with_charuco_data(
-                    frame, port_number, charuco_corners, charuco_ids
+                    frame, cv_cam.webcam_id_as_str, charuco_corners, charuco_ids
                 )
 
                 cv2.polylines(
                     frame, np.int32([charuco_corners]), True, (0, 100, 255), 2
                 )
                 self.apply_fps(frame, cv_cam.current_fps)
-                cv2.imshow(port_number, frame)
+                cv2.imshow(cv_cam.webcam_id_as_str, frame)
                 exit_key = cv2.waitKey(1)
                 if exit_key == 27:
                     break

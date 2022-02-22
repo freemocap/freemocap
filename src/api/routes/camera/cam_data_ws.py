@@ -4,9 +4,9 @@ from time import perf_counter
 import orjson
 from fastapi import APIRouter, WebSocket
 
-from jon_scratch.opencv_camera import OpenCVCamera
 from src.api.services.board_detect_service import BoardDetectService
 from src.api.services.mediapipe_detect_service import MediapipeSkeletonDetectionService
+from src.cameras.opencv_camera import OpenCVCamera
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,7 @@ async def begin_mediapipe_skeleton_detection(model_complexity=2):
     """
     model_complexity can be 1 (faster, less accurate) or 2 (slower, more accurate)
     """
-    service = MediapipeSkeletonDetectionService()
-    service.model_complexity = model_complexity
+    service = MediapipeSkeletonDetectionService(model_complexity)
     await service.run()
 
 
@@ -40,7 +39,7 @@ async def websocket_endpoint(websocket: WebSocket, webcam_id: str):
     await websocket.accept()
     # TODO: Consider Spawning a new Process here - alleviate main thread issues
     # We could spawn a new Process here directly
-    cam = OpenCVCamera(port_number=webcam_id)
+    cam = OpenCVCamera(webcam_id=webcam_id)
     cam.connect()
     try:
         while True:

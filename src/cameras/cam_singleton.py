@@ -1,6 +1,7 @@
-from freemocap.prod.cam.detection.cam_detection import DetectPossibleCameras
+from src.cameras.cam_detection import DetectPossibleCameras
 
 # No consumer should call this "private" variable
+
 _available_cameras = None
 
 

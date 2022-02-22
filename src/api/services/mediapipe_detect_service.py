@@ -1,20 +1,11 @@
-import asyncio
-
-from aiomultiprocess.core import get_manager
-
-from src.core_processor.board_detection.detect import BoardDetection
-from src.core_processor.mediapipe_skeleton_detection.detect import MediapipeSkeletonDetection
-from src.core_processor.processor import start_camera_capture
+from src.core_processor.mediapipe_skeleton_detection.mediapipe_skeleton_detection import (
+    MediapipeSkeletonDetection,
+)
 
 
 class MediapipeSkeletonDetectionService:
-    model_complexity: int = 1
+    def __init__(self, model_complexity: int = 1):
+        self._model_complexity = model_complexity
 
     async def run(self):
-        queue = get_manager().Queue()
-        await asyncio.gather(
-            # Producer
-            start_camera_capture(queue),
-            # Consumer
-            MediapipeSkeletonDetection().create_new_process_for_run(queue)
-        )
+        await MediapipeSkeletonDetection().process()

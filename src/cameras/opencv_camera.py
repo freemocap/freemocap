@@ -36,7 +36,7 @@ class OpenCVCamera(BaseModel):
 
     @property
     def webcam_id_as_str(self):
-        return self.webcam_id_as_str
+        return str(self.webcam_id)
 
     @property
     def current_fps(self):

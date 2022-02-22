@@ -15,18 +15,18 @@ class DetectPossibleCameras:
         cv2_backend = self._determine_backend()
 
         cams_to_use_list = []
-        for camNum in range(CAM_CHECK_NUM):
-            cap = cv2.VideoCapture(camNum, cv2_backend)
+        for cam_id in range(CAM_CHECK_NUM):
+            cap = cv2.VideoCapture(cam_id, cv2_backend)
             success, image = cap.read()
 
             if success:
                 logger.info(
-                    f"camera at port {camNum} found an image with shape {image.shape}"
+                    f"camera at port {cam_id} found an image with shape {image.shape}"
                 )
                 try:
                     cams_to_use_list.append(
                         RawCamera(
-                            port_number=camNum,
+                            webcam_id=cam_id,
                         )
                     )
                 finally:

@@ -43,10 +43,6 @@ def annotate_image_with_charuco_data(
         num_charuco_corners,
         full_charuco_detected_on_this_frame,
     )
-    # current_cam_corner_count_str = this_cam_name + ": " + str(
-    #     len(charuco_ids)) + " of " + str(
-    #     num_charuco_corners) + " ChAruco Corner Points detected | Full Board Detected: " + str(
-    #     full_charuco_detected_on_this_frame)
     # TODO - Determine 'shared views' (i.e. frames in which a full board is detected by 2
     #  cameras)
     # TODO - self.determine_shared_charuco_board_views()

@@ -1,3 +1,5 @@
+from typing import List
+
 from src.cameras.cam_singleton import get_or_create_cams
 from src.cameras.opencv_camera import OpenCVCamera, WebcamConfig
 
@@ -17,3 +19,8 @@ def create_opencv_cams():
     for cv_cam in cv_cams:
         cv_cam.connect()
     return cv_cams
+
+
+def close_all_cameras(cv_cams: List[OpenCVCamera]):
+    for cv_cam in cv_cams:
+        cv_cam.close()

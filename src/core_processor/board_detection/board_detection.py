@@ -1,6 +1,6 @@
+import asyncio
 import logging
 import traceback
-from queue import Queue
 
 import cv2
 import numpy as np
@@ -28,6 +28,8 @@ class BoardDetection:
                     if cb:
                         await cb(image, cv_cam.webcam_id_as_str)
             except:
+                for cv_cam in cv_cams:
+                    cv_cam.close()
                 traceback.print_exc()
 
     async def process(self):
@@ -41,16 +43,21 @@ class BoardDetection:
             cv_cam.start_frame_capture(save_video=True)
 
         while True:
-            exit_key = cv2.waitKey(1)
-            if exit_key == 27:
-                cv2.destroyAllWindows()
+            try:
+                exit_key = cv2.waitKey(1)
+                if exit_key == 27:
+                    cv2.destroyAllWindows()
+                    for cv_cam in cv_cams:
+                        cv_cam.close()
+                    break
+                for cv_cam in cv_cams:
+                    frame = self._process_single_cam_frame(cv_cam)
+                    if frame is not None:
+                        cv2.imshow(cv_cam.webcam_id_as_str, frame)
+            except:
                 for cv_cam in cv_cams:
                     cv_cam.close()
-                break
-            for cv_cam in cv_cams:
-                frame = self._process_single_cam_frame(cv_cam)
-                if frame is not None:
-                    cv2.imshow(cv_cam.webcam_id_as_str, frame)
+                cv2.destroyAllWindows()
 
     def _process_single_cam_frame(self, cv_cam):
         success, frame, timestamp = cv_cam.latest_frame
@@ -77,6 +84,4 @@ class BoardDetection:
 
 if __name__ == "__main__":
     ## Jon, Run me to easily start a charuco board detect run
-    # asyncio.run(BoardDetection().process())
-    q = Queue()
-    BoardDetection().process_as_frame_loop(q)
+    asyncio.run(BoardDetection().process())

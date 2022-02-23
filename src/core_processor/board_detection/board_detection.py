@@ -32,9 +32,6 @@ class BoardDetection:
                 if frame is None:
                     logger.error("Frame is empty")
                     continue
-                # print(
-                #     f"got image of shape {frame.shape} from camera at port {port_number}"
-                # )
                 (
                     charuco_corners,
                     charuco_ids,

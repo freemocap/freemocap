@@ -33,13 +33,15 @@ class MediapipeSkeletonDetection:
                         if cb:
                             await cb(image, cv_cam.webcam_id_as_str)
                 except:
+                    for cv_cam in cv_cams:
+                        cv_cam.close()
                     traceback.print_exc()
 
     async def process(self):
         cv_cams = create_opencv_cams()
 
         for cv_cam in cv_cams:
-            cv_cam.start_frame_capture()
+            cv_cam.start_frame_capture(save_video=True)
 
         with mp_holistic.Holistic(
             min_detection_confidence=0.5,
@@ -49,6 +51,9 @@ class MediapipeSkeletonDetection:
             while True:
                 exit_key = cv2.waitKey(1)
                 if exit_key == 27:
+                    cv2.destroyAllWindows()
+                    for cv_cam in cv_cams:
+                        cv_cam.close()
                     break
                 for cv_cam in cv_cams:
                     image = self._process_single_cam_frame(holistic, cv_cam)

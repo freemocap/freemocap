@@ -109,8 +109,7 @@ class OpenCVCamera:
         return FramePayload(False, None, None)
 
     def close(self):
-        logger.info("Closing camera {}".format(self._name))
         if self._running_thread:
             self._running_thread.stop()
         self._opencv_video_capture_object.release()
-        logger.info("Closed camera {}".format(self._name))
+        logger.info("Closed {}".format(self._name))

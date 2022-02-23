@@ -19,7 +19,7 @@ class WebcamStream:
         # reading a single frame from vcap stream for initializing
         self.grabbed, self.frame = self.vcap.read()
         if self.grabbed is False:
-            print('[Exiting] No more frames to read')
+            print("[Exiting] No more frames to read")
             exit(0)
 
         # self.stopped is set to False when frames are being read from self.vcap stream
@@ -27,7 +27,9 @@ class WebcamStream:
 
         # reference to the thread for reading next available frame from input stream
         self.t = Thread(target=self.update, args=())
-        self.t.daemon = True  # daemon threads keep running in the background while the program
+        self.t.daemon = (
+            True  # daemon threads keep running in the background while the program
+        )
         # is executing
 
     # method for starting the thread for grabbing next available frame in input stream
@@ -43,7 +45,7 @@ class WebcamStream:
                 break
             self.grabbed, self.frame = self.vcap.read()
             if self.grabbed is False:
-                print('[Exiting] No more frames to read')
+                print("[Exiting] No more frames to read")
                 self.stopped = True
                 break
         self.vcap.release()
@@ -81,10 +83,10 @@ while True:
     time.sleep(delay)
     num_frames_processed += 1
 
-    cv2.imshow('frame1', frame1)
-    cv2.imshow('frame2', frame2)
+    cv2.imshow("frame1", frame1)
+    cv2.imshow("frame2", frame2)
     key = cv2.waitKey(1)
-    if key == ord('q'):
+    if key == ord("q"):
         break
 end = time.time()
 webcam_stream1.stop()  # stop the webcam stream
@@ -94,7 +96,10 @@ webcam_stream2.stop()  # stop the webcam stream
 elapsed = end - start
 fps = num_frames_processed / elapsed
 print(
-    "FPS: {} , Elapsed Time: {} , Frames Processed: {}".format(fps, elapsed, num_frames_processed))
+    "FPS: {} , Elapsed Time: {} , Frames Processed: {}".format(
+        fps, elapsed, num_frames_processed
+    )
+)
 
 # closing all windows
 cv2.destroyAllWindows()

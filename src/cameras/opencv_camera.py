@@ -1,14 +1,20 @@
 import logging
 import math
+import os
 import platform
 import threading
 import time
+from collections import deque
+from pathlib import Path
 
 import cv2
 from pydantic import BaseModel, PrivateAttr
-from collections import deque
+
+from src.cameras.dto import FramePayload
 
 logger = logging.getLogger(__name__)
+
+current_working_dir = os.getcwd()
 
 
 class OpenCVCamera(BaseModel):
@@ -26,10 +32,10 @@ class OpenCVCamera(BaseModel):
     _is_capturing_frames: bool = PrivateAttr(False)
     _running_thread = PrivateAttr(None)
     _last_100_frames: deque = PrivateAttr(deque(maxlen=100))
-    _fps: float = PrivateAttr(0)
     _num_frames_processed: int = PrivateAttr(0)
-    _frame: tuple = PrivateAttr(None)
+    _frame: FramePayload = PrivateAttr(None)
     _elapsed: float = PrivateAttr(0)
+    _writer_location: str = PrivateAttr()
 
     class Config:
         arbitrary_types_allowed = True
@@ -81,8 +87,10 @@ class OpenCVCamera(BaseModel):
             print("FPS of webcam hardware/input stream: {}".format(fps_input_stream))
             return success
 
-    def start_frame_capture(self):
-        t = threading.Thread(target=self._start_frame_loop, daemon=True)
+    def start_frame_capture(self, save_video=False):
+        t = threading.Thread(
+            target=self._start_frame_loop, daemon=True, args=(save_video,)
+        )
         t.start()
         self._running_thread = t
 
@@ -94,15 +102,38 @@ class OpenCVCamera(BaseModel):
             return False, None, None
         return self._frame
 
-    def _start_frame_loop(self):
+    def _prepare_writer(self):
+        frame_width = int(self.opencv_video_capture_object.get(3))
+        frame_height = int(self.opencv_video_capture_object.get(4))
+        fps = int(self.opencv_video_capture_object.get(5))
+        timestr = time.strftime("%Y%m%d_%H%M%S")
+        p = Path().joinpath(current_working_dir, f"{timestr}.avi").resolve()
+        return cv2.VideoWriter(
+            "outfile.avi",
+            cv2.VideoWriter_fourcc("M", "J", "P", "G"),
+            # cv2.VideoWriter_fourcc('A', 'V', 'C', '1'),
+            fps,
+            (frame_width, frame_height),
+        )
+
+    def _start_frame_loop(self, save_video=False):
         self._is_capturing_frames = True
         start = time.time()
-        while self._is_capturing_frames:
-            success, image, timestamp = self.get_next_frame()
-            self._frame = (success, image, timestamp)
-            self._last_100_frames.append((success, image, timestamp))
-            self._num_frames_processed += 1
-            self._elapsed = time.time() - start
+        writer = None
+        if save_video:
+            writer = self._prepare_writer()
+        try:
+            while self._is_capturing_frames:
+                success, image, timestamp = self.get_next_frame()
+                # will this slow us down?
+                if save_video:
+                    writer.write(image)
+                self._frame = FramePayload(success, image, timestamp)
+                self._last_100_frames.append((success, image, timestamp))
+                self._num_frames_processed += 1
+                self._elapsed = time.time() - start
+        except:
+            writer.release()
 
     def get_next_frame(self):
         timestamp_ns_pre_grab = time.time_ns()
@@ -120,6 +151,9 @@ class OpenCVCamera(BaseModel):
             return success, image, timestamp_ns
 
         return False, None, None
+
+    def read_next_frame(self):
+        return self.opencv_video_capture_object.read()
 
     def close(self):
         self.opencv_video_capture_object.release()

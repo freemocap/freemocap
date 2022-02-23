@@ -20,6 +20,7 @@ class FrameThread(threading.Thread):
         self._num_frames_processed = 0
         self._elapsed = 0
         self._frame: FramePayload = FramePayload()
+        self.setDaemon(True)
         if save_video:
             self._writer = writer
 

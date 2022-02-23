@@ -7,6 +7,8 @@ import mediapipe as mp
 from src.cameras.cam_factory import create_opencv_cams
 
 mp_holistic = mp.solutions.holistic
+mp_drawing = mp.solutions.drawing_utils
+mp_drawing_styles = mp.solutions.drawing_styles
 
 
 class MediapipeSkeletonDetection:
@@ -36,16 +38,12 @@ class MediapipeSkeletonDetection:
                         continue
 
                     image = self.detect_mediapipe_skeleton(holistic, frame)
-
+                    self.apply_fps(image, cv_cam.current_fps)
                     cv2.imshow(cv_cam.webcam_id_as_str, image)
 
     def detect_mediapipe_skeleton(self, holistic, image):
         # adapted from 'webcam' part of demo code here -
         # https://google.github.io/mediapipe/solutions/holistic.html
-
-        mp_drawing = mp.solutions.drawing_utils
-        mp_drawing_styles = mp.solutions.drawing_styles
-        mp_holistic = mp.solutions.holistic
 
         # For webcam input:
         # To improve performance, optionally mark the image as not writeable to
@@ -71,6 +69,17 @@ class MediapipeSkeletonDetection:
             landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
         )
         return image
+
+    def apply_fps(self, image, fps_number):
+        cv2.putText(
+            image,
+            f"FPS: {str(fps_number)}",
+            (10, 15),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (209, 180, 0, 255),
+            1,
+        )
 
 
 if __name__ == "__main__":

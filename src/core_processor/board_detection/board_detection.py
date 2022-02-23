@@ -17,11 +17,12 @@ class BoardDetection:
         cv_cams = create_opencv_cams()
 
         for cv_cam in cv_cams:
-            cv_cam.start_frame_capture()
+            cv_cam.start_frame_capture(save_video=True)
 
         while True:
             exit_key = cv2.waitKey(1)
             if exit_key == 27:
+                cv2.destroyAllWindows()
                 break
             for cv_cam in cv_cams:
                 success, frame, timestamp = cv_cam.latest_frame()
@@ -50,9 +51,6 @@ class BoardDetection:
                 )
                 self.apply_fps(frame, cv_cam.current_fps)
                 cv2.imshow(cv_cam.webcam_id_as_str, frame)
-                exit_key = cv2.waitKey(1)
-                if exit_key == 27:
-                    break
 
     def apply_fps(self, image, fps_number):
         cv2.putText(

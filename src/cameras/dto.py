@@ -15,10 +15,6 @@ class FindAvailableResponse(BaseModel):
 
 
 class FramePayload(NamedTuple):
-    webcam_id: int
+    success: bool
     image: np.ndarray
     timestamp: int
-
-
-class ImagePayload(NamedTuple):
-    frames: List[FramePayload] = None

@@ -5,7 +5,7 @@ import traceback
 import cv2
 import mediapipe as mp
 
-from src.cameras.cam_factory import create_opencv_cams
+from src.cameras.cam_factory import close_all_cameras, create_opencv_cams
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
 
 mp_holistic = mp.solutions.holistic
@@ -26,16 +26,15 @@ class MediapipeSkeletonDetection:
             min_tracking_confidence=0.5,
             model_complexity=0,
         ) as holistic:
-            while True:
-                try:
+            try:
+                while True:
                     for cv_cam in cv_cams:
                         image = self._process_single_cam_frame(holistic, cv_cam)
                         if cb:
                             await cb(image, cv_cam.webcam_id_as_str)
-                except:
-                    for cv_cam in cv_cams:
-                        cv_cam.close()
-                    traceback.print_exc()
+            except:
+                close_all_cameras(cv_cams)
+                traceback.print_exc()
 
     async def process(self):
         cv_cams = create_opencv_cams()
@@ -48,16 +47,19 @@ class MediapipeSkeletonDetection:
             min_tracking_confidence=0.5,
             model_complexity=0,
         ) as holistic:
-            while True:
-                exit_key = cv2.waitKey(1)
-                if exit_key == 27:
-                    cv2.destroyAllWindows()
+            try:
+                while True:
+                    exit_key = cv2.waitKey(1)
+                    if exit_key == 27:
+                        cv2.destroyAllWindows()
+                        close_all_cameras(cv_cams)
+                        break
                     for cv_cam in cv_cams:
-                        cv_cam.close()
-                    break
-                for cv_cam in cv_cams:
-                    image = self._process_single_cam_frame(holistic, cv_cam)
-                    cv2.imshow(cv_cam.webcam_id_as_str, image)
+                        image = self._process_single_cam_frame(holistic, cv_cam)
+                        cv2.imshow(cv_cam.webcam_id_as_str, image)
+            except:
+                close_all_cameras(cv_cams)
+                cv2.destroyAllWindows()
 
     def _process_single_cam_frame(self, holistic, cv_cam):
         success, frame, timestamp = cv_cam.latest_frame

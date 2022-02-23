@@ -1,4 +1,4 @@
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Union
 
 import numpy as np
 from pydantic import BaseModel
@@ -15,6 +15,6 @@ class FindAvailableResponse(BaseModel):
 
 
 class FramePayload(NamedTuple):
-    success: bool
-    image: np.ndarray
-    timestamp: int
+    success: bool = False
+    image: np.ndarray = None
+    timestamp: Union[int, float] = None

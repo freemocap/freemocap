@@ -1,12 +1,14 @@
+import base64
 import logging
 from time import perf_counter
 
+import cv2
 import orjson
 from fastapi import APIRouter, WebSocket
 
 from src.api.services.board_detect_service import BoardDetectService
 from src.api.services.mediapipe_detect_service import MediapipeSkeletonDetectionService
-from src.cameras.opencv_camera import OpenCVCamera
+from src.cameras.opencv_camera import OpenCVCamera, WebcamConfig
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,30 @@ async def begin_board_detection():
     await service.run()
 
 
+@cam_ws_router.websocket("/ws/board_detection")
+async def board_detection_as_ws(web_socket: WebSocket):
+    await web_socket.accept()
+
+    async def websocket_send(input_image, webcam_id):
+        success, frame = cv2.imencode(".png", input_image)
+        if success:
+            await web_socket.send_bytes(base64.b64encode(frame.tobytes()))
+
+    await BoardDetectService().run_as_loop(cb=websocket_send)
+
+
+@cam_ws_router.websocket("/ws/skeleton_detection")
+async def skeleton_detection_as_ws(web_socket: WebSocket):
+    await web_socket.accept()
+
+    async def websocket_send(input_image, webcam_id):
+        success, frame = cv2.imencode(".png", input_image)
+        if success:
+            await web_socket.send_bytes(base64.b64encode(frame.tobytes()))
+
+    await MediapipeSkeletonDetectionService().run_as_loop(cb=websocket_send)
+
+
 @cam_ws_router.get("/begin_mediapipe_skeleton_detection")
 async def begin_mediapipe_skeleton_detection(model_complexity=2):
     """
@@ -39,7 +65,7 @@ async def websocket_endpoint(websocket: WebSocket, webcam_id: str):
     await websocket.accept()
     # TODO: Consider Spawning a new Process here - alleviate main thread issues
     # We could spawn a new Process here directly
-    cam = OpenCVCamera(webcam_id=webcam_id)
+    cam = OpenCVCamera(WebcamConfig(webcam_id=webcam_id))
     cam.connect()
     try:
         while True:
@@ -53,7 +79,6 @@ async def websocket_endpoint(websocket: WebSocket, webcam_id: str):
             if not success:
                 continue
             d = {
-                "frameData": str(image.tobytes()),
                 # "frameData": base64.b64encode(frame.tobytes()),
                 "timestamp": timestamp,
             }

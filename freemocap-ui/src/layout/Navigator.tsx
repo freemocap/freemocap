@@ -8,7 +8,6 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import HomeIcon from '@mui/icons-material/Home';
-import PeopleIcon from '@mui/icons-material/People';
 import {useNavigate} from "react-router";
 
 const categories = [
@@ -17,27 +16,18 @@ const categories = [
     children: [
       {
         id: 'Show Cameras',
-        icon: <PeopleIcon />,
-        active: true,
+        route: "/show_cameras"
       },
-      // { id: 'Database', icon: <DnsRoundedIcon /> },
-      // { id: 'Storage', icon: <PermMediaOutlinedIcon /> },
-      // { id: 'Hosting', icon: <PublicIcon /> },
-      // { id: 'Functions', icon: <SettingsEthernetIcon /> },
-      // {
-      //   id: 'Machine learning',
-      //   icon: <SettingsInputComponentIcon />,
-      // },
+      {
+        id: "Board Detection",
+        route: "/board_detection"
+      },
+      {
+        id: "Skeleton Detection",
+        route: "/skeleton_detection"
+      }
     ],
   },
-  // {
-  //   id: 'Quality',
-  //   children: [
-  //     { id: 'Analytics', icon: <SettingsIcon /> },
-  //     { id: 'Performance', icon: <TimerIcon /> },
-  //     { id: 'Test Lab', icon: <PhonelinkSetupIcon /> },
-  //   ],
-  // },
 ];
 
 const item = {
@@ -75,12 +65,12 @@ export const Navigator = function (props: DrawerProps) {
             <ListItem sx={{py: 2, px: 3}}>
               <ListItemText sx={{color: '#fff'}}>{id}</ListItemText>
             </ListItem>
-            {children.map(({id: childId, icon, active}) => (
+            {children.map(({id: childId, route}) => (
               <ListItem disablePadding key={childId}>
-                <ListItemButton selected={active} sx={item} onClick={() => {
-                  navigate("/show_cameras")
+                <ListItemButton selected={false} sx={item} onClick={() => {
+                  navigate(route)
                 }}>
-                  <ListItemIcon>{icon}</ListItemIcon>
+                  {/*<ListItemIcon>{icon}</ListItemIcon>*/}
                   <ListItemText>{childId}</ListItemText>
                 </ListItemButton>
               </ListItem>

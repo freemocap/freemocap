@@ -37,9 +37,6 @@ class CVCameraManager:
             if int(webcam.webcam_id) < 3:
                 cv_cams.append(OpenCVCamera(config=single_config))
 
-        for cv_cam in cv_cams:
-            cv_cam.connect()
-
         return cv_cams
 
     @contextmanager

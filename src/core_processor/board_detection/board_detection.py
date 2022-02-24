@@ -5,7 +5,7 @@ import traceback
 import cv2
 import numpy as np
 
-from src.cameras.cam_factory import create_opencv_cams
+from src.cameras.cam_factory import close_all_cameras, create_opencv_cams
 from src.core_processor.board_detection.base_pose_estimation import detect_charuco_board
 from src.core_processor.board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
@@ -42,22 +42,21 @@ class BoardDetection:
         for cv_cam in cv_cams:
             cv_cam.start_frame_capture(save_video=True)
 
-        while True:
-            try:
+        try:
+            while True:
                 exit_key = cv2.waitKey(1)
                 if exit_key == 27:
                     cv2.destroyAllWindows()
-                    for cv_cam in cv_cams:
-                        cv_cam.close()
+                    close_all_cameras(cv_cams)
                     break
                 for cv_cam in cv_cams:
                     frame = self._process_single_cam_frame(cv_cam)
                     if frame is not None:
                         cv2.imshow(cv_cam.webcam_id_as_str, frame)
-            except:
-                for cv_cam in cv_cams:
-                    cv_cam.close()
-                cv2.destroyAllWindows()
+        except:
+            close_all_cameras(cv_cams)
+            cv2.destroyAllWindows()
+            traceback.print_exc()
 
     def _process_single_cam_frame(self, cv_cam):
         success, frame, timestamp = cv_cam.latest_frame

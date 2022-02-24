@@ -1,11 +1,9 @@
 import logging
 import platform
-import threading
 import time
-import traceback
 
 import cv2
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel
 
 from src.cameras.dto import FramePayload
 from src.cameras.frame_grabber import FrameThread

@@ -33,7 +33,7 @@ class MediapipeSkeletonDetection:
                             if cb:
                                 await cb(image, cv_cam.webcam_id_as_str)
                 except:
-                    close_all_cameras(cv_cams)
+                    logger.error("Printing traceback")
                     traceback.print_exc()
 
     async def process(self):

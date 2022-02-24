@@ -1,6 +1,8 @@
 import logging
 import platform
+import threading
 import time
+import traceback
 
 import cv2
 from pydantic import BaseModel, PrivateAttr
@@ -17,6 +19,7 @@ class WebcamConfig(BaseModel):
     exposure: int = -6
     resolution_width: int = 800
     resolution_height: int = 600
+    save_video: bool = True
 
 
 class OpenCVCamera:
@@ -25,7 +28,7 @@ class OpenCVCamera:
     """
 
     _opencv_video_capture_object: cv2.VideoCapture = None
-    _running_thread = PrivateAttr(None)
+    _running_thread: FrameThread = None
 
     def __init__(self, config: WebcamConfig):
         self._config = config
@@ -38,6 +41,14 @@ class OpenCVCamera:
     @property
     def current_fps(self):
         return self._running_thread.current_fps
+
+    @property
+    def is_capturing_frames(self):
+        if not self._running_thread:
+            logger.error("Frame Capture thread not running yet")
+            return False
+
+        return self._running_thread.is_capturing_frames
 
     def connect(self):
         if platform.system() == "Windows":
@@ -73,21 +84,26 @@ class OpenCVCamera:
 
         if success:
             logger.debug(f"Camera found at port number {self._config.webcam_id}")
-
             fps_input_stream = int(self._opencv_video_capture_object.get(5))
             print("FPS of webcam hardware/input stream: {}".format(fps_input_stream))
             return success
 
-    def start_frame_capture(self, save_video=False):
-        self._running_thread = FrameThread(
-            get_next_frame=self.get_next_frame,
-            writer=OpenCVCamWriter().create_writer(self._opencv_video_capture_object),
-            save_video=save_video,
-        )
+    def start_frame_capture(self):
+        if self.is_capturing_frames:
+            logger.info(
+                f"Already capturing frames for webcam_id: {self.webcam_id_as_str}"
+            )
+            return
+        self._running_thread = self._create_thread()
+        print(f"Is this thread alive? {self._running_thread.is_alive()}")
         self._running_thread.start()
 
-    def stop_frame_capture(self):
-        self._running_thread.stop()
+    def _create_thread(self):
+        return FrameThread(
+            get_next_frame=self.get_next_frame,
+            writer=OpenCVCamWriter().create_writer(self._opencv_video_capture_object),
+            save_video=self._config.save_video,
+        )
 
     @property
     def latest_frame(self):
@@ -108,8 +124,14 @@ class OpenCVCamera:
 
         return FramePayload(False, None, None)
 
+    def stop_frame_capture(self):
+        self.close()
+
     def close(self):
-        if self._running_thread:
-            self._running_thread.stop()
+        self._running_thread.stop()
+        while self._running_thread.is_alive():
+            # wait for thread to die.
+            # TODO: use event?
+            time.sleep(0.1)
         self._opencv_video_capture_object.release()
         logger.info("Closed {}".format(self._name))

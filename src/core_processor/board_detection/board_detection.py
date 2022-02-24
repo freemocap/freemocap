@@ -28,8 +28,7 @@ class BoardDetection:
                     if cb:
                         await cb(image, cv_cam.webcam_id_as_str)
             except:
-                for cv_cam in cv_cams:
-                    cv_cam.close()
+                close_all_cameras(cv_cams)
                 traceback.print_exc()
 
     async def process(self):

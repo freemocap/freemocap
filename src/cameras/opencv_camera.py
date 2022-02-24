@@ -90,12 +90,14 @@ class OpenCVCamera:
 
     def start_frame_capture(self):
         if self.is_capturing_frames:
-            logger.info(
+            logger.debug(
                 f"Already capturing frames for webcam_id: {self.webcam_id_as_str}"
             )
             return
+        logger.info(
+            f"Beginning frame capture thread for webcam: {self.webcam_id_as_str}"
+        )
         self._running_thread = self._create_thread()
-        print(f"Is this thread alive? {self._running_thread.is_alive()}")
         self._running_thread.start()
 
     def _create_thread(self):
@@ -131,7 +133,7 @@ class OpenCVCamera:
         self._running_thread.stop()
         while self._running_thread.is_alive():
             # wait for thread to die.
-            # TODO: use event?
+            # TODO: use threading.Event for synchronize mainthread vs other threads
             time.sleep(0.1)
         self._opencv_video_capture_object.release()
         logger.info("Closed {}".format(self._name))

@@ -5,7 +5,7 @@ import traceback
 import cv2
 import numpy as np
 
-from src.cameras.cam_factory import close_all_cameras, create_opencv_cams
+from src.cameras.cam_factory import CVCameraManager
 from src.core_processor.board_detection.base_pose_estimation import detect_charuco_board
 from src.core_processor.board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
@@ -17,45 +17,51 @@ logger = logging.getLogger(__name__)
 
 class BoardDetection:
     async def process_as_frame_loop(self, cb):
-        cv_cams = create_opencv_cams()
-        for cv_cam in cv_cams:
-            cv_cam.start_frame_capture(save_video=True)
+        cam_manager: CVCameraManager = CVCameraManager()
+        cv_cams = cam_manager.cv_cams
 
-        while True:
+        # if its already capturing frames, this is a no-op
+        with cam_manager.start_capture_session():
             try:
-                for cv_cam in cv_cams:
-                    image = self._process_single_cam_frame(cv_cam)
-                    if cb:
-                        await cb(image, cv_cam.webcam_id_as_str)
+                while True:
+                    for cv_cam in cv_cams:
+                        if not cv_cam.is_capturing_frames:
+                            return
+                        image = self._process_single_cam_frame(cv_cam)
+                        if cb and image is not None:
+                            await cb(image, cv_cam.webcam_id_as_str)
             except:
-                close_all_cameras(cv_cams)
+                logger.error("Printing traceback")
                 traceback.print_exc()
 
-    async def process(self):
+    def process(self):
         """
         Opens Camera using OpenCV and begins image processing for charuco board
         If return images is true, the images are returned to the caller
         """
-        cv_cams = create_opencv_cams()
+        cam_manager: CVCameraManager = CVCameraManager()
+        cv_cams = cam_manager.cv_cams
 
-        for cv_cam in cv_cams:
-            cv_cam.start_frame_capture(save_video=True)
-
-        try:
-            while True:
-                exit_key = cv2.waitKey(1)
-                if exit_key == 27:
-                    cv2.destroyAllWindows()
-                    close_all_cameras(cv_cams)
-                    break
+        # if its already capturing frames, this is a no-op
+        with cam_manager.start_capture_session():
+            try:
+                while True:
+                    exit_key = cv2.waitKey(1)
+                    if exit_key == 27:
+                        logger.info("ESC has been pressed.")
+                        break
+                    for cv_cam in cv_cams:
+                        frame = self._process_single_cam_frame(cv_cam)
+                        if frame is not None:
+                            cv2.imshow(cv_cam.webcam_id_as_str, frame)
+            except:
+                logger.error("Printing traceback")
+                traceback.print_exc()
+            finally:
                 for cv_cam in cv_cams:
-                    frame = self._process_single_cam_frame(cv_cam)
-                    if frame is not None:
-                        cv2.imshow(cv_cam.webcam_id_as_str, frame)
-        except:
-            close_all_cameras(cv_cams)
-            cv2.destroyAllWindows()
-            traceback.print_exc()
+                    logger.info(f"Destroy window {cv_cam.webcam_id_as_str}")
+                    cv2.destroyWindow(cv_cam.webcam_id_as_str)
+                    cv2.waitKey(1)
 
     def _process_single_cam_frame(self, cv_cam):
         success, frame, timestamp = cv_cam.latest_frame
@@ -82,4 +88,5 @@ class BoardDetection:
 
 if __name__ == "__main__":
     ## Jon, Run me to easily start a charuco board detect run
-    asyncio.run(BoardDetection().process())
+    # asyncio.run(BoardDetection().process())
+    BoardDetection().process()

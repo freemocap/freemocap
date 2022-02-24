@@ -36,6 +36,10 @@ class FrameThread(threading.Thread):
     def latest_frame(self):
         return self._frame
 
+    @property
+    def is_capturing_frames(self):
+        return self._is_capturing_frames
+
     def stop(self):
         self._is_capturing_frames = False
 
@@ -54,6 +58,9 @@ class FrameThread(threading.Thread):
                 self._num_frames_processed += 1
                 self._elapsed = time.time() - start
         except:
-            logger.error("Frame loop thread exited")
+            logger.error("Frame loop thread exited due to error")
             traceback.print_exc()
+        else:
+            logger.info("Frame loop thread exited.")
+        finally:
             self._writer.release()

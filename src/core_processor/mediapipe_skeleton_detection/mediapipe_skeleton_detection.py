@@ -50,16 +50,19 @@ class MediapipeSkeletonDetection:
                     while True:
                         exit_key = cv2.waitKey(1)
                         if exit_key == 27:
-                            cv2.destroyAllWindows()
-                            close_all_cameras(cv_cams)
+                            logger.info("ESC has been pressed.")
                             break
                         for cv_cam in cv_cams:
                             image = self._process_single_cam_frame(holistic, cv_cam)
                             cv2.imshow(cv_cam.webcam_id_as_str, image)
                 except:
-                    close_all_cameras(cv_cams)
-                    cv2.destroyAllWindows()
-                    cv2.waitKey(1)
+                    logger.error("Printing traceback")
+                    traceback.print_exc()
+                finally:
+                    for cv_cam in cv_cams:
+                        logger.info(f"Destroy window {cv_cam.webcam_id_as_str}")
+                        cv2.destroyWindow(cv_cam.webcam_id_as_str)
+                        cv2.waitKey(1)
 
     def _process_single_cam_frame(self, holistic, cv_cam):
         success, frame, timestamp = cv_cam.latest_frame

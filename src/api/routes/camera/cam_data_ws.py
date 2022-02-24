@@ -24,11 +24,6 @@ class MyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-@cam_ws_router.post("/start_realtime_capture")
-async def start_realtime_capture():
-    pass
-
-
 @cam_ws_router.get("/begin_board_detection")
 async def begin_board_detection():
     service = BoardDetectService()

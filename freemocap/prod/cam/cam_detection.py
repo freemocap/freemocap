@@ -1,4 +1,5 @@
 import logging
+import platform
 from typing import List
 
 import cv2
@@ -10,27 +11,29 @@ logger = logging.getLogger(__name__)
 
 
 class RawCamera(BaseModel):
-    index: int
+    port_number: int
 
 
 class FindAvailableResponse(BaseModel):
     camera_found_count: int
     cams_to_use: List[RawCamera]
+    cv2_backend: int
 
 
 class DetectPossibleCameras:
 
     def find_available_cameras(self) -> FindAvailableResponse:
-        capBackend = cv2.CAP_ANY
+        cv2_backend = self._determine_backend()
 
         cams_to_use_list = []
         for camNum in range(CAM_CHECK_NUM):
-            cap = cv2.VideoCapture(camNum, capBackend)
+            cap = cv2.VideoCapture(camNum, cv2_backend)
             success, image = cap.read()
             if success:
+                logger.info(f"We found one: {camNum}")
                 try:
                     cams_to_use_list.append(RawCamera(
-                        index=camNum,
+                        port_number=camNum,
                     ))
                     logger.info(cap.get(cv2.CAP_PROP_SETTINGS))
                 finally:
@@ -38,5 +41,24 @@ class DetectPossibleCameras:
 
         return FindAvailableResponse(
             camera_found_count=len(cams_to_use_list),
-            cams_to_use=cams_to_use_list
+            cams_to_use=cams_to_use_list,
+            cv2_backend=cv2_backend
         )
+
+    def _determine_backend(self):
+        if platform.system() == 'Windows':
+            return cv2.CAP_DSHOW
+        else:
+            return cv2.CAP_ANY
+
+
+_available_cameras = None
+
+
+def get_or_create_cams():
+    global _available_cameras
+    if _available_cameras is None:
+        d = DetectPossibleCameras()
+        _available_cameras = d.find_available_cameras()
+
+    return _available_cameras

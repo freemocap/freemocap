@@ -1,18 +1,21 @@
 import uvicorn
 from fastapi import FastAPI
 
+from src.api.middleware.cors import cors
 from src.api.routes import enabled_routers
 
 
 def create_app():
-    app = FastAPI()
+    _app = FastAPI()
+
+    cors(_app)
 
     for router in enabled_routers:
-        app.include_router(router)
+        _app.include_router(router)
 
-    return app
+    return _app
 
 
 if __name__ == "__main__":
-    app = create_app()
-    uvicorn.run(app, host="127.0.0.1", port=8080, log_level="info")
+    script_app = create_app()
+    uvicorn.run(script_app, host="127.0.0.1", port=8080, log_level="info")

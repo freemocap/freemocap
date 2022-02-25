@@ -62,9 +62,9 @@ for frame_number in track(range(number_of_frames), description="[cyan]Loading tr
     bpy.context.scene.frame_set(frame_number)    
     for this_empty_name in tracked_point_names:
         this_empty = bpy.data.objects[this_empty_name]
-        this_empty.location = (mediapipe_skel_fr_mar_dim[frame_number,tracked_point_names.index(this_empty_name),0],
-                               mediapipe_skel_fr_mar_dim[frame_number,tracked_point_names.index(this_empty_name),1],
-                               mediapipe_skel_fr_mar_dim[frame_number,tracked_point_names.index(this_empty_name),2])
+        this_empty.location = (mediapipe_skel_fr_mar_dim[frame_number,tracked_point_names.port_number(this_empty_name),0],
+                               mediapipe_skel_fr_mar_dim[frame_number,tracked_point_names.port_number(this_empty_name),1],
+                               mediapipe_skel_fr_mar_dim[frame_number,tracked_point_names.port_number(this_empty_name),2])
         this_empty.keyframe_insert(data_path='location', frame=frame_number)
 
     

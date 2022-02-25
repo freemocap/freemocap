@@ -16,11 +16,9 @@ logger = logging.getLogger(__name__)
 
 
 class MediapipeSkeletonDetection:
-    async def process_as_frame_loop(self, cb):
+    async def process_as_frame_loop(self, webcam_id, cb):
         cam_manager: CVCameraManager = CVCameraManager()
-        cv_cams = cam_manager.cv_cams
-
-        with cam_manager.start_capture_session():
+        with cam_manager.start_capture_session(webcam_id=webcam_id) as cv_cam:
             with mp_holistic.Holistic(
                 min_detection_confidence=0.5,
                 min_tracking_confidence=0.5,
@@ -28,10 +26,9 @@ class MediapipeSkeletonDetection:
             ) as holistic:
                 try:
                     while True:
-                        for cv_cam in cv_cams:
-                            image = self._process_single_cam_frame(holistic, cv_cam)
-                            if cb:
-                                await cb(image, cv_cam.webcam_id_as_str)
+                        image = self._process_single_cam_frame(holistic, cv_cam)
+                        if cb and image is not None:
+                            await cb(image)
                 except:
                     logger.error("Printing traceback")
                     traceback.print_exc()
@@ -67,7 +64,7 @@ class MediapipeSkeletonDetection:
     def _process_single_cam_frame(self, holistic, cv_cam):
         success, frame, timestamp = cv_cam.latest_frame
         if not success:
-            logger.error("CV2 failed to grab a frame")
+            # logger.error("CV2 failed to grab a frame")
             return
         if frame is None:
             logger.error("Frame is empty")

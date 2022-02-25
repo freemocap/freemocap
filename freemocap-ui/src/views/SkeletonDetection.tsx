@@ -1,29 +1,16 @@
 import React from "react";
 import {Box} from "@mui/material";
-import {useAsync} from "react-use";
+import {CaptureType, useFrameCapture} from "../services/frame-capture";
 
 export const SkeletonDetection = () => {
-  const [data, setData] = React.useState<string>("");
-
-  useAsync(async () => {
-    const socket = new WebSocket(`ws://localhost:8080/ws/skeleton_detection`);
-    window.onbeforeunload = function() {
-      socket.onclose = function () {}; // disable onclose handler first
-      socket.close();
-    };
-    socket.onmessage = async (ev: MessageEvent<Blob>) => {
-      const byteData = await ev.data.text();
-      setData(byteData)
-    }
-  }, []);
+  const [frameCapture, data] = useFrameCapture("0", CaptureType.SkeletonDetection);
 
   if (!data) {
     return null;
   }
-
   return (
     <Box>
-      {data && <img src={`data:image/png;base64,${data}`} alt={"video capture"}/>}
+      {!frameCapture.isConnectionClosed && <img src={frameCapture.current_data_url} alt={"video capture"}/>}
     </Box>
-  )
+  );
 }

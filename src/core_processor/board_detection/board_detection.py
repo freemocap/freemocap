@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import traceback
 
@@ -16,20 +15,18 @@ logger = logging.getLogger(__name__)
 
 
 class BoardDetection:
-    async def process_as_frame_loop(self, cb):
-        cam_manager: CVCameraManager = CVCameraManager()
-        cv_cams = cam_manager.cv_cams
+    def __init__(self, cam_manager: CVCameraManager = CVCameraManager()):
+        self._cam_manager = cam_manager
 
-        # if its already capturing frames, this is a no-op
-        with cam_manager.start_capture_session():
+    async def process_by_cam_id(self, webcam_id: str, cb):
+        with self._cam_manager.start_capture_session(webcam_id) as cv_cam:
             try:
                 while True:
-                    for cv_cam in cv_cams:
-                        if not cv_cam.is_capturing_frames:
-                            return
-                        image = self._process_single_cam_frame(cv_cam)
-                        if cb and image is not None:
-                            await cb(image, cv_cam.webcam_id_as_str)
+                    if not cv_cam.is_capturing_frames:
+                        return
+                    image = self._process_single_cam_frame(cv_cam)
+                    if cb and image is not None:
+                        await cb(image)
             except:
                 logger.error("Printing traceback")
                 traceback.print_exc()
@@ -66,7 +63,7 @@ class BoardDetection:
     def _process_single_cam_frame(self, cv_cam):
         success, frame, timestamp = cv_cam.latest_frame
         if not success:
-            logger.error("CV2 failed to grab a frame")
+            # logger.error("CV2 failed to grab a frame")
             return
         if frame is None:
             logger.error("Frame is empty")

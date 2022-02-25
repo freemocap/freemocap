@@ -42,7 +42,7 @@ out_vid_path.mkdir(exist_ok=True)
 
 csv_path = out_vid_path / 'viable_folders_status.csv'
 
-detect_folders_to_process_bool = False
+detect_folders_to_process_bool = True
 if detect_folders_to_process_bool:
     dataframe_init_dict = {'viable_folder_paths':[],
                            'outVid_exists_bool':[]}
@@ -65,24 +65,29 @@ if detect_folders_to_process_bool:
     viable_folders_dataframe.to_csv(csv_path, index=False)
     logging.info('List of all viable session folders saved to {}'.format(str(csv_path)))
 else: 
-    viable_folders_dataframe = pd.read_csv(csv_path)
-    logging.info('Loaded csv with list viable session folders from {}'.format(str(csv_path)))
-
-
-
-# %%
-
-
-# %%
-folders_to_process = viable_folders_dataframe[viable_folders_dataframe["outVid_exists_bool"]==False]
-for this_item in folders_to_process['viable_folder_paths']:
-    this_session_id = Path(this_item).name
-    print('Starting to process SessionID: {}'.format(this_session_id))
-    logging.info('Starting to process SessionID: {}'.format(this_session_id))
     try:
-        fmc.RunMe(sessionID = this_session_id, stage=3, useBlender=True, showAnimation=False)
-        logging.info('SessionID: {} processed successfully!'.format(this_session_id))
+        viable_folders_dataframe = pd.read_csv(csv_path)
+        logging.info('Loaded csv with list viable session folders from {}'.format(str(csv_path)))
     except Exception:
-        console.print_exception(Exception)
-        logging.info('SessionID: {} failed to process'.format(this_session_id))
+        console.print_exception()
+        logging.error('Failed to load csv with list viable session folders from {}'.format(str(csv_path)))
+
+
+# %%
+
+
+# %%
+reprocess_bool = False
+if reprocess_bool:
+    folders_to_process = viable_folders_dataframe[viable_folders_dataframe["outVid_exists_bool"]==False]
+    for this_item in folders_to_process['viable_folder_paths']:
+        this_session_id = Path(this_item).name
+        print('Starting to process SessionID: {}'.format(this_session_id))
+        logging.info('Starting to process SessionID: {}'.format(this_session_id))
+        try:
+            fmc.RunMe(sessionID = this_session_id, stage=3, useBlender=True, showAnimation=False)
+            logging.info('SessionID: {} processed successfully!'.format(this_session_id))
+        except Exception:
+            console.print_exception(Exception)
+            logging.info('SessionID: {} failed to process'.format(this_session_id))
 

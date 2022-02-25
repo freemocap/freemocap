@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional, Dict
 import platform
 import time
 
@@ -20,21 +19,34 @@ class FailedFrameGrabException(Exception):
 class TweakedModel(BaseModel):
     class Config:
         arbitrary_types_allowed = True
-        
+
+
 # OpenCV Implementation of interacting with a camera
 class OpenCVCamera(TweakedModel):
     port_number: int=0
     name: str = 'Camera0' # `camera{}`.format(port_number)
-    exposure: int = -6
+    exposure: int = -8
     resolution_width: int = 1280
     resolution_height: int = 720
+    framerate: int = 30
     opencv_video_capture_object: cv2.VideoCapture = None
+    opencv_video_writer_object: cv2.VideoWriter = None
     
+    
+    def initialize_video_writer(self, output_file_path: str, ):
+        self.opencv_video_writer_object = cv2.VideoWriter(
+            output_file_path,
+            cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 
+            self.framerate, 
+            (self.resolution_width, self.resolution_height))
+        
+        logger.info('Initialized video writer for {}'.format(self.name))
+        
     def connect(self)->bool:
         if platform.system() == 'Windows':
-            cap_backend  = cv2.CAP_DSHOW
+            cap_backend = cv2.CAP_DSHOW
         else:
-            cap_backend  = cv2.CAP_ANY
+            cap_backend = cv2.CAP_ANY
 
 
         self.opencv_video_capture_object = cv2.VideoCapture(self.port_number, cap_backend)
@@ -44,9 +56,8 @@ class OpenCVCamera(TweakedModel):
         self.opencv_video_capture_object.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width)
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height)
-
         self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-
+        
         if success:
             logger.error('Camera found at port number {}'.format(self.port_number))
             self.name = 'Camera{}'.format(self.port_number)
@@ -56,20 +67,20 @@ class OpenCVCamera(TweakedModel):
             logger.error('Could not connect to a camera at port# {}'.format(self.port_number))
             return success
         
-    def get_next_frame(self)->dict:
+    def get_next_frame(self):
 
         timestamp_ns_pre_grab = time.time_ns()
-        grab_success = self.opencv_video_capture_object.grab() #Why grab not read? see -> https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
+        # Why grab not read? see -> https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
+        grab_success = self.opencv_video_capture_object.grab()
         timestamp_ns_post_grab = time.time_ns()
         timestamp_ns = (timestamp_ns_pre_grab + timestamp_ns_post_grab)/2
 
         if grab_success:
-            success, image =  self.opencv_video_capture_object.retrieve()
-            logger.info('{} successfully grabbed a frame at timestamp {}'.format(self.name, timestamp_ns/1e9))
-        else:
-            # raise FailedFrameGrabException()
-            logger.error('{} failed to grab a frame at timestamp {}'.format(timestamp_ns/1e9))
-        return success, image, timestamp_ns
+            success, image = self.opencv_video_capture_object.retrieve()
+            # logger.info('{} successfully grabbed a frame at timestamp {}'.format(self.name, timestamp_ns/1e9))
+            return success, image, timestamp_ns
+
+        return False, None, None
 
     def close(self):
         self.opencv_video_capture_object.release()

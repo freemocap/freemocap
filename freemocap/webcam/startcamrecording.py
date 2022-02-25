@@ -104,12 +104,14 @@ def CamRecording(
             break
         success, frame = cam.read()
 
+        
         cv2.imshow(camWindowName, frame)
         frame_sized = cv2.resize(frame, (resWidth, resHeight))
         frame_sized = frame
         out.write(frame)
         timeStamps.append(time.time() - beginTime)  # add each timestamp to the list
         timeStamps_unix.append(time.time())
+
 
         key = cv2.waitKey(20)
         if key == 27:  # exit on ESC

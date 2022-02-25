@@ -10,5 +10,5 @@ class MediapipeSkeletonDetectionService:
     async def run(self):
         await MediapipeSkeletonDetection().process()
 
-    async def run_as_loop(self, cb):
-        await MediapipeSkeletonDetection().process_as_frame_loop(cb)
+    async def run_as_loop(self, webcam_id, cb):
+        await MediapipeSkeletonDetection().process_as_frame_loop(webcam_id, cb)

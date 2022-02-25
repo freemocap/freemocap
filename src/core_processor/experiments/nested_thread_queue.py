@@ -11,7 +11,9 @@ from src.api.services.board_detect_service import BoardDetectService
 def tryit():
     service = BoardDetectService()
     output_queue = Queue()
-    t = threading.Thread(target=service.run_as_loop, args=(output_queue,), daemon=True)
+    t = threading.Thread(
+        target=service.run_detection_on_cam_id, args=(output_queue,), daemon=True
+    )
     t.start()
 
     while True:

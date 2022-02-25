@@ -29,9 +29,10 @@ class MediapipeSkeletonDetection:
                         image = self._process_single_cam_frame(holistic, cv_cam)
                         if cb and image is not None:
                             await cb(image)
-                except:
+                except Exception as e:
                     logger.error("Printing traceback")
                     traceback.print_exc()
+                    raise e
 
     async def process(self):
         cam_manager: CVCameraManager = CVCameraManager()

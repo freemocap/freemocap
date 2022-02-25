@@ -3,8 +3,7 @@ import {useEffect, useState} from "react";
 type OnMessageHandler = (ev: MessageEvent<Blob>, data_url: string) => Promise<void>;
 
 export enum CaptureType {
-  BoardDetection = "board_detection",
-  SkeletonDetection = "skeleton_detection",
+  BoardDetection = "board_detection", SkeletonDetection = "skeleton_detection",
 }
 
 export class FrameCapture {
@@ -12,14 +11,11 @@ export class FrameCapture {
   private readonly _host: string;
   private readonly _base_host: string = "ws://localhost:8080/ws";
 
-  constructor(
-    private readonly _webcamId: string,
-    private readonly _captureType: CaptureType = CaptureType.BoardDetection,
-  ) {
+  constructor(private readonly _webcamId: string, private readonly _captureType: CaptureType = CaptureType.BoardDetection,) {
     this._host = `${this._base_host}/${this._captureType}/${this._webcamId}`
   }
 
-  private _current_data_url: string = ""
+  private _current_data_url!: string;
 
   public get current_data_url(): string {
     return this._current_data_url;
@@ -45,7 +41,6 @@ export class FrameCapture {
     this._ws_connection.close();
   }
 }
-
 
 export const useFrameCapture = (webcam_id: string, captureType: CaptureType, onMessage?: OnMessageHandler): [FrameCapture, string] => {
   const [frameCapture,] = useState(() => new FrameCapture(webcam_id, captureType));

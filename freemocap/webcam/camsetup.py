@@ -138,7 +138,7 @@ class MediaPipeVideoSetup(threading.Thread):
                 ret1, frame1 = cap.read()
                 timestamps.append(time.time())
                 
-                print(f"mean fps for cam {self.camID} is {1/np.mean(np.diff(timestamps))}")
+                #print(f"mean fps for cam {self.camID} is {1/np.mean(np.diff(timestamps))}")
                 
                 if ret1 == True:
 

@@ -79,7 +79,7 @@ class BoardDetection:
             frame, cv_cam.webcam_id_as_str, charuco_corners, charuco_ids
         )
         cv2.polylines(frame, np.int32([charuco_corners]), True, (0, 100, 255), 2)
-        write_fps_to_image(frame, cv_cam.current_fps)
+        write_fps_to_image(frame, cv_cam.current_fps_short)
         return frame
 
 

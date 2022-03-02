@@ -30,7 +30,7 @@ class FrameThread(threading.Thread):
             return 0
         if self._num_frames_processed <= 0:
             return 0
-        return int(math.ceil(self._num_frames_processed / self._elapsed))
+        return self._num_frames_processed / self._elapsed
 
     @property
     def latest_frame(self):

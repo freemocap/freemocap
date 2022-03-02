@@ -6,7 +6,7 @@ from fastapi import APIRouter, WebSocket
 
 from src.api.services.board_detect_service import BoardDetectService
 from src.api.services.mediapipe_detect_service import MediapipeSkeletonDetectionService
-from src.cameras.cam_factory import CVCameraManager
+from src.cameras.cv_camera_manager import CVCameraManager
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ async def skeleton_detection_as_ws(
             await web_socket.send_bytes(frame.tobytes())
 
     try:
-        await MediapipeSkeletonDetectionService().run_as_loop(
+        await MediapipeSkeletonDetectionService(CVCameraManager()).run_as_loop(
             webcam_id=webcam_id, cb=websocket_send, model_complexity=model_complexity
         )
     except:

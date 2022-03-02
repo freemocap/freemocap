@@ -1,7 +1,8 @@
 import cv2
+import numpy as np
 
 
-def write_fps_to_image(image, fps_number):
+def write_fps_to_image(image: np.array, fps_number: int):
     cv2.putText(
         image,
         f"FPS: {str(fps_number)}",

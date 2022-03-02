@@ -1,6 +1,7 @@
 import React from "react";
 import {Box} from "@mui/material";
-import {CaptureType, useFrameCapture} from "../services/frame-capture";
+import {CaptureType} from "../services/frame-capture";
+import {useFrameCapture} from "../hooks/use-frame-capture";
 
 export const SkeletonDetection = () => {
   const [frameCapture, data] = useFrameCapture("0", CaptureType.SkeletonDetection);

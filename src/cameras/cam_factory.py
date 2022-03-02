@@ -20,6 +20,7 @@ class CVCameraManager:
             logger.info("Creating cams.")
             # we create the _cv_cams once, and reuse it for the lifetime of the session
             _cv_cams = self._create_opencv_cams()
+            self._cv_cams = _cv_cams
         else:
             logger.info("Reusing already created resources cam resources.")
             self._cv_cams = _cv_cams
@@ -42,7 +43,6 @@ class CVCameraManager:
             # TODO: OBS Studio issue causes us to ignore a specific camera ID for Jon's computer.
             if int(webcam.webcam_id) < 3:
                 cv_cams.append(OpenCVCamera(config=single_config))
-
         return cv_cams
 
     @contextmanager
@@ -53,10 +53,10 @@ class CVCameraManager:
         """
         if webcam_id:
             self.start_frame_capture_on_cam_id(webcam_id)
+            yield self.cv_cam_by_id(webcam_id)
         else:
             self.start_frame_capture_all_cams()
-
-        yield self.cv_cam_by_id(webcam_id)
+            yield self._cv_cams
 
         logger.debug("Cleaning up capture session")
         self.stop_frame_capture_all_cams()

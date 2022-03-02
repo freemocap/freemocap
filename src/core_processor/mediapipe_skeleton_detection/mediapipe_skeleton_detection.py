@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import traceback
 
@@ -16,13 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 class MediapipeSkeletonDetection:
-    async def process_as_frame_loop(self, webcam_id, cb):
-        cam_manager: CVCameraManager = CVCameraManager()
-        with cam_manager.start_capture_session(webcam_id=webcam_id) as cv_cam:
+    def __init__(self, cam_manager: CVCameraManager):
+        self._cam_manager = cam_manager
+
+    async def process_as_frame_loop(self, webcam_id, cb, model_complexity: int = 1):
+        with self._cam_manager.start_capture_session(webcam_id=webcam_id) as cv_cam:
             with mp_holistic.Holistic(
                 min_detection_confidence=0.5,
                 min_tracking_confidence=0.5,
-                model_complexity=0,
+                model_complexity=model_complexity,
             ) as holistic:
                 try:
                     while True:
@@ -34,15 +35,12 @@ class MediapipeSkeletonDetection:
                     traceback.print_exc()
                     raise e
 
-    async def process(self):
-        cam_manager: CVCameraManager = CVCameraManager()
-        cv_cams = cam_manager.cv_cams
-
-        with cam_manager.start_capture_session():
+    def process(self, model_complexity: int = 1):
+        with self._cam_manager.start_capture_session() as cv_cams:
             with mp_holistic.Holistic(
                 min_detection_confidence=0.5,
                 min_tracking_confidence=0.5,
-                model_complexity=0,
+                model_complexity=model_complexity,
             ) as holistic:
                 try:
                     while True:
@@ -106,4 +104,4 @@ class MediapipeSkeletonDetection:
 
 
 if __name__ == "__main__":
-    asyncio.run(MediapipeSkeletonDetection().process())
+    MediapipeSkeletonDetection(CVCameraManager()).process()

@@ -40,8 +40,7 @@ class CVCameraManager:
         for webcam in raw_webcam_obj:
             single_config = self._config_service.webcam_config_by_id(webcam.webcam_id)
             # TODO: OBS Studio issue causes us to ignore a specific camera ID for Jon's computer.
-            if int(webcam.webcam_id) < 3:
-                cv_cams.append(OpenCVCamera(config=single_config))
+            cv_cams.append(OpenCVCamera(config=single_config))
 
         return cv_cams
 

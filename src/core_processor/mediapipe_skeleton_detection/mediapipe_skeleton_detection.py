@@ -72,7 +72,7 @@ class MediapipeSkeletonDetection:
             return
 
         image = self.detect_mediapipe_skeleton(holistic, frame)
-        write_fps_to_image(image, cv_cam.current_fps)
+        write_fps_to_image(image, cv_cam.current_fps_short)
         return image
 
     def detect_mediapipe_skeleton(self, holistic, image):

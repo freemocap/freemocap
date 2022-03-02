@@ -48,6 +48,10 @@ class OpenCVCamera:
 
         return self._running_thread.is_capturing_frames
 
+    @property
+    def current_fps_short(self) -> str:
+        return "{:.2f}".format(self._running_thread.current_fps)
+
     def connect(self):
         if platform.system() == "Windows":
             cap_backend = cv2.CAP_DSHOW

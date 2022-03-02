@@ -6,6 +6,7 @@ from fastapi import APIRouter, WebSocket
 
 from src.api.services.board_detect_service import BoardDetectService
 from src.api.services.mediapipe_detect_service import MediapipeSkeletonDetectionService
+from src.cameras.cam_factory import CVCameraManager
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,9 @@ async def board_detection_as_ws(web_socket: WebSocket, webcam_id: str):
 
 
 @cam_ws_router.websocket("/ws/skeleton_detection/{webcam_id}")
-async def skeleton_detection_as_ws(web_socket: WebSocket, webcam_id: str):
+async def skeleton_detection_as_ws(
+    web_socket: WebSocket, webcam_id: str, model_complexity: int
+):
     await web_socket.accept()
 
     async def websocket_send(input_image):
@@ -48,7 +51,7 @@ async def skeleton_detection_as_ws(web_socket: WebSocket, webcam_id: str):
 
     try:
         await MediapipeSkeletonDetectionService().run_as_loop(
-            webcam_id=webcam_id, cb=websocket_send
+            webcam_id=webcam_id, cb=websocket_send, model_complexity=model_complexity
         )
     except:
         logger.error("Websocket ended")
@@ -57,9 +60,9 @@ async def skeleton_detection_as_ws(web_socket: WebSocket, webcam_id: str):
 
 
 @cam_ws_router.get("/begin_mediapipe_skeleton_detection")
-async def begin_mediapipe_skeleton_detection(model_complexity=2):
+async def begin_mediapipe_skeleton_detection(model_complexity: int):
     """
     model_complexity can be 1 (faster, less accurate) or 2 (slower, more accurate)
     """
-    service = MediapipeSkeletonDetectionService(model_complexity)
-    await service.run()
+    service = MediapipeSkeletonDetectionService(CVCameraManager())
+    service.run(model_complexity)

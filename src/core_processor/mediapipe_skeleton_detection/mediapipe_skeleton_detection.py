@@ -4,7 +4,7 @@ import traceback
 import cv2
 import mediapipe as mp
 
-from src.cameras.cam_factory import CVCameraManager
+from src.cameras.cv_camera_manager import CVCameraManager
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
 
 mp_holistic = mp.solutions.holistic

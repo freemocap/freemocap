@@ -4,7 +4,7 @@ import traceback
 import cv2
 import numpy as np
 
-from src.cameras.cam_factory import CVCameraManager
+from src.cameras.cv_camera_manager import CVCameraManager
 from src.core_processor.board_detection.base_pose_estimation import detect_charuco_board
 from src.core_processor.board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,

@@ -4,9 +4,4 @@ from src.api.routes.health.health_check_route import healthcheck_router
 from src.api.routes.startup.startup import startup_router
 
 # REGISTER NEW ROUTES HERE
-enabled_routers = [
-    healthcheck_router,
-    camera_router,
-    cam_ws_router,
-    startup_router
-]
+enabled_routers = [healthcheck_router, camera_router, cam_ws_router, startup_router]

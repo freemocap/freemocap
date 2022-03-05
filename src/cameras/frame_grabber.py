@@ -1,5 +1,4 @@
 import logging
-import math
 import threading
 import time
 import traceback

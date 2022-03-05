@@ -1,4 +1,3 @@
-
 def determine_shared_charuco_board_views(self):
     pass
     # # determine paired board views

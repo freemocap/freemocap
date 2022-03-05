@@ -19,7 +19,10 @@ class BoardDetection:
         self._cam_manager = cam_manager
 
     async def process_by_cam_id(self, webcam_id: str, cb):
-        with self._cam_manager.start_capture_session(webcam_id) as cv_cam:
+        with self._cam_manager.start_capture_session_single_cam(
+            webcam_id, save_video=True
+        ) as cam_response:
+            cv_cam = cam_response.cv_cam
             try:
                 while True:
                     if not cv_cam.is_capturing_frames:
@@ -36,26 +39,30 @@ class BoardDetection:
         Opens Camera using OpenCV and begins image processing for charuco board
         If return images is true, the images are returned to the caller
         """
-        cam_manager: CVCameraManager = CVCameraManager()
-        cv_cams = cam_manager.cv_cams
-
         # if its already capturing frames, this is a no-op
-        with cam_manager.start_capture_session():
+
+        with self._cam_manager.start_capture_session_all_cams(
+            save_video=True
+        ) as session_obj:
             try:
                 while True:
                     exit_key = cv2.waitKey(1)
                     if exit_key == 27:
                         logger.info("ESC has been pressed.")
                         break
-                    for cv_cam in cv_cams:
+                    for response in session_obj:
+                        cv_cam = response.cv_cam
+                        writer = response.writer
                         frame = self._process_single_cam_frame(cv_cam)
                         if frame is not None:
+                            writer.write(frame)
                             cv2.imshow(cv_cam.webcam_id_as_str, frame)
             except:
                 logger.error("Printing traceback")
                 traceback.print_exc()
             finally:
-                for cv_cam in cv_cams:
+                for response in session_obj:
+                    cv_cam = response.cv_cam
                     logger.info(f"Destroy window {cv_cam.webcam_id_as_str}")
                     cv2.destroyWindow(cv_cam.webcam_id_as_str)
                     cv2.waitKey(1)

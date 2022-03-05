@@ -8,10 +8,9 @@ class HealthCheckResponse(BaseModel):
     message: str = "OK"
 
 
-@healthcheck_router.get('/health')
+@healthcheck_router.get("/health")
 def route():
     try:
         return HealthCheckResponse()
     except:
         raise ValueError("Unhealthy")
-

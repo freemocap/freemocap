@@ -13,8 +13,10 @@ logger.level = logging.INFO
 class NoCameraAvailableException(Exception):
     pass
 
+
 class FailedFrameGrabException(Exception):
     pass
+
 
 class TweakedModel(BaseModel):
     class Config:
@@ -23,57 +25,69 @@ class TweakedModel(BaseModel):
 
 # OpenCV Implementation of interacting with a camera
 class OpenCVCamera(TweakedModel):
-    port_number: int=0
-    name: str = 'Camera0' # `camera{}`.format(port_number)
+    port_number: int = 0
+    name: str = "Camera0"  # `camera{}`.format(port_number)
     exposure: int = -8
     resolution_width: int = 1280
     resolution_height: int = 720
     framerate: int = 30
     opencv_video_capture_object: cv2.VideoCapture = None
     opencv_video_writer_object: cv2.VideoWriter = None
-    
-    
-    def initialize_video_writer(self, output_file_path: str, ):
+
+    def initialize_video_writer(
+        self,
+        output_file_path: str,
+    ):
         self.opencv_video_writer_object = cv2.VideoWriter(
             output_file_path,
-            cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 
-            self.framerate, 
-            (self.resolution_width, self.resolution_height))
-        
-        logger.info('Initialized video writer for {}'.format(self.name))
-        
-    def connect(self)->bool:
-        if platform.system() == 'Windows':
+            cv2.VideoWriter_fourcc("M", "J", "P", "G"),
+            self.framerate,
+            (self.resolution_width, self.resolution_height),
+        )
+
+        logger.info("Initialized video writer for {}".format(self.name))
+
+    def connect(self) -> bool:
+        if platform.system() == "Windows":
             cap_backend = cv2.CAP_DSHOW
         else:
             cap_backend = cv2.CAP_ANY
 
-
-        self.opencv_video_capture_object = cv2.VideoCapture(self.port_number, cap_backend)
+        self.opencv_video_capture_object = cv2.VideoCapture(
+            self.port_number, cap_backend
+        )
         success, image = self.opencv_video_capture_object.read()
 
-        #set camera stream paramters
+        # set camera stream paramters
         self.opencv_video_capture_object.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
-        self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width)
-        self.opencv_video_capture_object.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height)
-        self.opencv_video_capture_object.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-        
+        self.opencv_video_capture_object.set(
+            cv2.CAP_PROP_FRAME_WIDTH, self.resolution_width
+        )
+        self.opencv_video_capture_object.set(
+            cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_height
+        )
+        self.opencv_video_capture_object.set(
+            cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc("M", "J", "P", "G")
+        )
+
         if success:
-            logger.error('Camera found at port number {}'.format(self.port_number))
-            self.name = 'Camera{}'.format(self.port_number)
+            logger.error("Camera found at port number {}".format(self.port_number))
+            self.name = "Camera{}".format(self.port_number)
             return success
         else:
             # raise NoCameraAvailableException()
-            logger.error('Could not connect to a camera at port# {}'.format(self.port_number))
+            logger.error(
+                "Could not connect to a camera at port# {}".format(self.port_number)
+            )
             return success
-        
+
     def get_next_frame(self):
 
         timestamp_ns_pre_grab = time.time_ns()
         # Why grab not read? see -> https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
         grab_success = self.opencv_video_capture_object.grab()
         timestamp_ns_post_grab = time.time_ns()
-        timestamp_ns = (timestamp_ns_pre_grab + timestamp_ns_post_grab)/2
+        timestamp_ns = (timestamp_ns_pre_grab + timestamp_ns_post_grab) / 2
 
         if grab_success:
             success, image = self.opencv_video_capture_object.retrieve()
@@ -84,36 +98,40 @@ class OpenCVCamera(TweakedModel):
 
     def close(self):
         self.opencv_video_capture_object.release()
-        logger.info('Closed camera{}'.format(self.name))
+        logger.info("Closed camera{}".format(self.name))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from rich.console import Console
+
     console = Console()
     timestamps = []
     try:
         # Test the camera
-        camera =  OpenCVCamera()
+        camera = OpenCVCamera()
         camera.connect()
 
         while True:
             success, image, timestamp_ns = camera.get_next_frame()
-            timestamps.append(timestamp_ns/1e9)
+            timestamps.append(timestamp_ns / 1e9)
             if success:
-                mean_fps = 1/np.mean(np.diff(timestamps))
-                console.print('{} grabbed a frame at timestamp {} : mean fps = {}'.format(camera.name, timestamp_ns/1e9, mean_fps))
+                mean_fps = 1 / np.mean(np.diff(timestamps))
+                console.print(
+                    "{} grabbed a frame at timestamp {} : mean fps = {}".format(
+                        camera.name, timestamp_ns / 1e9, mean_fps
+                    )
+                )
             else:
-                console.print('{} failed to grab a frame at timestamp {} : mean fps = {}'.format(camera.name, timestamp_ns/1e9, mean_fps))
-            cv2.imshow(camera.name+'- Press ESC to close', image)
+                console.print(
+                    "{} failed to grab a frame at timestamp {} : mean fps = {}".format(
+                        camera.name, timestamp_ns / 1e9, mean_fps
+                    )
+                )
+            cv2.imshow(camera.name + "- Press ESC to close", image)
             exit_key = cv2.waitKey(1)
-            if exit_key ==27:
+            if exit_key == 27:
                 break
         cv2.destroyAllWindows()
         camera.close()
     except:
         console.print_exception()
-
-
-
-
-

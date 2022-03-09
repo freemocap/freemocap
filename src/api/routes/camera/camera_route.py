@@ -1,25 +1,17 @@
-import uuid
-
-import numpy as np
 from fastapi import APIRouter
-from starlette.requests import Request
 
-from freemocap.prod.cam.cam_detection import get_or_create_cams
+from src.api.services.user_config import UserConfigService
+from src.cameras.cam_singleton import get_or_create_cams
+from src.cameras.opencv_camera import WebcamConfig
 
 camera_router = APIRouter()
 
 
-@camera_router.post('/camera/upload')
-async def stream_camera_bytes(request: Request):
-    body = b''
-    with open(f"{uuid.uuid4().hex}.webm", "wb") as fd:
-        async for chunk in request.stream():
-            body += chunk
-            fd.write(chunk)
-
-    # convert into numpy array
-    camera_data = np.frombuffer(body, dtype=np.uint8)
-    return camera_data
+@camera_router.post("/camera/config")
+async def config_cam(webcam_config: WebcamConfig):
+    s = UserConfigService()
+    s.set_webcam_config(webcam_config)
+    return s.webcam_configs
 
 
 @camera_router.get("/camera/detect")

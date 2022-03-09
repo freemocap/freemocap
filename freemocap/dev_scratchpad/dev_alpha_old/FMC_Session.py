@@ -65,8 +65,12 @@ class FMC_Session:
     ##                                                                                                      
     ##                                                                                                      
             
-    def record_multi_cam(self,freemocap_data_folder=None, rotation_codes_list=None):
-        self.multi_cam = FMC_MultiCamera(freemocap_data_folder=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list, rec_name=self.sessionID )
+    def record_multi_cam(self,freemocap_data_folder=None, in_rotation_codes_list=None, cams_to_use_list=None):
+        self.multi_cam = FMC_MultiCamera(
+            freemocap_data_folder=str(freemocap_data_path), 
+            rotation_codes_list=in_rotation_codes_list, 
+            rec_name=self.sessionID , 
+            cams_to_use_list=cams_to_use_list)
         self.multi_cam.start()    
     
     ##          
@@ -246,18 +250,25 @@ if __name__ == "__main__":
     
     freemocap_data_path=None
     in_rotation_codes_list=None
-    charucoSquareSize = 36
+    in_cams_to_use_list = None
+    charucoSquareSize = 123
     
     if this_computer_name=='jon-hallway-XPS-8930':
         freemocap_data_path = Path('/home/jon/Dropbox/FreeMoCapProject/FreeMocap_Data')
-        in_rotation_codes_list = ['cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', ]
+        
     elif this_computer_name == 'DESKTOP-DCG6K4F':
         freemocap_data_path = Path(r'C:\Users\jonma\Dropbox\FreeMoCapProject\FreeMocap_Data')
         this_charucoSquareSize = 123
-    
+        in_rotation_codes_list = ['cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_COUNTERCLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', 'cv2.ROTATE_90_CLOCKWISE', ]
+        in_cams_to_use_list = list(np.arange(len(in_rotation_codes_list)))
     try:
-        sesh =  FMC_Session(sessionID = None, freemocap_data_folder=str(freemocap_data_path), rotation_codes_list=in_rotation_codes_list)
-        sesh.record_multi_cam()
+        sesh =  FMC_Session(
+            sessionID = None,
+            freemocap_data_folder=str(freemocap_data_path),
+            rotation_codes_list=in_rotation_codes_list,
+            )
+        
+        sesh.record_multi_cam(cams_to_use_list = in_cams_to_use_list,)
         sesh.camera_capture_volume_calibration(charucoSquareSize = this_charucoSquareSize)
         sesh.charuco_nFrames_nTrackedPoints_XYZ, sesh.charuco_reprojection_error = sesh.reconstruct3D(sesh.charuco_nCams_nFrames_nImgPts_XY)
         

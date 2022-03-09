@@ -27,6 +27,7 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
         cap = cv2.VideoCapture(str(this_vid_path)) #initialize OpenCV capture
         frameTable = ft[cam] #grab the frames needed for that camera
         success, image = cap.read() #start reading frames
+        prev_image=image.copy()
         fourcc = cv2.VideoWriter_fourcc(*codec)
         saveName = session.sessionID + "_synced_" + cam + ".mp4"
 
@@ -51,18 +52,18 @@ def VideoTrim(session, vidList, ft, parameterDictionary, rotationState, numCamRa
                         blankFrame, angle=rotationState[camNum]
                     )
                     blankFrame = cv2.resize(blankFrame, (resWidth, resHeight))
-                out.write(blankFrame)  # write that frame to the video
+                out.write(prev_image)  # write that frame to the video
                 count += 1
             else:
                 cap.set(
                     cv2.CAP_PROP_POS_FRAMES, frame
                 )  # set the video to the frame that we need
-                success, image = cap.read()
+                success, image = cap.read()                
                 if rotationState[camNum] is not None:
                     image = imutils.rotate_bound(image, angle=rotationState[camNum])
                     image = cv2.resize(image, (resWidth, resHeight))
                 out.write(image)
-                f = 2
+                prev_image=image.copy()
             
         resWidth = trueWidth
         resHeight = trueHeight

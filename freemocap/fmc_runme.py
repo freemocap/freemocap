@@ -62,6 +62,7 @@ def RunMe(sessionID=None,
         startFrame = 0,
         useBlender = False,
         resetBlenderExe = False,
+        get_synced_unix_timestamps = True,
         ):
     """ 
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -83,6 +84,7 @@ def RunMe(sessionID=None,
     sesh.userDataPath = userDataPath
     sesh.dataFolderName = recordingconfig.dataFolder
     sesh.startFrame = startFrame
+    sesh.get_synced_unix_timestamps = get_synced_unix_timestamps
 
     # %% Startup 
     startup.get_user_preferences(sesh,stage)
@@ -228,20 +230,30 @@ def RunMe(sessionID=None,
             if runMediaPipe:
                 fmc_mediapipe.runMediaPipe(sesh)
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
-                sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
-                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
-                np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy            
+                
+         
 
 
-                smoothWinLength = 5
-                smoothOrder = 3
-                for dim in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[2]):
-                    for mm in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[1]):
-                        sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim] = savgol_filter(sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
+            else:
+                print('`runMediaPipe` set to False, so we\'re loading MediaPipe data from npy file')
+                sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = np.load(sesh.dataArrayPath/'mediaPipeData_2d.npy', allow_pickle=True)
+                
+            sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+            
+            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+            np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy   
+            
+            #smoooooooooth, just a bit
+            smoothWinLength = 5
+            smoothOrder = 3
+            for dim in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[2]):
+                for mm in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[1]):
+                    sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim] = savgol_filter(sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
 
-                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
-
+            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+        
         sesh.save_session()
+        
 
         if sesh.useOpenPose:
             console.rule(style="color({})".format(thisStage))    
@@ -302,11 +314,11 @@ def RunMe(sessionID=None,
 
                 #blenderPath = Path('C:\Program Files\Blender Foundation\Blender 2.93')
                 #os.chdir(blenderExePath)
-            path_to_this_py_file = Path(__file__).parent.resolve()
-            fmc_blender_script_path = path_to_this_py_file /'fmc_blender.py'
-            with console.status('Stuffing data into a Blender scene...'):
-                output = subprocess.run([str(blenderPath), "--background", "--python", str(fmc_blender_script_path), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
-                print(output)        
+                path_to_this_py_file = Path(__file__).parent.resolve()
+                fmc_blender_script_path = path_to_this_py_file /'fmc_blender.py'
+                with console.status('Stuffing data into a Blender scene...'):
+                    output = subprocess.run([str(blenderPath), "--background", "--python", str(fmc_blender_script_path), "--", str(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy'), str(sesh.dataArrayPath), sesh.sessionID], capture_output=True, text=True, check=True)
+                    print(output)        
         except:
             console.print_exception()
             

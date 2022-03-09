@@ -666,7 +666,8 @@ class CameraGroup:
         to reduce the influence of outliers.
         This is inspired by the algorithm for Fast Global Registration by Zhou, Park, and Koltun
         """
-
+        error_list = []
+        
         assert p2ds.shape[0] == len(self.cameras), \
             "Invalid points shape, first dim should be equal to" \
             " number of cameras ({}), but shape is {}".format(
@@ -710,6 +711,7 @@ class CameraGroup:
                 p2ds[:, good], extra_good, n_samp=n_samp_iter)
 
             error = np.median(errors_norm)
+            error_list.append(error)
 
             if error < error_threshold:
                 break
@@ -717,6 +719,7 @@ class CameraGroup:
             if verbose:
                 pprint(error_dict)
                 print('error: {:.2f}, mu: {:.1f}, ratio: {:.3f}'.format(error, mu, np.mean(good)))
+                print(f'previous error scores: {error_list}')
 
             self.bundle_adjust(p2ds_samp, extra_samp,
                                loss='linear', ftol=ftol,
@@ -1568,7 +1571,7 @@ class CameraGroup:
             self.set_rotations(rvecs)
             self.set_translations(tvecs)
 
-        error = self.bundle_adjust_iter(imgp, extra, verbose=verbose, **kwargs)
+        error = self.bundle_adjust_iter(imgp, extra, verbose=verbose, error_threshold=1)
 
         return error,merged,charuco_frames 
 

@@ -2,7 +2,7 @@
 https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-9328-3be27a4b1ea4.mp4
 
 # This is all very much a work in progress! More to come!
-## ( We're working on it though! Stay tuned!)
+## (As of March 2022) We're currently working on building a proper API with documentation, but for now enjoy this pile of semi-spaghettified code and sloppy ReadMe 😅
 
 ___________________________________
 ___
@@ -86,8 +86,8 @@ This two-line script is a copy of the `freemocap_runme_script.py` file, which ca
 [2]: fmc.RunMe() #<-this is where the magic happens!
 ```
 
-### 3D) Follow instructions in the Command window and pop-up GUI windows!
-✨💀✨
+### 6) Follow instructions in the Command window and pop-up GUI windows!
+---✨💀✨---.
 
 ---
 ___

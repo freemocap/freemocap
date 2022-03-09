@@ -3,8 +3,8 @@ from ._version import get_versions
 __version__ = get_versions()["version"]
 del get_versions
 
-# from freemocap.fmc_runme import RunMe
-# from freemocap import fmc_demo, fmc_runme
+from freemocap.fmc_runme import RunMe
+from freemocap import fmc_demo, fmc_runme
 
 # from freemocap import fmc_runme, fmc_demo #JSM NOTE - there's gotta be a better way to do this lol
 

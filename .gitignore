@@ -142,3 +142,7 @@ freemocap/fmc_startup/user_preferences.yaml
 
 .obsidian/
 data/
+
+*.avi
+*.mp4
+*.divx

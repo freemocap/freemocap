@@ -5,16 +5,16 @@ from pydantic import BaseModel
 
 
 class CreateWriterOptions(BaseModel):
-    filename_and_ext: str
-    parent_folder: str
+    writer_dir: Path
 
 
 def get_canonical_time_str():
-    return time.strftime("%Y%m%d_%H%M%S")
+    return time.strftime("%m_%d_%Y_%H%M%S")
 
 
 def get_base_options():
     return CreateWriterOptions(
-        filename_and_ext=f"{get_canonical_time_str()}.avi",
-        parent_folder="raw_frame_capture",
+        writer_dir=Path().joinpath(
+            "raw_frame_capture", f"{get_canonical_time_str()}.mp4"
+        )
     )

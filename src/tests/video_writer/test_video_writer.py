@@ -2,7 +2,6 @@ import logging
 import os
 import shutil
 import time
-from os import listdir
 from pathlib import Path
 from unittest import TestCase
 
@@ -47,9 +46,7 @@ class VideoWriterTestCase(TestCase):
         )
 
         vw.save(save_options)
-        logging.info(listdir(file_path))
-        full_path = Path().joinpath(file_path, "movie.mp4")
-        logging.info(full_path)
+        expected_path = Path().joinpath(file_path, "movie.mp4")
 
-        assert save_options.full_path == full_path, "Paths do not match"
-        assert os.path.exists(full_path), "File does not exist"
+        assert save_options.full_path == expected_path, "Paths do not match"
+        assert os.path.exists(expected_path), "File does not exist"

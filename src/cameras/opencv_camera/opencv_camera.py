@@ -8,7 +8,7 @@ import cv2
 from pydantic import BaseModel
 
 from src.cameras.dto import FramePayload
-from src.cameras.frame_grabber import FrameThread
+from src.cameras.opencv_camera.frame_grabber import FrameThread
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from src.cameras.dto import FramePayload
-from src.cameras.dtos.create_writer_options import get_canonical_time_str
+from src.cameras.utils.time_str import get_canonical_time_str
 from src.cameras.video_writer.video_writer import SaveOptions, VideoWriter
 from src.config.data_paths import freemocap_data_path
 

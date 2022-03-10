@@ -29,6 +29,10 @@ class VideoWriter:
     def __init__(self):
         self._frames: List[FramePayload] = []
 
+    @property
+    def frame_count(self):
+        return len(self._frames)
+
     def write(self, frame_payload: FramePayload):
         self._frames.append(frame_payload)
 

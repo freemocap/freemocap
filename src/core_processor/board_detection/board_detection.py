@@ -1,14 +1,19 @@
 import logging
+import time
 import traceback
+from pathlib import Path
 
 import cv2
 import numpy as np
 
 from src.cameras.cv_camera_manager import CVCameraManager
+from src.cameras.dto import FramePayload
+from src.cameras.video_writer.video_writer import SaveOptions
 from src.core_processor.board_detection.base_pose_estimation import detect_charuco_board
 from src.core_processor.board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
 )
+from src.core_processor.fps.fps_counter import FPSCamCounter
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
 
 logger = logging.getLogger(__name__)
@@ -20,19 +25,41 @@ class BoardDetection:
 
     async def process_by_cam_id(self, webcam_id: str, cb):
         with self._cam_manager.start_capture_session_single_cam(
-            webcam_id, save_video=True
-        ) as cam_response:
-            cv_cam = cam_response.cv_cam
+            webcam_id=webcam_id
+        ) as session_obj:
+            fps_manager = FPSCamCounter(self._cam_manager.available_webcam_ids)
+            fps_manager.start_all()
+            cv_cam = session_obj.cv_cam
+            writer = session_obj.writer
             try:
                 while True:
                     if not cv_cam.is_capturing_frames:
                         return
-                    image = self._process_single_cam_frame(cv_cam)
-                    if cb and image is not None:
-                        await cb(image)
-            except:
+                    response = self._process_single_cam_frame(cv_cam)
+                    if cb and response.image is not None:
+                        writer.write(
+                            FramePayload(
+                                image=response.image, timestamp=response.timestamp
+                            )
+                        )
+                        await cb(response.image)
+            except Exception as e:
                 logger.error("Printing traceback")
                 traceback.print_exc()
+                raise e
+            finally:
+                writer = session_obj.writer
+                options = SaveOptions(
+                    writer_dir=Path().joinpath(
+                        cv_cam.session_writer_base_path,
+                        "board_detection",
+                        f"webcam_{cv_cam.webcam_id_as_str}",
+                    ),
+                    fps=fps_manager.current_fps_for(cv_cam.webcam_id_as_str),
+                    frame_width=cv_cam.get_frame_width(),
+                    frame_height=cv_cam.get_frame_height(),
+                )
+                writer.save(options)
 
     def process(self):
         """
@@ -41,9 +68,9 @@ class BoardDetection:
         """
         # if its already capturing frames, this is a no-op
 
-        with self._cam_manager.start_capture_session_all_cams(
-            save_video=True
-        ) as session_obj:
+        with self._cam_manager.start_capture_session_all_cams() as session_obj:
+            fps_manager = FPSCamCounter(self._cam_manager.available_webcam_ids)
+            fps_manager.start_all()
             try:
                 while True:
                     exit_key = cv2.waitKey(1)
@@ -53,16 +80,35 @@ class BoardDetection:
                     for response in session_obj:
                         cv_cam = response.cv_cam
                         writer = response.writer
-                        frame = self._process_single_cam_frame(cv_cam)
-                        if frame is not None:
-                            writer.write(frame)
-                            cv2.imshow(cv_cam.webcam_id_as_str, frame)
+                        payload = self._process_single_cam_frame(cv_cam)
+                        current_webcam_id = cv_cam.webcam_id_as_str
+
+                        if payload is not None:
+                            writer.write(payload)
+                            fps_manager.increment_frame_processed_for(current_webcam_id)
+                            write_fps_to_image(
+                                payload.image,
+                                fps_manager.current_fps_for(current_webcam_id),
+                            )
+                            cv2.imshow(current_webcam_id, payload.image)
             except:
                 logger.error("Printing traceback")
                 traceback.print_exc()
             finally:
                 for response in session_obj:
                     cv_cam = response.cv_cam
+                    writer = response.writer
+                    options = SaveOptions(
+                        writer_dir=Path().joinpath(
+                            cv_cam.session_writer_base_path,
+                            "board_detection",
+                            f"webcam_{cv_cam.webcam_id_as_str}",
+                        ),
+                        fps=fps_manager.current_fps_for(cv_cam.webcam_id_as_str),
+                        frame_width=cv_cam.get_frame_width(),
+                        frame_height=cv_cam.get_frame_height(),
+                    )
+                    writer.save(options)
                     logger.info(f"Destroy window {cv_cam.webcam_id_as_str}")
                     cv2.destroyWindow(cv_cam.webcam_id_as_str)
                     cv2.waitKey(1)
@@ -86,11 +132,9 @@ class BoardDetection:
             frame, cv_cam.webcam_id_as_str, charuco_corners, charuco_ids
         )
         cv2.polylines(frame, np.int32([charuco_corners]), True, (0, 100, 255), 2)
-        write_fps_to_image(frame, cv_cam.current_fps_short)
-        return frame
+        return FramePayload(image=frame, timestamp=time.time_ns())
 
 
 if __name__ == "__main__":
     ## Jon, Run me to easily start a charuco board detect run
-    # asyncio.run(BoardDetection().process())
     BoardDetection().process()

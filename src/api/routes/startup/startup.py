@@ -1,10 +1,10 @@
-import aiomultiprocess
 from fastapi import APIRouter
+
+from src.config.data_paths import create_home_data_directory
 
 startup_router = APIRouter()
 
 
 @startup_router.on_event("startup")
 async def handle_startup():
-    aiomultiprocess.set_start_method("spawn")
-    # get_or_create_cams()
+    create_home_data_directory()

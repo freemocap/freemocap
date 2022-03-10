@@ -17,7 +17,8 @@ class VideoWriterTestCase(TestCase):
         self.test_folder = Path().joinpath("madeupvideowritertestingfolder").resolve()
 
     def tearDown(self):
-        shutil.rmtree(self.test_folder)
+        if os.path.exists(self.test_folder):
+            shutil.rmtree(self.test_folder)
 
     def test_write_on_video_writer(self):
         example_payload = FramePayload(

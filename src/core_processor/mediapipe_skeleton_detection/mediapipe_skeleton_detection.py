@@ -8,9 +8,9 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
-from src.cameras.multicam_manager.cv_camera_manager import CVCameraManager
-from src.cameras.dto import FramePayload
-from src.cameras.video_writer.video_writer import SaveOptions
+from src.cameras.capture.multicam_manager import CVCameraManager
+from src.cameras.capture.frame_payload import FramePayload
+from src.cameras.persistence.video_writer.video_writer import SaveOptions
 from src.config.data_paths import create_home_data_directory
 from src.core_processor.fps.fps_counter import FPSCamCounter
 from src.core_processor.utils.image_fps_writer import write_fps_to_image

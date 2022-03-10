@@ -5,9 +5,9 @@ import traceback
 from pathlib import Path
 from uuid import uuid4
 
-from src.cameras.dto import FramePayload
-from src.cameras.utils.time_str import get_canonical_time_str
-from src.cameras.video_writer.video_writer import SaveOptions, VideoWriter
+from src.cameras.capture.frame_payload import FramePayload
+from src.utils.time_str import get_canonical_time_str
+from src.cameras.persistence.video_writer.video_writer import SaveOptions, VideoWriter
 from src.config.data_paths import freemocap_data_path
 
 logger = logging.getLogger(__name__)

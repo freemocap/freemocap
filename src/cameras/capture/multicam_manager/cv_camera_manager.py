@@ -6,9 +6,9 @@ from typing import ContextManager, Dict, List
 from pydantic import BaseModel
 
 from src.api.services.user_config import UserConfigService
-from src.cameras.cam_singleton import get_or_create_cams
-from src.cameras.opencv_camera.opencv_camera import OpenCVCamera
-from src.cameras.video_writer.video_writer import VideoWriter
+from src.cameras.detection.cam_singleton import get_or_create_cams
+from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
+from src.cameras.persistence.video_writer.video_writer import VideoWriter
 
 logger = logging.getLogger(__name__)
 

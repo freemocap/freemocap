@@ -1,4 +1,3 @@
-import logging
 import os
 import shutil
 import time
@@ -7,8 +6,8 @@ from unittest import TestCase
 
 import numpy as np
 
-from src.cameras.dto import FramePayload
-from src.cameras.video_writer.video_writer import SaveOptions, VideoWriter
+from src.cameras.capture.frame_payload import FramePayload
+from src.cameras.persistence.video_writer.video_writer import SaveOptions, VideoWriter
 
 
 class VideoWriterTestCase(TestCase):
@@ -21,7 +20,7 @@ class VideoWriterTestCase(TestCase):
 
     def test_write_on_video_writer(self):
         example_payload = FramePayload(
-            image=np.random.randint(720, 1280, 3), timestamp=time.time_ns()
+            image=np.random.randint(0, 4, (720, 1280, 3)), timestamp=time.time_ns()
         )
         vw = VideoWriter()
         vw.write(example_payload)
@@ -33,7 +32,6 @@ class VideoWriterTestCase(TestCase):
         example_payload = FramePayload(
             image=np.random.randint(0, 4, (720, 1280, 3)), timestamp=time.time_ns()
         )
-        logging.info(example_payload.image.shape)
         vw = VideoWriter()
         vw.write(example_payload)
 

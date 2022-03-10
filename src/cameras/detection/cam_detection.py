@@ -20,9 +20,6 @@ class DetectPossibleCameras:
             success, image = cap.read()
 
             if success:
-                logger.info(
-                    f"camera at port {cam_id} found an image with shape {image.shape}"
-                )
                 try:
                     cams_to_use_list.append(
                         RawCamera(
@@ -32,7 +29,6 @@ class DetectPossibleCameras:
                 finally:
                     cap.release()
 
-        print(cams_to_use_list)
         return FoundCamerasResponse(
             camera_found_count=len(cams_to_use_list),
             cams_to_use=cams_to_use_list,

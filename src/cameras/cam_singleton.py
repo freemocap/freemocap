@@ -1,4 +1,4 @@
-from src.cameras.cam_detection import DetectPossibleCameras
+from src.cameras.detection.cam_detection import DetectPossibleCameras
 
 # No consumer should call this "private" variable
 

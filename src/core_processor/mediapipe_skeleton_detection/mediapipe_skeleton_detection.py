@@ -8,7 +8,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
-from src.cameras.cv_camera_manager import CVCameraManager
+from src.cameras.multicam_manager.cv_camera_manager import CVCameraManager
 from src.cameras.dto import FramePayload
 from src.cameras.video_writer.video_writer import SaveOptions
 from src.config.data_paths import create_home_data_directory

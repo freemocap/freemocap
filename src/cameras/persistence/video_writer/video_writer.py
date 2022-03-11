@@ -1,6 +1,7 @@
 import logging
 import os
 import traceback
+from pathlib import Path
 from typing import List
 
 import cv2
@@ -25,7 +26,10 @@ class VideoWriter:
     def save(self, options: SaveOptions):
         if not os.path.exists(options.writer_dir):
             os.makedirs(options.writer_dir.resolve())
+        self._save_video(options)
+        self._save_timestamps(options)
 
+    def _save_video(self, options: SaveOptions):
         cv2_writer = self._create_cv2_video_writer(options)
         try:
             for frame in self._frames:
@@ -36,6 +40,12 @@ class VideoWriter:
         finally:
             logger.info(f"Saved video to path: {options.full_path.resolve()}")
             cv2_writer.release()
+
+    def _save_timestamps(self, options: SaveOptions):
+        p = Path().joinpath(options.writer_dir, "timestamps.txt")
+        with open(p, "a") as fd:
+            for frame in self._frames:
+                fd.write(str(frame.timestamp) + "\n")
 
     def _create_cv2_video_writer(self, options: SaveOptions):
         return cv2.VideoWriter(

@@ -10,6 +10,7 @@ from src.api.services.user_config import UserConfigService
 from src.cameras.cam_singleton import get_or_create_cams
 from src.cameras.dtos.create_writer_options import CreateWriterOptions
 from src.cameras.opencv_camera import OpenCVCamera
+from src.cameras.video_writer.video_writer import VideoWriter
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ _cv_cams = None
 
 class CamAndWriterResponse(BaseModel):
     cv_cam: OpenCVCamera
-    writer: cv2.VideoWriter
+    writer: VideoWriter
 
     class Config:
         arbitrary_types_allowed = True
@@ -37,6 +38,10 @@ class CVCameraManager:
         else:
             logger.info("Reusing already created resources cam resources.")
             self._cv_cams = _cv_cams
+
+    @property
+    def available_webcam_ids(self):
+        return [cv_cam.webcam_id_as_str for cv_cam in self._cv_cams]
 
     @property
     def cv_cams(self):
@@ -58,35 +63,27 @@ class CVCameraManager:
 
     @contextmanager
     def start_capture_session_single_cam(
-        self, webcam_id: str = None, create_writer_options: CreateWriterOptions = None
+        self, webcam_id: str = None
     ) -> ContextManager[CamAndWriterResponse]:
         """
         Context manager for easy start up, usage, and cleanup of camera resources.
         Can capture frames from a single webcam or all webcams detected.
         """
-        writer = None
         try:
-            writer = self._start_frame_capture_on_cam_id(
-                webcam_id, create_writer_options
-            )
+            writer = self._start_frame_capture_on_cam_id(webcam_id)
             cv_cam = self.cv_cam_by_id(webcam_id)
             yield CamAndWriterResponse(cv_cam=cv_cam, writer=writer)
             self._stop_frame_capture_all_cams()
         except:
             logger.error("Printing traceback from starting capture session by cam")
             traceback.print_exc()
-        finally:
-            if writer:
-                writer.release()
-            logger.debug("Cleaning up capture session")
 
     @contextmanager
     def start_capture_session_all_cams(
-        self, create_writer_options: CreateWriterOptions = None
+        self,
     ) -> ContextManager[List[CamAndWriterResponse]]:
-        writer_dict = None
         try:
-            writer_dict = self._start_frame_capture_all_cams(create_writer_options)
+            writer_dict = self._start_frame_capture_all_cams()
             responses = [
                 CamAndWriterResponse(cv_cam=self.cv_cam_by_id(webcam_id), writer=writer)
                 for webcam_id, writer in writer_dict.items()
@@ -96,28 +93,17 @@ class CVCameraManager:
         except:
             logger.error("Printing traceback from starting capture session by cam")
             traceback.print_exc()
-        finally:
-            if writer_dict:
-                for writer in writer_dict.values():
-                    writer.release()
-            logger.debug("Cleaning up capture session")
 
-    def _start_frame_capture_all_cams(
-        self, create_writer_options: CreateWriterOptions = None
-    ) -> Dict[str, cv2.VideoWriter]:
+    def _start_frame_capture_all_cams(self) -> Dict[str, VideoWriter]:
         d = {}
         for cv_cam in self._cv_cams:
             cv_cam.connect()
             cv_cam.start_frame_capture()
-            d[cv_cam.webcam_id_as_str] = cv_cam.create_video_writer(
-                create_writer_options
-            )
+            d[cv_cam.webcam_id_as_str] = VideoWriter()
 
         return d
 
-    def _start_frame_capture_on_cam_id(
-        self, webcam_id: str, create_writer_options: CreateWriterOptions = None
-    ) -> cv2.VideoWriter:
+    def _start_frame_capture_on_cam_id(self, webcam_id: str) -> VideoWriter:
         filtered_cams = list(
             filter(lambda c: c.webcam_id_as_str == str(webcam_id), self._cv_cams)
         )
@@ -127,7 +113,7 @@ class CVCameraManager:
         cv_cam = filtered_cams[0]
         cv_cam.connect()
         cv_cam.start_frame_capture()
-        return cv_cam.create_video_writer(create_writer_options)
+        return VideoWriter()
 
     def _stop_frame_capture_all_cams(self):
         for cv_cam in self._cv_cams:

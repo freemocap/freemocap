@@ -6,9 +6,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from src.cameras.cv_camera_manager import CVCameraManager
-from src.cameras.dto import FramePayload
-from src.cameras.video_writer.video_writer import SaveOptions
+from src.cameras.capture.frame_payload import FramePayload
+from src.cameras.multicam_manager.cv_camera_manager import CVCameraManager
+from src.cameras.persistence.video_writer.video_writer import SaveOptions
 from src.core_processor.board_detection.base_pose_estimation import detect_charuco_board
 from src.core_processor.board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
@@ -25,7 +25,7 @@ class BoardDetection:
 
     async def process_by_cam_id(self, webcam_id: str, cb):
         with self._cam_manager.start_capture_session_single_cam(
-            webcam_id=webcam_id
+            webcam_id=webcam_id,
         ) as session_obj:
             fps_manager = FPSCamCounter(self._cam_manager.available_webcam_ids)
             fps_manager.start_all()

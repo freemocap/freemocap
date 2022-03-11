@@ -43,9 +43,14 @@ class VideoWriter:
 
     def _save_timestamps(self, options: SaveOptions):
         p = Path().joinpath(options.writer_dir, "timestamps.txt")
-        with open(p, "a") as fd:
-            for frame in self._frames:
-                fd.write(str(frame.timestamp) + "\n")
+        try:
+            with open(p, "a") as fd:
+                for frame in self._frames:
+                    fd.write(str(frame.timestamp) + "\n")
+        except Exception as e:
+            raise e
+        finally:
+            logger.info(f"Saved timestamps to path: {p.resolve()}")
 
     def _create_cv2_video_writer(self, options: SaveOptions):
         return cv2.VideoWriter(

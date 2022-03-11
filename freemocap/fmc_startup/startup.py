@@ -67,7 +67,7 @@ def get_data_folder_path(session):
                 session.save_user_preferences(session.preferences)
 
     
-        if session.basePath.stem == session.dataFolderName: #don't recursively craete 'FreeMoCap_Data' folders!
+        if session.basePath.stem == session.dataFolderName: #don't recursively create 'FreeMoCap_Data' folders!
             dataFolder = session.basePath
         else:
             dataFolder = session.basePath/session.dataFolderName
@@ -81,7 +81,7 @@ def get_data_folder_path(session):
             session.preferences['saved']['path_to_save'] = str(session.basePath)
             session.save_user_preferences(session.preferences)
 
-            if session.basePath.stem == session.dataFolderName: #don't recursively craete 'FreeMoCap_Data' folders!
+            if session.basePath.stem == session.dataFolderName: #don't recursively create 'FreeMoCap_Data' folders!
                 dataFolder = session.basePath
             else:
                 dataFolder = session.basePath/session.dataFolderName
@@ -99,7 +99,7 @@ def get_blender_path(session, resetBlenderExe):
         print('Please select your blender.exe file')
         root = tk.Tk()
         root.withdraw()
-        blender_file_path = filedialog.askopenfilename(title = 'Select your Blender executable (usually somehwere like `C:/Program Files/Blender Foundation/2.93/blender.exe')
+        blender_file_path = filedialog.askopenfilename(title = 'Select your Blender executable (usually somewhere like `C:/Program Files/Blender Foundation/2.93/blender.exe')
         print('Using blender executable located at:', blender_file_path)
         session.preferences['saved']['blenderEXEpath'] = blender_file_path
         session.save_user_preferences(session.preferences)

@@ -203,7 +203,7 @@ class SettingsGUI:
             #savedefault_button = Button(recordingSettingsFrame,text = 'Save as Default Path')
             #savedefault_button.pack(side = 'left')
             
-        # ---If previous parameters were recieved, insert them into the entry boxes
+        # ---If previous parameters were received, insert them into the entry boxes
         if existing_parameters == True:
 
             self.exposureEntry.insert(0, parameter_dictionary["exposure"])

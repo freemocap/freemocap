@@ -138,7 +138,7 @@ class FMC_OT_load_raw_mocap_data_as_bones(bpy.types.Operator): #setting the type
             
             thisMarLoc = mediapipe_skel_fr_mar_xyz[startFr,marNum,:]
             
-            #these will define the size of teh body, hand, and face markers
+            #these will define the size of the body, hand, and face markers
             bms = self.bone_size
             hms = bms *.5
             fms = bms *.5

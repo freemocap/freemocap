@@ -145,7 +145,7 @@ class FMC_OT_loadMarkerEmpties(bpy.types.Operator): #setting the type as "FMC" f
             
             thisMarLoc = mediapipe_skel_fr_mar_xyz[startFr,marNum,:]
             
-            #these will define the size of teh body, hand, and face markers
+            #these will define the size of the body, hand, and face markers
             bms = self.emptySize
             hms = bms *.5
             fms = bms *.5
@@ -173,7 +173,7 @@ class FMC_OT_loadMarkerEmpties(bpy.types.Operator): #setting the type as "FMC" f
                     print('this hand marnum is ' + str(marNum-marker_num_offset))
                     thisMarker.name = this_hand_prefix + mediapipe_hand_marker_names[marNum-marker_num_offset]
                 except:
-                    print('something weired in hand town for marker num' + str(marNum))
+                    print('something weird in hand town for marker num' + str(marNum))
                     f=9
                     
                 thisMarker.scale=(hms, hms, hms)

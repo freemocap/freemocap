@@ -64,7 +64,7 @@ class FMC_Camera:
         Args:
             camNum (int, optional): The ID of the camera to open. Defaults to 0 (i.e. the first camera it finds)
             vid_save_path (pathlib Path, optional): Where to save the video. Defaults to None.
-            barrier (threading.Barrier, optional): Barrier for syncronized multicam recording. Defaults to None.
+            barrier (threading.Barrier, optional): Barrier for synchronized multicam recording. Defaults to None.
             frame_queue (queue.Queue, optional): [description]. Queue to send out images when we're recording in a thread.
         """
 
@@ -191,7 +191,7 @@ class FMC_Camera:
     ###                                                                                          
     def open(self):
         """
-        Open Video Capture Object and dispaly in little video
+        Open Video Capture Object and display in little video
         """
 
         if platform.system() == 'Windows':
@@ -312,7 +312,7 @@ class FMC_Camera:
 
         Returns:
             Success[bool]: True if frame image captured successfully
-            image: the image that was recieved from the VideoCapture object
+            image: the image that was received from the VideoCapture object
             timestamp: unix timestamp from time.time_ns()
         """
         success, image = self.cv2_cap.read()

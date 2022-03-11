@@ -10,9 +10,9 @@ __________________________
 
 v0.0.43 is probably the last major update we'll make to the `pre-alpha` version of FreeMoCap. There will almost certainly be many bugfixes and usability tweaks, but no new major "deep level" development is intended on *this* iteration of this codebase.
 
-A notable exception to the previous statement is the [Blender](https://blender.org) related functionality introducted in this release! These features are all still experimental and will be getting a lot of attention and upgrades in the coming weeks/months. Keep an eye out for updates!
+A notable exception to the previous statement is the [Blender](https://blender.org) related functionality introduced in this release! These features are all still experimental and will be getting a lot of attention and upgrades in the coming weeks/months. Keep an eye out for updates!
 
-The current `pre-alpha` version is a reasonably stable, reliable piece of code that performs it's intended purposes fairly wel. However, it still not particularly well-built for easy use by people outside of my lab (i.e. outside of the group that originally built it). We have learned a tremendous amount from this process of development, and will be taking those lessons into the next development phase. 
+The current `pre-alpha` version is a reasonably stable, reliable piece of code that performs its intended purposes fairly well. However, it still not particularly well-built for easy use by people outside of my lab (i.e. outside of the group that originally built it). We have learned a tremendous amount from this process of development, and will be taking those lessons into the next development phase. 
 
 The next iteration (v0.1.0 - `freemocap-alpha`) will be a massive, near-complete overhaul that carries over very little of the current codebase. 
 

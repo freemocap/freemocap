@@ -480,7 +480,7 @@ def processArmature(context, arm, genVertexGroups = True):
                 boneName = "bone"
             poseBone = arm.pose.bones[boneName]
 
-            #Gets edit bone informations
+            #Gets edit bone information
             editBoneHead = editBone.head
             editBoneTail = editBone.tail
             editBoneVector = editBoneTail - editBoneHead
@@ -667,7 +667,7 @@ col = bpy.data.collections.get("Collection")
             
 bpy.ops.object.mode_set(mode='OBJECT')
 
-#Run thorugh frames, export a csv file with local bone rotations
+#Run through frames, export a csv file with local bone rotations
 # open the file in the write mode
 f = open(sesh_path + sesh_ID + '_local_bone_rotations.csv', 'w')
 

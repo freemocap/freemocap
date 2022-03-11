@@ -1,4 +1,4 @@
-# originially cribbed from - https://stackoverflow.com/a/67829211/14662833
+# originally cribbed from - https://stackoverflow.com/a/67829211/14662833
 
 from qtpy.QtWidgets import QApplication
 from qtconsole.rich_jupyter_widget import RichJupyterWidget

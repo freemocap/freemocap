@@ -50,7 +50,7 @@ def run_mediapipe(synched_video_path_list, dummyRun=False):
                         image_height, image_width, _ = image_raw.shape
                         image = cv2.cvtColor(image_raw, cv2.COLOR_BGR2RGB), #Convert the BGR image to RGB before processing
                         image = image[0] #unpack the tuple into a straight up image
-                        results = holistic.process( image)  # NOTE: THIS IS WHERE THE MAGIC HAPENS 
+                        results = holistic.process( image)  # NOTE: THIS IS WHERE THE MAGIC HAPPENS 
 
                         mediaPipe_results_from_this_video_list.append( results )  # Append data to mediapipe data list
 
@@ -113,7 +113,7 @@ def run_mediapipe(synched_video_path_list, dummyRun=False):
                 # pull out ThisFrame's mediapipe data (`mpData.pose_landmarks.landmark` returns something iterable ¯\_(ツ)_/¯)
                 thisFrame_poseDataLandMarks = this_frame_mediapipe_results.pose_landmarks.landmark  # body ('pose') data
                 # stuff body data into pre-allocated nan array
-                thisFrame_X_body[:numBodyPoints] = [pp.x for pp in thisFrame_poseDataLandMarks]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resultion for pixels
+                thisFrame_X_body[:numBodyPoints] = [pp.x for pp in thisFrame_poseDataLandMarks]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resolution for pixels
                 thisFrame_Y_body[:numBodyPoints] = [pp.y for pp in thisFrame_poseDataLandMarks]  # PoseY data
                 thisFrame_C_body[:numBodyPoints] = [pp.visibility for pp in thisFrame_poseDataLandMarks]  #'visibility' is MediaPose's 'confidence' measure in range [0,1]
             except:
@@ -122,7 +122,7 @@ def run_mediapipe(synched_video_path_list, dummyRun=False):
             # Right hand data
             try:
                 thisFrame_rHandDataLandMarks = this_frame_mediapipe_results.right_hand_landmarks.landmark  # right hand data
-                thisFrame_X_righthand[:numHandPoints] = [pp.x for pp in thisFrame_rHandDataLandMarks]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resultion for pixels
+                thisFrame_X_righthand[:numHandPoints] = [pp.x for pp in thisFrame_rHandDataLandMarks]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resolution for pixels
                 thisFrame_Y_righthand[:numHandPoints] = [pp.y for pp in thisFrame_rHandDataLandMarks]  # PoseY data
                 thisFrame_C_righthand[:numHandPoints] = [pp.visibility for pp in thisFrame_rHandDataLandMarks]  #'visibility' is MediaPose's 'confidence' measure in range [0,1]
             except:
@@ -131,7 +131,7 @@ def run_mediapipe(synched_video_path_list, dummyRun=False):
             # Left hand data
             try:
                 thisFrame_lHandDataLandMarks = this_frame_mediapipe_results.left_hand_landmarks.landmark  # left hand data
-                thisFrame_X_lefthand[:numHandPoints ] = [pp.x for pp in thisFrame_lHandDataLandMarks]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resultion for pixels
+                thisFrame_X_lefthand[:numHandPoints ] = [pp.x for pp in thisFrame_lHandDataLandMarks]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resolution for pixels
                 thisFrame_Y_lefthand[:numHandPoints] = [pp.y for pp in thisFrame_lHandDataLandMarks]  # PoseY data
                 thisFrame_C_lefthand[:numHandPoints] = [pp.visibility for pp in thisFrame_lHandDataLandMarks]  #'visibility' is MediaPose's 'confidence' measure in range [0,1]
             except:
@@ -140,7 +140,7 @@ def run_mediapipe(synched_video_path_list, dummyRun=False):
             # FaceMeshData
             try:
                 thisFrame_faceDataLandMarks = this_frame_mediapipe_results.face_landmarks.landmark  # face (mesh) data
-                thisFrame_X_face[:numFacePoints] = [pp.x for pp in thisFrame_faceDataLandMarks]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resultion for pixels
+                thisFrame_X_face[:numFacePoints] = [pp.x for pp in thisFrame_faceDataLandMarks]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resolution for pixels
                 thisFrame_Y_face[:numFacePoints] = [pp.y for pp in thisFrame_faceDataLandMarks]  # PoseY data
                 # NOTE - There's also Z data in here, but we're gonna ignore it
                 thisFrame_C_face[:numFacePoints] = [ pp.visibility for pp in thisFrame_faceDataLandMarks ]  #'visibility' is MediaPose's 'confidence' measure in range [0,1]

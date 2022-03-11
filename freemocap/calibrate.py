@@ -56,7 +56,7 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = .5):
         cam_names.append(str(count))
         session.numCams = count
 
-    cgroup = fmc_anipose.CameraGroup.from_names( cam_names, fisheye=True  )  # Looking through their code... it looks lke the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)
+    cgroup = fmc_anipose.CameraGroup.from_names( cam_names, fisheye=True  )  # Looking through their code... it looks like the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)
 
     calibrationFile = "{}_calibration.toml".format(session.sessionID)
 

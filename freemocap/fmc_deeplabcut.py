@@ -47,7 +47,7 @@ def parseDeepLabCut(
             dataTable = fullDataGroup.get("table")  # Open datatable with all DLC tracked points
 
             for ii in range(len(dataTable)):  # Loop through each frame
-                dataFromOneFrame = dataTable[ii]  # Assign frame to varible
+                dataFromOneFrame = dataTable[ii]  # Assign frame to variable
                 idx = len(dataFromOneFrame[1]) / 3  # index for reshaping data
                 sortedFrame = np.array(dataFromOneFrame[1])  # Put data in numpy array
                 try:

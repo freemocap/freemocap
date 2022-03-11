@@ -443,7 +443,7 @@ class FMC_OT_build_armature_from_raw_mocap_data(bpy.types.Operator): #setting th
                         boneName = "bone"
                     poseBone = arm.pose.bones[boneName]
 
-                    #Gets edit bone informations
+                    #Gets edit bone information
                     editBoneHead = editBone.head
                     editBoneTail = editBone.tail
                     editBoneVector = editBoneTail - editBoneHead

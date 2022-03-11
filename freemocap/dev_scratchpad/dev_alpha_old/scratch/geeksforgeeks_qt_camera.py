@@ -158,7 +158,7 @@ class MainWindow(QMainWindow):
 		# getting current camera name
 		self.current_camera_name = self.available_cameras[i].description()
 
-		# inital save sequence
+		# initial save sequence
 		self.save_seq = 0
 
 	# method to take photo

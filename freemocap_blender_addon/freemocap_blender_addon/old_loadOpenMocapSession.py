@@ -88,7 +88,7 @@ class OMC_OT_loadOpenMoCapSession(bpy.types.Operator): #setting the type as "OMC
         #Charuco grid!
         charucoCollectionName = 'CharucoBoard'
         # charColl = eby.create_collection(charucoCollectionName)
-        # assert charColl.name == charucoCollectionName, 'Charuco Collection name doesnt match. Did it already exist when you tried to make it? If so, Blender would make a new one called `thing.001` or something' 
+        # assert charColl.name == charucoCollectionName, 'Charuco Collection name does not match. Did it already exist when you tried to make it? If so, Blender would make a new one called `thing.001` or something' 
 
         # C.scene.collection.children.link(charColl) #link the newly created collection to the Blender Scene (so it will show up in the outliner)
 
@@ -110,7 +110,7 @@ class OMC_OT_loadOpenMoCapSession(bpy.types.Operator): #setting the type as "OMC
         # Deeplabcut (DLC) data!
         dlcCollectionName = 'DLC'
         # dlcColl = eby.create_collection(dlcCollectionName)
-        # assert dlcColl.name == dlcCollectionName, 'Charuco Collection name doesnt match. Did it already exist when you tried to make it? If so, Blender would make a new one called `thing.001` or something' 
+        # assert dlcColl.name == dlcCollectionName, 'Charuco Collection name does not match. Did it already exist when you tried to make it? If so, Blender would make a new one called `thing.001` or something' 
 
         # C.scene.collection.children.link(charColl) #link the newly created collection to the Blender Scene (so it will show up in the outliner)
         
@@ -138,14 +138,14 @@ class OMC_OT_loadOpenMoCapSession(bpy.types.Operator): #setting the type as "OMC
         # Skreleton data!
         skelCollectionName = 'skel'
         # skelColl = eby.create_collection(skelCollectionName)
-        # assert skelColl.name == skelCollectionName, 'Charuco Collection name doesnt match. Did it already exist when you tried to make it? If so, Blender would make a new one called `thing.001` or something' 
+        # assert skelColl.name == skelCollectionName, 'Charuco Collection name does not match. Did it already exist when you tried to make it? If so, Blender would make a new one called `thing.001` or something' 
 
         # C.scene.collection.children.link(charColl) #link the newly created collection to the Blender Scene (so it will show up in the outliner)
         print('Loading Skeleton Markers!')
         for marNum in range(len(skel_fr_mar_xyz[startFr,:,0])):
             thisMarLoc = skel_fr_mar_xyz[startFr,marNum,:]
             
-            #these will define the size of teh body, hand, and face markers
+            #these will define the size of the body, hand, and face markers
             bms = self.bodyMar_size
             hms = self.handMar_size
             fms = self.faceMar_size

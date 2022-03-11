@@ -307,7 +307,7 @@ def PlaySkeletonAnimation(
     # ax3d.set_axis_off()
 
 
-    ax3d.tick_params(length=0) # WHY DOESNT THIS WORK? I HATE THOSE TICK MARKS >:(
+    ax3d.tick_params(length=0) # WHY DOESN'T THIS WORK? I HATE THOSE TICK MARKS >:(
     
     smoothData=True
     smoothWinLength = 5

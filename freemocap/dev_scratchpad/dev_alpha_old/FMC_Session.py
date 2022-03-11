@@ -108,7 +108,7 @@ class FMC_Session:
 
         cam_names = ['cam_'+str(cam_num) for cam_num in range(len(self.synched_video_path_list))]
         
-        self.anipose_camera_calibration = fmc_anipose.CameraGroup.from_names(cam_names, fisheye=True  )  # Looking through their code... it looks lke the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)    
+        self.anipose_camera_calibration = fmc_anipose.CameraGroup.from_names(cam_names, fisheye=True  )  # Looking through their code... it looks like the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)    
         error,charuco_frame_data, charuco_frame_numbers = self.anipose_camera_calibration.calibrate_videos(video_paths_list_of_list_of_strings, board)   
 
         print("Anipose Calibration Successful!")

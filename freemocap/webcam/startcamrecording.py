@@ -48,7 +48,7 @@ def CamRecording(
     """
     # the flag is triggered when the user shuts down one webcam to shut down the rest.
     # normally I'd try to avoid global variables, but in this case it's
-    # necessary, since each webcam runs as it's own object.
+    # necessary, since each webcam runs as its own object.
     global flag
     flag = False
     camWindowName = "RECORDING - " + str(camID)+' - Press ESC to exit'
@@ -62,7 +62,7 @@ def CamRecording(
 
     # if not cam.isOpened():
     #         raise RuntimeError('No camera found at input '+ str(camID))
-    # pulling out all the dictionary paramters
+    # pulling out all the dictionary parameters
     exposure = parameterDictionary.get("exposure")
     resWidth = parameterDictionary.get("resWidth")
     resHeight = parameterDictionary.get("resHeight")

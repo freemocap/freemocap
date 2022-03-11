@@ -58,7 +58,7 @@ def runMediaPipe(session, dummyRun=False):
 
                             results = holistic.process(
                                 cv2.cvtColor(image, cv2.COLOR_BGR2RGB), #Convert the BGR image to RGB before processing
-                            )  # NOTE: THIS IS WHERE THE MAGIC HAPENS 
+                            )  # NOTE: THIS IS WHERE THE MAGIC HAPPENS 
 
                             mediaPipe_dataList.append(
                                 results
@@ -145,7 +145,7 @@ def parseMediaPipe(session):
                 # stuff body data into pre-allocated nan array
                 thisFrame_X_body[:numBodyPoints] = [
                     pp.x for pp in thisFrame_poseDataLandMarks
-                ]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resultion for pixels
+                ]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resolution for pixels
                 thisFrame_Y_body[:numBodyPoints] = [
                     pp.y for pp in thisFrame_poseDataLandMarks
                 ]  # PoseY data
@@ -162,7 +162,7 @@ def parseMediaPipe(session):
                 ].right_hand_landmarks.landmark  # right hand data
                 thisFrame_X_righthand[:numHandPoints] = [
                     pp.x for pp in thisFrame_rHandDataLandMarks
-                ]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resultion for pixels
+                ]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resolution for pixels
                 thisFrame_Y_righthand[:numHandPoints] = [
                     pp.y for pp in thisFrame_rHandDataLandMarks
                 ]  # PoseY data
@@ -179,7 +179,7 @@ def parseMediaPipe(session):
                 ].left_hand_landmarks.landmark  # left hand data
                 thisFrame_X_lefthand[:numHandPoints ] = [
                     pp.x for pp in thisFrame_lHandDataLandMarks
-                ]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resultion for pixels
+                ]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resolution for pixels
                 thisFrame_Y_lefthand[:numHandPoints] = [
                     pp.y for pp in thisFrame_lHandDataLandMarks
                 ]  # PoseY data
@@ -196,7 +196,7 @@ def parseMediaPipe(session):
                 ].face_landmarks.landmark  # face (mesh) data
                 thisFrame_X_face[:numFacePoints] = [
                     pp.x for pp in thisFrame_faceDataLandMarks
-                ]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resultion for pixels
+                ]  # PoseX data - Normalized screen coords (in range [0, 1]) - need multiply by image resolution for pixels
                 thisFrame_Y_face[:numFacePoints] = [
                     pp.y for pp in thisFrame_faceDataLandMarks
                 ]  # PoseY data

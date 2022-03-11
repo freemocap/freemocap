@@ -173,7 +173,7 @@ def RunMe(sessionID=None,
 
         sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
 
-        ##this is supposed to cycle through tyhe videos with different windows to try to get Anipose to work. I can't get the dang thing working because something weird happens where a Thread will get spawned in one of the inner functions (maybe related to tqdm?) and that iteration will jump out of the try/except 
+        ##this is supposed to cycle through the videos with different windows to try to get Anipose to work. I can't get the dang thing working because something weird happens where a Thread will get spawned in one of the inner functions (maybe related to tqdm?) and that iteration will jump out of the try/except 
         # try:
         #     sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
         #     # anipose_success = True
@@ -202,7 +202,7 @@ def RunMe(sessionID=None,
         #             cal_video_frame_range = [cal_video_frame_range[0]+round(sesh.numFrames*.25), cal_video_frame_range[0]+round(sesh.numFrames*.5)]
                 
         #         if cal_video_frame_range[1] > sesh.numFrames:
-        #             console.print('[bold red] -Sorry, we couldn\'t get Anipose calibration to complete sucessfully. Are you using a Charuco board made with the parameters described in the ReadMe (here\s a sample png -https://github.com/jonmatthis/freemocap/blob/main/charuco_board_image.png ). Is the board clearly visible to each camera? Is there glare on it from from any of the camera\'s perspective? Is it too far away from the cameras? Is your `exposure` set low enough that the black squares are black (not grey)?')
+        #             console.print('[bold red] -Sorry, we couldn\'t get Anipose calibration to complete successfully. Are you using a Charuco board made with the parameters described in the ReadMe (here\s a sample png -https://github.com/jonmatthis/freemocap/blob/main/charuco_board_image.png ). Is the board clearly visible to each camera? Is there glare on it from from any of the camera\'s perspective? Is it too far away from the cameras? Is your `exposure` set low enough that the black squares are black (not grey)?')
 
                 
 
@@ -216,7 +216,7 @@ def RunMe(sessionID=None,
         thisStage=4
         console.rule(style="color({})".format(thisStage))    
         console.rule('Starting 2D Point Trackers'.upper(),style="color({})".format(thisStage))  
-        stage4_msg ='This step implements various  computer vision that track the skeleton (and other objects) in the 2d videos, to produce the data that will be combined with the `camera projection matrices` from the calibration stage to produce the estimates of 3d movement. \n \n Each algorithm is different, but most involve using [bold magenta] convolutional neural networks [/bold magenta] trained from labeled videos to produce a 2d probability map of the likelihood that the tracked bodypart/object/feature (e.g. \'LeftElbow\') is in a given location. \n \n The peak of that distrubtion on each frame is recorded as the pixel-location of that item on that frame (e.g. \'LeftElbow(pixel-x, pixel-y, confidence\') where the a confidence value proportional to the underlying probability distribution (i.e. tall peaks in the probablitiy distribution indicate high confidence that the LeftElbow actually is at this pixel-x, pixel-y location) \n \nThis part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible ✨'
+        stage4_msg ='This step implements various  computer vision that track the skeleton (and other objects) in the 2d videos, to produce the data that will be combined with the `camera projection matrices` from the calibration stage to produce the estimates of 3d movement. \n \n Each algorithm is different, but most involve using [bold magenta] convolutional neural networks [/bold magenta] trained from labeled videos to produce a 2d probability map of the likelihood that the tracked bodypart/object/feature (e.g. \'LeftElbow\') is in a given location. \n \n The peak of that distribution on each frame is recorded as the pixel-location of that item on that frame (e.g. \'LeftElbow(pixel-x, pixel-y, confidence\') where the a confidence value proportional to the underlying probability distribution (i.e. tall peaks in the probablitiy distribution indicate high confidence that the LeftElbow actually is at this pixel-x, pixel-y location) \n \nThis part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible ✨'
         console.print(Padding(stage4_msg, (1,4)), overflow="fold", justify='center',style="color({})".format(thisStage))
         console.rule(style="color({})".format(thisStage))      
         

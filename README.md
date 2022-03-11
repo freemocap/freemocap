@@ -15,7 +15,7 @@ ___
 
 * Two or more USB webcams attached to viable USB ports 
 	*  USB hubs typically don't work
-	*  Note that two cameras is the minimum reuired for 3d reconstruction. GHowever, with just two views, many points will be occluded/not visible to both cameras. For better performance, use three or four cameras
+	*  Note that two cameras is the minimum reuired for 3d reconstruction. However, with just two views, many points will be occluded/not visible to both cameras. For better performance, use three or four cameras
 * Each recording must (for now)  an unobstructed view of a  Charuco board within the first few seconds of recording (See below).
 ____
 ____
@@ -38,7 +38,7 @@ $ pip install freemocap
 That should be it!
 ___
 ___
-# Basic   Usage
+# Basic Usage
 
 
 
@@ -129,7 +129,7 @@ ___
         -   Save to `/DataArrays` folder (e.g. `openPoseSkel_3d.npy`)
     -   NOTE - you might think it would make sense to separate the 2d tracking and 3d reconstruction into different stages, but the way the code is currently set up it's cleaner to combine them into the same processing stage ¯\\\_(ツ)_/¯
 
--   **Stage 5 - Use Blender to generate output data files (EXPERMENTAL, optional, requires [Blender](https://blender.org) installed. set `fmc.RunMe(useBlender=False)` to skip)**
+-   **Stage 5 - Use Blender to generate output data files (EXPERIMENTAL, optional, requires [Blender](https://blender.org) installed. set `fmc.RunMe(useBlender=False)` to skip)**
     -   Hijack a user-installed version of [Blender](https://blender.org) to format raw mocap data into various other formats, including `.blend`, `.fbx`, `.usd`, `.gltf`, etc.
     -   Save each filetype to main session folder
     -   NOTE - This is a new feature and still in a active development (as of 2021-11-28). It is still experimental and will be updating soon!
@@ -143,9 +143,9 @@ ___
      
 ____
 ____
-## `fmc.RunMe()` Specify recording session  paramters 
+## `fmc.RunMe()` Specify recording session parameters 
 ___
-The `fmc.RunMe()` function takes a number of parameters that can be used to alter it's default behavior in important ways. Here are the default parameters along with a followed by a brief description of each one. 
+The `fmc.RunMe()` function takes a number of parameters that can be used to alter its default behavior in important ways. Here are the default parameters along with a followed by a brief description of each one. 
 
 
 ### RunMe - Default parameters
@@ -177,14 +177,14 @@ def RunMe(sessionID=None,
 - `sessionID`
   - Type - (str) 
   - [Default] - None.
-  - Indentifying string to use for this session. 
+  - Identifying string to use for this session. 
   - If creating a new session, default behavior is to autogerate SessionID is based on date and time that the session was recorded
   - If re-processing a previously recorded session, this value specifies which session to reprocess (must be the name of a folder within the `FreeMoCap_Data` folder)
   - 
 - `stage`
   - [Type] - Int 
   - [Default] - 1
-  - Which processing stage to start from. Processing stages are deined in more  detail in [#processing-stages](#processing-stages) 
+  - Which processing stage to start from. Processing stages are defined in more detail in [#processing-stages](#processing-stages) 
   
   ```
   stage 1 - Record Raw Videos
@@ -248,12 +248,12 @@ def RunMe(sessionID=None,
 - `charucoSquareSize`
   - [Type]  = int
   - [Default] = 36,
-  - The size of a side of a black square in the Charuco board used in this calibration. The default value of 36 is approximately appropriate for a print out on an 8 in bu 10 in paper (US Letter, approx A4)
+  - The size of a side of a black square in the Charuco board used in this calibration. The default value of 36 is approximately appropriate for a print out on an 8" x 10" paper (US Letter, approx A4)
   
 - `calVideoLength`
   - [Type]  = int, float in range (0,1), or [int, int]
   - [Default] = .5,
-  - What portion of the videos to use in the Anipose calibration step in `stage=3`. `-1` uses the whole recording, a number between 0 and 1 defines a proprotion of the video to use, and a tuple of two numbers defines the start and end frame
+  - What portion of the videos to use in the Anipose calibration step in `stage=3`. `-1` uses the whole recording, a number between 0 and 1 defines a proportion of the video to use, and a tuple of two numbers defines the start and end frame
 
 
 - `startFrame`
@@ -280,7 +280,7 @@ ___
 
   * IMPORTANT The Charuco board shown to the camera MUST be generated with the `cv2.aruco.DICT_4X4_250` dictionary! 
   
-  * Ah high resoultion `png` of this Charuco board is in this repository at `/charuco_board_image_highRes.png`
+  * Ah high resolution `png` of this Charuco board is in this repository at `/charuco_board_image_highRes.png`
 * 
   * To generate your own board, use the following python commands (or equivalent). DO NOT CHANGE THE PARAMETERS OR THE CALIBRATION WILL NOT WORK:
 	``` python

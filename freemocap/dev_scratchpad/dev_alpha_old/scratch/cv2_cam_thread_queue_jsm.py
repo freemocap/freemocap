@@ -113,7 +113,7 @@ def saveMultiViewToH5():
         this_cam_frame_timestamp_tuple = webcam_frames_queue.get()
         thisCamNum = this_cam_frame_timestamp_tuple[0]
         theseFrames_list[thisCamNum]  = this_cam_frame_timestamp_tuple[1] #the image frame from thisCamera on thisMultiFrame time period
-        thisTimestamp = this_cam_frame_timestamp_tuple[2] #the timestamp that this image frame was recieved by the camera
+        thisTimestamp = this_cam_frame_timestamp_tuple[2] #the timestamp that this image frame was received by the camera
         theseTimestamps_unixEpoch[thisCamNum] = thisTimestamp #the timestamps of each frame in this multiframe (size:numCams)
         camTimestamps_list[thisCamNum] = np.append(camTimestamps_list[thisCamNum], thisTimestamp)#this'll get plotted later as a time sync diagnostic debug whosit :D
         

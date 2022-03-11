@@ -128,7 +128,7 @@ def parseOpenPose(session):
         # print('Parsing into a dataframe: ', thisCams_JsonFolderPath.name )
         jsonPaths = sorted(Path(thisCams_JsonFolderPath).glob('*.json')) #glob is a "generator(?)" for paths to all the jason for THIS camara            
         
-        for thisJsonPath in jsonPaths: #loop throug all the json files and save their 'people' data to a dictionary (which will then be formatted into a pandas dataframe). NOTE - will be empty array if no hoomans visible in frame
+        for thisJsonPath in jsonPaths: #loop through all the json files and save their 'people' data to a dictionary (which will then be formatted into a pandas dataframe). NOTE - will be empty array if no hoomans visible in frame
             # print('loading: ', thisJsonPath.name)
             frameNum = int(thisJsonPath.stem.split('_')[-2]) #frame number we're on
             thisJsonData = json.loads(thisJsonPath.read_bytes())

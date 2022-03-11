@@ -42,7 +42,7 @@ class Session: #self like "recording self"
         #dataFolderPath = self.basePath/self.dataFolderName
      
 
-        if self.basePath.stem == self.dataFolderName: #don't recursively craete 'FreeMoCap_Data' folders!
+        if self.basePath.stem == self.dataFolderName: #don't recursively create 'FreeMoCap_Data' folders!
             dataFolderPath = self.basePath
         else:
             dataFolderPath = self.basePath/self.dataFolderName

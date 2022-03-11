@@ -111,7 +111,7 @@ def make_line_between(obj1, obj2, line_name):
 
 
 
-# Imperically derived orientation to place actor on grid in Maya
+# Empirically derived orientation to place actor on grid in Maya
 reorient_transform = {
     "translateX": 6.976,
     "translateY": -21.502,

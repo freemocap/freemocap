@@ -6,8 +6,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from src.cameras.capture.multicam_manager import CVCameraManager
 from src.cameras.capture.frame_payload import FramePayload
+from src.cameras.multicam_manager.cv_camera_manager import CVCameraManager
 from src.cameras.persistence.video_writer.video_writer import SaveOptions
 from src.core_processor.board_detection.base_pose_estimation import detect_charuco_board
 from src.core_processor.board_detection.charuco_image_annotator import (

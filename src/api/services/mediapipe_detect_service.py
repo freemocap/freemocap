@@ -1,4 +1,4 @@
-from src.cameras.capture.multicam_manager import CVCameraManager
+from src.cameras.multicam_manager import CVCameraManager
 from src.core_processor.mediapipe_skeleton_detection.mediapipe_skeleton_detection import (
     MediapipeSkeletonDetection,
 )

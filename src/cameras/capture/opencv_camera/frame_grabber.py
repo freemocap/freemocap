@@ -2,26 +2,40 @@ import logging
 import threading
 import time
 import traceback
+from pathlib import Path
+from uuid import uuid4
 
-import cv2
-
-from src.cameras.dto import FramePayload
+from src.cameras.capture.frame_payload import FramePayload
+from src.cameras.persistence.video_writer.save_options import SaveOptions
+from src.cameras.persistence.video_writer.video_writer import VideoWriter
+from src.utils.time_str import get_canonical_time_str
+from src.config.data_paths import freemocap_data_path
 
 logger = logging.getLogger(__name__)
 
 
 class FrameThread(threading.Thread):
-    def __init__(self, get_next_frame, writer: cv2.VideoWriter, save_video=False):
+    def __init__(
+        self,
+        webcam_id: str,
+        get_next_frame,
+        frame_width: int,
+        frame_height: int,
+        save_video=False,
+    ):
         super().__init__()
+        self._webcam_id = webcam_id
+        self._frame_width = frame_width
+        self._frame_height = frame_height
         self._save_video = save_video
         self._is_capturing_frames = False
         self._get_next_frame = get_next_frame
         self._num_frames_processed = 0
         self._elapsed = 0
         self._frame: FramePayload = FramePayload()
+        self._session_id = uuid4()
+        self._session_timestr = get_canonical_time_str()
         self.setDaemon(True)
-        if save_video:
-            self._writer = writer
 
     @property
     def current_fps(self):
@@ -30,6 +44,12 @@ class FrameThread(threading.Thread):
         if self._num_frames_processed <= 0:
             return 0
         return self._num_frames_processed / self._elapsed
+
+    @property
+    def session_writer_path(self):
+        return Path().joinpath(
+            freemocap_data_path, f"{self._session_timestr}_{self._session_id}"
+        )
 
     @property
     def latest_frame(self):
@@ -46,14 +66,15 @@ class FrameThread(threading.Thread):
         self._start_frame_loop(self._save_video)
 
     def _start_frame_loop(self, save_video=False):
+        video_writer = VideoWriter()
         self._is_capturing_frames = True
         start = time.time()
         try:
             while self._is_capturing_frames:
                 success, image, timestamp = self._get_next_frame()
-                if save_video:
-                    self._writer.write(image)
                 self._frame = FramePayload(success, image, timestamp)
+                if save_video:
+                    video_writer.write(self._frame)
                 self._num_frames_processed += 1
                 self._elapsed = time.time() - start
         except:
@@ -62,4 +83,14 @@ class FrameThread(threading.Thread):
         else:
             logger.info("Frame loop thread exited.")
         finally:
-            self._writer.release()
+            options = SaveOptions(
+                writer_dir=Path().joinpath(
+                    self.session_writer_path,
+                    "raw_frame_capture",
+                    f"webcam_{self._webcam_id}",
+                ),
+                fps=self.current_fps,
+                frame_width=self._frame_width,
+                frame_height=self._frame_height,
+            )
+            video_writer.save(options)

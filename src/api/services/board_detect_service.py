@@ -1,6 +1,6 @@
 from typing import NamedTuple
 
-from src.cameras.capture.multicam_manager import CVCameraManager
+from src.cameras.multicam_manager import CVCameraManager
 from src.core_processor.board_detection.board_detection import BoardDetection
 
 

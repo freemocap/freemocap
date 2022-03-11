@@ -2,7 +2,7 @@ from typing import Dict
 
 from singleton_decorator import singleton
 
-from src.cameras.opencv_camera import WebcamConfig
+from src.cameras.capture.opencv_camera.opencv_camera import WebcamConfig
 
 
 @singleton

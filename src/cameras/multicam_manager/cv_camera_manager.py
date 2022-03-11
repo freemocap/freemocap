@@ -3,14 +3,12 @@ import traceback
 from contextlib import contextmanager
 from typing import ContextManager, Dict, List
 
-import cv2
 from pydantic import BaseModel
 
 from src.api.services.user_config import UserConfigService
-from src.cameras.cam_singleton import get_or_create_cams
-from src.cameras.dtos.create_writer_options import CreateWriterOptions
-from src.cameras.opencv_camera import OpenCVCamera
-from src.cameras.video_writer.video_writer import VideoWriter
+from src.cameras.detection.cam_singleton import get_or_create_cams
+from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
+from src.cameras.persistence.video_writer.video_writer import VideoWriter
 
 logger = logging.getLogger(__name__)
 

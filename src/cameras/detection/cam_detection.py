@@ -3,7 +3,7 @@ import platform
 
 import cv2
 
-from src.cameras.dto import FindAvailableResponse, RawCamera
+from src.cameras.detection.models import FoundCamerasResponse, RawCamera
 
 CAM_CHECK_NUM = 5
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class DetectPossibleCameras:
-    def find_available_cameras(self) -> FindAvailableResponse:
+    def find_available_cameras(self) -> FoundCamerasResponse:
         cv2_backend = self._determine_backend()
 
         cams_to_use_list = []
@@ -20,9 +20,6 @@ class DetectPossibleCameras:
             success, image = cap.read()
 
             if success:
-                logger.info(
-                    f"camera at port {cam_id} found an image with shape {image.shape}"
-                )
                 try:
                     cams_to_use_list.append(
                         RawCamera(
@@ -32,8 +29,7 @@ class DetectPossibleCameras:
                 finally:
                     cap.release()
 
-        print(cams_to_use_list)
-        return FindAvailableResponse(
+        return FoundCamerasResponse(
             camera_found_count=len(cams_to_use_list),
             cams_to_use=cams_to_use_list,
             cv2_backend=cv2_backend,

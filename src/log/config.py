@@ -34,8 +34,3 @@ def configure_logging():
     handlers = get_logging_handlers()
     logging.getLogger("").handlers.extend(handlers)
     logging.root.setLevel(logging.DEBUG)
-
-
-def disable_flask_logging(flask_app):
-    flask_app.logger.handlers = []
-    flask_app.logger.propagate = False

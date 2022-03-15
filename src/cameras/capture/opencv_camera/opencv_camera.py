@@ -76,7 +76,7 @@ class OpenCVCamera:
         self._opencv_video_capture_object = cv2.VideoCapture(
             self._config.webcam_id, cap_backend
         )
-        self._apply_configuration()
+        # self._apply_configuration()
         success, image = self._opencv_video_capture_object.read()
 
         if not success:

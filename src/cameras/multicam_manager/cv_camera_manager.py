@@ -30,7 +30,7 @@ class CVCameraManager:
         global _cv_cams
         if _cv_cams is None:
             logger.info("Creating cams.")
-            # we create the _cv_cams once, and reuse it for the lifetime of the session
+            # we create the _cv_cams /once/, and reuse it for the lifetime of the session
             _cv_cams = self._create_opencv_cams()
             self._cv_cams = _cv_cams
         else:

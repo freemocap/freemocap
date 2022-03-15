@@ -33,12 +33,11 @@ class OpenCVCamera:
     Performant implementation of video capture against webcams
     """
 
-    _opencv_video_capture_object: cv2.VideoCapture = None
-    _running_thread: FrameThread = None
-
     def __init__(self, config: WebcamConfig):
         self._config = config
         self._name = f"Camera {self._config.webcam_id}"
+        self._opencv_video_capture_object: cv2.VideoCapture = None
+        self._running_thread: FrameThread = None
 
     @property
     def webcam_id_as_str(self):

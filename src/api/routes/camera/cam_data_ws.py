@@ -6,7 +6,7 @@ from fastapi import APIRouter, WebSocket
 
 from src.api.services.board_detect_service import BoardDetectService
 from src.api.services.mediapipe_detect_service import MediapipeSkeletonDetectionService
-from src.cameras.multicam_manager import CVCameraManager
+from src.cameras.multicam_manager.cv_camera_manager import CVCameraManager
 
 logger = logging.getLogger(__name__)
 

@@ -2,6 +2,8 @@ import logging
 import time
 import traceback
 from pathlib import Path
+from types import FunctionType
+from typing import Any, Callable, Optional
 
 import cv2
 import numpy as np
@@ -14,6 +16,7 @@ from src.core_processor.board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
 )
 from src.core_processor.fps.fps_counter import FPSCamCounter
+from src.core_processor.show_cam_window import show_cam_window
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
 
 logger = logging.getLogger(__name__)
@@ -61,7 +64,9 @@ class BoardDetection:
                 )
                 writer.save(options)
 
-    def process(self):
+    def process(
+        self, show_window=True, post_processed_frame_cb=Callable[[FramePayload], None]
+    ):
         """
         Opens Camera using OpenCV and begins image processing for charuco board
         If return images is true, the images are returned to the caller
@@ -72,11 +77,8 @@ class BoardDetection:
             fps_manager = FPSCamCounter(self._cam_manager.available_webcam_ids)
             fps_manager.start_all()
             try:
-                while True:
-                    exit_key = cv2.waitKey(1)
-                    if exit_key == 27:
-                        logger.info("ESC has been pressed.")
-                        break
+                should_continue = True
+                while should_continue:
                     for response in session_obj:
                         cv_cam = response.cv_cam
                         writer = response.writer
@@ -85,12 +87,14 @@ class BoardDetection:
 
                         if payload is not None:
                             writer.write(payload)
+                            if post_processed_frame_cb:
+                                post_processed_frame_cb(payload)
+
                             fps_manager.increment_frame_processed_for(current_webcam_id)
-                            write_fps_to_image(
-                                payload.image,
-                                fps_manager.current_fps_for(current_webcam_id),
-                            )
-                            cv2.imshow(current_webcam_id, payload.image)
+                            if show_window:
+                                should_continue = show_cam_window(
+                                    current_webcam_id, payload.image, fps_manager
+                                )
             except:
                 logger.error("Printing traceback")
                 traceback.print_exc()

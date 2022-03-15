@@ -7,3 +7,5 @@ class FramePayload(NamedTuple):
     success: bool = False
     image: np.ndarray = None
     timestamp: Union[int, float] = None
+
+

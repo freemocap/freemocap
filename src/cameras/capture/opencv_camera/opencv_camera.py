@@ -23,8 +23,8 @@ class WebcamConfig(BaseModel):
     resolution_width: int = 800
     resolution_height: int = 600
     save_video: bool = True
-    fourcc: str = "MP4V"
-    # fourcc: str = "MJPG"
+    # fourcc: str = "MP4V"
+    fourcc: str = "MJPG"
     base_save_video_dir = _get_home_dir()
 
 
@@ -76,7 +76,7 @@ class OpenCVCamera:
         self._opencv_video_capture_object = cv2.VideoCapture(
             self._config.webcam_id, cap_backend
         )
-        # self._apply_configuration()
+        self._apply_configuration()
         success, image = self._opencv_video_capture_object.read()
 
         if not success:
@@ -129,6 +129,7 @@ class OpenCVCamera:
         self._opencv_video_capture_object.set(
             cv2.CAP_PROP_FRAME_HEIGHT, self._config.resolution_height
         )
+
         self._opencv_video_capture_object.set(
             cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*self._config.fourcc)
         )

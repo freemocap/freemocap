@@ -5,7 +5,7 @@ import cv2
 
 from src.cameras.detection.models import FoundCamerasResponse, RawCamera
 
-CAM_CHECK_NUM = 5
+CAM_CHECK_NUM = 20
 
 logger = logging.getLogger(__name__)
 

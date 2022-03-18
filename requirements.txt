@@ -28,3 +28,6 @@ aiomultiprocess==0.9.0
 #viztracer==0.14.5
 pre-commit==2.17.0
 # Requirements for core-processor
+#pyqtgraph==0.12.4
+#pyqt5==5.15.6
+#pyopengl==3.1.6

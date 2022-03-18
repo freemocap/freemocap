@@ -9,6 +9,7 @@ from src.core_processor.board_detection.charuco_constants import charuco_board_o
 
 number_of_distortion_coefficients = 5  # may be 4, 5, 8, or 12, not sure of the trade-off there
 
+
 @dataclass
 class SingleCameraCalibrationData:
     reprojection_error: float = 1e9
@@ -29,7 +30,6 @@ class CameraCalibration:
         self._all_charuco_corners_list = []
         self._all_charuco_ids_list = []
 
-
     def perform_calibration(self):
         self._bd.process(
             show_window=True,
@@ -39,31 +39,25 @@ class CameraCalibration:
 
     def _calibration_work(self, webcam_id: str, charuco_frame_payload: CharucoFramePayload):
         elapsed_time = (charuco_frame_payload.raw_frame_payload.timestamp / 1e9) - self._start_time
-        print(
-            f"found frame from camera {webcam_id} at timestamp {elapsed_time:.3f}")
 
-        if not charuco_frame_payload.charuco_data.full_board_found:
-            print(f'reprojection error - {self._current_calibration.reprojection_error:.3f}')
-            print(f'lens distortion coefficients - {np.array_str(np.squeeze(self._current_calibration.lens_distortion_coefficients), precision=2)}')
-            return charuco_frame_payload.annotated_frame_image
-
-        charuco_data = charuco_frame_payload.charuco_data
         image_width, image_height, color_channels = charuco_frame_payload.raw_frame_payload.image.shape
 
-        self._current_calibration = self.calibrate_camera(charuco_data.charuco_corners,
-                                                   charuco_data.charuco_ids,
-                                                   image_width,
-                                                   image_height,
-                                                   )
-        print(f'camera matrix - \n{np.array_str(self._current_calibration.camera_matrix, precision=2)}')
+        if not charuco_frame_payload.charuco_data.full_board_found and self._current_calibration.camera_matrix is None:
+            return charuco_frame_payload.annotated_frame_image
+
+        if charuco_frame_payload.charuco_data.full_board_found:
+            self._all_charuco_corners_list.append(charuco_frame_payload.charuco_data.charuco_corners)
+            self._all_charuco_ids_list.append(charuco_frame_payload.charuco_data.charuco_ids)
+
+            self.estimate_lens_distortion(image_width, image_height,)
 
         # create new camera matrix that will show full undistored image (with black pixels in spots with no data (only for debugging)
         new_camera_matrix, valid_ROI_lbwh = cv2.getOptimalNewCameraMatrix(self._current_calibration.camera_matrix,
-                                                          self._current_calibration.lens_distortion_coefficients,
-                                                          (image_width, image_height),
-                                                          1,
-                                                          centerPrincipalPoint=True
-                                                          )
+                                                                          self._current_calibration.lens_distortion_coefficients,
+                                                                          (image_width, image_height),
+                                                                          1,
+                                                                          centerPrincipalPoint=True
+                                                                          )
 
         # https://docs.opencv.org/4.5.5/d9/d0c/group__calib3d.html#ga69f2545a8b62a6b0fc2ee060dc30559d
         undistorted_image = cv2.undistort(charuco_frame_payload.annotated_frame_image,
@@ -72,14 +66,19 @@ class CameraCalibration:
                                           None,
                                           new_camera_matrix)
 
+        print(
+            f"found frame from camera {webcam_id} at timestamp {elapsed_time:.3f} - reprojection error: {self._current_calibration.reprojection_error:.3f} - num charuco views:{len(self._all_charuco_corners_list)}")
+        # print(f'lens distortion coefficients - {np.array_str(np.squeeze(self._current_calibration.lens_distortion_coefficients), precision=2)}')
+        # print(f'camera matrix - \n{np.array_str(self._current_calibration.camera_matrix, precision=2)}')
+
         return undistorted_image
 
-
-    def calibrate_camera(self, charuco_corners_list, charuco_ids_list, image_width, image_height):
+    def estimate_lens_distortion(self, image_width, image_height,
+                                 max_iterations=10, max_charuco_board_views=5):
         """
         adapted from - https://mecaruco2.readthedocs.io/en/latest/notebooks_rst/Aruco/sandbox/ludovic/aruco_calibration_rotation.html
 
-        Calibrates the camera using the charuco data
+        Calibrates the camera using the charuco data using a RANSAC-like method - randomly selects board views and saves the combo that minimized reprojection error
 
         helpful resources -
         https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga3207604e4b1a1758aa66acb6ed5aa65d <-opencv's 3d camera calibration docs
@@ -90,48 +89,56 @@ class CameraCalibration:
         """
         print("CAMERA CALIBRATION")
 
-        if self._current_calibration.camera_matrix is None:
-            self._current_calibration.camera_matrix = np.array([[float(image_width), 0., image_width / 2.],
+        initial_camera_matrix = np.array([[float(image_width), 0., image_width / 2.],
                                                     [0., float(image_width), image_height / 2.],
                                                     [0., 0., 1.]])
 
-
+        num_charuco_views = len(self._all_charuco_ids_list)
 
         # flag definitions -> https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga3207604e4b1a1758aa66acb6ed5aa65d
-        flags = (cv2.CALIB_USE_INTRINSIC_GUESS + cv2.CALIB_FIX_ASPECT_RATIO + cv2.CALIB_FIX_PRINCIPAL_POINT + cv2.CALIB_TILTED_MODEL)
+        flags = (cv2.CALIB_FIX_ASPECT_RATIO + cv2.CALIB_FIX_PRINCIPAL_POINT + cv2.CALIB_RATIONAL_MODEL)#+ cv2.CALIB_THIN_PRISM_MODEL)# + cv2.CALIB_TILTED_MODEL  )
         # flags = (cv2.CALIB_RATIONAL_MODEL)
 
-        # https://docs.opencv.org/4.x/d9/d6a/group__aruco.html#gacf03e5afb0bc516b73028cf209984a06
-        (reprojection_error,
-         camera_matrix,
-         lens_distortion_coefficients,
-         rotation_vectors_of_the_board,
-         translation_vectors_of_the_board,
-         lens_distortion_std_dev,
-         camera_location_std_dev,
-         reprojection_error_per_view
-         ) = cv2.aruco.calibrateCameraCharucoExtended(
-            charucoCorners=charuco_corners_list,
-            charucoIds=charuco_ids_list,
-            board=charuco_board_object,
-            imageSize=(image_width, image_height),
-            cameraMatrix=self._current_calibration.camera_matrix.copy(),
-            distCoeffs=self._current_calibration.lens_distortion_coefficients.copy(),
-            flags=flags,
-            criteria=(cv2.TERM_CRITERIA_EPS & cv2.TERM_CRITERIA_COUNT, 10000, 1e-9))
+        for iter in range(max_iterations):
 
-        if reprojection_error > self._current_calibration.reprojection_error:
-            return self._current_calibration
+            if num_charuco_views<2:
+                these_charuco_corners = self._all_charuco_corners_list
+                these_charuco_ids = self._all_charuco_ids_list
+            else:
+                this_random_sample_of_charuco_views = np.random.choice(num_charuco_views,
+                                                                      size=min(num_charuco_views, max_charuco_board_views),
+                                                                      replace=False)
+                these_charuco_corners = [self._all_charuco_corners_list[cc] for cc in this_random_sample_of_charuco_views]
+                these_charuco_ids = [self._all_charuco_ids_list[cc] for cc in this_random_sample_of_charuco_views]
 
-        return SingleCameraCalibrationData(
-            reprojection_error=reprojection_error,
-            camera_matrix=camera_matrix,
-            lens_distortion_coefficients=lens_distortion_coefficients,
-            rotation_vectors_of_the_board=rotation_vectors_of_the_board,
-            translation_vectors_of_the_board=translation_vectors_of_the_board,
-            lens_distortion_std_dev=lens_distortion_std_dev,
-            camera_location_std_dev=camera_location_std_dev)
 
+            # https://docs.opencv.org/4.x/d9/d6a/group__aruco.html#gacf03e5afb0bc516b73028cf209984a06
+            (reprojection_error,
+             camera_matrix,
+             lens_distortion_coefficients,
+             rotation_vectors_of_the_board,
+             translation_vectors_of_the_board,
+             lens_distortion_std_dev,
+             camera_location_std_dev,
+             reprojection_error_per_view
+             ) = cv2.aruco.calibrateCameraCharucoExtended(
+                charucoCorners=these_charuco_corners,
+                charucoIds=these_charuco_ids,
+                board=charuco_board_object,
+                imageSize=(image_width, image_height),
+                cameraMatrix=initial_camera_matrix,
+                distCoeffs=np.zeros((number_of_distortion_coefficients, 1)),
+                flags=flags,
+                criteria=(cv2.TERM_CRITERIA_EPS & cv2.TERM_CRITERIA_COUNT, 10000, 1e-9))
+
+            if reprojection_error < self._current_calibration.reprojection_error:
+                self._current_calibration = SingleCameraCalibrationData(reprojection_error=reprojection_error,
+                                                                        camera_matrix=camera_matrix,
+                                                                        lens_distortion_coefficients=lens_distortion_coefficients,
+                                                                        rotation_vectors_of_the_board=rotation_vectors_of_the_board,
+                                                                        translation_vectors_of_the_board=translation_vectors_of_the_board,
+                                                                        lens_distortion_std_dev=lens_distortion_std_dev,
+                                                                        camera_location_std_dev=camera_location_std_dev)
 
 
 if __name__ == "__main__":

@@ -65,7 +65,6 @@ def detect_charuco_board(image) -> CharucoData:
             charuco_ids = res2[2]
 
 
-
     return CharucoData(full_board_found=full_board_found,
                        some_charuco_corners_found=some_charuco_corners_found,
                        any_markers_found=any_markers_found,

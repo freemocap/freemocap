@@ -1,9 +1,20 @@
+from dataclasses import dataclass
+from typing import List, Optional
+
 import cv2
+import numpy as np
 
 from src.core_processor.board_detection.charuco_constants import aruco_dict, board
 
+@dataclass
+class CharucoData:
+    charuco_corners: Optional[np.ndarray]
+    charuco_ids: Optional[np.ndarray]
+    aruco_square_corners: Optional[np.ndarray]
+    aruco_square_ids: Optional[np.ndarray]
 
-def detect_charuco_board(image):
+
+def detect_charuco_board(image) -> CharucoData:
     """
     Charuco base pose estimation.
     more-or-less copied from - https://mecaruco2.readthedocs.io/en/latest/notebooks_rst/Aruco
@@ -34,4 +45,7 @@ def detect_charuco_board(image):
             charuco_corners = res2[1]
             charuco_ids = res2[2]
 
-    return charuco_corners, charuco_ids, aruco_square_corners, aruco_square_ids
+    return CharucoData(charuco_corners=charuco_corners,
+                       charuco_ids=charuco_ids,
+                       aruco_square_corners=aruco_square_corners,
+                       aruco_square_ids=aruco_square_ids)

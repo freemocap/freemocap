@@ -12,7 +12,7 @@ import numpy as np
 from src.cameras.capture.frame_payload import FramePayload
 from src.cameras.multicam_manager.cv_camera_manager import CVCameraManager
 from src.cameras.persistence.video_writer.video_writer import SaveOptions
-from src.core_processor.board_detection.base_pose_estimation import detect_charuco_board, CharucoData
+from src.core_processor.board_detection.detect_charuco_board import detect_charuco_board, CharucoData
 from src.core_processor.board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
 )
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CharucoFramePayload:
     raw_frame_payload: FramePayload
-    annotated_frame_payload: FramePayload
+    annotated_frame_image: np.ndarray
     charuco_data: CharucoData
 
 class BoardDetection:
@@ -46,9 +46,9 @@ class BoardDetection:
                     if not cv_cam.is_capturing_frames:
                         return
                     charuco_frame_payload = self._detect_charuco_board_in_image(cv_cam)
-                    if cb and charuco_frame_payload.annotated_frame_payload.image is not None:
-                        writer.write(charuco_frame_payload.annotated_frame_payload)
-                        await cb(charuco_frame_payload.annotated_frame_payload.image)
+                    if cb and charuco_frame_payload.annotated_frame_image is not None:
+                        writer.write(charuco_frame_payload.raw_frame_payload)
+                        await cb(charuco_frame_payload.annotated_frame_image)
             except Exception as e:
                 logger.error("Printing traceback")
                 traceback.print_exc()
@@ -92,15 +92,16 @@ class BoardDetection:
                             continue
 
                         if save_video:
-                            writer.write(charuco_frame_payload.annotated_frame_payload)
+                            writer.write(charuco_frame_payload.raw_frame_payload)
 
                         if post_processed_frame_cb:
-                            post_processed_frame_cb(current_webcam_id, charuco_frame_payload)
+                            undistorted_annotated_image = post_processed_frame_cb(current_webcam_id, charuco_frame_payload)
+                            charuco_frame_payload.annotated_frame_image = undistorted_annotated_image
 
                         fps_manager.increment_frame_processed_for(current_webcam_id)
                         if show_window:
                             should_continue = show_cam_window(
-                                current_webcam_id, charuco_frame_payload.annotated_frame_payload.image, fps_manager
+                                current_webcam_id, charuco_frame_payload.annotated_frame_image, fps_manager
                             )
             except:
                 logger.error("Printing traceback")
@@ -136,14 +137,17 @@ class BoardDetection:
         charuco_data = detect_charuco_board(raw_frame_payload.image)
 
         annotated_image = raw_frame_payload.image.copy()
+        if charuco_data.some_charuco_corners_found:
+            annotate_image_with_charuco_data(
+                annotated_image, #this image will have stuff drawn on top of it inside this function
+                cv_cam.webcam_id_as_str,
+                charuco_data
+            )
+            cv2.polylines(annotated_image, np.int32([charuco_data.charuco_corners]), True, (0, 100, 255), 2)
 
-        success_bool = annotate_image_with_charuco_data(
-            annotated_image, cv_cam.webcam_id_as_str, charuco_data
-        )
-        cv2.polylines(annotated_image, np.int32([charuco_data.charuco_corners]), True, (0, 100, 255), 2)
 
         return CharucoFramePayload(
-            annotated_frame_payload=FramePayload(image=annotated_image, timestamp=time.time_ns()),
+            annotated_frame_image=annotated_image,
             raw_frame_payload=raw_frame_payload,
             charuco_data=charuco_data
         )

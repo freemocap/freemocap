@@ -3,20 +3,20 @@ from typing import List
 import cv2
 import numpy as np
 
-from src.core_processor.board_detection.charuco_constants import num_charuco_corners
+from src.core_processor.board_detection.charuco_constants import number_of_charuco_corners
 
 
 def _board_text(
     cam_name: str,
     charuco_ids: List[int],
-    charuco_corners: int,
-    charuco_detect_bool: bool,
+    num_charuco_corners: int,
+    full_board_detected_bool: bool,
 ):
-    ids_as_str = str(len(charuco_ids))
-    corners_as_str = str(charuco_corners)
+    num_ids_as_str = str(len(charuco_ids))
+    num_corners_as_str = str(num_charuco_corners)
     text = (
-        f"{cam_name}: {ids_as_str} of {corners_as_str} Charuco Corner Points Detected "
-        f"| Full Board Detected: {charuco_detect_bool}"
+        f"{cam_name}: {num_ids_as_str} of {num_corners_as_str} Charuco Corner Points Detected "
+        f"| Full Board Detected: {full_board_detected_bool}"
     )
     return text
 
@@ -24,10 +24,7 @@ def _board_text(
 def annotate_image_with_charuco_data(
     image, webcam_id: str, charuco_data
 ) -> bool:
-    full_charuco_detected_on_this_frame = False
 
-    if len(charuco_data.charuco_ids) == num_charuco_corners:
-        full_charuco_detected_on_this_frame = True
 
     image_w_markers = cv2.aruco.drawDetectedCornersCharuco(
         image,
@@ -43,8 +40,8 @@ def annotate_image_with_charuco_data(
     current_cam_corner_count_str = _board_text(
         this_cam_name,
         charuco_data.charuco_ids,
-        num_charuco_corners,
-        full_charuco_detected_on_this_frame,
+        number_of_charuco_corners,
+        charuco_data.full_board_found,
     )
     # TODO - Determine 'shared views' (i.e. frames in which a full board is detected by 2
     #  cameras)
@@ -77,13 +74,7 @@ def annotate_image_with_charuco_data(
         1,
     )  # font stroke
 
-    if full_charuco_detected_on_this_frame:
+    if charuco_data.full_board_found:
         cv2.polylines(
             image_w_markers, np.int32([charuco_data.charuco_corners]), False, (0, 100, 255), 2
         )
-        # for these_corners in charuco_points_from_previous_frames:
-        # if len(these_corners)>0:
-        #     cv2.polylines(image_w_markers, np.int32([these_corners]), True, (0,100,255,
-        #     255/2), 2)
-
-    return True

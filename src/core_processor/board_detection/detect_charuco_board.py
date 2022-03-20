@@ -9,17 +9,19 @@ from src.core_processor.board_detection.charuco_constants import aruco_marker_di
 
 
 @dataclass
-class CharucoData:
+class CharucoViewData:
     full_board_found: bool
     some_charuco_corners_found: bool
     any_markers_found: bool
+    image_width: int
+    image_height: int
     charuco_corners: Optional[np.ndarray]
     charuco_ids: Optional[np.ndarray]
     aruco_square_corners: Optional[np.ndarray]
     aruco_square_ids: Optional[np.ndarray]
 
 
-def detect_charuco_board(image) -> CharucoData:
+def detect_charuco_board(image) -> CharucoViewData:
     """
     detect charuco board in an image.
     more-or-less copied from - https://mecaruco2.readthedocs.io/en/latest/notebooks_rst/Aruco/sandbox/ludovic/aruco_calibration_rotation.html
@@ -27,6 +29,7 @@ def detect_charuco_board(image) -> CharucoData:
     """
     charuco_corners = []
     charuco_ids = []
+    image_height, image_width, color_channels = image.shape
 
     # SUB PIXEL CORNER DETECTION CRITERION
     termination_criteria_threshold = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.00001)
@@ -64,11 +67,12 @@ def detect_charuco_board(image) -> CharucoData:
             charuco_corners = res2[1]
             charuco_ids = res2[2]
 
-
-    return CharucoData(full_board_found=full_board_found,
-                       some_charuco_corners_found=some_charuco_corners_found,
-                       any_markers_found=any_markers_found,
-                       charuco_corners=charuco_corners,
-                       charuco_ids=charuco_ids,
-                       aruco_square_corners=aruco_square_corners,
-                       aruco_square_ids=aruco_square_ids)
+    return CharucoViewData(full_board_found=full_board_found,
+                           some_charuco_corners_found=some_charuco_corners_found,
+                           any_markers_found=any_markers_found,
+                           image_width=image_width,
+                           image_height=image_height,
+                           charuco_corners=charuco_corners,
+                           charuco_ids=charuco_ids,
+                           aruco_square_corners=aruco_square_corners,
+                           aruco_square_ids=aruco_square_ids)

@@ -12,7 +12,9 @@ import numpy as np
 from src.cameras.capture.frame_payload import FramePayload
 from src.cameras.multicam_manager.cv_camera_manager import CVCameraManager
 from src.cameras.persistence.video_writer.video_writer import SaveOptions
-from src.core_processor.board_detection.detect_charuco_board import detect_charuco_board, CharucoData
+from src.core_processor.board_detection.charuco_constants import aruco_marker_dict, charuco_board_object, \
+    number_of_charuco_corners
+from src.core_processor.board_detection.detect_charuco_board import detect_charuco_board, CharucoViewData
 from src.core_processor.board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
 )
@@ -26,7 +28,7 @@ logger = logging.getLogger(__name__)
 class CharucoFramePayload:
     raw_frame_payload: FramePayload
     annotated_frame_image: np.ndarray
-    charuco_data: CharucoData
+    charuco_view_data: CharucoViewData
 
 class BoardDetection:
     def __init__(self, cam_manager: CVCameraManager = CVCameraManager()):
@@ -134,25 +136,25 @@ class BoardDetection:
         if raw_frame_payload.image is None:
             logger.error("Frame is empty")
             return
-        charuco_data = detect_charuco_board(raw_frame_payload.image)
+        charuco_view_data = detect_charuco_board(raw_frame_payload.image)
 
         annotated_image = raw_frame_payload.image.copy()
-        if charuco_data.some_charuco_corners_found:
+        if charuco_view_data.some_charuco_corners_found:
             annotate_image_with_charuco_data(
                 annotated_image, #this image will have stuff drawn on top of it inside this function
                 cv_cam.webcam_id_as_str,
-                charuco_data
+                charuco_view_data
             )
-            cv2.polylines(annotated_image, np.int32([charuco_data.charuco_corners]), True, (0, 100, 255), 2)
+            cv2.polylines(annotated_image, np.int32([charuco_view_data.charuco_corners]), True, (0, 100, 255), 2)
 
 
         return CharucoFramePayload(
             annotated_frame_image=annotated_image,
             raw_frame_payload=raw_frame_payload,
-            charuco_data=charuco_data
+            charuco_view_data=charuco_view_data
         )
 
-    def detect_charuco_board(image) -> CharucoData:
+    def detect_charuco_board(image) -> CharucoViewData:
         """
         detect charuco board in an image.
         more-or-less copied from - https://mecaruco2.readthedocs.io/en/latest/notebooks_rst/Aruco/sandbox/ludovic/aruco_calibration_rotation.html
@@ -198,13 +200,13 @@ class BoardDetection:
                 charuco_corners = res2[1]
                 charuco_ids = res2[2]
 
-        return CharucoData(full_board_found=full_board_found,
-                           some_charuco_corners_found=some_charuco_corners_found,
-                           any_markers_found=any_markers_found,
-                           charuco_corners=charuco_corners,
-                           charuco_ids=charuco_ids,
-                           aruco_square_corners=aruco_square_corners,
-                           aruco_square_ids=aruco_square_ids)
+        return CharucoViewData(full_board_found=full_board_found,
+                               some_charuco_corners_found=some_charuco_corners_found,
+                               any_markers_found=any_markers_found,
+                               charuco_corners=charuco_corners,
+                               charuco_ids=charuco_ids,
+                               aruco_square_corners=aruco_square_corners,
+                               aruco_square_ids=aruco_square_ids)
 
 
 if __name__ == "__main__":

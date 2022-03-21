@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from src.cameras.capture.frame_payload import FramePayload
 from src.cameras.capture.opencv_camera.frame_grabber import FrameThread
+from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrationData
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,22 @@ class OpenCVCamera:
         self._name = f"Camera {self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
         self._running_thread: FrameThread = None
+        self._camera_calibration_data = None
+
+    @property
+    def camera_calibration_data(self):
+        if self._camera_calibration_data is not None:
+            return self._camera_calibration_data
+
+        if self._camera_calibration_data is None and self.image_width is not None:
+            return self.camera_calibration_data(CameraCalibrationData(self.image_width, self.image_height))
+
+        logger.warning('Can\'t request a cameras calibration info until the video capture is initialized and the image_width and image_height are known')
+        return None
+
+    @camera_calibration_data.setter
+    def camera_calibration_data(self, camera_calibration_data: CameraCalibrationData):
+        self._camera_calibration_data = camera_calibration_data
 
     @property
     def webcam_id_as_str(self):
@@ -89,6 +106,7 @@ class OpenCVCamera:
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
         fps_input_stream = int(self._opencv_video_capture_object.get(5))
         logger.debug("FPS of webcam hardware/input stream: {}".format(fps_input_stream))
+
         return success
 
     def start_frame_capture(self):
@@ -108,15 +126,23 @@ class OpenCVCamera:
             webcam_id=self.webcam_id_as_str,
             get_next_frame=self.get_next_frame,
             save_video=self._config.save_video,
-            frame_width=self.get_frame_width(),
-            frame_height=self.get_frame_height(),
+            frame_width=self.image_width,
+            frame_height=self.image_height,
         )
 
-    def get_frame_width(self):
-        return int(self._opencv_video_capture_object.get(3))
+    @property
+    def image_width(self):
+        try:
+            return int(self._opencv_video_capture_object.get(3))
+        except:
+            return None
 
-    def get_frame_height(self):
-        return int(self._opencv_video_capture_object.get(4))
+    @property
+    def image_height(self):
+        try:
+            return int(self._opencv_video_capture_object.get(4))
+        except:
+            return None
 
     def _apply_configuration(self):
         # set camera stream parameters

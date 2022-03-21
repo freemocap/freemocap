@@ -3,7 +3,7 @@ import platform
 
 import cv2
 
-from src.cameras.detection.models import FoundCamerasResponse, RawCamera
+from src.cameras.detection.models import FoundCamerasResponse
 
 CAM_CHECK_NUM = 20
 
@@ -15,27 +15,24 @@ class DetectPossibleCameras:
         cv2_backend = self._determine_backend()
 
         cams_to_use_list = []
-        for cam_id in range(CAM_CHECK_NUM):
-            cap = cv2.VideoCapture(cam_id, cv2_backend)
+        for this_usb_port_number in range(CAM_CHECK_NUM):
+            cap = cv2.VideoCapture(this_usb_port_number, cv2_backend)
             success, image = cap.read()
 
             if success:
                 try:
-                    cams_to_use_list.append(
-                        RawCamera(
-                            webcam_id=cam_id,
-                        )
-                    )
+                    cams_to_use_list.append(this_usb_port_number)
                 finally:
                     cap.release()
 
         return FoundCamerasResponse(
-            camera_found_count=len(cams_to_use_list),
-            cams_to_use=cams_to_use_list,
+            number_of_cameras_found=len(cams_to_use_list),
+            list_of_usb_port_numbers_with_cameras_attached=cams_to_use_list,
             cv2_backend=cv2_backend,
         )
 
-    def _determine_backend(self):
+    @staticmethod
+    def _determine_backend():
         if platform.system() == "Windows":
             return cv2.CAP_DSHOW
         else:

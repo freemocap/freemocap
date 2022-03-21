@@ -1,49 +1,44 @@
-import logging
-import traceback
 from dataclasses import dataclass
-import time
-from pathlib import Path
-from typing import Callable
 
 import cv2
-import matplotlib.pyplot as plt
-import pyqtgraph as pg
 import numpy as np
 from rich import print
 
-from src.cameras.multicam_manager.cv_camera_manager import CVCameraManager
-from src.cameras.persistence.video_writer.save_options import SaveOptions
-from src.core_processor.board_detection.board_detection import BoardDetection, CharucoFramePayload
+from src.core_processor.board_detection.board_detection import BoardDetector, CharucoFramePayload
 from src.core_processor.board_detection.charuco_constants import charuco_board_object
 from src.core_processor.board_detection.detect_charuco_board import CharucoViewData
 from src.core_processor.camera_calibration.calibration_diagnostics_visualizer import CalibrationDiagnosticsVisualizer
-from src.core_processor.fps.fps_counter import FPSCamCounter
-from src.core_processor.show_cam_window import show_cam_window
 
-logger = logging.getLogger(__name__)
 
 @dataclass
-class SingleCameraCalibrationData:
+class LensDistortionCalibrationData:
+    image_width: int
+    image_height: int
     reprojection_error: float = None
     camera_matrix: np.ndarray = None
+    number_of_lens_distortion_coefficients: int = 4
     lens_distortion_coefficients: np.ndarray = None
-    image_width: int = None
-    image_height: int = None
     rotation_vectors_of_the_board: np.ndarray = None
     translation_vectors_of_the_board: np.ndarray = None
     lens_distortion_std_dev: float = None
     camera_location_std_dev: float = None
 
+    def __post_init__(self):
+        if self.camera_matrix is None:
+            self.camera_matrix = np.array([[float(self.image_width), 0., self.image_width / 2.],
+                                           [0., float(self.image_width), self.image_height / 2.],
+                                           [0., 0., 1.]])
 
-class CameraCalibration:
+        if self.lens_distortion_coefficients is None:
+            self.lens_distortion_coefficients = np.zeros((self.number_of_lens_distortion_coefficients, 1))
+
+
+class LensDistortionCalibrator:
     def __init__(self,
-                 board_detection: BoardDetection = BoardDetection(),
-                 cam_manager: CVCameraManager = CVCameraManager(),
+                 board_detection_object: BoardDetector = BoardDetector(),
                  show_calibration_diagnostics_visualizer=True, ):
-        self._board_detection_object = board_detection
-        self._cam_manager = cam_manager
-        self._current_calibration = SingleCameraCalibrationData()
-        self._start_time = time.time()
+        self._board_detection_object = board_detection_object
+        self._current_calibration: LensDistortionCalibrationData = None
         self._all_charuco_views = []
         self._num_charuco_views = 0
         self._best_combo_of_charuco_views = []
@@ -53,112 +48,7 @@ class CameraCalibration:
             self.calibration_diagnostics_visualizer = CalibrationDiagnosticsVisualizer()
 
 
-    async def process_by_cam_id(self, webcam_id: str, cb):
-        with self._cam_manager.start_capture_session_single_cam(
-                webcam_id=webcam_id,
-        ) as session_obj:
-            fps_manager = FPSCamCounter(self._cam_manager.available_webcam_ids)
-            fps_manager.start_all()
-            cv_cam = session_obj.cv_cam
-            writer = session_obj.writer
-            try:
-                while True:
-                    if not cv_cam.is_capturing_frames:
-                        return
-                    charuco_frame_payload = self._board_detection_object.detect_charuco_board_in_camera_stream(cv_cam)
-                    if cb and charuco_frame_payload.annotated_frame_image is not None:
-                        writer.write(charuco_frame_payload.raw_frame_payload)
-                        await cb(charuco_frame_payload.annotated_frame_image)
-            except Exception as e:
-                logger.error("Printing traceback")
-                traceback.print_exc()
-                raise e
-            finally:
-                writer = session_obj.writer
-                options = SaveOptions(
-                    writer_dir=Path().joinpath(
-                        cv_cam.session_writer_base_path,
-                        "board_detection",
-                        f"webcam_{cv_cam.webcam_id_as_str}",
-                    ),
-                    fps=fps_manager.current_fps_for(cv_cam.webcam_id_as_str),
-                    frame_width=cv_cam.get_frame_width(),
-                    frame_height=cv_cam.get_frame_height(),
-                )
-                writer.save(options)
-
-
-    def perform_calibration(self):
-        self.process(
-            show_window=True,
-            save_video=False,
-            post_processed_frame_cb=self._calibration_work,
-        )
-
-    def process(
-            self,
-            post_processed_frame_cb: Callable[[str, CharucoFramePayload], None] = None,
-            show_window=True,
-            save_video=True,
-    ):
-        """
-        Opens Cameras using OpenCV and begins image processing for charuco board
-        If return images is true, the images are returned to the caller
-        """
-        # if its already capturing frames, this is a no-op
-
-        with self._cam_manager.start_capture_session_all_cams() as session_obj:
-            fps_manager = FPSCamCounter(self._cam_manager.available_webcam_ids)
-            fps_manager.start_all()
-            try:
-                should_continue = True
-                while should_continue:
-                    for response in session_obj:
-                        cv_cam = response.cv_cam
-                        writer = response.writer
-                        charuco_frame_payload = self._board_detection_object.detect_charuco_board_in_camera_stream(cv_cam)
-                        current_webcam_id = cv_cam.webcam_id_as_str
-
-                        if not charuco_frame_payload:
-                            continue
-
-                        if save_video:
-                            writer.write(charuco_frame_payload.raw_frame_payload)
-
-                        if post_processed_frame_cb:
-                            undistorted_annotated_image = post_processed_frame_cb(current_webcam_id,
-                                                                                  charuco_frame_payload)
-                            charuco_frame_payload.annotated_frame_image = undistorted_annotated_image
-
-                        fps_manager.increment_frame_processed_for(current_webcam_id)
-                        if show_window:
-                            should_continue = show_cam_window(
-                                current_webcam_id, charuco_frame_payload.annotated_frame_image, fps_manager
-                            )
-            except:
-                logger.error("Printing traceback")
-                traceback.print_exc()
-            finally:
-                for response in session_obj:
-                    cv_cam = response.cv_cam
-                    writer = response.writer
-                    options = SaveOptions(
-                        writer_dir=Path().joinpath(
-                            cv_cam.session_writer_base_path,
-                            "board_detection",
-                            f"webcam_{cv_cam.webcam_id_as_str}",
-                        ),
-                        fps=fps_manager.current_fps_for(cv_cam.webcam_id_as_str),
-                        frame_width=cv_cam.get_frame_width(),
-                        frame_height=cv_cam.get_frame_height(),
-                    )
-                    writer.save(options)
-                    logger.info(f"Destroy window {cv_cam.webcam_id_as_str}")
-                    cv2.destroyWindow(cv_cam.webcam_id_as_str)
-                    cv2.waitKey(1)
-
-    def _calibration_work(self, webcam_id: str, charuco_frame_payload: CharucoFramePayload):
-        elapsed_time = (charuco_frame_payload.raw_frame_payload.timestamp / 1e9) - self._start_time
+    def process_incoming_frame(self,  charuco_frame_payload: CharucoFramePayload):
 
         if not charuco_frame_payload.charuco_view_data.full_board_found and self._current_calibration.camera_matrix is None:
             return charuco_frame_payload.annotated_frame_image
@@ -188,15 +78,9 @@ class CameraCalibration:
                                           self._current_calibration.camera_matrix,
                                           self._current_calibration.lens_distortion_coefficients,
                                           )
-
-        print(
-            f"found frame from camera {webcam_id} at timestamp {elapsed_time:.3f} - reprojection error: {self._current_calibration.reprojection_error:.3f} - num charuco views:{len(self._all_charuco_views)}")
         return undistorted_image
 
-    def estimate_lens_distortion(self,
-                                 new_charuco_view: CharucoViewData,
-                                 max_iterations=10,
-                                 max_charuco_board_views=5) -> SingleCameraCalibrationData:
+    def estimate_lens_distortion(self, new_charuco_view: CharucoViewData):
         """
         adapted from - https://mecaruco2.readthedocs.io/en/latest/notebooks_rst/Aruco/sandbox/ludovic/aruco_calibration_rotation.html
 
@@ -219,14 +103,16 @@ class CameraCalibration:
         image_width = new_charuco_view.image_width
         image_height = new_charuco_view.image_height
 
-        default_calibration = self.get_default_calibration(new_charuco_view,
-                                                           number_of_distortion_coefficients=5)
+        default_calibration = LensDistortionCalibrationData(image_width, image_height)
 
-        num_charuco_views_per_combo = 10
+        num_charuco_views_per_combo = 5
         if self._num_charuco_views < num_charuco_views_per_combo:
             list_of_combos_of_charuco_views = [self._all_charuco_views]
         else:
-            list_of_combos_of_charuco_views = self.generate_combos_of_charuco_views(new_charuco_view)
+            list_of_combos_of_charuco_views = self.generate_combos_of_charuco_views(new_charuco_view,
+                                                                                    num_combos_to_generate=10,
+                                                                                    num_views_per_combo=num_charuco_views_per_combo,
+                                                                                    )
 
         # flag definitions -> https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga3207604e4b1a1758aa66acb6ed5aa65d
         flags = (cv2.CALIB_USE_INTRINSIC_GUESS +
@@ -261,11 +147,11 @@ class CameraCalibration:
 
                 if self.show_calibration_diagnostics_visualizer:
                     self.calibration_diagnostics_visualizer.update_reprojection_error_subplot(this_reprojection_error,
-                                                                                          current_best_reprojection_error)
+                                                                                              current_best_reprojection_error)
 
                 if this_reprojection_error < current_best_reprojection_error:
 
-                    this_calibration = SingleCameraCalibrationData(
+                    this_calibration = LensDistortionCalibrationData(
                         reprojection_error=this_reprojection_error,
                         camera_matrix=this_camera_matrix,
                         lens_distortion_coefficients=these_lens_distortion_coefficients,
@@ -327,7 +213,7 @@ class CameraCalibration:
     def is_this_calibration_valid(self, this_calibration):
 
         is_valid = False
-        if not self.lens_distortion_is_monotonic(this_calibration):
+        if not self.lens_distortion_is_monotonic(this_calibration): #not currently working - returns True every time
             return False
 
         if self.check_if_too_many_invalid_pixels(this_calibration):
@@ -381,11 +267,10 @@ class CameraCalibration:
 
         if self.show_calibration_diagnostics_visualizer:
             self.calibration_diagnostics_visualizer.update_image_point_remapping_subplot(original_points_x,
-                                                                                     original_points_y,
-                                                                                     distorted_points_x,
-                                                                                     distorted_points_y)
+                                                                                         original_points_y,
+                                                                                         distorted_points_x,
+                                                                                         distorted_points_y)
         return True
-
 
     def check_if_too_many_invalid_pixels(self, this_calibration, how_many_is_too_many=.1) -> bool:
         """
@@ -423,28 +308,6 @@ class CameraCalibration:
 
         return undistorted_image
 
-    @staticmethod
-    def get_default_calibration(charuco_view: CharucoViewData, number_of_distortion_coefficients=4):
-        image_width = charuco_view.image_width
-        image_height = charuco_view.image_height
-
-        initial_camera_matrix = np.array([[float(image_width), 0., image_width / 2.],
-                                          [0., float(image_width), image_height / 2.],
-                                          [0., 0., 1.]])
-        initial_lens_distortion_coefficients = np.zeros((number_of_distortion_coefficients, 1))
-
-        return SingleCameraCalibrationData(
-            camera_matrix=initial_camera_matrix,
-            lens_distortion_coefficients=initial_lens_distortion_coefficients,
-            image_width=image_width,
-            image_height=image_height,
-        )
-
 
 if __name__ == "__main__":
-    print('start main')
-
-    a = CameraCalibration()
-    a.perform_calibration()
-    if a.show_calibration_diagnostics_visualizer:
-        a.calibration_diagnostics_visualizer.close()
+    pass

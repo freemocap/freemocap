@@ -9,7 +9,7 @@ import mediapipe as mp
 import numpy as np
 
 from src.cameras.capture.frame_payload import FramePayload
-from src.cameras.multicam_manager.cv_camera_manager import CVCameraManager
+from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.cameras.persistence.video_writer.video_writer import SaveOptions
 from src.config.data_paths import create_home_data_directory
 from src.core_processor.fps.fps_counter import FPSCamCounter
@@ -32,7 +32,7 @@ class ProcessResponse:
 
 
 class MediapipeSkeletonDetection:
-    def __init__(self, cam_manager: CVCameraManager):
+    def __init__(self, cam_manager: OpenCVCameraManager):
         self._cam_manager = cam_manager
 
     async def process_as_frame_loop(self, webcam_id, cb, model_complexity: int = 1):
@@ -112,8 +112,8 @@ class MediapipeSkeletonDetection:
                                 f"webcam_{cv_cam.webcam_id_as_str}",
                             ),
                             fps=fps_manager.current_fps_for(cv_cam.webcam_id_as_str),
-                            frame_width=cv_cam.get_frame_width(),
-                            frame_height=cv_cam.get_frame_height(),
+                            frame_width=cv_cam.image_width(),
+                            frame_height=cv_cam.image_height(),
                         )
                         response.writer.save(options)
                         logger.info(f"Destroy window {cv_cam.webcam_id_as_str}")
@@ -164,4 +164,4 @@ class MediapipeSkeletonDetection:
 
 if __name__ == "__main__":
     create_home_data_directory()
-    MediapipeSkeletonDetection(CVCameraManager()).process()
+    MediapipeSkeletonDetection(OpenCVCameraManager()).process()

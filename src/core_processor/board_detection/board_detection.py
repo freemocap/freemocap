@@ -1,26 +1,16 @@
 import logging
-import time
-import traceback
 from dataclasses import dataclass
-from pathlib import Path
-from types import FunctionType
-from typing import Any, Callable, Optional
 
 import cv2
 import numpy as np
 
 from src.cameras.capture.frame_payload import FramePayload
-from src.cameras.multicam_manager.cv_camera_manager import CVCameraManager
-from src.cameras.persistence.video_writer.video_writer import SaveOptions
 from src.core_processor.board_detection.charuco_constants import aruco_marker_dict, charuco_board_object, \
     number_of_charuco_corners
 from src.core_processor.board_detection.detect_charuco_board import detect_charuco_board, CharucoViewData
 from src.core_processor.board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
 )
-from src.core_processor.fps.fps_counter import FPSCamCounter
-from src.core_processor.show_cam_window import show_cam_window
-from src.core_processor.utils.image_fps_writer import write_fps_to_image
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +22,9 @@ class CharucoFramePayload:
     charuco_view_data: CharucoViewData
 
 
-class BoardDetection:
+class BoardDetector:
     @staticmethod
-    def detect_charuco_board_in_camera_stream(cv_cam)->CharucoFramePayload:
+    def detect_charuco_board_in_camera_stream(cv_cam) -> CharucoFramePayload:
         raw_frame_payload = cv_cam.latest_frame
 
         if not raw_frame_payload.success:
@@ -59,6 +49,7 @@ class BoardDetection:
             raw_frame_payload=raw_frame_payload,
             charuco_view_data=charuco_view_data
         )
+
     @staticmethod
     def detect_charuco_board(image) -> CharucoViewData:
         """

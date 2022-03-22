@@ -5,33 +5,13 @@ import numpy as np
 from rich import print
 
 from src.cameras.capture.frame_payload import FramePayload
-from src.core_processor.camera_calibration.charuco_board_detection.board_detection import BoardDetector
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_constants import charuco_board_object
-from src.core_processor.camera_calibration.charuco_board_detection.detect_charuco_board import CharucoViewData
+from src.core_processor.camera_calibration.calibration_data_classes import LensDistortionCalibrationData
+from src.core_processor.camera_calibration.charuco_board_detection.board_detector import BoardDetector
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import charuco_board_object
 from src.core_processor.camera_calibration.calibration_diagnostics_visualizer import CalibrationDiagnosticsVisualizer
-
-
-@dataclass
-class LensDistortionCalibrationData:
-    image_width: int
-    image_height: int
-    reprojection_error: float = None
-    camera_matrix: np.ndarray = None
-    number_of_lens_distortion_coefficients: int = 4
-    lens_distortion_coefficients: np.ndarray = None
-    rotation_vectors_of_the_board: np.ndarray = None
-    translation_vectors_of_the_board: np.ndarray = None
-    lens_distortion_std_dev: float = None
-    camera_location_std_dev: float = None
-
-    def __post_init__(self):
-        if self.camera_matrix is None:
-            self.camera_matrix = np.array([[float(self.image_width), 0., self.image_width / 2.],
-                                           [0., float(self.image_width), self.image_height / 2.],
-                                           [0., 0., 1.]])
-
-        if self.lens_distortion_coefficients is None:
-            self.lens_distortion_coefficients = np.zeros((self.number_of_lens_distortion_coefficients, 1))
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_dataclasses import CharucoViewData
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_image_annotator import \
+    annotate_image_with_charuco_data
 
 
 class LensDistortionCalibrator:
@@ -67,13 +47,19 @@ class LensDistortionCalibrator:
 
             self.estimate_lens_distortion(charuco_view_data)  # this is where the magic happens
 
-        if self._current_calibration.camera_matrix is None:
+        if self._current_calibration is None:
             self._current_calibration = LensDistortionCalibrationData(charuco_view_data.image_width,
                                                                       charuco_view_data.image_height)
             return raw_frame_payload.image
 
         undistorted_image_for_debug = self.undistort_image_with_invalid_pixels_as_black(raw_frame_payload.image,
                                                                                         self._current_calibration)
+        if charuco_view_data.some_charuco_corners_found:
+            annotate_image_with_charuco_data(
+                undistorted_image_for_debug,  # this image will have stuff drawn on top of it inside this function
+                charuco_view_data
+            )
+
         if self.show_calibration_diagnostics_visualizer:
             self.calibration_diagnostics_visualizer.update_image_subplot(undistorted_image_for_debug)
 
@@ -81,6 +67,7 @@ class LensDistortionCalibrator:
                                           self._current_calibration.camera_matrix,
                                           self._current_calibration.lens_distortion_coefficients,
                                           )
+
         return undistorted_image
 
     def estimate_lens_distortion(self, new_charuco_view: CharucoViewData):
@@ -150,7 +137,10 @@ class LensDistortionCalibrator:
 
                 if self.show_calibration_diagnostics_visualizer:
                     self.calibration_diagnostics_visualizer.update_reprojection_error_subplot(this_reprojection_error,
-                                                                                              current_best_reprojection_error)
+                                                                                              current_best_reprojection_error,
+                                                                                              )
+                    if self._current_calibration is not None:
+                        self.calibration_diagnostics_visualizer.update_calibration_text_overlay(self._current_calibration)
 
                 if this_reprojection_error < current_best_reprojection_error:
 
@@ -256,17 +246,23 @@ class LensDistortionCalibrator:
             3]  # ...which I might want to check on later? Currently fixed at Zero
         k3 = this_calibration.lens_distortion_coefficients[4]
 
-        number_of_points = 100
-        original_points_x = np.linspace(-this_calibration.image_width, this_calibration.image_width, number_of_points)
-        original_points_y = np.linspace(-this_calibration.image_height, this_calibration.image_height, number_of_points)
+        number_of_points = 40
+        original_x = np.linspace(this_calibration.image_width, number_of_points)
+        original_y = np.linspace(this_calibration.image_height, number_of_points)
+
+        original_points_xx, original_points_yy = np.meshgrid(original_x, original_y)
+
+        original_points_x = original_points_xx.flatten()  # transform 2D grid with 1D array
+        original_points_y = original_points_yy.flatten()  # transform 2D grid with 1D array
 
         original_points_xy = np.vstack((original_points_x, original_points_y))
 
         distorted_points_xy = cv2.undistortPoints(original_points_xy,
                                                   this_calibration.camera_matrix,
                                                   this_calibration.lens_distortion_coefficients)
-        distorted_points_x = np.squeeze(distorted_points_xy[0])
-        distorted_points_y = np.squeeze(distorted_points_xy[1])
+
+        distorted_points_x = np.squeeze(distorted_points_xy[:, :, 0])
+        distorted_points_y = np.squeeze(distorted_points_xy[:, :, 1])
 
         if self.show_calibration_diagnostics_visualizer:
             self.calibration_diagnostics_visualizer.update_image_point_remapping_subplot(original_points_x,

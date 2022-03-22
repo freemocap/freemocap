@@ -3,12 +3,11 @@ from typing import List
 import cv2
 import numpy as np
 
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_constants import number_of_charuco_corners
-from src.core_processor.camera_calibration.charuco_board_detection.detect_charuco_board import CharucoViewData
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import number_of_charuco_corners
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_dataclasses import CharucoViewData
 
 
 def _board_text(
-        cam_name: str,
         charuco_ids: List[int],
         num_charuco_corners: int,
         full_board_detected_bool: bool,
@@ -16,7 +15,7 @@ def _board_text(
     num_ids_as_str = str(len(charuco_ids))
     num_corners_as_str = str(num_charuco_corners)
     text = (
-        f"{cam_name}: {num_ids_as_str} of {num_corners_as_str} Charuco Corner Points Detected "
+        f"{num_ids_as_str} of {num_corners_as_str} Charuco Corner Points Detected "
         f"| Full Board Detected: {full_board_detected_bool}"
     )
     return text
@@ -24,7 +23,6 @@ def _board_text(
 
 def annotate_image_with_charuco_data(
         image,
-        webcam_id: str,
         charuco_view_data: CharucoViewData,
 ) -> bool:
 
@@ -36,11 +34,8 @@ def annotate_image_with_charuco_data(
     )  # yellow? I
     # think cv2 uses BGR instead of RGB?
 
-    this_cam_name = f"Camera {webcam_id}"
 
-    text_to_write_on_this_camera = ""
     current_cam_corner_count_str = _board_text(
-        this_cam_name,
         charuco_view_data.charuco_ids,
         number_of_charuco_corners,
         charuco_view_data.full_board_found,

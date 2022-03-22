@@ -1,7 +1,7 @@
 from typing import NamedTuple
 
 from src.cameras.multicam_manager import CVCameraManager
-from src.core_processor.camera_calibration.charuco_board_detection.board_detection import BoardDetector
+from src.core_processor.camera_calibration.charuco_board_detection.board_detector import BoardDetector
 
 
 class ImageResponse(NamedTuple):

@@ -5,11 +5,12 @@ import cv2
 import numpy as np
 
 from src.cameras.capture.frame_payload import FramePayload
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_constants import aruco_marker_dict, \
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import aruco_marker_dict, \
     charuco_board_object, \
     number_of_charuco_corners
-from src.core_processor.camera_calibration.charuco_board_detection.detect_charuco_board import detect_charuco_board, \
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_dataclasses import CharucoFramePayload, \
     CharucoViewData
+
 from src.core_processor.camera_calibration.charuco_board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
 )
@@ -17,20 +18,9 @@ from src.core_processor.camera_calibration.charuco_board_detection.charuco_image
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class CharucoFramePayload:
-    raw_frame_payload: FramePayload = FramePayload()
-    annotated_image: np.ndarray = None
-    charuco_view_data: CharucoViewData = CharucoViewData()
-
-
 class BoardDetector:
 
     def detect_charuco_board(self, raw_frame_payload: FramePayload) -> CharucoFramePayload:
-
-        if not raw_frame_payload.success:
-            # logger.error("CV2 failed to grab a frame")
-            return CharucoFramePayload()
 
         if raw_frame_payload.image is None:
             logger.error("Frame is empty")
@@ -42,7 +32,6 @@ class BoardDetector:
         if charuco_view_data.some_charuco_corners_found:
             annotate_image_with_charuco_data(
                 annotated_image,  # this image will have stuff drawn on top of it inside this function
-                raw_frame_payload.webcam_id,
                 charuco_view_data
             )
 
@@ -113,6 +102,7 @@ class BoardDetector:
                                aruco_square_ids=aruco_square_ids,
                                image_width=image_width,
                                image_height=image_height)
+
 
 
 if __name__ == "__main__":

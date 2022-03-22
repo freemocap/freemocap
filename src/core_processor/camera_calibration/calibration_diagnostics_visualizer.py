@@ -107,6 +107,14 @@ class CalibrationDiagnosticsVisualizer:
         self.opengl_3d_plot_dock.addWidget(self.opengl_3d_plot_widget)
         self.dock_area.addDock(self.opengl_3d_plot_dock, 'right', self.image_point_remapping_plot_dock)
 
+        ###
+        # create widget/dock for calibration text window
+        self.calibration_text_widget = QtWidgets.QLabel()
+
+        self.calibration_text_dock = Dock("Calibration Data")
+        self.calibration_text_dock.addWidget(self.calibration_text_widget)
+        self.dock_area.addDock(self.calibration_text_dock, 'above', self.image_point_remapping_plot_dock)
+
         # display window
         self.main_window_widget.show()
 
@@ -123,11 +131,9 @@ class CalibrationDiagnosticsVisualizer:
         self.reprojection_error_current_best_line.setData(self.reprojection_error_current_best)
 
     def update_calibration_text_overlay(self, calibration_data: LensDistortionCalibrationData):
-        return
-        self.reprojection_error_text_item.setText(f'reprojection error:{calibration_data.reprojection_error:.3f}')
         lens_distortion_as_str = [f"{d[0]:.3f}" for d in calibration_data.lens_distortion_coefficients]
-        self.lens_distortion_text_item.setText(str(lens_distortion_as_str))
-        self.camera_matrix_text_item.setText(str(calibration_data.camera_matrix))
+        calibration_text = f'reprojection error:{calibration_data.reprojection_error:.3f} \n {lens_distortion_as_str} \n {str(calibration_data.camera_matrix)}'
+        self.calibration_text_widget.setText(calibration_text)
 
     def update_image_point_remapping_subplot(self, image_point_original_x, image_point_original_y,
                                              image_point_remapped_x, image_point_remapped_y):
@@ -137,7 +143,9 @@ class CalibrationDiagnosticsVisualizer:
         self.image_point_remapped_dottos.setData(x=image_point_remapped_x,
                                                  y=image_point_remapped_y)
 
-    def update_3d_subplot(self, charuco_xyz: np.ndarray):
+    def update_3d_subplot(self, charuco_xyz: np.ndarray = None):
+        if charuco_xyz is None:
+            return
         self.opengl_charuco_scatter_item.setData(pos=charuco_xyz)
 
     def close(self):

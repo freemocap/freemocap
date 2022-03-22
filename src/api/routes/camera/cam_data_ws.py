@@ -19,7 +19,7 @@ async def begin_board_detection():
     await service.run()
 
 
-@cam_ws_router.websocket("/ws/board_detection/{webcam_id}")
+@cam_ws_router.websocket("/ws/charuco_board_detection/{webcam_id}")
 async def board_detection_as_ws(web_socket: WebSocket, webcam_id: str):
     await web_socket.accept()
 

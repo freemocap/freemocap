@@ -20,7 +20,7 @@ const categories = [
       },
       {
         id: "Board Detection",
-        route: "/board_detection"
+        route: "/charuco_board_detection"
       },
       {
         id: "Skeleton Detection",

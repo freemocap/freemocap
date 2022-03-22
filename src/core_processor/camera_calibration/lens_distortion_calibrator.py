@@ -4,9 +4,10 @@ import cv2
 import numpy as np
 from rich import print
 
-from src.core_processor.board_detection.board_detection import BoardDetector, CharucoFramePayload
-from src.core_processor.board_detection.charuco_constants import charuco_board_object
-from src.core_processor.board_detection.detect_charuco_board import CharucoViewData
+from src.cameras.capture.frame_payload import FramePayload
+from src.core_processor.camera_calibration.charuco_board_detection.board_detection import BoardDetector
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_constants import charuco_board_object
+from src.core_processor.camera_calibration.charuco_board_detection.detect_charuco_board import CharucoViewData
 from src.core_processor.camera_calibration.calibration_diagnostics_visualizer import CalibrationDiagnosticsVisualizer
 
 
@@ -35,10 +36,10 @@ class LensDistortionCalibrationData:
 
 class LensDistortionCalibrator:
     def __init__(self,
-                 board_detection_object: BoardDetector = BoardDetector(),
+                 board_detector: BoardDetector = BoardDetector(),
                  show_calibration_diagnostics_visualizer=True, ):
-        self._board_detection_object = board_detection_object
-        self._current_calibration: LensDistortionCalibrationData = None
+        self._board_detector = board_detector
+        self._current_calibration = None
         self._all_charuco_views = []
         self._num_charuco_views = 0
         self._best_combo_of_charuco_views = []
@@ -47,34 +48,36 @@ class LensDistortionCalibrator:
         if self.show_calibration_diagnostics_visualizer:
             self.calibration_diagnostics_visualizer = CalibrationDiagnosticsVisualizer()
 
+    def process_incoming_frame(self,
+                               raw_frame_payload: FramePayload):
 
-    def process_incoming_frame(self,  charuco_frame_payload: CharucoFramePayload):
+        charuco_frame_payload = self._board_detector.detect_charuco_board(raw_frame_payload)
 
-        if not charuco_frame_payload.charuco_view_data.full_board_found and self._current_calibration.camera_matrix is None:
-            return charuco_frame_payload.annotated_frame_image
+        charuco_view_data = charuco_frame_payload.charuco_view_data
 
-        if charuco_frame_payload.charuco_view_data.full_board_found:
-            new_charuco_view = charuco_frame_payload.charuco_view_data
-            self._all_charuco_views.append(new_charuco_view)
+        if not charuco_view_data.full_board_found and self._current_calibration is None:
+            return charuco_frame_payload.annotated_image
+
+        if charuco_view_data.full_board_found:
+            self._all_charuco_views.append(charuco_view_data)
             self._num_charuco_views = len(self._all_charuco_views)
 
             if self._num_charuco_views < 2:
-                return charuco_frame_payload.annotated_frame_image
+                return charuco_frame_payload.annotated_image
 
-            self.estimate_lens_distortion(new_charuco_view)
-
-        # raw_image = charuco_frame_payload.raw_frame_payload.image
-        raw_image = charuco_frame_payload.annotated_frame_image
+            self.estimate_lens_distortion(charuco_view_data)  # this is where the magic happens
 
         if self._current_calibration.camera_matrix is None:
-            return raw_image
+            self._current_calibration = LensDistortionCalibrationData(charuco_view_data.image_width,
+                                                                      charuco_view_data.image_height)
+            return raw_frame_payload.image
 
-        undistorted_image_for_debug = self.undistort_image_with_invalid_pixels_as_black(raw_image,
+        undistorted_image_for_debug = self.undistort_image_with_invalid_pixels_as_black(raw_frame_payload.image,
                                                                                         self._current_calibration)
         if self.show_calibration_diagnostics_visualizer:
             self.calibration_diagnostics_visualizer.update_image_subplot(undistorted_image_for_debug)
 
-        undistorted_image = cv2.undistort(raw_image,
+        undistorted_image = cv2.undistort(raw_frame_payload.image,
                                           self._current_calibration.camera_matrix,
                                           self._current_calibration.lens_distortion_coefficients,
                                           )
@@ -95,7 +98,7 @@ class LensDistortionCalibrator:
         """
         print("CAMERA CALIBRATION")
 
-        if not self._current_calibration.reprojection_error:
+        if self._current_calibration is None:
             current_best_reprojection_error = 1e9  # put a big fake number on the first frame
         else:
             current_best_reprojection_error = self._current_calibration.reprojection_error
@@ -213,7 +216,7 @@ class LensDistortionCalibrator:
     def is_this_calibration_valid(self, this_calibration):
 
         is_valid = False
-        if not self.lens_distortion_is_monotonic(this_calibration): #not currently working - returns True every time
+        if not self.lens_distortion_is_monotonic(this_calibration):  # not currently working - returns True every time
             return False
 
         if self.check_if_too_many_invalid_pixels(this_calibration):

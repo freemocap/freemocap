@@ -9,7 +9,6 @@ from src.api.services.user_config import UserConfigService
 from src.cameras.detection.cam_singleton import get_or_create_cams
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.cameras.persistence.video_writer.video_writer import VideoWriter
-from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrationData
 
 logger = logging.getLogger(__name__)
 

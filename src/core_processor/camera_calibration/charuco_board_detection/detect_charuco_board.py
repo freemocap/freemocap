@@ -1,24 +1,25 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 import cv2
 import numpy as np
 
-from src.core_processor.board_detection.charuco_constants import aruco_marker_dict, charuco_board_object, \
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_constants import aruco_marker_dict, \
+    charuco_board_object, \
     number_of_charuco_corners
 
 
 @dataclass
 class CharucoViewData:
-    full_board_found: bool
-    some_charuco_corners_found: bool
-    any_markers_found: bool
-    image_width: int
-    image_height: int
-    charuco_corners: Optional[np.ndarray]
-    charuco_ids: Optional[np.ndarray]
-    aruco_square_corners: Optional[np.ndarray]
-    aruco_square_ids: Optional[np.ndarray]
+    charuco_corners: Optional[np.ndarray] = None
+    charuco_ids: Optional[np.ndarray] = None
+    aruco_square_corners: Optional[np.ndarray] = None
+    aruco_square_ids: Optional[np.ndarray] = None
+    full_board_found: bool = False
+    some_charuco_corners_found: bool = False
+    any_markers_found: bool = False
+    image_width: int = None
+    image_height: int = None
 
 
 def detect_charuco_board(image) -> CharucoViewData:

@@ -17,9 +17,12 @@ logger = logging.getLogger(__name__)
 class SessionManager:
     def __init__(self,
                  opencv_camera_manager: OpenCVCameraManager = OpenCVCameraManager(),
+                 calibrate_cameras: bool = True
                  ):
         self._open_cv_camera_manager = opencv_camera_manager
-        self._camera_calibrator = CameraCalibrator()
+        self.calibrate_cameras = calibrate_cameras
+        if self.calibrate_cameras:
+            self.camera_calibrator = CameraCalibrator()
         self._start_time = time.time()
 
     async def process_by_cam_id(self, webcam_id: str, cb):
@@ -35,9 +38,9 @@ class SessionManager:
                     if not cv_cam.is_capturing_frames:
                         return
                     charuco_frame_payload = self._board_detection_object.detect_charuco_board_in_camera_stream(cv_cam)
-                    if cb and charuco_frame_payload.annotated_frame_image is not None:
+                    if cb and charuco_frame_payload.annotated_image is not None:
                         writer.write(charuco_frame_payload.raw_frame_payload)
-                        await cb(charuco_frame_payload.annotated_frame_image)
+                        await cb(charuco_frame_payload.annotated_image)
             except Exception as e:
                 logger.error("Printing traceback")
                 traceback.print_exc()
@@ -47,7 +50,7 @@ class SessionManager:
                 options = SaveOptions(
                     writer_dir=Path().joinpath(
                         cv_cam.session_writer_base_path,
-                        "board_detection",
+                        "charuco_board_detection",
                         f"webcam_{cv_cam.webcam_id_as_str}",
                     ),
                     fps=fps_manager.current_fps_for(cv_cam.webcam_id_as_str),
@@ -58,7 +61,6 @@ class SessionManager:
 
     def run(
             self,
-            calibrate_cameras=True,
             show_camera_views_in_windows=True,
             save_video=True,
     ):
@@ -89,8 +91,8 @@ class SessionManager:
                         if save_video:
                             this_video_writer_object.write(this_cam_latest_frame)
 
-                        if calibrate_cameras:
-                            undistorted_annotated_image = self._camera_calibrator.calibrate(this_cam_latest_frame)
+                        if self.calibrate_cameras:
+                            undistorted_annotated_image = self.camera_calibrator.calibrate(this_open_cv_camera)
                             image_to_display = undistorted_annotated_image
 
                         fps_manager.increment_frame_processed_for(this_webcam_id)
@@ -108,7 +110,7 @@ class SessionManager:
                     options = SaveOptions(
                         writer_dir=Path().joinpath(
                             this_open_cv_camera.session_writer_base_path,
-                            "board_detection",
+                            "charuco_board_detection",
                             f"webcam_{this_open_cv_camera.webcam_id_as_str}",
                         ),
                         fps=fps_manager.current_fps_for(this_open_cv_camera.webcam_id_as_str),
@@ -121,8 +123,15 @@ class SessionManager:
                     cv2.waitKey(1)
 
 
+    def stop(self):
+        if self.calibrate_cameras:
+            self.camera_calibrator.lens_distortion_calibrator.calibration_diagnostics_visualizer.close()
+
+
+
 if __name__ == "__main__":
     print('start main')
 
-    this_session = SessionManager()
-    this_session.run(calibrate_cameras=False)
+    this_session = SessionManager(calibrate_cameras=True)
+    this_session.run()
+    this_session.stop()

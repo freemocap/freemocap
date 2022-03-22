@@ -3,14 +3,15 @@ from typing import List
 import cv2
 import numpy as np
 
-from src.core_processor.board_detection.charuco_constants import number_of_charuco_corners
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_constants import number_of_charuco_corners
+from src.core_processor.camera_calibration.charuco_board_detection.detect_charuco_board import CharucoViewData
 
 
 def _board_text(
-    cam_name: str,
-    charuco_ids: List[int],
-    num_charuco_corners: int,
-    full_board_detected_bool: bool,
+        cam_name: str,
+        charuco_ids: List[int],
+        num_charuco_corners: int,
+        full_board_detected_bool: bool,
 ):
     num_ids_as_str = str(len(charuco_ids))
     num_corners_as_str = str(num_charuco_corners)
@@ -22,14 +23,15 @@ def _board_text(
 
 
 def annotate_image_with_charuco_data(
-    image, webcam_id: str, charuco_data
+        image,
+        webcam_id: str,
+        charuco_view_data: CharucoViewData,
 ) -> bool:
 
-
-    image_w_markers = cv2.aruco.drawDetectedCornersCharuco(
+    annotated_image = cv2.aruco.drawDetectedCornersCharuco(
         image,
-        np.array(charuco_data.charuco_corners),
-        np.array(charuco_data.charuco_ids),
+        np.array(charuco_view_data.charuco_corners),
+        np.array(charuco_view_data.charuco_ids),
         (0, 255, 125, 255)
     )  # yellow? I
     # think cv2 uses BGR instead of RGB?
@@ -39,9 +41,9 @@ def annotate_image_with_charuco_data(
     text_to_write_on_this_camera = ""
     current_cam_corner_count_str = _board_text(
         this_cam_name,
-        charuco_data.charuco_ids,
+        charuco_view_data.charuco_ids,
         number_of_charuco_corners,
-        charuco_data.full_board_found,
+        charuco_view_data.full_board_found,
     )
     # TODO - Determine 'shared views' (i.e. frames in which a full board is detected by 2
     #  cameras)
@@ -52,7 +54,7 @@ def annotate_image_with_charuco_data(
 
     position = (10, 50)
     cv2.putText(
-        image_w_markers,  # numpy array on which text is written
+        annotated_image,  # numpy array on which text is written
         text_to_write_on_this_camera,  # text
         position,  # position at which writing has to start
         cv2.FONT_HERSHEY_SIMPLEX,  # font family
@@ -63,7 +65,7 @@ def annotate_image_with_charuco_data(
     # readability)
 
     cv2.putText(
-        image_w_markers,  # numpy array on which text is written
+        annotated_image,  # numpy array on which text is written
         text_to_write_on_this_camera,  # text
         position,  # position at which writing has to start
         cv2.FONT_HERSHEY_SIMPLEX,
@@ -74,7 +76,7 @@ def annotate_image_with_charuco_data(
         1,
     )  # font stroke
 
-    if charuco_data.full_board_found:
+    if charuco_view_data.full_board_found:
         cv2.polylines(
-            image_w_markers, np.int32([charuco_data.charuco_corners]), False, (0, 100, 255), 2
+            annotated_image, np.int32([charuco_view_data.charuco_corners]), False, (0, 100, 255), 2
         )

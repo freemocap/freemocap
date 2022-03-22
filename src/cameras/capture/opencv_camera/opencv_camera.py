@@ -2,14 +2,16 @@ import logging
 import platform
 import time
 import traceback
+from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
+import numpy as np
 from pydantic import BaseModel
 
 from src.cameras.capture.frame_payload import FramePayload
 from src.cameras.capture.opencv_camera.frame_grabber import FrameThread
-from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrationData
+from src.core_processor.camera_calibration.lens_distortion_calibrator import LensDistortionCalibrationData
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,21 @@ class WebcamConfig(BaseModel):
     # fourcc: str = "MP4V"
     fourcc: str = "MJPG"
     base_save_video_dir = _get_home_dir()
+
+
+@dataclass
+class CameraCalibrationData:
+    image_width: int
+    image_height: int
+    lens_distortion_calibration_data: LensDistortionCalibrationData = None
+    camera_translation_relative_to_camera0: np.ndarray = np.zeros((3, 1))
+    camera_rotation_relative_to_camera0: np.ndarray = np.zeros((3, 1))
+
+    def __init__(self, image_width, image_height):
+        self.image_width = image_width
+        self.image_height = image_height
+        self.lens_distortion_calibration_data = LensDistortionCalibrationData(self.image_width,
+                                                                              self.image_height)
 
 
 class OpenCVCamera:
@@ -47,10 +64,11 @@ class OpenCVCamera:
             return self._camera_calibration_data
 
         if self._camera_calibration_data is None and self.image_width is not None:
-            return self.camera_calibration_data(CameraCalibrationData(self.image_width, self.image_height))
+            self._camera_calibration_data = CameraCalibrationData(self.image_width, self.image_height)
+            return self._camera_calibration_data
 
-        logger.warning('Can\'t request a cameras calibration info until the video capture is initialized and the image_width and image_height are known')
-        return None
+        logger.warning(
+            'Can\'t request a cameras calibration info until the video capture is initialized and the image_width and image_height are known')
 
     @camera_calibration_data.setter
     def camera_calibration_data(self, camera_calibration_data: CameraCalibrationData):

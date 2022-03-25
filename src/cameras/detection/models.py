@@ -3,7 +3,11 @@ from typing import List
 from pydantic import BaseModel
 
 
+class RawCamera(BaseModel):
+    webcam_id: str
+
+
 class FoundCamerasResponse(BaseModel):
     number_of_cameras_found: int
-    list_of_usb_port_numbers_with_cameras_attached: List[int]
+    cameras_found: List[RawCamera]
     cv2_backend: int

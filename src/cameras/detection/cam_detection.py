@@ -3,7 +3,7 @@ import platform
 
 import cv2
 
-from src.cameras.detection.models import FoundCamerasResponse
+from src.cameras.detection.models import FoundCamerasResponse, RawCamera
 
 CAM_CHECK_NUM = 20
 
@@ -15,19 +15,23 @@ class DetectPossibleCameras:
         cv2_backend = self._determine_backend()
 
         cams_to_use_list = []
-        for this_usb_port_number in range(CAM_CHECK_NUM):
-            cap = cv2.VideoCapture(this_usb_port_number, cv2_backend)
+        for cam_id in range(CAM_CHECK_NUM):
+            cap = cv2.VideoCapture(cam_id, cv2_backend)
             success, image = cap.read()
 
             if success:
                 try:
-                    cams_to_use_list.append(this_usb_port_number)
+                    cams_to_use_list.append(
+                        RawCamera(
+                            webcam_id=str(cam_id)
+                        )
+                    )
                 finally:
                     cap.release()
 
         return FoundCamerasResponse(
             number_of_cameras_found=len(cams_to_use_list),
-            list_of_usb_port_numbers_with_cameras_attached=cams_to_use_list,
+            cameras_found_list=cams_to_use_list,
             cv2_backend=cv2_backend,
         )
 

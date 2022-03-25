@@ -9,5 +9,5 @@ class RawCamera(BaseModel):
 
 class FoundCamerasResponse(BaseModel):
     number_of_cameras_found: int
-    cameras_found: List[RawCamera]
+    cameras_found_list: List[RawCamera]
     cv2_backend: int

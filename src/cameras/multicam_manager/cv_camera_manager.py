@@ -52,10 +52,10 @@ class OpenCVCameraManager:
         return None
 
     def _create_opencv_cameras(self, calibrate_cameras=True):
-        list_of_usb_port_numbers_with_cameras_attached = self._detected_cams_data.cameras_found
+        raw_camera_objects = self._detected_cams_data.cameras_found_list
         open_cv_cameras: List[OpenCVCamera] = []
-        for this_port_number in list_of_usb_port_numbers_with_cameras_attached:
-            single_camera_config = self._config_service.webcam_config_by_id(this_port_number)
+        for this_raw_cam in raw_camera_objects:
+            single_camera_config = self._config_service.webcam_config_by_id(this_raw_cam.webcam_id)
             this_opencv_camera = OpenCVCamera(config=single_camera_config)
             open_cv_cameras.append(this_opencv_camera)
         return open_cv_cameras

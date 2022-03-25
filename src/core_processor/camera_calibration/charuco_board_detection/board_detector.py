@@ -5,9 +5,7 @@ import cv2
 import numpy as np
 
 from src.cameras.capture.frame_payload import FramePayload
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import aruco_marker_dict, \
-    charuco_board_object, \
-    number_of_charuco_corners
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import CharucoBoard
 from src.core_processor.camera_calibration.charuco_board_detection.charuco_dataclasses import CharucoFramePayload, \
     CharucoViewData
 
@@ -19,6 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 class BoardDetector:
+    def __init__(self):
+        charuco_board_object = CharucoBoard()
+        self.charuco_board = charuco_board_object.charuco_board
+        self.aruco_marker_dict = charuco_board_object.aruco_marker_dict
+        self.number_of_charuco_corners = charuco_board_object.number_of_charuco_corners
 
     def detect_charuco_board(self, raw_frame_payload: FramePayload) -> CharucoFramePayload:
 
@@ -32,7 +35,8 @@ class BoardDetector:
         if charuco_view_data.some_charuco_corners_found:
             annotate_image_with_charuco_data(
                 annotated_image,  # this image will have stuff drawn on top of it inside this function
-                charuco_view_data
+                charuco_view_data,
+                self.number_of_charuco_corners
             )
 
         return CharucoFramePayload(
@@ -41,8 +45,7 @@ class BoardDetector:
             charuco_view_data=charuco_view_data
         )
 
-    @staticmethod
-    def detect_charuco_board_in_an_image(raw_image) -> CharucoViewData:
+    def detect_charuco_board_in_an_image(self, raw_image) -> CharucoViewData:
         """
         detect charuco board in an image.
         more-or-less copied from - https://mecaruco2.readthedocs.io/en/latest/notebooks_rst/Aruco/sandbox/ludovic/aruco_calibration_rotation.html
@@ -62,7 +65,7 @@ class BoardDetector:
         grayscale_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY)
 
         aruco_square_corners, aruco_square_ids, rejected_image_points = cv2.aruco.detectMarkers(
-            grayscale_image, aruco_marker_dict
+            grayscale_image, self.aruco_marker_dict
         )
 
         full_board_found = False
@@ -81,7 +84,7 @@ class BoardDetector:
             results = cv2.aruco.interpolateCornersCharuco(aruco_square_corners,
                                                           aruco_square_ids,
                                                           grayscale_image,
-                                                          charuco_board_object
+                                                          self.charuco_board
                                                           )
 
             if results[1] is not None and results[2] is not None and len(results[1]) > 3:
@@ -90,7 +93,7 @@ class BoardDetector:
                 charuco_corners = results[1]
                 charuco_ids = results[2]
 
-                if len(charuco_ids) == number_of_charuco_corners:
+                if len(charuco_ids) == self.number_of_charuco_corners:
                     full_board_found = True
 
         return CharucoViewData(full_board_found=full_board_found,
@@ -102,7 +105,6 @@ class BoardDetector:
                                aruco_square_ids=aruco_square_ids,
                                image_width=image_width,
                                image_height=image_height)
-
 
 
 if __name__ == "__main__":

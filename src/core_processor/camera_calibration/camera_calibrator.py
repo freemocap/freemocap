@@ -17,5 +17,5 @@ class CameraCalibrator:
     def calibrate(self, this_camera: OpenCVCamera):
         annotated_image = self.lens_distortion_calibrator.process_incoming_frame(this_camera.latest_frame)
         # add something something cameras 6DoF calibration stuff here later
-
+        
         return annotated_image

@@ -41,23 +41,6 @@ class OpenCVCamera:
         self._name = f"Camera {self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
         self._running_thread: FrameThread = None
-        self._camera_calibration_data = None
-
-    @property
-    def camera_calibration_data(self):
-        if self._camera_calibration_data is not None:
-            return self._camera_calibration_data
-
-        if self._camera_calibration_data is None and self.image_width is not None:
-            self._camera_calibration_data = CameraCalibrationData(self.image_width, self.image_height)
-            return self._camera_calibration_data
-
-        logger.warning(
-            'Can\'t request a cameras calibration info until the video capture is initialized and the image_width and image_height are known')
-
-    @camera_calibration_data.setter
-    def camera_calibration_data(self, camera_calibration_data: CameraCalibrationData):
-        self._camera_calibration_data = camera_calibration_data
 
     @property
     def webcam_id_as_str(self):

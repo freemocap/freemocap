@@ -21,8 +21,7 @@ class SessionManager:
                  ):
         self._open_cv_camera_manager = opencv_camera_manager
         self.calibrate_cameras = calibrate_cameras
-        if self.calibrate_cameras:
-            self.camera_calibrator = CameraCalibrator()
+        self.camera_calibrator = CameraCalibrator()
         self._start_time = time.time()
 
     async def process_by_cam_id(self, webcam_id: str, cb):
@@ -36,8 +35,12 @@ class SessionManager:
             try:
                 while True:
                     if not cv_cam.is_capturing_frames:
-                        return
-                    charuco_frame_payload = self._board_detection_object.detect_charuco_board_in_camera_stream(cv_cam)
+                        logger.debug(f'Camera {webcam_id} is not capturing frames')
+                        continue
+
+                    if self.calibrate_cameras:
+                        charuco_frame_payload = self.camera_calibrator.calibrate(cv_cam)
+
                     if cb and charuco_frame_payload.annotated_image is not None:
                         writer.write(charuco_frame_payload.raw_frame_payload)
                         await cb(charuco_frame_payload.annotated_image)

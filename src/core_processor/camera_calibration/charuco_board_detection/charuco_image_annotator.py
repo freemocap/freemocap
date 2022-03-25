@@ -3,7 +3,7 @@ from typing import List
 import cv2
 import numpy as np
 
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import number_of_charuco_corners
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import CharucoBoard
 from src.core_processor.camera_calibration.charuco_board_detection.charuco_dataclasses import CharucoViewData
 
 
@@ -24,7 +24,7 @@ def _board_text(
 def annotate_image_with_charuco_data(
         image,
         charuco_view_data: CharucoViewData,
-) -> bool:
+        number_of_charuco_corners: int) -> bool:
 
     annotated_image = cv2.aruco.drawDetectedCornersCharuco(
         image,

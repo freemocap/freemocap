@@ -124,9 +124,7 @@ class SessionManager:
 
 
     def stop(self):
-        if self.calibrate_cameras:
-            self.camera_calibrator.lens_distortion_calibrator.calibration_diagnostics_visualizer.close()
-
+        pass
 
 
 if __name__ == "__main__":

@@ -7,8 +7,8 @@ from rich import print
 from src.cameras.capture.frame_payload import FramePayload
 from src.core_processor.camera_calibration.calibration_dataclasses import LensDistortionCalibrationData
 from src.core_processor.camera_calibration.charuco_board_detection.board_detector import BoardDetector
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import charuco_board_object
 from src.core_processor.camera_calibration.calibration_diagnostics_visualizer import CalibrationDiagnosticsVisualizer
+from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import CharucoBoard
 from src.core_processor.camera_calibration.charuco_board_detection.charuco_dataclasses import CharucoViewData
 from src.core_processor.camera_calibration.charuco_board_detection.charuco_image_annotator import \
     annotate_image_with_charuco_data
@@ -57,7 +57,8 @@ class LensDistortionCalibrator:
         if charuco_view_data.some_charuco_corners_found:
             annotate_image_with_charuco_data(
                 undistorted_image_for_debug,  # this image will have stuff drawn on top of it inside this function
-                charuco_view_data
+                charuco_view_data,
+                self._board_detector.number_of_charuco_corners
             )
 
         if self.show_calibration_diagnostics_visualizer:
@@ -129,7 +130,7 @@ class LensDistortionCalibrator:
                  ) = cv2.aruco.calibrateCameraCharucoExtended(
                     charucoCorners=[this_charuco_view.charuco_corners],
                     charucoIds=[this_charuco_view.charuco_ids],
-                    board=charuco_board_object,
+                    board=self._board_detector.charuco_board,
                     imageSize=(image_width, image_height),
                     cameraMatrix=default_calibration.camera_matrix,
                     distCoeffs=default_calibration.lens_distortion_coefficients,

@@ -17,7 +17,7 @@ from src.core_processor.camera_calibration.charuco_board_detection.charuco_image
 class LensDistortionCalibrator:
     def __init__(self,
                  board_detector: BoardDetector = BoardDetector(),
-                 show_calibration_diagnostics_visualizer=True, ):
+                 show_calibration_diagnostics_visualizer=False, ):
         self._board_detector = board_detector
         self._current_calibration = None
         self._all_charuco_views = []

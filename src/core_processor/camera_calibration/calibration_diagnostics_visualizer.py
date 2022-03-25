@@ -115,6 +115,9 @@ class CalibrationDiagnosticsVisualizer:
         self.calibration_text_dock.addWidget(self.calibration_text_widget)
         self.dock_area.addDock(self.calibration_text_dock, 'above', self.image_point_remapping_plot_dock)
 
+        self._display_main_window()
+
+    def _display_main_window(self):
         # display window
         self.main_window_widget.show()
 

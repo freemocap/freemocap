@@ -15,7 +15,7 @@ export const Router = () => {
       <Route path={'/config'} element={<ConfigView />} />
       <Route path={'/jontestplayground'} element={<WebcamJonTest />} />
       <Route path={'/pythonToJs'} element={<PythonToJsTest />} />
-      <Route path={'/board_detection'} element={<BoardDetection />} />
+      <Route path={'/charuco_board_detection'} element={<BoardDetection />} />
       <Route path={'/skeleton_detection'} element={<SkeletonDetection />} />
     </Routes>
   )

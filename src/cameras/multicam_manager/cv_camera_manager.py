@@ -12,7 +12,7 @@ from src.cameras.persistence.video_writer.video_writer import VideoWriter
 
 logger = logging.getLogger(__name__)
 
-_cv_cams = None
+_open_cv_cameras = None
 
 
 class CamAndWriterResponse(BaseModel):
@@ -23,41 +23,42 @@ class CamAndWriterResponse(BaseModel):
         arbitrary_types_allowed = True
 
 
-class CVCameraManager:
+class OpenCVCameraManager:
     def __init__(self):
         self._config_service = UserConfigService()
         self._detected_cams_data = get_or_create_cams()
-        global _cv_cams
-        if _cv_cams is None:
+        global _open_cv_cameras
+        if _open_cv_cameras is None:
             logger.info("Creating cams.")
             # we create the _cv_cams /once/, and reuse it for the lifetime of the session
-            _cv_cams = self._create_opencv_cams()
-            self._cv_cams = _cv_cams
+            _open_cv_cameras = self._create_opencv_cameras(calibrate_cameras=True)
+            self._open_cv_camera_objects = _open_cv_cameras
         else:
             logger.info("Reusing already created resources cam resources.")
-            self._cv_cams = _cv_cams
+            self._open_cv_camera_objects = _open_cv_cameras
 
     @property
     def available_webcam_ids(self):
-        return [cv_cam.webcam_id_as_str for cv_cam in self._cv_cams]
+        return [cv_cam.webcam_id_as_str for cv_cam in self._open_cv_camera_objects]
 
     @property
-    def cv_cams(self):
-        return self._cv_cams
+    def open_cv_cameras(self):
+        return self._open_cv_camera_objects
 
     def cv_cam_by_id(self, webcam_id: str):
-        for cam in self._cv_cams:
+        for cam in self._open_cv_camera_objects:
             if cam.webcam_id_as_str == str(webcam_id):
                 return cam
         return None
 
-    def _create_opencv_cams(self):
-        raw_webcam_obj = self._detected_cams_data.cams_to_use
-        cv_cams: List[OpenCVCamera] = []
-        for webcam in raw_webcam_obj:
-            single_config = self._config_service.webcam_config_by_id(webcam.webcam_id)
-            cv_cams.append(OpenCVCamera(config=single_config))
-        return cv_cams
+    def _create_opencv_cameras(self, calibrate_cameras=True):
+        raw_camera_objects = self._detected_cams_data.cameras_found_list
+        open_cv_cameras: List[OpenCVCamera] = []
+        for this_raw_cam in raw_camera_objects:
+            single_camera_config = self._config_service.webcam_config_by_id(this_raw_cam.webcam_id)
+            this_opencv_camera = OpenCVCamera(config=single_camera_config)
+            open_cv_cameras.append(this_opencv_camera)
+        return open_cv_cameras
 
     @contextmanager
     def start_capture_session_single_cam(
@@ -94,7 +95,7 @@ class CVCameraManager:
 
     def _start_frame_capture_all_cams(self) -> Dict[str, VideoWriter]:
         d = {}
-        for cv_cam in self._cv_cams:
+        for cv_cam in self._open_cv_camera_objects:
             cv_cam.connect()
             cv_cam.start_frame_capture()
             d[cv_cam.webcam_id_as_str] = VideoWriter()
@@ -103,7 +104,7 @@ class CVCameraManager:
 
     def _start_frame_capture_on_cam_id(self, webcam_id: str) -> VideoWriter:
         filtered_cams = list(
-            filter(lambda c: c.webcam_id_as_str == str(webcam_id), self._cv_cams)
+            filter(lambda c: c.webcam_id_as_str == str(webcam_id), self._open_cv_camera_objects)
         )
         assert (
             len(filtered_cams) == 1
@@ -114,9 +115,9 @@ class CVCameraManager:
         return VideoWriter()
 
     def _stop_frame_capture_all_cams(self):
-        for cv_cam in self._cv_cams:
+        for cv_cam in self._open_cv_camera_objects:
             cv_cam.stop_frame_capture()
 
     def _close_all_cameras(self):
-        for cv_cam in self._cv_cams:
+        for cv_cam in self._open_cv_camera_objects:
             cv_cam.close()

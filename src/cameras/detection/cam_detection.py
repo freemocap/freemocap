@@ -31,8 +31,7 @@ class DetectPossibleCameras:
             cv2_backend=cv2_backend,
         )
 
-    @staticmethod
-    def _determine_backend():
+    def _determine_backend(self):
         if platform.system() == "Windows":
             return cv2.CAP_DSHOW
         else:

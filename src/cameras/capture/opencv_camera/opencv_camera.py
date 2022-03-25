@@ -11,7 +11,6 @@ from pydantic import BaseModel
 
 from src.cameras.capture.frame_payload import FramePayload
 from src.cameras.capture.opencv_camera.frame_grabber import FrameThread
-from src.core_processor.camera_calibration.lens_distortion_calibrator import LensDistortionCalibrationData
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,10 @@ class WebcamConfig(BaseModel):
     # fourcc: str = "MP4V"
     fourcc: str = "MJPG"
     base_save_video_dir = _get_home_dir()
+
+
+class OpenCVCameraError(Exception):
+    pass
 
 
 class OpenCVCamera:
@@ -120,15 +123,16 @@ class OpenCVCamera:
     def image_width(self):
         try:
             return int(self._opencv_video_capture_object.get(3))
-        except:
-            return None
+        except OpenCVCameraError:
+            raise OpenCVCameraError("failed to return `image_width` property from OpenCVCamera")
+
 
     @property
     def image_height(self):
         try:
             return int(self._opencv_video_capture_object.get(4))
-        except:
-            return None
+        except OpenCVCameraError:
+            raise OpenCVCameraError("failed to return `image_height` property from OpenCVCamera")
 
     def _apply_configuration(self):
         # set camera stream parameters

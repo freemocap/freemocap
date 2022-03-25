@@ -2,9 +2,11 @@ import logging
 import platform
 import time
 import traceback
+from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
+import numpy as np
 from pydantic import BaseModel
 
 from src.cameras.capture.frame_payload import FramePayload
@@ -23,9 +25,13 @@ class WebcamConfig(BaseModel):
     resolution_width: int = 800
     resolution_height: int = 600
     save_video: bool = True
-    fourcc: str = "MP4V"
-    # fourcc: str = "MJPG"
+    # fourcc: str = "MP4V"
+    fourcc: str = "MJPG"
     base_save_video_dir = _get_home_dir()
+
+
+class OpenCVCameraError(Exception):
+    pass
 
 
 class OpenCVCamera:
@@ -76,7 +82,7 @@ class OpenCVCamera:
         self._opencv_video_capture_object = cv2.VideoCapture(
             self._config.webcam_id, cap_backend
         )
-        # self._apply_configuration()
+        self._apply_configuration()
         success, image = self._opencv_video_capture_object.read()
 
         if not success:
@@ -89,6 +95,7 @@ class OpenCVCamera:
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
         fps_input_stream = int(self._opencv_video_capture_object.get(5))
         logger.debug("FPS of webcam hardware/input stream: {}".format(fps_input_stream))
+
         return success
 
     def start_frame_capture(self):
@@ -108,15 +115,24 @@ class OpenCVCamera:
             webcam_id=self.webcam_id_as_str,
             get_next_frame=self.get_next_frame,
             save_video=self._config.save_video,
-            frame_width=self.get_frame_width(),
-            frame_height=self.get_frame_height(),
+            frame_width=self.image_width,
+            frame_height=self.image_height,
         )
 
-    def get_frame_width(self):
-        return int(self._opencv_video_capture_object.get(3))
+    @property
+    def image_width(self):
+        try:
+            return int(self._opencv_video_capture_object.get(3))
+        except OpenCVCameraError:
+            raise OpenCVCameraError("failed to return `image_width` property from OpenCVCamera")
 
-    def get_frame_height(self):
-        return int(self._opencv_video_capture_object.get(4))
+
+    @property
+    def image_height(self):
+        try:
+            return int(self._opencv_video_capture_object.get(4))
+        except OpenCVCameraError:
+            raise OpenCVCameraError("failed to return `image_height` property from OpenCVCamera")
 
     def _apply_configuration(self):
         # set camera stream parameters
@@ -129,6 +145,7 @@ class OpenCVCamera:
         self._opencv_video_capture_object.set(
             cv2.CAP_PROP_FRAME_HEIGHT, self._config.resolution_height
         )
+
         self._opencv_video_capture_object.set(
             cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*self._config.fourcc)
         )

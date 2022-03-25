@@ -31,21 +31,6 @@ class WebcamConfig(BaseModel):
     base_save_video_dir = _get_home_dir()
 
 
-@dataclass
-class CameraCalibrationData:
-    image_width: int
-    image_height: int
-    lens_distortion_calibration_data: LensDistortionCalibrationData = None
-    camera_translation_relative_to_camera0: np.ndarray = np.zeros((3, 1))
-    camera_rotation_relative_to_camera0: np.ndarray = np.zeros((3, 1))
-
-    def __init__(self, image_width, image_height):
-        self.image_width = image_width
-        self.image_height = image_height
-        self.lens_distortion_calibration_data = LensDistortionCalibrationData(self.image_width,
-                                                                              self.image_height)
-
-
 class OpenCVCamera:
     """
     Performant implementation of video capture against webcams

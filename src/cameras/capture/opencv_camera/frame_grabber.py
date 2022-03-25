@@ -73,7 +73,6 @@ class FrameThread(threading.Thread):
             while self._is_capturing_frames:
                 frame = self._get_next_frame()
                 self._frame = frame
-                self._frame = FramePayload(success, image, timestamp, webcam_id)
                 if save_video:
                     video_writer.write(self._frame)
                 self._num_frames_processed += 1

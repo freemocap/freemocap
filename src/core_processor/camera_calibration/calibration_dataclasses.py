@@ -4,6 +4,21 @@ import numpy as np
 
 
 @dataclass
+class CameraCalibrationData:
+    image_width: int
+    image_height: int
+    lens_distortion_calibration_data: LensDistortionCalibrationData = None
+    camera_translation_relative_to_camera0: np.ndarray = np.zeros((3, 1))
+    camera_rotation_relative_to_camera0: np.ndarray = np.zeros((3, 1))
+
+    def __init__(self, image_width, image_height):
+        self.image_width = image_width
+        self.image_height = image_height
+        self.lens_distortion_calibration_data = LensDistortionCalibrationData(self.image_width,
+                                                                              self.image_height)
+
+
+@dataclass
 class LensDistortionCalibrationData:
     image_width: int
     image_height: int
@@ -24,4 +39,3 @@ class LensDistortionCalibrationData:
 
         if self.lens_distortion_coefficients is None:
             self.lens_distortion_coefficients = np.zeros((self.number_of_lens_distortion_coefficients, 1))
-

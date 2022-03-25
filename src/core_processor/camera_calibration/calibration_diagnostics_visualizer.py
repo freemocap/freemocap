@@ -7,7 +7,7 @@ from pyqtgraph.Qt import QtWidgets
 
 import cv2
 
-from src.core_processor.camera_calibration.calibration_data_classes import LensDistortionCalibrationData
+from src.core_processor.camera_calibration.calibration_dataclasses import LensDistortionCalibrationData
 
 
 class CalibrationDiagnosticsVisualizer:

@@ -5,7 +5,7 @@ import numpy as np
 from rich import print
 
 from src.cameras.capture.frame_payload import FramePayload
-from src.core_processor.camera_calibration.calibration_data_classes import LensDistortionCalibrationData
+from src.core_processor.camera_calibration.calibration_dataclasses import LensDistortionCalibrationData
 from src.core_processor.camera_calibration.charuco_board_detection.board_detector import BoardDetector
 from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import charuco_board_object
 from src.core_processor.camera_calibration.calibration_diagnostics_visualizer import CalibrationDiagnosticsVisualizer
@@ -109,6 +109,7 @@ class LensDistortionCalibrator:
                  cv2.CALIB_ZERO_TANGENT_DIST +
                  cv2.cv2.CALIB_FIX_ASPECT_RATIO +
                  cv2.CALIB_FIX_PRINCIPAL_POINT +
+                 # cv2.CALIB_FIX_FOCAL_LENGTH
                  cv2.CALIB_RATIONAL_MODEL
                  # cv2.CALIB_THIN_PRISM_MODEL
                  # cv2.CALIB_TILTED_MODEL
@@ -261,8 +262,8 @@ class LensDistortionCalibrator:
                                                   this_calibration.camera_matrix,
                                                   this_calibration.lens_distortion_coefficients)
 
-        distorted_points_x = np.squeeze(distorted_points_xy[:, :, 0])
-        distorted_points_y = np.squeeze(distorted_points_xy[:, :, 1])
+        distorted_points_x = np.squeeze(distorted_points_xy[:, :, 0])*this_calibration.image_width+this_calibration.image_width/2
+        distorted_points_y = np.squeeze(distorted_points_xy[:, :, 1])*this_calibration.image_height+this_calibration.image_height/2
 
         if self.show_calibration_diagnostics_visualizer:
             self.calibration_diagnostics_visualizer.update_image_point_remapping_subplot(original_points_x,

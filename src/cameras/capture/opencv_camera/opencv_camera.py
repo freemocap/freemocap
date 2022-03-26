@@ -2,48 +2,30 @@ import logging
 import platform
 import time
 import traceback
-from dataclasses import dataclass
-from pathlib import Path
 
 import cv2
-import numpy as np
-from pydantic import BaseModel
 
-from src.cameras.capture.frame_payload import FramePayload
-from src.cameras.capture.opencv_camera.frame_grabber import FrameThread
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.config.webcam_config import WebcamConfig
+from src.cameras.capture.opencv_camera.camera_stream_thread_handler import CameraStreamThreadHandler
 
 logger = logging.getLogger(__name__)
-
-
-def _get_home_dir():
-    return str(Path.home())
-
-
-class WebcamConfig(BaseModel):
-    webcam_id: int = 0
-    exposure: int = -6
-    resolution_width: int = 800
-    resolution_height: int = 600
-    save_video: bool = True
-    # fourcc: str = "MP4V"
-    fourcc: str = "MJPG"
-    base_save_video_dir = _get_home_dir()
-
-
-class OpenCVCameraError(Exception):
-    pass
 
 
 class OpenCVCamera:
     """
     Performant implementation of video capture against webcams
     """
-
-    def __init__(self, config: WebcamConfig):
+    def __init__(self, config: WebcamConfig, session_id:str = None):
+        self._session_id = session_id
         self._config = config
-        self._name = f"Camera {self._config.webcam_id}"
+        self._name = f"Camera_ {self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
-        self._running_thread: FrameThread = None
+        self._running_thread: CameraStreamThreadHandler = None
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def webcam_id_as_str(self):
@@ -111,8 +93,9 @@ class OpenCVCamera:
         self._running_thread.start()
 
     def _create_thread(self):
-        return FrameThread(
-            webcam_id=self.webcam_id_as_str,
+        return CameraStreamThreadHandler(
+            session_id=self._session_id,
+            camera_name=self._name,
             get_next_frame=self.get_next_frame,
             save_video=self._config.save_video,
             frame_width=self.image_width,
@@ -123,16 +106,16 @@ class OpenCVCamera:
     def image_width(self):
         try:
             return int(self._opencv_video_capture_object.get(3))
-        except OpenCVCameraError:
-            raise OpenCVCameraError("failed to return `image_width` property from OpenCVCamera")
+        except Exception as e:
+            raise e
 
 
     @property
     def image_height(self):
         try:
             return int(self._opencv_video_capture_object.get(4))
-        except OpenCVCameraError:
-            raise OpenCVCameraError("failed to return `image_height` property from OpenCVCamera")
+        except Exception as e:
+            raise e
 
     def _apply_configuration(self):
         # set camera stream parameters

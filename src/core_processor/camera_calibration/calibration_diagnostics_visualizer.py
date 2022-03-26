@@ -119,7 +119,7 @@ class CalibrationDiagnosticsVisualizer:
 
     def _display_main_window(self):
         # display window
-        self.main_window_widget.show()
+        self.main_window_widget.show_window()
 
     def update_image_subplot(self, new_image):
         self.image_view_widget.setImage(

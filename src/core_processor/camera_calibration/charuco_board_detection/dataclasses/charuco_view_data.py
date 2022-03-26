@@ -2,9 +2,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.cameras.capture.frame_payload import FramePayload
-
-
 @dataclass
 class CharucoViewData:
     charuco_corners: np.ndarray = None
@@ -18,8 +15,3 @@ class CharucoViewData:
     image_height: int = None
 
 
-@dataclass
-class CharucoFramePayload:
-    raw_frame_payload: FramePayload = FramePayload()
-    annotated_image: np.ndarray = None
-    charuco_view_data: CharucoViewData = CharucoViewData()

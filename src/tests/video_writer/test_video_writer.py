@@ -6,7 +6,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from src.cameras.capture.frame_payload import FramePayload
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_writer import SaveOptions, VideoWriter
 
 

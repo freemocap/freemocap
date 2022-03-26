@@ -4,7 +4,7 @@ from typing import Dict
 import cv2
 
 
-@dataclass()
+@dataclass
 class CharucoBoard:
     _aruco_marker_dict: Dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
     _number_of_squares_width: int = 7

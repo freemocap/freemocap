@@ -24,7 +24,8 @@ class CamAndWriterResponse(BaseModel):
 
 
 class OpenCVCameraManager:
-    def __init__(self):
+    def __init__(self, session_id = str):
+        self._session_id = session_id
         self._config_service = UserConfigService()
         self._detected_cams_data = get_or_create_cams()
         global _open_cv_cameras
@@ -56,7 +57,7 @@ class OpenCVCameraManager:
         open_cv_cameras: List[OpenCVCamera] = []
         for this_raw_cam in raw_camera_objects:
             single_camera_config = self._config_service.webcam_config_by_id(this_raw_cam.webcam_id)
-            this_opencv_camera = OpenCVCamera(config=single_camera_config)
+            this_opencv_camera = OpenCVCamera(config=single_camera_config, session_id=self._session_id)
             open_cv_cameras.append(this_opencv_camera)
         return open_cv_cameras
 
@@ -81,6 +82,7 @@ class OpenCVCameraManager:
     def start_capture_session_all_cams(
         self,
     ) -> ContextManager[List[CamAndWriterResponse]]:
+
         try:
             writer_dict = self._start_frame_capture_all_cams()
             responses = [

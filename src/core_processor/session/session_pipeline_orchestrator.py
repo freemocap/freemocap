@@ -67,7 +67,7 @@ class SessionPipelineOrchestrator:
     def run(
             self,
             show_camera_views_in_windows=True,
-            show_camera_views_in_gui=False,
+            show_camera_views_in_gui=True,
             calibrate_cameras = True,
             save_video=True,
     ):
@@ -113,7 +113,7 @@ class SessionPipelineOrchestrator:
                             )
 
                         if show_camera_views_in_gui:
-                            self._visualizer_gui.update_camera_view(this_webcam_id_as_str, image_to_display)
+                            self._visualizer_gui.update_camera_view_image(this_webcam_id_as_str, image_to_display)
             except:
                 logger.error("Printing traceback")
                 traceback.print_exc()

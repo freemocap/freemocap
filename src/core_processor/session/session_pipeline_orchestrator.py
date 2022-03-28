@@ -4,6 +4,7 @@ import traceback
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.cameras.persistence.video_writer.save_options import SaveOptions
@@ -14,17 +15,18 @@ from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
 
 logger = logging.getLogger(__name__)
 
+
 def get_canonical_time_str():
     return time.strftime("%m-%d-%Y-%H_%M_%S")
 
+
 class SessionPipelineOrchestrator:
     def __init__(self):
-        self._session_start_time = time.time()
-        self._session_id = 'session_'+time.strftime("%m-%d-%Y-%H_%M_%S")
+        self._session_start_time = time.time_ns()
+        self._session_id = 'session_' + time.strftime("%m-%d-%Y-%H_%M_%S")
         self._visualizer_gui = QTVisualizerAndGui()
         self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id)
         self._camera_calibrator = CameraCalibrator()
-
 
     async def process_by_cam_id(self, webcam_id: str, cb):
         with self._open_cv_camera_manager.start_capture_session_single_cam(
@@ -67,8 +69,8 @@ class SessionPipelineOrchestrator:
     def run(
             self,
             show_camera_views_in_windows=True,
-            show_camera_views_in_gui=True,
-            calibrate_cameras = True,
+            show_visualizer_gui=True,
+            calibrate_cameras=True,
             save_video=True,
     ):
         """
@@ -86,13 +88,24 @@ class SessionPipelineOrchestrator:
             try:
                 should_continue = True
                 while should_continue:
+                    each_camera_timestamp_on_this_frame_dict = {}
                     for this_response in cam_and_writer_response_list:
 
                         this_open_cv_camera = this_response.cv_cam
                         this_video_writer_object = this_response.writer
 
+                        if self._visualizer_gui.pause_button_pressed:
+                            continue
+
+                        new_frame = this_open_cv_camera.new_frame
+                        if not new_frame:
+                            continue
+
                         this_webcam_id_as_str = this_open_cv_camera.webcam_id_as_str
                         this_cam_latest_frame = this_open_cv_camera.latest_frame
+
+                        each_camera_timestamp_on_this_frame_dict[
+                            this_webcam_id_as_str] = this_cam_latest_frame.timestamp
 
                         if this_cam_latest_frame.image is None:
                             continue
@@ -112,8 +125,21 @@ class SessionPipelineOrchestrator:
                                 this_webcam_id_as_str, image_to_display, fps_manager
                             )
 
-                        if show_camera_views_in_gui:
+                        if show_visualizer_gui:
                             self._visualizer_gui.update_camera_view_image(this_webcam_id_as_str, image_to_display)
+                            self._visualizer_gui.update_timestamp_plot(this_webcam_id_as_str,
+                                                                       this_cam_latest_frame.timestamp - self._session_start_time)
+                    if show_visualizer_gui and new_frame:
+                        cam0_timestamp = np.nan
+                        try:
+                            cam0_timestamp = each_camera_timestamp_on_this_frame_dict['0']
+                        except:
+                            logger.debug('no timestamp logged for camera 0')
+
+                        for this_cam_id, this_cam_timestamp in each_camera_timestamp_on_this_frame_dict.items():
+                            self._visualizer_gui.update_timestamp_difference_plot(this_cam_id,
+                                                                                  this_cam_timestamp - cam0_timestamp - self._session_start_time)
+
             except:
                 logger.error("Printing traceback")
                 traceback.print_exc()
@@ -137,8 +163,6 @@ class SessionPipelineOrchestrator:
                     cv2.waitKey(1)
 
                 self._visualizer_gui.close()
-
-
 
 
 if __name__ == "__main__":

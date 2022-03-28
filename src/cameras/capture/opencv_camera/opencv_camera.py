@@ -22,6 +22,14 @@ class OpenCVCamera:
         self._name = f"Camera_ {self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
         self._running_thread: CameraStreamThreadHandler = None
+        self._new_frame = False
+
+    @property
+    def new_frame(self):
+        """
+        can be called to determine if the frame returned from  `self.latest_frame` is new or if it has been called before
+        """
+        return self._new_frame
 
     @property
     def name(self):
@@ -49,6 +57,7 @@ class OpenCVCamera:
 
     @property
     def latest_frame(self):
+        self._new_frame = False
         return self._running_thread.latest_frame
 
     @property
@@ -135,7 +144,7 @@ class OpenCVCamera:
 
     def get_next_frame(self):
         timestamp_ns_pre_grab = time.time_ns()
-        # Why grab not read? see ->
+        # Why `grab()` not `read()`? see ->
         # https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and
         # -grab
         if not self._opencv_video_capture_object.grab():
@@ -145,6 +154,7 @@ class OpenCVCamera:
         timestamp_ns = (timestamp_ns_pre_grab + timestamp_ns_post_grab) / 2
 
         success, image = self._opencv_video_capture_object.retrieve()
+        self._new_frame = success
         return FramePayload(success, image, timestamp_ns)
 
     def stop_frame_capture(self):

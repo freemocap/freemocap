@@ -3,6 +3,7 @@ import traceback
 from contextlib import contextmanager
 from typing import ContextManager, Dict, List
 
+import numpy as np
 from pydantic import BaseModel
 
 from src.api.services.user_config import UserConfigService
@@ -24,7 +25,7 @@ class CamAndWriterResponse(BaseModel):
 
 
 class OpenCVCameraManager:
-    def __init__(self, session_id = str):
+    def __init__(self, session_id=str):
         self._session_id = session_id
         self._config_service = UserConfigService()
         self._detected_cams_data = get_or_create_cams()
@@ -34,17 +35,43 @@ class OpenCVCameraManager:
             # we create the _cv_cams /once/, and reuse it for the lifetime of the session
             _open_cv_cameras = self._create_opencv_cameras(calibrate_cameras=True)
             self._open_cv_camera_objects = _open_cv_cameras
+            # self._timestamp_logger = TimestampLogger(self.available_webcam_ids, self.camera0_id)
+            self._number_of_cameras = len(self._open_cv_camera_objects)
         else:
             logger.info("Reusing already created resources cam resources.")
             self._open_cv_camera_objects = _open_cv_cameras
+
+    @property
+    def number_of_cameras(self):
+        return self._number_of_cameras
 
     @property
     def available_webcam_ids(self):
         return [cv_cam.webcam_id_as_str for cv_cam in self._open_cv_camera_objects]
 
     @property
+    def camera0_id(self):
+        """ ID of the first camera found. This camera will be used as the reference point for time sync and camera position and rotation"""
+        return self.available_webcam_ids[0]
+
+    @property
     def open_cv_cameras(self):
         return self._open_cv_camera_objects
+
+    def new_synchronized_frame_available(self):
+        new_frame_bool_list = [cam.new_frame for cam in self._open_cv_camera_objects]
+        if all(new_frame_bool_list):
+            return True
+        return False
+
+    def latest_synchronized_frame(self):
+        synchronized_frame_dict = {}
+        for this_cam in self._open_cv_camera_objects:
+            if not this_cam.new_frame:
+                logger.error(f'New frame not available for camera {this_cam.webcam_id_as_str}')
+                synchronized_frame_dict[this_cam.webcam_id_as_str] = None
+            synchronized_frame_dict[this_cam.webcam_id_as_str] = this_cam.latest_frame
+        return synchronized_frame_dict
 
     def cv_cam_by_id(self, webcam_id: str):
         for cam in self._open_cv_camera_objects:
@@ -63,7 +90,7 @@ class OpenCVCameraManager:
 
     @contextmanager
     def start_capture_session_single_cam(
-        self, webcam_id: str = None
+            self, webcam_id: str = None
     ) -> ContextManager[CamAndWriterResponse]:
         """
         Context manager for easy start up, usage, and cleanup of camera resources.
@@ -80,16 +107,16 @@ class OpenCVCameraManager:
 
     @contextmanager
     def start_capture_session_all_cams(
-        self,
-    ) -> ContextManager[List[CamAndWriterResponse]]:
+            self,
+    ) -> ContextManager[Dict[str, CamAndWriterResponse]]:
 
         try:
+            available_cam_and_writer_dict = {}
             writer_dict = self._start_frame_capture_all_cams()
-            responses = [
-                CamAndWriterResponse(cv_cam=self.cv_cam_by_id(webcam_id), writer=writer)
-                for webcam_id, writer in writer_dict.items()
-            ]
-            yield responses
+            for webcam_id, writer in writer_dict.items():
+                available_cam_and_writer_dict[webcam_id] = CamAndWriterResponse(cv_cam=self.cv_cam_by_id(webcam_id),
+                                                                                writer=writer)
+            yield available_cam_and_writer_dict
             self._stop_frame_capture_all_cams()
         except:
             logger.error("Printing traceback from starting capture session by cam")
@@ -99,8 +126,11 @@ class OpenCVCameraManager:
         d = {}
         for cv_cam in self._open_cv_camera_objects:
             cv_cam.connect()
-            cv_cam.start_frame_capture()
             d[cv_cam.webcam_id_as_str] = VideoWriter()
+
+        # wait until all cameras are connected before starting frame capture
+        for cv_cam in self._open_cv_camera_objects:
+            cv_cam.start_frame_capture()
 
         return d
 
@@ -109,7 +139,7 @@ class OpenCVCameraManager:
             filter(lambda c: c.webcam_id_as_str == str(webcam_id), self._open_cv_camera_objects)
         )
         assert (
-            len(filtered_cams) == 1
+                len(filtered_cams) == 1
         ), "The CV Cams list should only have 1 cam per webcam_id"
         cv_cam = filtered_cams[0]
         cv_cam.connect()

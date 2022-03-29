@@ -46,7 +46,7 @@ class OpenCVCamera:
     @property
     def is_capturing_frames(self):
         if not self._running_thread:
-            logger.error("Frame Capture thread not running yet")
+            logger.info("Frame Capture thread not running yet")
             return False
 
         return self._running_thread.is_capturing_frames

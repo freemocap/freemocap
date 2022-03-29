@@ -10,6 +10,7 @@ from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.cameras.persistence.video_writer.save_options import SaveOptions
 from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrator
 from src.core_processor.fps.fps_counter import FPSCamCounter
+from src.core_processor.mediapipe_skeleton_detection.mediapipe_skeleton_detection import MediaPipeSkeletonDetection
 from src.core_processor.show_cam_window import show_cam_window
 from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
 
@@ -27,6 +28,7 @@ class SessionPipelineOrchestrator:
         self._visualizer_gui = QTVisualizerAndGui()
         self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id)
         self._camera_calibrator = CameraCalibrator()
+        self._mediapipe_skeleton_detector = MediaPipeSkeletonDetection(model_complexity=0)
 
     async def process_by_cam_id(self, webcam_id: str, cb):
         with self._open_cv_camera_manager.start_capture_session_single_cam(
@@ -71,6 +73,7 @@ class SessionPipelineOrchestrator:
             show_camera_views_in_windows=True,
             show_visualizer_gui=True,
             calibrate_cameras=True,
+            detect_skeleton=True,
             save_video=True,
     ):
         """
@@ -78,75 +81,66 @@ class SessionPipelineOrchestrator:
         If return images is true, the images are returned to the caller
         """
 
-        with self._open_cv_camera_manager.start_capture_session_all_cams() as cam_and_writer_response_list:
-
-            self._visualizer_gui.setup_and_launch(cam_and_writer_response_list)
-
-            fps_manager = FPSCamCounter(self._open_cv_camera_manager.available_webcam_ids)
-            fps_manager.start_all()
+        with self._open_cv_camera_manager.start_capture_session_all_cams() as available_cam_and_writer_dict:
 
             try:
+                fps_manager = FPSCamCounter(self._open_cv_camera_manager.available_webcam_ids)
+                fps_manager.start_all()
+
+                self._visualizer_gui.setup_and_launch(self._open_cv_camera_manager.available_webcam_ids)
+
                 should_continue = True
                 while should_continue:
-                    each_camera_timestamp_on_this_frame_dict = {}
-                    for this_response in cam_and_writer_response_list:
 
-                        this_open_cv_camera = this_response.cv_cam
-                        this_video_writer_object = this_response.writer
+                    if not self._open_cv_camera_manager.new_synchronized_frame_available():
+                        continue
+                    this_frame_timestamps_dict = {}
+                    incoming_synchronized_frame_dict = self._open_cv_camera_manager.latest_synchronized_frame()
 
-                        if self._visualizer_gui.pause_button_pressed:
-                            continue
+                    for this_webcam_id, this_cam_and_writer in available_cam_and_writer_dict.items():
 
-                        new_frame = this_open_cv_camera.new_frame
-                        if not new_frame:
-                            continue
+                        this_open_cv_camera = this_cam_and_writer.cv_cam
+                        this_video_writer_object = this_cam_and_writer.writer
 
-                        this_webcam_id_as_str = this_open_cv_camera.webcam_id_as_str
-                        this_cam_latest_frame = this_open_cv_camera.latest_frame
+                        this_cam_latest_frame = incoming_synchronized_frame_dict[this_webcam_id]
 
-                        each_camera_timestamp_on_this_frame_dict[
-                            this_webcam_id_as_str] = this_cam_latest_frame.timestamp
-
-                        if this_cam_latest_frame.image is None:
-                            continue
-
-                        image_to_display = this_cam_latest_frame.image
+                        if this_cam_latest_frame is None:
+                            image_to_display = this_open_cv_camera.latest_frame
+                            this_frame_timestamps_dict[this_webcam_id] = np.nan
+                        else:
+                            this_frame_timestamps_dict[
+                                this_webcam_id] = (this_cam_latest_frame.timestamp - self._session_start_time)/1e6 #milliseconds, I think
+                            image_to_display = this_cam_latest_frame.image
 
                         if save_video:
+                            print('sending frame to be written')
                             this_video_writer_object.write(this_cam_latest_frame)
 
                         if calibrate_cameras:
                             undistorted_annotated_image = self._camera_calibrator.calibrate(this_open_cv_camera)
                             image_to_display = undistorted_annotated_image
 
-                        fps_manager.increment_frame_processed_for(this_webcam_id_as_str)
+                        if detect_skeleton:
+                            image_to_display = self._mediapipe_skeleton_detector.detect_skeleton_in_image(image_to_display)
+
+                        fps_manager.increment_frame_processed_for(this_webcam_id)
                         if show_camera_views_in_windows:
                             should_continue = show_cam_window(
-                                this_webcam_id_as_str, image_to_display, fps_manager
+                                this_webcam_id, image_to_display, fps_manager
                             )
 
                         if show_visualizer_gui:
-                            self._visualizer_gui.update_camera_view_image(this_webcam_id_as_str, image_to_display)
-                            self._visualizer_gui.update_timestamp_plot(this_webcam_id_as_str,
-                                                                       this_cam_latest_frame.timestamp - self._session_start_time)
-                    if show_visualizer_gui and new_frame:
-                        cam0_timestamp = np.nan
-                        try:
-                            cam0_timestamp = each_camera_timestamp_on_this_frame_dict['0']
-                        except:
-                            logger.debug('no timestamp logged for camera 0')
-
-                        for this_cam_id, this_cam_timestamp in each_camera_timestamp_on_this_frame_dict.items():
-                            self._visualizer_gui.update_timestamp_difference_plot(this_cam_id,
-                                                                                  this_cam_timestamp - cam0_timestamp - self._session_start_time)
+                            self._visualizer_gui.update_camera_view_image(this_webcam_id, image_to_display)
+                            if len(this_frame_timestamps_dict.keys()) == self._open_cv_camera_manager.number_of_cameras:
+                                self._visualizer_gui.update_timestamp_plots(this_frame_timestamps_dict)
 
             except:
                 logger.error("Printing traceback")
                 traceback.print_exc()
             finally:
-                for this_response in cam_and_writer_response_list:
-                    this_open_cv_camera = this_response.cv_cam
-                    # this_video_writer_object = this_response.writer
+                for this_webcam_id, this_cam_and_writer in available_cam_and_writer_dict.items():
+                    this_open_cv_camera = this_cam_and_writer.cv_cam
+                    # this_video_writer_object = this_cam_and_writer.writer
                     # options = SaveOptions(
                     #     path_to_save_video=Path().joinpath(
                     #         this_open_cv_camera.session_writer_base_path,
@@ -169,4 +163,4 @@ if __name__ == "__main__":
     print('start main')
 
     this_session = SessionPipelineOrchestrator()
-    this_session.run(calibrate_cameras=False)
+    this_session.run(calibrate_cameras=True)

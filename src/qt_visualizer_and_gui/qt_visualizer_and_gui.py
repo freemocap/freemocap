@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 class QTVisualizerAndGui:
     def __init__(self):
         # https://pyqtgraph.readthedocs.io/en/latest/config_options.html
+        self._camera0_id = '0'
         pg.setConfigOptions(imageAxisOrder='row-major')
         self.pyqtgraph_app = pg.mkQApp("FreeMoCap! :O ")
 
@@ -46,6 +47,7 @@ class QTVisualizerAndGui:
         self._setup_timestamp_plot()
         self._setup_time_difference_from_cam0_line_plot()
         self._setup_time_difference_from_cam0_histogram_plot()
+        self._setup_3d_viewport()
         logger.info('launching QT Visualizer and GUI window')
         self._main_window_widget.show()
 
@@ -65,7 +67,7 @@ class QTVisualizerAndGui:
             return
 
         try:
-            camera_0_timestamp = dict_of_timestamps['0']
+            camera_0_timestamp = dict_of_timestamps[self._camera0_id]
         except:
             logger.info('no timestamp for camera0')
             camera_0_timestamp = np.nan
@@ -73,7 +75,8 @@ class QTVisualizerAndGui:
         for webcam_id in self._webcam_ids_list:
             try:
                 this_cameras_timestamp = dict_of_timestamps[webcam_id]
-                time_diff_from_cam0 = this_cameras_timestamp - camera_0_timestamp
+                time_diff_from_cam0 = np.abs(
+                    this_cameras_timestamp - camera_0_timestamp)  # <- this is the actual calculation of timestamp diff
 
                 self._dict_of_cam_timestamps[webcam_id] = np.append(self._dict_of_cam_timestamps[webcam_id],
                                                                     this_cameras_timestamp)
@@ -95,7 +98,6 @@ class QTVisualizerAndGui:
             plot_item.setData(timestamps_array)
 
     def _update_timestamp_difference_plot(self):
-        camera_0_id = '0'
 
         for webcam_id in self._dict_of_cam_timestamps.keys():
             self._dict_of_timestamp_difference_line_plots[webcam_id].setData(
@@ -103,8 +105,13 @@ class QTVisualizerAndGui:
 
     def _update_timestamp_difference_histogram(self):
         for webcam_id in self._webcam_ids_list:
+            if webcam_id == self._camera0_id:
+                continue
+
+            num_samples = self._dict_of_cam_timestamp_differences[webcam_id].shape[0]
             counts, bin_edges = np.histogram(self._dict_of_cam_timestamp_differences[webcam_id],
-                                             bins=np.linspace(-50, 50, 100))
+                                             bins=np.linspace(0, 100, 100))
+            counts = counts / num_samples
             try:
                 self._dict_of_timestamp_difference_histograms[webcam_id].setData(
                     x=bin_edges,
@@ -142,6 +149,16 @@ class QTVisualizerAndGui:
         self._play_button.setEnabled(False)
         self._play_button.clicked.connect(self._play)
         control_panel_layout_widget.addWidget(self._play_button, row=2, col=0)
+
+        self._reset_calibration_button = QtWidgets.QPushButton('Reset Calibration')
+        self._reset_calibration_button.setEnabled(False)
+        self._reset_calibration_button.clicked.connect(self._reset_calibration)
+        control_panel_layout_widget.addWidget(self._reset_calibration_button, row=3, col=0)
+
+        self._record_button = QtWidgets.QPushButton('Record')
+        self._record_button.setEnabled(False)
+        self._record_button.clicked.connect(self._record)
+        control_panel_layout_widget.addWidget(self._record_button, row=3, col=0)
 
         self._main_dock_area.addDock(self._control_panel_dock, position='left')
 
@@ -183,7 +200,8 @@ class QTVisualizerAndGui:
     def _setup_time_difference_from_cam0_line_plot(self):
         # create widget/dock for reprojection error subplot
         timestamp_difference_plot_widget = pg.PlotWidget(title="Timestamp difference from Camera0 on each frame")
-        timestamp_difference_plot_widget.setLabel('left', "this_camera timestamp - cam0 timestamp", units='seconds')
+        timestamp_difference_plot_widget.setLabel('left', "np.abs(this_camera timestamp - cam0 timestamp)",
+                                                  units='milliseconds')
         timestamp_difference_plot_widget.setLabel('bottom', "Frame#", units='Frame')
         timestamp_difference_plot_widget.addLegend()
 
@@ -211,7 +229,7 @@ class QTVisualizerAndGui:
                                                                                        np.empty(0),
                                                                                        stepMode="center",
                                                                                        fillLevel=0,
-                                                                                       fillOutline=True,
+                                                                                       fillOutline=False,
                                                                                        brush=pg.mkBrush(color=(
                                                                                            this_cam_num,
                                                                                            self._number_of_cameras),
@@ -220,9 +238,9 @@ class QTVisualizerAndGui:
 
             self._dict_of_timestamp_difference_histograms[this_webcam_id] = this_histogram_plot_item
 
-        timestamp_plot_dock = Dock("Camera Timestamp Difference histogram")
-        timestamp_plot_dock.addWidget(timestamp_difference_histogram_plot_widget)
-        self._main_dock_area.addDock(timestamp_plot_dock, 'right', self._timestamp_difference_plot_dock)
+        self._timestamp_diff_histgoram_dock = Dock("Camera Timestamp Difference histogram")
+        self._timestamp_diff_histgoram_dock .addWidget(timestamp_difference_histogram_plot_widget)
+        self._main_dock_area.addDock(self._timestamp_diff_histgoram_dock, 'right', self._timestamp_difference_plot_dock)
 
     def _pause(self):
         self._is_paused = True
@@ -234,3 +252,42 @@ class QTVisualizerAndGui:
         self._is_paused = False
         self._play_button.setEnabled(False)
         self._pause_button.setEnabled(True)
+
+    def _reset_calibration(self):
+        pass
+
+    def _record(self):
+        pass
+
+    def _setup_3d_viewport(self):
+        self.opengl_3d_plot_widget = pg.opengl.GLViewWidget()
+        self.opengl_grid_item = pg.opengl.GLGridItem()
+        self.opengl_3d_plot_widget.addItem(self.opengl_grid_item)
+
+        # create XYZ axes
+        x_axis_line_array = np.array([[0, 0, 0], [1, 0, 0]])
+        y_axis_line_array = np.array([[0, 0, 0], [0, 1, 0]])
+        z_axis_line_array = np.array([[0, 0, 0], [0, 0, 1]])
+
+        self.origin_x_axis_gl_lineplot_item = pg.opengl.GLLinePlotItem(pos=x_axis_line_array,
+                                                                       color=(1, 0, 0, 1),
+                                                                       width=1.,
+                                                                       antialias=True)
+        self.origin_y_axis_gl_lineplot_item = pg.opengl.GLLinePlotItem(pos=y_axis_line_array,
+                                                                       color=(0, 1, 0, 1),
+                                                                       width=1.,
+                                                                       antialias=True)
+        self.origin_z_axis_gl_lineplot_item = pg.opengl.GLLinePlotItem(pos=z_axis_line_array,
+                                                                       color=(0, 0, 1, 1),
+                                                                       width=1.,
+                                                                       antialias=True)
+        self.opengl_3d_plot_widget.addItem(self.origin_x_axis_gl_lineplot_item)
+        self.opengl_3d_plot_widget.addItem(self.origin_y_axis_gl_lineplot_item)
+        self.opengl_3d_plot_widget.addItem(self.origin_z_axis_gl_lineplot_item)
+
+        self.opengl_charuco_scatter_item = pg.opengl.GLScatterPlotItem(pos=(0, 0, 0), color=(1, 0, 1), size=1,
+                                                                       pxMode=False)
+
+        self.opengl_3d_plot_dock = Dock("3d View Port")
+        self.opengl_3d_plot_dock.addWidget(self.opengl_3d_plot_widget)
+        self._main_dock_area.addDock(self.opengl_3d_plot_dock, 'right', self._timestamp_diff_histgoram_dock )

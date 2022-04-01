@@ -6,8 +6,9 @@ import traceback
 import cv2
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.webcam_config import WebcamConfig
-from src.cameras.capture.opencv_camera.camera_stream_thread_handler import CameraStreamThreadHandler
+from src.cameras.capture.opencv_camera.camera_stream_thread_handler import VideoCaptureThreadHandler
 
 logger = logging.getLogger(__name__)
 
@@ -16,20 +17,24 @@ class OpenCVCamera:
     """
     Performant implementation of video capture against webcams
     """
-    def __init__(self, config: WebcamConfig, session_id:str = None):
-        self._session_id = session_id
+    def __init__(self, config: WebcamConfig, session_id: str = None):
         self._config = config
         self._name = f"Camera_ {self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
-        self._running_thread: CameraStreamThreadHandler = None
-        self._new_frame = False
+        self._video_recorder: VideoRecorder = None
+        self._running_thread: VideoCaptureThreadHandler = None
+        self._is_there_a_new_frame = False
 
     @property
-    def new_frame(self):
+    def is_there_a_new_frame(self):
         """
         can be called to determine if the frame returned from  `self.latest_frame` is new or if it has been called before
         """
-        return self._new_frame
+        return self._is_there_a_new_frame
+
+    @property
+    def video_recorder(self):
+        return self._video_recorder
 
     @property
     def name(self):
@@ -41,28 +46,23 @@ class OpenCVCamera:
 
     @property
     def current_fps(self):
-        return self._running_thread.current_fps
+        return self._running_thread.average_fps
 
     @property
     def is_capturing_frames(self):
         if not self._running_thread:
             logger.info("Frame Capture thread not running yet")
             return False
-
         return self._running_thread.is_capturing_frames
 
     @property
     def current_fps_short(self) -> str:
-        return "{:.2f}".format(self._running_thread.current_fps)
+        return "{:.2f}".format(self._running_thread.average_fps)
 
     @property
     def latest_frame(self):
-        self._new_frame = False
+        self._is_there_a_new_frame = False
         return self._running_thread.latest_frame
-
-    @property
-    def session_writer_base_path(self):
-        return self._running_thread.session_writer_path
 
     def connect(self):
         if platform.system() == "Windows":
@@ -83,13 +83,24 @@ class OpenCVCamera:
                 )
             )
             return success
+
+        try:
+            image_height = image.shape[0]
+            image_width = image.shape[1]
+            self._video_recorder = VideoRecorder(self._name,
+                                                 image_width=image_width,
+                                                 image_height=image_height)
+        except:
+            logger.error(f"could not create video recorder for image with shape (image_width={image_width}, image_height={image_height}) ")
+            return False
+
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
         fps_input_stream = int(self._opencv_video_capture_object.get(5))
         logger.debug("FPS of webcam hardware/input stream: {}".format(fps_input_stream))
 
         return success
 
-    def start_frame_capture(self):
+    def start_frame_capture_thread(self):
         if self.is_capturing_frames:
             logger.debug(
                 f"Already capturing frames for webcam_id: {self.webcam_id_as_str}"
@@ -102,13 +113,8 @@ class OpenCVCamera:
         self._running_thread.start()
 
     def _create_thread(self):
-        return CameraStreamThreadHandler(
-            session_id=self._session_id,
-            camera_name=self._name,
+        return VideoCaptureThreadHandler(
             get_next_frame=self.get_next_frame,
-            save_video=self._config.save_video,
-            frame_width=self.image_width,
-            frame_height=self.image_height,
         )
 
     @property
@@ -154,7 +160,7 @@ class OpenCVCamera:
         timestamp_ns = (timestamp_ns_pre_grab + timestamp_ns_post_grab) / 2
 
         success, image = self._opencv_video_capture_object.retrieve()
-        self._new_frame = success
+        self._is_there_a_new_frame = success
         return FramePayload(success, image, timestamp_ns)
 
     def stop_frame_capture(self):

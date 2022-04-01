@@ -7,7 +7,8 @@ import cv2
 import numpy as np
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
-from src.cameras.persistence.video_writer.save_options import SaveOptions
+from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
+from src.config.data_paths import freemocap_data_path
 from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrator
 from src.core_processor.fps.fps_counter import FPSCamCounter
 from src.core_processor.mediapipe_skeleton_detection.mediapipe_skeleton_detection import MediaPipeSkeletonDetection
@@ -30,14 +31,18 @@ class SessionPipelineOrchestrator:
         self._camera_calibrator = CameraCalibrator()
         self._mediapipe_skeleton_detector = MediaPipeSkeletonDetection(model_complexity=0)
 
+    @property
+    def session_folder_path(self):
+        return freemocap_data_path / self._session_id
+
     async def process_by_cam_id(self, webcam_id: str, cb):
         with self._open_cv_camera_manager.start_capture_session_single_cam(
                 webcam_id=webcam_id,
         ) as session_obj:
             fps_manager = FPSCamCounter(self._open_cv_camera_manager.available_webcam_ids)
             fps_manager.start_all()
-            cv_cam = session_obj.cv_cam
-            writer = session_obj.writer
+            cv_cam = session_obj.cv_camera
+            writer = session_obj.video_recorder
             try:
                 while True:
                     if not cv_cam.is_capturing_frames:
@@ -48,14 +53,14 @@ class SessionPipelineOrchestrator:
                         charuco_frame_payload = self._camera_calibrator.calibrate(cv_cam)
 
                     if cb and charuco_frame_payload.annotated_image is not None:
-                        writer.write(charuco_frame_payload.raw_frame_payload)
+                        writer.record(charuco_frame_payload.raw_frame_payload)
                         await cb(charuco_frame_payload.annotated_image)
             except Exception as e:
                 logger.error("Printing traceback")
                 traceback.print_exc()
                 raise e
             finally:
-                writer = session_obj.writer
+                writer = session_obj.video_recorder
                 options = SaveOptions(
                     writer_dir=Path().joinpath(
                         cv_cam.session_writer_base_path,
@@ -66,7 +71,7 @@ class SessionPipelineOrchestrator:
                     frame_width=cv_cam.image_width(),
                     frame_height=cv_cam.image_height(),
                 )
-                writer.save(options)
+                writer.save_to_disk(options)
 
     def run(
             self,
@@ -81,7 +86,7 @@ class SessionPipelineOrchestrator:
         If return images is true, the images are returned to the caller
         """
 
-        with self._open_cv_camera_manager.start_capture_session_all_cams() as available_cam_and_writer_dict:
+        with self._open_cv_camera_manager.start_capture_session_all_cams() as connected_cameras_dict:
 
             try:
                 fps_manager = FPSCamCounter(self._open_cv_camera_manager.available_webcam_ids)
@@ -97,24 +102,21 @@ class SessionPipelineOrchestrator:
                     this_frame_timestamps_dict = {}
                     incoming_synchronized_frame_dict = self._open_cv_camera_manager.latest_synchronized_frame()
 
-                    for this_webcam_id, this_cam_and_writer in available_cam_and_writer_dict.items():
+                    for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():
 
-                        this_open_cv_camera = this_cam_and_writer.cv_cam
-                        this_video_writer_object = this_cam_and_writer.writer
+                        this_cam_latest_sync_frame = incoming_synchronized_frame_dict[this_webcam_id]
 
-                        this_cam_latest_frame = incoming_synchronized_frame_dict[this_webcam_id]
-
-                        if this_cam_latest_frame is None:
-                            image_to_display = this_open_cv_camera.latest_frame
-                            this_frame_timestamps_dict[this_webcam_id] = np.nan
+                        if this_cam_latest_sync_frame is None:
+                            image_to_display = this_open_cv_camera.latest_frame #if this camera has no new frame, write the previous one instead
+                            this_frame_timestamps_dict[this_webcam_id] = np.nan # a `nan` timestamp denotes a dropped frame
                         else:
                             this_frame_timestamps_dict[
-                                this_webcam_id] = (this_cam_latest_frame.timestamp - self._session_start_time)/1e6 #milliseconds, I think
-                            image_to_display = this_cam_latest_frame.image
+                                this_webcam_id] = (this_cam_latest_sync_frame.timestamp - self._session_start_time)/1e6 #milliseconds, I think
+                            image_to_display = this_cam_latest_sync_frame.image
 
                         if save_video:
-                            print('sending frame to be written')
-                            this_video_writer_object.write(this_cam_latest_frame)
+                            # print('sending frame to be written')
+                            this_open_cv_camera.video_recorder.record(this_cam_latest_sync_frame)
 
                         if calibrate_cameras:
                             undistorted_annotated_image = self._camera_calibrator.calibrate(this_open_cv_camera)
@@ -138,20 +140,9 @@ class SessionPipelineOrchestrator:
                 logger.error("Printing traceback")
                 traceback.print_exc()
             finally:
-                for this_webcam_id, this_cam_and_writer in available_cam_and_writer_dict.items():
-                    this_open_cv_camera = this_cam_and_writer.cv_cam
-                    # this_video_writer_object = this_cam_and_writer.writer
-                    # options = SaveOptions(
-                    #     path_to_save_video=Path().joinpath(
-                    #         this_open_cv_camera.session_writer_base_path,
-                    #         "charuco_board_detection",
-                    #         f"webcam_{this_open_cv_camera.webcam_id_as_str}",
-                    #     ),
-                    #     fps=fps_manager.current_fps_for(this_open_cv_camera.webcam_id_as_str),
-                    #     frame_width=this_open_cv_camera.image_width,
-                    #     frame_height=this_open_cv_camera.image_height,
-                    # )
-                    # this_video_writer_object.save(options)
+                for this_open_cv_camera in connected_cameras_dict.values():
+                    if save_video:
+                        this_open_cv_camera.video_recorder.save_to_disk(self.session_folder_path / 'synchronized_videos')
                     logger.info(f"Destroy window {this_open_cv_camera.webcam_id_as_str}")
                     cv2.destroyWindow(this_open_cv_camera.webcam_id_as_str)
                     cv2.waitKey(1)

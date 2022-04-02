@@ -1,6 +1,8 @@
 import time
 from typing import Dict, List
 
+import numpy as np
+
 
 class FPSCounter:
     _num_frames_processed: int
@@ -9,25 +11,22 @@ class FPSCounter:
     def __init__(self):
         self._start_time = 0
         self._num_frames_processed = 0
+        self._timestamps = np.empty(0)
 
     def is_started(self):
-        return self._start_time > 0
-
-    def start(self):
-        self._start_time = time.time()
+        return self._num_frames_processed > 0
 
     @property
-    def current_fps(self):
-        if self.elapsed() <= 0:
+    def median_frames_per_second(self):
+        if self._num_frames_processed <= 10:
             return 0
-        if self._num_frames_processed <= 0:
-            return 0
-        return self._num_frames_processed / self.elapsed()
+        return np.nanmedian(np.diff(self._timestamps)/1e9)**-1
 
     def elapsed(self):
         return time.time() - self._start_time
 
-    def increment_frame_processed(self):
+    def increment_frame_processed(self, timestamp):
+        self._timestamps = np.append(self._timestamps, timestamp)
         self._num_frames_processed += 1
 
 
@@ -40,21 +39,12 @@ class FPSCamCounter:
         d = {}
         for webcam_id in webcam_ids:
             d[webcam_id] = FPSCounter()
-
         return d
 
-    def increment_frame_processed_for(self, webcam_id):
-        self._counters[webcam_id].increment_frame_processed()
+    def increment_frame_processed_for(self, webcam_id, timestamp):
+        self._counters[webcam_id].increment_frame_processed(timestamp)
 
-    def current_fps_for(self, webcam_id):
-        return self._counters[webcam_id].current_fps
+    def median_frames_per_second(self, webcam_id):
+        return self._counters[webcam_id].median_frames_per_second
 
-    def start_all(self):
-        for webcam_id in self._webcam_ids:
-            self.start_for(webcam_id)
 
-    def start_for(self, webcam_id):
-        if self._counters[webcam_id].is_started():
-            return
-
-        self._counters[webcam_id].start()

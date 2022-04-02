@@ -8,7 +8,7 @@ from src.cameras.capture.dataclasses.frame_payload import FramePayload
 logger = logging.getLogger(__name__)
 
 
-class VideoCaptureThreadHandler(threading.Thread):
+class VideoCaptureThread(threading.Thread):
     def __init__(
             self,
             get_next_frame,
@@ -45,12 +45,12 @@ class VideoCaptureThreadHandler(threading.Thread):
 
     def _start_frame_loop(self, save_video=False):
         self._is_capturing_frames = True
-        start = time.time()
+        start = time.perf_counter_ns()
         try:
             while self._is_capturing_frames:
-                frame = self._get_next_frame()
+                self._frame = self._get_next_frame()
                 self._num_frames_processed += 1
-                self._elapsed = time.time() - start
+                self._elapsed = time.perf_counter_ns() - start
         except:
             logger.error("Frame loop thread exited due to error")
             traceback.print_exc()

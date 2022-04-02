@@ -8,7 +8,7 @@ import cv2
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.webcam_config import WebcamConfig
-from src.cameras.capture.opencv_camera.camera_stream_thread_handler import VideoCaptureThreadHandler
+from src.cameras.capture.opencv_camera.camera_stream_thread_handler import VideoCaptureThread
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +19,14 @@ class OpenCVCamera:
     """
     def __init__(self, config: WebcamConfig, session_id: str = None):
         self._config = config
-        self._name = f"Camera_ {self._config.webcam_id}"
+        self._name = f"Camera_{self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
         self._video_recorder: VideoRecorder = None
-        self._running_thread: VideoCaptureThreadHandler = None
+        self._running_thread: VideoCaptureThread = None
         self._is_there_a_new_frame = False
 
     @property
-    def is_there_a_new_frame(self):
+    def new_frame_ready(self):
         """
         can be called to determine if the frame returned from  `self.latest_frame` is new or if it has been called before
         """
@@ -113,7 +113,7 @@ class OpenCVCamera:
         self._running_thread.start()
 
     def _create_thread(self):
-        return VideoCaptureThreadHandler(
+        return VideoCaptureThread(
             get_next_frame=self.get_next_frame,
         )
 
@@ -149,17 +149,17 @@ class OpenCVCamera:
         )
 
     def get_next_frame(self):
-        timestamp_ns_pre_grab = time.time_ns()
+
         # Why `grab()` not `read()`? see ->
         # https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and
         # -grab
+
         if not self._opencv_video_capture_object.grab():
             return FramePayload(False, None, None)
 
-        timestamp_ns_post_grab = time.time_ns()
-        timestamp_ns = (timestamp_ns_pre_grab + timestamp_ns_post_grab) / 2
-
+        timestamp_ns = time.perf_counter_ns()
         success, image = self._opencv_video_capture_object.retrieve()
+
         self._is_there_a_new_frame = success
         return FramePayload(success, image, timestamp_ns)
 

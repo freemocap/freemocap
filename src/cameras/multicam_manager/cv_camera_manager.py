@@ -58,8 +58,9 @@ class OpenCVCameraManager:
     def open_cv_cameras(self):
         return self._open_cv_camera_objects
 
+    @property
     def new_synchronized_frame_available(self):
-        new_frame_bool_list = [cam.is_there_a_new_frame for cam in self._open_cv_camera_objects]
+        new_frame_bool_list = [cam.new_frame_ready for cam in self._open_cv_camera_objects]
         if all(new_frame_bool_list):
             return True
         return False
@@ -67,9 +68,11 @@ class OpenCVCameraManager:
     def latest_synchronized_frame(self):
         synchronized_frame_dict = {}
         for this_cam in self._open_cv_camera_objects:
-            if not this_cam.is_there_a_new_frame:
+
+            if not self.new_synchronized_frame_available:
                 logger.error(f'New frame not available for camera {this_cam.webcam_id_as_str}')
                 synchronized_frame_dict[this_cam.webcam_id_as_str] = None
+
             synchronized_frame_dict[this_cam.webcam_id_as_str] = this_cam.latest_frame
         return synchronized_frame_dict
 

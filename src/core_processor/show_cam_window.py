@@ -17,7 +17,7 @@ def show_cam_window(webcam_id: str, image: np.array, fps_counter_cls: FPSCamCoun
 
     write_fps_to_image(
         image,
-        fps_counter_cls.current_fps_for(webcam_id),
+        fps_counter_cls.median_frames_per_second(webcam_id),
     )
     cv2.imshow(webcam_id, image)
     return True

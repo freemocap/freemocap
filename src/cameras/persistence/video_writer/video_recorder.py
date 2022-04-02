@@ -29,7 +29,7 @@ class VideoRecorder:
         self._frames: List[FramePayload] = []
         self._path_to_save_video = None
         self._video_type_str = ''
-        self._timestamps_npy = np.array(0)
+        self._timestamps_npy = np.empty(0)
 
     @property
     def frame_count(self):
@@ -39,6 +39,10 @@ class VideoRecorder:
         self._frames.append(frame_payload)
 
     def save_to_disk(self, path_to_save_video: Path, video_type_str: str = 'raw'):
+        if len(self._frames) == 0:
+            logging.error(f"No frames to save for camera: {self._camera_name}")
+            return
+
         self._video_type_str = video_type_str
         self._path_to_save_video = path_to_save_video
         self._path_to_save_video.mkdir(parents=True, exist_ok=True)
@@ -51,8 +55,8 @@ class VideoRecorder:
         video_full_path = self._path_to_save_video / video_file_name
 
         cv2_writer = cv2.VideoWriter(
-            video_full_path,
-            cv2.VideoWriter_fourcc(self._fourcc),
+            str(video_full_path),
+            cv2.VideoWriter_fourcc(*self._fourcc),
             self._median_framerate,
             (self._image_width, self._image_height))
 
@@ -69,15 +73,18 @@ class VideoRecorder:
             cv2_writer.release()
 
     def _gather_timestamps(self):
-        for frame in self._frames:
-            self._timestamps_npy = np.append(self._timestamps_npy, frame.timestamp)
-        self._median_framerate = np.median(np.diff(self._timestamps_npy))
+        try:
+            for frame in self._frames:
+                self._timestamps_npy = np.append(self._timestamps_npy, frame.timestamp)
+            self._median_framerate = (np.nanmedian(np.diff(self._timestamps_npy / 1e9))) ** -1
+        except:
+            logger.error("Error gathering timestamps")
 
     def _save_timestamps(self):
-        timestamp_file_name_npy = self._camera_name + "_timestamps_ns.npy"
+        timestamp_file_name_npy = self._camera_name + "_timestamps.npy"
         np.save(str(self._path_to_save_video / timestamp_file_name_npy), self._timestamps_npy)
         logger.info(f"Saved timestamps to path: {timestamp_file_name_npy}")
 
-        timestamp_file_name_csv = self._camera_name + "_timestamps_ns.csv"
-        pd.DataFrame(self._timestamps_npy).to_csv(str(self._path_to_save_video / timestamp_file_name_csv))
+        timestamp_file_name_csv = self._camera_name + "_timestamps.csv"
+        self._timestamps_npy.tofile(str(self._path_to_save_video / timestamp_file_name_csv), sep=',\n')
         logger.info(f"Saved timestamps to path: {timestamp_file_name_csv}")

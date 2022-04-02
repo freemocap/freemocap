@@ -159,4 +159,4 @@ if __name__ == "__main__":
     this_session.run(save_video=True,
                      show_visualizer_gui=True,
                      calibrate_cameras=False,
-                     detect_skeleton=False)
+                     detect_skeleton=True)

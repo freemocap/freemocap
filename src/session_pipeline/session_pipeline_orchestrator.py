@@ -1,24 +1,20 @@
 import time
-START_TIME_UNIX_NS = time.time()
-
 import logging
 import traceback
 from pathlib import Path
 
 import cv2
-import numpy as np
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
 from src.config.data_paths import freemocap_data_path
 from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrator
-from src.core_processor.fps.fps_counter import FPSCamCounter
+from src.core_processor.fps.timestamp_manager import TimestampManager
 from src.core_processor.mediapipe_skeleton_detection.mediapipe_skeleton_detection import MediaPipeSkeletonDetection
 from src.core_processor.show_cam_window import show_cam_window
 from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
 
 logger = logging.getLogger(__name__)
-
 
 def get_canonical_time_str():
     return time.strftime("%m-%d-%Y-%H_%M_%S")
@@ -26,12 +22,12 @@ def get_canonical_time_str():
 
 class SessionPipelineOrchestrator:
     def __init__(self):
-        self._session_start_time_unix_ns = START_TIME_UNIX_NS
+        self._session_start_time_unix_ns = time.time_ns()
         self._session_id = 'session_' + time.strftime("%m-%d-%Y-%H_%M_%S")
         self._visualizer_gui = QTVisualizerAndGui()
         self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id)
         self._camera_calibrator = CameraCalibrator()
-        self._mediapipe_skeleton_detector = MediaPipeSkeletonDetection(model_complexity=0)
+        self._mediapipe_skeleton_detector = MediaPipeSkeletonDetection(model_complexity=2)
 
     @property
     def session_folder_path(self):
@@ -41,7 +37,7 @@ class SessionPipelineOrchestrator:
         with self._open_cv_camera_manager.start_capture_session_single_cam(
                 webcam_id=webcam_id,
         ) as session_obj:
-            fps_manager = FPSCamCounter(self._open_cv_camera_manager.available_webcam_ids)
+            fps_manager = TimestampManager(self._open_cv_camera_manager.available_webcam_ids)
             fps_manager.start_all()
             cv_cam = session_obj.cv_camera
             writer = session_obj.video_recorder
@@ -92,11 +88,10 @@ class SessionPipelineOrchestrator:
                 if show_visualizer_gui:
                     self._visualizer_gui.setup_and_launch(self._open_cv_camera_manager.available_webcam_ids)
 
-                fps_manager = FPSCamCounter(self._open_cv_camera_manager.available_webcam_ids)
+                timestamp_manager = TimestampManager(self._open_cv_camera_manager.available_webcam_ids)
 
                 should_continue = True
                 while should_continue:
-                    this_frame_timestamps_dict = dict.fromkeys(self._open_cv_camera_manager.available_webcam_ids)
 
                     for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():
 
@@ -106,13 +101,13 @@ class SessionPipelineOrchestrator:
                         this_cam_latest_frame = this_open_cv_camera.latest_frame
 
                         if this_cam_latest_frame is None:
-                            image_to_display = this_open_cv_camera.latest_frame  # if this camera has no new frame, write the previous one instead
-                            this_frame_timestamps_dict[this_webcam_id] = np.nan # frame drop?
-                        else:
-                            this_frame_timestamps_dict[this_webcam_id] = this_cam_latest_frame.timestamp
-                            image_to_display = this_cam_latest_frame.image
+                            continue
 
-                        fps_manager.increment_frame_processed_for(this_webcam_id,this_frame_timestamps_dict[this_webcam_id])
+                        image_to_display = this_cam_latest_frame.image
+                        this_cam_this_frame_timestamp = this_cam_latest_frame.timestamp
+
+                        timestamp_manager.increment_frame_processed_for(this_webcam_id,
+                                                                        this_cam_this_frame_timestamp)
 
                         if save_video:
                             this_open_cv_camera.video_recorder.record(this_cam_latest_frame)
@@ -127,12 +122,12 @@ class SessionPipelineOrchestrator:
 
                         if show_camera_views_in_windows:
                             should_continue = show_cam_window(
-                                this_webcam_id, image_to_display, fps_manager
+                                this_webcam_id, image_to_display, timestamp_manager
                             )
 
                         if show_visualizer_gui:
                             self._visualizer_gui.update_camera_view_image(this_webcam_id, image_to_display)
-                            # self._visualizer_gui.update_timestamp_plots(this_frame_timestamps_dict)
+                            # self._visualizer_gui.update_timestamp_plots(timestamp_manager)
 
             except:
                 logger.error("Printing traceback")
@@ -150,13 +145,11 @@ class SessionPipelineOrchestrator:
                     self._visualizer_gui.close()
 
 
-
-
 if __name__ == "__main__":
     print('start main')
 
     this_session = SessionPipelineOrchestrator()
-    this_session.run(save_video=True,
+    this_session.run(save_video=False,
                      show_visualizer_gui=True,
                      calibrate_cameras=False,
                      detect_skeleton=True)

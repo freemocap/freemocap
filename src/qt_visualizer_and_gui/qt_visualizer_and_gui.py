@@ -5,6 +5,7 @@ from typing import Dict
 import cv2
 import numpy as np
 import pyqtgraph as pg
+import pyqtgraph.opengl as gl
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
 from pyqtgraph.Qt import QtWidgets
@@ -239,8 +240,8 @@ class QTVisualizerAndGui:
         pass
 
     def _setup_3d_viewport(self):
-        self.opengl_3d_plot_widget = pg.opengl.GLViewWidget()
-        self.opengl_grid_item = pg.opengl.GLGridItem()
+        self.opengl_3d_plot_widget = gl.GLViewWidget()
+        self.opengl_grid_item = gl.GLGridItem()
         self.opengl_3d_plot_widget.addItem(self.opengl_grid_item)
 
         # create XYZ axes
@@ -264,7 +265,7 @@ class QTVisualizerAndGui:
         self.opengl_3d_plot_widget.addItem(self.origin_y_axis_gl_lineplot_item)
         self.opengl_3d_plot_widget.addItem(self.origin_z_axis_gl_lineplot_item)
 
-        self.opengl_charuco_scatter_item = pg.opengl.GLScatterPlotItem(pos=(0, 0, 0), color=(1, 0, 1), size=1,
+        self.opengl_charuco_scatter_item = gl.GLScatterPlotItem(pos=(0, 0, 0), color=(1, 0, 1), size=1,
                                                                        pxMode=False)
 
         self.opengl_3d_plot_dock = Dock("3d View Port")

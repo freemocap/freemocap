@@ -15,7 +15,7 @@ from src.core_processor.camera_calibration.charuco_board_detection.charuco_image
 logger = logging.getLogger(__name__)
 
 
-class BoardDetector:
+class CharucoBoardDetector:
     def __init__(self):
         charuco_board_object = CharucoBoard()
         self.charuco_board = charuco_board_object.charuco_board

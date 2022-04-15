@@ -9,6 +9,8 @@ from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
 from pyqtgraph.Qt import QtWidgets
 
+from src.core_processor.fps.timestamp_manager import TimestampManager
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,54 +64,31 @@ class QTVisualizerAndGui:
             raise e
         camera_image_item_widget.setImage(cv2.cvtColor(image_to_display, cv2.COLOR_BGR2RGB))
 
-    def update_timestamp_plots(self, dict_of_timestamps):
+    def update_timestamp_plots(self, timestamp_manager: TimestampManager):
         if self.pause_button_pressed:
             return
+        if timestamp_manager.get_timestamps_from_camera(self._camera0_id).number_of_frames <= 0:
+            return
 
-        try:
-            camera_0_timestamp = dict_of_timestamps[self._camera0_id]
-        except:
-            logger.info('no timestamp for camera0')
-            camera_0_timestamp = np.nan
+        self._update_simple_timestamp_plot(timestamp_manager)
+        self._update_timestamp_difference_plot(timestamp_manager)
+        self._update_timestamp_difference_histogram(timestamp_manager)
 
+    def _update_simple_timestamp_plot(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
-            try:
-                this_cameras_timestamp = dict_of_timestamps[webcam_id]
-                time_diff_from_cam0 = np.abs(
-                    this_cameras_timestamp - camera_0_timestamp)  # <- this is the actual calculation of timestamp diff
-
-                self._dict_of_cam_timestamps[webcam_id] = np.append(self._dict_of_cam_timestamps[webcam_id],
-                                                                    this_cameras_timestamp)
-                self._dict_of_cam_timestamp_differences[webcam_id] = np.append(
-                    self._dict_of_cam_timestamp_differences[webcam_id],
-                    time_diff_from_cam0)
-
-            except Exception as e:
-                logger.warning(f'Could not find timestamp dictionary for camera {webcam_id}')
-                raise e
-
-        self._update_simple_timestamp_plot()
-        self._update_timestamp_difference_plot()
-        self._update_timestamp_difference_histogram()
-
-    def _update_simple_timestamp_plot(self):
-        for webcam_id, timestamps_array in self._dict_of_cam_timestamps.items():
             plot_item = self._dict_of_simple_timestamp_line_plots[webcam_id]
-            plot_item.setData(timestamps_array)
+            plot_item.setData(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps)
 
-    def _update_timestamp_difference_plot(self):
-
-        for webcam_id in self._dict_of_cam_timestamps.keys():
-            self._dict_of_timestamp_difference_line_plots[webcam_id].setData(
-                self._dict_of_cam_timestamp_differences[webcam_id])
-
-    def _update_timestamp_difference_histogram(self):
+    def _update_timestamp_difference_plot(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
-            if webcam_id == self._camera0_id:
-                continue
+            plot_item = self._dict_of_simple_timestamp_line_plots[webcam_id]
+            plot_item.setData(np.diff(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps))
 
-            num_samples = self._dict_of_cam_timestamp_differences[webcam_id].shape[0]
-            counts, bin_edges = np.histogram(self._dict_of_cam_timestamp_differences[webcam_id],
+    def _update_timestamp_difference_histogram(self, timestamp_manager: TimestampManager):
+        for webcam_id in self._webcam_ids_list:
+            this_cam_timestamp_diffs = np.diff(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps)
+            num_samples = this_cam_timestamp_diffs.shape[0]
+            counts, bin_edges = np.histogram(this_cam_timestamp_diffs,
                                              bins=np.linspace(0, 100, 100))
             counts = counts / num_samples
             try:

@@ -23,14 +23,14 @@ class OpenCVCamera:
         self._opencv_video_capture_object: cv2.VideoCapture = None
         self._video_recorder: VideoRecorder = None
         self._running_thread: VideoCaptureThread = None
-        self._is_there_a_new_frame = False
+        self._new_frame_ready = False
 
     @property
     def new_frame_ready(self):
         """
         can be called to determine if the frame returned from  `self.latest_frame` is new or if it has been called before
         """
-        return self._is_there_a_new_frame
+        return self._new_frame_ready
 
     @property
     def video_recorder(self):
@@ -61,7 +61,7 @@ class OpenCVCamera:
 
     @property
     def latest_frame(self):
-        self._is_there_a_new_frame = False
+        self._new_frame_ready = False
         return self._running_thread.latest_frame
 
     def connect(self):
@@ -157,10 +157,10 @@ class OpenCVCamera:
         if not self._opencv_video_capture_object.grab():
             return FramePayload(False, None, None)
 
-        timestamp_ns = time.perf_counter_ns()
+        timestamp_ns = time.time_ns()
         success, image = self._opencv_video_capture_object.retrieve()
 
-        self._is_there_a_new_frame = success
+        self._new_frame_ready = success
         return FramePayload(success, image, timestamp_ns)
 
     def stop_frame_capture(self):

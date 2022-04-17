@@ -1,7 +1,13 @@
 import bpy
+import addon_utils
 import numpy as np
 from pathlib import Path
 import sys
+
+#######################################################################
+##% Activate necessary addons
+addon_utils.enable("io_import_images_as_planes")
+addon_utils.enable("rigify")
 
 #######################################################################
 ##% Session path

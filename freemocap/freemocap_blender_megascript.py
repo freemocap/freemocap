@@ -12,6 +12,7 @@ session_path = argv[0]
 print(str(session_path))
 session_path = Path(session_path)
 path_to_mediapipe_npy = session_path / 'DataArrays' / 'mediaPipeSkel_3d_smoothed.npy'
+path_to_mediapipe_3d_reproj = session_path / 'DataArrays' / 'mediaPipeSkel_reprojErr.npy'
 
 
 #######################################################################
@@ -21,6 +22,9 @@ print('loading data')
 # %%
 mediapipe_skel_fr_mar_dim = np.load(path_to_mediapipe_npy)
 mediapipe_skel_fr_mar_dim = mediapipe_skel_fr_mar_dim/1000 #convert to meters
+
+mediapipe_reproj_fr_mar = np.load(path_to_mediapipe_3d_reproj)
+mediapipe_reproj_fr_mar = mediapipe_reproj_fr_mar/1000 #convert to meters
 
 body_marker_range = np.arange(0,33)
 right_hand_marker_range = np.arange(33, 33+21)
@@ -43,12 +47,20 @@ bpy.context.scene.frame_end = end_frame
 
 
 ########################
-## Find Good Clean Frame
+## Find Good Clean Frame with some fiddly nonsense
 frame_nan_counts = []
+frame_mean_reproj_error = []
+
 for this_frame in range(mediapipe_skel_fr_mar_dim.shape[0]):
     frame_nan_counts.append(np.sum(np.isnan(mediapipe_skel_fr_mar_dim[this_frame,:,0])))
+    frame_mean_reproj_error.append(np.nanmean(mediapipe_reproj_fr_mar[this_frame,:]))
 
-good_clean_frame_number = np.argmin(frame_nan_counts) # the frame with the fewest nans (i.e. hopefully a frame where all tracked points are visible)
+nan_times_vis = np.array(frame_nan_counts)*np.array(frame_mean_reproj_error)
+num_frames  = len(frame_nan_counts)
+nan_times_vis[0:int(num_frames/5)] = np.nanmax(nan_times_vis)
+nan_times_vis[-int(num_frames/5):-1] = np.nanmax(nan_times_vis)
+
+good_clean_frame_number = np.nanargmin(nan_times_vis) # the frame with the fewest nans (i.e. hopefully a frame where all tracked points are visible)
 
 #######################################################################
 #%% Mediapipe tracked point names
@@ -1161,12 +1173,12 @@ try:
 except:
     pass
 
-stick_figure_mesh = bpy.data.meshes.new('stick_figure_mesh')
 
 vertices = mediapipe_skel_fr_mar_dim[current_frame,:,:]
+
 #edges defined above
 faces = []
-
+stick_figure_mesh = bpy.data.meshes.new('stick_figure_mesh')
 stick_figure_mesh.from_pydata(vertices, edges, faces)
 stick_figure_mesh.update()
 # make object from mesh
@@ -1186,7 +1198,6 @@ bpy.data.objects['stick_figure_mesh'].modifiers.new('stick_figure_mesh_skin', 'S
 print('resizing mesh')
 skin_radius = .025
 bpy.ops.transform.skin_resize(value=(skin_radius, skin_radius, skin_radius))
-
 
 ########
 # # parent mesh to armature
@@ -1209,7 +1220,7 @@ try:
 
     number_of_videos = len(list(vidFolderPath.glob('*.mp4')))
 
-    vid_location_scale = 3
+    vid_location_scale = 1
 
 
     for vid_number, thisVidPath, in enumerate(vidFolderPath.glob('*.mp4')):

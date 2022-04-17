@@ -57,8 +57,8 @@ for this_frame in range(mediapipe_skel_fr_mar_dim.shape[0]):
 
 nan_times_vis = np.array(frame_nan_counts)*np.array(frame_mean_reproj_error)
 num_frames  = len(frame_nan_counts)
-nan_times_vis[0:int(num_frames/5)] = np.nanmax(nan_times_vis)
-nan_times_vis[-int(num_frames/5):-1] = np.nanmax(nan_times_vis)
+# nan_times_vis[0:int(num_frames/5)] = np.nanmax(nan_times_vis)
+# nan_times_vis[-int(num_frames/5):-1] = np.nanmax(nan_times_vis)
 
 good_clean_frame_number = np.nanargmin(nan_times_vis) # the frame with the fewest nans (i.e. hopefully a frame where all tracked points are visible)
 

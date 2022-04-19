@@ -5,7 +5,7 @@ import cv2
 
 from src.cameras.detection.models import FoundCamerasResponse, RawCamera
 
-CAM_CHECK_NUM = 5
+CAM_CHECK_NUM = 20
 
 logger = logging.getLogger(__name__)
 
@@ -23,15 +23,15 @@ class DetectPossibleCameras:
                 try:
                     cams_to_use_list.append(
                         RawCamera(
-                            webcam_id=cam_id,
+                            webcam_id=str(cam_id)
                         )
                     )
                 finally:
                     cap.release()
 
         return FoundCamerasResponse(
-            camera_found_count=len(cams_to_use_list),
-            cams_to_use=cams_to_use_list,
+            number_of_cameras_found=len(cams_to_use_list),
+            cameras_found_list=cams_to_use_list,
             cv2_backend=cv2_backend,
         )
 

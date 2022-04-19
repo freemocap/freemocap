@@ -8,6 +8,6 @@ class RawCamera(BaseModel):
 
 
 class FoundCamerasResponse(BaseModel):
-    camera_found_count: int
-    cams_to_use: List[RawCamera]
+    number_of_cameras_found: int
+    cameras_found_list: List[RawCamera]
     cv2_backend: int

@@ -3,6 +3,7 @@ import addon_utils
 import numpy as np
 from pathlib import Path
 import sys
+import traceback
 
 #######################################################################
 ##% Activate necessary addons
@@ -67,6 +68,8 @@ num_frames  = len(frame_nan_counts)
 # nan_times_vis[-int(num_frames/5):-1] = np.nanmax(nan_times_vis)
 
 good_clean_frame_number = np.nanargmin(nan_times_vis) # the frame with the fewest nans (i.e. hopefully a frame where all tracked points are visible)
+
+print(f"----good_clean_frame_number: {good_clean_frame_number}----")
 
 #######################################################################
 #%% Mediapipe tracked point names
@@ -1169,7 +1172,7 @@ for this_bone_dict in stick_figure_mesh_edge_pairs_dict_of_dicts.items():
         print(f'edge FAILED for for bone:{this_bone_dict[0]} : {head_name}-{tail_name}')
         pass
     
-
+print('edges created!')
 
 
 ##############################
@@ -1179,7 +1182,7 @@ try:
 except:
     pass
 
-
+print('loading verticies')
 vertices = mediapipe_skel_fr_mar_dim[current_frame,:,:]
 
 #edges defined above
@@ -1196,7 +1199,12 @@ bpy.context.scene.collection.children.link(mesh_collection)
 mesh_collection.objects.link(stick_figure_mesh_object)
 
 bpy.context.view_layer.objects.active = bpy.data.objects['stick_figure_mesh']
-bpy.ops.object.mode_set(mode='EDIT')
+
+try:
+    bpy.ops.object.mode_set(mode='EDIT')
+except:
+    pass
+
 
 #### skin that mesh!
 print('skinning mesh \o/')

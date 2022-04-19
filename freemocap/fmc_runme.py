@@ -320,21 +320,15 @@ def RunMe(sessionID=None,
                                         command_str,
                                         shell=False,
                                         stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE,)
+                                        stderr=subprocess.PIPE
+                                        )
                 while True:
                     output = blender_process.stdout.readline()
-                    err = blender_process.stderr.readline()
                     if blender_process.poll() is not None:
                         break
                     if output:
-                        try:
-                            print(output.strip().decode())
-                        except:
-                            pass
-                        try:
-                            print(err.strip().decode())
-                        except:
-                            pass
+                        print(output.strip().decode())
+
 
         except:
             console.print_exception()

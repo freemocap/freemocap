@@ -1,5 +1,4 @@
 
-from scipy.ndimage.measurements import center_of_mass
 from freemocap.fmc_startup import startup, startupGUI
 from freemocap.webcam import camera_settings, timesync
 
@@ -12,7 +11,6 @@ from aniposelib.boards import CharucoBoard
 import numpy as np
 from scipy.signal import savgol_filter
 
-from ruamel.yaml import YAML
 import cv2
 
 #Rich stuff

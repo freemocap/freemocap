@@ -16,6 +16,11 @@ addon_utils.enable("rigify")
 argv = sys.argv
 argv = argv[argv.index("--") + 1:] 
 session_path = argv[0]
+if len(argv)>1:
+    good_clean_frame_number = int(argv[1])
+else:
+    good_clean_frame_number = 0
+    
 print(str(session_path))
 session_path = Path(session_path)
 path_to_mediapipe_npy = session_path / 'DataArrays' / 'mediaPipeSkel_3d_smoothed.npy'
@@ -55,19 +60,20 @@ bpy.context.scene.frame_end = end_frame
 
 ########################
 ## Find Good Clean Frame with some fiddly nonsense
-frame_nan_counts = []
-frame_mean_reproj_error = []
+if good_clean_frame_number == 0:
+    frame_nan_counts = []
+    frame_mean_reproj_error = []
 
-for this_frame in range(mediapipe_skel_fr_mar_dim.shape[0]):
-    frame_nan_counts.append(np.sum(np.isnan(mediapipe_skel_fr_mar_dim[this_frame,:,0])))
-    frame_mean_reproj_error.append(np.nanmean(mediapipe_reproj_fr_mar[this_frame,:]))
+    for this_frame in range(mediapipe_skel_fr_mar_dim.shape[0]):
+        frame_nan_counts.append(np.sum(np.isnan(mediapipe_skel_fr_mar_dim[this_frame,:,0])))
+        frame_mean_reproj_error.append(np.nanmean(mediapipe_reproj_fr_mar[this_frame,:]))
 
-nan_times_vis = np.array(frame_nan_counts)*np.array(frame_mean_reproj_error)
-num_frames  = len(frame_nan_counts)
-# nan_times_vis[0:int(num_frames/5)] = np.nanmax(nan_times_vis)
-# nan_times_vis[-int(num_frames/5):-1] = np.nanmax(nan_times_vis)
+    nan_times_vis = np.array(frame_nan_counts)*np.array(frame_mean_reproj_error)
+    num_frames  = len(frame_nan_counts)
+    # nan_times_vis[0:int(num_frames/5)] = np.nanmax(nan_times_vis)
+    # nan_times_vis[-int(num_frames/5):-1] = np.nanmax(nan_times_vis)
 
-good_clean_frame_number = np.nanargmin(nan_times_vis) # the frame with the fewest nans (i.e. hopefully a frame where all tracked points are visible)
+    good_clean_frame_number = np.nanargmin(nan_times_vis) # the frame with the fewest nans (i.e. hopefully a frame where all tracked points are visible)
 
 print(f"----good_clean_frame_number: {good_clean_frame_number}----")
 

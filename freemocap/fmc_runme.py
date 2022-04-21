@@ -61,6 +61,7 @@ def RunMe(sessionID=None,
         useBlender = False,
         resetBlenderExe = False,
         get_synced_unix_timestamps = True,
+        good_clean_frame_number = 0,
         ):
     """
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -312,7 +313,7 @@ def RunMe(sessionID=None,
                 path_to_this_py_file = Path(__file__).parent.resolve()
                 fmc_blender_script_path = path_to_this_py_file /'freemocap_blender_megascript.py'
  
-                command_str = str(blenderPath) + " --background" + " --python " +  str(fmc_blender_script_path) +  " -- " +  str(sesh.sessionPath)
+                command_str = str(blenderPath) + " --background" + " --python " +  str(fmc_blender_script_path) +  " -- " +  str(sesh.sessionPath) +' ' + str(good_clean_frame_number)
                 # command_str = [str(blenderPath), "--background", "--python", str(fmc_blender_script_path), "--", str(sesh.sessionPath)]
                 blender_process = subprocess.Popen(
                                         command_str,
@@ -326,6 +327,11 @@ def RunMe(sessionID=None,
                         break
                     if output:
                         print(output.strip().decode())
+                
+                if blender_process.returncode == 0:
+                    print("Blender returned an error:")
+                    print(blender_process.stderr.read().decode())
+                  
 
 
         except:

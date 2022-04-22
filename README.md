@@ -14,8 +14,8 @@ ___
   * We recommend installing Anaconda from here (https://www.anaconda.com/products/individual#Downloads) to create your Python environment.
 
 * Two or more USB webcams attached to viable USB ports 
-	*  USB hubs typically don't work
-	*  Note that two cameras is the minimum reuired for 3d reconstruction. GHowever, with just two views, many points will be occluded/not visible to both cameras. For better performance, use three or four cameras
+	*  ~~USB hubs typically don't work~~ I think they do now?
+	*  Note that two cameras is the minimum reuired for 3d reconstruction. However, with just two views, many points will be occluded/not visible to both cameras. For better performance, use three or four cameras
 * Each recording must (for now)  an unobstructed view of a  Charuco board within the first few seconds of recording (See below).
 ____
 ____
@@ -47,14 +47,25 @@ ___
 tl;dr- Activate the the freemocap Python environment and run the following lines of code (either in a script or in a console)
 
 ```python
-import freemocap as fmc
-fmc.RunMe()
+import freemocap
+freemocap.RunMe()
 ```
+
+But COOL KIDS will install Blender ([blender.org](https://blender.org) and generate an awesome `.blend` file animation by setting `useBlender=True`: 
+
+```python
+import freemocap
+freemocap.RunMe(useBlender=True)
+```
+
+
+
 
 This two-line script is a copy of the `freemocap_runme_script.py` file, which can be run by entering the following command into a command prompt or powershell: 
 ```
 (freemoocap-env)$ python freemocap_runme_script.py
 ```
+
 ## In a bit more detail- 
 
  ### 1)  In an Anaconda enabled Command Prompt, PowerShell, or Windows Terminal window 

@@ -3,6 +3,7 @@ import copy
 import json
 import pickle
 import glob 
+from pathlib import Path
 
 from aniposelib.cameras import CameraGroup
 from aniposelib.utils import load_pose2d_fnames
@@ -32,46 +33,81 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 1):
     session.dataArrayPath.mkdir(exist_ok = True)
     calibrationVideoPath = session.calVidPath
 
-    if type(calVideoFrameLength)==int or type(calVideoFrameLength)==float:
-        if calVideoFrameLength < 0: # if '-1' use the whole video
-            cal_vid_frame_range = [0, session.numFrames]
-            calibrationVideoPath = session.calVidPath
-        else:
-            if calVideoFrameLength>0 and calVideoFrameLength<=1: #if between 0 and 1, use as a percentage of the total video length
-                cal_vid_frame_range = [0, round(calVideoFrameLength * session.numFrames)]
-            else: #otherwise, just use the input value as the number of frames to use        
-                cal_vid_frame_range = [0, calVideoFrameLength]
-    elif type(calVideoFrameLength)==list:
-        if len(calVideoFrameLength) ==2:
-            cal_vid_frame_range = calVideoFrameLength
 
-    createCalibrationVideos(session, cal_vid_frame_range)
-
-
-
-    vidnames = []
-    cam_names = []
-    for count, thisVidPath in enumerate(calibrationVideoPath.glob("*.mp4"), start=1):
-        vidnames.append([str(thisVidPath)])
-        cam_names.append(str(count))
-        session.numCams = count
-
-    cgroup = fmc_anipose.CameraGroup.from_names( cam_names, fisheye=True  )  # Looking through their code... it looks lke the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)
-
-    calibrationFile = "{}_calibration.toml".format(session.sessionID)
-
-    session.cameraCalFilePath = session.sessionPath / calibrationFile
-
-    error,charuco_data, charuco_frames = cgroup.calibrate_videos(vidnames, board)
-   
-    cgroup.dump(session.cameraCalFilePath) 
-
-    camera_calibration_info_dict = cgroup.get_dicts()
-    camera_calibration_pickle_path = session.sessionPath / "{}_calibration.pickle".format(session.sessionID)
     
-    with open(str(camera_calibration_pickle_path), 'wb') as pickle_file:
-        pickle.dump(camera_calibration_info_dict, pickle_file)
+    if session.use_saved_calibration:
+        saved_calibration_folder = session.freemocap_module_path/'fmc_calibration'
+        #saved_calibration_file_name = os.listdir(saved_calibration_folder)[0]
+        #saved_calibration_file_path = os.path.join(saved_calibration_folder, saved_calibration_file_name)
+        #saved_calibration_file_path = list(Path(saved_calibration_folder).glob('*.toml'))
+        saved_calibration_file_path = saved_calibration_folder/'previous_calibration.toml'
+
+
+        cam_names = [i+1 for i in range(session.numCams)]
+        cgroup = fmc_anipose.CameraGroup.from_names( cam_names, fisheye=True)
+
+
+        cgroup = CameraGroup.load(saved_calibration_file_path)
+        charuco_nCams_nFrames_nImgPts_XY = np.load(saved_calibration_folder/'charuco_2d_points.npy')
+
+
+        session.cameraCalFilePath = session.sessionPath /"{}_calibration.toml".format(session.sessionID)
+        cgroup.dump(session.cameraCalFilePath) 
+
+        session.cgroup = cgroup 
+
+        camera_calibration_info_dict = cgroup.get_dicts()
+        camera_calibration_pickle_path = session.sessionPath / "{}_calibration.pickle".format(session.sessionID)
+
+        with open(str(camera_calibration_pickle_path), 'wb') as pickle_file:
+            pickle.dump(camera_calibration_info_dict, pickle_file)
         
+    else:
+
+        if type(calVideoFrameLength)==int or type(calVideoFrameLength)==float:
+            if calVideoFrameLength < 0: # if '-1' use the whole video
+                cal_vid_frame_range = [0, session.numFrames]
+                calibrationVideoPath = session.calVidPath
+            else:
+                if calVideoFrameLength>0 and calVideoFrameLength<=1: #if between 0 and 1, use as a percentage of the total video length
+                    cal_vid_frame_range = [0, round(calVideoFrameLength * session.numFrames)]
+                else: #otherwise, just use the input value as the number of frames to use        
+                    cal_vid_frame_range = [0, calVideoFrameLength]
+        elif type(calVideoFrameLength)==list:
+            if len(calVideoFrameLength) ==2:
+                cal_vid_frame_range = calVideoFrameLength
+
+
+        createCalibrationVideos(session, cal_vid_frame_range)
+
+        vidnames = []
+        cam_names = []
+
+        for count, thisVidPath in enumerate(calibrationVideoPath.glob("*.mp4"), start=1):
+            vidnames.append([str(thisVidPath)])
+            cam_names.append(str(count))
+            session.numCams = count
+
+        
+        cgroup = fmc_anipose.CameraGroup.from_names( cam_names, fisheye=True)  # Looking through their code... it looks lke the 'fisheye=True' doesn't do much (see 2020-03-29 obsidian note)
+
+        calibrationFile = "{}_calibration.toml".format(session.sessionID)
+
+        session.cameraCalFilePath = session.sessionPath / calibrationFile
+
+        error,charuco_data, charuco_frames = cgroup.calibrate_videos(vidnames, board)
+    
+        cgroup.dump(session.cameraCalFilePath) 
+
+        camera_calibration_info_dict = cgroup.get_dicts()
+        camera_calibration_pickle_path = session.sessionPath / "{}_calibration.pickle".format(session.sessionID)
+        
+        
+        with open(str(camera_calibration_pickle_path), 'wb') as pickle_file:
+            pickle.dump(camera_calibration_info_dict, pickle_file)
+
+
+            
     # camera_calibration_json_filename = "{}_calibration.json".format(session.sessionID)
     # camera_calibration_json_path = session.sessionPath / camera_calibration_json_filename
     
@@ -83,24 +119,36 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 1):
     #         json.dumps(this_cam_dict, outfile)    
 
 
-    session.cgroup = cgroup
-    n_frames = cal_vid_frame_range[1]-cal_vid_frame_range[0]
-    startframe = 0
-    n_trackedPoints = 24
 
-    charuco_nCams_nFrames_nImgPts_XY = np.empty([session.numCams, n_frames, n_trackedPoints,  2])
-    charuco_nCams_nFrames_nImgPts_XY[:] = np.nan
+        session.cgroup = cgroup
+        n_frames = cal_vid_frame_range[1]-cal_vid_frame_range[0]
+        startframe = 0
+        n_trackedPoints = 24
 
-    for cam in range(session.numCams):
-        for charCount, thisCharFrame in enumerate(charuco_frames):
-            try:
-                charuco_nCams_nFrames_nImgPts_XY[cam, thisCharFrame, :,:] = np.squeeze(charuco_data[charCount][cam]["filled"])
-            except:
-                # print("failed frame:", frame)
-                continue
-    
+        charuco_nCams_nFrames_nImgPts_XY = np.empty([session.numCams, n_frames, n_trackedPoints,  2])
+        charuco_nCams_nFrames_nImgPts_XY[:] = np.nan
+
+        for cam in range(session.numCams):
+            for charCount, thisCharFrame in enumerate(charuco_frames):
+                try:
+                    charuco_nCams_nFrames_nImgPts_XY[cam, thisCharFrame, :,:] = np.squeeze(charuco_data[charCount][cam]["filled"])
+                except:
+                    # print("failed frame:", frame)
+                    continue
+
+        path_to_save_calibration_data = session.freemocap_module_path/'fmc_calibration'/'previous_calibration.toml'
+        path_to_save_charuco_data = session.freemocap_module_path/'fmc_calibration'/'charuco_2d_points.npy'
+        cgroup.dump(path_to_save_calibration_data)
+        np.save(path_to_save_charuco_data,charuco_nCams_nFrames_nImgPts_XY)
+        
+        
     charuco2d_filename = session.dataArrayPath/'charuco_2d_points.npy'
     np.save(charuco2d_filename,charuco_nCams_nFrames_nImgPts_XY)
+
+
+
+    
+
 
     session.charuco_nCams_nFrames_nImgPts_XY = charuco_nCams_nFrames_nImgPts_XY
 

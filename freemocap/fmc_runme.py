@@ -62,6 +62,7 @@ def RunMe(sessionID=None,
         resetBlenderExe = False,
         get_synced_unix_timestamps = True,
         good_clean_frame_number = 0,
+        bundle_adjust_3d_points=True,
         ):
     """
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -203,18 +204,17 @@ def RunMe(sessionID=None,
 
             sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
             
-            bundle_adjust_3d_points=True
             if bundle_adjust_3d_points:
                 sesh.mediaPipeSkel_fr_mar_xyz_og = sesh.mediaPipeSkel_fr_mar_xyz.copy()
                 np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_raw.npy', sesh.mediaPipeSkel_fr_mar_xyz_og) #save data to npy
 
                 from mediapipe.python.solutions import holistic as mp_holistic
                 mediapipe_body_pose_connections = [this_connection for this_connection in mp_holistic.POSE_CONNECTIONS]
-                print('Running bundle adjustment optimization on 3d points...')
-                sesh.mediaPipeSkel_fr_mar_xyz = sesh.cgroup.optim_points(sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC[:,:,:,:2],
-                                                                sesh.mediaPipeSkel_fr_mar_xyz, 
-                                                                constraints=mediapipe_body_pose_connections,
-                                                                verbose=True)
+                with console.status('Running bundle adjustment optimization on 3d points...'):
+                    sesh.mediaPipeSkel_fr_mar_xyz = sesh.cgroup.optim_points(sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC[:,:,:,:2],
+                                                                            sesh.mediaPipeSkel_fr_mar_xyz, 
+                                                                            constraints=mediapipe_body_pose_connections,
+                                                                            verbose=True)
                 print('Done adjusting bundles!')
                     
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy

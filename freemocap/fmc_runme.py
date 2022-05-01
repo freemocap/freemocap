@@ -62,7 +62,7 @@ def RunMe(sessionID=None,
         resetBlenderExe = False,
         get_synced_unix_timestamps = True,
         good_clean_frame_number = 0,
-        bundle_adjust_3d_points=True,
+        bundle_adjust_3d_points=False,
         ):
     """
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)

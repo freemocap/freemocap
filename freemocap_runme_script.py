@@ -1,2 +1,32 @@
-import freemocap as fmc
-fmc.RunMe()
+from requests import session
+import freemocap 
+freemocap.RunMe()
+
+
+#####################
+### freemocap.RunMe() - Default parameters
+#####################
+
+# freemocap.RunMe(sessionID=None,
+#                 stage=1,
+#                 useOpenPose=False,
+#                 runOpenPose = True,
+#                 useMediaPipe=True,
+#                 runMediaPipe=True,
+#                 useDLC=False,
+#                 dlcConfigPath=None,
+#                 debug=False,
+#                 setDataPath = False,
+#                 userDataPath = None,
+#                 recordVid = True,
+#                 showAnimation = True,
+#                 reconstructionConfidenceThreshold = .5,
+#                 charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
+#                 calVideoFrameLength = 1,
+#                 startFrame = 0,
+#                 useBlender = False,
+#                 resetBlenderExe = False,
+#                 get_synced_unix_timestamps = True,
+#                 good_clean_frame_number = 0,
+#                 bundle_adjust_3d_points=False,
+#                 )

@@ -1,0 +1,2 @@
+class VorCalibrator:
+    pass

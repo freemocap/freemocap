@@ -1,4 +1,5 @@
 # adapted from - https://gist.github.com/markjay4k/da2f55e28514be7160a7c5fbf95bd243
+import logging
 from pathlib import Path
 
 from pyqtgraph.Qt import QtCore, QtGui
@@ -8,51 +9,25 @@ import numpy as np
 import sys
 from mediapipe.python.solutions import holistic as mp_holistic
 
+logger = logging.getLogger(__name__)
 
-class QT_GL_LaserSkeleton():
-    def __init__(self, session_path: Path):
+class QtGlLaserSkeletonVisualizer():
+    session_path: Path = None
+
+    def __init__(self):
         self.mediapipe_fr_mar_xyz = None
-        self.session_path = Path(session_path)
         self.traces = dict()
         self.start_frame_number = 1000
         self.end_frame_number = 2000
         self.current_frame_number = self.start_frame_number
 
-        self.load_mediapipe_data()
-        self.load_pupil_data()
-
+    def initialize_display_window(self):
         self.create_app_window()
         self.create_grid_planes()
         self.get_mediapipe_connections()
         self.initialize_skel_dottos()
         self.initialize_skel_lines()
         self.initialize_gaze_laser()
-
-    def load_mediapipe_data(self):
-        mediapipe_data_path = self.session_path / 'DataArrays' / 'mediaPipeSkel_3d_smoothed.npy'
-        mediapipe_all_fr_mar_xyz = np.load(str(mediapipe_data_path))
-        self.mean_position_xyz = np.nanmedian(np.nanmedian(mediapipe_all_fr_mar_xyz, axis=0), axis=0)
-        mediapipe_all_fr_mar_xyz[:, :, 0] -= self.mean_position_xyz[0]
-        mediapipe_all_fr_mar_xyz[:, :, 1] -= self.mean_position_xyz[1]
-        mediapipe_all_fr_mar_xyz[:, :, 2] -= self.mean_position_xyz[2]
-
-        # remove first frame due to annoying 'off-by-one' error in the timestamp logger
-        mediapipe_all_fr_mar_xyz = np.delete(mediapipe_all_fr_mar_xyz, 0, axis=0)
-
-        self.mediapipe_fr_mar_xyz = mediapipe_all_fr_mar_xyz[:, :75, :]
-
-    def load_pupil_data(self):
-        pupil_data_path = self.session_path / 'pupil_000' / 'exports' / '000' / 'right_eye_gaze_xyz.npy'
-        right_gaze_xyz = np.load(str(pupil_data_path))
-
-        right_eye_d = 5
-        self.right_eye_xyz = np.squeeze(self.mediapipe_fr_mar_xyz[:, right_eye_d, :])
-
-        right_gaze_xyz[:, 0] += self.right_eye_xyz[:, 0]
-        right_gaze_xyz[:, 1] += self.right_eye_xyz[:, 1]
-        right_gaze_xyz[:, 2] += self.right_eye_xyz[:, 2]
-
-        self.right_gaze_xyz = right_gaze_xyz
 
     def create_app_window(self):
         self.app = pg.mkQApp("Laser Skeleton")
@@ -153,5 +128,5 @@ if __name__ == '__main__':
     data_path = Path('C:/Users/jonma/Dropbox/FreeMoCapProject/FreeMocap_Data/')
     session_path = data_path / 'sesh_2022-02-15_11_54_28_pupil_maybe'
 
-    qt_gl_laser_skeleton = QT_GL_LaserSkeleton(session_path)
+    qt_gl_laser_skeleton = QtGlLaserSkeletonVisualizer(session_path)
     qt_gl_laser_skeleton.start_animation()

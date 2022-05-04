@@ -3,8 +3,7 @@ from typing import List
 import cv2
 import numpy as np
 
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_definition import CharucoBoard
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_dataclasses import CharucoViewData
+from src.core_processor.camera_calibration.charuco_board_detection.dataclasses.charuco_view_data import CharucoViewData
 
 
 def _board_text(

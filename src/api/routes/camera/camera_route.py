@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from src.api.services.user_config import UserConfigService
 from src.cameras.detection.cam_singleton import get_or_create_cams
-from src.cameras.capture.opencv_camera.opencv_camera import WebcamConfig
+from src.config.webcam_config import WebcamConfig
 
 camera_router = APIRouter()
 

@@ -2,9 +2,10 @@ from dataclasses import dataclass
 from typing import Dict
 
 import cv2
+import numpy as np
 
 
-@dataclass()
+@dataclass
 class CharucoBoard:
     _aruco_marker_dict: Dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
     _number_of_squares_width: int = 7
@@ -21,6 +22,7 @@ class CharucoBoard:
 
         self._number_of_charuco_corners = (self._number_of_squares_width - 1) * (self._number_of_squares_height - 1)
 
+
     @property
     def charuco_board(self):
         return self._charuco_board
@@ -32,3 +34,4 @@ class CharucoBoard:
     @property
     def aruco_marker_dict(self):
         return self._aruco_marker_dict
+

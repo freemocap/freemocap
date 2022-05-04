@@ -21,7 +21,7 @@ class PupilFreemocapSynchronizer:
         self.synchronized_session_data: FreemocapSessionDataClass = None
 
     def synchronise(self, debug: bool = False):
-        self.synchronize(debug=debug)  # lol
+        self.synchronize(debug=debug)  # lol brits
 
     def synchronize(self, debug: bool = False, vor_frame_start: int = None, vor_frame_end: int = None):
         """
@@ -81,7 +81,9 @@ class PupilFreemocapSynchronizer:
         self.resample_eye_data()
         self.normalize_eye_data()
 
-        self.synchronized_timestamps = self.raw_session_data.timestamps[freemocap_start_frame:freemocap_end_frame]
+        self.synchronized_timestamps = self.raw_session_data.timestamps[freemocap_start_frame:freemocap_end_frame+1]
+
+        self.synchronized_timestamps  = self.synchronized_timestamps - self.synchronized_timestamps[0]
 
         assert (self.synchronized_timestamps.shape[0] == self.right_eye_theta.shape[0])
         assert (self.synchronized_timestamps.shape[0] == self.left_eye_theta.shape[0])
@@ -104,40 +106,50 @@ class PupilFreemocapSynchronizer:
                                                pupil_center_normal_z=self.left_eye_pupil_center_normal_z,
                                                eye_d=1)
 
-        self.synchronized_freemocap_data = FreemocapSessionDataClass(timestamps=self.synchronized_timestamps,
-                                                                     mediapipe_fr_mar_dim=self.raw_session_data.mediapipe_fr_mar_dim[
+        synchronized_session_data = FreemocapSessionDataClass(timestamps=self.synchronized_timestamps,
+                                                                     mediapipe_skel_fr_mar_dim=self.raw_session_data.mediapipe_skel_fr_mar_dim[
                                                                                           freemocap_start_frame:freemocap_end_frame,
                                                                                           :, :],
                                                                      head_rotation_matricies=self.raw_session_data.head_rotation_matricies[
                                                                                              freemocap_start_frame:freemocap_end_frame],
                                                                      right_eye_data=synchronized_right_eye_data,
                                                                      left_eye_data=synchronized_left_eye_data)
-
+        return synchronized_session_data
 
 
     def clip_eye_data(self):
         self.right_eye_timestamps_clipped = self.raw_session_data.right_eye_data.timestamps[self.right_eye_start_frame:self.right_eye_end_frame]
+
         self.right_eye_pupil_center_normal_x_clipped = self.raw_session_data.right_eye_data.pupil_center_normal_x[
                                                        self.right_eye_start_frame:self.right_eye_end_frame]
+
         self.right_eye_pupil_center_normal_y_clipped = self.raw_session_data.right_eye_data.pupil_center_normal_y[
                                                        self.right_eye_start_frame:self.right_eye_end_frame]
+
         self.right_eye_pupil_center_normal_z_clipped = self.raw_session_data.right_eye_data.pupil_center_normal_z[
                                                        self.right_eye_start_frame:self.right_eye_end_frame]
+
         self.right_eye_theta_clipped = self.raw_session_data.right_eye_data.theta[
                                        self.right_eye_start_frame:self.right_eye_end_frame]
+
         self.right_eye_phi_clipped = self.raw_session_data.right_eye_data.phi[
                                      self.right_eye_start_frame:self.right_eye_end_frame]
 
         self.left_eye_timestamps_clipped = self.raw_session_data.left_eye_data.timestamps[
                                             self.left_eye_start_frame:self.left_eye_end_frame]
+
         self.left_eye_pupil_center_normal_x_clipped = self.raw_session_data.left_eye_data.pupil_center_normal_x[
                                                       self.left_eye_start_frame:self.left_eye_end_frame]
-        self.left_eye_pupil_center_normal_y_clipped = self.raw_session_data.left_eye_data.pupil_center_normal_x[
+
+        self.left_eye_pupil_center_normal_y_clipped = self.raw_session_data.left_eye_data.pupil_center_normal_y[
                                                       self.left_eye_start_frame:self.left_eye_end_frame]
-        self.left_eye_pupil_center_normal_z_clipped = self.raw_session_data.left_eye_data.pupil_center_normal_x[
+
+        self.left_eye_pupil_center_normal_z_clipped = self.raw_session_data.left_eye_data.pupil_center_normal_z[
                                                       self.left_eye_start_frame:self.left_eye_end_frame]
+
         self.left_eye_theta_clipped = self.raw_session_data.left_eye_data.theta[
                                       self.left_eye_start_frame:self.left_eye_end_frame]
+
         self.left_eye_phi_clipped = self.raw_session_data.left_eye_data.phi[
                                     self.left_eye_start_frame:self.left_eye_end_frame]
 
@@ -178,9 +190,49 @@ class PupilFreemocapSynchronizer:
         self.left_eye_pupil_center_normal_z = self.left_eye_pupil_center_normal_z / np.linalg.norm(self.left_eye_pupil_center_normal_z)
 
     def show_debug_plots(self, vor_frame_start, vor_frame_end):
-        vor_frame_start = 0
-        vor_frame_end = self.synchronized_timestamps.shape[0]
+
+        ###########################
+        # Plot Raw Data
+        ###########################
+        fig = plt.figure(num=653412, figsize=(10, 20))
+        fig.suptitle('Raw data')
+        ax1 = fig.add_subplot(411)
+        ax1.plot(self.raw_session_data.right_eye_data.timestamps, self.raw_session_data.right_eye_data.pupil_center_normal_x, '.-', label='right_eye_pupil_center_normal_x')
+        ax1.plot(self.raw_session_data.right_eye_data.timestamps, self.raw_session_data.right_eye_data.pupil_center_normal_y, '.-', label='right_eye_pupil_center_normal_y')
+        ax1.plot(self.raw_session_data.right_eye_data.timestamps, self.raw_session_data.right_eye_data.pupil_center_normal_z, '.-', label='right_eye_pupil_center_normal_z')
+        ax1.legend(loc='upper left')
+
+        ax2 = fig.add_subplot(412)
+        ax2.plot(self.raw_session_data.right_eye_data.timestamps,
+                 self.raw_session_data.right_eye_data.theta, '.-',
+                 label='right_eye_theta')
+        ax2.plot(self.raw_session_data.right_eye_data.timestamps,
+                 self.raw_session_data.right_eye_data.phi, '.-',
+                 label='right_eye_phi')
+        ax2.legend(loc='upper left')
+
+        ax3 = fig.add_subplot(413)
+        ax3.plot(self.raw_session_data.timestamps, self.left_eye_pupil_center_normal_x, '.-', label='left_eye_pupil_center_normal_x')
+        ax3.plot(self.raw_session_data.timestamps, self.left_eye_pupil_center_normal_y, '.-', label='left_eye_pupil_center_normal_y')
+        ax3.plot(self.raw_session_data.timestamps, self.left_eye_pupil_center_normal_z, '.-', label='left_eye_pupil_center_normal_z')
+        ax3.legend(loc='upper left')
+
+        ax4 = fig.add_subplot(414)
+        ax4.plot(self.raw_session_data.left_eye_data.timestamps,
+                 self.raw_session_data.left_eye_data.theta, '.-',
+                 label='left_eye_theta')
+        ax4.plot(self.raw_session_data.left_eye_data.timestamps,
+                 self.raw_session_data.left_eye_data.phi, '.-',
+                 label='left_eye_phi')
+        ax4.legend(loc='upper left')
+
+        ###########################
+        # Plot synchronized data
+        ###########################
+
+
         fig = plt.figure(num=65341, figsize=(10, 20))
+        fig.suptitle('Synchronized data')
         ax1 = fig.add_subplot(411)
         ax1.plot(self.synchronized_timestamps[vor_frame_start:vor_frame_end], self.right_eye_pupil_center_normal_x[vor_frame_start:vor_frame_end], '.-', label='right_eye_pupil_center_normal_x')
         ax1.plot(self.synchronized_timestamps[vor_frame_start:vor_frame_end], self.right_eye_pupil_center_normal_y[vor_frame_start:vor_frame_end], '.-', label='right_eye_pupil_center_normal_y')

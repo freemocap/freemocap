@@ -57,9 +57,9 @@ class SessionDataLoader:
         logger.info(f'loading mediapipe data from {mediapipe_data_path}')
         mediapipe_fr_mar_xyz = np.load(str(mediapipe_data_path))
 
-        logging.warning(
-            'SLOPPY BUG FIX - Removing first frame of mediapipe_data due to annoying \'off-by-one\' error in the timestamp logger')
-        mediapipe_fr_mar_xyz = np.delete(mediapipe_fr_mar_xyz, 0, axis=0)
+        # logging.warning(
+        #     'SLOPPY BUG FIX - Removing first frame of mediapipe_data due to annoying \'off-by-one\' error in the timestamp logger')
+        # mediapipe_fr_mar_xyz = np.delete(mediapipe_fr_mar_xyz, 0, axis=0)
 
         if move_to_origin:
             mean_position_xyz = np.nanmedian(np.nanmedian(mediapipe_fr_mar_xyz, axis=0), axis=0)

@@ -18,7 +18,6 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
     session_data_loader: SessionDataLoader = None
     raw_session_data = FreemocapSessionDataClass()
     synchronized_session_data: FreemocapSessionDataClass = None
-    vor_calibrator = VorCalibrator()
     laser_skeleton_visualizer = QtGlLaserSkeletonVisualizer()
     vor_frame_start: int = None,
     vor_frame_end: int = None
@@ -39,9 +38,9 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
     def run(self):
         logger.info(f'loading session data from {self.session_data_loader.session_path}')
 
-        #########
+        ####
         # load raw freemocap data
-        #########
+        ####
         self.raw_session_data.timestamps = self.session_data_loader.load_freemocap_unix_timestamps()
         logger.info(
             f'self.raw_session_data.freemocap_timestamps.shape: {self.raw_session_data.timestamps.shape}')
@@ -50,29 +49,44 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
         logger.info(
             f'self.raw_session_data.mediapipe_skel_fr_mar_dim.shape: {self.raw_session_data.mediapipe_skel_fr_mar_dim.shape}')
 
-        #########
+        ####
         # Calculate Head Rotation matrix for each frame (gaze data will be rotated by head_rot, then calibrated_offset_rot)
-        #########
+        ####
         head_rotation_calculator = HeadRotationCalculator(self.raw_session_data.mediapipe_skel_fr_mar_dim)
         head_rotation_matricies = head_rotation_calculator.calculate_head_rotation_matricies(debug=True)
+        self.unrotated_right_gaze_laser_fr_xyz  = head_rotation_calculator.create_unrotated_gaze_laser(debug=True, eye='right')
+        self.unrotated_left_gaze_laser_fr_xyz = head_rotation_calculator.create_unrotated_gaze_laser(debug=True, eye='left')
+
         self.raw_session_data.head_rotation_matricies = head_rotation_matricies
         self.save_head_rotation_matricies()
         logger.info(
             f'len(self.raw_session_data.head_rotation_matricies): {len(self.raw_session_data.head_rotation_matricies)}')
 
-        #########
+        ####
         # load pupil data
-        #########
+        ####
         pupil_data_handler = self.session_data_loader.load_pupil_data()
-        self.raw_session_data.right_eye_data = pupil_data_handler.get_eye_data(0)
-        self.raw_session_data.left_eye_data = pupil_data_handler.get_eye_data(1)
+        self.raw_session_data.right_eye_data = pupil_data_handler.get_eye_data('right')
+        self.raw_session_data.left_eye_data = pupil_data_handler.get_eye_data('left')
 
-        #########
+        ####
         # Synchronize pupil data with freemocap data - results in self.synchronized_session_data (each stream has exactly the same number of frames)
-        #########
-        self.synchronized_session_data = PupilFreemocapSynchronizer(self.raw_session_data).synchronize(debug=True, vor_frame_start=self.vor_frame_start, vor_frame_end=self.vor_frame_end)
-        print(self.synchronized_session_data)
+        ####
+        self.synchronized_session_data = PupilFreemocapSynchronizer(self.raw_session_data).synchronize(debug=False, vor_frame_start=self.vor_frame_start, vor_frame_end=self.vor_frame_end)
+        logger.info('synchronization complete - I should add a test to make sure everything has the same number of frames')
 
+        ####
+        # Perform Vestibular-Ocular-Reflex based calibration (see methods from (Matthis et al, 2018 and 2022) for deetos)
+        ####
+        vor_calibrator = VorCalibrator(self.synchronized_session_data, vor_start_frame=self.vor_frame_start, vor_end_frame=self.vor_frame_end)
+        fixation_point_fr_xyz = self.synchronized_session_data.mediapipe_skel_fr_mar_dim[self.vor_frame_start:self.vor_frame_end, :, :3]
+        vor_calibrator.calibrate(fixation_point_fr_xyz)
+
+    ############################################
+    ############################################
+    ### helper methods
+    ############################################
+    ###########################################
     def save_head_rotation_matricies(self):
         save_path = self.session_path / 'DataArrays' / 'mediaPipeSkel_3d_head_rotation_matricies_fr_row_col.npy'
         logger.info(f'saving head rotation matricies to: {save_path}')

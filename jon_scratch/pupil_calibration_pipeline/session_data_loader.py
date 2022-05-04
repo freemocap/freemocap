@@ -21,6 +21,7 @@ class SessionDataLoader:
     def session_path(self):
         return self._session_path
 
+
     def load_freemocap_unix_timestamps(self):
         """
               load/calculate the unix timestamps for the freemocap data (as mean of each camera's timestamp on each frame)
@@ -56,10 +57,6 @@ class SessionDataLoader:
         mediapipe_data_path = self.session_path / 'DataArrays' / 'mediaPipeSkel_3d_smoothed.npy'
         logger.info(f'loading mediapipe data from {mediapipe_data_path}')
         mediapipe_fr_mar_xyz = np.load(str(mediapipe_data_path))
-
-        # logging.warning(
-        #     'SLOPPY BUG FIX - Removing first frame of mediapipe_data due to annoying \'off-by-one\' error in the timestamp logger')
-        # mediapipe_fr_mar_xyz = np.delete(mediapipe_fr_mar_xyz, 0, axis=0)
 
         if move_to_origin:
             mean_position_xyz = np.nanmedian(np.nanmedian(mediapipe_fr_mar_xyz, axis=0), axis=0)
@@ -99,3 +96,12 @@ class SessionDataLoader:
         return pupil_data_handler
 
 
+if __name__ == '__main__':
+    data_path = Path('C:/Users/jonma/Dropbox/FreeMoCapProject/FreeMocap_Data/')
+    session_path = data_path / 'sesh_2022-02-15_11_54_28_pupil_maybe'
+
+    session_data_loader = SessionDataLoader(session_path)
+    pupil_data = session_data_loader.load_pupil_data()
+    print('pupil data loaded, but I don\'t have an easy way to print out the shape of things yet, lol')
+    mediapipe_skel_fr_mar_xyz = session_data_loader.load_mediapipe_data()
+    print(f'mediapipe_skel_fr_mar_xyz.shape: {mediapipe_skel_fr_mar_xyz.shape}')

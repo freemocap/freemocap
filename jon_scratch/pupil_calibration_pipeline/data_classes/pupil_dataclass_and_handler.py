@@ -66,13 +66,19 @@ class PupilDataHandler:
                                      pupil_recording_info_json[
                                          'start_time_system_s']
 
-    def get_eye_data(self, this_eye_d: int):
+    def get_eye_data(self, eye_str: str):
         """
         get data for the right eye
 
         pull out data according to `eye_d` (right_eye == 0, left_eye==1) and tracking method (because pupil interleaves 2d and 3d data)
         """
-        this_eye_logical_indicies = np.logical_and(self.pupil_data.eye_d == this_eye_d,
+        if eye_str == 'right':
+            eye_d = 0
+
+        if eye_str == 'left':
+            eye_d = 1
+
+        this_eye_logical_indicies = np.logical_and(self.pupil_data.eye_d == eye_d,
                                                    self.pupil_data.method != '2d c++')
         return PupilData(
             timestamps=self.pupil_data.timestamps[this_eye_logical_indicies],

@@ -2,48 +2,43 @@ import logging
 import platform
 import time
 import traceback
-from dataclasses import dataclass
-from pathlib import Path
 
 import cv2
-import numpy as np
-from pydantic import BaseModel
 
-from src.cameras.capture.frame_payload import FramePayload
-from src.cameras.capture.opencv_camera.frame_grabber import FrameThread
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
+from src.config.webcam_config import WebcamConfig
+from src.cameras.capture.opencv_camera.camera_stream_thread_handler import VideoCaptureThread
 
 logger = logging.getLogger(__name__)
-
-
-def _get_home_dir():
-    return str(Path.home())
-
-
-class WebcamConfig(BaseModel):
-    webcam_id: int = 0
-    exposure: int = -6
-    resolution_width: int = 800
-    resolution_height: int = 600
-    save_video: bool = True
-    # fourcc: str = "MP4V"
-    fourcc: str = "MJPG"
-    base_save_video_dir = _get_home_dir()
-
-
-class OpenCVCameraError(Exception):
-    pass
 
 
 class OpenCVCamera:
     """
     Performant implementation of video capture against webcams
     """
-
-    def __init__(self, config: WebcamConfig):
+    def __init__(self, config: WebcamConfig, session_id: str = None):
         self._config = config
-        self._name = f"Camera {self._config.webcam_id}"
+        self._name = f"Camera_{self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
-        self._running_thread: FrameThread = None
+        self._video_recorder: VideoRecorder = None
+        self._running_thread: VideoCaptureThread = None
+        self._new_frame_ready = False
+
+    @property
+    def new_frame_ready(self):
+        """
+        can be called to determine if the frame returned from  `self.latest_frame` is new or if it has been called before
+        """
+        return self._new_frame_ready
+
+    @property
+    def video_recorder(self):
+        return self._video_recorder
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def webcam_id_as_str(self):
@@ -51,27 +46,23 @@ class OpenCVCamera:
 
     @property
     def current_fps(self):
-        return self._running_thread.current_fps
+        return self._running_thread.average_fps
 
     @property
     def is_capturing_frames(self):
         if not self._running_thread:
-            logger.error("Frame Capture thread not running yet")
+            logger.info("Frame Capture thread not running yet")
             return False
-
         return self._running_thread.is_capturing_frames
 
     @property
     def current_fps_short(self) -> str:
-        return "{:.2f}".format(self._running_thread.current_fps)
+        return "{:.2f}".format(self._running_thread.average_fps)
 
     @property
     def latest_frame(self):
+        self._new_frame_ready = False
         return self._running_thread.latest_frame
-
-    @property
-    def session_writer_base_path(self):
-        return self._running_thread.session_writer_path
 
     def connect(self):
         if platform.system() == "Windows":
@@ -92,13 +83,24 @@ class OpenCVCamera:
                 )
             )
             return success
+
+        try:
+            image_height = image.shape[0]
+            image_width = image.shape[1]
+            self._video_recorder = VideoRecorder(self._name,
+                                                 image_width=image_width,
+                                                 image_height=image_height)
+        except:
+            logger.error(f"could not create video recorder for image with shape (image_width={image_width}, image_height={image_height}) ")
+            return False
+
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
         fps_input_stream = int(self._opencv_video_capture_object.get(5))
         logger.debug("FPS of webcam hardware/input stream: {}".format(fps_input_stream))
 
         return success
 
-    def start_frame_capture(self):
+    def start_frame_capture_thread(self):
         if self.is_capturing_frames:
             logger.debug(
                 f"Already capturing frames for webcam_id: {self.webcam_id_as_str}"
@@ -111,28 +113,24 @@ class OpenCVCamera:
         self._running_thread.start()
 
     def _create_thread(self):
-        return FrameThread(
-            webcam_id=self.webcam_id_as_str,
+        return VideoCaptureThread(
             get_next_frame=self.get_next_frame,
-            save_video=self._config.save_video,
-            frame_width=self.image_width,
-            frame_height=self.image_height,
         )
 
     @property
     def image_width(self):
         try:
             return int(self._opencv_video_capture_object.get(3))
-        except OpenCVCameraError:
-            raise OpenCVCameraError("failed to return `image_width` property from OpenCVCamera")
+        except Exception as e:
+            raise e
 
 
     @property
     def image_height(self):
         try:
             return int(self._opencv_video_capture_object.get(4))
-        except OpenCVCameraError:
-            raise OpenCVCameraError("failed to return `image_height` property from OpenCVCamera")
+        except Exception as e:
+            raise e
 
     def _apply_configuration(self):
         # set camera stream parameters
@@ -151,17 +149,18 @@ class OpenCVCamera:
         )
 
     def get_next_frame(self):
-        timestamp_ns_pre_grab = time.time_ns()
-        # Why grab not read? see ->
+
+        # Why `grab()` not `read()`? see ->
         # https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and
         # -grab
+
         if not self._opencv_video_capture_object.grab():
             return FramePayload(False, None, None)
 
-        timestamp_ns_post_grab = time.time_ns()
-        timestamp_ns = (timestamp_ns_pre_grab + timestamp_ns_post_grab) / 2
-
+        timestamp_ns = time.time_ns()
         success, image = self._opencv_video_capture_object.retrieve()
+
+        self._new_frame_ready = success
         return FramePayload(success, image, timestamp_ns)
 
     def stop_frame_capture(self):

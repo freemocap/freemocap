@@ -7,7 +7,8 @@ from pyqtgraph.Qt import QtWidgets
 
 import cv2
 
-from src.core_processor.camera_calibration.calibration_dataclasses import LensDistortionCalibrationData
+from src.core_processor.camera_calibration.calibration_dataclasses import CameraCalibrationData
+
 
 
 class CalibrationDiagnosticsVisualizer:
@@ -119,7 +120,7 @@ class CalibrationDiagnosticsVisualizer:
 
     def _display_main_window(self):
         # display window
-        self.main_window_widget.show()
+        self.main_window_widget.show_window()
 
     def update_image_subplot(self, new_image):
         self.image_view_widget.setImage(
@@ -133,7 +134,7 @@ class CalibrationDiagnosticsVisualizer:
         self.reprojection_error_all_line.setData(self.reprojection_error_all)
         self.reprojection_error_current_best_line.setData(self.reprojection_error_current_best)
 
-    def update_calibration_text_overlay(self, calibration_data: LensDistortionCalibrationData):
+    def update_calibration_text_overlay(self, calibration_data: CameraCalibrationData):
         lens_distortion_as_str = [f"{d[0]:.3f}" for d in calibration_data.lens_distortion_coefficients]
         calibration_text = f'reprojection error:{calibration_data.reprojection_error:.3f} \n {lens_distortion_as_str} \n {str(calibration_data.camera_matrix)}'
         self.calibration_text_widget.setText(calibration_text)

@@ -1,17 +1,17 @@
-aniposelib==0.4.3
-h5py>=3.1.0
-imutils~=0.5.4
-matplotlib~=3.1.3
-# mediapipe==0.8.8
-opencv-contrib-python==4.5.5.62
-pandas~=1.2.5
-rich~=10.4.0
-tqdm~=4.61.1
-ruamel.yaml>=0.15.0
-numpy>=1.19
-typed-ast<1.5,>=1.4.0
-moviepy ~=1.0.3
+#aniposelib==0.4.3
+#h5py>=3.1.0
+#imutils~=0.5.4
+#matplotlib~=3.5.1
+## mediapipe==0.8.8
+#opencv-contrib-python==4.5.5.62
+#pandas~=1.2.5
+#rich~=10.4.0
+#tqdm~=4.61.1
+#ruamel.yaml>=0.15.0
+#typed-ast<1.5,>=1.4.0
+#moviepy ~=1.0.3
 ipython
+numpy>=1.19
 pydantic==1.9.0
 uvicorn==0.16.0
 fastapi==0.71.0
@@ -31,3 +31,5 @@ pre-commit==2.17.0
 pyqtgraph==0.12.4
 pyqt5==5.15.6
 pyopengl==3.1.6
+mediapipe~=0.8.9.1
+setuptools~=58.0.4

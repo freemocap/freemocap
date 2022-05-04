@@ -45,9 +45,12 @@ class PupilDataHandler:
 
         # resituate pupil data so that the pupil normal direction is situated on the origin (instead of the arbitrary eye-camera-based eyeball sphere center)
         # ... I think... I need to check this. Their docs are a bit unclear about the origin of the pupil normal direction.
-        pupil_center_normal_x = np.array(pupil_dataframe['sphere_center_x']) - np.array(pupil_dataframe['circle_3d_normal_x'])
-        pupil_center_normal_y = np.array(pupil_dataframe['sphere_center_y']) - np.array(pupil_dataframe['circle_3d_normal_y'])
-        pupil_center_normal_z = np.array(pupil_dataframe['sphere_center_z']) - np.array(pupil_dataframe['circle_3d_normal_z'])
+        # pupil_center_normal_x = np.array(pupil_dataframe['sphere_center_x']) - np.array(pupil_dataframe['circle_3d_normal_x'])
+        # pupil_center_normal_y = np.array(pupil_dataframe['sphere_center_y']) - np.array(pupil_dataframe['circle_3d_normal_y'])
+        # pupil_center_normal_z = np.array(pupil_dataframe['sphere_center_z']) - np.array(pupil_dataframe['circle_3d_normal_z'])
+        pupil_center_normal_x = np.array(pupil_dataframe['circle_3d_normal_x'])
+        pupil_center_normal_y = np.array(pupil_dataframe['circle_3d_normal_y'])
+        pupil_center_normal_z = np.array(pupil_dataframe['circle_3d_normal_z'])
 
         self.pupil_data = PupilData(timestamps=np.array(pupil_dataframe['pupil_timestamp']),
                                     theta=np.array(pupil_dataframe['theta']),
@@ -59,9 +62,9 @@ class PupilDataHandler:
                                     method=pupil_dataframe['method'])
 
     def convert_to_unix_timestamps(self, pupil_recording_info_json: dict):
-        unix_time_offset = pupil_recording_info_json['start_time_synced_s'] + pupil_recording_info_json[
-            'start_time_system_s']
-        self.pupil_data.timestamps = self.pupil_data.timestamps - unix_time_offset
+        self.pupil_data.timestamps = self.pupil_data.timestamps - pupil_recording_info_json['start_time_synced_s'] + \
+                                     pupil_recording_info_json[
+                                         'start_time_system_s']
 
     def get_eye_data(self, this_eye_d: int):
         """
@@ -69,7 +72,8 @@ class PupilDataHandler:
 
         pull out data according to `eye_d` (right_eye == 0, left_eye==1) and tracking method (because pupil interleaves 2d and 3d data)
         """
-        this_eye_logical_indicies = np.logical_and(self.pupil_data.eye_d == this_eye_d, self.pupil_data.method != '2d c++')
+        this_eye_logical_indicies = np.logical_and(self.pupil_data.eye_d == this_eye_d,
+                                                   self.pupil_data.method != '2d c++')
         return PupilData(
             timestamps=self.pupil_data.timestamps[this_eye_logical_indicies],
             theta=self.pupil_data.theta[this_eye_logical_indicies],

@@ -4,13 +4,16 @@ import numpy as np
 import mediapipe as mp
 
 
-@dataclass
 class MediaPipeSkeletonDetection:
-    model_complexity: int = 1  # can be 0,1, or 2 - higher numbers  are more accurate but heavier computationally
-    min_detection_confidence: float = .5
-    min_tracking_confidence: float = .5
 
-    def __post_init__(self):
+    def __init__(self,
+                 model_complexity: int = 1,
+                 min_detection_confidence: float = .5,
+                 min_tracking_confidence: float = .5,
+                 ):
+        self.model_complexity = model_complexity     # can be 0,1, or 2 - higher numbers  are more accurate but heavier computationally
+        self.min_detection_confidence = min_detection_confidence
+        self.min_tracking_confidence = min_tracking_confidence
         self._mp_drawing = mp.solutions.drawing_utils
         self._mp_drawing_styles = mp.solutions.drawing_styles
         self._mp_holistic = mp.solutions.holistic
@@ -27,7 +30,6 @@ class MediaPipeSkeletonDetection:
         mediapipe_results = self._holistic_tracker.process(raw_image)  # <-this is where the magic happens
         if annotate_image:
             return self._annotate_image(raw_image, mediapipe_results)
-
 
     def _annotate_image(self, image, mediapipe_results):
         self._mp_drawing.draw_landmarks(image=image,

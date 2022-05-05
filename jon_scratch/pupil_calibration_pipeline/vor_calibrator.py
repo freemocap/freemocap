@@ -27,23 +27,23 @@ class VorCalibrator:
 
         if not fixation_point_fr_xyz.shape[1] == 3:
             raise Exception("fixation_point_fr_xyz must be a numpy array with 3 columns")
-        if not fixation_point_fr_xyz.shape[0] == self.skel_fr_mar_dim.shape[0]:
+        if not fixation_point_fr_xyz.shape[0] == self.mediapipe_skel_fr_mar_dim.shape[0]:
             raise Exception("fixation_point_xyz must have precisely the same number of rows as the skeleton/gaze data")
 
-        self.create_unrotated_gaze_vector()
         self.calculate_optimal_rotational_offset()
         self.create_skeleton_gaze_lasers()
         return self.session_data
 
     def clip_out_vor_frames(self, vor_start_frame, vor_end_frame):
-        self.skel_fr_mar_dim = self.session_data.skel_fr_mar_dim[vor_start_frame:vor_end_frame,:,:]
-        self.head_rot_matricies = self.session_data.head_rotation_matricies[vor_start_frame:vor_end_frame]
+        self.mediapipe_skel_fr_mar_dim = self.session_data.mediapipe_skel_fr_mar_dim[vor_start_frame:vor_end_frame,:,:]
+        self.head_rotation_matricies = self.session_data.head_rotation_data.rotation_matricies[vor_start_frame:vor_end_frame]
 
         self.right_eye_theta = self.session_data.right_eye_data.theta[vor_start_frame:vor_end_frame]
         self.right_eye_phi = self.session_data.right_eye_data.phi[vor_start_frame:vor_end_frame]
 
         self.left_eye_phi = self.session_data.left_eye_data.phi[vor_start_frame:vor_end_frame]
         self.left_eye_theta = self.session_data.left_eye_data.theta[vor_start_frame:vor_end_frame]
+
 
     def calculate_optimal_rotational_offset(self):
         pass

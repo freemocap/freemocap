@@ -1,6 +1,7 @@
 # adapted from - https://gist.github.com/markjay4k/da2f55e28514be7160a7c5fbf95bd243
 import logging
 from pathlib import Path
+from typing import Union, List
 
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
@@ -10,6 +11,7 @@ import sys
 from mediapipe.python.solutions import holistic as mp_holistic
 
 from jon_scratch.pupil_calibration_pipeline.data_classes.freemocap_session_data_class import FreemocapSessionDataClass
+from jon_scratch.pupil_calibration_pipeline.data_classes.rotation_data_class import RotationDataClass
 from jon_scratch.pupil_calibration_pipeline.session_data_loader import SessionDataLoader
 
 logger = logging.getLogger(__name__)
@@ -18,17 +20,33 @@ logger = logging.getLogger(__name__)
 class QtGlLaserSkeletonVisualizer():
     session_path: Path = None
 
-    def __init__(self, session_data: FreemocapSessionDataClass = None, mediapipe_skel_fr_mar_xyz: np.ndarray = None):
+    def __init__(self,
+                 session_data: FreemocapSessionDataClass = None,
+                 mediapipe_skel_fr_mar_xyz: np.ndarray = None,
+                 start_frame: int = None,
+                 end_frame: int = None,
+                 move_data_to_origin: bool = True):
+
         if session_data is not None:
+            self.session_data = session_data
             self.mediapipe_fr_mar_xyz = session_data.mediapipe_skel_fr_mar_dim
         elif mediapipe_skel_fr_mar_xyz is not None:
             self.mediapipe_fr_mar_xyz = mediapipe_skel_fr_mar_xyz
         else:
             raise ValueError("Must provide either session data or mediapipe skeleton data")
 
-        self.traces = dict()
-        self.start_frame_number = 1000
-        self.end_frame_number = 2000
+        if move_data_to_origin:
+            self.move_data_to_origin()
+
+        if start_frame is None:
+            self.start_frame_number = 0
+        else:
+            self.start_frame_number = start_frame
+        if end_frame is None:
+            self.end_frame_number = self.mediapipe_fr_mar_xyz.shape[0]
+        else:
+            self.end_frame_number = end_frame
+
         self.current_frame_number = self.start_frame_number
 
     def initialize_display_window(self):
@@ -37,7 +55,7 @@ class QtGlLaserSkeletonVisualizer():
         self.get_mediapipe_connections()
         self.initialize_skel_dottos()
         self.initialize_skel_lines()
-        # self.initialize_gaze_laser()
+        self.initialize_head_axes()
 
     def create_app_window(self):
         self.app = pg.mkQApp("Laser Skeleton")
@@ -90,13 +108,81 @@ class QtGlLaserSkeletonVisualizer():
             self.skeleton_connections_list.append(this_skel_line)
             self.gl_view_widget.addItem(this_skel_line)
 
-    def initialize_gaze_laser(self):
+    def initialize_head_axes(self):
+        self.head_axes_scale = 1e3
 
-        this_gaze_laser = np.vstack(
-            (self.right_eye_xyz[self.current_frame_number, :], self.right_gaze_xyz[self.current_frame_number, :]))
-        self.right_gaze_line_item = gl.GLLinePlotItem(pos=this_gaze_laser,
-                                                      color=(1, 0, 0, 1), )
-        self.gl_view_widget.addItem(self.right_gaze_line_item)
+        first_frame_head_center_xyz = self.session_data.head_rotation_data.local_origin_fr_xyz[0, :]
+
+        self.head_axes_x_vector_line_item = self.create_axis_vector_line_item(0,
+                                                                              self.session_data.head_rotation_data,
+                                                                              dimension='x',
+                                                                              scale=self.head_axes_scale,
+                                                                              color=(1, 0, 0, 1),
+                                                                              width=3)
+        self.head_axes_y_vector_line_item = self.create_axis_vector_line_item(0,
+                                                                              self.session_data.head_rotation_data,
+                                                                              dimension='y',
+                                                                              scale=self.head_axes_scale,
+                                                                              color=(0, 1, 0, 1),
+                                                                              width=3)
+        self.head_axes_z_vector_line_item = self.create_axis_vector_line_item(0,
+                                                                              self.session_data.head_rotation_data,
+                                                                              dimension='z',
+                                                                              scale=self.head_axes_scale,
+                                                                              color=(0, 0, 1, 1),
+                                                                              width=3)
+
+        self.gl_view_widget.addItem(self.head_axes_x_vector_line_item)
+        self.gl_view_widget.addItem(self.head_axes_y_vector_line_item)
+        self.gl_view_widget.addItem(self.head_axes_z_vector_line_item)
+
+    def create_axis_vector_line_item(self,
+                                     frame_number: int,
+                                     rotation_data: RotationDataClass,
+                                     dimension: Union[str, int] = None,
+                                     scale: Union[int, float] = 1,
+                                     color=(1, 1, 1, 1),
+                                     width=3,
+                                     ) -> np.ndarray:
+
+        this_frame_axis_vector_xyz = self.unit_vector_from_rotation_matrix(frame_number,
+                                                                           rotation_data,
+                                                                           dimension=dimension,
+                                                                           scale=scale)
+        this_frame_axis_vector_line_item = gl.GLLinePlotItem(pos=this_frame_axis_vector_xyz,
+                                                             color=color,
+                                                             width=width)
+        self.gl_view_widget.addItem(this_frame_axis_vector_line_item)
+        return this_frame_axis_vector_line_item
+
+    def unit_vector_from_rotation_matrix(self,
+                                         frame_number: int,
+                                         rotation_data: RotationDataClass,
+                                         dimension: Union[str, int] = None,
+                                         scale: Union[int, float] = 1,
+                                         ) -> np.ndarray:
+
+        try:
+            if dimension == 'x':
+                dimension = 0
+            elif dimension == 'y':
+                dimension = 1
+            elif dimension == 'z':
+                dimension = 2
+
+            if dimension > rotation_data.rotation_matricies[0].shape[1]:
+                raise ValueError(
+                    'dimension must be `x`, `y`, `z`, or an integer less than the number of dimensions in the rotation matrix')
+        except:
+            raise ValueError('something weird about the `dimension` argument')
+
+        this_rot_mat = rotation_data.rotation_matricies[frame_number]
+        this_axis_vector_endpoint_xyz = (this_rot_mat[dimension, :] * scale) + rotation_data.local_origin_fr_xyz[frame_number,:]
+        this_axis_vector_origin_xyz = rotation_data.local_origin_fr_xyz[frame_number,:]
+
+        this_axis_vector_line_xyz = np.array([this_axis_vector_origin_xyz, this_axis_vector_endpoint_xyz])
+
+        return this_axis_vector_line_xyz
 
     def update(self):
         self.update_frame_number()
@@ -107,6 +193,7 @@ class QtGlLaserSkeletonVisualizer():
             pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, :, :]
         )
         self.update_skeleton_lines()
+        self.update_head_axis_lines()
         # this_gaze_laser = np.vstack(
         #     (self.right_eye_xyz[self.current_frame_number, :], self.right_gaze_xyz[self.current_frame_number, :]))
         # self.right_gaze_line_item.setData(pos=this_gaze_laser)
@@ -117,11 +204,32 @@ class QtGlLaserSkeletonVisualizer():
                 pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, this_connection, :]
             )
 
+    def update_head_axis_lines(self):
+        # X
+        this_frame_head_axis_x_vector_xyz = self.unit_vector_from_rotation_matrix(self.current_frame_number,
+                                                                           self.session_data.head_rotation_data,
+                                                                           dimension='x',
+                                                                           scale=self.head_axes_scale)
+        self.head_axes_x_vector_line_item.setData(pos=this_frame_head_axis_x_vector_xyz)
+
+        # Y
+        this_frame_head_axis_y_vector_xyz = self.unit_vector_from_rotation_matrix(self.current_frame_number,
+                                                                           self.session_data.head_rotation_data,
+                                                                           dimension='y',
+                                                                           scale=self.head_axes_scale)
+        self.head_axes_y_vector_line_item.setData(pos=this_frame_head_axis_y_vector_xyz)
+
+        # Z
+        this_frame_head_axis_z_vector_xyz = self.unit_vector_from_rotation_matrix(self.current_frame_number,
+                                                                           self.session_data.head_rotation_data,
+                                                                           dimension='z',
+                                                                           scale=self.head_axes_scale)
+        self.head_axes_z_vector_line_item.setData(pos=this_frame_head_axis_z_vector_xyz)
+
     def update_frame_number(self):
         self.current_frame_number += 1
         if self.current_frame_number >= self.end_frame_number:
             self.current_frame_number = self.start_frame_number
-
 
     def start(self):
         print('starting animation')
@@ -135,6 +243,21 @@ class QtGlLaserSkeletonVisualizer():
         timer.start(33)
         self.start()
 
+    def move_data_to_origin(self):
+        mean_position_xyz = np.nanmedian(np.nanmedian(self.mediapipe_fr_mar_xyz, axis=0), axis=0)
+
+        self.mediapipe_fr_mar_xyz[:, :, 0] -= mean_position_xyz[0]
+        self.mediapipe_fr_mar_xyz[:, :, 1] -= mean_position_xyz[1]
+        self.mediapipe_fr_mar_xyz[:, :, 2] -= mean_position_xyz[2]
+
+        self.session_data.head_rotation_data.local_origin_fr_xyz[:,0] -= mean_position_xyz[0]
+        self.session_data.head_rotation_data.local_origin_fr_xyz[:,1] -= mean_position_xyz[1]
+        self.session_data.head_rotation_data.local_origin_fr_xyz[:,2] -= mean_position_xyz[2]
+
+    def create_head_axes_vector_line_item(self, param, head_rotation_matricies, dimension, scale):
+        pass
+
+
 
 if __name__ == '__main__':
     # session_id = 'sesh_2022-02-15_11_54_28_pupil_maybe'
@@ -145,5 +268,5 @@ if __name__ == '__main__':
     session_data_loader = SessionDataLoader(session_path)
     mediapipe_skel_fr_mar_xyz_in = session_data_loader.load_mediapipe_data(move_to_origin=True)
     print(f'mediapipe_skel_fr_mar_xyz.shape: {mediapipe_skel_fr_mar_xyz_in.shape}')
-    qt_gl_laser_skeleton = QtGlLaserSkeletonVisualizer(mediapipe_skel_fr_mar_xyz = mediapipe_skel_fr_mar_xyz_in,)
+    qt_gl_laser_skeleton = QtGlLaserSkeletonVisualizer(mediapipe_skel_fr_mar_xyz=mediapipe_skel_fr_mar_xyz_in, )
     qt_gl_laser_skeleton.start_animation()

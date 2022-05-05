@@ -110,8 +110,6 @@ class PupilFreemocapSynchronizer:
                                                                      mediapipe_skel_fr_mar_dim=self.raw_session_data.mediapipe_skel_fr_mar_dim[
                                                                                           freemocap_start_frame:freemocap_end_frame,
                                                                                           :, :],
-                                                                     head_rotation_matricies=self.raw_session_data.head_rotation_matricies[
-                                                                                             freemocap_start_frame:freemocap_end_frame],
                                                                      right_eye_data=synchronized_right_eye_data,
                                                                      left_eye_data=synchronized_left_eye_data)
         return synchronized_session_data

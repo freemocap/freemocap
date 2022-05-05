@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import matplotlib
 import keyboard
 
+from jon_scratch.pupil_calibration_pipeline.data_classes.rotation_data_class import RotationDataClass
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -21,7 +23,7 @@ def normalize_length(point_xyz):
     return point_xyz / np.linalg.norm(point_xyz, axis=1)[:, None]
 
 
-class HeadRotationCalculator:
+class RotationMatrixCalculator:
     mediapipe_skeleton_fr_mar_xyz: np.ndarray
 
     def __init__(self, mediapipe_skeleton_fr_mar_xyz):
@@ -51,19 +53,19 @@ class HeadRotationCalculator:
         left_ear_xyz = self.mediapipe_skeleton_fr_mar_xyz[:, left_ear_id, :]
         head_center_xyz = (right_ear_xyz + left_ear_xyz) / 2
 
-        head_rotation_matricies = self.define_orthonormal_basis_vectors(center_point_fr_xyz=head_center_xyz,
+        head_rotation_data= self.define_orthonormal_basis_vectors(center_point_fr_xyz=head_center_xyz,
                                                                         x_direction_fr_xyz=nose_xyz,
                                                                         y_direction_fr_xyz=left_ear_xyz)
         if debug:
-            self.show_head_rotation_debug_plot(head_rotation_matricies)
+            self.show_head_rotation_debug_plot(head_rotation_data.rotation_matricies)
 
-        return head_rotation_matricies
+        return head_rotation_data
 
     def define_orthonormal_basis_vectors(self,
                                          center_point_fr_xyz: np.ndarray = None,
                                          x_direction_fr_xyz: np.ndarray = None,
                                          y_direction_fr_xyz: np.ndarray = None,
-                                         z_direction_fr_xyz: np.ndarray = None) -> List[np.ndarray]:
+                                         z_direction_fr_xyz: np.ndarray = None) -> RotationDataClass:
         """
         create orthonormal basis vectors based on a center point and at least TWO of the following =  a point defining X direction, a point defining Y direction, and a point defining Z direction
         """
@@ -124,9 +126,10 @@ class HeadRotationCalculator:
 
         rotation_matricies = [this_rotation_martix.T for this_rotation_martix in rotation_matricies]
 
-        return rotation_matricies
+        return RotationDataClass(rotation_matricies=rotation_matricies,
+                                 local_origin_fr_xyz=center_point_fr_xyz)
 
-    def create_unrotated_gaze_laser(self, debug, eye: str) -> np.ndarray:
+    def calculate_eye_rotation_matricies(self, debug, eye: str) -> List[np.ndarray]:
         nose_index = 0
         if eye == 'left':
             inner_eye_index = 1
@@ -145,31 +148,25 @@ class HeadRotationCalculator:
 
         eye_mid_fr_xyz = self.mediapipe_skeleton_fr_mar_xyz[:, eye_mid_index, :]
 
-        eye_socket_rotation_matricies = self.define_orthonormal_basis_vectors(center_point_fr_xyz=eye_mid_fr_xyz,
-                                                                       x_direction_fr_xyz=x_direction_fr_xyz,
-                                                                       y_direction_fr_xyz=y_direction_fr_xyz)
+        eye_socket_rotation_data = self.define_orthonormal_basis_vectors(center_point_fr_xyz=eye_mid_fr_xyz,
+                                                                         x_direction_fr_xyz=x_direction_fr_xyz,
+                                                                         y_direction_fr_xyz=y_direction_fr_xyz)
 
-        initial_eye_laser_unit_vector = np.array([0, 0, 1])
-        eye_laser_unit_vectors_fr_xyz = [this_eye_socket_rotation_matrix.T @ initial_eye_laser_unit_vector for this_eye_socket_rotation_matrix in eye_socket_rotation_matricies]
+        return eye_socket_rotation_data
 
-        eye_laser_unit_vectors_fr_xyz *= 1000 #make it a meter long
-        eye_laser_unit_vectors_fr_xyz += eye_mid_fr_xyz #situation gaze lasers onto eye_mid_fr_xyz
+    def show_head_rotation_debug_plot(self, rotation_matricies):
 
-        return eye_laser_unit_vectors_fr_xyz  # this is a unit vector pointing outward from eyeball center (as if eyes were paralyzed in center of their orbits)
-
-    def show_head_rotation_debug_plot(self, head_rotation_matricies):
-
-        x_hat_xyz = np.asarray([this_rot_mat[0, :] for this_rot_mat in head_rotation_matricies])
-        y_hat_xyz = np.asarray([this_rot_mat[1, :] for this_rot_mat in head_rotation_matricies])
-        z_hat_xyz = np.asarray([this_rot_mat[2, :] for this_rot_mat in head_rotation_matricies])
+        x_hat_xyz = np.asarray([this_rot_mat[0, :] for this_rot_mat in rotation_matricies])
+        y_hat_xyz = np.asarray([this_rot_mat[1, :] for this_rot_mat in rotation_matricies])
+        z_hat_xyz = np.asarray([this_rot_mat[2, :] for this_rot_mat in rotation_matricies])
 
         test_point_xyz_og = np.array((1, 1, 1))
         test_point_xyz_rot = np.empty(z_hat_xyz.shape)
         logger.warning('We shouldnt have to transpose the rotation matix here, need to fix this upstream')
 
-        for frame_number in range(len(head_rotation_matricies)):
+        for frame_number in range(len(rotation_matricies)):
             # see https://peps.python.org/pep-0465/ for explanation of the `@` operator (which is a "matrix multiplication" operator)
-            test_point_xyz_rot[frame_number, :] = head_rotation_matricies[frame_number].T @ test_point_xyz_og
+            test_point_xyz_rot[frame_number, :] = rotation_matricies[frame_number].T @ test_point_xyz_og
 
         plt.close('all')
 

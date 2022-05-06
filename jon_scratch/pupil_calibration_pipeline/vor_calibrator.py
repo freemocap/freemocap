@@ -120,7 +120,8 @@ class VorCalibrator:
                                                       args=(eye_socket_origin_fr_xyz[vor_frames, :],
                                                             eye_socket_rotation_matricies[
                                                             self.vor_start_frame:self.vor_end_frame],
-                                                            head_rotation_matricies,
+                                                            head_rotation_matricies[
+                                                            self.vor_start_frame:self.vor_end_frame],
                                                             fixation_point_fr_xyz,
                                                             gaze_x[vor_frames],
                                                             gaze_y[vor_frames],
@@ -266,7 +267,7 @@ class VorCalibrator:
 
         # THEN rotate gaze vector by eye_socket_rotation_matrix to align it with the eye sockets gaze direction (i think)
         gaze_fr_xyz = [
-            np.transpose(eye_socket_rotation_matricies[this_frame_number]) @ gaze_rotated_by_guess_fr_xyz[
+            np.transpose(head_rotation_matricies[this_frame_number]) @ gaze_rotated_by_guess_fr_xyz[
                                                                              this_frame_number, :] for
             this_frame_number in
             range(gaze_rotated_by_guess_fr_xyz.shape[0])]

@@ -92,7 +92,7 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
         vor_calibrator = VorCalibrator(synchronized_session_data.mediapipe_skel_fr_mar_dim.copy(),
                                        vor_start_frame=self.vor_frame_start,
                                        vor_end_frame=self.vor_frame_end,
-                                       debug=True)
+                                       debug=False)
         right_index_fingertip_idx = 41  # pretty sure this is right?
         fixation_point_fr_xyz = synchronized_session_data.mediapipe_skel_fr_mar_dim[
                                 self.vor_frame_start:self.vor_frame_end,
@@ -116,9 +116,9 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
         ####
 
         qt_gl_laser_skeleton = QtGlLaserSkeletonVisualizer(session_data=synchronized_session_data,
-                                                           move_data_to_origin=True,
-                                                           start_frame=self.vor_frame_start,
-                                                           end_frame=self.vor_frame_end)
+                                                           move_data_to_origin=True,)
+                                                           # start_frame=self.vor_frame_start,
+                                                           # end_frame=self.vor_frame_end)
         qt_gl_laser_skeleton.start_animation()
 
 

@@ -20,9 +20,6 @@ class PupilFreemocapSynchronizer:
         self.raw_session_data = raw_session_data
         self.synchronized_session_data: FreemocapSessionDataClass = None
 
-    def synchronise(self, debug: bool = False):
-        self.synchronize(debug=debug)  # lol brits
-
     def synchronize(self, debug: bool = False, vor_frame_start: int = None, vor_frame_end: int = None):
         """
          align freemocap and pupil timestamps and clip the starts and ends of the various data traces so that everything covers the same timespacn
@@ -79,7 +76,7 @@ class PupilFreemocapSynchronizer:
 
         self.clip_eye_data()
         self.resample_eye_data()
-        self.normalize_eye_data()
+        # self.normalize_eye_data()
 
         self.synchronized_timestamps = self.raw_session_data.timestamps[freemocap_start_frame:freemocap_end_frame + 1]
 

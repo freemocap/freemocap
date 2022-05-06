@@ -91,7 +91,8 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
         ####
         vor_calibrator = VorCalibrator(synchronized_session_data.mediapipe_skel_fr_mar_dim.copy(),
                                        vor_start_frame=self.vor_frame_start,
-                                       vor_end_frame=self.vor_frame_end)
+                                       vor_end_frame=self.vor_frame_end,
+                                       debug=True)
         right_index_fingertip_idx = 41  # pretty sure this is right?
         fixation_point_fr_xyz = synchronized_session_data.mediapipe_skel_fr_mar_dim[
                                 self.vor_frame_start:self.vor_frame_end,
@@ -99,13 +100,15 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
                                 :]
         # right eye
         synchronized_session_data.right_gaze_vector_endpoint_fr_xyz = vor_calibrator.calibrate(
-            synchronized_session_data.right_eye_pupil_labs_data,
-            synchronized_session_data.right_eye_socket_rotation_data,
+            copy.deepcopy(synchronized_session_data.right_eye_pupil_labs_data),
+            copy.deepcopy(synchronized_session_data.right_eye_socket_rotation_data),
+            copy.deepcopy(synchronized_session_data.head_rotation_data),
             fixation_point_fr_xyz)
         # left eye
         synchronized_session_data.left_gaze_vector_endpoint_fr_xyz = vor_calibrator.calibrate(
             synchronized_session_data.left_eye_pupil_labs_data,
             synchronized_session_data.left_eye_socket_rotation_data,
+            copy.deepcopy(synchronized_session_data.head_rotation_data),
             fixation_point_fr_xyz)
 
         ####

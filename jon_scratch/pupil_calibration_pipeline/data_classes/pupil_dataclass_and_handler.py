@@ -7,7 +7,7 @@ import pandas as pd
 
 
 @dataclass
-class PupilData:
+class PupilLabsDataClass:
     def __init__(self,
                  timestamps=None,
                  theta=None,
@@ -52,14 +52,14 @@ class PupilDataHandler:
         pupil_center_normal_y = np.array(pupil_dataframe['circle_3d_normal_y'])
         pupil_center_normal_z = np.array(pupil_dataframe['circle_3d_normal_z'])
 
-        self.pupil_data = PupilData(timestamps=np.array(pupil_dataframe['pupil_timestamp']),
-                                    theta=np.array(pupil_dataframe['theta']),
-                                    phi=np.array(pupil_dataframe['phi']),
-                                    pupil_center_normal_x=pupil_center_normal_x,
-                                    pupil_center_normal_y=pupil_center_normal_y,
-                                    pupil_center_normal_z=pupil_center_normal_z,
-                                    eye_d=pupil_dataframe['eye_id'],
-                                    method=pupil_dataframe['method'])
+        self.pupil_data = PupilLabsDataClass(timestamps=np.array(pupil_dataframe['pupil_timestamp']),
+                                             theta=np.array(pupil_dataframe['theta']),
+                                             phi=np.array(pupil_dataframe['phi']),
+                                             pupil_center_normal_x=pupil_center_normal_x,
+                                             pupil_center_normal_y=pupil_center_normal_y,
+                                             pupil_center_normal_z=pupil_center_normal_z,
+                                             eye_d=pupil_dataframe['eye_id'],
+                                             method=pupil_dataframe['method'])
 
     def convert_to_unix_timestamps(self, pupil_recording_info_json: dict):
         self.pupil_data.timestamps = self.pupil_data.timestamps - pupil_recording_info_json['start_time_synced_s'] + \
@@ -80,7 +80,7 @@ class PupilDataHandler:
 
         this_eye_logical_indicies = np.logical_and(self.pupil_data.eye_d == eye_d,
                                                    self.pupil_data.method != '2d c++')
-        return PupilData(
+        return PupilLabsDataClass(
             timestamps=self.pupil_data.timestamps[this_eye_logical_indicies],
             theta=self.pupil_data.theta[this_eye_logical_indicies],
             phi=self.pupil_data.phi[this_eye_logical_indicies],

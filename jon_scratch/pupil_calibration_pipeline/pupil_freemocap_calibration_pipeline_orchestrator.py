@@ -111,6 +111,8 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
             copy.deepcopy(synchronized_session_data.head_rotation_data),
             fixation_point_fr_xyz)
 
+        #save that data
+        self.save_gaze_data(synchronized_session_data)
         ####
         # Play laser skeleton animation (as both a cool thing and a debug tool)
         ####
@@ -121,6 +123,16 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
                                                            # end_frame=self.vor_frame_end)
         qt_gl_laser_skeleton.start_animation()
 
+    def save_gaze_data(self, synchronized_session_data):
+        data_save_path = self.session_path / 'DataArrays'
+
+        #right eye
+        save_right_eye_data_path = data_save_path / 'right_eye_gaze_fr_xyz.npy'
+        np.save(save_right_eye_data_path, synchronized_session_data.right_gaze_vector_endpoint_fr_xyz)
+
+        #left eye
+        save_left_eye_data_path = data_save_path / 'left_eye_gaze_fr_xyz.npy'
+        np.save(save_left_eye_data_path, synchronized_session_data.left_gaze_vector_endpoint_fr_xyz)
 
 if __name__ == '__main__':
     session_id = 'sesh_2022-02-15_11_54_28_pupil_maybe'

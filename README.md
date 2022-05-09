@@ -325,7 +325,8 @@ ___
 	
 	```
 
-**Optional**
+# **Optional**
+
 Both [Deeplabcut](https://deeplabcut.org) and [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) are technically supported, but both are rather under-tested at the moment. 
 
 * To use DeepLabCut, install with set `freemocap.RunMe(useDLC=True)`

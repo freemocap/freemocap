@@ -1,0 +1,26 @@
+name: cv
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python==3.8.6
+  - pip
+  - cython
+  - matplotlib>=3.2.2
+  - numpy>=1.18.5
+  - PyYAML>=5.3
+  - scipy>=1.4.1
+  - tensorboard>=2.2
+  - torchvision>=0.8.1
+  - tqdm>=4.41.0
+  - requests==2.26.0
+  - pandas==1.3.2
+  - seaborn>=0.11.0
+  - ftfy==6.0.3
+  - pillow
+  - opencv
+  - regex
+  - pip:
+    - lxml
+    - torch>=1.7.0

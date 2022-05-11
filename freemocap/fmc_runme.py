@@ -29,6 +29,7 @@ from freemocap import (
     runcams,
     calibrate,
     fmc_mediapipe,
+    fmc_mediapipe_roboflow,
     fmc_openpose,
     fmc_deeplabcut,
     reconstruct3D,
@@ -46,7 +47,8 @@ def RunMe(sessionID=None,
         useOpenPose=False,
         runOpenPose = True,
         useMediaPipe=True,
-        runMediaPipe=True,
+        runMediaPipe=False,
+        runRoboflowMediapipe=True,
         useDLC=False,
         dlcConfigPath=None,
         debug=False,
@@ -197,7 +199,8 @@ def RunMe(sessionID=None,
             if runMediaPipe:
                 fmc_mediapipe.runMediaPipe(sesh)
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
-
+            elif runRoboflowMediapipe:
+                sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe_roboflow.runMediapipeAndRoboflow(sesh)
             else:
                 print('`runMediaPipe` set to False, so we\'re loading MediaPipe data from npy file')
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = np.load(sesh.dataArrayPath/'mediaPipeData_2d.npy', allow_pickle=True)

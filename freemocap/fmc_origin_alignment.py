@@ -114,7 +114,7 @@ def align_skeleton_with_origin(session, mediapipe_skeleton_data_XYZ, good_clean_
 
     translated_and_rotated_skeleton_data = np.zeros(mediapipe_skeleton_data_XYZ.shape) #create an array to hold the rotated skeleton data
 
-    for frame in track(range(num_frames)): #rotate the skeleton on each frame 
+    for frame in track(range(num_frames), description= 'Rotating Skeleton to Align With +Z'): #rotate the skeleton on each frame 
         translated_and_rotated_skeleton_data[frame,:,:] = rotate_skeleton_frame(translated_skeleton_data[frame,:,:],rotation_matrix)
 
     ##SKELETON +Y-AXIS ALIGNMENT---------------------
@@ -132,7 +132,7 @@ def align_skeleton_with_origin(session, mediapipe_skeleton_data_XYZ, good_clean_
     
     origin_aligned_skeleton_data = np.zeros(mediapipe_skeleton_data_XYZ.shape)
 
-    for frame in track(range(num_frames)):
+    for frame in track(range(num_frames),description= 'Rotating Skeleton to Align With +Y'):
         origin_aligned_skeleton_data[frame,:,:] = rotate_skeleton_frame(translated_and_rotated_skeleton_data[frame,:,:],rotation_matrix_to_align_skeleton_with_positive_y)
 
     origin_aligned_base_frame_skeleton_data = origin_aligned_skeleton_data[base_frame,:,:]

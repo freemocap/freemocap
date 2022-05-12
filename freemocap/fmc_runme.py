@@ -31,6 +31,7 @@ from freemocap import (
     fmc_mediapipe,
     fmc_openpose,
     fmc_deeplabcut,
+    fmc_origin_alignment,
     reconstruct3D,
     play_skeleton_animation,
     session,
@@ -63,6 +64,7 @@ def RunMe(sessionID=None,
         get_synced_unix_timestamps = True,
         good_clean_frame_number = 0,
         bundle_adjust_3d_points=False,
+        place_skeleton_on_origin = False,
         ):
     """
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -216,7 +218,9 @@ def RunMe(sessionID=None,
                                                                             constraints=mediapipe_body_pose_connections,
                                                                             verbose=True)
                 print('Done adjusting bundles!')
-                    
+
+
+
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
             np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy
 
@@ -227,7 +231,17 @@ def RunMe(sessionID=None,
                 for mm in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[1]):
                     sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim] = savgol_filter(sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
 
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+            if place_skeleton_on_origin:
+                sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated = sesh.mediaPipeSkel_fr_mar_xyz.copy()
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed_unrotated.npy', sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated) #save data to npy
+
+                origin_aligned_skeleton_data_XYZ = fmc_origin_alignment.align_skeleton_with_origin(sesh,sesh.mediaPipeSkel_fr_mar_xyz,good_clean_frame_number)
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', origin_aligned_skeleton_data_XYZ) #save data to npy
+
+            else:
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz)
+
+
 
         sesh.save_session()
 

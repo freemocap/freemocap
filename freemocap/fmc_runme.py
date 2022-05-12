@@ -31,9 +31,11 @@ from freemocap import (
     fmc_mediapipe,
     fmc_openpose,
     fmc_deeplabcut,
+    fmc_mediapipe_annotation,
     reconstruct3D,
     play_skeleton_animation,
     session,
+
 )
 
 
@@ -63,6 +65,7 @@ def RunMe(sessionID=None,
         get_synced_unix_timestamps = True,
         good_clean_frame_number = 0,
         bundle_adjust_3d_points=False,
+        save_annotated_videos = False,
         ):
     """
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -201,6 +204,10 @@ def RunMe(sessionID=None,
             else:
                 print('`runMediaPipe` set to False, so we\'re loading MediaPipe data from npy file')
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = np.load(sesh.dataArrayPath/'mediaPipeData_2d.npy', allow_pickle=True)
+            
+            if save_annotated_videos:
+                fmc_mediapipe_annotation.annotate_session_videos_with_mediapipe(sesh)
+
 
             sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
             
@@ -228,6 +235,7 @@ def RunMe(sessionID=None,
                     sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim] = savgol_filter(sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
 
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+            
 
         sesh.save_session()
 
@@ -279,6 +287,8 @@ def RunMe(sessionID=None,
 
     # %% Stage 5 - Use Blender to create output data files
     if stage <=5:
+
+
         try:
             if useBlender == True:
                 thisStage=5

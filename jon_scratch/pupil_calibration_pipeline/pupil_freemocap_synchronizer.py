@@ -71,6 +71,8 @@ class PupilFreemocapSynchronizer:
         self.left_eye_end_frame = left_eye_end_frame
 
         # rebase time onto freemocap's framerate (b/c it's slower than pupil) <- sloppy, assumes mocap slower than eye tracker, which is untrue for, say, GoPros
+        self.synchronized_timestamps = self.raw_session_data.timestamps[freemocap_start_frame:freemocap_end_frame ]
+
         logger.warning(
             "SLOPPY ASSUMPTION: assuming freemocap framerate is always slower than eye tracker (true for webcams, not true for GoPros)")
 
@@ -78,7 +80,6 @@ class PupilFreemocapSynchronizer:
         self.resample_eye_data()
         # self.normalize_eye_data()
 
-        self.synchronized_timestamps = self.raw_session_data.timestamps[freemocap_start_frame:freemocap_end_frame + 1]
 
         self.synchronized_timestamps = self.synchronized_timestamps - self.synchronized_timestamps[0]
 
@@ -149,7 +150,7 @@ class PupilFreemocapSynchronizer:
                                     self.left_eye_start_frame:self.left_eye_end_frame]
 
     def resample_eye_data(self):
-        freemocap_timestamps = self.raw_session_data.timestamps
+        freemocap_timestamps = self.synchronized_timestamps
         right_eye_timestamps = self.right_eye_timestamps_clipped
         left_eye_timestamps = self.left_eye_timestamps_clipped
 
@@ -219,11 +220,11 @@ class PupilFreemocapSynchronizer:
         ax2.legend(loc='upper left')
 
         ax3 = fig.add_subplot(413)
-        ax3.plot(self.raw_session_data.timestamps, self.left_eye_pupil_center_normal_x, '.-',
+        ax3.plot(self.synchronized_timestamps, self.left_eye_pupil_center_normal_x, '.-',
                  label='left_eye_pupil_center_normal_x')
-        ax3.plot(self.raw_session_data.timestamps, self.left_eye_pupil_center_normal_y, '.-',
+        ax3.plot(self.synchronized_timestamps, self.left_eye_pupil_center_normal_y, '.-',
                  label='left_eye_pupil_center_normal_y')
-        ax3.plot(self.raw_session_data.timestamps, self.left_eye_pupil_center_normal_z, '.-',
+        ax3.plot(self.synchronized_timestamps, self.left_eye_pupil_center_normal_z, '.-',
                  label='left_eye_pupil_center_normal_z')
         ax3.legend(loc='upper left')
 

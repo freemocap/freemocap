@@ -8,7 +8,7 @@ from rich.progress import track
 def align_skeleton_with_origin(session, mediapipe_skeleton_data_XYZ, good_clean_frame_number):
 
     #skeleton_data_path = session.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy'
-    debug = True
+    debug = False
     right_heel_index = 30
     right_toe_index = 32
     left_heel_index = 29

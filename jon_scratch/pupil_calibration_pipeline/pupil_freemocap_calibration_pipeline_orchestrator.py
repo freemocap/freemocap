@@ -59,16 +59,18 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
         ####
         # Synchronize pupil data with freemocap data - results in synchronized_session_data (each stream has exactly the same number of frames)
         ####
-        synchronized_session_data = PupilFreemocapSynchronizer(self.raw_session_data).synchronize(debug=False,
-                                                                                                  vor_frame_start=self.vor_frame_start,
-                                                                                                  vor_frame_end=self.vor_frame_end)
+        synchronized_session_data = PupilFreemocapSynchronizer(self.raw_session_data).synchronize(
+            vor_frame_start=self.vor_frame_start,
+            vor_frame_end=self.vor_frame_end,
+            debug=False, )
+
         logger.info(
             'synchronization complete - I should add a test to make sure everything has the same number of frames')
 
         ####
         # Calculate Head Rotation matrix for each frame (gaze data will be rotated by head_rot, then calibrated_offset_rot)
         ####
-        rotation_matrix_calculator = RotationMatrixCalculator(self.raw_session_data.mediapipe_skel_fr_mar_dim)
+        rotation_matrix_calculator = RotationMatrixCalculator(synchronized_session_data.mediapipe_skel_fr_mar_dim)
 
         synchronized_session_data.head_rotation_data = rotation_matrix_calculator.calculate_head_rotation_matricies(
             debug=False)
@@ -111,36 +113,42 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
             copy.deepcopy(synchronized_session_data.head_rotation_data),
             fixation_point_fr_xyz)
 
-        #save that data
+        # save that data
         self.save_gaze_data(synchronized_session_data)
         ####
         # Play laser skeleton animation (as both a cool thing and a debug tool)
         ####
 
         qt_gl_laser_skeleton = QtGlLaserSkeletonVisualizer(session_data=synchronized_session_data,
-                                                           move_data_to_origin=True,)
-                                                           # start_frame=self.vor_frame_start,
-                                                           # end_frame=self.vor_frame_end)
+                                                           move_data_to_origin=True, )
+        # start_frame=self.vor_frame_start,
+        # end_frame=self.vor_frame_end)
         qt_gl_laser_skeleton.start_animation()
 
     def save_gaze_data(self, synchronized_session_data):
         data_save_path = self.session_path / 'DataArrays'
 
-        #right eye
+        # right eye
         save_right_eye_data_path = data_save_path / 'right_eye_gaze_fr_xyz.npy'
         np.save(save_right_eye_data_path, synchronized_session_data.right_gaze_vector_endpoint_fr_xyz)
 
-        #left eye
+        # left eye
         save_left_eye_data_path = data_save_path / 'left_eye_gaze_fr_xyz.npy'
         np.save(save_left_eye_data_path, synchronized_session_data.left_gaze_vector_endpoint_fr_xyz)
 
+
 if __name__ == '__main__':
+    # session_id = 'sesh_2022-05-07_17_15_05_pupil_wobble_juggle_0'
+    # vor_frame_start_in = 614
+    # vor_frame_end_in = 1073
+
     session_id = 'sesh_2022-02-15_11_54_28_pupil_maybe'
+    vor_frame_start_in = 1200
+    vor_frame_end_in = 1500
+
     data_path = Path('C:/Users/jonma/Dropbox/FreeMoCapProject/FreeMocap_Data/')
     this_session_path = data_path / session_id
 
-    vor_frame_start_in = 1200
-    vor_frame_end_in = 1500
 
     pupil_freemocap_calibration_pipeline_orchestrator = PupilFreemocapCalibrationPipelineOrchestrator(this_session_path,
                                                                                                       vor_frame_start=vor_frame_start_in,

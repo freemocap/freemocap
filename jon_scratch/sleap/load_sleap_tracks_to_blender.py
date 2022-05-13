@@ -28,7 +28,7 @@ for this_sleap_track_num in  range(sleap_fr_mar_xyz.shape[1]):
         this_empty.location = (sleap_fr_mar_x[frame_num, this_sleap_track_num],
                                sleap_fr_mar_y[frame_num, this_sleap_track_num],
                                sleap_fr_mar_z[frame_num, this_sleap_track_num])
-        this_empty.scale = (0.1, 0.1, .01)
+        this_empty.scale = (0.1, 0.1, .1)
         
         # this_empty.name = 'right_eye_gaze'
         bpy.context.view_layer.update()

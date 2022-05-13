@@ -16,6 +16,9 @@ from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
 
 logger = logging.getLogger(__name__)
 
+import os
+
+
 def get_canonical_time_str():
     return time.strftime("%m-%d-%Y-%H_%M_%S")
 

@@ -31,9 +31,12 @@ from freemocap import (
     fmc_mediapipe,
     fmc_openpose,
     fmc_deeplabcut,
+    fmc_origin_alignment,
+    fmc_mediapipe_annotation,
     reconstruct3D,
     play_skeleton_animation,
     session,
+
 )
 
 
@@ -63,6 +66,9 @@ def RunMe(sessionID=None,
         get_synced_unix_timestamps = True,
         good_clean_frame_number = 0,
         use_saved_calibration = False
+        bundle_adjust_3d_points=False,
+        place_skeleton_on_origin = False,
+        save_annotated_videos = False,
         ):
     """
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -179,40 +185,6 @@ def RunMe(sessionID=None,
 
         sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
 
-        ##this is supposed to cycle through tyhe videos with different windows to try to get Anipose to work. I can't get the dang thing working because something weird happens where a Thread will get spawned in one of the inner functions (maybe related to tqdm?) and that iteration will jump out of the try/except
-        # try:
-        #     sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
-        #     # anipose_success = True
-        #     anipose_success = False
-        # except:
-        #     console.print_exception()
-        #     console.print('[bold red] - Anipose Calibration failed with user-provided (or default) `calVideoFrameLength` value! Trying again with other parts of the videos')
-        #     anipose_success = False
-
-        # if not anipose_success:
-        #     if calVideoFrameLength ==.25:
-        #         cal_video_frame_range = [round(sesh.numFrames*.25), round(sesh.numFrames*.5)]
-        #     else:
-        #         cal_video_frame_range = [0, round(sesh.numFrames*.25)]
-
-        #     for anipose_iter in range(4):
-
-        #         console.rule('Anipose Failed - Reprocessing - Iteration #{}'.format(anipose_iter), style="color({})".format(thisStage))
-        #         console.rule('Trying again with frame range {} - {}'.format(cal_video_frame_range[0], cal_video_frame_range[1]), style="color({})".format(thisStage))
-
-        #         try:
-        #             sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, cal_video_frame_range)
-        #             break
-        #         except:
-        #             console.print_exception()
-        #             cal_video_frame_range = [cal_video_frame_range[0]+round(sesh.numFrames*.25), cal_video_frame_range[0]+round(sesh.numFrames*.5)]
-
-        #         if cal_video_frame_range[1] > sesh.numFrames:
-        #             console.print('[bold red] -Sorry, we couldn\'t get Anipose calibration to complete sucessfully. Are you using a Charuco board made with the parameters described in the ReadMe (here\s a sample png -https://github.com/jonmatthis/freemocap/blob/main/charuco_board_image.png ). Is the board clearly visible to each camera? Is there glare on it from from any of the camera\'s perspective? Is it too far away from the cameras? Is your `exposure` set low enough that the black squares are black (not grey)?')
-
-
-
-
         print('Anipose Calibration Successful!')
     else:
         print('Skipping Calibration')
@@ -229,23 +201,39 @@ def RunMe(sessionID=None,
 
 
         if sesh.useMediaPipe:
-            console.rule(style="color({})".format(thisStage))
-            console.rule('Running MediaPipe skeleton tracker - https://google.github.io/mediapipe', style="color({})".format(thisStage))
-            console.rule(style="color({})".format(thisStage))
 
+            console.rule(style="color({})".format(thisStage))    
+            console.rule('Running MediaPipe skeleton tracker - https://google.github.io/mediapipe', style="color({})".format(thisStage))    
+            console.rule(style="color({})".format(thisStage))    
 
             if runMediaPipe:
                 fmc_mediapipe.runMediaPipe(sesh)
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
 
-
-
-
             else:
                 print('`runMediaPipe` set to False, so we\'re loading MediaPipe data from npy file')
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = np.load(sesh.dataArrayPath/'mediaPipeData_2d.npy', allow_pickle=True)
+            
+            if save_annotated_videos:
+                fmc_mediapipe_annotation.annotate_session_videos_with_mediapipe(sesh)
+
 
             sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+            
+            if bundle_adjust_3d_points:
+                sesh.mediaPipeSkel_fr_mar_xyz_og = sesh.mediaPipeSkel_fr_mar_xyz.copy()
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_raw.npy', sesh.mediaPipeSkel_fr_mar_xyz_og) #save data to npy
+
+                from mediapipe.python.solutions import holistic as mp_holistic
+                mediapipe_body_pose_connections = [this_connection for this_connection in mp_holistic.POSE_CONNECTIONS]
+                with console.status('Running bundle adjustment optimization on 3d points...'):
+                    sesh.mediaPipeSkel_fr_mar_xyz = sesh.cgroup.optim_points(sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC[:,:,:,:2],
+                                                                            sesh.mediaPipeSkel_fr_mar_xyz, 
+                                                                            constraints=mediapipe_body_pose_connections,
+                                                                            verbose=True)
+                print('Done adjusting bundles!')
+
+
 
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
             np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy
@@ -257,7 +245,19 @@ def RunMe(sessionID=None,
                 for mm in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[1]):
                     sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim] = savgol_filter(sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
 
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+
+            if place_skeleton_on_origin:
+                sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated = sesh.mediaPipeSkel_fr_mar_xyz.copy()
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed_unrotated.npy', sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated) #save data to npy
+
+                origin_aligned_skeleton_data_XYZ = fmc_origin_alignment.align_skeleton_with_origin(sesh,sesh.mediaPipeSkel_fr_mar_xyz,good_clean_frame_number)
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', origin_aligned_skeleton_data_XYZ) #save data to npy
+
+            else:
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz)
+
+
+
 
         sesh.save_session()
 
@@ -309,6 +309,8 @@ def RunMe(sessionID=None,
 
     # %% Stage 5 - Use Blender to create output data files
     if stage <=5:
+
+
         try:
             if useBlender == True:
                 thisStage=5

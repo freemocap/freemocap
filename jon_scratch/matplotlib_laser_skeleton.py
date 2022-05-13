@@ -41,7 +41,6 @@ import moviepy.editor as mp
 import os
 import copy
 from pathlib import Path
-import time
 
 #RICH CONSOLE STUFF
 from rich import pretty
@@ -328,7 +327,7 @@ def PlaySkeletonAnimation(
 
     if useMediaPipe:
         try:
-            mediaPipe_skel_fr_mar_xyz = np.load(session.dataArrayPath / 'mediaPipeSkel_3d_smoothed.npy')
+            mediaPipe_skel_fr_mar_xyz = np.load(session.dataArrayPath / 'mediaPipeSkel_3d.npy')
             mediaPipe_nCams_nFrames_nImgPts_XYC = np.load(session.dataArrayPath / 'mediaPipeData_2d.npy')            
         except:
             print('No mediaPipe data found.')
@@ -705,7 +704,7 @@ def PlaySkeletonAnimation(
 
 
     fps=30 #NOTE - This should be saved in the session Class some how
-    timestamps = np.arange(0, numFrames)/fps
+    time = np.arange(0, numFrames)/fps
     if useMediaPipe:
         rHandIdx = 20
         lHandIdx = 19
@@ -729,8 +728,8 @@ def PlaySkeletonAnimation(
     yTimeSeriesAx = fig.add_subplot(position=[.07, .225, linePlotWidth, linePlotHeight])
     yTimeSeriesAx.set_title('Hand Position vs Time', fontsize = 7, pad=2)
 
-    yTimeSeriesAx.plot(timestamps, rHandY, color=humon_red, linewidth=.75, label='Right Hand')
-    yTimeSeriesAx.plot(timestamps, lHandY, color=humon_blue, linewidth=.75, label='Left Hand')
+    yTimeSeriesAx.plot(time, rHandY, color=humon_red, linewidth=.75, label='Right Hand')
+    yTimeSeriesAx.plot(time, lHandY, color=humon_blue, linewidth=.75, label='Left Hand')
     
     timeRange = 3
     ylimRange = .6
@@ -768,8 +767,8 @@ def PlaySkeletonAnimation(
 
     xTimeSeriesAx = fig.add_subplot(position=[.07, 0.05, linePlotWidth, linePlotHeight])
     
-    xTimeSeriesAx.plot(timestamps, rHandX, color=humon_red, linewidth=.75, label='Right Hand')
-    xTimeSeriesAx.plot(timestamps, lHandX, color=humon_blue, linewidth=.75, label='Left Hand')
+    xTimeSeriesAx.plot(time, rHandX, color=humon_red, linewidth=.75, label='Right Hand')
+    xTimeSeriesAx.plot(time, lHandX, color=humon_blue, linewidth=.75, label='Left Hand')
     
 
 
@@ -824,7 +823,7 @@ def PlaySkeletonAnimation(
     #     animationFramePath.mkdir(parents=True, exist_ok=True)
 
     # Creating the Animation object
-    out_animation = animation.FuncAnimation(fig, update_figure, range(startFrame,numFrames), fargs=(),
+    line_animation = animation.FuncAnimation(fig, update_figure, range(startFrame,numFrames), fargs=(),
                                     interval=1, blit=False)
 
 
@@ -833,28 +832,17 @@ def PlaySkeletonAnimation(
         # vidSavePath = '{}_animVid.mp4'.format(str(session.sessionPath / session.sessionID))
         gifSavePath = '{}_animVid.gif'.format(str(session.sessionPath / session.sessionID)) #NOTE - saving as a gif first then converting to MP4, because saving directly to MP4 requires users to install ffmpeg (independently of the pip install)
         with console.status('Saving animation for {}'.format(session.sessionID)):
-
-            # ffmpeg, not actually much faster :-/            
-            # tik = time.time()            
-            # vidSavePath = f'{str(session.sessionPath / session.sessionID)}_outVid.mp4'
-            # video_writer = animation.FFMpegWriter(fps=fps)
-            # out_animation.save(vidSavePath, writer=video_writer)
-            # print(f'Done! Saved animation video to: {str(vidSavePath)}')
-            # tok = time.time()-tik
-            # print(f'Took {tok} seconds to save animation video wtih ffmpeg')
-            # # # except:
-                
-            tik = time.time()            
+            # Writer = animation.writers['ffmpeg']
             Writer = animation.writers['pillow']            
             writer = Writer(fps=fps, metadata=dict(artist='FreeMoCap'))#, bitrate=1800)
-            out_animation.save(gifSavePath, writer = writer)
-            gif_filepath = mp.VideoFileClip(gifSavePath)
-            gif_filepath.write_videofile(gifSavePath.replace('.gif','.mp4'))
-            os.remove(gifSavePath)
-            tok = time.time()-tik
-            print(f'Took {tok} seconds to save animation video wtih pillow')
-
-
+            line_animation.save(gifSavePath, writer = writer)
+            # Writer = animation.FFMpegWriter(fps=30, metadata=dict(artist='FreeMoCap', comment=session.sessionID), bitrate=1800)
+            # vidSavePath = '{}_outVid.mp4'.format(str(session.sessionPath / session.sessionID))
+            # Writer.saving(fig = fig, outfile=vidSavePath, dpi=150)
+        
+        gif_filepath = mp.VideoFileClip(gifSavePath)
+        gif_filepath.write_videofile(gifSavePath.replace('.gif','.mp4'))
+        os.remove(gifSavePath)
 
 
     try:
@@ -1048,4 +1036,4 @@ def formatMediaPipeStickIndices():
 
 
 if __name__ == '__main__':
-    PlaySkeletonAnimation()
+    MatplotlibLaserSkeleton()

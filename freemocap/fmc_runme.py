@@ -65,6 +65,7 @@ def RunMe(sessionID=None,
         resetBlenderExe = False,
         get_synced_unix_timestamps = True,
         good_clean_frame_number = 0,
+        use_saved_calibration = False
         bundle_adjust_3d_points=False,
         place_skeleton_on_origin = False,
         save_annotated_videos = False,
@@ -90,8 +91,13 @@ def RunMe(sessionID=None,
     sesh.dataFolderName = recordingconfig.dataFolder
     sesh.startFrame = startFrame
     sesh.get_synced_unix_timestamps = get_synced_unix_timestamps
+    sesh.use_saved_calibration = use_saved_calibration
 
     # %% Startup
+    sesh.freemocap_module_path = Path(__file__).parent
+
+
+
     startup.get_user_preferences(sesh,stage)
 
     if sesh.useDLC and stage<5:
@@ -108,9 +114,10 @@ def RunMe(sessionID=None,
         console.rule()
         print('Running ' + str(sesh.sessionID) + ' from ' + str(sesh.dataFolderPath))
         console.rule()
+
     if useBlender == True:
-        here = Path(__file__).parent
-        subprocessPath = here/'fmc_blender.py'
+
+        subprocessPath = sesh.freemocap_module_path/'fmc_blender.py'
         blenderPath = startup.get_blender_path(sesh,resetBlenderExe)
 
 

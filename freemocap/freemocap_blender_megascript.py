@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 import sys
 import traceback
+print(' - Starting blender megascript - ')
 
 #######################################################################
 ##% Activate necessary addons
@@ -11,16 +12,24 @@ addon_utils.enable("io_import_images_as_planes")
 addon_utils.enable("rigify")
 
 #######################################################################
-##% Session path
-# #get session path as command line argument 
-argv = sys.argv
-argv = argv[argv.index("--") + 1:] 
-session_path = argv[0]
-if len(argv)>1:
-    good_clean_frame_number = int(argv[1])
-else:
-    good_clean_frame_number = 0
-    
+
+try:
+    ##% Session path
+    # #get session path as command line argument
+    argv = sys.argv
+    argv = argv[argv.index("--") + 1:]
+    session_path = argv[0]
+
+    if len(argv)>1:
+        good_clean_frame_number = int(argv[1])
+    else:
+        good_clean_frame_number = 0
+except:
+    print('we appear to be running from the Blender Scripting tab! Manually enter your `session_path` at line 23')
+    session_path = Path(r'C:\Users\jonma\Dropbox\FreeMoCapProject\FreeMocap_Data\sesh_2022-05-07_17_15_05_pupil_wobble_juggle_0')
+    good_clean_frame_number = 3341
+
+
 print(str(session_path))
 session_path = Path(session_path)
 path_to_mediapipe_npy = session_path / 'DataArrays' / 'mediaPipeSkel_3d_smoothed.npy'
@@ -305,6 +314,54 @@ try:
 
     #each bone  name has to match one in the Blender Rigify Human Metarig, or it will be ignored
     metarig_bone_empty_pairs_dict_of_dicts = {
+    "nose.001": {
+        'head': 'head_center',
+        'tail': 'nose',
+    },
+    "nose.L.001": {
+        'head': 'nose',
+        'tail': 'left_eye_inner',
+    },
+    "eye.L": {
+        'head': 'left_eye_inner',
+        'tail': 'left_eye',
+    },
+    "lid.B.L": {
+        'head': 'left_eye',
+        'tail': 'left_eye_outer',
+    },
+    "ear.L": {
+        'head': 'left_eye_outer',
+        'tail': 'left_ear',
+    },
+    "nose.R.001": {
+        'head': 'nose',
+        'tail': 'right_eye_inner',
+    },
+    "eye.R": {
+        'head': 'right_eye_inner',
+        'tail': 'right_eye',
+    },
+    "lid.B.R": {
+        'head': 'right_eye',
+        'tail': 'right_eye_outer',
+    },
+    "ear.R": {
+        'head': 'right_eye_outer',
+        'tail': 'right_ear',
+    },
+    "lip.T.R": {
+        'head': 'nose',
+        'tail': 'mouth_right',
+    },
+    "lip.B.R": {
+        'head': 'mouth_right',
+        'tail': 'mouth_left',
+    },
+    "lip.T.L": {
+        'head': 'nose',
+        'tail': 'mouth_left',
+    },
     "hand.L": {
         'head': 'left_wrist',
         'tail': 'left_index',
@@ -573,7 +630,7 @@ try:
         bpy.ops.object.mode_set(mode='EDIT')
     except:
         pass
-
+    
     for this_bone in list(this_metarig.data.bones):
         this_bone_name = this_bone.name
         print(f'--{this_bone_name}--')
@@ -613,6 +670,43 @@ try:
     this_armature = bpy.data.objects[armature_name]
 
     rig_constraint_dict_of_dicts = {
+        "nose.001": {
+                'COPY_LOCATION': 'head_center',
+                'DAMPED_TRACK': 'nose',
+        },
+        "nose.L.001": {
+            'DAMPED_TRACK': 'left_eye_inner',
+        },
+        "eye.L": {
+            'DAMPED_TRACK': 'left_eye',
+        },
+        "lid.B.L": {
+            'DAMPED_TRACK': 'left_eye_outer',
+        },
+        "ear.L": {
+        'DAMPED_TRACK': 'left_ear',
+        },
+        "nose.R.001": {
+            'DAMPED_TRACK': 'right_eye_inner',
+        },
+        "eye.R": {
+            'DAMPED_TRACK': 'right_eye',
+        },
+        "lid.B.R": {
+        'DAMPED_TRACK': 'right_eye_outer',
+        },
+        "ear.R": {
+        'DAMPED_TRACK': 'right_ear',
+        },
+        "lip.T.R": {
+        'DAMPED_TRACK': 'mouth_right',
+        },
+        "lip.B.R": {
+            'DAMPED_TRACK': 'mouth_left',
+        },
+        "lip.T.L": {
+        'DAMPED_TRACK': 'nose',
+        },
         "spine": {
             'COPY_LOCATION': 'hip_center',
             'DAMPED_TRACK': 'chest_center',
@@ -821,9 +915,9 @@ try:
 
         for this_constraint_name, this_constraint_target_empty_name in this_bone_dict.items():
             print(f'constraint: {this_constraint_name} with target:{this_constraint_target_empty_name}')
-
+            print('grab bone')
             this_bone= this_armature.pose.bones[this_bone_name]
-
+            print('apply bone')
             this_constraint = this_bone.constraints.new(type=this_constraint_name)
             this_constraint.name = this_constraint_name
             this_constraint.target = bpy.data.objects[this_constraint_target_empty_name] #point constraint at relevant empty object
@@ -846,7 +940,54 @@ try:
     #### Create Stick Figure Mesh
 
     stick_figure_mesh_edge_pairs_dict_of_dicts = {
-
+         "nose.001": {
+        'head': 'head_center',
+        'tail': 'nose',
+        },
+        "nose.L.001": {
+            'head': 'nose',
+            'tail': 'left_eye_inner',
+        },
+        "eye.L": {
+            'head': 'left_eye_inner',
+            'tail': 'left_eye',
+        },
+        "lid.B.L": {
+            'head': 'left_eye',
+            'tail': 'left_eye_outer',
+        },
+        "ear.L": {
+            'head': 'left_eye_outer',
+            'tail': 'left_ear',
+        },
+        "nose.R.001": {
+            'head': 'nose',
+            'tail': 'right_eye_inner',
+        },
+        "eye.R": {
+            'head': 'right_eye_inner',
+            'tail': 'right_eye',
+        },
+        "lid.B.R": {
+            'head': 'right_eye',
+            'tail': 'right_eye_outer',
+        },
+        "ear.R": {
+            'head': 'right_eye_outer',
+            'tail': 'right_ear',
+        },
+        "lip.T.R": {
+            'head': 'nose',
+            'tail': 'mouth_right',
+        },
+        "lip.B.R": {
+            'head': 'mouth_right',
+            'tail': 'mouth_left',
+        },
+        "lip.T.L": {
+            'head': 'nose',
+            'tail': 'mouth_left',
+        },
         "forearm.L": {
             'head': 'left_elbow',
             'tail': 'left_wrist',
@@ -1016,7 +1157,7 @@ try:
         "f_pinky.03.R": {
             'head': 'right_hand_pinky_finger_dip',
             'tail': 'right_hand_pinky_finger_tip',
-        },    
+        },
         "thumb.01.L": {
             'head': 'left_wrist',
             'tail': 'left_hand_thumb_cmc',
@@ -1159,26 +1300,26 @@ try:
         edge_name = this_bone_dict[0]
         head_name = this_bone_dict[1]['head']
         tail_name = this_bone_dict[1]['tail']
-        
+
 
         try:
-            
+
             head_index = mediapipe_tracked_point_names.index(head_name)
             tail_index = mediapipe_tracked_point_names.index(tail_name)
-            
-            if 'center' in head_name: #virtual markers are acting weird so we're brute forcing it :-/ this will fail if there is a virtual marker without 'center' in the name.... 
+
+            if 'center' in head_name: #virtual markers are acting weird so we're brute forcing it :-/ this will fail if there is a virtual marker without 'center' in the name....
                 head_index = virtual_point_index_dict[head_name]
             if 'center' in tail_name:
                 tail_index = virtual_point_index_dict[tail_name]
 
             this_edge =(head_index, tail_index)
-            
+
             edges.append(this_edge)
             print(f'edge created for bone: ({this_bone_dict[0]} : {head_name}-{tail_name}), indicies({this_edge[0]},{this_edge[1]})')
         except:
             print(f'edge FAILED for for bone:{this_bone_dict[0]} : {head_name}-{tail_name}')
             pass
-        
+
     print('edges created!')
 
 
@@ -1190,28 +1331,37 @@ try:
         pass
 
     print('loading verticies')
-    vertices = mediapipe_skel_fr_mar_dim[current_frame,:,:]
-
+    vertices = mediapipe_skel_fr_mar_dim[current_frame,:,:] #don't plot face dottos until we know what to do with them 
+    print('done loading verticies')
     #edges defined above
     faces = []
     stick_figure_mesh = bpy.data.meshes.new('stick_figure_mesh')
+    print('a')
     stick_figure_mesh.from_pydata(vertices, edges, faces)
+    print('b')
     stick_figure_mesh.update()
+    print('c')
     # make object from mesh
     stick_figure_mesh_object = bpy.data.objects.new('stick_figure_mesh', stick_figure_mesh)
+    print('d')
     # make collection
     mesh_collection = bpy.data.collections.new('mesh_collection')
+    print('e')
     bpy.context.scene.collection.children.link(mesh_collection)
+    print('f')
     # add object to scene collection
     mesh_collection.objects.link(stick_figure_mesh_object)
+    print('g')
 
     bpy.context.view_layer.objects.active = bpy.data.objects['stick_figure_mesh']
+    print('h')
 
+    bpy.context.object.mode
     try:
-        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.object.editmode_toggle()
     except:
         pass
-
+    print('i')
 
     #### skin that mesh!
     print('skinning mesh \o/')
@@ -1250,14 +1400,14 @@ try:
             bpy.ops.import_image.to_plane(files=[{"name":thisVidPath.name}], directory=str(thisVidPath.parent), shader='EMISSION', )
             this_vid_as_plane = bpy.context.active_object
             this_vid_as_plane.name = 'vid_' + str(vid_number)
-            
-            
+
+
             vid_x = (vid_number - number_of_videos/2) * vid_location_scale
-            
+
             this_vid_as_plane.location = [vid_x, vid_location_scale, vid_location_scale]
             this_vid_as_plane.rotation_euler = [np.pi/2, 0, 0]
             this_vid_as_plane.scale = [vid_location_scale*1.5]*3
-            this_vid_as_plane.parent = world_origin 
+            this_vid_as_plane.parent = world_origin
             # create a light
             # bpy.ops.object.light_add(type='POINT', radius=1, align='WORLD')
     except:
@@ -1265,7 +1415,9 @@ try:
 except Exception as e:
     print(e)
     print('Something broke in the Blender Megascript - Maybe it failed to find a good clean frame and then that borked something downstream?')
-    
+
+# set shading type to 'Material Preview' so you can see the videos
+
 # save .blend file
 sessionID = session_path.stem
 blend_file_save_path = session_path / (sessionID + '.blend')

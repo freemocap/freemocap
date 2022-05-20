@@ -33,7 +33,7 @@ class OpenCVCameraManager:
         if _open_cv_cameras is None:
             logger.info("Creating cams.")
             # we create the _cv_cams /once/, and reuse it for the lifetime of the session
-            _open_cv_cameras = self._create_opencv_cameras(calibrate_cameras=True)
+            _open_cv_cameras = self._create_opencv_cameras()
             self._open_cv_camera_objects = _open_cv_cameras
             # self._timestamp_logger = TimestampLogger(self.available_webcam_ids, self.camera0_id)
             self._number_of_cameras = len(self._open_cv_camera_objects)
@@ -82,7 +82,7 @@ class OpenCVCameraManager:
                 return cam
         return None
 
-    def _create_opencv_cameras(self, calibrate_cameras=True):
+    def _create_opencv_cameras(self):
         raw_camera_objects = self._detected_cams_data.cameras_found_list
         open_cv_cameras: List[OpenCVCamera] = []
         for this_raw_cam in raw_camera_objects:

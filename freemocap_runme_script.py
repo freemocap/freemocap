@@ -1,2 +1,2 @@
-import freemocap as fmc
-fmc.RunMe()
+import freemocap 
+freemocap.RunMe() 

@@ -76,13 +76,13 @@ class OpenCVCamera:
         self._apply_configuration()
         success, image = self._opencv_video_capture_object.read()
 
-        if not success:
+        if not success or image is None:
             logger.error(
                 "Could not connect to a camera at port# {}".format(
                     self._config.webcam_id
                 )
             )
-            return success
+            return False
 
         try:
             image_height = image.shape[0]
@@ -157,11 +157,14 @@ class OpenCVCamera:
         if not self._opencv_video_capture_object.grab():
             return FramePayload(False, None, None)
 
-        timestamp_ns = time.time_ns()
+        timestamp_ns_pre = time.perf_counter_ns()
         success, image = self._opencv_video_capture_object.retrieve()
+        timestamp_ns_post = time.perf_counter_ns()
+
+        timestamp_ns = (timestamp_ns_pre + timestamp_ns_post)/2
 
         self._new_frame_ready = success
-        return FramePayload(success, image, timestamp_ns)
+        return FramePayload(success, image, timestamp_ns, self.webcam_id_as_str)
 
     def stop_frame_capture(self):
         self.close()

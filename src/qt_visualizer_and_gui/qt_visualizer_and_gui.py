@@ -47,9 +47,9 @@ class QTVisualizerAndGui:
         self._setup_main_window()
         self._setup_control_panel()
         self._setup_camera_views_dock()
-        self._setup_timestamp_plot()
-        self._setup_time_difference_from_cam0_line_plot()
-        self._setup_time_difference_from_cam0_histogram_plot()
+        # self._setup_timestamp_plot()
+        # self._setup_time_difference_from_cam0_line_plot()
+        # self._setup_time_difference_from_cam0_histogram_plot()
         self._setup_3d_viewport()
         logger.info('launching QT Visualizer and GUI window')
         self._main_window_widget.show()
@@ -68,26 +68,26 @@ class QTVisualizerAndGui:
     def update_timestamp_plots(self, timestamp_manager: TimestampManager):
         if self.pause_button_pressed:
             return
-        if timestamp_manager.get_timestamps_from_camera(self._camera0_id).number_of_frames <= 0:
+        if timestamp_manager.get_number_of_frames(self._camera0_id) <= 0:
             return
 
-        self._update_simple_timestamp_plot(timestamp_manager)
-        self._update_timestamp_difference_plot(timestamp_manager)
-        self._update_timestamp_difference_histogram(timestamp_manager)
+        # self._update_simple_timestamp_plot(timestamp_manager)
+        # self._update_timestamp_difference_plot(timestamp_manager)
+        # self._update_timestamp_difference_histogram(timestamp_manager)
 
     def _update_simple_timestamp_plot(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
             plot_item = self._dict_of_simple_timestamp_line_plots[webcam_id]
-            plot_item.setData(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps)
+            plot_item.setData(timestamp_manager.get_timestamps_from_camera_in_seconds_from_session_start(webcam_id))
 
     def _update_timestamp_difference_plot(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
-            plot_item = self._dict_of_simple_timestamp_line_plots[webcam_id]
-            plot_item.setData(np.diff(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps))
+            plot_item = self._dict_of_timestamp_difference_line_plots[webcam_id]
+            plot_item.setData(np.diff(timestamp_manager.get_timestamps_from_camera_in_seconds_from_session_start(webcam_id)))
 
     def _update_timestamp_difference_histogram(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
-            this_cam_timestamp_diffs = np.diff(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps)
+            this_cam_timestamp_diffs = np.diff(timestamp_manager.get_timestamps_from_camera_in_seconds_from_session_start(webcam_id))
             num_samples = this_cam_timestamp_diffs.shape[0]
             counts, bin_edges = np.histogram(this_cam_timestamp_diffs,
                                              bins=np.linspace(0, 100, 100))
@@ -100,7 +100,7 @@ class QTVisualizerAndGui:
                 logger.warning(f'Could not find timestamp difference line plot widget for camera {webcam_id}')
                 raise e
 
-    def _setup_main_window(self, window_width: int = 1000, window_height: int = 1000):
+    def _setup_main_window(self, window_width: int = 1280, window_height: int = 720):
         """
         This is the main main window for the GUI.
         Its structure is based loosely on the 'Dock Widgets' example from `python -m pyqtgraph.examples`
@@ -270,4 +270,4 @@ class QTVisualizerAndGui:
 
         self.opengl_3d_plot_dock = Dock("3d View Port")
         self.opengl_3d_plot_dock.addWidget(self.opengl_3d_plot_widget)
-        self._main_dock_area.addDock(self.opengl_3d_plot_dock, 'right', self._timestamp_diff_histgoram_dock )
+        self._main_dock_area.addDock(self.opengl_3d_plot_dock, 'right', self._camera_views_dock )

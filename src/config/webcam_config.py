@@ -2,8 +2,10 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+
 def _get_home_dir():
     return str(Path.home())
+
 
 class WebcamConfig(BaseModel):
     webcam_id: int = 0

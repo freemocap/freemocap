@@ -21,13 +21,6 @@ class VideoCaptureThread(threading.Thread):
         self._frame: FramePayload = FramePayload()
         self.setDaemon(True)
 
-    @property
-    def average_fps(self):
-        if self._elapsed <= 0:
-            return 0
-        if self._num_frames_processed <= 0:
-            return 0
-        return self._num_frames_processed / self._elapsed
 
     @property
     def latest_frame(self):

@@ -12,7 +12,7 @@ class WebcamConfig(BaseModel):
     exposure: int = -6
     resolution_width: int = 800
     resolution_height: int = 600
-    save_video: bool = True
+    save_video: bool = False
     # fourcc: str = "MP4V"
     fourcc: str = "MJPG"
     base_save_video_dir = _get_home_dir()

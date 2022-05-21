@@ -179,4 +179,4 @@ if __name__ == "__main__":
     this_session_orchestrator.run(save_video=False,
                                   show_visualizer_gui=True,
                                   calibrate_cameras=False,
-                                  detect_skeleton=True)
+                                  detect_skeleton=False)

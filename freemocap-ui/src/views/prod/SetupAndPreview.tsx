@@ -14,7 +14,7 @@ import React from "react";
 // for freemocap (api) to save (prolly to disk).
 
 export const SetupAndPreview = () => {
-  const [frameCapture, data] = useFrameCapture("0", CaptureType.BoardDetection);
+  const [frameCapture, data] = useFrameCapture("0", CaptureType.Preview);
   if (!data) {
     return null;
   }

@@ -17,3 +17,8 @@ async def config_cam(webcam_config: WebcamConfig):
 @camera_router.get("/camera/detect")
 async def get_cameras():
     return get_or_create_cams()
+
+
+@camera_router.get("/camera/redetect")
+async def redetect_cameras():
+    return get_or_create_cams(always_create=True)

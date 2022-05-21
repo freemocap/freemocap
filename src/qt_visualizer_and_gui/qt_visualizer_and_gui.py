@@ -68,8 +68,8 @@ class QTVisualizerAndGui:
     def update_timestamp_plots(self, timestamp_manager: TimestampManager):
         if self.pause_button_pressed:
             return
-        if timestamp_manager.get_number_of_frames(self._camera0_id) <= 0:
-            return
+        # if timestamp_manager.get_number_of_frames(self._camera0_id) <= 0:
+        #     return
 
         # self._update_simple_timestamp_plot(timestamp_manager)
         # self._update_timestamp_difference_plot(timestamp_manager)

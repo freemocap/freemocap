@@ -15,6 +15,10 @@ const categories = [
     id: 'Build',
     children: [
       {
+        id: 'Setup and Preview',
+        route: "/setup_and_preview"
+      },
+      {
         id: 'Show Cameras',
         route: "/show_cameras"
       },

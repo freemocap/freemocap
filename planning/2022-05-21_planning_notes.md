@@ -53,3 +53,10 @@
 
 4 - post-processing and analysis
     - do stuff with data output from 3 and/or 4
+
+
+## Questions for those Pyuvc people - Pupil Labs
+
+1. What is a good, robust way to detect cameras on a system regardless of Operating System?
+2. Also, whats a good way to get unique identifiers for camera devices regardless of Operating System?
+3. Whats a good way to retrieve camera data for N number of cameras without incurring steep processing penalties? (Threading, Multiprocessing, other techniques?)

@@ -13,8 +13,12 @@ import React from "react";
 // Finally, We'll include form inputs so that users can select configuration on screen, and submit their results
 // for freemocap (api) to save (prolly to disk).
 
-export const SetupAndPreview = () => {
-  const [frameCapture, data] = useFrameCapture("0", CaptureType.Preview);
+interface Props {
+  camId: string
+}
+
+export const SetupAndPreviewCamera = (props: Props) => {
+  const [frameCapture, data] = useFrameCapture(camId, CaptureType.Preview);
   if (!data) {
     return null;
   }

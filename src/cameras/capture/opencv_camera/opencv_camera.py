@@ -45,19 +45,11 @@ class OpenCVCamera:
         return str(self._config.webcam_id)
 
     @property
-    def current_fps(self):
-        return self._running_thread.average_fps
-
-    @property
     def is_capturing_frames(self):
         if not self._running_thread:
             logger.info("Frame Capture thread not running yet")
             return False
         return self._running_thread.is_capturing_frames
-
-    @property
-    def current_fps_short(self) -> str:
-        return "{:.2f}".format(self._running_thread.average_fps)
 
     @property
     def latest_frame(self):

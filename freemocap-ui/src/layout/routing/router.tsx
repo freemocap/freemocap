@@ -6,7 +6,7 @@ import {WebcamJonTest} from "../../views/WebcamJonTest";
 import {PythonToJsTest} from "../../views/PythonToJsTest";
 import {BoardDetection} from "../../views/BoardDetection";
 import {SkeletonDetection} from "../../views/SkeletonDetection";
-import {SetupAndPreview} from "../../views/prod/SetupAndPreview";
+import {SetupAndPreview} from "../../views/prod/SetupAndPreviewCamera";
 
 export const Router = () => {
   return (

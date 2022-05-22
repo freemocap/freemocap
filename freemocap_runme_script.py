@@ -1,6 +1,5 @@
-from requests import session
-import freemocap 
-freemocap.RunMe(sessionID='sesh_2022-05-19_17_08_50', stage=3, useBlender=True, annotate)
+import freemocap
+freemocap.RunMe()
 
 
 #####################

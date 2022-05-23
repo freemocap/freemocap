@@ -32,6 +32,7 @@
          - resolution_height: int = 600
          - save_video: bool = True
          - fourcc: str = "MJPG"
+         - rotate_image: None, 90, 180, 270 #how much to rotate the image
        
        - 
 

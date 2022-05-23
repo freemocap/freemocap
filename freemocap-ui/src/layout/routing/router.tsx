@@ -6,13 +6,13 @@ import {WebcamJonTest} from "../../views/WebcamJonTest";
 import {PythonToJsTest} from "../../views/PythonToJsTest";
 import {BoardDetection} from "../../views/BoardDetection";
 import {SkeletonDetection} from "../../views/SkeletonDetection";
-import {SetupAndPreview} from "../../views/prod/SetupAndPreviewCamera";
+import {SetupAndPreviewView} from "../../views/prod/SetupAndPreviewView";
 
 export const Router = () => {
   return (
     <Routes>
       <Route path={'/'} element={<React.Fragment />} />
-      <Route path={'/setup_and_preview'} element={<SetupAndPreview />} />
+      <Route path={'/setup_and_preview'} element={<SetupAndPreviewView />} />
       <Route path={'/show_cameras'} element={<WebcamStreamCapture />} />
       <Route path={'/config'} element={<ConfigView />} />
       <Route path={'/jontestplayground'} element={<WebcamJonTest />} />

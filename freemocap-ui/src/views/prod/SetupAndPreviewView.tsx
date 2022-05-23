@@ -2,8 +2,9 @@ import {useFrameCapture} from "../../hooks/use-frame-capture";
 import {CaptureType} from "../../services/frame-capture";
 import {Box} from "@mui/material";
 import React from "react";
-import axios from "axios";
 import {useAsync} from "react-use";
+import axios from "axios";
+import {SetupAndPreviewCamera} from "./SetupAndPreviewCamera";
 
 // So what do we need?
 
@@ -15,20 +16,25 @@ import {useAsync} from "react-use";
 // Finally, We'll include form inputs so that users can select configuration on screen, and submit their results
 // for freemocap (api) to save (prolly to disk).
 
-interface Props {
-  camId: string
-}
 
-export const SetupAndPreviewCamera = (props: Props) => {
-  const { camId } = props;
-  const [frameCapture, data] = useFrameCapture(camId, CaptureType.Preview);
-  if (!data) {
+export const SetupAndPreviewView = () => {
+  const response = useAsync(async () => {
+    const response = await axios.get('http://localhost:8080/camera/detect');
+    const port_numbers = response.data.cameras_found_list.map(x => x.webcam_id);
+    console.log(response.data)
+    return port_numbers.map(x => {
+      return <SetupAndPreviewCamera camId={x} />
+    })
+  }, []);
+
+  if (response.loading) {
     return null;
   }
-
+  const r = response.value;
+  console.log(r)
   return (
     <Box>
-      {!frameCapture.isConnectionClosed && <img src={frameCapture.current_data_url} alt={"video capture"} />}
+      {r}
     </Box>
   )
 }

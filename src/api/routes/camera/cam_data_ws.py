@@ -29,7 +29,9 @@ async def preview_webcam(web_socket: WebSocket, webcam_id: str):
         cv_cam = OpenCVCamera(
             WebcamConfig(webcam_id=webcam_id),
         )
-        cv_cam.connect()
+        connected = cv_cam.connect()
+        if not connected:
+            return
         cv_cam.start_frame_capture_thread()
 
         # TODO: Allow connections to drop, allow signals to get through so we can cancel
@@ -40,5 +42,8 @@ async def preview_webcam(web_socket: WebSocket, webcam_id: str):
         logger.error("Websocket ended")
         traceback.print_exc()
         return
+    finally:
+        await web_socket.close()
+
 
 

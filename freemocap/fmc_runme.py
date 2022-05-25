@@ -94,8 +94,7 @@ def RunMe(sessionID=None,
     # %% Startup
     startup.get_user_preferences(sesh,stage)
     if go_pro:
-        print('XD')
-        # video_sync.main(sesh)
+        video_sync.main(sesh)
         stage = 3
 
     if sesh.useDLC and stage<5:

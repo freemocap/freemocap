@@ -16,13 +16,13 @@ import cv2
 #Rich stuff
 from rich import print
 from rich.console import Console
+
 console = Console()
 from rich.markdown import Markdown
 from rich.traceback import install
 install(show_locals=False)
 from rich import inspect
 from rich.padding import Padding
-
 
 from freemocap import (
     recordingconfig,
@@ -35,6 +35,7 @@ from freemocap import (
     reconstruct3D,
     play_skeleton_animation,
     session,
+    video_sync
 )
 
 
@@ -49,6 +50,7 @@ def RunMe(sessionID=None,
         useMediaPipe=True,
         runMediaPipe=False,
         runRoboflowMediapipe=True,
+        go_pro = True,
         useDLC=False,
         dlcConfigPath=None,
         debug=False,
@@ -71,6 +73,7 @@ def RunMe(sessionID=None,
     based on the specified inputs. Checks for previous user preferences and choices if they exist, or will prompt the user for new choices
     if they don't. Runs the initialization for the system and runs each stage of the pipeline.
     """
+    
 
     welcome_md = Markdown("""# Welcome to FreeMoCap ✨💀✨ """)
     console.print(welcome_md)
@@ -90,10 +93,15 @@ def RunMe(sessionID=None,
 
     # %% Startup
     startup.get_user_preferences(sesh,stage)
+    if go_pro:
+        print('XD')
+        # video_sync.main(sesh)
+        stage = 3
 
     if sesh.useDLC and stage<5:
-         import deeplabcut as dlc
-         dlc_config_paths = startup.get_dlc_paths(session)
+        #  import deeplabcut as dlc
+        #  dlc_config_path = startup.get_dlc_paths(session)
+        dlc_config_path = 'C:/Users/chris/OneDrive/Documents/Spring2022/Humon_Lab/dlc/MIT_small_robot-CJC-2022-02-21/MIT_small_robot-CJC-2022-02-21/config.yaml'
 
     if stage > 1:
         startup.get_data_folder_path(sesh)
@@ -122,6 +130,7 @@ def RunMe(sessionID=None,
     sesh.board = board
 
 
+    
 
     # %% Initialization
     if stage == 1:
@@ -131,6 +140,7 @@ def RunMe(sessionID=None,
     else:
         sesh.initialize(stage)
 
+    
     # %% Stage One
 
     if stage <= 1:
@@ -200,7 +210,7 @@ def RunMe(sessionID=None,
                 fmc_mediapipe.runMediaPipe(sesh)
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
             elif runRoboflowMediapipe:
-                sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe_roboflow.runMediapipeAndRoboflow(sesh)
+                sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe_roboflow.runRoboflowAndMediapipe(sesh)
             else:
                 print('`runMediaPipe` set to False, so we\'re loading MediaPipe data from npy file')
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = np.load(sesh.dataArrayPath/'mediaPipeData_2d.npy', allow_pickle=True)
@@ -268,12 +278,16 @@ def RunMe(sessionID=None,
             for vid in sesh.syncedVidPath.glob('*.mp4'):
                 sesh.syncedVidList.append(str(vid))
 
-            for config_path in dlc_config_paths:
-                dlc.analyze_videos(config_path,sesh.syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True)
-                sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh, config_path)
-                sesh.dlc_fr_mar_xyz, sesh.dlc_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
-                np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_xyz) #save data to npy
-                np.save(sesh.dataArrayPath/'deepLabCut_reprojErr.npy', sesh.dlc_reprojErr) #save data to npy
+            # for config_path in dlc_config_paths:
+            #     dlc.analyze_videos(config_path,sesh.syncedVidList, destfolder= sesh.dlcDataPath, save_as_csv=True)
+            #     sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh, config_path)
+            #     sesh.dlc_fr_mar_xyz, sesh.dlc_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+            #     np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_xyz) #save data to npy
+            #     np.save(sesh.dataArrayPath/'deepLabCut_reprojErr.npy', sesh.dlc_reprojErr) #save data to npy
+            sesh.dlcData_nCams_nFrames_nImgPts_XYC = fmc_deeplabcut.parseDeepLabCut(sesh, dlc_config_path)
+            sesh.dlc_fr_mar_xyz, sesh.dlc_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.dlcData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+            np.save(sesh.dataArrayPath/'deepLabCut_3d.npy', sesh.dlc_fr_mar_xyz) #save data to npy
+                
         sesh.save_session()
     else:
 
@@ -358,3 +372,6 @@ def RunMe(sessionID=None,
     console.print('❤️', justify="center")
     console.rule(style="color({})".format(13))
     console.rule(style="color({})".format(14))
+
+
+# RunMe(sessionID='C:/Users/chris/FreeMocap_Data/sesh_2022-05-17-test',stage=4)

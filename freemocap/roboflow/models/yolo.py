@@ -17,12 +17,12 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 # ROOT = ROOT.relative_to(Path.cwd())  # relative
 
-from models.common import *
-from models.experimental import *
-from utils.autoanchor import check_anchor_order
-from utils.general import LOGGER, check_version, check_yaml, make_divisible, print_args
-from utils.plots import feature_visualization
-from utils.torch_utils import fuse_conv_and_bn, initialize_weights, model_info, scale_img, select_device, time_sync
+from freemocap.roboflow.models.common import *
+from freemocap.roboflow.models.experimental import *
+from freemocap.roboflow.utils.autoanchor import check_anchor_order
+from freemocap.roboflow.utils.general import LOGGER, check_version, check_yaml, make_divisible, print_args
+from freemocap.roboflow.utils.plots import feature_visualization
+from freemocap.roboflow.utils.torch_utils import fuse_conv_and_bn, initialize_weights, model_info, scale_img, select_device, time_sync
 
 try:
     import thop  # for FLOPs computation

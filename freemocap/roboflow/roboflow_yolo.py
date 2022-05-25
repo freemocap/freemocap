@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 from tkinter import font
 
-import clip
+import freemocap.roboflow.clip as clip
 import mediapipe as mp
 import cv2
 import torch
@@ -13,22 +13,22 @@ from numpy import random
 import numpy as np
 import pandas as pd
 
-from models.experimental import attempt_load
-from utils.datasets import LoadStreams, LoadImages
-from utils.general import xyxy2xywh, xywh2xyxy, \
+from freemocap.roboflow.models.experimental import attempt_load
+from freemocap.roboflow.utils.datasets import LoadStreams, LoadImages
+from freemocap.roboflow.utils.general import xyxy2xywh, xywh2xyxy, \
     strip_optimizer, set_logging, increment_path, scale_coords
-from utils.plots import plot_one_box
-from utils.torch_utils import select_device, time_sync
-from utils.roboflow import predict_image
+from freemocap.roboflow.utils.plots import plot_one_box
+from freemocap.roboflow.utils.torch_utils import select_device, time_sync
+from freemocap.roboflow.utils.roboflow import predict_image
 
 # deep sort imports
-from deep_sort import preprocessing, nn_matching
-from deep_sort.detection import Detection
-from deep_sort.tracker import Tracker
-from tools import generate_clip_detections as gdet
+from freemocap.roboflow.deep_sort import preprocessing, nn_matching
+from freemocap.roboflow.deep_sort.detection import Detection
+from freemocap.roboflow.deep_sort.tracker import Tracker
+from freemocap.roboflow.tools import generate_clip_detections as gdet
 
-from utils.yolov5 import Yolov5Engine
-from utils.yolov4 import Yolov4Engine
+from freemocap.roboflow.utils.yolov5 import Yolov5Engine
+from freemocap.roboflow.utils.yolov4 import Yolov4Engine
 
 
 
@@ -167,16 +167,17 @@ def run_roboflow(weights='yolov5s.pt',
         # Roboflow Inference
         t1 = time_sync()
         p, s, im0, frame = path, '', im0s, getattr(dataset, 'frame', 0)
-
+        if frame%100 == 0:
+            print('YOLO on Frame '+str(frame))
         # choose between prediction engines (yolov5 and roboflow)
         if detection_engine == "roboflow":
             pred, classes = predict_image(im0, api_key, url, confidence, overlap, frame_count)
             pred = [torch.tensor(pred)]
         elif detection_engine == "yolov5":
-            print("yolov5 inference")
+            # print("yolov5 inference")
             pred = yolov5_engine.infer(img)
         else:
-            print("yolov4 inference {}".format(im0.shape))
+            # print("yolov4 inference {}".format(im0.shape))
             pred = yolov4_engine.infer(im0)
             pred, classes = yolov4_engine.postprocess(pred, im0.shape)
             pred = [torch.tensor(pred)]

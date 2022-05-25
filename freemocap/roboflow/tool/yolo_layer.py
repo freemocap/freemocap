@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from tool.torch_utils import *
+from freemocap.roboflow.tool.torch_utils import *
 
 def yolo_forward(output, conf_thresh, num_classes, anchors, num_anchors, scale_x_y, only_objectness=1,
                               validation=False):

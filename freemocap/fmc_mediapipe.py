@@ -232,6 +232,11 @@ def parseMediaPipe(session):
 
     return mediaPipeData_nCams_nFrames_nImgPts_XYC
     
+ 
+            
+   
+
+
 # #def parseMediaPipe2(session):
 
 #         #numCams = len(session.mediaPipeData) #Get number of cameras

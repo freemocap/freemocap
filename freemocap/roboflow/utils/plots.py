@@ -18,9 +18,9 @@ import seaborn as sn
 import torch
 from PIL import Image, ImageDraw, ImageFont
 import random
-from utils.general import (CONFIG_DIR, FONT, LOGGER, Timeout, check_font, check_requirements, clip_coords,
+from freemocap.roboflow.utils.general import (CONFIG_DIR, FONT, LOGGER, Timeout, check_font, check_requirements, clip_coords,
                            increment_path, is_ascii, is_chinese, try_except, xywh2xyxy, xyxy2xywh)
-from utils.metrics import fitness
+from freemocap.roboflow.utils.metrics import fitness
 
 # Settings
 RANK = int(os.getenv('RANK', -1))

@@ -1,5 +1,5 @@
-from models.experimental import attempt_load
-from utils.general import non_max_suppression
+from freemocap.roboflow.models.experimental import attempt_load
+from freemocap.roboflow.utils.general import non_max_suppression
 
 class Yolov5Engine:
     def __init__(self, weights, device, classes, conf_thres, iou_thres, agnostic_nms, augment, half):

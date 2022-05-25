@@ -30,8 +30,8 @@ import torch
 import torchvision
 import yaml
 
-from utils.downloads import gsutil_getsize
-from utils.metrics import box_iou, fitness
+from freemocap.roboflow.utils.downloads import gsutil_getsize
+from freemocap.roboflow.utils.metrics import box_iou, fitness
 
 # Settings
 FILE = Path(__file__).resolve()

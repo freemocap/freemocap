@@ -95,7 +95,9 @@ def RunMe(sessionID=None,
     startup.get_user_preferences(sesh,stage)
     if go_pro:
         video_sync.main(sesh)
-        stage = 3
+        if stage <3:
+            stage = 3
+        
 
     if sesh.useDLC and stage<5:
         #  import deeplabcut as dlc

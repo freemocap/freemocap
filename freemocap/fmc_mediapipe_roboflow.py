@@ -14,9 +14,10 @@ import numpy as np
 import pandas as pd
 
 from freemocap.roboflow import roboflow_yolo
+from rich.progress import Progress
 
 
-
+from freemocap.fmc_mediapipe import parseMediaPipe
 
 def get_mediapipe_keypoint_numbers():
     #Helper function to get num of points in mediapipe
@@ -229,87 +230,79 @@ def mediaPipe_on_roboflow_crop(source_vid, output_vid, tracked_roboflow_data):
                         #get image shape
                         cropped_image_height, cropped_image_width, _ = cropped_image.shape
                         #Run through mediapipe
+                    
+                        process_results = holistic.process(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)) #process mediapipe on just the cut out rectangle 
+            
+                        #Get the scale for the crop image to original image
+                        y_scale = cropped_image_height/image_height 
+                        x_scale = cropped_image_width/image_width
+
+                        #Scale each pose, face and hand points to original image coords
                         try:
-                            process_results = holistic.process(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)) #process mediapipe on just the cut out rectangle 
-                
-                            #Get the scale for the crop image to original image
-                            y_scale = cropped_image_height/image_height 
-                            x_scale = cropped_image_width/image_width
-
-                            #Scale each pose, face and hand points to original image coords
-                            try:
-                                for joint in process_results.pose_landmarks.landmark:
-                                    joint.y = joint.y*y_scale + ymin/image_height
-                                    joint.x = joint.x*x_scale + xmin/image_width
-                            except: 
-                                pass
-                            try:
-                                for f_joint in process_results.face_landmarks.landmark:
-                                    f_joint.y = f_joint.y*y_scale + ymin/image_height
-                                    f_joint.x = f_joint.x*x_scale + xmin/image_width
-                            except:
-                                pass
-
-                            try:    
-                                for r_joint in process_results.right_hand_landmarks.landmark:
-                                    r_joint.y = r_joint.y*y_scale + ymin/image_height
-                                    r_joint.x = r_joint.x*x_scale + xmin/image_width
-                            except:
-                                pass
-
-                            try:    
-                                for l_joint in process_results.left_hand_landmarks.landmark:
-                                    l_joint.y = l_joint.y*y_scale + ymin/image_height
-                                    l_joint.x = l_joint.x*x_scale + xmin/image_width
-                            except:
-                                pass
-                            #If there is face, hand, or pose landmarks (probably a better way to make this if statement lol)
-                            if process_results.face_landmarks or process_results.left_hand_landmarks or process_results.pose_landmarks or process_results.right_hand_landmarks:
-                                #Draw face point
-                                mp_drawing.draw_landmarks(
-                                    annotated_image,
-                                    process_results.face_landmarks,
-                                    mp_holistic.FACEMESH_CONTOURS,
-                                    landmark_drawing_spec=None,
-                                    connection_drawing_spec=mp_drawing_styles
-                                    .get_default_face_mesh_contours_style())
-                                #Draw body point
-                                mp_drawing.draw_landmarks(
-                                    annotated_image,
-                                    process_results.pose_landmarks,
-                                    mp_holistic.POSE_CONNECTIONS,
-                                    landmark_drawing_spec=mp_drawing_styles.
-                                    get_default_pose_landmarks_style())
-                                #Draw right hand point
-                                mp_drawing.draw_landmarks(
-                                    annotated_image,
-                                    process_results.right_hand_landmarks,
-                                    mp_holistic.HAND_CONNECTIONS)
-                                #Draw left hand point
-                                mp_drawing.draw_landmarks(
-                                    annotated_image,
-                                    process_results.left_hand_landmarks,
-                                    mp_holistic.HAND_CONNECTIONS)
-                                #TODO: else statement for just mediapipe
-                                
-                            #Get mediapipe data and format it into free mocap form
-                            # Mediapipe_XYC_Pose_hands_face = np.ndarray(num_points,3)
-                            # Mediapipe_XYC_Pose_hands_face[num_body_points,:] = process_results.pose_landmarks
-                            # Mediapipe_XYC_Pose_hands_face[(num_hand_points/2),:] = process_results.right_hand_landmarks
-                            # Mediapipe_XYC_Pose_hands_face[(num_hand_points/2),:] = process_results.left_hand_landmarks
-                            # Mediapipe_XYC_Pose_hands_face[num_face_points,:] = process_results.face_landmarks
-                            Mediapipe_XYC = format_mediapipe_for_fmc(process_results, frame_height,frame_width)
-                            mediapip_failed_for_this_frame = False
-                            #Add these mediapipe points to the ID of the person from the roboflow output
+                            for joint in process_results.pose_landmarks.landmark:
+                                joint.y = joint.y*y_scale + ymin/image_height
+                                joint.x = joint.x*x_scale + xmin/image_width
+                        except: 
+                            pass
+                        try:
+                            for f_joint in process_results.face_landmarks.landmark:
+                                f_joint.y = f_joint.y*y_scale + ymin/image_height
+                                f_joint.x = f_joint.x*x_scale + xmin/image_width
                         except:
-                            mediapip_failed_for_this_frame = True
-                            
-                    else:
-                        mediapip_failed_for_this_frame = True
+                            pass
 
-                if mediapip_failed_for_this_frame:
-                    Mediapipe_XYC = np.ndarray((num_points,3))
-                    # Mediapipe_XYC = format_mediapipe_for_fmc(mediapipe_data, frame_height,frame_width)    
+                        try:    
+                            for r_joint in process_results.right_hand_landmarks.landmark:
+                                r_joint.y = r_joint.y*y_scale + ymin/image_height
+                                r_joint.x = r_joint.x*x_scale + xmin/image_width
+                        except:
+                            pass
+
+                        try:    
+                            for l_joint in process_results.left_hand_landmarks.landmark:
+                                l_joint.y = l_joint.y*y_scale + ymin/image_height
+                                l_joint.x = l_joint.x*x_scale + xmin/image_width
+                        except:
+                            pass
+                        #If there is face, hand, or pose landmarks (probably a better way to make this if statement lol)
+                        if process_results.face_landmarks or process_results.left_hand_landmarks or process_results.pose_landmarks or process_results.right_hand_landmarks:
+                            #Draw face point
+                            mp_drawing.draw_landmarks(
+                                annotated_image,
+                                process_results.face_landmarks,
+                                mp_holistic.FACEMESH_CONTOURS,
+                                landmark_drawing_spec=None,
+                                connection_drawing_spec=mp_drawing_styles
+                                .get_default_face_mesh_contours_style())
+                            #Draw body point
+                            mp_drawing.draw_landmarks(
+                                annotated_image,
+                                process_results.pose_landmarks,
+                                mp_holistic.POSE_CONNECTIONS,
+                                landmark_drawing_spec=mp_drawing_styles.
+                                get_default_pose_landmarks_style())
+                            #Draw right hand point
+                            mp_drawing.draw_landmarks(
+                                annotated_image,
+                                process_results.right_hand_landmarks,
+                                mp_holistic.HAND_CONNECTIONS)
+                            #Draw left hand point
+                            mp_drawing.draw_landmarks(
+                                annotated_image,
+                                process_results.left_hand_landmarks,
+                                mp_holistic.HAND_CONNECTIONS)
+                            #TODO: else statement for just mediapipe
+                            
+                        #Get mediapipe data and format it into free mocap form
+                        # Mediapipe_XYC_Pose_hands_face = np.ndarray(num_points,3)
+                        # Mediapipe_XYC_Pose_hands_face[num_body_points,:] = process_results.pose_landmarks
+                        # Mediapipe_XYC_Pose_hands_face[(num_hand_points/2),:] = process_results.right_hand_landmarks
+                        # Mediapipe_XYC_Pose_hands_face[(num_hand_points/2),:] = process_results.left_hand_landmarks
+                        # Mediapipe_XYC_Pose_hands_face[num_face_points,:] = process_results.face_landmarks
+                        Mediapipe_XYC = format_mediapipe_for_fmc(process_results, frame_height,frame_width)
+                        mediapip_failed_for_this_frame = False
+                        #Add these mediapipe points to the ID of the person from the roboflow output
+                         
 
                 #Add these mediapipe points to the ID of the person from the roboflow output
                 if person_key in fmc_mediapipe_dict.keys():

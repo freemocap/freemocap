@@ -69,6 +69,7 @@ def RunMe(sessionID=None,
         bundle_adjust_3d_points=False,
         place_skeleton_on_origin = False,
         save_annotated_videos = False,
+        useFFmpeg=False,
         ):
     """
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -92,6 +93,7 @@ def RunMe(sessionID=None,
     sesh.startFrame = startFrame
     sesh.get_synced_unix_timestamps = get_synced_unix_timestamps
     sesh.use_saved_calibration = use_saved_calibration
+    sesh.useFFmpeg = useFFmpeg
 
     # %% Startup
     sesh.freemocap_module_path = Path(__file__).parent

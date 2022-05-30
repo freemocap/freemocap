@@ -2,6 +2,7 @@ import os
 import copy
 import json
 import pickle
+import subprocess
 import glob 
 from pathlib import Path
 
@@ -234,30 +235,46 @@ def createCalibrationVideos(session, calVideoFrameLength):
     codec = "DIVX"
     for count, vid in enumerate(vidList, start=1):
         cam_name = "Cam{}".format(count)
-        cap = cv2.VideoCapture(vid)
-        fourcc = cv2.VideoWriter_fourcc(*codec)
-
-        # grab resolution parameters from the videos
-        resWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        resHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        framerate = int(cap.get(cv2.CAP_PROP_FPS))
-
         saveName = (
-            session.sessionID + "_trimmed_" + cam_name + ".mp4"
-        )  # create a name for the trimmed video
+                session.sessionID + "_trimmed_" + cam_name + ".mp4"
+            )  # create a name for the trimmed video
         saveCalVidPath = str(
             session.calVidPath / saveName
         )  # create an output path for the function
 
-        success, image = cap.read()  # start reading frames
+        if session.useFFmpeg:
+            print("Trimming " + cam_name + " to frames {}-{} for Anipose Calibration".format(framelist[0], framelist[-1]))
+            subprocess.call(
+                [
+                    "ffmpeg",
+                    "-i",
+                    vid,
+                    # mute
+                    "-an",
+                    # trimming
+                    "-vf",
+                    f"trim=start_frame={framelist[0]}:end_frame={framelist[-1]},setpts=PTS-STARTPTS",
+                    saveCalVidPath,
+                ]
+            )
+        else:
+            cap = cv2.VideoCapture(vid)
+            fourcc = cv2.VideoWriter_fourcc(*codec)
 
-        out = cv2.VideoWriter(saveCalVidPath, fourcc, framerate, (resWidth, resHeight))
-        print("Trimming " + cam_name + " to frames {}-{} for Anipose Calibration".format(framelist[0], framelist[-1]))
-        for frame in track(framelist):
-            cap.set(
-                cv2.CAP_PROP_POS_FRAMES, frame
-            )  # set the video to the frame that we need
-            success, image = cap.read()
-            out.write(image)
-        cap.release()
-        out.release()
+            # grab resolution parameters from the videos
+            resWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            resHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            framerate = int(cap.get(cv2.CAP_PROP_FPS))
+
+            success, image = cap.read()  # start reading frames
+
+            out = cv2.VideoWriter(saveCalVidPath, fourcc, framerate, (resWidth, resHeight))
+            print("Trimming " + cam_name + " to frames {}-{} for Anipose Calibration".format(framelist[0], framelist[-1]))
+            for frame in track(framelist):
+                cap.set(
+                    cv2.CAP_PROP_POS_FRAMES, frame
+                )  # set the video to the frame that we need
+                success, image = cap.read()
+                out.write(image)
+            cap.release()
+            out.release()

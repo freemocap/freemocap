@@ -8,6 +8,7 @@ import cv2
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
 from src.config.data_paths import freemocap_data_path
+from src.config.home_dir import create_session_id
 from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrator
 from src.core_processor.fps.timestamp_manager import TimestampManager
 from src.core_processor.mediapipe_skeleton_detection.mediapipe_skeleton_detection import MediaPipeSkeletonDetection
@@ -29,7 +30,7 @@ class SessionPipelineOrchestrator:
         if session_id is not None:
             self._session_id = session_id
         else:
-            self._session_id = 'session_' + time.strftime("%m-%d-%Y-%H_%M_%S")
+            self._session_id = create_session_id()
 
         self._session_start_time_unix_ns = time.time_ns()
         self._visualizer_gui = QTVisualizerAndGui()

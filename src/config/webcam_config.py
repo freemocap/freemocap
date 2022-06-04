@@ -1,10 +1,8 @@
-from pathlib import Path
+
 
 from pydantic import BaseModel
 
-
-def _get_home_dir():
-    return str(Path.home())
+from src.config.home_dir import os_independent_home_dir
 
 
 class WebcamConfig(BaseModel):
@@ -15,4 +13,4 @@ class WebcamConfig(BaseModel):
     save_video: bool = False
     # fourcc: str = "MP4V"
     fourcc: str = "MJPG"
-    base_save_video_dir = _get_home_dir()
+    base_save_video_dir = os_independent_home_dir()

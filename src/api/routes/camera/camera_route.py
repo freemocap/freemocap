@@ -1,17 +1,15 @@
 from fastapi import APIRouter
 
-from src.api.services.user_config import UserConfigService
+from src.api.services.user_config import UserConfigService, WebcamConfigModel
 from src.cameras.detection.cam_singleton import get_or_create_cams
-from src.config.webcam_config import WebcamConfig
 
 camera_router = APIRouter()
 
 
 @camera_router.post("/camera/config")
-async def config_cam(webcam_config: WebcamConfig):
+async def config_cam(webcam_config_model: WebcamConfigModel):
     s = UserConfigService()
-    s.set_webcam_config(webcam_config)
-    return s.webcam_configs
+    return s.save_webcam_config_to_disk(webcam_config_model)
 
 
 @camera_router.get("/camera/detect")

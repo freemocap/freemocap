@@ -10,6 +10,7 @@ from src.api.services.user_config import UserConfigService
 from src.cameras.detection.cam_singleton import get_or_create_cams
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
+from src.config.webcam_config import WebcamConfig
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class CamAndWriterResponse(BaseModel):
 
 
 class OpenCVCameraManager:
-    def __init__(self, session_id=str):
+    def __init__(self, session_id: str):
         self._session_id = session_id
         self._config_service = UserConfigService()
         self._detected_cams_data = get_or_create_cams()
@@ -86,7 +87,11 @@ class OpenCVCameraManager:
         raw_camera_objects = self._detected_cams_data.cameras_found_list
         open_cv_cameras: List[OpenCVCamera] = []
         for this_raw_cam in raw_camera_objects:
-            single_camera_config = self._config_service.webcam_config_by_id(this_raw_cam.webcam_id)
+            webcam_config_model = self._config_service.webcam_config_by_id(this_raw_cam.webcam_id, self._session_id)
+            single_camera_config = WebcamConfig(webcam_id=webcam_config_model.webcam_id,
+                                                exposure=webcam_config_model.exposure,
+                                                resolution_width=webcam_config_model.resolution_width,
+                                                resolution_height=webcam_config_model.resolution_height, )
             this_opencv_camera = OpenCVCamera(config=single_camera_config)
             open_cv_cameras.append(this_opencv_camera)
         return open_cv_cameras

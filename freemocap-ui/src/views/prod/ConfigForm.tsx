@@ -9,7 +9,12 @@ const ExposureNumberField = () => {
   );
 }
 
-export const ConfigForm = () => {
+interface Props {
+  onSubmit: () => void
+}
+
+export const ConfigForm = (props: Props) => {
+  const { onSubmit } = props;
   return (
     <Box>
 
@@ -31,7 +36,7 @@ export const ConfigForm = () => {
         <NumberFormat customInput={TextField} />
       </Box>
 
-      <Button>Save Camera Settings</Button>
+      <Button onClick={onSubmit}>Save Camera Settings</Button>
     </Box>
   )
 }

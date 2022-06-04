@@ -1,7 +1,7 @@
 import logging
 import traceback
 from contextlib import contextmanager
-from typing import ContextManager, Dict, List
+from typing import ContextManager, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class CamAndWriterResponse(BaseModel):
     cv_camera: OpenCVCamera
-    video_recorder: VideoRecorder
+    video_recorder: Optional[VideoRecorder]
 
     class Config:
         arbitrary_types_allowed = True
@@ -50,7 +50,7 @@ class OpenCVCameraManager:
 
     @contextmanager
     def start_capture_session_single_cam(
-        self, webcam_id: str = None
+        self, webcam_id: str
     ) -> ContextManager[CamAndWriterResponse]:
         """
         Context manager for easy start up, usage, and cleanup of camera resources.

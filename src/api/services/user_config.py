@@ -1,24 +1,23 @@
-from typing import Dict
+import json
+from pathlib import Path
 
-from singleton_decorator import singleton
-
-from src.config.webcam_config import WebcamConfig
+from pydantic import BaseModel
 
 
-@singleton
+class WebcamConfigModel(BaseModel):
+    webcam_id: str = '0'
+    exposure: int = -6
+    resolution_width: int = 800
+    resolution_height: int = 600
+    session_path: str
+
+
 class UserConfigService:
-    _dict_of_webcam_configs: Dict[str, WebcamConfig] = {}
+    """take things like WebcamConfigModel and save it to a text file or whatever"""
 
-    @property
-    def webcam_configs(self):
-        return self._dict_of_webcam_configs
-
-    def webcam_config_by_id(self, webcam_id_as_str: str) -> WebcamConfig:
-        if webcam_id_as_str in self._dict_of_webcam_configs:
-            return self._dict_of_webcam_configs[webcam_id_as_str]
-        else:
-            return WebcamConfig(webcam_id=int(webcam_id_as_str))
-
-    def set_webcam_config(self, webcam_config: WebcamConfig):
-        as_str = str(webcam_config.webcam_id)
-        self._dict_of_webcam_configs[as_str] = webcam_config
+    def save_webcam_config_to_disk(self, webcam_config_model: WebcamConfigModel):
+        webcam_config_json = webcam_config_model.dict(exclude={'session_path'})
+        webcam_config_json_path = Path(webcam_config_model.session_path) / 'webcam_config.json'
+        with open(webcam_config_json_path, 'w') as outfile:
+            outfile.write(str(webcam_config_json))
+        return webcam_config_json

@@ -30,17 +30,7 @@ class OpenCVCameraManager:
         self._session_id = session_id
         self._config_service = UserConfigService()
         self._detected_cams_data = get_or_create_cams()
-        global _open_cv_cameras
-        if _open_cv_cameras is None:
-            logger.info("Creating cams.")
-            # we create the _cv_cams /once/, and reuse it for the lifetime of the session
-            _open_cv_cameras = self._create_opencv_cameras()
-            self._open_cv_camera_objects = _open_cv_cameras
-            # self._timestamp_logger = TimestampLogger(self.available_webcam_ids, self.camera0_id)
-            self._number_of_cameras = len(self._open_cv_camera_objects)
-        else:
-            logger.info("Reusing already created resources cam resources.")
-            self._open_cv_camera_objects = _open_cv_cameras
+
 
     @property
     def number_of_cameras(self):
@@ -118,9 +108,12 @@ class OpenCVCameraManager:
             self,
     ) -> ContextManager[Dict[str, OpenCVCamera]]:
 
+        open_cv_camera_objects = self._create_opencv_cameras()
+        number_of_cameras = len(open_cv_camera_objects)
+
         try:
             connected_cameras_dict = {}
-            for cv_cam in self._open_cv_camera_objects:
+            for cv_cam in open_cv_camera_objects:
                 connected_cameras_dict[cv_cam.webcam_id_as_str] = cv_cam
                 cv_cam.connect()
                 cv_cam.start_frame_capture_thread()

@@ -6,7 +6,6 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from src.api.services.user_config import UserConfigService, WebcamConfigModel
-from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.cameras.detection.cam_singleton import get_or_create_cams
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 
@@ -18,8 +17,8 @@ logger = logging.getLogger(__name__)
 class CameraPreviewModel(BaseModel):
     session_id: str
 
-@camera_router.post("/camera/config")
-async def config_cam(webcam_config_model: WebcamConfigModel):
+@camera_router.post("/camera/config/{session_id}")
+async def config_cam(webcam_config_model: WebcamConfigModel, session_id):
     s = UserConfigService()
     return s.save_webcam_config_to_disk(webcam_config_model, session_id)
 

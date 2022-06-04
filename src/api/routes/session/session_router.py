@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -14,7 +15,7 @@ BASE_FOLDER_NAME = "freemocap_data"
 
 
 class SessionCreateModel(BaseModel):
-    user_session_str: str
+    user_session_str: Optional[str]
 
 
 class SessionResponse(BaseModel):

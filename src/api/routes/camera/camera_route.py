@@ -25,7 +25,8 @@ async def config_cam(webcam_config_model: WebcamConfigModel, session_id):
 
 @camera_router.post("/camera/cv2_imshow_one_camera/{webcam_id}")
 async def cv2_imshow_one_camera(webcam_id: str, camera_preview_model: CameraPreviewModel):
-    with OpenCVCameraManager(session_id=camera_preview_model.session_id).start_capture_session_single_cam() as connected_camera_and_writer:
+    cv_cam_manager = OpenCVCameraManager(session_id=camera_preview_model.session_id)
+    with cv_cam_manager.start_capture_session_single_cam(webcam_id) as connected_camera_and_writer:
         should_continue = True
         this_camera = connected_camera_and_writer.cv_camera
         while should_continue:
@@ -40,8 +41,9 @@ async def cv2_imshow_one_camera(webcam_id: str, camera_preview_model: CameraPrev
 
 
 @camera_router.post("/camera/cv2_imshow_all_cameras")
-async def cv2_imshow_all_camera():
-    with OpenCVCameraManager().start_capture_session_all_cams() as connected_cameras_dict:
+async def cv2_imshow_all_camera(camera_preview_model: CameraPreviewModel):
+    cv_cam_manager = OpenCVCameraManager(session_id=camera_preview_model.session_id)
+    with cv_cam_manager.start_capture_session_all_cams() as connected_cameras_dict:
         should_continue = True
         while should_continue:
             for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():

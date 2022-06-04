@@ -1,9 +1,8 @@
 import {useFrameCapture} from "../../hooks/use-frame-capture";
 import {CaptureType} from "../../services/frame-capture";
-import {Box} from "@mui/material";
+import {Box, Button} from "@mui/material";
 import React from "react";
-import axios from "axios";
-import {useAsync} from "react-use";
+import {ConfigForm} from "./ConfigForm";
 
 // So what do we need?
 
@@ -28,7 +27,11 @@ export const SetupAndPreviewCamera = (props: Props) => {
 
   return (
     <Box>
-      {!frameCapture.isConnectionClosed && <img src={frameCapture.current_data_url} alt={"video capture"} />}
+      <Box display={'flex'} flexDirection={'column'} width={400}>
+        <Button>Preview in CV2</Button>
+        {!frameCapture.isConnectionClosed && <img src={frameCapture.current_data_url} alt={"video capture"} />}
+      </Box>
+      <ConfigForm />
     </Box>
   )
 }

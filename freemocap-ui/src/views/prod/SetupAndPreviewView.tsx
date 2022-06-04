@@ -1,5 +1,3 @@
-import {useFrameCapture} from "../../hooks/use-frame-capture";
-import {CaptureType} from "../../services/frame-capture";
 import {Box} from "@mui/material";
 import React from "react";
 import {useAsync} from "react-use";
@@ -21,17 +19,16 @@ export const SetupAndPreviewView = () => {
   const response = useAsync(async () => {
     const response = await axios.get('http://localhost:8080/camera/detect');
     const port_numbers = response.data.cameras_found_list.map(x => x.webcam_id);
-    console.log(response.data)
-    return port_numbers.map(x => {
-      return <SetupAndPreviewCamera camId={x} />
-    })
+    return <SetupAndPreviewCamera camId={port_numbers[0]} />
+    // return port_numbers.map(x => {
+    //   return <SetupAndPreviewCamera camId={x} />
+    // })
   }, []);
 
   if (response.loading) {
     return null;
   }
   const r = response.value;
-  console.log(r)
   return (
     <Box>
       {r}

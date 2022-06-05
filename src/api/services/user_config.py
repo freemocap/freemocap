@@ -1,16 +1,18 @@
 import json
+import logging
 from pathlib import Path
 
 from pydantic import BaseModel
 
 from src.config.home_dir import get_session_path
 
+logger = logging.getLogger(__name__)
 
 class WebcamConfigModel(BaseModel):
-    webcam_id: str = '0'
+    webcam_id: str
     exposure: int = -6
-    resolution_width: int = 800
-    resolution_height: int = 600
+    resolution_width: int = 1280
+    resolution_height: int = 720
 
 
 def get_camera_name(camera_id: str):
@@ -31,13 +33,20 @@ class UserConfigService:
         return webcam_config_json
 
     def webcam_config_by_id(self, webcam_id: str, session_id: str) -> WebcamConfigModel:
-        print(f"webcam id: {webcam_id}")
+        if session_id is None:
+            return WebcamConfigModel(webcam_id=webcam_id)
         session_path = get_session_path(session_id)
         camera_name = get_camera_name(webcam_id)
         print(f"webcam id (again): {webcam_id}")
         print(f"camera name: {camera_name}")
         json_file_name = camera_name + '_config.json'
         webcam_config_json_path = Path(session_path) / json_file_name
-        print(f'webcam_config_path: {webcam_config_json_path}')
-        webcam_config_model = WebcamConfigModel.parse_file(webcam_config_json_path)
-        return webcam_config_model
+
+        try:
+            webcam_config_model = WebcamConfigModel.parse_file(webcam_config_json_path)
+            logger.info(f'loading webcam_config from: {webcam_config_json_path}')
+            return webcam_config_model
+        except FileNotFoundError:
+            logger.info(f'No webcam config file found for this camera, using default camera parameters')
+            return WebcamConfigModel(webcam_id=webcam_id)
+

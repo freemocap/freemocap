@@ -23,7 +23,7 @@ class CamAndWriterResponse(BaseModel):
 
 
 class OpenCVCameraManager:
-    def __init__(self, session_id: str):
+    def __init__(self, session_id: str = None):
         self._session_id = session_id
         self._config_service = UserConfigService()
         self._detected_cams_data = get_or_create_cams()

@@ -64,7 +64,7 @@ class SessionPipelineOrchestrator:
                         charuco_frame_payload = self._camera_calibrator.calibrate(cv_cam)
 
                     if cb and charuco_frame_payload.annotated_image is not None:
-                        writer.record(charuco_frame_payload.raw_frame_payload)
+                        writer.append_frame_to_list(charuco_frame_payload.raw_frame_payload)
                         await cb(charuco_frame_payload.annotated_image)
             except Exception as e:
                 logger.error("Printing traceback")
@@ -82,7 +82,7 @@ class SessionPipelineOrchestrator:
                     frame_width=cv_cam.image_width(),
                     frame_height=cv_cam.image_height(),
                 )
-                writer.save_to_disk(options)
+                writer.save_frame_list_to_disk(options)
 
     def run(
             self,
@@ -92,10 +92,7 @@ class SessionPipelineOrchestrator:
             detect_skeleton=True,
             save_video=True,
     ):
-        """
-        Opens Cameras using OpenCV and begins image processing for charuco board
-        If return images is true, the images are returned to the caller
-        """
+
         with self._open_cv_camera_manager.start_capture_session_all_cams() as connected_cameras_dict:
             try:
                 if show_visualizer_gui:
@@ -126,7 +123,7 @@ class SessionPipelineOrchestrator:
                                                                                this_cam_this_frame_timestamp_ns)
 
                         if save_video:
-                            this_open_cv_camera.video_recorder.record(this_cam_latest_frame)
+                            this_open_cv_camera.video_recorder.append_frame_to_list(this_cam_latest_frame)
 
                         if calibrate_cameras:
                             undistorted_annotated_image = self._camera_calibrator.calibrate(this_open_cv_camera)
@@ -163,7 +160,7 @@ class SessionPipelineOrchestrator:
             finally:
                 for this_open_cv_camera in connected_cameras_dict.values():
                     if save_video:
-                        this_open_cv_camera.video_recorder.save_to_disk(
+                        this_open_cv_camera.video_recorder.save_frame_list_to_disk(
                             self.session_folder_path / 'synchronized_videos')
                     logger.info(f"Destroy window {this_open_cv_camera.webcam_id_as_str}")
                     cv2.destroyWindow(this_open_cv_camera.webcam_id_as_str)

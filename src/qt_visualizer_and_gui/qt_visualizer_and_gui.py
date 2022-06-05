@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class QTVisualizerAndGui:
-    def __init__(self):
+    def __init__(self, source: str = None):
         # https://pyqtgraph.readthedocs.io/en/latest/config_options.html
         self._camera0_id = '0'
         pg.setConfigOptions(imageAxisOrder='row-major')
@@ -83,11 +83,13 @@ class QTVisualizerAndGui:
     def _update_timestamp_difference_plot(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
             plot_item = self._dict_of_timestamp_difference_line_plots[webcam_id]
-            plot_item.setData(np.diff(timestamp_manager.get_timestamps_from_camera_in_seconds_from_session_start(webcam_id)))
+            plot_item.setData(
+                np.diff(timestamp_manager.get_timestamps_from_camera_in_seconds_from_session_start(webcam_id)))
 
     def _update_timestamp_difference_histogram(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
-            this_cam_timestamp_diffs = np.diff(timestamp_manager.get_timestamps_from_camera_in_seconds_from_session_start(webcam_id))
+            this_cam_timestamp_diffs = np.diff(
+                timestamp_manager.get_timestamps_from_camera_in_seconds_from_session_start(webcam_id))
             num_samples = this_cam_timestamp_diffs.shape[0]
             counts, bin_edges = np.histogram(this_cam_timestamp_diffs,
                                              bins=np.linspace(0, 100, 100))
@@ -219,7 +221,7 @@ class QTVisualizerAndGui:
             self._dict_of_timestamp_difference_histograms[this_webcam_id] = this_histogram_plot_item
 
         self._timestamp_diff_histgoram_dock = Dock("Camera Timestamp Difference histogram")
-        self._timestamp_diff_histgoram_dock .addWidget(timestamp_difference_histogram_plot_widget)
+        self._timestamp_diff_histgoram_dock.addWidget(timestamp_difference_histogram_plot_widget)
         self._main_dock_area.addDock(self._timestamp_diff_histgoram_dock, 'right', self._timestamp_difference_plot_dock)
 
     def _pause(self):
@@ -266,8 +268,8 @@ class QTVisualizerAndGui:
         self.opengl_3d_plot_widget.addItem(self.origin_z_axis_gl_lineplot_item)
 
         self.opengl_charuco_scatter_item = gl.GLScatterPlotItem(pos=(0, 0, 0), color=(1, 0, 1), size=1,
-                                                                       pxMode=False)
+                                                                pxMode=False)
 
         self.opengl_3d_plot_dock = Dock("3d View Port")
         self.opengl_3d_plot_dock.addWidget(self.opengl_3d_plot_widget)
-        self._main_dock_area.addDock(self.opengl_3d_plot_dock, 'right', self._camera_views_dock )
+        self._main_dock_area.addDock(self.opengl_3d_plot_dock, 'right', self._camera_views_dock)

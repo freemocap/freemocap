@@ -17,6 +17,7 @@ class OpenCVCamera:
     """
     Performant implementation of video capture against webcams
     """
+
     def __init__(self, config: WebcamConfig, session_id: str = None):
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
@@ -24,6 +25,14 @@ class OpenCVCamera:
         self._video_recorder: VideoRecorder = None
         self._running_thread: VideoCaptureThread = None
         self._new_frame_ready = False
+        self._number_of_frames_recorded = 0
+        self._session_id = session_id
+
+    @property
+    def session_id(self):
+        if self._session_id is None:
+            return False
+        return self._session_id
 
     @property
     def new_frame_ready(self):
@@ -56,6 +65,24 @@ class OpenCVCamera:
         self._new_frame_ready = False
         return self._running_thread.latest_frame
 
+    @property
+    def latest_frame_number(self):
+        return self._number_of_frames_recorded
+
+    @property
+    def image_width(self):
+        try:
+            return int(self._opencv_video_capture_object.get(3))
+        except Exception as e:
+            raise e
+
+    @property
+    def image_height(self):
+        try:
+            return int(self._opencv_video_capture_object.get(4))
+        except Exception as e:
+            raise e
+
     def connect(self):
         if platform.system() == "Windows":
             cap_backend = cv2.CAP_DSHOW
@@ -76,19 +103,26 @@ class OpenCVCamera:
             )
             return False
 
-        try:
-            image_height = image.shape[0]
-            image_width = image.shape[1]
-            self._video_recorder = VideoRecorder(self._name,
-                                                 image_width=image_width,
-                                                 image_height=image_height)
-        except:
-            logger.error(f"could not create video recorder for image with shape (image_width={image_width}, image_height={image_height}) ")
-            return False
-
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
         fps_input_stream = int(self._opencv_video_capture_object.get(5))
         logger.debug("FPS of webcam hardware/input stream: {}".format(fps_input_stream))
+
+        if self.session_id is False:
+            logger.info(
+                f"No `session_id` specified for {self._name}, video_recorder will not be created (because we won't know where to save the videos)")
+            self._video_recorder = None
+        else:
+            image_height = image.shape[0]
+            image_width = image.shape[1]
+            try:
+                self._video_recorder = VideoRecorder(self._name,
+                                                     image_width=image_width,
+                                                     image_height=image_height,
+                                                     session_id=self.session_id)
+            except:
+                logger.error(
+                    f"could not create video recorder for image with shape (image_width={image_width}, image_height={image_height}) ")
+                return False  # NOTE- this is a failure because we *tried* to make a video_recorder and it didn't work
 
         return success
 
@@ -108,21 +142,6 @@ class OpenCVCamera:
         return VideoCaptureThread(
             get_next_frame=self.get_next_frame,
         )
-
-    @property
-    def image_width(self):
-        try:
-            return int(self._opencv_video_capture_object.get(3))
-        except Exception as e:
-            raise e
-
-
-    @property
-    def image_height(self):
-        try:
-            return int(self._opencv_video_capture_object.get(4))
-        except Exception as e:
-            raise e
 
     def _apply_configuration(self):
         # set camera stream parameters
@@ -153,10 +172,18 @@ class OpenCVCamera:
         success, image = self._opencv_video_capture_object.retrieve()
         timestamp_ns_post = time.perf_counter_ns()
 
-        timestamp_ns = (timestamp_ns_pre + timestamp_ns_post)/2
+        timestamp_ns = (timestamp_ns_pre + timestamp_ns_post) / 2
 
         self._new_frame_ready = success
-        return FramePayload(success, image, timestamp_ns, self.webcam_id_as_str)
+
+        if success:
+            self._number_of_frames_recorded += 1
+
+        return FramePayload(success=success,
+                            image=image,
+                            timestamp=timestamp_ns,
+                            frame_number=self.latest_frame_number,
+                            webcam_id=self.webcam_id_as_str)
 
     def stop_frame_capture(self):
         self.close()

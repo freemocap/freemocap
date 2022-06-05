@@ -3,12 +3,12 @@ import logging
 import cv2
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
-from src.core_processor.camera_calibration.charuco_board_detection.dataclasses.charuco_board_definition import CharucoBoard
-from src.core_processor.camera_calibration.charuco_board_detection.dataclasses.charuco_frame_payload import \
+from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_board_definition import CharucoBoard
+from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_frame_payload import \
     CharucoFramePayload
-from src.core_processor.camera_calibration.charuco_board_detection.dataclasses.charuco_view_data import  CharucoViewData
+from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_view_data import CharucoViewData
 
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_image_annotator import (
+from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
 )
 
@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 class CharucoBoardDetector:
     def __init__(self):
-        charuco_board_object = CharucoBoard()
-        self.charuco_board = charuco_board_object.charuco_board
-        self.aruco_marker_dict = charuco_board_object.aruco_marker_dict
-        self.number_of_charuco_corners = charuco_board_object.number_of_charuco_corners
+        self.charuco_board_object = CharucoBoard()
+        self.charuco_board = self.charuco_board_object.charuco_board
+        self.aruco_marker_dict = self.charuco_board_object.aruco_marker_dict
+        self.number_of_charuco_corners = self.charuco_board_object.number_of_charuco_corners
 
     def detect_charuco_board(self, raw_frame_payload: FramePayload) -> CharucoFramePayload:
 

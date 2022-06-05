@@ -23,7 +23,7 @@ class VideoWriterTestCase(TestCase):
             image=np.random.randint(0, 4, (720, 1280, 3)), timestamp=time.time_ns()
         )
         vw = VideoRecorder()
-        vw.record(example_payload)
+        vw.append_frame_to_list(example_payload)
 
         assert vw.frame_count == 1
 
@@ -33,7 +33,7 @@ class VideoWriterTestCase(TestCase):
             image=np.random.randint(0, 4, (720, 1280, 3)), timestamp=time.time_ns()
         )
         vw = VideoRecorder()
-        vw.record(example_payload)
+        vw.append_frame_to_list(example_payload)
 
         save_options = SaveOptions(
             writer_dir=file_path,
@@ -43,7 +43,7 @@ class VideoWriterTestCase(TestCase):
             fps=1,
         )
 
-        vw.save_to_disk(save_options)
+        vw.save_frame_list_to_disk(save_options)
         expected_path = Path().joinpath(file_path, "movie.mp4")
 
         assert save_options.full_path == expected_path, "Paths do not match"

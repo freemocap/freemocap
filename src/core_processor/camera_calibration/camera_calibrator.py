@@ -1,16 +1,14 @@
 import logging
-from dataclasses import dataclass
 
 import cv2
-import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.core_processor.camera_calibration.calibration_dataclasses import CameraCalibrationData
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_detector import CharucoBoardDetector
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_image_annotator import \
+from src.pipelines.calibration_pipeline.charuco_board_detection import CharucoBoardDetector
+from src.pipelines.calibration_pipeline.charuco_board_detection import \
     annotate_image_with_charuco_data
-from src.core_processor.camera_calibration.charuco_board_detection.dataclasses.charuco_view_data import CharucoViewData
+from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses import CharucoViewData
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ session_router = APIRouter()
 
 
 class SessionCreateModel(BaseModel):
-    user_session_str: Optional[str]
+    user_session_tag_str: Optional[str]
 
 
 class SessionResponse(BaseModel):
@@ -23,9 +23,14 @@ class SessionResponse(BaseModel):
 
 @session_router.post("/session/create")
 async def create_session(session_create_model: SessionCreateModel):
-    session_id = create_session_id(session_create_model.user_session_str)
+    session_id = create_session_id(session_create_model.user_session_tag_str)
     session_path = Path(get_session_path(session_id))
     logger.info(f'Creating session folder at: {str(session_path)}')
     session_path.mkdir(parents=True, exist_ok=False)
     return SessionResponse(session_id=session_id,
                            session_path=str(session_path))
+
+@session_router.post("session/calibrate")
+async def calibrate_session():
+    """launch camera calibration (or load previous calibration)"""
+    pass

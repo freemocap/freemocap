@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import numpy as np
 
@@ -71,8 +71,11 @@ class TimestampManager:
     def median_frames_per_second_for_main_loop(self):
         return self._main_loop_timestamp_logger.median_frames_per_second
 
-    def increment_frame_processed_for_webcam(self, webcam_id, timestamp):
+    def increment_frame_processed_for_webcam(self, webcam_id: str, timestamp: Union[float, int],
+                                             frame_number: int = None):
         self._webcam_timestamp_loggers[webcam_id].log_new_timestamp(timestamp)
+        if frame_number is not None:
+            assert (self._webcam_timestamp_loggers[webcam_id].number_of_frames == frame_number, f"Numer of timestamps ({self._webcam_timestamp_loggers[webcam_id].number_of_frames}) logged does not match frame_number ({frame_number})  for: camera_{webcam_id}")
 
     def median_frames_per_second_for_webcam(self, webcam_id):
         return self._webcam_timestamp_loggers[webcam_id].median_frames_per_second

@@ -46,7 +46,8 @@ class OpenCVCameraManager:
                                             exposure=webcam_config_model.exposure,
                                             resolution_width=webcam_config_model.resolution_width,
                                             resolution_height=webcam_config_model.resolution_height, )
-        return OpenCVCamera(config=single_camera_config)
+        return OpenCVCamera(config=single_camera_config,
+                            session_id=self._session_id)
 
     @contextmanager
     def start_capture_session_single_cam(

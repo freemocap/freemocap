@@ -1257,7 +1257,7 @@ class CameraGroup:
             lengths = np.linalg.norm(p3ds[:, a] - p3ds[:, b], axis=1)
             expected = joint_lengths[cix]
             errors_lengths[cix] = 100 * (lengths - expected) / expected
-        errors_lengths = errors_lengths.ravel() * scale_l0ength
+        errors_lengths = errors_lengths.ravel() * scale_length
 
         errors_lengths_weak = np.empty((n_constraints_weak, n_frames), dtype='float64')
         for cix, (a, b) in enumerate(constraints_weak):
@@ -1629,7 +1629,8 @@ class CameraGroup:
             cameras.append(cam)
         return CameraGroup(cameras)
 
-    def from_names(self, names, fisheye=False):
+    @staticmethod
+    def from_names(names, fisheye=False):
         cameras = []
         for name in names:
             if fisheye:

@@ -2,8 +2,10 @@ import time
 import logging
 import traceback
 from pathlib import Path
+from typing import Dict
 
 import cv2
+import numpy as np
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
@@ -14,6 +16,7 @@ from src.core_processor.fps.timestamp_manager import TimestampManager
 from src.core_processor.mediapipe_skeleton_detection.mediapipe_skeleton_detection import MediaPipeSkeletonDetection
 from src.core_processor.show_cam_window import show_cam_window
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
+from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import CalibrationPipelineOrchestrator
 from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
 
 logger = logging.getLogger(__name__)
@@ -36,7 +39,10 @@ class SessionPipelineOrchestrator:
         self._visualizer_gui = QTVisualizerAndGui()
         self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id)
         self._camera_calibrator = CameraCalibrator()
+        self._charuco_board_detector = self._camera_calibrator.charuco_board_detector
         self._mediapipe_skeleton_detector = MediaPipeSkeletonDetection(model_complexity=2)
+
+        self._multi_frame_timestamp_intervals_sec = []
 
     @property
     def session_id(self):
@@ -84,16 +90,42 @@ class SessionPipelineOrchestrator:
                 )
                 writer.save_frame_list_to_disk(options)
 
-    def run(
+    def calibrate_camera_capture_volume(self, use_most_recent_calibration: bool = False,
+                                        load_calibration_from_session_id: str = None):
+
+        if use_most_recent_calibration:
+            self._anipose_camera_calibration_object = CalibrationPipelineOrchestrator().load_most_recent_calibration()
+            return
+        elif load_calibration_from_session_id is not None:
+            calibration_orchestrator = CalibrationPipelineOrchestrator(load_calibration_from_session_id)
+        else:
+            calibration_orchestrator = CalibrationPipelineOrchestrator(self.session_id)
+            calibration_orchestrator.record_videos(show_visualizer_gui=False,
+                                                   save_video_in_frame_loop=False,
+                                                   show_camera_views_in_windows=True,
+                                                   )
+
+        self._anipose_camera_calibration_object = calibration_orchestrator.run_anipose_camera_calibration(
+            charuco_square_size=39)
+
+    def run_big_frame_loop(
             self,
             show_camera_views_in_windows=True,
             show_visualizer_gui=True,
-            calibrate_cameras=True,
-            detect_skeleton=True,
+            detect_mediapipe=True,
+            detect_charuco=True,
+            reconstruct_3d=True,
             save_video=True,
     ):
+        self._multi_frames_processed =0
 
         with self._open_cv_camera_manager.start_capture_session_all_cams() as connected_cameras_dict:
+
+            if detect_charuco:
+                incoming_charuco_frame_data_per_camera_dict = {}
+                for this_webcam_id in connected_cameras_dict.keys():
+                    incoming_charuco_frame_data_per_camera_dict[this_webcam_id] = []
+
             try:
                 if show_visualizer_gui:
                     self._visualizer_gui.setup_and_launch(self._open_cv_camera_manager.available_webcam_ids)
@@ -102,9 +134,15 @@ class SessionPipelineOrchestrator:
                                                      self._session_start_time_unix_ns)
 
                 should_continue = True
-                while should_continue:
+                while should_continue:  # BIG FRAME LOOP STARTS HERE
 
                     timestamp_manager.increment_main_loop_timestamp_logger(time.perf_counter_ns())
+
+                    #reconstruct 3d data, if there's enough new data to so
+                    if reconstruct_3d:
+                        if detect_charuco:
+                            self._reconstruct_3d_charuco(incoming_charuco_frame_data_per_camera_dict)
+
 
                     for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():
 
@@ -125,13 +163,17 @@ class SessionPipelineOrchestrator:
                         if save_video:
                             this_open_cv_camera.video_recorder.append_frame_to_list(this_cam_latest_frame)
 
-                        if calibrate_cameras:
-                            undistorted_annotated_image = self._camera_calibrator.calibrate(this_open_cv_camera)
-                            image_to_display = undistorted_annotated_image
-
-                        if detect_skeleton:
+                        if detect_mediapipe:
                             image_to_display = self._mediapipe_skeleton_detector.detect_skeleton_in_image(
                                 image_to_display)
+
+                        if detect_charuco:
+                            charuco_frame_payload = self._charuco_board_detector.detect_charuco_board(
+                                this_cam_latest_frame)
+                            incoming_charuco_frame_data_per_camera_dict[this_webcam_id].append(
+                                charuco_frame_payload)
+
+                            image_to_display = charuco_frame_payload.annotated_image
 
                         if show_camera_views_in_windows:
                             should_continue = show_cam_window(
@@ -152,8 +194,6 @@ class SessionPipelineOrchestrator:
                             logger.info("ESC has been pressed.")
                             should_continue = False
 
-
-
             except:
                 logger.error("Printing traceback")
                 traceback.print_exc()
@@ -169,12 +209,42 @@ class SessionPipelineOrchestrator:
                 if show_visualizer_gui:
                     self._visualizer_gui.close()
 
+    def _reconstruct_3d_charuco(self, incoming_charuco_frame_data_per_camera_dict):
+        next_multi_frame_number = self._multi_frames_processed
+
+        new_multi_frame_ready = []
+        for this_cam_data_list in incoming_charuco_frame_data_per_camera_dict.values():
+            new_multi_frame_ready.append(len(this_cam_data_list) > next_multi_frame_number)
+
+        if not all(new_multi_frame_ready):
+            return
+
+        #new multiframe!
+        self._multi_frames_processed+=1
+
+        this_multi_frame_charuco_data=[]
+        this_multi_frame_timestamps = []
+        for this_webcam_id in incoming_charuco_frame_data_per_camera_dict.keys():
+            this_cam_data_list = incoming_charuco_frame_data_per_camera_dict[this_webcam_id]
+            this_cam_this_frame = this_cam_data_list[next_multi_frame_number]
+            this_multi_frame_timestamps.append(this_cam_this_frame.raw_frame_payload.timestamp)
+            this_multi_frame_charuco_data.append(this_cam_this_frame)
+
+        timestamp_min = np.min(this_multi_frame_timestamps)
+        timestamp_max = np.max(this_multi_frame_timestamps)
+        this_multiframe_timestamp_interval_sec =  (timestamp_max - timestamp_min)/1e9
+        self._multi_frame_timestamp_intervals_sec.append(this_multiframe_timestamp_interval_sec)
+
+
 
 if __name__ == "__main__":
-    print('start main')
+    print('running `session_pipeline_orchestrator` as `__main__')
 
     this_session_orchestrator = SessionPipelineOrchestrator()
-    this_session_orchestrator.run(save_video=False,
-                                  show_visualizer_gui=True,
-                                  calibrate_cameras=False,
-                                  detect_skeleton=False)
+    this_session_orchestrator.calibrate_camera_capture_volume(use_most_recent_calibration=True)
+    this_session_orchestrator.run_big_frame_loop(save_video=False,
+                                                 show_visualizer_gui=False,
+                                                 detect_mediapipe=False,
+                                                 detect_charuco=True,
+                                                 reconstruct_3d=True,
+                                                 )

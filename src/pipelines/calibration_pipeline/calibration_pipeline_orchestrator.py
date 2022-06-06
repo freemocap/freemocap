@@ -7,10 +7,11 @@ from typing import Union
 import cv2
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
-from src.config.home_dir import create_session_id, get_session_path
+from src.config.home_dir import create_session_id, get_session_path, get_freemocap_data_folder_path
 from src.core_processor.fps.timestamp_manager import TimestampManager
 from src.core_processor.show_cam_window import show_cam_window
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
+from src.pipelines.calibration_pipeline.anipose_camera_calibration import freemocap_anipose
 from src.pipelines.calibration_pipeline.anipose_camera_calibration.anipose_camera_calibration import \
     AniposeCameraCalibrator
 from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import CharucoBoardDetector
@@ -21,12 +22,14 @@ logger = logging.getLogger(__name__)
 
 class CalibrationPipelineOrchestrator:
 
-    def __init__(self, session_id):
-        self._session_id = session_id
-        self._calibration_start_time_unix_ns = time.time_ns()
-        self._charuco_board_detector = CharucoBoardDetector()
-        self._visualizer_gui = QTVisualizerAndGui(source='calibration')
-        self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id)
+    def __init__(self, session_id:str=None):
+
+        if session_id is not None:
+            self._session_id = session_id
+            self._calibration_start_time_unix_ns = time.time_ns()
+            self._charuco_board_detector = CharucoBoardDetector()
+            self._visualizer_gui = QTVisualizerAndGui(source='calibration')
+            self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id)
 
     @property
     def session_id(self):
@@ -128,7 +131,12 @@ class CalibrationPipelineOrchestrator:
         anipose_camera_calibrator = AniposeCameraCalibrator(self.session_id,
                                                             self._charuco_board_detector.charuco_board_object,
                                                             charuco_square_size=charuco_square_size)
-        anipose_camera_calibrator.calibrate_camera_capture_volume()
+        return anipose_camera_calibrator.calibrate_camera_capture_volume()
+
+    def load_most_recent_calibration(self):
+        last_successful_calibration_path = Path(get_freemocap_data_folder_path(), "last_successful_calibration.toml")
+        logger.info(f"loading `most recent calibration from:{str(last_successful_calibration_path)}")
+        return freemocap_anipose.CameraGroup.load(str(last_successful_calibration_path))
 
 
 if __name__ == "__main__":

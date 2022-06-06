@@ -1,3 +1,5 @@
+import logging
+
 import cv2
 import numpy as np
 from copy import copy
@@ -12,11 +14,14 @@ from tqdm import trange
 from pprint import pprint
 import time
 
+
 from aniposelib.boards import merge_rows, extract_points, \
     extract_rtvecs, get_video_params
 from aniposelib.utils import get_initial_extrinsics, make_M, get_rtvec, \
     get_connections
 
+numba_logger = logging.getLogger('numba')
+numba_logger.setLevel(logging.WARNING)
 
 @jit(nopython=True, parallel=True)
 def triangulate_simple(points, camera_mats):

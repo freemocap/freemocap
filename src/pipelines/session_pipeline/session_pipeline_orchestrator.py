@@ -93,7 +93,8 @@ class SessionPipelineOrchestrator:
                 writer.save_frame_list_to_disk(options)
 
     def calibrate_camera_capture_volume(self, use_most_recent_calibration: bool = False,
-                                        load_calibration_from_session_id: str = None):
+                                        load_calibration_from_session_id: str = None,
+                                        charuco_square_size:int = 1):
 
         if use_most_recent_calibration:
             self._anipose_camera_calibration_object = CalibrationPipelineOrchestrator().load_most_recent_calibration()
@@ -108,7 +109,7 @@ class SessionPipelineOrchestrator:
                                                    )
 
         self._anipose_camera_calibration_object = calibration_orchestrator.run_anipose_camera_calibration(
-            charuco_square_size=39)
+            charuco_square_size=charuco_square_size)
 
     def run_big_old_bongo_frame_loop(
             self,
@@ -307,9 +308,11 @@ class SessionPipelineOrchestrator:
 if __name__ == "__main__":
     print('running `session_pipeline_orchestrator` as `__main__')
 
+    length_of_one_edge_of_a_black_square_on_the_charuco_board_in_mm = 39
+
     this_session_orchestrator = SessionPipelineOrchestrator()
-    this_session_orchestrator.calibrate_camera_capture_volume(use_most_recent_calibration=True)
-    # this_session_orchestrator.calibrate_camera_capture_volume()
+    # this_session_orchestrator.calibrate_camera_capture_volume(use_most_recent_calibration=True)
+    this_session_orchestrator.calibrate_camera_capture_volume(charuco_square_size = length_of_one_edge_of_a_black_square_on_the_charuco_board_in_mm)
     this_session_orchestrator.run_big_old_bongo_frame_loop(show_camera_views_in_windows=False,
                                                            save_video=False,
                                                            show_visualizer_gui=True,

@@ -131,6 +131,8 @@ class SessionPipelineOrchestrator:
             try:
                 if show_visualizer_gui:
                     self._visualizer_gui.setup_and_launch(self._open_cv_camera_manager.available_webcam_ids)
+                    if detect_charuco:
+                        self._visualizer_gui.initialize_charuco_dottos(self._charuco_board_detector.number_of_charuco_corners)
 
                 timestamp_manager = TimestampManager(self._open_cv_camera_manager.available_webcam_ids,
                                                      self._session_start_time_unix_ns)
@@ -144,8 +146,8 @@ class SessionPipelineOrchestrator:
                     if reconstruct_3d:
                         if detect_charuco:
                             charuco_frame_payload = self._reconstruct_3d_charuco(incoming_charuco_frame_data_per_camera_dict)
-                            if show_visualizer_gui:
-                                self._visualizer_gui.update_3d_view_port(charuco_frame_payload, type='charuco')
+                            if show_visualizer_gui and charuco_frame_payload is not None:
+                                self._visualizer_gui.update_charuco_3d_dottos(charuco_frame_payload)
                     for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():
 
                         if not this_open_cv_camera.new_frame_ready:
@@ -188,7 +190,7 @@ class SessionPipelineOrchestrator:
                                 timestamp_manager.median_frames_per_second_for_webcam(this_webcam_id),
                             )
                             self._visualizer_gui.update_camera_view_image(this_webcam_id, image_to_display)
-                            self._visualizer_gui.update_timestamp_plots(timestamp_manager)
+                            # self._visualizer_gui.update_timestamp_plots(timestamp_manager)
 
                         # exit loop when user presses ESC key
                         exit_key = cv2.waitKey(1)
@@ -297,7 +299,8 @@ class SessionPipelineOrchestrator:
             data2d_camNum_trackedPointNum_xyz,
             mean=True)
 
-        return Data3dSingleFramePayload(data3d_trackedPointNum_xyz=data3d_trackedPointNum_xyz,
+        return Data3dSingleFramePayload(has_data= True,
+                                        data3d_trackedPointNum_xyz=data3d_trackedPointNum_xyz,
                                         data3d_trackedPointNum_reprojectionError=data3d_trackedPointNum_reprojectionError, )
 
 

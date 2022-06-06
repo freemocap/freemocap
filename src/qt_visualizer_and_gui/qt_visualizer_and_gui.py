@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class QTVisualizerAndGui:
-    def __init__(self):
+    def __init__(self, source:str=None):
         # https://pyqtgraph.readthedocs.io/en/latest/config_options.html
         self._camera0_id = '0'
         pg.setConfigOptions(imageAxisOrder='row-major')
@@ -48,11 +48,10 @@ class QTVisualizerAndGui:
         self._setup_main_window()
         self._setup_control_panel()
         self._setup_camera_views_dock()
-        self._setup_timestamp_plot()
-        self._setup_time_difference_from_cam0_line_plot()
-        self._setup_time_difference_from_cam0_histogram_plot()
+        # self._setup_timestamp_plot()
+        # self._setup_time_difference_from_cam0_line_plot()
+        # self._setup_time_difference_from_cam0_histogram_plot()
         self._setup_3d_viewport()
-        self._initialize_charuco_dottos()
         logger.info('launching QT Visualizer and GUI window')
         self._main_window_widget.show()
 
@@ -274,17 +273,16 @@ class QTVisualizerAndGui:
         self.opengl_3d_plot_dock.addWidget(self.opengl_3d_plot_widget)
         self._main_dock_area.addDock(self.opengl_3d_plot_dock, 'bottom', self._camera_views_dock)
 
-    def update_charuco_3d_dottos(self, charuco_frame_payload: Data3dSingleFramePayload, type: str = 'generic'):
+    def update_charuco_3d_dottos(self, charuco_frame_payload: Data3dSingleFramePayload):
         self._charuco_scatter_item.setData(
             pos=charuco_frame_payload.data3d_trackedPointNum_xyz
         )
 
-    def initialize_charuco_dottos(self, number_of_charuco_corners: int = 24):
-        logger.warning("Sloppy assuming that there are 24 charuco corners, which might not be true in the future")
+    def initialize_charuco_dottos(self, number_of_charuco_corners: int):
         dummy_charuco_points = np.zeros((number_of_charuco_corners, 3))
         self._charuco_scatter_item = gl.GLScatterPlotItem(
             pos=dummy_charuco_points,
             color=(1, 1, 0, 1),
-            width=3
+            size=20
         )
         self.opengl_3d_plot_widget.addItem(self._charuco_scatter_item)

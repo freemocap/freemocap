@@ -41,6 +41,10 @@ class AniposeCameraCalibrator:
     def initialize_anipose_objects(self):
         list_of_camera_names = [this_video_path.stem for this_video_path in self._list_of_video_paths]
         self._anipose_camera_group_object = freemocap_anipose.CameraGroup.from_names(list_of_camera_names)
+        self._anipose_camera_group_object.metadata['session_id'] = self._session_id
+        self._anipose_camera_group_object.metadata['charuco_square_size'] = self._charuco_square_size
+        self._anipose_camera_group_object.metadata['charuco_board_object'] = str(self._charuco_board_object)
+
         self._anipose_charuco_board = AniposeCharucoBoard(self._charuco_board_object.number_of_squares_width,
                                                           self._charuco_board_object.number_of_squares_height,
                                                           square_length=self._charuco_square_size,  # mm

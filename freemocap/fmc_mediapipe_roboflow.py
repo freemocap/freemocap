@@ -158,27 +158,27 @@ def mediaPipe_on_roboflow_crop(source_vid, output_vid, tracked_roboflow_data):
     #Create output video object
     output = cv2.VideoWriter(output_vid, fourcc, fps, frame_size) #choose a name/path for an output video 
     frame = 0#Initialize frame counter
+    #With mediapipe
+    with mp_holistic.Holistic(
+    static_image_mode=True,
+    model_complexity=2,     
+    enable_segmentation=False) as holistic:
+        #Loop through video
+        while (cap.isOpened()):
 
-    #Loop through video
-    while (cap.isOpened()):
+            frame += 1#increase frame count
+            if frame%100 == 0:
+                print('Mediapipe on Frame '+str(frame)+' of '+str(frame_count))
+            # Capture frame-by-frame
+            ret, image = cap.read()
 
-        frame += 1#increase frame count
-        if frame%100 == 0:
-            print('Mediapipe on Frame '+str(frame)+' of '+str(frame_count))
-        # Capture frame-by-frame
-        ret, image = cap.read()
-
-        if ret==True:
-            #Copy frame image
-            annotated_image = image.copy()
-            
-            #For each person in the roboflow data 
-            for person_key in tracked_roboflow_data.keys():
-                #With mediapipe
-                with mp_holistic.Holistic(
-                static_image_mode=True,
-                model_complexity=2,     
-                enable_segmentation=False) as holistic:
+            if ret==True:
+                #Copy frame image
+                annotated_image = image.copy()
+                
+                #For each person in the roboflow data 
+                for person_key in tracked_roboflow_data.keys():
+                    
                     #get the df of this person
                     person_df = tracked_roboflow_data[person_key]
                     frames_df = person_df['frame']
@@ -311,25 +311,25 @@ def mediaPipe_on_roboflow_crop(source_vid, output_vid, tracked_roboflow_data):
                         Mediapipe_XYC = format_mediapipe_for_fmc(process_results, frame_height,frame_width)
                         mediapip_failed_for_this_frame = False
                         #Add these mediapipe points to the ID of the person from the roboflow output
-                         
+                        
 
-                #Add these mediapipe points to the ID of the person from the roboflow output
-                if person_key in fmc_mediapipe_dict.keys():
-                    reprocessed_list = fmc_mediapipe_dict[person_key]
-                    reprocessed_list.append(Mediapipe_XYC)
-                    fmc_mediapipe_dict[person_key] = reprocessed_list
+                    #Add these mediapipe points to the ID of the person from the roboflow output
+                    if person_key in fmc_mediapipe_dict.keys():
+                        reprocessed_list = fmc_mediapipe_dict[person_key]
+                        reprocessed_list.append(Mediapipe_XYC)
+                        fmc_mediapipe_dict[person_key] = reprocessed_list
 
-                else:
-                    new_list = []
-                    new_list.append(Mediapipe_XYC)
-                    fmc_mediapipe_dict[person_key] = new_list
+                    else:
+                        new_list = []
+                        new_list.append(Mediapipe_XYC)
+                        fmc_mediapipe_dict[person_key] = new_list
                     
                 #Add bounding box to image
                 annotated_image = cv2.rectangle(annotated_image, (int(xmin), int(ymin)), (int(xmax), int(ymax)),color = (255,0,0), thickness=3, lineType=cv2.LINE_AA)
-            output.write(annotated_image)
-                
-        else:
-            break
+                output.write(annotated_image)
+                    
+            else:
+                break
     cap.release()
     # output.release()
     return fmc_mediapipe_dict

@@ -32,11 +32,13 @@ from freemocap import (
     fmc_mediapipe_roboflow,
     fmc_openpose,
     fmc_deeplabcut,
+    fmc_origin_alignment,
+    fmc_mediapipe_annotation,
     reconstruct3D,
     play_skeleton_animation,
     session,
-    video_sync
-)
+    video_sync,
+    )
 
 
 
@@ -48,9 +50,7 @@ def RunMe(sessionID=None,
         useOpenPose=False,
         runOpenPose = True,
         useMediaPipe=True,
-        runMediaPipe=False,
-        runRoboflowMediapipe=True,
-        go_pro = True,
+        runMediaPipe=True,
         useDLC=False,
         dlcConfigPath=None,
         debug=False,
@@ -66,7 +66,12 @@ def RunMe(sessionID=None,
         resetBlenderExe = False,
         get_synced_unix_timestamps = True,
         good_clean_frame_number = 0,
+        use_saved_calibration = False,
         bundle_adjust_3d_points=False,
+        place_skeleton_on_origin = False,
+        save_annotated_videos = False,
+        runRoboflowMediapipe=False,
+        go_pro = False
         ):
     """
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -90,9 +95,14 @@ def RunMe(sessionID=None,
     sesh.dataFolderName = recordingconfig.dataFolder
     sesh.startFrame = startFrame
     sesh.get_synced_unix_timestamps = get_synced_unix_timestamps
+    sesh.use_saved_calibration = use_saved_calibration
 
     # %% Startup
+    sesh.freemocap_module_path = Path(__file__).parent
+
+
     startup.get_user_preferences(sesh,stage)
+    
     if go_pro:
         video_sync.main(sesh)
         if stage <3:
@@ -114,9 +124,10 @@ def RunMe(sessionID=None,
         console.rule()
         print('Running ' + str(sesh.sessionID) + ' from ' + str(sesh.dataFolderPath))
         console.rule()
+
     if useBlender == True:
-        here = Path(__file__).parent
-        subprocessPath = here/'fmc_blender.py'
+
+        subprocessPath = sesh.freemocap_module_path/'fmc_blender.py'
         blenderPath = startup.get_blender_path(sesh,resetBlenderExe)
 
 
@@ -207,7 +218,7 @@ def RunMe(sessionID=None,
             console.rule('Running MediaPipe skeleton tracker - https://google.github.io/mediapipe', style="color({})".format(thisStage))    
             console.rule(style="color({})".format(thisStage))    
 
-            if runMediaPipe:
+            if runMediaPipe and not runRoboflowMediapipe:
                 fmc_mediapipe.runMediaPipe(sesh)
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
             elif runRoboflowMediapipe:
@@ -215,6 +226,10 @@ def RunMe(sessionID=None,
             else:
                 print('`runMediaPipe` set to False, so we\'re loading MediaPipe data from npy file')
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = np.load(sesh.dataArrayPath/'mediaPipeData_2d.npy', allow_pickle=True)
+            
+            if save_annotated_videos:
+                fmc_mediapipe_annotation.annotate_session_videos_with_mediapipe(sesh)
+
 
             sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
             
@@ -230,7 +245,9 @@ def RunMe(sessionID=None,
                                                                             constraints=mediapipe_body_pose_connections,
                                                                             verbose=True)
                 print('Done adjusting bundles!')
-                    
+
+
+
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
             np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy
 
@@ -241,7 +258,19 @@ def RunMe(sessionID=None,
                 for mm in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[1]):
                     sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim] = savgol_filter(sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
 
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+
+            if place_skeleton_on_origin:
+                sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated = sesh.mediaPipeSkel_fr_mar_xyz.copy()
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed_unrotated.npy', sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated) #save data to npy
+
+                origin_aligned_skeleton_data_XYZ = fmc_origin_alignment.align_skeleton_with_origin(sesh,sesh.mediaPipeSkel_fr_mar_xyz,good_clean_frame_number)
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', origin_aligned_skeleton_data_XYZ) #save data to npy
+
+            else:
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz)
+
+
+
 
         sesh.save_session()
 
@@ -297,6 +326,8 @@ def RunMe(sessionID=None,
 
     # %% Stage 5 - Use Blender to create output data files
     if stage <=5:
+
+
         try:
             if useBlender == True:
                 thisStage=5

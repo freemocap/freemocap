@@ -1652,6 +1652,7 @@ class CameraGroup:
         with open(fname, 'w') as f:
             toml.dump(master_dict, f)
 
+    @staticmethod
     def load(fname):
         master_dict = toml.load(fname)
         keys = sorted(master_dict.keys())

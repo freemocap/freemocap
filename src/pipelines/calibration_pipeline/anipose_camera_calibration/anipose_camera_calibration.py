@@ -2,9 +2,10 @@ import logging
 from pathlib import Path
 from typing import Union
 
+import numpy as np
 from cv2.cv2 import aruco_CharucoBoard
 
-from src.config.home_dir import get_session_path
+from src.config.home_dir import get_session_path, get_freemocap_data_folder_path
 from src.pipelines.calibration_pipeline.anipose_camera_calibration import freemocap_anipose
 from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
 
@@ -55,11 +56,24 @@ class AniposeCameraCalibrator:
 
         logger.info("Anipose Calibration Successful!")
 
+        # translate cameras so camera0 is on `0,0,0`
+        self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
+
         # save calibration info to files
         calibration_toml_filename = f"{self._session_id}_camera_calibration.toml"
         camera_calibration_toml_path = self.session_folder_path / calibration_toml_filename
+
+
+
         self._anipose_camera_group_object.dump(camera_calibration_toml_path)
         logger.info(f"anipose camera calibration data saved to {str(camera_calibration_toml_path)}")
+
+        last_successful_calibration_path = Path(get_freemocap_data_folder_path(), "last_successful_calibration.toml")
+        self._anipose_camera_group_object.dump(last_successful_calibration_path)
+
+        logger.info(f"anipose camera calibration data also saved to {str(last_successful_calibration_path)}")
+
+        return self._anipose_camera_group_object
         # # convert charuco data into a format that can be 3d reconstructed (effectively providing dummy data for the rest of the 3d reconstruction pipeline)
         # self.charuco_nCams_nFrames_nImgPts_XY = np.empty(
         #     [self.multi_cam.num_cams, self.multi_cam.num_frames, num_charuco_tracked_points, 2])
@@ -74,6 +88,17 @@ class AniposeCameraCalibrator:
         #             # print("failed frame:", frame)
         #             continue
 
+    def pin_camera_zero_to_origin(self, _anipose_camera_group_object):
+        original_translation_vectors = _anipose_camera_group_object.get_translations()
+        camera_0_translation = original_translation_vectors[0,:]
+        altered_translation_vectors = np.zeros(original_translation_vectors.shape)
+        for this_camera_number in range(original_translation_vectors.shape[0]):
+            altered_translation_vectors[this_camera_number,:] = original_translation_vectors[this_camera_number,:] -  camera_0_translation
+
+        _anipose_camera_group_object.set_translations(altered_translation_vectors)
+        logger.info(f"original translation vectors: {original_translation_vectors}")
+        logger.info(f"altered translation vectors: {_anipose_camera_group_object.get_translations()}")
+        return _anipose_camera_group_object
 
 if __name__ == "__main__":
     pass

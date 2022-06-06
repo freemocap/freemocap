@@ -100,7 +100,7 @@ class CameraCalibrator:
          ) = cv2.aruco.calibrateCameraCharucoExtended(
             charucoCorners=[charuco_view.charuco_corners],
             charucoIds=[charuco_view.charuco_ids],
-            board=self._charuco_board_detector.charuco_board,
+            board=self._charuco_board_detector.cv2_aruco_charuco_board,
             imageSize=(image_width, image_height),
             cameraMatrix=self._current_calibration.camera_matrix,
             distCoeffs=self._current_calibration.lens_distortion_coefficients,

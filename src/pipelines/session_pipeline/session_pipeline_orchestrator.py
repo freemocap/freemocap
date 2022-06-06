@@ -2,7 +2,7 @@ import time
 import logging
 import traceback
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Union
 
 import cv2
 import numpy as np
@@ -17,6 +17,8 @@ from src.core_processor.mediapipe_skeleton_detection.mediapipe_skeleton_detectio
 from src.core_processor.show_cam_window import show_cam_window
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import CalibrationPipelineOrchestrator
+
+from src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import Data3dSingleFramePayload
 from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
 
 logger = logging.getLogger(__name__)
@@ -98,7 +100,7 @@ class SessionPipelineOrchestrator:
             return
         elif load_calibration_from_session_id is not None:
             calibration_orchestrator = CalibrationPipelineOrchestrator(load_calibration_from_session_id)
-        else:
+        else:  # create new calibration
             calibration_orchestrator = CalibrationPipelineOrchestrator(self.session_id)
             calibration_orchestrator.record_videos(show_visualizer_gui=False,
                                                    save_video_in_frame_loop=False,
@@ -108,7 +110,7 @@ class SessionPipelineOrchestrator:
         self._anipose_camera_calibration_object = calibration_orchestrator.run_anipose_camera_calibration(
             charuco_square_size=39)
 
-    def run_big_frame_loop(
+    def run_big_old_bongo_frame_loop(
             self,
             show_camera_views_in_windows=True,
             show_visualizer_gui=True,
@@ -117,10 +119,10 @@ class SessionPipelineOrchestrator:
             reconstruct_3d=True,
             save_video=True,
     ):
-        self._multi_frames_processed =0
+        self._multi_frames_processed = 0
 
         with self._open_cv_camera_manager.start_capture_session_all_cams() as connected_cameras_dict:
-
+            self._number_of_cameras = len(connected_cameras_dict)
             if detect_charuco:
                 incoming_charuco_frame_data_per_camera_dict = {}
                 for this_webcam_id in connected_cameras_dict.keys():
@@ -138,12 +140,12 @@ class SessionPipelineOrchestrator:
 
                     timestamp_manager.increment_main_loop_timestamp_logger(time.perf_counter_ns())
 
-                    #reconstruct 3d data, if there's enough new data to so
+                    # reconstruct 3d data, if there's enough new data to so
                     if reconstruct_3d:
                         if detect_charuco:
-                            self._reconstruct_3d_charuco(incoming_charuco_frame_data_per_camera_dict)
-
-
+                            charuco_frame_payload = self._reconstruct_3d_charuco(incoming_charuco_frame_data_per_camera_dict)
+                            if show_visualizer_gui:
+                                self._visualizer_gui.update_3d_view_port(charuco_frame_payload, type='charuco')
                     for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():
 
                         if not this_open_cv_camera.new_frame_ready:
@@ -209,7 +211,9 @@ class SessionPipelineOrchestrator:
                 if show_visualizer_gui:
                     self._visualizer_gui.close()
 
-    def _reconstruct_3d_charuco(self, incoming_charuco_frame_data_per_camera_dict):
+    def _reconstruct_3d_charuco(self, incoming_charuco_frame_data_per_camera_dict) -> \
+            Union[None, Data3dSingleFramePayload]:
+
         next_multi_frame_number = self._multi_frames_processed
 
         new_multi_frame_ready = []
@@ -219,22 +223,82 @@ class SessionPipelineOrchestrator:
         if not all(new_multi_frame_ready):
             return
 
-        #new multiframe!
-        self._multi_frames_processed+=1
+        # new multiframe!
+        self._multi_frames_processed += 1
 
-        this_multi_frame_charuco_data=[]
+        this_multi_frame_charuco_data = []
         this_multi_frame_timestamps = []
+        each_cam_number_of_frames = []
+        any_charuco_data = []
         for this_webcam_id in incoming_charuco_frame_data_per_camera_dict.keys():
             this_cam_data_list = incoming_charuco_frame_data_per_camera_dict[this_webcam_id]
+            each_cam_number_of_frames.append(len(this_cam_data_list))
             this_cam_this_frame = this_cam_data_list[next_multi_frame_number]
             this_multi_frame_timestamps.append(this_cam_this_frame.raw_frame_payload.timestamp)
             this_multi_frame_charuco_data.append(this_cam_this_frame)
+            any_charuco_data.append(this_cam_this_frame.charuco_view_data.some_charuco_corners_found)
 
         timestamp_min = np.min(this_multi_frame_timestamps)
         timestamp_max = np.max(this_multi_frame_timestamps)
-        this_multiframe_timestamp_interval_sec =  (timestamp_max - timestamp_min)/1e9
+        this_multiframe_timestamp_interval_sec = (timestamp_max - timestamp_min) / 1e9
         self._multi_frame_timestamp_intervals_sec.append(this_multiframe_timestamp_interval_sec)
 
+        print(f"TODO:sync with timestamps, not frame index - multi_frame#: {self._multi_frames_processed - 1},"
+              f" each_cam_#_of_frames: {each_cam_number_of_frames}, "
+              f" intra_multi_frame_timestamp_range: {this_multiframe_timestamp_interval_sec:.3f}", )
+
+        min_cameras_to_reconstruct = 2
+        if sum(any_charuco_data) > min_cameras_to_reconstruct:  # if at least 2 cameras have any data, then we can try to make some 3d dottos
+            charuco2d_data_per_cam_dict = self.format_charuco2d_data(this_multi_frame_charuco_data)
+            charuco_3d_data_payload = self._triangulate_2d_data(charuco2d_data_per_cam_dict,
+                                                                self._charuco_board_detector.number_of_charuco_corners)
+            return charuco_3d_data_payload
+
+    def format_charuco2d_data(self, this_multi_frame_charuco_data) -> Dict:
+
+        number_of_tracked_points = this_multi_frame_charuco_data[
+            0].charuco_view_data.charuco_board_object.number_of_charuco_corners
+
+        charuco2d_data_per_cam_dict = {}
+        base_charuco_data_npy_with_nans_for_missing_data_xy = np.zeros((number_of_tracked_points, 2))
+        base_charuco_data_npy_with_nans_for_missing_data_xy[:] = np.nan
+        for this_cam_data in this_multi_frame_charuco_data:
+            this_frame_charuco_data_xy = base_charuco_data_npy_with_nans_for_missing_data_xy.copy()
+            charuco_ids_in_this_frame_idx = this_cam_data.charuco_view_data.charuco_ids
+            charuco_corners_in_this_frame_xy = this_cam_data.charuco_view_data.charuco_corners
+            this_frame_charuco_data_xy[charuco_ids_in_this_frame_idx, :] = charuco_corners_in_this_frame_xy
+
+            this_webcam_id = this_cam_data.raw_frame_payload.webcam_id
+            charuco2d_data_per_cam_dict[this_webcam_id] = this_frame_charuco_data_xy
+
+        return charuco2d_data_per_cam_dict
+
+    def _triangulate_2d_data(self, data2d_per_cam_dict: Dict,
+                             number_of_tracked_points: int) -> Data3dSingleFramePayload:
+
+        each_cam2d_data_list = [this_cam_charuco2d_frame_xy for this_cam_charuco2d_frame_xy in
+                                data2d_per_cam_dict.values()]
+        data2d_trackedPointNum_xyz_camNum = np.dstack(
+            each_cam2d_data_list)  # stack lists (in depth) to make one numpy array with dimensions [number_of_tracked_points, XYZ, number_of_cameras]
+        data2d_camNum_trackedPointNum_xyz = data2d_trackedPointNum_xyz_camNum.reshape(self._number_of_cameras,
+                                                                                      number_of_tracked_points,
+                                                                                      2)  # reshape to fit into anipose (new dimensions [number_of_cameras, number_of_tracked_points, XYZ]
+
+        # THIS IS WHERE THE MAGIC HAPPENS - 2d data from calibrated, synchronized cameras has now become a 3d estimate. Hurray! :`D
+        data3d_trackedPointNum_xyz = self._anipose_camera_calibration_object.triangulate(
+            data2d_camNum_trackedPointNum_xyz,
+            progress=True)
+
+        # Reprojection error is a measure of the quality of the reconstruction. It is the distance (error) between the original 2d point and a reprojection of the 3d point back onto the image plane.
+        # TODO - use this for filtering data (i.e. if one view has very high reprojection error, re-do the triangulation without that camera's view data)
+        # TODO - we are currently using each tracking method's `confidence` values (or whatever they choose to call it) for thresholding, but it's problematic because of the neural_networks' propensity to apply high confidence to bonkers estimates, which leads to SPOOKY GHOST SKELETONS! :O
+        data3d_trackedPointNum_reprojectionError = self._anipose_camera_calibration_object.reprojection_error(
+            data3d_trackedPointNum_xyz,
+            data2d_camNum_trackedPointNum_xyz,
+            mean=True)
+
+        return Data3dSingleFramePayload(data3d_trackedPointNum_xyz=data3d_trackedPointNum_xyz,
+                                        data3d_trackedPointNum_reprojectionError=data3d_trackedPointNum_reprojectionError, )
 
 
 if __name__ == "__main__":
@@ -242,9 +306,11 @@ if __name__ == "__main__":
 
     this_session_orchestrator = SessionPipelineOrchestrator()
     this_session_orchestrator.calibrate_camera_capture_volume(use_most_recent_calibration=True)
-    this_session_orchestrator.run_big_frame_loop(save_video=False,
-                                                 show_visualizer_gui=False,
-                                                 detect_mediapipe=False,
-                                                 detect_charuco=True,
-                                                 reconstruct_3d=True,
-                                                 )
+    # this_session_orchestrator.calibrate_camera_capture_volume()
+    this_session_orchestrator.run_big_old_bongo_frame_loop(show_camera_views_in_windows=False,
+                                                           save_video=False,
+                                                           show_visualizer_gui=True,
+                                                           detect_mediapipe=False,
+                                                           detect_charuco=True,
+                                                           reconstruct_3d=True,
+                                                           )

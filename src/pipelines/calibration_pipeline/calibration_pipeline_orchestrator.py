@@ -129,7 +129,7 @@ class CalibrationPipelineOrchestrator:
                                        charuco_square_size: Union[int, float] = 1,
                                        ):
         anipose_camera_calibrator = AniposeCameraCalibrator(self.session_id,
-                                                            self._charuco_board_detector.charuco_board_object,
+                                                            self._charuco_board_detector.charuco_board_data_class_object,
                                                             charuco_square_size=charuco_square_size)
         return anipose_camera_calibrator.calibrate_camera_capture_volume()
 

@@ -3,7 +3,7 @@ import logging
 import cv2
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
-from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_board_definition import CharucoBoard
+from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_board_definition import CharucoBoardDataClass
 from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_frame_payload import \
     CharucoFramePayload
 from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_view_data import CharucoViewData
@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 class CharucoBoardDetector:
     def __init__(self):
-        self.charuco_board_object = CharucoBoard()
-        self.charuco_board = self.charuco_board_object.charuco_board
-        self.aruco_marker_dict = self.charuco_board_object.aruco_marker_dict
-        self.number_of_charuco_corners = self.charuco_board_object.number_of_charuco_corners
+        self.charuco_board_data_class_object = CharucoBoardDataClass()
+        self.cv2_aruco_charuco_board = self.charuco_board_data_class_object.charuco_board
+        self.aruco_marker_dict = self.charuco_board_data_class_object.aruco_marker_dict
+        self.number_of_charuco_corners = self.charuco_board_data_class_object.number_of_charuco_corners
 
     def detect_charuco_board(self, raw_frame_payload: FramePayload) -> CharucoFramePayload:
 
@@ -83,7 +83,7 @@ class CharucoBoardDetector:
             results = cv2.aruco.interpolateCornersCharuco(aruco_square_corners,
                                                           aruco_square_ids,
                                                           grayscale_image,
-                                                          self.charuco_board
+                                                          self.cv2_aruco_charuco_board
                                                           )
 
             if results[1] is not None and results[2] is not None and len(results[1]) > 3:
@@ -95,7 +95,8 @@ class CharucoBoardDetector:
                 if len(charuco_ids) == self.number_of_charuco_corners:
                     full_board_found = True
 
-        return CharucoViewData(full_board_found=full_board_found,
+        return CharucoViewData(charuco_board_object=self.charuco_board_data_class_object,
+                               full_board_found=full_board_found,
                                some_charuco_corners_found=some_charuco_corners_found,
                                any_markers_found=any_markers_found,
                                charuco_corners=charuco_corners,

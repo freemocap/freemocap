@@ -224,13 +224,22 @@ def mediaPipe_on_roboflow_crop(source_vid, output_vid, tracked_roboflow_data):
                         xmax  = int(frame_yolo_data[3])
                         ymin  = int(frame_yolo_data[2])
                         ymax  = int(frame_yolo_data[4]) 
-
+                        xcoords = [xmin,xmax]
+                        xmin = np.min(xcoords)
+                        xmax = np.max(xcoords)
+                        ycoords = [ymin,ymax]
+                        ymin = np.min(ycoords)
+                        ymax = np.max(ycoords)
                         #Crop image to the bbox coords
                         cropped_image = image[ymin:ymax, xmin:xmax] 
                         #get image shape
                         cropped_image_height, cropped_image_width, _ = cropped_image.shape
                         #Run through mediapipe
-                    
+                        
+                        # if cropped_image_height is 0 or cropped_image_width is 0:
+                        #     cropped_image = image
+                        #     cropped_image_height, cropped_image_width, _ = cropped_image.shape
+                            
                         process_results = holistic.process(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)) #process mediapipe on just the cut out rectangle 
             
                         #Get the scale for the crop image to original image
@@ -421,7 +430,7 @@ def runRoboflowAndMediapipe(session):
         with torch.no_grad():
             #Run roboflow
             dict_of_all_bounding_boxes =roboflow_yolo.run_roboflow(input_video=str(session.syncedVidPath) +'/'+ vids[cam],
-                        weights = 'roboflow/models/yolov5s.pt', cfg='roboflow/models/yolov5s.cfg', names='roboflow/coco.names')
+                        weights = 'roboflow/models/yolov5x.pt', cfg='roboflow/models/yolov5x.cfg', names='roboflow/coco.names')
         #Make name of output video same as input name with '_mediapipe' at end
         name, ext = os.path.splitext(vids[cam])    
         outvid = name+'_mediapipe.mp4'

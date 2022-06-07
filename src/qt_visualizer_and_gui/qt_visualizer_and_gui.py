@@ -242,6 +242,7 @@ class QTVisualizerAndGui:
 
     def _setup_3d_viewport(self):
         self.opengl_3d_plot_widget = gl.GLViewWidget()
+        self.opengl_3d_plot_widget.opts['distance'] = 2000
         self.opengl_grid_item = gl.GLGridItem()
         self.opengl_3d_plot_widget.addItem(self.opengl_grid_item)
 
@@ -266,7 +267,9 @@ class QTVisualizerAndGui:
         self.opengl_3d_plot_widget.addItem(self.origin_y_axis_gl_lineplot_item)
         self.opengl_3d_plot_widget.addItem(self.origin_z_axis_gl_lineplot_item)
 
-        self.opengl_charuco_scatter_item = gl.GLScatterPlotItem(pos=(0, 0, 0), color=(1, 0, 1), size=1,
+        self.opengl_charuco_scatter_item = gl.GLScatterPlotItem(pos=(0, 0, 0),
+                                                                color=(1, 0, 1),
+                                                                size=1,
                                                                 pxMode=False)
 
         self.opengl_3d_plot_dock = Dock("3d View Port")

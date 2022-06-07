@@ -17,8 +17,32 @@ from freemocap import reconstruct3D, fmc_anipose
 from rich.progress import track
 from rich import print
 from rich.console import Console
+
+from scipy.spatial.transform import Rotation
+
 console = Console()
 
+def pin_camera_zero_to_origin(_anipose_camera_group_object):
+    original_translation_vectors = _anipose_camera_group_object.get_translations()
+    camera_0_translation = original_translation_vectors[0, :]
+    altered_translation_vectors = np.zeros(original_translation_vectors.shape)
+    for this_camera_number in range(original_translation_vectors.shape[0]):
+        altered_translation_vectors[this_camera_number, :] = original_translation_vectors[this_camera_number,
+                                                            :] - camera_0_translation
+
+    _anipose_camera_group_object.set_translations(altered_translation_vectors)
+    print(f"original translation vectors: {original_translation_vectors}")
+    print(f"altered translation vectors: {_anipose_camera_group_object.get_translations()}")
+    return _anipose_camera_group_object
+
+def rotate_cameras_so_camera_zero_aligns_with_XYZ(_anipose_camera_group_object):
+    original_rotations_euler = _anipose_camera_group_object.get_rotations()
+    original_translation_vectors =  _anipose_camera_group_object.get_translations()
+    camera_rotation_matrix_list = [Rotation.from_euler('xyz',original_rotations_euler[this_cam_num,:]).as_matrix()  for this_cam_num in range(original_rotations_euler.shape[0])]
+    
+    rotated_translation_vectors = [camera_rotation_matrix_list[0] @ this_tx for this_tx in original_translation_vectors]
+    _anipose_camera_group_object.set_rotations(rotated_translation_vectors)
+    return _anipose_camera_group_object
 
 def CalibrateCaptureVolume(session,board, calVideoFrameLength = 1):
     """ 
@@ -49,7 +73,6 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 1):
 
         cgroup = CameraGroup.load(saved_calibration_file_path)
         charuco_nCams_nFrames_nImgPts_XY = np.load(saved_calibration_folder/'charuco_2d_points.npy')
-
 
         session.cameraCalFilePath = session.sessionPath /"{}_calibration.toml".format(session.sessionID)
         cgroup.dump(session.cameraCalFilePath) 
@@ -97,6 +120,10 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 1):
 
         error,charuco_data, charuco_frames = cgroup.calibrate_videos(vidnames, board)
     
+        cgroup = pin_camera_zero_to_origin(cgroup)
+        # cgroup = rotate_cameras_so_camera_zero_aligns_with_XYZ(cgroup)
+        
+
         cgroup.dump(session.cameraCalFilePath) 
 
         camera_calibration_info_dict = cgroup.get_dicts()
@@ -105,18 +132,6 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 1):
         
         with open(str(camera_calibration_pickle_path), 'wb') as pickle_file:
             pickle.dump(camera_calibration_info_dict, pickle_file)
-
-
-            
-    # camera_calibration_json_filename = "{}_calibration.json".format(session.sessionID)
-    # camera_calibration_json_path = session.sessionPath / camera_calibration_json_filename
-    
-    # with open(camera_calibration_json_path, "w") as outfile:
-    #     for camera_number, this_cam_calib_info in enumerate(camera_calibration_info_dict):
-    #         camera_name = "camera_"+str(camera_number)
-    #         this_cam_dict = {}
-    #         this_cam_dict[camera_name] = this_cam_calib_info
-    #         json.dumps(this_cam_dict, outfile)    
 
 
 

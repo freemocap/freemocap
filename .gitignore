@@ -147,3 +147,4 @@ data/
 *.mp4
 *.divx
 freemocap_runme_script_jsm.py
+freemocap-ui/threejs_stuff/

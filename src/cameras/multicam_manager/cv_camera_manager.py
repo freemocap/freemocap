@@ -32,22 +32,23 @@ class OpenCVCameraManager:
     def available_webcam_ids(self):
         return [cam_id.webcam_id for cam_id in get_or_create_cams().cameras_found_list]
 
-    def _create_opencv_cameras(self):
+    def _create_opencv_cameras(self, calibration_videos:bool=False):
         raw_camera_objects = self._detected_cams_data.cameras_found_list
         open_cv_cameras: List[OpenCVCamera] = []
         for this_raw_cam in raw_camera_objects:
-            opencv_cam_obj = self._create_single_opencv_cam(this_raw_cam.webcam_id)
+            opencv_cam_obj = self._create_single_opencv_cam(this_raw_cam.webcam_id, calibration_video_bool =calibration_videos)
             open_cv_cameras.append(opencv_cam_obj)
         return open_cv_cameras
 
-    def _create_single_opencv_cam(self, webcam_id: str):
+    def _create_single_opencv_cam(self, webcam_id: str, calibration_video_bool:bool =False):
         webcam_config_model = self._config_service.webcam_config_by_id(webcam_id, self._session_id)
         single_camera_config = WebcamConfig(webcam_id=webcam_config_model.webcam_id,
                                             exposure=webcam_config_model.exposure,
                                             resolution_width=webcam_config_model.resolution_width,
                                             resolution_height=webcam_config_model.resolution_height, )
         return OpenCVCamera(config=single_camera_config,
-                            session_id=self._session_id)
+                            session_id=self._session_id,
+                            calibration_video_bool = calibration_video_bool)
 
     @contextmanager
     def start_capture_session_single_cam(
@@ -69,9 +70,10 @@ class OpenCVCameraManager:
     @contextmanager
     def start_capture_session_all_cams(
         self,
+            calibration_videos=False,
     ) -> ContextManager[Dict[str, OpenCVCamera]]:
 
-        open_cv_camera_objects = self._create_opencv_cameras()
+        open_cv_camera_objects = self._create_opencv_cameras(calibration_videos=True)
         try:
             connected_cameras_dict = {}
             for cv_cam in open_cv_camera_objects:

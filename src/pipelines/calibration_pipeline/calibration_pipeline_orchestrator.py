@@ -48,7 +48,7 @@ class CalibrationPipelineOrchestrator:
     ):
         """open all cameras and start recording, detect charuco boards until the user closes the windows, then send recorded videos to `aniposelib` for processing
         produces `[session_id]_calibration.toml` file that can be used to estiamte 3d trajectorires from synchronized images"""
-        with self._open_cv_camera_manager.start_capture_session_all_cams() as connected_cameras_dict:
+        with self._open_cv_camera_manager.start_capture_session_all_cams(calibration_videos=True) as connected_cameras_dict:
             try:
                 if show_visualizer_gui:
                     self._visualizer_gui.setup_and_launch(self._open_cv_camera_manager.available_webcam_ids)

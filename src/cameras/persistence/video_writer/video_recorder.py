@@ -23,6 +23,7 @@ class VideoRecorder:
                  image_height: int,
                  session_id: str,
                  fourcc: str = "MP4V",
+                 calibration_video_bool:bool=False,
                  ):
         self._camera_name = camera_name
         self._image_width = image_width
@@ -35,9 +36,13 @@ class VideoRecorder:
 
         # get yr paths straight
         session_path = Path(get_session_path(session_id))
-        self._synchronized_videos_folder_path = session_path / 'synchronized_videos'
+        if calibration_video_bool:
+            self._synchronized_videos_folder_path = session_path / 'calibration_videos'
+        else:
+            self._synchronized_videos_folder_path = session_path / 'synchronized_videos'
+
         self._synchronized_videos_folder_path.mkdir(parents=True, exist_ok=True)
-        video_file_name = self._camera_name + '_synchronized.mp4'
+        video_file_name = self._camera_name + '.mp4'
         self._path_to_save_video_file = self._synchronized_videos_folder_path / video_file_name
 
 

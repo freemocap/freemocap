@@ -4,6 +4,7 @@ from typing import Union
 
 import numpy as np
 from cv2.cv2 import aruco_CharucoBoard
+from scipy.spatial.transform import Rotation
 
 from src.config.home_dir import get_session_path, get_freemocap_data_folder_path
 from src.pipelines.calibration_pipeline.anipose_camera_calibration import freemocap_anipose
@@ -52,7 +53,7 @@ class AniposeCameraCalibrator:
                                                           marker_bits=4,
                                                           dict_size=250)
 
-    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin:bool=False):
+    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False):
         # anipose needs this to be a list of lists  (which is annoying but whatevs)
         video_paths_list_of_list_of_strings = [[str(this_path)] for this_path in self._list_of_video_paths]
 
@@ -65,6 +66,7 @@ class AniposeCameraCalibrator:
         if pin_camera_0_to_origin:
             # translate cameras so camera0 is on `0,0,0`
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
+            # self._anipose_camera_group_object = self.rotate_cameras_so_camera_zero_aligns_with_XYZ(self._anipose_camera_group_object)
 
         # save calibration info to files
         calibration_toml_filename = f"{self._session_id}_camera_calibration.toml"
@@ -105,6 +107,20 @@ class AniposeCameraCalibrator:
         logger.info(f"original translation vectors: {original_translation_vectors}")
         logger.info(f"altered translation vectors: {_anipose_camera_group_object.get_translations()}")
         return _anipose_camera_group_object
+
+    def rotate_cameras_so_camera_zero_aligns_with_XYZ(self, _anipose_camera_group_object):
+        logger.warning('this function does not work, dont use it lol ')
+        pass
+        # original_rotations_euler = _anipose_camera_group_object.get_rotations()
+        # original_translation_vectors = _anipose_camera_group_object.get_translations()
+        # camera_rotation_matrix_list = [
+        #     Rotation.from_euler('xyz', original_rotations_euler[this_cam_num, :]).as_matrix() for
+        #     this_cam_num in range(original_rotations_euler.shape[0])]
+        #
+        # rotated_translation_vectors = [camera_rotation_matrix_list[0] @ this_tx for this_tx in
+        #                                original_translation_vectors]
+        # _anipose_camera_group_object.set_rotations(rotated_translation_vectors)
+        # return _anipose_camera_group_object
 
 
 if __name__ == "__main__":

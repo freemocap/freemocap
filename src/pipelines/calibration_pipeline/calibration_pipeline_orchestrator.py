@@ -127,11 +127,12 @@ class CalibrationPipelineOrchestrator:
 
     def run_anipose_camera_calibration(self,
                                        charuco_square_size: Union[int, float] = 1,
+                                       pin_camera_0_to_origin:bool = False,
                                        ):
         anipose_camera_calibrator = AniposeCameraCalibrator(self.session_id,
                                                             self._charuco_board_detector.charuco_board_data_class_object,
                                                             charuco_square_size=charuco_square_size)
-        return anipose_camera_calibrator.calibrate_camera_capture_volume()
+        return anipose_camera_calibrator.calibrate_camera_capture_volume(pin_camera_0_to_origin=pin_camera_0_to_origin)
 
     def load_most_recent_calibration(self):
         last_successful_calibration_path = Path(get_freemocap_data_folder_path(), "last_successful_calibration.toml")

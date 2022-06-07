@@ -279,10 +279,11 @@ class SessionPipelineOrchestrator:
         base_charuco_data_npy_with_nans_for_missing_data_xy = np.zeros((number_of_tracked_points, 2))
         base_charuco_data_npy_with_nans_for_missing_data_xy[:] = np.nan
         for this_cam_data in this_multi_frame_charuco_data:
-            this_frame_charuco_data_xy = base_charuco_data_npy_with_nans_for_missing_data_xy.copy()
-            charuco_ids_in_this_frame_idx = this_cam_data.charuco_view_data.charuco_ids
-            charuco_corners_in_this_frame_xy = this_cam_data.charuco_view_data.charuco_corners
-            this_frame_charuco_data_xy[charuco_ids_in_this_frame_idx, :] = charuco_corners_in_this_frame_xy
+            if this_cam_data.charuco_view_data.some_charuco_corners_found:
+                this_frame_charuco_data_xy = base_charuco_data_npy_with_nans_for_missing_data_xy.copy()
+                charuco_ids_in_this_frame_idx = this_cam_data.charuco_view_data.charuco_ids
+                charuco_corners_in_this_frame_xy = this_cam_data.charuco_view_data.charuco_corners
+                this_frame_charuco_data_xy[charuco_ids_in_this_frame_idx, :] = charuco_corners_in_this_frame_xy
 
             this_webcam_id = this_cam_data.raw_frame_payload.webcam_id
             charuco2d_data_per_cam_dict[this_webcam_id] = this_frame_charuco_data_xy

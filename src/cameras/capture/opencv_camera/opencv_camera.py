@@ -18,7 +18,7 @@ class OpenCVCamera:
     Performant implementation of video capture against webcams
     """
 
-    def __init__(self, config: WebcamConfig, session_id: str = None):
+    def __init__(self, config: WebcamConfig, session_id: str = None, calibration_video_bool:bool=False):
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
@@ -26,6 +26,7 @@ class OpenCVCamera:
         self._running_thread: VideoCaptureThread = None
         self._new_frame_ready = False
         self._number_of_frames_recorded = 0
+        self._calibration_video_bool = calibration_video_bool
         self._session_id = session_id
 
     @property
@@ -118,7 +119,8 @@ class OpenCVCamera:
                 self._video_recorder = VideoRecorder(self._name,
                                                      image_width=image_width,
                                                      image_height=image_height,
-                                                     session_id=self.session_id)
+                                                     session_id=self.session_id,
+                                                     calibration_video_bool=self._calibration_video_bool)
             except:
                 logger.error(
                     f"could not create video recorder for image with shape (image_width={image_width}, image_height={image_height}) ")

@@ -10,14 +10,15 @@ import numpy as np
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
 from src.config.data_paths import freemocap_data_path
-from src.config.home_dir import create_session_id
+from src.config.home_dir import create_session_id, get_session_path
 from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrator
 from src.core_processor.fps.timestamp_manager import TimestampManager
-from src.core_processor.mediapipe_skeleton_detection.mediapipe_skeleton_detection import MediaPipeSkeletonDetection
+from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import MediaPipeSkeletonDetector
 from src.core_processor.show_cam_window import show_cam_window
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
 from src.debug_plot_makers.simple_plot_3d_points import simple_plot_3d
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import CalibrationPipelineOrchestrator
+from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import CharucoBoardDetector
 
 from src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import Data3dSingleFramePayload
 from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
@@ -31,29 +32,36 @@ def get_canonical_time_str():
 
 class SessionPipelineOrchestrator:
 
-    def __init__(self, session_id: str = None):
+    def __init__(self, session_id: str = None, expected_framerate: Union[int, float] = None):
 
         if session_id is not None:
             self._session_id = session_id
         else:
             self._session_id = create_session_id()
 
-        self._session_start_time_unix_ns = time.time_ns()
-        self._visualizer_gui = QTVisualizerAndGui()
-        self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id)
-        self._camera_calibrator = CameraCalibrator()
-        self._charuco_board_detector = self._camera_calibrator.charuco_board_detector
-        self._mediapipe_skeleton_detector = MediaPipeSkeletonDetection(model_complexity=2)
+        self._expected_framerate = expected_framerate
 
-        self._multi_frame_timestamp_intervals_sec = []
+        self._visualizer_gui = QTVisualizerAndGui()
+        self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id,
+                                                           expected_framerate=self.expected_framerate)
+        self._charuco_board_detector = CharucoBoardDetector()
+        self._mediapipe_skeleton_detector = MediaPipeSkeletonDetector(self._session_id)
 
     @property
     def session_id(self):
         return self._session_id
 
     @property
+    def expected_framerate(self):
+        return self._expected_framerate
+
+    @property
     def session_folder_path(self):
         return freemocap_data_path / self._session_id
+
+    @property
+    def mediapipe_skeleton_detector(self):
+        return self._mediapipe_skeleton_detector
 
     async def process_by_cam_id(self, webcam_id: str, cb):
         with self._open_cv_camera_manager.start_capture_session_single_cam(
@@ -73,7 +81,7 @@ class SessionPipelineOrchestrator:
                         charuco_frame_payload = self._camera_calibrator.calibrate(cv_cam)
 
                     if cb and charuco_frame_payload.annotated_image is not None:
-                        writer.append_frame_to_list(charuco_frame_payload.raw_frame_payload)
+                        writer.append_frame_payload_to_list(charuco_frame_payload.raw_frame_payload)
                         await cb(charuco_frame_payload.annotated_image)
             except Exception as e:
                 logger.error("Printing traceback")
@@ -91,7 +99,7 @@ class SessionPipelineOrchestrator:
                     frame_width=cv_cam.image_width(),
                     frame_height=cv_cam.image_height(),
                 )
-                writer.save_frame_list_to_disk(options)
+                writer.save_frame_payload_list_to_disk(options)
 
     def calibrate_camera_capture_volume(self, use_most_recent_calibration: bool = False,
                                         load_calibration_from_session_id: str = None,
@@ -104,7 +112,8 @@ class SessionPipelineOrchestrator:
         elif load_calibration_from_session_id is not None:
             calibration_orchestrator = CalibrationPipelineOrchestrator(load_calibration_from_session_id)
         else:  # create new calibration
-            calibration_orchestrator = CalibrationPipelineOrchestrator(self.session_id)
+            calibration_orchestrator = CalibrationPipelineOrchestrator(self.session_id,
+                                                                       expected_framerate=self.expected_framerate)
             calibration_orchestrator.record_videos(show_visualizer_gui=False,
                                                    save_video_in_frame_loop=False,
                                                    show_camera_views_in_windows=True,
@@ -114,56 +123,37 @@ class SessionPipelineOrchestrator:
             charuco_square_size=charuco_square_size,
             pin_camera_0_to_origin=pin_camera_0_to_origin)
 
-    def run_big_old_bongo_frame_loop(
+    def run_main_frame_loop(
             self,
-            show_camera_views_in_windows=True,
             show_visualizer_gui=True,
-            detect_mediapipe=True,
-            detect_charuco=True,
-            reconstruct_3d=True,
-            save_video=True,
+            show_camera_views_in_windows=False,
+            detect_mediapipe=False,
+            detect_charuco=False,
     ):
-        self._multi_frames_processed = 0
 
         with self._open_cv_camera_manager.start_capture_session_all_cams() as connected_cameras_dict:
-            self._number_of_cameras = len(connected_cameras_dict)
-            if detect_charuco:
-                incoming_charuco_frame_data_per_camera_dict = {}
-                for this_webcam_id in connected_cameras_dict.keys():
-                    incoming_charuco_frame_data_per_camera_dict[this_webcam_id] = []
+
+            timestamp_manager = self._open_cv_camera_manager.timestamp_manager
 
             try:
                 if show_visualizer_gui:
                     self._visualizer_gui.setup_and_launch(self._open_cv_camera_manager.available_webcam_ids)
-                    if detect_charuco:
-                        self._visualizer_gui.initialize_charuco_dottos(
-                            self._charuco_board_detector.number_of_charuco_corners)
-
-                timestamp_manager = TimestampManager(self._open_cv_camera_manager.available_webcam_ids,
-                                                     self._session_start_time_unix_ns)
 
                 should_continue = True
                 while should_continue:  # BIG FRAME LOOP STARTS HERE
 
-                    timestamp_manager.increment_main_loop_timestamp_logger(time.perf_counter_ns())
+                    timestamp_manager.log_new_timestamp_for_main_loop_ns(time.perf_counter_ns())
 
-                    # reconstruct 3d data, if there's enough new data to so
-                    if reconstruct_3d:
-                        if detect_charuco:
-                            charuco_frame_payload = self._reconstruct_3d_charuco(
-                                incoming_charuco_frame_data_per_camera_dict)
+                    if not self._open_cv_camera_manager.new_multi_frame_ready():
+                        continue
+                    this_multi_frame_payload = self._open_cv_camera_manager.latest_multi_frame
 
-                            if charuco_frame_payload is not None and False:
-                                simple_plot_3d(charuco_frame_payload.data3d_trackedPointNum_xyz)
+                    if this_multi_frame_payload is None:
+                        continue
 
-                            if show_visualizer_gui and charuco_frame_payload is not None:
-                                self._visualizer_gui.update_charuco_3d_dottos(charuco_frame_payload)
                     for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():
 
-                        if not this_open_cv_camera.new_frame_ready:
-                            continue
-
-                        this_cam_latest_frame = this_open_cv_camera.latest_frame
+                        this_cam_latest_frame = this_multi_frame_payload.frames_dict[this_webcam_id]
 
                         if this_cam_latest_frame is None:
                             continue
@@ -171,11 +161,18 @@ class SessionPipelineOrchestrator:
                         image_to_display = this_cam_latest_frame.image.copy()
                         this_cam_this_frame_timestamp_ns = this_cam_latest_frame.timestamp
 
-                        timestamp_manager.increment_frame_processed_for_webcam(this_webcam_id,
-                                                                               this_cam_this_frame_timestamp_ns)
+                        # log timestamp
+                        this_cam_this_frame_timestamp_ns = this_cam_latest_frame.timestamp
+                        this_cam_this_frame_number = this_cam_latest_frame.frame_number
+                        timestamp_manager.log_new_timestamp_for_webcam_ns(this_webcam_id,
+                                                                          this_cam_this_frame_timestamp_ns,
+                                                                          this_cam_this_frame_number)
 
-                        if save_video:
-                            this_open_cv_camera.video_recorder.append_frame_to_list(this_cam_latest_frame)
+                        # # save this frame straight to the video file (no risk of memory overflow, but can't handle higher numbers of cameras)
+                        # this_open_cv_camera.video_recorder.save_frame_to_video_file(this_cam_latest_frame)
+
+                        # can handle large numbers of cameras, but will eventually fill up RAM and cause a crash
+                        this_open_cv_camera.video_recorder.append_frame_payload_to_list(this_cam_latest_frame)
 
                         if detect_mediapipe:
                             image_to_display = self._mediapipe_skeleton_detector.detect_skeleton_in_image(
@@ -184,9 +181,6 @@ class SessionPipelineOrchestrator:
                         if detect_charuco:
                             charuco_frame_payload = self._charuco_board_detector.detect_charuco_board(
                                 this_cam_latest_frame)
-                            incoming_charuco_frame_data_per_camera_dict[this_webcam_id].append(
-                                charuco_frame_payload)
-
                             image_to_display = charuco_frame_payload.annotated_image
 
                         if show_camera_views_in_windows:
@@ -202,24 +196,28 @@ class SessionPipelineOrchestrator:
                             self._visualizer_gui.update_camera_view_image(this_webcam_id, image_to_display)
                             # self._visualizer_gui.update_timestamp_plots(timestamp_manager)
 
+                            if self._visualizer_gui.shut_it_down:
+                                logger.info("GUI closed.")
+                                should_continue = False
+
                         # exit loop when user presses ESC key
                         exit_key = cv2.waitKey(1)
                         if exit_key == 27:
                             logger.info("ESC has been pressed.")
                             should_continue = False
-                        
+
 
             except:
                 logger.error("Printing traceback")
                 traceback.print_exc()
             finally:
                 for this_open_cv_camera in connected_cameras_dict.values():
-                    if save_video:
-                        this_open_cv_camera.video_recorder.save_frame_list_to_disk(
-                            self.session_folder_path / 'synchronized_videos')
-                    logger.info(f"Destroy window {this_open_cv_camera.webcam_id_as_str}")
-                    cv2.destroyWindow(this_open_cv_camera.webcam_id_as_str)
-                    cv2.waitKey(1)
+
+                    this_open_cv_camera.video_recorder.save_frame_payload_list_to_disk()
+
+                    if show_camera_views_in_windows:
+                        logger.info(f"Destroy window {this_open_cv_camera.webcam_id_as_str}")
+                        cv2.destroyWindow(this_open_cv_camera.webcam_id_as_str)
 
                 if show_visualizer_gui:
                     self._visualizer_gui.close()
@@ -251,23 +249,13 @@ class SessionPipelineOrchestrator:
             this_multi_frame_charuco_data.append(this_cam_this_frame)
             is_there_any_charuco_data.append(this_cam_this_frame.charuco_view_data.some_charuco_corners_found)
 
-        timestamp_min = np.min(this_multi_frame_timestamps)
-        timestamp_max = np.max(this_multi_frame_timestamps)
-        this_multiframe_timestamp_interval_sec = (timestamp_max - timestamp_min) / 1e9
-        #TODO - should bring the `TimeStampManager` into this?
-        self._multi_frame_timestamp_intervals_sec.append(this_multiframe_timestamp_interval_sec)
-
-        print(f"TODO:sync with timestamps, not frame index - multi_frame#: {self._multi_frames_processed - 1},"
-              f" each_cam_#_of_frames: {each_cam_number_of_frames}, "
-              f" intra_multi_frame_timestamp_range: {this_multiframe_timestamp_interval_sec:.3f}", )
-
         min_cameras_to_reconstruct = 2
         if sum(is_there_any_charuco_data) >= min_cameras_to_reconstruct:  # if at least 2 cameras have any data, then we can try to make some 3d dottos
             charuco2d_data_per_cam_dict = self.format_charuco2d_data(this_multi_frame_charuco_data)
             charuco_3d_data_payload = self._triangulate_2d_data(charuco2d_data_per_cam_dict,
                                                                 self._charuco_board_detector.number_of_charuco_corners)
 
-            x = charuco_3d_data_payload.data3d_trackedPointNum_xyz[:,0]
+            x = charuco_3d_data_payload.data3d_trackedPointNum_xyz[:, 0]
             return charuco_3d_data_payload
 
     def format_charuco2d_data(self, this_multi_frame_charuco_data) -> Dict:
@@ -298,8 +286,8 @@ class SessionPipelineOrchestrator:
         data2d_trackedPointNum_xyz_camNum = np.dstack(
             each_cam2d_data_list)  # stack lists (in depth) to make one numpy array with dimensions [number_of_tracked_points, XYZ, number_of_cameras]
         data2d_camNum_trackedPointNum_xy = data2d_trackedPointNum_xyz_camNum.reshape(self._number_of_cameras,
-                                                                                      number_of_tracked_points,
-                                                                                      2)  # reshape to fit into anipose (new dimensions [number_of_cameras, number_of_tracked_points, XYZ]
+                                                                                     number_of_tracked_points,
+                                                                                     2)  # reshape to fit into anipose (new dimensions [number_of_cameras, number_of_tracked_points, XYZ]
 
         # THIS IS WHERE THE MAGIC HAPPENS - 2d data from calibrated, synchronized cameras has now become a 3d estimate. Hurray! :`D
         data3d_trackedPointNum_xyz = self._anipose_camera_calibration_object.triangulate(
@@ -323,18 +311,19 @@ if __name__ == "__main__":
     print('running `session_pipeline_orchestrator` as `__main__')
 
     length_of_one_edge_of_a_black_square_on_the_charuco_board_in_mm = 39
+    expected_framerate = 30
 
-    this_session_orchestrator = SessionPipelineOrchestrator()
-    # this_session_orchestrator.calibrate_camera_capture_volume(use_most_recent_calibration=True)
+    calibrate_cameras = False
 
-    this_session_orchestrator.calibrate_camera_capture_volume(
-        charuco_square_size=length_of_one_edge_of_a_black_square_on_the_charuco_board_in_mm,
-        pin_camera_0_to_origin=True)
+    this_session_orchestrator = SessionPipelineOrchestrator(expected_framerate=expected_framerate)
 
-    this_session_orchestrator.run_big_old_bongo_frame_loop(show_camera_views_in_windows=False,
-                                                           save_video=False,
-                                                           show_visualizer_gui=True,
-                                                           detect_mediapipe=False,
-                                                           detect_charuco=True,
-                                                           reconstruct_3d=True,
-                                                           )
+    if calibrate_cameras:
+        this_session_orchestrator.calibrate_camera_capture_volume(
+            charuco_square_size=length_of_one_edge_of_a_black_square_on_the_charuco_board_in_mm,
+            pin_camera_0_to_origin=True)
+
+    this_session_orchestrator.run_main_frame_loop(show_camera_views_in_windows=False,
+                                                  show_visualizer_gui=True,
+                                                  )
+
+    this_session_orchestrator.mediapipe_skeleton_detector.process_session_folder(save_annotated_videos=True)

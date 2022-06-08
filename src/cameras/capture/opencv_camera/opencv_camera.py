@@ -115,16 +115,13 @@ class OpenCVCamera:
         else:
             image_height = image.shape[0]
             image_width = image.shape[1]
-            try:
-                self._video_recorder = VideoRecorder(self._name,
-                                                     image_width=image_width,
-                                                     image_height=image_height,
-                                                     session_id=self.session_id,
-                                                     calibration_video_bool=self._calibration_video_bool)
-            except:
-                logger.error(
-                    f"could not create video recorder for image with shape (image_width={image_width}, image_height={image_height}) ")
-                return False  # NOTE- this is a failure because we *tried* to make a video_recorder and it didn't work
+
+            self._video_recorder = VideoRecorder(self._name,
+                                                 image_width=image_width,
+                                                 image_height=image_height,
+                                                 session_id=self.session_id,
+                                                 calibration_video_bool=self._calibration_video_bool)
+
 
         return success
 

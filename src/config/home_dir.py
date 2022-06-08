@@ -22,3 +22,15 @@ def get_session_path(session_id: str):
     base_save_path = Path(get_freemocap_data_folder_path())
     session_path = base_save_path / session_id
     return str(session_path)
+
+def get_synchronized_videos_path(session_id: str):
+    synchronized_videos_path = Path(get_session_path(session_id)) / 'synchronized_videos'
+    return str(synchronized_videos_path)
+
+def get_calibration_videos_path(session_id: str):
+    calibration_videos_path = Path(get_session_path(session_id)) / 'calibration_videos'
+    return str(calibration_videos_path)
+
+def get_mediapipe_annotated_videos_path(session_id: str):
+    mediapipe_annotated_videos_path = Path(get_session_path(session_id)) / 'mediapipe_annotated_videos'
+    return str(mediapipe_annotated_videos_path)

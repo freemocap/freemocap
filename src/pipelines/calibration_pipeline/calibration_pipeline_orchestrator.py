@@ -22,14 +22,19 @@ logger = logging.getLogger(__name__)
 
 class CalibrationPipelineOrchestrator:
 
-    def __init__(self, session_id:str=None):
+    def __init__(self,
+                 session_id: str = None,
+                 expected_framerate: Union[int, float] = None,
+                 ):
 
         if session_id is not None:
             self._session_id = session_id
             self._calibration_start_time_unix_ns = time.time_ns()
             self._charuco_board_detector = CharucoBoardDetector()
             self._visualizer_gui = QTVisualizerAndGui(source='calibration')
-            self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id)
+            self._expected_framerate = expected_framerate
+            self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id,
+                                                               expected_framerate=self._expected_framerate)
 
     @property
     def session_id(self):
@@ -48,25 +53,27 @@ class CalibrationPipelineOrchestrator:
     ):
         """open all cameras and start recording, detect charuco boards until the user closes the windows, then send recorded videos to `aniposelib` for processing
         produces `[session_id]_calibration.toml` file that can be used to estiamte 3d trajectorires from synchronized images"""
-        with self._open_cv_camera_manager.start_capture_session_all_cams(calibration_videos=True) as connected_cameras_dict:
+        with self._open_cv_camera_manager.start_capture_session_all_cams(
+                calibration_videos=True,
+        ) as connected_cameras_dict:
+            timestamp_manager = self._open_cv_camera_manager.timestamp_manager
             try:
                 if show_visualizer_gui:
                     self._visualizer_gui.setup_and_launch(self._open_cv_camera_manager.available_webcam_ids)
 
-                timestamp_manager = TimestampManager(self._open_cv_camera_manager.available_webcam_ids,
-                                                     self._calibration_start_time_unix_ns)
-
                 should_continue = True
                 while should_continue:
 
-                    timestamp_manager.increment_main_loop_timestamp_logger(time.perf_counter_ns())
+                    timestamp_manager.log_new_timestamp_for_main_loop_ns(time.perf_counter_ns())
+
+                    if not self._open_cv_camera_manager.new_multi_frame_ready():
+                        continue
+
+                    this_multi_frame_payload = self._open_cv_camera_manager.latest_multi_frame
 
                     for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():
 
-                        if not this_open_cv_camera.new_frame_ready:
-                            continue
-
-                        this_cam_latest_frame = this_open_cv_camera.latest_frame
+                        this_cam_latest_frame = this_multi_frame_payload.frames_dict[this_webcam_id]
 
                         if this_cam_latest_frame is None:
                             continue
@@ -74,17 +81,17 @@ class CalibrationPipelineOrchestrator:
                         # log timestamp
                         this_cam_this_frame_timestamp_ns = this_cam_latest_frame.timestamp
                         this_cam_this_frame_number = this_cam_latest_frame.frame_number
-                        timestamp_manager.increment_frame_processed_for_webcam(this_webcam_id,
-                                                                               this_cam_this_frame_timestamp_ns,
-                                                                               this_cam_this_frame_number)
+                        timestamp_manager.log_new_timestamp_for_webcam_ns(this_webcam_id,
+                                                                          this_cam_this_frame_timestamp_ns,
+                                                                          this_cam_this_frame_number)
 
                         # save frame to video file
                         if save_video_in_frame_loop:
                             # save this frame straight to the video file (no risk of memory overflow, but can't handle higher numbers of cameras)
-                            this_open_cv_camera.video_recorder.save_frame_to_video_file(this_cam_latest_frame)
+                            this_open_cv_camera.video_recorder.save_frame_payload_to_video_file(this_cam_latest_frame)
                         else:
                             # can handle large numbers of cameras, but will eventually fill up RAM and cause a crash
-                            this_open_cv_camera.video_recorder.append_frame_to_list(this_cam_latest_frame)
+                            this_open_cv_camera.video_recorder.append_frame_payload_to_list(this_cam_latest_frame)
 
                         # detect charuco board
                         this_charuco_frame_payload = self._charuco_board_detector.detect_charuco_board(
@@ -119,7 +126,7 @@ class CalibrationPipelineOrchestrator:
                     cv2.destroyAllWindows()
                 for this_open_cv_camera in connected_cameras_dict.values():
                     if not save_video_in_frame_loop:
-                        this_open_cv_camera.video_recorder.save_frame_list_to_disk()
+                        this_open_cv_camera.video_recorder.save_frame_payload_list_to_disk()
                     this_open_cv_camera.video_recorder.close()
 
                 if show_visualizer_gui:
@@ -127,7 +134,7 @@ class CalibrationPipelineOrchestrator:
 
     def run_anipose_camera_calibration(self,
                                        charuco_square_size: Union[int, float] = 1,
-                                       pin_camera_0_to_origin:bool = False,
+                                       pin_camera_0_to_origin: bool = False,
                                        ):
         anipose_camera_calibrator = AniposeCameraCalibrator(self.session_id,
                                                             self._charuco_board_detector.charuco_board_data_class_object,

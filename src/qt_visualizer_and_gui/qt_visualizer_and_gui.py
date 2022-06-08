@@ -19,9 +19,8 @@ logger = logging.getLogger(__name__)
 class QTVisualizerAndGui:
     def __init__(self, source:str=None):
         # https://pyqtgraph.readthedocs.io/en/latest/config_options.html
-        self._camera0_id = '0'
+        self.pyqtgraph_app = pg.mkQApp('freemocap! :D')
         pg.setConfigOptions(imageAxisOrder='row-major')
-        self.pyqtgraph_app = pg.mkQApp("FreeMoCap! :O ")
 
         self._dict_of_camera_image_item_widgets = {}
         self._dict_of_simple_timestamp_line_plots = {}
@@ -33,13 +32,23 @@ class QTVisualizerAndGui:
         self._webcam_ids_list = []
 
         self._is_paused = False
+        self._shut_it_down = False
+
+    @property
+    def shut_it_down(self):
+        return self._shut_it_down
 
     @property
     def pause_button_pressed(self):
         return self._is_paused
 
+    def _close_button_pressed(self):
+        self.close()
+        self._shut_it_down = True
+
     def close(self):
         self._main_window_widget.close()
+
 
     def setup_and_launch(self, webcam_ids_list):
         logger.info('setting up QT Visualizer and GUI')
@@ -79,16 +88,16 @@ class QTVisualizerAndGui:
     def _update_simple_timestamp_plot(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
             plot_item = self._dict_of_simple_timestamp_line_plots[webcam_id]
-            plot_item.setData(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps)
+            plot_item.setData(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps_unix_ns)
 
     def _update_timestamp_difference_plot(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
             plot_item = self._dict_of_simple_timestamp_line_plots[webcam_id]
-            plot_item.setData(np.diff(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps))
+            plot_item.setData(np.diff(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps_unix_ns))
 
     def _update_timestamp_difference_histogram(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
-            this_cam_timestamp_diffs = np.diff(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps)
+            this_cam_timestamp_diffs = np.diff(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps_unix_ns)
             num_samples = this_cam_timestamp_diffs.shape[0]
             counts, bin_edges = np.histogram(this_cam_timestamp_diffs,
                                              bins=np.linspace(0, 100, 100))
@@ -131,15 +140,20 @@ class QTVisualizerAndGui:
         self._play_button.clicked.connect(self._play)
         control_panel_layout_widget.addWidget(self._play_button, row=2, col=0)
 
-        self._reset_calibration_button = QtWidgets.QPushButton('Reset Calibration')
-        self._reset_calibration_button.setEnabled(False)
-        self._reset_calibration_button.clicked.connect(self._reset_calibration)
-        control_panel_layout_widget.addWidget(self._reset_calibration_button, row=3, col=0)
+        # self._reset_calibration_button = QtWidgets.QPushButton('Reset Calibration')
+        # self._reset_calibration_button.setEnabled(False)
+        # self._reset_calibration_button.clicked.connect(self._reset_calibration)
+        # control_panel_layout_widget.addWidget(self._reset_calibration_button, row=3, col=0)
+        #
+        # self._record_button = QtWidgets.QPushButton('Record')
+        # self._record_button.setEnabled(False)
+        # self._record_button.clicked.connect(self._record)
+        # control_panel_layout_widget.addWidget(self._record_button, row=3, col=0)
 
-        self._record_button = QtWidgets.QPushButton('Record')
-        self._record_button.setEnabled(False)
-        self._record_button.clicked.connect(self._record)
-        control_panel_layout_widget.addWidget(self._record_button, row=3, col=0)
+        self._close_button = QtWidgets.QPushButton('Close All')
+        self._close_button.setEnabled(True)
+        self._close_button.clicked.connect(self._close_button_pressed)
+        control_panel_layout_widget.addWidget(self._close_button, row=4, col=0)
 
         self._main_dock_area.addDock(self._control_panel_dock, position='left')
 

@@ -11,8 +11,8 @@ import pandas as pd
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
 from src.config.data_paths import freemocap_data_path
-from src.config.home_dir import get_session_path, get_synchronized_videos_path, get_calibration_videos_path, \
-    get_mediapipe_annotated_videos_path
+from src.config.home_dir import get_session_folder_path, get_synchronized_videos_folder_path, get_calibration_videos_folder_path, \
+    get_mediapipe_annotated_videos_folder_path
 from rich.progress import Progress
 
 logger = logging.getLogger(__name__)
@@ -38,14 +38,14 @@ class VideoRecorder:
 
         # get yr paths straight
         self._session_id = session_id
-        session_path = Path(get_session_path(self._session_id))
+        session_path = Path(get_session_folder_path(self._session_id))
 
         if mediapipe_annotated_video_bool:
-            self._video_folder_path = Path(get_mediapipe_annotated_videos_path(self._session_id))
+            self._video_folder_path = Path(get_mediapipe_annotated_videos_folder_path(self._session_id))
         elif calibration_video_bool:
-            self._video_folder_path = Path(get_calibration_videos_path(self._session_id))
+            self._video_folder_path = Path(get_calibration_videos_folder_path(self._session_id))
         else:
-            self._video_folder_path = Path(get_synchronized_videos_path(self._session_id))
+            self._video_folder_path = Path(get_synchronized_videos_folder_path(self._session_id))
 
         self._video_folder_path.mkdir(parents=True, exist_ok=True)
         video_file_name = self._video_name + '.mp4'

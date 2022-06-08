@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from src.config.home_dir import get_session_path
+from src.config.home_dir import get_session_folder_path
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class UserConfigService:
         webcam_config_json = webcam_config_model.json()
         camera_name = get_camera_name(webcam_config_model.webcam_id)
         json_file_name = camera_name + '_config.json'
-        session_path = get_session_path(session_id)
+        session_path = get_session_folder_path(session_id)
         webcam_config_json_path = Path(session_path) / json_file_name
         with open(webcam_config_json_path, 'w') as outfile:
             outfile.write(str(webcam_config_json))
@@ -35,7 +35,7 @@ class UserConfigService:
     def webcam_config_by_id(self, webcam_id: str, session_id: str) -> WebcamConfigModel:
         if session_id is None:
             return WebcamConfigModel(webcam_id=webcam_id)
-        session_path = get_session_path(session_id)
+        session_path = get_session_folder_path(session_id)
         camera_name = get_camera_name(webcam_id)
         print(f"webcam id (again): {webcam_id}")
         print(f"camera name: {camera_name}")

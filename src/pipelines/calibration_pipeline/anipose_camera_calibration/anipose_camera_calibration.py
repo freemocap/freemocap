@@ -6,7 +6,8 @@ import numpy as np
 from cv2.cv2 import aruco_CharucoBoard
 from scipy.spatial.transform import Rotation
 
-from src.config.home_dir import get_session_path, get_freemocap_data_folder_path
+from src.config.home_dir import get_session_folder_path, get_freemocap_data_folder_path, \
+    get_calibration_videos_folder_path
 from src.pipelines.calibration_pipeline.anipose_camera_calibration import freemocap_anipose
 from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
 
@@ -34,8 +35,8 @@ class AniposeCameraCalibrator:
         self.initialize_anipose_objects()
 
     def get_paths_and_whatnot(self):
-        self.session_folder_path = Path(get_session_path(self._session_id))
-        calibration_videos_folder = self.session_folder_path / 'calibration_videos'
+        self.session_folder_path = Path(get_session_folder_path(self._session_id))
+        calibration_videos_folder = Path(get_calibration_videos_folder_path())
         self._list_of_video_paths = [this_video_path for this_video_path in
                                      calibration_videos_folder.glob('*.mp4'.lower())]
 

@@ -10,7 +10,7 @@ import numpy as np
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
 from src.config.data_paths import freemocap_data_path
-from src.config.home_dir import create_session_id, get_session_path
+from src.config.home_dir import create_session_id, get_session_folder_path
 from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrator
 from src.core_processor.fps.timestamp_manager import TimestampManager
 from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import MediaPipeSkeletonDetector
@@ -306,6 +306,10 @@ class SessionPipelineOrchestrator:
                                         data3d_trackedPointNum_xyz=data3d_trackedPointNum_xyz,
                                         data3d_trackedPointNum_reprojectionError=data3d_trackedPointNum_reprojectionError, )
 
+    def mediapipe_track_skeletons(self):
+        self._mediapipe2d_numCams_numFrames_numTrackedPoints_XY = self.mediapipe_skeleton_detector.process_session_folder(save_annotated_videos=True)
+        pass
+
 
 if __name__ == "__main__":
     print('running `session_pipeline_orchestrator` as `__main__')
@@ -326,4 +330,4 @@ if __name__ == "__main__":
                                                   show_visualizer_gui=True,
                                                   )
 
-    this_session_orchestrator.mediapipe_skeleton_detector.process_session_folder(save_annotated_videos=True)
+    this_session_orchestrator.mediapipe_track_skeletons()

@@ -7,7 +7,7 @@ from typing import Union
 import cv2
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
-from src.config.home_dir import create_session_id, get_session_path, get_freemocap_data_folder_path
+from src.config.home_dir import create_session_id, get_session_folder_path, get_freemocap_data_folder_path
 from src.core_processor.fps.timestamp_manager import TimestampManager
 from src.core_processor.show_cam_window import show_cam_window
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
@@ -42,7 +42,7 @@ class CalibrationPipelineOrchestrator:
 
     @property
     def session_folder_path(self):
-        return get_session_path(self._session_id)
+        return get_session_folder_path(self._session_id)
 
     def record_videos(
             self,
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     record_new = True
     if record_new:
         session_id = create_session_id('calibration')
-        session_path = Path(get_session_path(session_id))
+        session_path = Path(get_session_folder_path(session_id))
         logger.info(f'Creating `calibration only` session folder at: {str(session_path)}')
         session_path.mkdir(parents=True, exist_ok=False)
 

@@ -129,11 +129,11 @@ class MediaPipeSkeletonDetector:
         for this_cam_num in range(number_of_cameras):
             data2d_numCams_numFrames_numTrackedPts_XY[this_cam_num, :, :, :] = all_cameras_data2d_list[this_cam_num]
 
-        self._save_data_to_npy(data2d_numCams_numFrames_numTrackedPts_XY)
+        self._save_mediapipe2d_data_to_npy(data2d_numCams_numFrames_numTrackedPts_XY)
         return data2d_numCams_numFrames_numTrackedPts_XY
 
 
-    def _save_data_to_npy(self,data2d_numCams_numFrames_numTrackedPts_XY):
+    def _save_mediapipe2d_data_to_npy(self, data2d_numCams_numFrames_numTrackedPts_XY):
         output_data_folder = Path(get_output_data_folder_path(self._session_id))
         mediapipe_2dData_save_path = output_data_folder / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
         logger.info(f"saving: {mediapipe_2dData_save_path}")

@@ -12,7 +12,7 @@ from src.cameras.persistence.video_writer.save_options_dataclass import SaveOpti
 from src.config.data_paths import freemocap_data_path
 from src.config.home_dir import create_session_id, get_session_folder_path
 from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrator
-from src.core_processor.fps.timestamp_manager import TimestampManager
+from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
 from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import MediaPipeSkeletonDetector
 from src.core_processor.show_cam_window import show_cam_window
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
@@ -59,9 +59,6 @@ class SessionPipelineOrchestrator:
     def session_folder_path(self):
         return freemocap_data_path / self._session_id
 
-    @property
-    def mediapipe_skeleton_detector(self):
-        return self._mediapipe_skeleton_detector
 
     async def process_by_cam_id(self, webcam_id: str, cb):
         with self._open_cv_camera_manager.start_capture_session_single_cam(
@@ -123,15 +120,15 @@ class SessionPipelineOrchestrator:
             charuco_square_size=charuco_square_size,
             pin_camera_0_to_origin=pin_camera_0_to_origin)
 
-    def run_main_frame_loop(
+    def record_new_session(
             self,
             show_visualizer_gui=True,
             show_camera_views_in_windows=False,
-            detect_mediapipe=False,
-            detect_charuco=False,
     ):
 
         with self._open_cv_camera_manager.start_capture_session_all_cams() as connected_cameras_dict:
+
+            self._number_of_cameras = len(connected_cameras_dict)
 
             timestamp_manager = self._open_cv_camera_manager.timestamp_manager
 
@@ -174,15 +171,6 @@ class SessionPipelineOrchestrator:
                         # can handle large numbers of cameras, but will eventually fill up RAM and cause a crash
                         this_open_cv_camera.video_recorder.append_frame_payload_to_list(this_cam_latest_frame)
 
-                        if detect_mediapipe:
-                            image_to_display = self._mediapipe_skeleton_detector.detect_skeleton_in_image(
-                                image_to_display)
-
-                        if detect_charuco:
-                            charuco_frame_payload = self._charuco_board_detector.detect_charuco_board(
-                                this_cam_latest_frame)
-                            image_to_display = charuco_frame_payload.annotated_image
-
                         if show_camera_views_in_windows:
                             should_continue = show_cam_window(
                                 this_webcam_id, image_to_display, timestamp_manager
@@ -212,7 +200,6 @@ class SessionPipelineOrchestrator:
                 traceback.print_exc()
             finally:
                 for this_open_cv_camera in connected_cameras_dict.values():
-
                     this_open_cv_camera.video_recorder.save_frame_payload_list_to_disk()
 
                     if show_camera_views_in_windows:
@@ -221,6 +208,8 @@ class SessionPipelineOrchestrator:
 
                 if show_visualizer_gui:
                     self._visualizer_gui.close()
+
+                timestamp_manager.create_diagnostic_plots()
 
     def _reconstruct_3d_charuco(self, incoming_charuco_frame_data_per_camera_dict) -> \
             Union[None, Data3dSingleFramePayload]:
@@ -258,25 +247,6 @@ class SessionPipelineOrchestrator:
             x = charuco_3d_data_payload.data3d_trackedPointNum_xyz[:, 0]
             return charuco_3d_data_payload
 
-    def format_charuco2d_data(self, this_multi_frame_charuco_data) -> Dict:
-
-        number_of_tracked_points = this_multi_frame_charuco_data[
-            0].charuco_view_data.charuco_board_object.number_of_charuco_corners
-
-        charuco2d_data_per_cam_dict = {}
-        base_charuco_data_npy_with_nans_for_missing_data_xy = np.zeros((number_of_tracked_points, 2))
-        base_charuco_data_npy_with_nans_for_missing_data_xy[:] = np.nan
-        for this_cam_data in this_multi_frame_charuco_data:
-            if this_cam_data.charuco_view_data.some_charuco_corners_found:
-                this_frame_charuco_data_xy = base_charuco_data_npy_with_nans_for_missing_data_xy.copy()
-                charuco_ids_in_this_frame_idx = this_cam_data.charuco_view_data.charuco_ids
-                charuco_corners_in_this_frame_xy = this_cam_data.charuco_view_data.charuco_corners
-                this_frame_charuco_data_xy[charuco_ids_in_this_frame_idx, :] = charuco_corners_in_this_frame_xy
-
-            this_webcam_id = this_cam_data.raw_frame_payload.webcam_id
-            charuco2d_data_per_cam_dict[this_webcam_id] = this_frame_charuco_data_xy
-
-        return charuco2d_data_per_cam_dict
 
     def _triangulate_2d_data(self, data2d_per_cam_dict: Dict,
                              number_of_tracked_points: int) -> Data3dSingleFramePayload:
@@ -306,10 +276,27 @@ class SessionPipelineOrchestrator:
                                         data3d_trackedPointNum_xyz=data3d_trackedPointNum_xyz,
                                         data3d_trackedPointNum_reprojectionError=data3d_trackedPointNum_reprojectionError, )
 
-    def mediapipe_track_skeletons(self):
-        self._mediapipe2d_numCams_numFrames_numTrackedPoints_XY = self.mediapipe_skeleton_detector.process_session_folder(save_annotated_videos=True)
-        pass
+    def mediapipe_track_skeletons_offline(self):
+        self._mediapipe2d_numCams_numFrames_numTrackedPoints_XY = self._mediapipe_skeleton_detector.process_session_folder(save_annotated_videos=True)
 
+    def reconstruct3d_from_2d_data_offline(self):
+
+        dataFlat_nCams_nTotalPoints_XY = self._mediapipe2d_numCams_numFrames_numTrackedPoints_XY.reshape(self._number_of_cameras, -1,
+                                                                               2)  # reshape data to collapse across 'frames' so it becomes [numCams, numFrames*numPoints, XY]
+
+        logger.info('Reconstructing 3d points...')
+        data3d_flat = self._anipose_camera_calibration_object.triangulate(dataFlat_nCams_nTotalPoints_XY, progress=True)
+
+        dataReprojerr_flat = self._anipose_camera_calibration_object.reprojection_error(data3d_flat,
+                                                                                dataFlat_nCams_nTotalPoints_XY,
+                                                                                mean=True)
+        #
+        # ##return:
+        # data_fr_mar_xyz = data3d_flat.reshape(num_frames, num_img_points, 3)
+        # dataReprojErr = dataReprojerr_flat.reshape(num_frames, num_img_points)
+        #
+        # return data_fr_mar_xyz, dataReprojErr
+        #
 
 if __name__ == "__main__":
     print('running `session_pipeline_orchestrator` as `__main__')
@@ -326,8 +313,9 @@ if __name__ == "__main__":
             charuco_square_size=length_of_one_edge_of_a_black_square_on_the_charuco_board_in_mm,
             pin_camera_0_to_origin=True)
 
-    this_session_orchestrator.run_main_frame_loop(show_camera_views_in_windows=False,
-                                                  show_visualizer_gui=True,
-                                                  )
+    this_session_orchestrator.record_new_session()
 
-    this_session_orchestrator.mediapipe_track_skeletons()
+    this_session_orchestrator.mediapipe_track_skeletons_offline()
+
+    this_session_orchestrator.reconstruct3d_mediapipe_offline()
+

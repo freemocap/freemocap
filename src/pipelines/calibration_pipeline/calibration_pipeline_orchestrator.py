@@ -8,7 +8,7 @@ import cv2
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.config.home_dir import create_session_id, get_session_folder_path, get_freemocap_data_folder_path
-from src.core_processor.fps.timestamp_manager import TimestampManager
+from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
 from src.core_processor.show_cam_window import show_cam_window
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
 from src.pipelines.calibration_pipeline.anipose_camera_calibration import freemocap_anipose

@@ -36,7 +36,7 @@ class AniposeCameraCalibrator:
 
     def get_paths_and_whatnot(self):
         self.session_folder_path = Path(get_session_folder_path(self._session_id))
-        calibration_videos_folder = Path(get_calibration_videos_folder_path())
+        calibration_videos_folder = Path(get_calibration_videos_folder_path(self._session_id))
         self._list_of_video_paths = [this_video_path for this_video_path in
                                      calibration_videos_folder.glob('*.mp4'.lower())]
 

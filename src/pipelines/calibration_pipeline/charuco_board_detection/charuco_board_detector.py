@@ -1,6 +1,8 @@
 import logging
+from typing import Dict
 
 import cv2
+import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_board_definition import CharucoBoardDataClass
@@ -106,6 +108,25 @@ class CharucoBoardDetector:
                                image_width=image_width,
                                image_height=image_height)
 
+    def format_charuco2d_data(self, this_multi_frame_charuco_data) -> Dict:
+
+        number_of_tracked_points = this_multi_frame_charuco_data[
+            0].charuco_view_data.charuco_board_object.number_of_charuco_corners
+
+        charuco2d_data_per_cam_dict = {}
+        base_charuco_data_npy_with_nans_for_missing_data_xy = np.zeros((number_of_tracked_points, 2))
+        base_charuco_data_npy_with_nans_for_missing_data_xy[:] = np.nan
+        for this_cam_data in this_multi_frame_charuco_data:
+            if this_cam_data.charuco_view_data.some_charuco_corners_found:
+                this_frame_charuco_data_xy = base_charuco_data_npy_with_nans_for_missing_data_xy.copy()
+                charuco_ids_in_this_frame_idx = this_cam_data.charuco_view_data.charuco_ids
+                charuco_corners_in_this_frame_xy = this_cam_data.charuco_view_data.charuco_corners
+                this_frame_charuco_data_xy[charuco_ids_in_this_frame_idx, :] = charuco_corners_in_this_frame_xy
+
+            this_webcam_id = this_cam_data.raw_frame_payload.webcam_id
+            charuco2d_data_per_cam_dict[this_webcam_id] = this_frame_charuco_data_xy
+
+        return charuco2d_data_per_cam_dict
 
 if __name__ == "__main__":
     pass

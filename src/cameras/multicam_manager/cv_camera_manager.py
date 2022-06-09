@@ -12,7 +12,7 @@ from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.cameras.detection.cam_singleton import get_or_create_cams
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.webcam_config import WebcamConfig
-from src.core_processor.fps.timestamp_manager import TimestampManager
+from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
 from src.pipelines.session_pipeline.data_classes.multi_frame_payload import MultiFramePayload
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class OpenCVCameraManager:
         return [cam_id.webcam_id for cam_id in get_or_create_cams().cameras_found_list]
 
     @property
-    def latest_multi_frame(self) -> Union[MultiFramePayload,None]:
+    def latest_multi_frame(self) -> Union[MultiFramePayload, None]:
         if not self.new_multi_frame_ready():
             logging.error("a multi_frame was requested before it was ready!")
             raise Exception
@@ -64,19 +64,20 @@ class OpenCVCameraManager:
         self._timestamp_manager.log_new_multi_frame_timestamp_ns(time.perf_counter_ns())
 
         if not self._timestamp_manager.verify_multi_frame_is_synchronized(this_multi_frame_dict,
-                                                                      self._expected_framerate):
+                                                                          self._expected_framerate):
             m_f_interval = self._timestamp_manager.latest_multi_frame_interval
             m_f_number = self._timestamp_manager.multi_frame_timestamp_logger.number_of_frames
-            logger.error(f"Multi frame is not synchronized!! Skipping this one - multi_frame_frame_number|interval: {m_f_number}|{m_f_interval:.3f}")
+            logger.error(
+                f"Multi frame is not synchronized!! Skipping this one - multi_frame_frame_number|interval: {m_f_number}|{m_f_interval:.3f}")
             # raise Exception
             return None
 
         return MultiFramePayload(frames_dict=this_multi_frame_dict,
-                                     multi_frame_number=self._timestamp_manager.multi_frame_timestamp_logger.number_of_frames,
-                                     intra_frame_interval=self._timestamp_manager.latest_multi_frame_interval,
-                                     each_frame_timestamp=self._timestamp_manager.latest_multi_frame_timestamp_list,
-                                     multi_frame_timestamp=self._timestamp_manager.multi_frame_timestamp_logger.latest_timestamp,
-                                     )
+                                 multi_frame_number=self._timestamp_manager.multi_frame_timestamp_logger.number_of_frames,
+                                 intra_frame_interval=self._timestamp_manager.latest_multi_frame_interval,
+                                 each_frame_timestamp=self._timestamp_manager.latest_multi_frame_timestamp_list,
+                                 multi_frame_timestamp=self._timestamp_manager.multi_frame_timestamp_logger.latest_timestamp,
+                                 )
 
     def new_multi_frame_ready(self):
         """cycle through connected cameras and return false if one isn't read yet
@@ -147,7 +148,8 @@ class OpenCVCameraManager:
     def _initialize_timestamp_logger(self):
         self._session_start_time_unix_ns = time.time_ns()
         self._session_start_time_perf_counter_ns = time.perf_counter_ns()
-        self._timestamp_manager = TimestampManager(self.available_webcam_ids,
+        self._timestamp_manager = TimestampManager(self._session_id,
+                                                   self.available_webcam_ids,
                                                    self._session_start_time_unix_ns,
                                                    self._session_start_time_perf_counter_ns)
 

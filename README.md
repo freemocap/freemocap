@@ -2,7 +2,7 @@
 https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-9328-3be27a4b1ea4.mp4
 
 # This is all very much a work in progress! More to come!
-## (As of May 2022) We're currently working on building a proper API with documentation, but for now enjoy this pile of semi-spaghettified code and sloppy ReadMe 😅
+## (As of May 2022) We're currently working on building a proper API with documentation, but for now enjoy this pile of not-quite-spaghetti-but-definitely-lasagna-flavored code and sloppy ReadMe 😅
 
 ___________________________________
 ___

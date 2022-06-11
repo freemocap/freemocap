@@ -3,6 +3,8 @@ import {Button, Typography} from "@mui/material";
 import {Box} from "@mui/system";
 import {useWizard, Wizard} from "react-use-wizard";
 import axios from "axios";
+import {useAsync} from "react-use";
+import {useParams} from "react-router";
 
 interface Props {
   webcamIds: string[];
@@ -11,13 +13,13 @@ interface Props {
 export const SessionWizard = (props: Props) => {
   // generate steps within the step wizard
   const {webcamIds} = props
-
+  const { sessionId } = useParams();
   return (
     <Wizard>
       {webcamIds.map(webcamId => {
         return <CamStep webcamId={webcamId} />
       })}
-      {/*<IMShowPreviewCamera />*/}
+      <IMShowPreviewCamera sessionId={sessionId}/>
     </Wizard>
   )
 }
@@ -38,22 +40,25 @@ export const CamStep = (props: CamStepProps) => {
     </Box>
   )
 }
-//
-// interface PreviewCamera {}
-// export const IMShowPreviewCamera = () => {
-//   const {handleStep, previousStep, nextStep, stepCount, isLastStep} = useWizard();
-//   useAsync(async () => {
-//     await axios.post('http://localhost:8080/camera/cv2_imshow_one_camera', {
-//       session_id
-//     });
-//   }, []);
-//   return (
-//     <Box>
-//       <Typography>External Windows should pop up showing the images from your webcams all together.</Typography>
-//       <Typography>If you are ready to record, and the configuration seems correct, please continue.</Typography>
-//       <Typography>If not, please go to the previous steps and change the configuration</Typography>
-//       <Button onClick={previousStep}>No, I want to go back</Button>
-//       <Button onClick={nextStep}>Yes, Im ready to record</Button>
-//     </Box>
-//   )
-// }
+
+interface PreviewCameraProps {
+  sessionId: string | undefined
+}
+
+export const IMShowPreviewCamera = (props: PreviewCameraProps) => {
+  const {handleStep, previousStep, nextStep, stepCount, isLastStep} = useWizard();
+  useAsync(async () => {
+    await axios.post('http://localhost:8080/camera/show_cameras', {
+      session_id: props.sessionId
+    });
+  }, []);
+  return (
+    <Box>
+      <Typography>External Windows should pop up showing the images from your webcams all together.</Typography>
+      <Typography>If you are ready to record, and the configuration seems correct, please continue.</Typography>
+      <Typography>If not, please go to the previous steps and change the configuration</Typography>
+      <Button onClick={previousStep}>No, I want to go back</Button>
+      <Button onClick={nextStep}>Yes, Im ready to calibrate</Button>
+    </Box>
+  )
+}

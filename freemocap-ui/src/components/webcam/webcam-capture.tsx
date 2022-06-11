@@ -1,32 +1,44 @@
-import React from "react";
+import {Box} from "@mui/system";
+import React, {useState} from "react";
 import Webcam from "react-webcam";
+import useMediaRecorder from "@wmik/use-media-recorder";
+import {Chunk} from "../../services/Record";
 
-export const WebcamCapture = () => {
-  const [deviceId, setDeviceId] = React.useState<any>({});
-  const [devices, setDevices] = React.useState<any>([]);
+interface Props {
+  device: MediaDeviceInfo
+}
 
-  const handleDevices = React.useCallback(mediaDevices =>
-      // @ts-ignore
-      setDevices(mediaDevices.filter(({ kind }) => kind === "videoinput")),
-    [setDevices]
-  );
-
-  React.useEffect(
-    () => {
-      navigator.mediaDevices.enumerateDevices().then(handleDevices);
+export const WebcamCapture = (props: Props) => {
+  const {device} = props
+  const [dataAvailable, setDataAvailable] = useState<Chunk[]>([]);
+  const {startRecording, status} = useMediaRecorder({
+    blobOptions: {"type": "video\/mp4"},
+    onError: e => {
+      console.log(e)
     },
-    [handleDevices]
-  );
+    onDataAvailable: (blob) => {
+      const newArray = [...dataAvailable];
+      newArray.push({frameData: blob, timestamp: Date.now()} as Chunk);
+      setDataAvailable(newArray)
+      console.log(newArray)
+    },
+    mediaStreamConstraints: {
+      // video: true
+      video: {
+        deviceId: device.deviceId
+      }
+    }
+  });
+
+  if (status === "idle") {
+    console.log('start recording')
+    startRecording(16.67)
+  }
 
   return (
-    <>
-      {devices.map((device, key) => (
-        <div>
-          <Webcam audio={false} videoConstraints={{ deviceId: device.deviceId }} />
-          {device.label || `Device ${device.deviceId}`}
-        </div>
-
-      ))}
-    </>
+    <Box>
+      {device.label || `Device ${device.deviceId}`}
+      <Webcam audio={false} videoConstraints={{deviceId: device.deviceId}} />
+    </Box>
   );
 };

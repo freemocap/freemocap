@@ -12,16 +12,16 @@ export const WebcamCapture = (props: Props) => {
   const {device} = props
   const [dataAvailable, setDataAvailable] = useState<Chunk[]>([]);
   const {startRecording, status} = useMediaRecorder({
-    blobOptions: {"type": "video\/mp4"},
-    onError: e => {
-      console.log(e)
-    },
     onDataAvailable: (blob) => {
       const newArray = [...dataAvailable];
       newArray.push({frameData: blob, timestamp: Date.now()} as Chunk);
       setDataAvailable(newArray)
       console.log(newArray)
     },
+    // blobOptions: {"type": "video\/mp4"},
+    // onError: e => {
+    //   console.log(e)
+    // },
     mediaStreamConstraints: {
       // video: true
       video: {
@@ -38,7 +38,7 @@ export const WebcamCapture = (props: Props) => {
   return (
     <Box>
       {device.label || `Device ${device.deviceId}`}
-      <Webcam audio={false} videoConstraints={{deviceId: device.deviceId}} />
+      <Webcam audio={true} videoConstraints={{deviceId: device.deviceId}} />
     </Box>
   );
 };

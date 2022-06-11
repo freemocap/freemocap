@@ -2,25 +2,30 @@ import {Box} from "@mui/material";
 import React, {useState} from "react";
 import {useAsync} from "react-use";
 import axios from "axios";
-import {SessionWizard} from "../sessionWizard/SessionWizard";
+import {WebcamCapture} from "../../components/webcam/webcam-capture";
 
-export const SetupAndPreviewView = () => {
+export const usePythonCameraDetection = () => {
   const [webcamIds, setWebcamIds] = useState();
-
-  useAsync(async () => {
+  const response = useAsync(async () => {
     const response = await axios.get('http://localhost:8080/camera/detect');
     const webcamIds = response.data.cameras_found_list.map(x => x.webcam_id);
     setWebcamIds(webcamIds)
   }, [])
+  return [webcamIds, response];
+}
 
-  if (!webcamIds) {
-    // Small loading indicator
-    return null;
-  }
-
+export const SetupAndPreviewView = () => {
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>();
+  useAsync(async () => {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    const videoDevices = devices.filter(({ kind }) => kind.toLowerCase() === "videoinput")
+    setDevices(videoDevices)
+  }, [])
   return (
     <Box>
-      <SessionWizard webcamIds={webcamIds} />
+      {devices?.map(dev => {
+        return <WebcamCapture device={dev} />
+      })}
     </Box>
   )
 }

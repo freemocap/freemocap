@@ -20,7 +20,6 @@ def get_freemocap_data_folder_path():
     freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FOLDER_NAME)
     freemocap_data_folder_path.mkdir(exist_ok=True,parents=True)
     return str(freemocap_data_folder_path)
-    return str(freemocap_data_folder_path)
 
 
 def get_session_folder_path(session_id: str):

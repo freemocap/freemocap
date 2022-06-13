@@ -1,8 +1,7 @@
-import {Box} from "@mui/system";
-import React, {useState} from "react";
-import Webcam from "react-webcam";
-import useMediaRecorder from "@wmik/use-media-recorder";
-import {Chunk} from "../../services/Record";
+import React, {useEffect, useState} from "react";
+import {useDeviceStream} from "../../hooks/use-device-stream";
+import {Capture} from "../../services/Capture";
+import {Button} from "@mui/material";
 
 interface Props {
   device: MediaDeviceInfo
@@ -10,35 +9,30 @@ interface Props {
 
 export const WebcamCapture = (props: Props) => {
   const {device} = props
-  const [dataAvailable, setDataAvailable] = useState<Chunk[]>([]);
-  const {startRecording, status} = useMediaRecorder({
-    onDataAvailable: (blob) => {
-      const newArray = [...dataAvailable];
-      newArray.push({frameData: blob, timestamp: Date.now()} as Chunk);
-      setDataAvailable(newArray)
-      console.log(newArray)
-    },
-    // blobOptions: {"type": "video\/mp4"},
-    // onError: e => {
-    //   console.log(e)
-    // },
-    mediaStreamConstraints: {
-      // video: true
-      video: {
-        deviceId: device.deviceId
-      }
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const stream = useDeviceStream(device)
+  // const { sendMessage, getWebSocket } = useWebSocket("ws://localhost:8080/ws/hello_world")
+  const [capture, setCapture] = useState<Capture>()
+  useEffect(() => {
+    const {current} = videoRef
+    if (current) {
+      // @ts-ignore
+      current.srcObject = stream
+      const capture = new Capture(videoRef)
+      setCapture(capture)
     }
-  });
+  }, [stream, videoRef])
 
-  if (status === "idle") {
-    console.log('start recording')
-    startRecording(16.67)
+  if (!stream) {
+    return null
   }
-
   return (
-    <Box>
-      {device.label || `Device ${device.deviceId}`}
-      <Webcam audio={true} videoConstraints={{deviceId: device.deviceId}} />
-    </Box>
+    <>
+      <video ref={videoRef} height={600} width={800} autoPlay />
+      <canvas id={"canvasOutput"} />
+      <Button onClick={() => {
+        capture?.processVideo()
+      }}>Start Capture</Button>
+    </>
   );
 };

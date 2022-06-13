@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import platform
 import time
@@ -7,6 +8,7 @@ import cv2
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
+from src.cameras.viewer.cv_cam_viewer import CvCamViewer
 from src.config.webcam_config import WebcamConfig
 from src.cameras.capture.opencv_camera.camera_stream_thread_handler import VideoCaptureThread
 
@@ -186,6 +188,14 @@ class OpenCVCamera:
 
     def stop_frame_capture(self):
         self.close()
+
+    async def show(self):
+        viewer = CvCamViewer()
+        viewer.begin_viewer(self.webcam_id_as_str)
+        while True:
+            if self.new_frame_ready:
+                viewer.recv_img(self.latest_frame)
+                await asyncio.sleep(0)
 
     def close(self):
         try:

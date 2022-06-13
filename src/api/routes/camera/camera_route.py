@@ -1,8 +1,6 @@
 import logging
-import traceback
 
 import cv2
-import pyglview as pyglview
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -66,6 +64,7 @@ async def cv2_imshow_all_camera(camera_preview_model: CameraPreviewModel = Camer
                     logger.info("ESC has been pressed.")
                     should_continue = False
                     cv2.destroyWindow(cv2_window_name)
+
 
 @camera_router.get("/camera/detect")
 async def get_cameras():

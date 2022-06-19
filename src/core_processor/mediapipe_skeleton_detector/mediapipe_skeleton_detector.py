@@ -6,13 +6,13 @@ from typing import List, Dict, Union
 import cv2
 import numpy as np
 import mediapipe as mp
-from rich.progress import Progress
+from rich.progress import Progress, track
 
 from jon_scratch.opencv_camera import TweakedModel
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.home_dir import get_session_folder_path, get_synchronized_videos_folder_path, \
-    get_output_data_folder_path
+    get_session_output_data_folder_path
 from src.core_processor.mediapipe_skeleton_detector.medaipipe_tracked_points_names_dict import \
     mediapipe_tracked_point_names_dict
 
@@ -66,18 +66,19 @@ class MediaPipeSkeletonDetector:
     def process_session_folder(self,
                                save_annotated_videos: bool = True):
         synchronized_videos_path = Path(get_synchronized_videos_folder_path(self._session_id))
-
+        logger.info(f"loading synchronized videos from: {synchronized_videos_path}")
         each_video_frame_width_list = []
         each_video_frame_height_list = []
 
         mediapipe2d_single_camera_npy_arrays_list = []
         for video_number, this_synchronized_video_file_path in enumerate(synchronized_videos_path.glob('*.mp4')):
+            logger.info(f"Running `mediapipe` skeleton detection on  video: {str(this_synchronized_video_file_path)}")
             this_video_capture_object = cv2.VideoCapture(str(this_synchronized_video_file_path))
 
             this_video_width = this_video_capture_object.get(cv2.CAP_PROP_FRAME_WIDTH)
             this_video_height = this_video_capture_object.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
-            logger.info(f"Running `mediapipe` skeleton detection on  video: {str(this_synchronized_video_file_path)}")
+
             this_video_mediapipe_results_list = []
             this_video_annotated_images_list = []
 
@@ -134,7 +135,7 @@ class MediaPipeSkeletonDetector:
 
 
     def _save_mediapipe2d_data_to_npy(self, data2d_numCams_numFrames_numTrackedPts_XY):
-        output_data_folder = Path(get_output_data_folder_path(self._session_id))
+        output_data_folder = Path(get_session_output_data_folder_path(self._session_id))
         mediapipe_2dData_save_path = output_data_folder / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
         logger.info(f"saving: {mediapipe_2dData_save_path}")
         np.save(str(mediapipe_2dData_save_path), data2d_numCams_numFrames_numTrackedPts_XY)

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class QTVisualizerAndGui:
-    def __init__(self, source:str=None):
+    def __init__(self):
         # https://pyqtgraph.readthedocs.io/en/latest/config_options.html
         self.pyqtgraph_app = pg.mkQApp('freemocap! :D')
         pg.setConfigOptions(imageAxisOrder='row-major')
@@ -303,3 +303,8 @@ class QTVisualizerAndGui:
             size=20
         )
         self.opengl_3d_plot_widget.addItem(self._charuco_scatter_item)
+
+
+
+if __name__ == "__main__":
+    pass

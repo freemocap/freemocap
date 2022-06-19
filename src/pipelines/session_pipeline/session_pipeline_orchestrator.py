@@ -7,6 +7,7 @@ from typing import Dict, Union
 import cv2
 import numpy as np
 
+from jon_scratch.pupil_calibration_pipeline.qt_gl_laser_skeleton_visualizer import QtGlLaserSkeletonVisualizer
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
 from src.config.data_paths import freemocap_data_path
@@ -279,14 +280,14 @@ class SessionPipelineOrchestrator:
         self._mediapipe2d_numCams_numFrames_numTrackedPoints_XY = self._mediapipe_skeleton_detector.process_session_folder(
             save_annotated_videos=True)
 
-
     def reconstruct3d_from_2d_data_offline(self):
         number_of_frames = self._mediapipe2d_numCams_numFrames_numTrackedPoints_XY.shape[1]
         number_of_tracked_points = self._mediapipe2d_numCams_numFrames_numTrackedPoints_XY.shape[2]
         number_of_spatial_dimensions = self._mediapipe2d_numCams_numFrames_numTrackedPoints_XY.shape[3]
 
         if not number_of_spatial_dimensions == 2:
-            logger.error(f"This is supposed to be 2D data but, number_of_spatial_dimensions: {number_of_spatial_dimensions}")
+            logger.error(
+                f"This is supposed to be 2D data but, number_of_spatial_dimensions: {number_of_spatial_dimensions}")
             raise Exception
 
         # reshape data to collapse across 'frames' so it becomes [number_of_cameras, number_of_2d_points(numFrames*numPoints), XY]
@@ -304,18 +305,22 @@ class SessionPipelineOrchestrator:
         data3d_flat = self._anipose_camera_calibration_object.triangulate(data2d_flat, progress=True)
 
         data3d_reprojectionError_flat = self._anipose_camera_calibration_object.reprojection_error(data3d_flat,
-                                                                                        data2d_flat,
-                                                                                        mean=True)
+                                                                                                   data2d_flat,
+                                                                                                   mean=True)
 
         data3d_numFrames_numTrackedPoints_XYZ = data3d_flat.reshape(number_of_frames, number_of_tracked_points, 3)
-        data3d_numFrames_numTrackedPoints_reprojectionError = data3d_reprojectionError_flat.reshape(number_of_frames, number_of_tracked_points)
+        data3d_numFrames_numTrackedPoints_reprojectionError = data3d_reprojectionError_flat.reshape(number_of_frames,
+                                                                                                    number_of_tracked_points)
 
-        self._save_mediapipe3d_data_to_npy(data3d_numFrames_numTrackedPoints_XYZ, data3d_numFrames_numTrackedPoints_reprojectionError)
+        self._save_mediapipe3d_data_to_npy(data3d_numFrames_numTrackedPoints_XYZ,
+                                           data3d_numFrames_numTrackedPoints_reprojectionError)
 
-        return Data3dFullSessionPayload(data3d_numFrames_numTrackedPoints_XYZ=data3d_numFrames_numTrackedPoints_XYZ,
-                                        data3d_numFrames_numTrackedPoint_reprojectionError=data3d_numFrames_numTrackedPoints_reprojectionError)
+        self._mediapipe3d_full_session_payload = Data3dFullSessionPayload(
+            data3d_numFrames_numTrackedPoints_XYZ=data3d_numFrames_numTrackedPoints_XYZ,
+            data3d_numFrames_numTrackedPoint_reprojectionError=data3d_numFrames_numTrackedPoints_reprojectionError)
 
-    def _save_mediapipe3d_data_to_npy(self, data3d_numFrames_numTrackedPoints_XYZ:np.ndarray, data3d_numFrames_numTrackedPoints_reprojectionError:np.ndarray):
+    def _save_mediapipe3d_data_to_npy(self, data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
+                                      data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray):
         output_data_folder = Path(get_output_data_folder_path(self._session_id))
 
         # save spatial XYZ data
@@ -329,14 +334,13 @@ class SessionPipelineOrchestrator:
         np.save(str(self._mediapipe_reprojection_error_save_path), data3d_numFrames_numTrackedPoints_XYZ)
 
 
-
 if __name__ == "__main__":
     print('running `session_pipeline_orchestrator` as `__main__')
 
     length_of_one_edge_of_a_black_square_on_the_charuco_board_in_mm = 39
     expected_framerate = 25
 
-    calibrate_cameras = False
+    calibrate_cameras = True
 
     this_session_orchestrator = SessionPipelineOrchestrator(expected_framerate=expected_framerate)
 
@@ -350,3 +354,9 @@ if __name__ == "__main__":
     this_session_orchestrator.mediapipe_track_skeletons_offline()
 
     this_session_orchestrator.reconstruct3d_from_2d_data_offline()
+
+    # this_session_orchestrator.visualize_session_data_offline()
+
+    qt_gl_laser_skeleton = QtGlLaserSkeletonVisualizer(
+        mediapipe_skel_fr_mar_xyz=this_session_orchestrator._mediapipe3d_full_session_payload.data3d_numFrames_numTrackedPoints_XYZ)
+    qt_gl_laser_skeleton.start_animation()

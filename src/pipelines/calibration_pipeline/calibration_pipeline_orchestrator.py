@@ -27,14 +27,17 @@ class CalibrationPipelineOrchestrator:
                  expected_framerate: Union[int, float] = None,
                  ):
 
-        if session_id is not None:
-            self._session_id = session_id
-            self._calibration_start_time_unix_ns = time.time_ns()
-            self._charuco_board_detector = CharucoBoardDetector()
-            self._visualizer_gui = QTVisualizerAndGui(source='calibration')
-            self._expected_framerate = expected_framerate
-            self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id,
-                                                               expected_framerate=self._expected_framerate)
+        if session_id is None:
+            self._session_id = create_session_id(string_tag='calibration') #create a 'calibration only' session
+        else:
+            self._session_id = session_id #add calibration folder to "full" session folder
+
+        self._calibration_start_time_unix_ns = time.time_ns()
+        self._charuco_board_detector = CharucoBoardDetector()
+        self._visualizer_gui = QTVisualizerAndGui()
+        self._expected_framerate = expected_framerate
+        self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id,
+                                                           expected_framerate=self._expected_framerate)
 
     @property
     def session_id(self):

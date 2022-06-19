@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime
 
 import cv2
@@ -25,10 +26,12 @@ async def websocket_send(web_socket: WebSocket, input_payload: FramePayload):
 async def preview_webcam(web_socket: WebSocket):
     await web_socket.accept()
     while True:
-        last_read = datetime.now()
+        last_read = time.perf_counter()
         byte_data = await web_socket.receive_bytes()
-        time_since = datetime.now()
-        print("Per Frame Time: ", time_since - last_read)
+        time_since = time.perf_counter()
+        print(f"Per Frame Time: {time_since - last_read:.4f}")
         buffer = np.frombuffer(byte_data, dtype='uint8').reshape((600, 800, 4))
         buffer = cv2.cvtColor(buffer, cv2.COLOR_BGR2RGB)
+        print(f"image shape: {buffer.shape}")
+
 

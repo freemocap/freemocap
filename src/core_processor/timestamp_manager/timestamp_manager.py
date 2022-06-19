@@ -171,7 +171,6 @@ class TimestampManager:
         multi_frame_timestamp_list = self.multi_frame_timestamp_logger.timestamps_in_seconds_from_session_start
         multi_frame_interval_list = self.multi_frame_interval_list
 
-        plt.ion()
         fig = plt.figure(figsize=(18, 10))
         max_frame_duration = 0.1
         ax1 = plt.subplot(
@@ -262,4 +261,4 @@ class TimestampManager:
         fig_save_path = Path(get_session_folder_path(self._session_id)) / "camera_timestamp_diagnostics.png"
         plt.savefig(str(fig_save_path))
         logger.info(f"Saving diagnostic figure to - {str(fig_save_path)}")
-        plt.show()
+        # plt.show()

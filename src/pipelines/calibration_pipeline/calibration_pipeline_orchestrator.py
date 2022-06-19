@@ -7,7 +7,8 @@ from typing import Union
 import cv2
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
-from src.config.home_dir import create_session_id, get_session_folder_path, get_freemocap_data_folder_path
+from src.config.home_dir import create_session_id, get_session_folder_path, get_freemocap_data_folder_path, \
+    get_session_output_data_folder_path, get_session_calibration_file_path
 from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
 from src.core_processor.show_cam_window import show_cam_window
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
@@ -148,6 +149,11 @@ class CalibrationPipelineOrchestrator:
         last_successful_calibration_path = Path(get_freemocap_data_folder_path(), "last_successful_calibration.toml")
         logger.info(f"loading `most recent calibration from:{str(last_successful_calibration_path)}")
         return freemocap_anipose.CameraGroup.load(str(last_successful_calibration_path))
+
+    def load_calibration_from_session_id(self, session_id:str):
+        session_calibration_file_path = get_session_calibration_file_path(session_id)
+        logger.info(f"loading camera calibration file from:{str(session_calibration_file_path)}")
+        return freemocap_anipose.CameraGroup.load(str(session_calibration_file_path))
 
 
 if __name__ == "__main__":

@@ -78,7 +78,6 @@ class MediaPipeSkeletonDetector:
             this_video_width = this_video_capture_object.get(cv2.CAP_PROP_FRAME_WIDTH)
             this_video_height = this_video_capture_object.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
-
             this_video_mediapipe_results_list = []
             this_video_annotated_images_list = []
 
@@ -121,7 +120,6 @@ class MediaPipeSkeletonDetector:
             logger.error(f"this should be 2D data (XY pixel coordinates), but we founds {number_of_spatial_dimensions}")
             raise Exception
 
-
         data2d_numCams_numFrames_numTrackedPts_XY = np.empty((number_of_cameras,
                                                               number_of_frames,
                                                               number_of_tracked_points,
@@ -133,14 +131,11 @@ class MediaPipeSkeletonDetector:
         self._save_mediapipe2d_data_to_npy(data2d_numCams_numFrames_numTrackedPts_XY)
         return data2d_numCams_numFrames_numTrackedPts_XY
 
-
     def _save_mediapipe2d_data_to_npy(self, data2d_numCams_numFrames_numTrackedPts_XY):
         output_data_folder = Path(get_session_output_data_folder_path(self._session_id))
         mediapipe_2dData_save_path = output_data_folder / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
         logger.info(f"saving: {mediapipe_2dData_save_path}")
         np.save(str(mediapipe_2dData_save_path), data2d_numCams_numFrames_numTrackedPts_XY)
-
-
 
     def save_annotated_videos(self,
                               annotated_images_list: List[np.ndarray],
@@ -252,33 +247,41 @@ class MediaPipeSkeletonDetector:
             # get the Body data (aka 'pose')
             if this_frame_results.pose_landmarks is not None:
 
-                for this_landmark_data in this_frame_results.pose_landmarks.landmark:
-                    body2d_frameNumber_trackedPointNumber_XY[this_frame_number, :,
-                    0] = this_landmark_data.x * image_width
-                    body2d_frameNumber_trackedPointNumber_XY[this_frame_number, :,
-                    1] = this_landmark_data.y * image_height
+                for this_landmark_number, this_landmark_data in enumerate(this_frame_results.pose_landmarks.landmark):
+                    body2d_frameNumber_trackedPointNumber_XY[this_frame_number,
+                                                             this_landmark_number,
+                                                             0] = this_landmark_data.x * image_width
+                    body2d_frameNumber_trackedPointNumber_XY[this_frame_number,
+                                                             this_landmark_number,
+                                                             1] = this_landmark_data.y * image_height
                     body2d_frameNumber_trackedPointNumber_confidence[this_frame_number,
-                    :] = this_landmark_data.visibility  # mediapipe calls their 'confidence' score 'visibility'
+                                                                     this_landmark_number] = this_landmark_data.visibility  # mediapipe calls their 'confidence' score 'visibility'
 
             # get Right Hand data
             if this_frame_results.right_hand_landmarks is not None:
-                for this_landmark_data in this_frame_results.right_hand_landmarks.landmark:
-                    rightHand2d_frameNumber_trackedPointNumber_XY[this_frame_number, :,
-                    0] = this_landmark_data.x * image_width
-                    rightHand2d_frameNumber_trackedPointNumber_XY[this_frame_number, :,
-                    1] = this_landmark_data.y * image_height
+                for this_landmark_number, this_landmark_data in enumerate(
+                        this_frame_results.right_hand_landmarks.landmark):
+                    rightHand2d_frameNumber_trackedPointNumber_XY[this_frame_number,
+                                                                  this_landmark_number,
+                                                                  0] = this_landmark_data.x * image_width
+                    rightHand2d_frameNumber_trackedPointNumber_XY[this_frame_number,
+                                                                  this_landmark_number,
+                                                                  1] = this_landmark_data.y * image_height
 
             # get Left Hand data
             if this_frame_results.left_hand_landmarks is not None:
-                for this_landmark_data in this_frame_results.left_hand_landmarks.landmark:
-                    leftHand2d_frameNumber_trackedPointNumber_XY[this_frame_number, :,
-                    0] = this_landmark_data.x * image_width
-                    leftHand2d_frameNumber_trackedPointNumber_XY[this_frame_number, :,
-                    1] = this_landmark_data.y * image_height
+                for this_landmark_number, this_landmark_data in enumerate(
+                        this_frame_results.left_hand_landmarks.landmark):
+                    leftHand2d_frameNumber_trackedPointNumber_XY[this_frame_number,
+                                                                 this_landmark_number,
+                                                                 0] = this_landmark_data.x * image_width
+                    leftHand2d_frameNumber_trackedPointNumber_XY[this_frame_number,
+                                                                 this_landmark_number,
+                                                                 1] = this_landmark_data.y * image_height
 
             # get Face data
             if this_frame_results.face_landmarks is not None:
-                for this_landmark_data in this_frame_results.face_landmarks.landmark:
+                for this_landmark_number, this_landmark_data in enumerate(this_frame_results.face_landmarks.landmark):
                     face2d_frameNumber_trackedPointNumber_XY[this_frame_number, :,
                     0] = this_landmark_data.x * image_width
                     face2d_frameNumber_trackedPointNumber_XY[this_frame_number, :,

@@ -148,3 +148,4 @@ data/
 *.divx
 freemocap_runme_script_jsm.py
 freemocap-ui/threejs_stuff/
+fmc_calibration/

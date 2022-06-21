@@ -1,3 +1,4 @@
+from typing import Annotated
 import bpy
 import addon_utils
 import numpy as np
@@ -1385,7 +1386,12 @@ try:
     ## Load nSynched Videos
     try:
         print('loading videos as planes...')
-        vidFolderPath = session_path / 'SyncedVideos'
+        annotated_videos_path = session_path / 'annotated_videos'
+
+        if annotated_videos_path.is_dir():
+            vidFolderPath = annotated_videos_path
+        else:
+            vidFolderPath = session_path / 'SyncedVideos'
 
         world_origin = bpy.data.objects['world_origin']
 

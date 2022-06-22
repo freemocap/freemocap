@@ -201,6 +201,15 @@ class QTVisualizerAndGui:
         self.opengl_3d_plot_dock.addWidget(self.opengl_3d_plot_widget)
         self._main_dock_area.addDock(self.opengl_3d_plot_dock, 'bottom', self._camera_views_dock)
 
+    def initialize_charuco_dottos(self, number_of_charuco_corners: int):
+        dummy_charuco_points = np.zeros((number_of_charuco_corners, 3))
+        self._charuco_scatter_item = gl.GLScatterPlotItem(
+            pos=dummy_charuco_points,
+            color=(1, 1, 0, 1),
+            size=20
+        )
+        self.opengl_3d_plot_widget.addItem(self._charuco_scatter_item)
+
     def update_charuco_3d_dottos(self, charuco_frame_payload: Data3dMultiFramePayload):
         # if not self._camera_set:
         #     mean_xyz = np.nanmean(charuco_frame_payload.data3d_trackedPointNum_xyz,axis=0)
@@ -211,14 +220,9 @@ class QTVisualizerAndGui:
             pos=charuco_frame_payload.data3d_trackedPointNum_xyz
         )
 
-    def initialize_charuco_dottos(self, number_of_charuco_corners: int):
-        dummy_charuco_points = np.zeros((number_of_charuco_corners, 3))
-        self._charuco_scatter_item = gl.GLScatterPlotItem(
-            pos=dummy_charuco_points,
-            color=(1, 1, 0, 1),
-            size=20
-        )
-        self.opengl_3d_plot_widget.addItem(self._charuco_scatter_item)
+
+    def update_medaiapipe3d_skel(self, mediapipe3d_multi_frame_payload):
+        pass
 
 
 if __name__ == "__main__":

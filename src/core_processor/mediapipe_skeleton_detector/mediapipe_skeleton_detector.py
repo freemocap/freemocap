@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Any
 
 import cv2
 import numpy as np
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class Mediapipe2dSingleCameraNpyArrays:
+class Mediapipe2dNumpyArrays:
     body2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
     rightHand2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
     leftHand2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
@@ -35,6 +35,14 @@ class Mediapipe2dSingleCameraNpyArrays:
                           self.rightHand2d_frameNumber_trackedPointNumber_XY,
                           self.leftHand2d_frameNumber_trackedPointNumber_XY,
                           self.face2d_frameNumber_trackedPointNumber_XY])
+
+
+@dataclass
+class Mediapipe2dDataPayload:
+    raw_frame_payload: FramePayload = None
+    mediapipe_results: Any = None
+    annotated_image: np.ndarray = None
+    pixel_data_numpy_arrays: Mediapipe2dNumpyArrays = None
 
 
 class MediaPipeSkeletonDetector:
@@ -59,9 +67,39 @@ class MediaPipeSkeletonDetector:
                                                             min_tracking_confidence=self.min_tracking_confidence)
         self._mediapipe_tracked_point_names_dict = mediapipe_tracked_point_names_dict
 
-    def detect_skeleton_in_image(self, raw_image, annotate_image=True):
-        mediapipe_results = self._holistic_tracker.process(raw_image)  # <-this is where the magic happens
-        return mediapipe_results
+        self.body_names_list = self._mediapipe_tracked_point_names_dict["body"]
+        self.right_hand_names_list = self._mediapipe_tracked_point_names_dict["right_hand"]
+        self.left_hand_names_list = self._mediapipe_tracked_point_names_dict["left_hand"]
+        self.face_names_list = self._mediapipe_tracked_point_names_dict["face"]
+
+        # TODO - build a better iterator and list of `face_marker_names` that will only pull out the face_counters & iris edges (mp.python.solutions.face_mesh_connections.FACEMESH_CONTOURS, FACE_MESH_IRISES)
+
+        self.number_of_body_tracked_points = len(self.body_names_list)
+        self.number_of_right_hand_tracked_points = len(self.right_hand_names_list)
+        self.number_of_left_hand_tracked_points = len(self.left_hand_names_list)
+        self.number_of_face_tracked_points = mp.python.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
+
+        self.number_of_tracked_points_total = self.number_of_body_tracked_points + \
+                                              self.number_of_left_hand_tracked_points + \
+                                              self.number_of_right_hand_tracked_points + \
+                                              self.number_of_face_tracked_points
+
+    def detect_skeleton_in_image(self, raw_frame_payload: FramePayload,
+                                 annotated_image: np.ndarray = None) -> Mediapipe2dDataPayload:
+
+        mediapipe_results = self._holistic_tracker.process(
+            raw_frame_payload.image)  # <-this is where the magic happens, i.e. where the raw image is processed by a convolutional neural network to provide an estimate of joint position in pixel coordinates. Please don't forget that this is insane and should not be possible lol
+
+        if annotated_image is None:
+            annotated_image = raw_frame_payload.image.copy()
+
+        annotated_image = self._annotate_image(annotated_image, mediapipe_results)
+
+        mediapipe_single_frame_npy_data = self._list_of_mediapipe_results_to_npy_arrays([mediapipe_results])
+        return Mediapipe2dDataPayload(raw_frame_payload=raw_frame_payload,
+                                      mediapipe_results=mediapipe_results,
+                                      annotated_image=annotated_image,
+                                      pixel_data_numpy_arrays=mediapipe_single_frame_npy_data)
 
     def process_session_folder(self,
                                save_annotated_videos: bool = True):
@@ -194,45 +232,35 @@ class MediaPipeSkeletonDetector:
                                                  mediapipe_results_list: List,
                                                  image_width: int = 1,
                                                  image_height: int = 1
-                                                 ) -> Mediapipe2dSingleCameraNpyArrays:
-
-        body_names_list = self._mediapipe_tracked_point_names_dict["body"]
-        right_hand_names_list = self._mediapipe_tracked_point_names_dict["right_hand"]
-        left_hand_names_list = self._mediapipe_tracked_point_names_dict["left_hand"]
-        face_names_list = self._mediapipe_tracked_point_names_dict["face"]
+                                                 ) -> Mediapipe2dNumpyArrays:
 
         # apparently `mediapipe_results.pose_landmarks.landmark` returns something iterable ¯\_(ツ)_/¯
         mediapipe_pose_landmark_iterator = mp.python.solutions.pose.PoseLandmark
         mediapipe_hand_landmark_iterator = mp.python.solutions.hands.HandLandmark
-        # TODO - build a better iterator and list of `face_marker_names` that will only pull out the face_counters & iris edges (mp.python.solutions.face_mesh_connections.FACEMESH_CONTOURS, FACE_MESH_IRISES)
 
         number_of_frames = len(mediapipe_results_list)
-
-        number_of_body_trackedPoints = len(body_names_list)
-        number_of_right_hand_trackedPoints = len(right_hand_names_list)
-        number_of_left_hand_trackedPoints = len(left_hand_names_list)
-        number_of_face_trackedPoints = mp.python.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
         number_of_spatial_dimensions = 2  # this will be 2d XY pixel data
 
         body2d_frameNumber_trackedPointNumber_XY = np.zeros(
-            (number_of_frames, number_of_body_trackedPoints, number_of_spatial_dimensions))
+            (number_of_frames, self.number_of_body_tracked_points, number_of_spatial_dimensions))
         body2d_frameNumber_trackedPointNumber_XY[:] = np.nan
 
-        body2d_frameNumber_trackedPointNumber_confidence = np.zeros((number_of_frames, number_of_body_trackedPoints))
+        body2d_frameNumber_trackedPointNumber_confidence = np.zeros(
+            (number_of_frames, self.number_of_body_tracked_points))
         body2d_frameNumber_trackedPointNumber_confidence[:] = np.nan  # only body markers get a 'confidence' value
 
         rightHand2d_frameNumber_trackedPointNumber_XY = np.zeros((number_of_frames,
-                                                                  number_of_right_hand_trackedPoints,
+                                                                  self.number_of_right_hand_tracked_points,
                                                                   number_of_spatial_dimensions))
         rightHand2d_frameNumber_trackedPointNumber_XY[:] = np.nan
 
         leftHand2d_frameNumber_trackedPointNumber_XY = np.zeros((number_of_frames,
-                                                                 number_of_left_hand_trackedPoints,
+                                                                 self.number_of_left_hand_tracked_points,
                                                                  number_of_spatial_dimensions))
         leftHand2d_frameNumber_trackedPointNumber_XY[:] = np.nan
 
         face2d_frameNumber_trackedPointNumber_XY = np.zeros((number_of_frames,
-                                                             number_of_face_trackedPoints,
+                                                             self.number_of_face_tracked_points,
                                                              number_of_spatial_dimensions))
         face2d_frameNumber_trackedPointNumber_XY[:] = np.nan
 
@@ -312,7 +340,7 @@ class MediaPipeSkeletonDetector:
 
             all_tracked_points_visible_on_this_frame_list.append(all_points_visible)
 
-        return Mediapipe2dSingleCameraNpyArrays(
+        return Mediapipe2dNumpyArrays(
             body2d_frameNumber_trackedPointNumber_XY=body2d_frameNumber_trackedPointNumber_XY,
             rightHand2d_frameNumber_trackedPointNumber_XY=rightHand2d_frameNumber_trackedPointNumber_XY,
             leftHand2d_frameNumber_trackedPointNumber_XY=leftHand2d_frameNumber_trackedPointNumber_XY,

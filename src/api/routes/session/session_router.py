@@ -65,7 +65,8 @@ def calibrate_session(session_calibrate_model: SessionCalibrateModel = SessionCa
                                            show_camera_views_in_windows=True,
                                            )
     calibration_orchestrator.run_anipose_camera_calibration(
-        charuco_square_size=session_calibrate_model.charuco_square_size)
+        charuco_square_size=session_calibrate_model.charuco_square_size,
+        pin_camera_0_to_origin = True)
 
 
 @session_router.post("/session/record")

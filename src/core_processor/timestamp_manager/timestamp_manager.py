@@ -157,7 +157,7 @@ class TimestampManager:
         self._multi_frame_interval_list.append(this_multiframe_timestamp_interval_sec)
 
         if expected_framerate is None:
-            logger.warning('`expected_framerate` not specified, Cannot verify multi_frame synchronization')
+            # logger.warning('`expected_framerate` not specified, Cannot verify multi_frame synchronization')
             return True
 
         if this_multiframe_timestamp_interval_sec > 2*(expected_framerate ** -1):

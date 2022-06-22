@@ -47,9 +47,6 @@ class VideoRecorder:
         else:
             self._video_folder_path = Path(get_synchronized_videos_folder_path(self._session_id))
 
-        self._video_folder_path.mkdir(parents=True, exist_ok=True)
-        video_file_name = self._video_name + '.mp4'
-        self._path_to_save_video_file = self._video_folder_path / video_file_name
 
     @property
     def video_name(self):
@@ -111,6 +108,9 @@ class VideoRecorder:
         self._write_image_list_to_video_file(image_list)
 
     def _initialize_video_writer(self, frames_per_second: Union[int, float] = None):
+
+        video_file_name = self._video_name + '.mp4'
+        self._path_to_save_video_file = self._video_folder_path / video_file_name
 
         if frames_per_second is None:
             frames_per_second = self.median_framerate

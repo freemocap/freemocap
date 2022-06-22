@@ -11,7 +11,7 @@ from pyqtgraph.dockarea.DockArea import DockArea
 from pyqtgraph.Qt import QtWidgets
 
 from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
-from src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import Data3dSingleFramePayload
+from src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import Data3dMultiFramePayload
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,7 @@ class QTVisualizerAndGui:
 
         self._is_paused = False
         self._shut_it_down = False
+        self._record_video_bool = False
 
     @property
     def shut_it_down(self):
@@ -42,13 +43,16 @@ class QTVisualizerAndGui:
     def pause_button_pressed(self):
         return self._is_paused
 
+    @property
+    def record_button_pressed(self):
+        return self._record_video_bool
+
     def _close_button_pressed(self):
         self.close()
         self._shut_it_down = True
 
     def close(self):
         self._main_window_widget.close()
-
 
     def setup_and_launch(self, webcam_ids_list):
         logger.info('setting up QT Visualizer and GUI')
@@ -97,7 +101,8 @@ class QTVisualizerAndGui:
 
     def _update_timestamp_difference_histogram(self, timestamp_manager: TimestampManager):
         for webcam_id in self._webcam_ids_list:
-            this_cam_timestamp_diffs = np.diff(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps_unix_ns)
+            this_cam_timestamp_diffs = np.diff(
+                timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps_unix_ns)
             num_samples = this_cam_timestamp_diffs.shape[0]
             counts, bin_edges = np.histogram(this_cam_timestamp_diffs,
                                              bins=np.linspace(0, 100, 100))
@@ -145,10 +150,10 @@ class QTVisualizerAndGui:
         # self._reset_calibration_button.clicked.connect(self._reset_calibration)
         # control_panel_layout_widget.addWidget(self._reset_calibration_button, row=3, col=0)
         #
-        # self._record_button = QtWidgets.QPushButton('Record')
-        # self._record_button.setEnabled(False)
-        # self._record_button.clicked.connect(self._record)
-        # control_panel_layout_widget.addWidget(self._record_button, row=3, col=0)
+        self._start_record_button = QtWidgets.QPushButton('Start Recording Video')
+        self._start_record_button.setEnabled(True)
+        self._start_record_button.clicked.connect(self._record_button_pressed)
+        control_panel_layout_widget.addWidget(self._start_record_button, row=3, col=0)
 
         self._close_button = QtWidgets.QPushButton('Close All')
         self._close_button.setEnabled(True)
@@ -251,8 +256,13 @@ class QTVisualizerAndGui:
     def _reset_calibration(self):
         pass
 
-    def _record(self):
-        pass
+    def _record_button_pressed(self):
+        if not self._record_video_bool:  # we want to start recording
+            self._record_video_bool = True
+            self._start_record_button.setText("Recording! Click Again to stop")
+        else:
+            self._record_video_bool = False
+            self._start_record_button.setText("Click to record more, or click Close All to stop")
 
     def _setup_3d_viewport(self):
         self.opengl_3d_plot_widget = gl.GLViewWidget()
@@ -282,16 +292,18 @@ class QTVisualizerAndGui:
         self.opengl_3d_plot_widget.addItem(self.origin_z_axis_gl_lineplot_item)
 
         self.opengl_charuco_scatter_item = gl.GLScatterPlotItem(pos=(0, 0, 0),
-                                                                color=(1, 0, 1),
-                                                                size=1,
+                                                                color=(1, 0, 1, 1),
+                                                                size=100,
                                                                 pxMode=False)
+
+        self.opengl_3d_plot_widget.addItem(self.opengl_charuco_scatter_item)
 
         self.opengl_3d_plot_dock = Dock("3d View Port")
         self.opengl_3d_plot_dock.addWidget(self.opengl_3d_plot_widget)
         self._main_dock_area.addDock(self.opengl_3d_plot_dock, 'bottom', self._camera_views_dock)
 
-    def update_charuco_3d_dottos(self, charuco_frame_payload: Data3dSingleFramePayload):
-        self._charuco_scatter_item.setData(
+    def update_charuco_3d_dottos(self, charuco_frame_payload: Data3dMultiFramePayload):
+        self.opengl_charuco_scatter_item.setData(
             pos=charuco_frame_payload.data3d_trackedPointNum_xyz
         )
 
@@ -303,7 +315,6 @@ class QTVisualizerAndGui:
             size=20
         )
         self.opengl_3d_plot_widget.addItem(self._charuco_scatter_item)
-
 
 
 if __name__ == "__main__":

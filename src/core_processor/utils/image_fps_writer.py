@@ -10,7 +10,7 @@ def write_fps_to_image(image: np.array, fps_number: Union[int,float]):
         f"FPS: {str(fps_number)}",
         (10, 15),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
+        5,
         (209, 180, 0, 255),
         1,
     )

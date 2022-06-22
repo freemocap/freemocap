@@ -40,10 +40,6 @@ class SessionIdModel(BaseModel):
     session_id: str = None
 
 
-def create_session_folder(session_id:str):
-    session_path = Path(get_session_folder_path(session_id, create_folder=True))
-    logger.info(f'Creating session folder at: {str(session_path)}')
-
 @session_router.post("/session/create")
 async def create_session(session_create_model: SessionCreateModel = SessionCreateModel()) -> SessionResponse:
     session_id = create_session_id()
@@ -126,22 +122,20 @@ if __name__ == "__main__":
 
     #create_session
     session_id = create_session_id('session_router_as_main')
-    create_session_folder(session_id)
     session_id_model = SessionIdModel(session_id=session_id)
 
-    #calibrate_session
-    session_calibrate_model = SessionCalibrateModel(session_id=session_id,
-                                                    charuco_square_size=39)
-    calibrate_session(session_calibrate_model)
+    # # #calibrate_session
+    # session_calibrate_model = SessionCalibrateModel(session_id=session_id,
+    #                                                 charuco_square_size=39)
+    # calibrate_session(session_calibrate_model)
 
     #record new session
     record_session(session_id_model)
 
-    #process_
-    # mediapipe_track_skeletons_offline(session_id_model)
-    mediapipe_track_2D_skeletons_offline(session_id_model)
-
+    # #process_
+    # mediapipe_track_2D_skeletons_offline(session_id_model)
+    #
     mediapipe_reconstruct_3D_skeletons_offline(session_id_model)
-
-    #visualize with PyQt/OpenGL
-    visualize_session_offline(session_id_model)
+    #
+    # #visualize with PyQt/OpenGL
+    # visualize_session_offline(session_id_model)

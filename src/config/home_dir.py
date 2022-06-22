@@ -1,7 +1,10 @@
+import logging
 import time
 from pathlib import Path
 
 import toml
+
+logger = logging.getLogger(__name__)
 
 BASE_FOLDER_NAME = "freemocap_data"
 MOST_RECENT_SESSION_ID_FILENAME = "most_recent_session_id.toml"
@@ -45,11 +48,15 @@ def get_session_folder_path(session_id: str, create_folder: bool = False):
     base_save_path = Path(get_freemocap_data_folder_path())
     session_path = base_save_path / session_id
     if create_folder:
-        session_path.mkdir(exist_ok=create_folder, parents=True)
+        session_path.mkdir(exist_ok=True, parents=True)
     return str(session_path)
 
 
-def get_synchronized_videos_folder_path(session_id: str, create_folder: bool = True):
+def create_session_folder(session_id:str):
+    session_path = Path(get_session_folder_path(session_id, create_folder=True))
+    logger.info(f'Creating session folder at: {str(session_path)}')
+
+def get_synchronized_videos_folder_path(session_id: str, create_folder: bool = False):
     synchronized_videos_path = Path(get_session_folder_path(session_id)) / 'synchronized_videos'
     if create_folder:
         synchronized_videos_path.mkdir(exist_ok=create_folder, parents=True)

@@ -23,13 +23,9 @@ class QTVisualizerAndGui:
         pg.setConfigOptions(imageAxisOrder='row-major')
 
         self._dict_of_camera_image_item_widgets = {}
-        self._dict_of_simple_timestamp_line_plots = {}
-        self._dict_of_cam_timestamps = {}
-        self._dict_of_timestamp_difference_line_plots = {}
-        self._dict_of_cam_timestamp_differences = {}
-        self._dict_of_timestamp_difference_histograms = {}
         self._number_of_cameras = None
         self._webcam_ids_list = []
+        self._camera_set = False
 
         self._is_paused = False
         self._shut_it_down = False
@@ -61,9 +57,6 @@ class QTVisualizerAndGui:
         self._setup_main_window()
         self._setup_control_panel()
         self._setup_camera_views_dock()
-        # self._setup_timestamp_plot()
-        # self._setup_time_difference_from_cam0_line_plot()
-        # self._setup_time_difference_from_cam0_histogram_plot()
         self._setup_3d_viewport()
         logger.info('launching QT Visualizer and GUI window')
         self._main_window_widget.show()
@@ -79,41 +72,6 @@ class QTVisualizerAndGui:
             raise e
         camera_image_item_widget.setImage(cv2.cvtColor(image_to_display, cv2.COLOR_BGR2RGB))
 
-    def update_timestamp_plots(self, timestamp_manager: TimestampManager):
-        if self.pause_button_pressed:
-            return
-        if timestamp_manager.get_timestamps_from_camera(self._camera0_id).number_of_frames <= 0:
-            return
-
-        self._update_simple_timestamp_plot(timestamp_manager)
-        self._update_timestamp_difference_plot(timestamp_manager)
-        self._update_timestamp_difference_histogram(timestamp_manager)
-
-    def _update_simple_timestamp_plot(self, timestamp_manager: TimestampManager):
-        for webcam_id in self._webcam_ids_list:
-            plot_item = self._dict_of_simple_timestamp_line_plots[webcam_id]
-            plot_item.setData(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps_unix_ns)
-
-    def _update_timestamp_difference_plot(self, timestamp_manager: TimestampManager):
-        for webcam_id in self._webcam_ids_list:
-            plot_item = self._dict_of_simple_timestamp_line_plots[webcam_id]
-            plot_item.setData(np.diff(timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps_unix_ns))
-
-    def _update_timestamp_difference_histogram(self, timestamp_manager: TimestampManager):
-        for webcam_id in self._webcam_ids_list:
-            this_cam_timestamp_diffs = np.diff(
-                timestamp_manager.get_timestamps_from_camera(webcam_id).timestamps_unix_ns)
-            num_samples = this_cam_timestamp_diffs.shape[0]
-            counts, bin_edges = np.histogram(this_cam_timestamp_diffs,
-                                             bins=np.linspace(0, 100, 100))
-            counts = counts / num_samples
-            try:
-                self._dict_of_timestamp_difference_histograms[webcam_id].setData(
-                    x=bin_edges,
-                    y=counts)
-            except Exception as e:
-                logger.warning(f'Could not find timestamp difference line plot widget for camera {webcam_id}')
-                raise e
 
     def _setup_main_window(self, window_width: int = 1000, window_height: int = 1000):
         """
@@ -178,70 +136,6 @@ class QTVisualizerAndGui:
         self._camera_graphics_layout_window.addItem(camera_view_box_widget)
         return camera_image_item
 
-    def _setup_timestamp_plot(self):
-        # create widget/dock for reprojection error subplot
-        timestamp_plot_widget = pg.PlotWidget(title="Timestamp vs Frame#")
-        timestamp_plot_widget.setLabel('left', "timestamp", units='seconds')
-        timestamp_plot_widget.setLabel('bottom', "Frame#", units='Frame')
-        timestamp_plot_widget.addLegend()
-
-        for this_cam_num, this_webcam_id in enumerate(self._webcam_ids_list):
-            this_timestamp_plot_line = timestamp_plot_widget.plot(np.empty(0),
-                                                                  pen=(this_cam_num, self._number_of_cameras),
-                                                                  name="camera " + this_webcam_id)
-
-            self._dict_of_simple_timestamp_line_plots[this_webcam_id] = this_timestamp_plot_line
-            self._dict_of_cam_timestamps[this_webcam_id] = np.ndarray(0)
-
-        self._timestamp_plot_dock = Dock("Camera Timestamps")
-        self._timestamp_plot_dock.addWidget(timestamp_plot_widget)
-        self._main_dock_area.addDock(self._timestamp_plot_dock, 'bottom')
-
-    def _setup_time_difference_from_cam0_line_plot(self):
-        # create widget/dock for reprojection error subplot
-        timestamp_difference_plot_widget = pg.PlotWidget(title="Timestamp difference from Camera0 on each frame")
-        timestamp_difference_plot_widget.setLabel('left', "np.abs(this_camera timestamp - cam0 timestamp)",
-                                                  units='milliseconds')
-        timestamp_difference_plot_widget.setLabel('bottom', "Frame#", units='Frame')
-        timestamp_difference_plot_widget.addLegend()
-
-        for this_cam_num, this_webcam_id in enumerate(self._webcam_ids_list):
-            this_plot_line = timestamp_difference_plot_widget.plot(np.empty(0),
-                                                                   pen=(this_cam_num, self._number_of_cameras),
-                                                                   name="camera " + this_webcam_id)
-
-            self._dict_of_timestamp_difference_line_plots[this_webcam_id] = this_plot_line
-            self._dict_of_cam_timestamp_differences[this_webcam_id] = np.ndarray(0)
-
-        self._timestamp_difference_plot_dock = Dock("Camera Timestamps")
-        self._timestamp_difference_plot_dock.addWidget(timestamp_difference_plot_widget)
-        self._main_dock_area.addDock(self._timestamp_difference_plot_dock, 'right', self._timestamp_plot_dock)
-
-    def _setup_time_difference_from_cam0_histogram_plot(self):
-        timestamp_difference_histogram_plot_widget = pg.PlotWidget(
-            title="Timestamp difference from Camera0 on each frame")
-        timestamp_difference_histogram_plot_widget.setLabel('left', "Proportion")
-        timestamp_difference_histogram_plot_widget.setLabel('bottom', "milliseconds")
-        timestamp_difference_histogram_plot_widget.addLegend()
-
-        for this_cam_num, this_webcam_id in enumerate(self._webcam_ids_list):
-            this_histogram_plot_item = timestamp_difference_histogram_plot_widget.plot(np.empty(0),
-                                                                                       np.empty(0),
-                                                                                       stepMode="center",
-                                                                                       fillLevel=0,
-                                                                                       fillOutline=False,
-                                                                                       brush=pg.mkBrush(color=(
-                                                                                           this_cam_num,
-                                                                                           self._number_of_cameras),
-                                                                                           alpha=.5),
-                                                                                       name="camera " + this_webcam_id)
-
-            self._dict_of_timestamp_difference_histograms[this_webcam_id] = this_histogram_plot_item
-
-        self._timestamp_diff_histgoram_dock = Dock("Camera Timestamp Difference histogram")
-        self._timestamp_diff_histgoram_dock.addWidget(timestamp_difference_histogram_plot_widget)
-        self._main_dock_area.addDock(self._timestamp_diff_histgoram_dock, 'right', self._timestamp_difference_plot_dock)
-
     def _pause(self):
         self._is_paused = True
         self._play_button.setEnabled(True)
@@ -266,7 +160,12 @@ class QTVisualizerAndGui:
 
     def _setup_3d_viewport(self):
         self.opengl_3d_plot_widget = gl.GLViewWidget()
-        self.opengl_3d_plot_widget.opts['distance'] = 2000
+
+        # self.opengl_3d_plot_widget.opts['center'] = (0,0,0)
+        self.opengl_3d_plot_widget.opts['distance'] = 2e3
+        # self.opengl_3d_plot_widget.opts['azimuth'] = 0
+        # self.opengl_3d_plot_widget.opts['elevation'] = 0
+
         self.opengl_grid_item = gl.GLGridItem()
         self.opengl_3d_plot_widget.addItem(self.opengl_grid_item)
 
@@ -303,6 +202,11 @@ class QTVisualizerAndGui:
         self._main_dock_area.addDock(self.opengl_3d_plot_dock, 'bottom', self._camera_views_dock)
 
     def update_charuco_3d_dottos(self, charuco_frame_payload: Data3dMultiFramePayload):
+        # if not self._camera_set:
+        #     mean_xyz = np.nanmean(charuco_frame_payload.data3d_trackedPointNum_xyz,axis=0)
+        #     self.opengl_3d_plot_widget.pan(mean_xyz[0], mean_xyz[1], mean_xyz[2])
+        #     self._camera_set = True
+
         self.opengl_charuco_scatter_item.setData(
             pos=charuco_frame_payload.data3d_trackedPointNum_xyz
         )

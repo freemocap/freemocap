@@ -124,10 +124,10 @@ if __name__ == "__main__":
     session_id = create_session_id('session_router_as_main')
     session_id_model = SessionIdModel(session_id=session_id)
 
-    # # #calibrate_session
-    # session_calibrate_model = SessionCalibrateModel(session_id=session_id,
-    #                                                 charuco_square_size=39)
-    # calibrate_session(session_calibrate_model)
+    # #calibrate_session
+    session_calibrate_model = SessionCalibrateModel(session_id=session_id,
+                                                    charuco_square_size=39)
+    calibrate_session(session_calibrate_model)
 
     #record new session
     record_session(session_id_model)

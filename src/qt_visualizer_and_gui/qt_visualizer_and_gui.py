@@ -293,7 +293,7 @@ class QTVisualizerAndGui:
 
         self.opengl_charuco_scatter_item = gl.GLScatterPlotItem(pos=(0, 0, 0),
                                                                 color=(1, 0, 1, 1),
-                                                                size=100,
+                                                                size=10,
                                                                 pxMode=False)
 
         self.opengl_3d_plot_widget.addItem(self.opengl_charuco_scatter_item)

@@ -299,8 +299,7 @@ class SessionPipelineOrchestrator:
 
     def format_charuco2d_data(self, dictionary_of_charuco_payloads_on_this_multiframe) -> Dict:
 
-        number_of_tracked_points = list(dictionary_of_charuco_payloads_on_this_multiframe.values())[
-            0].charuco_view_data.charuco_board_object.number_of_charuco_corners
+        number_of_tracked_points = self._charuco_board_detector.number_of_charuco_corners
 
 
         base_charuco_data_npy_with_nans_for_missing_data_xy = np.zeros((number_of_tracked_points, 2))
@@ -326,16 +325,14 @@ class SessionPipelineOrchestrator:
 
         each_cam2d_data_list = [this_cam_charuco2d_frame_xy for this_cam_charuco2d_frame_xy in
                                 data2d_per_cam_dict.values()]
-        data2d_trackedPointNum_xyz_camNum = np.dstack(
-            each_cam2d_data_list)  # stack lists (in depth) to make one numpy array with dimensions [number_of_tracked_points, XYZ, number_of_cameras]
-        data2d_camNum_trackedPointNum_xy = data2d_trackedPointNum_xyz_camNum.reshape(self._number_of_cameras,
-                                                                                     number_of_tracked_points,
-                                                                                     2)  # reshape to fit into anipose (new dimensions [number_of_cameras, number_of_tracked_points, XYZ]
+
+        data2d_camNum_trackedPointNum_xy = np.asarray(each_cam2d_data_list)
 
         # THIS IS WHERE THE MAGIC HAPPENS - 2d data from calibrated, synchronized cameras has now become a 3d estimate. Hurray! :`D
         data3d_trackedPointNum_xyz = self._anipose_camera_calibration_object.triangulate(
             data2d_camNum_trackedPointNum_xy,
-            progress=True)
+            progress=False,
+            undistort=True)
 
         # Reprojection error is a measure of the quality of the reconstruction. It is the distance (error) between the original 2d point and a reprojection of the 3d point back onto the image plane.
         # TODO - use this for filtering data (i.e. if one view has very high reprojection error, re-do the triangulation without that camera's view data)

@@ -15,7 +15,8 @@ from src.config.home_dir import create_session_id, get_session_folder_path, get_
     get_most_recent_session_id, create_session_folder
 from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrator
 from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
-from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import MediaPipeSkeletonDetector
+from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import MediaPipeSkeletonDetector, \
+    Mediapipe2dDataPayload
 from src.core_processor.show_cam_window import show_cam_window
 from src.core_processor.utils.image_fps_writer import write_fps_to_image
 from src.debug_plot_makers.simple_plot_3d_points import simple_plot_3d
@@ -172,21 +173,22 @@ class SessionPipelineOrchestrator:
                 should_continue = True
                 while should_continue:  # BIG FRAME LOOP STARTS HERE
 
-                    if detect_charuco:
-                        if len(dictionary_of_charuco_frame_payloads_on_this_multi_frame) > 0:
-                            charuco3d_multi_frame_payload = self._reconstruct_3d_charuco(
-                                dictionary_of_charuco_frame_payloads_on_this_multi_frame)
-                            if show_visualizer_gui and charuco3d_multi_frame_payload is not None:
-                                self._visualizer_gui.update_charuco_3d_dottos(charuco3d_multi_frame_payload)
-                            dictionary_of_charuco_frame_payloads_on_this_multi_frame = {}
+                    if reconstruct_3d:
+                        if detect_charuco:
+                            if len(dictionary_of_charuco_frame_payloads_on_this_multi_frame) > 0:
+                                charuco3d_multi_frame_payload = self._reconstruct_3d_charuco(
+                                    dictionary_of_charuco_frame_payloads_on_this_multi_frame)
+                                if show_visualizer_gui and charuco3d_multi_frame_payload is not None:
+                                    self._visualizer_gui.update_charuco_3d_dottos(charuco3d_multi_frame_payload)
+                                dictionary_of_charuco_frame_payloads_on_this_multi_frame = {}
 
-                    if detect_mediapipe:
-                        if len(dictionary_of_mediapipe_payloads_on_this_multi_frame) > 0:
-                            mediapipe3d_multi_frame_payload = self._reconstruct_3d_mediapipe(
-                                dictionary_of_mediapipe_payloads_on_this_multi_frame)
-                            if show_visualizer_gui and mediapipe3d_multi_frame_payload is not None:
-                                self._visualizer_gui.update_medaiapipe3d_skeleton(mediapipe3d_multi_frame_payload)
-                            dictionary_of_mediapipe_payloads_on_this_multi_frame = {}
+                        if detect_mediapipe:
+                            if len(dictionary_of_mediapipe_payloads_on_this_multi_frame) > 0:
+                                mediapipe3d_multi_frame_payload = self._reconstruct_3d_mediapipe(
+                                    dictionary_of_mediapipe_payloads_on_this_multi_frame)
+                                if show_visualizer_gui and mediapipe3d_multi_frame_payload is not None:
+                                    self._visualizer_gui.update_medaiapipe3d_skeleton(mediapipe3d_multi_frame_payload)
+                                dictionary_of_mediapipe_payloads_on_this_multi_frame = {}
 
                     timestamp_manager.log_new_timestamp_for_main_loop_ns(time.perf_counter_ns())
 
@@ -350,6 +352,9 @@ class SessionPipelineOrchestrator:
         if sum(is_there_any_mediapipe_data) >= min_cameras_to_reconstruct:  # if at least 2 cameras have any data, then we can try to make some 3d dottos
             mediapipe2d_data_per_cam_dict = {}
             for this_webcam_id, this_mediapipe_payload in dictionary_of_mediapipe_payloads_on_this_multi_frame.items():
+
+                self._threshold_2d_data_by_confidence(this_mediapipe_payload.pixel_data_numpy_arrays, .5)
+
                 mediapipe2d_data_per_cam_dict[this_webcam_id] = this_mediapipe_payload.pixel_data_numpy_arrays.all_data2d_nFrames_nTrackedPts_XY
 
             mediapipe_3d_data_payload = self._triangulate_2d_data(mediapipe2d_data_per_cam_dict,
@@ -440,6 +445,9 @@ class SessionPipelineOrchestrator:
         self._mediapipe_reprojection_error_save_path = output_data_folder / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
         logger.info(f"saving: {self._mediapipe_reprojection_error_save_path}")
         np.save(str(self._mediapipe_reprojection_error_save_path), data3d_numFrames_numTrackedPoints_reprojectionError)
+
+    def _threshold_2d_data_by_confidence(self, mediapipe2d_data_payload:Mediapipe2dDataPayload, confidence_threshold:float):
+        pass
 
 
 def load_mediapipe3d_skeleton_data(session_id: str = None):

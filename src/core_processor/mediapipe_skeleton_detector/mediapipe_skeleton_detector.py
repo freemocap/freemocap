@@ -40,10 +40,10 @@ class Mediapipe2dNumpyArrays:
             # if there's no body data, there's no hand or face data either
             return
 
-        return np.squeeze(np.hstack([self.body2d_frameNumber_trackedPointNumber_XY,
-                                     self.rightHand2d_frameNumber_trackedPointNumber_XY,
-                                     self.leftHand2d_frameNumber_trackedPointNumber_XY,
-                                     self.face2d_frameNumber_trackedPointNumber_XY]))
+        return np.vstack([self.body2d_frameNumber_trackedPointNumber_XY,
+                          self.rightHand2d_frameNumber_trackedPointNumber_XY,
+                          self.leftHand2d_frameNumber_trackedPointNumber_XY,
+                          self.face2d_frameNumber_trackedPointNumber_XY])
 
 
 @dataclass
@@ -104,7 +104,16 @@ class MediaPipeSkeletonDetector:
 
         annotated_image = self._annotate_image(annotated_image, mediapipe_results)
 
-        mediapipe_single_frame_npy_data = self._list_of_mediapipe_results_to_npy_arrays([mediapipe_results])
+        mediapipe_single_frame_npy_data = self._list_of_mediapipe_results_to_npy_arrays([mediapipe_results],
+                                                                                        image_width=
+                                                                                        annotated_image.shape[0],
+                                                                                        image_height=
+                                                                                        annotated_image.shape[1])
+        mediapipe_single_frame_npy_data.body2d_frameNumber_trackedPointNumber_XY = self._threshold_by_confidence(
+            mediapipe_single_frame_npy_data.body2d_frameNumber_trackedPointNumber_XY,
+            mediapipe_single_frame_npy_data.body2d_frameNumber_trackedPointNumber_confidence,
+            confidence_threshold=.5)
+
         return Mediapipe2dDataPayload(raw_frame_payload=raw_frame_payload,
                                       mediapipe_results=mediapipe_results,
                                       annotated_image=annotated_image,
@@ -239,8 +248,8 @@ class MediaPipeSkeletonDetector:
 
     def _list_of_mediapipe_results_to_npy_arrays(self,
                                                  mediapipe_results_list: List,
-                                                 image_width: int = 1,
-                                                 image_height: int = 1
+                                                 image_width: Union[int, float],
+                                                 image_height: Union[int, float],
                                                  ) -> Mediapipe2dNumpyArrays:
 
         # apparently `mediapipe_results.pose_landmarks.landmark` returns something iterable ¯\_(ツ)_/¯
@@ -350,8 +359,18 @@ class MediaPipeSkeletonDetector:
             all_tracked_points_visible_on_this_frame_list.append(all_points_visible)
 
         return Mediapipe2dNumpyArrays(
-            body2d_frameNumber_trackedPointNumber_XY=body2d_frameNumber_trackedPointNumber_XY,
-            rightHand2d_frameNumber_trackedPointNumber_XY=rightHand2d_frameNumber_trackedPointNumber_XY,
-            leftHand2d_frameNumber_trackedPointNumber_XY=leftHand2d_frameNumber_trackedPointNumber_XY,
-            face2d_frameNumber_trackedPointNumber_XY=face2d_frameNumber_trackedPointNumber_XY,
-            body2d_frameNumber_trackedPointNumber_confidence=body2d_frameNumber_trackedPointNumber_confidence)
+            body2d_frameNumber_trackedPointNumber_XY=np.squeeze(body2d_frameNumber_trackedPointNumber_XY),
+            rightHand2d_frameNumber_trackedPointNumber_XY=np.squeeze(rightHand2d_frameNumber_trackedPointNumber_XY),
+            leftHand2d_frameNumber_trackedPointNumber_XY=np.squeeze(leftHand2d_frameNumber_trackedPointNumber_XY),
+            face2d_frameNumber_trackedPointNumber_XY=np.squeeze(face2d_frameNumber_trackedPointNumber_XY),
+            body2d_frameNumber_trackedPointNumber_confidence=np.squeeze(
+                body2d_frameNumber_trackedPointNumber_confidence))
+
+    def _threshold_by_confidence(self,
+                                 data2d_trackedPoint_dim: np.ndarray,
+                                 data2d_trackedPoint_confidence: np.ndarray,
+                                 confidence_threshold: float):
+
+        threshold_mask = data2d_trackedPoint_confidence < confidence_threshold
+        data2d_trackedPoint_dim[threshold_mask, :] = np.nan
+        return data2d_trackedPoint_dim

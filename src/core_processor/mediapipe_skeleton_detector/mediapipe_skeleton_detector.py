@@ -29,12 +29,21 @@ class Mediapipe2dNumpyArrays:
     body2d_frameNumber_trackedPointNumber_confidence: np.ndarray = None
 
     @property
+    def has_data(self):
+        return not np.isnan(self.body2d_frameNumber_trackedPointNumber_XY).all()
+
+    @property
     def all_data2d_nFrames_nTrackedPts_XY(self):
         """dimensions will be [number_of_frames , number_of_markers, XY]"""
-        return np.hstack([self.body2d_frameNumber_trackedPointNumber_XY,
-                          self.rightHand2d_frameNumber_trackedPointNumber_XY,
-                          self.leftHand2d_frameNumber_trackedPointNumber_XY,
-                          self.face2d_frameNumber_trackedPointNumber_XY])
+
+        if self.body2d_frameNumber_trackedPointNumber_XY is None:
+            # if there's no body data, there's no hand or face data either
+            return
+
+        return np.squeeze(np.hstack([self.body2d_frameNumber_trackedPointNumber_XY,
+                                     self.rightHand2d_frameNumber_trackedPointNumber_XY,
+                                     self.leftHand2d_frameNumber_trackedPointNumber_XY,
+                                     self.face2d_frameNumber_trackedPointNumber_XY]))
 
 
 @dataclass

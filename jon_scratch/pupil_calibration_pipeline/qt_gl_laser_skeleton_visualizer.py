@@ -279,10 +279,8 @@ class QtGlLaserSkeletonVisualizer():
         if self.current_frame_number % 10 == 0:
             print(f'frame number: {self.current_frame_number}')
 
-        self.skeleton_scatter_item.setData(
-            pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, :, :]
-        )
-        self.update_skeleton_lines()
+
+        self.update_skeleton()
         if self.session_data is not None:
             self.update_head_axis_lines()
             self.update_eye_axis_lines()
@@ -290,7 +288,13 @@ class QtGlLaserSkeletonVisualizer():
                 self.update_gaze_lasers()
                 self.update_gaze_laser_tails()
 
-    def update_skeleton_lines(self):
+    def update_skeleton(self):
+        # skel dottos
+        self.skeleton_scatter_item.setData(
+            pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, :, :]
+        )
+
+        #skel lines
         for this_skeleton_line_number, this_connection in enumerate(self.mediapipe_body_connections):
             self.skeleton_connections_list[this_skeleton_line_number].setData(
                 pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, this_connection, :]

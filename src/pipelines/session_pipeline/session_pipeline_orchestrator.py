@@ -185,7 +185,7 @@ class SessionPipelineOrchestrator:
                             mediapipe3d_multi_frame_payload = self._reconstruct_3d_mediapipe(
                                 dictionary_of_mediapipe_payloads_on_this_multi_frame)
                             if show_visualizer_gui and mediapipe3d_multi_frame_payload is not None:
-                                self._visualizer_gui.update_medaiapipe3d_skel(mediapipe3d_multi_frame_payload)
+                                self._visualizer_gui.update_medaiapipe3d_skeleton(mediapipe3d_multi_frame_payload)
                             dictionary_of_mediapipe_payloads_on_this_multi_frame = {}
 
                     timestamp_manager.log_new_timestamp_for_main_loop_ns(time.perf_counter_ns())
@@ -341,18 +341,17 @@ class SessionPipelineOrchestrator:
 
     def _reconstruct_3d_mediapipe(self, dictionary_of_mediapipe_payloads_on_this_multi_frame) -> \
             Union[None, Data3dMultiFramePayload]:
-
-        return
-
         is_there_any_mediapipe_data = []
         for this_cam_medipipe_data in dictionary_of_mediapipe_payloads_on_this_multi_frame.values():
             is_there_any_mediapipe_data.append(
-                this_cam_medipipe_data.pixel_data_numpy_arrays.all_data2d_nFrames_nTrackedPts_XY is not None)
+                this_cam_medipipe_data.pixel_data_numpy_arrays.has_data)
 
         min_cameras_to_reconstruct = 2
         if sum(is_there_any_mediapipe_data) >= min_cameras_to_reconstruct:  # if at least 2 cameras have any data, then we can try to make some 3d dottos
-            mediapipe2d_data_per_cam_dict = self._format_charuco2d_data(
-                dictionary_of_mediapipe_payloads_on_this_multi_frame)
+            mediapipe2d_data_per_cam_dict = {}
+            for this_webcam_id, this_mediapipe_payload in dictionary_of_mediapipe_payloads_on_this_multi_frame.items():
+                mediapipe2d_data_per_cam_dict[this_webcam_id] = this_mediapipe_payload.pixel_data_numpy_arrays.all_data2d_nFrames_nTrackedPts_XY
+
             mediapipe_3d_data_payload = self._triangulate_2d_data(mediapipe2d_data_per_cam_dict,
                                                                   self._mediapipe_skeleton_detector.number_of_tracked_points_total)
 

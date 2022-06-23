@@ -9,6 +9,7 @@ import pyqtgraph.opengl as gl
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
 from pyqtgraph.Qt import QtWidgets
+from mediapipe.python.solutions import holistic as mp_holistic
 
 from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
 from src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import Data3dMultiFramePayload
@@ -19,6 +20,8 @@ logger = logging.getLogger(__name__)
 class QTVisualizerAndGui:
     def __init__(self):
         # https://pyqtgraph.readthedocs.io/en/latest/config_options.html
+        self._skeleton_connections_list = None
+        self._mediapipe_skeleton_initialized = False
         self.pyqtgraph_app = pg.mkQApp('freemocap! :D')
         pg.setConfigOptions(imageAxisOrder='row-major')
 
@@ -59,6 +62,7 @@ class QTVisualizerAndGui:
         self._setup_camera_views_dock()
         self._setup_3d_viewport()
         logger.info('launching QT Visualizer and GUI window')
+
         self._main_window_widget.show()
 
     def update_camera_view_image(self, webcam_id, image_to_display):
@@ -71,7 +75,6 @@ class QTVisualizerAndGui:
             logger.warning(f'Could not find ViewBoxWidget for camera {webcam_id}')
             raise e
         camera_image_item_widget.setImage(cv2.cvtColor(image_to_display, cv2.COLOR_BGR2RGB))
-
 
     def _setup_main_window(self, window_width: int = 1000, window_height: int = 1000):
         """
@@ -166,13 +169,12 @@ class QTVisualizerAndGui:
         # self.opengl_3d_plot_widget.opts['azimuth'] = 0
         # self.opengl_3d_plot_widget.opts['elevation'] = 0
 
-        self.opengl_grid_item = gl.GLGridItem()
-        self.opengl_3d_plot_widget.addItem(self.opengl_grid_item)
+        self.create_grid_planes()
 
         # create XYZ axes
-        x_axis_line_array = np.array([[0, 0, 0], [1, 0, 0]])
-        y_axis_line_array = np.array([[0, 0, 0], [0, 1, 0]])
-        z_axis_line_array = np.array([[0, 0, 0], [0, 0, 1]])
+        x_axis_line_array = np.array([[0, 0, 0], [100, 0, 0]])
+        y_axis_line_array = np.array([[0, 0, 0], [0, 100, 0]])
+        z_axis_line_array = np.array([[0, 0, 0], [0, 0, 100]])
 
         self.origin_x_axis_gl_lineplot_item = pg.opengl.GLLinePlotItem(pos=x_axis_line_array,
                                                                        color=(1, 0, 0, 1),
@@ -201,6 +203,29 @@ class QTVisualizerAndGui:
         self.opengl_3d_plot_dock.addWidget(self.opengl_3d_plot_widget)
         self._main_dock_area.addDock(self.opengl_3d_plot_dock, 'bottom', self._camera_views_dock)
 
+    def create_grid_planes(self):
+        grid_scale = 2e3
+        # create the background grids
+        grid_plane_x = gl.GLGridItem()
+        grid_plane_x.setSize(grid_scale, grid_scale, grid_scale)
+        grid_plane_x.setSpacing(grid_scale / 10, grid_scale / 10, grid_scale / 10)
+        grid_plane_x.rotate(90, 0, 1, 0)
+        grid_plane_x.translate(-grid_scale, 0, 0)
+        self.opengl_3d_plot_widget.addItem(grid_plane_x)
+
+        grid_plane_y = gl.GLGridItem()
+        grid_plane_y.setSize(grid_scale, grid_scale, grid_scale)
+        grid_plane_y.setSpacing(grid_scale / 10, grid_scale / 10, grid_scale / 10)
+        grid_plane_y.rotate(90, 1, 0, 0)
+        grid_plane_y.translate(0, -grid_scale, 0)
+        self.opengl_3d_plot_widget.addItem(grid_plane_y)
+
+        grid_plane_z = gl.GLGridItem()
+        grid_plane_z.setSize(grid_scale, grid_scale, grid_scale)
+        grid_plane_z.setSpacing(grid_scale / 10, grid_scale / 10, grid_scale / 10)
+        grid_plane_z.translate(0, 0, -grid_scale)
+        self.opengl_3d_plot_widget.addItem(grid_plane_z)
+
     def initialize_charuco_dottos(self, number_of_charuco_corners: int):
         dummy_charuco_points = np.zeros((number_of_charuco_corners, 3))
         self._charuco_scatter_item = gl.GLScatterPlotItem(
@@ -220,9 +245,45 @@ class QTVisualizerAndGui:
             pos=charuco_frame_payload.data3d_trackedPointNum_xyz
         )
 
+    def get_mediapipe_connections(self):
+        self.mediapipe_body_connections = [this_connection for this_connection in mp_holistic.POSE_CONNECTIONS]
+        self.mediapipe_hand_connections = [this_connection for this_connection in mp_holistic.HAND_CONNECTIONS]
+        self.mediapipe_face_connections = [this_connection for this_connection in mp_holistic.FACEMESH_TESSELATION]
 
-    def update_medaiapipe3d_skel(self, mediapipe3d_multi_frame_payload):
-        pass
+    def initialize_skel_dottos(self, mediapipe_trackedPoint_xyz: np.ndarray):
+        self.skeleton_scatter_item = gl.GLScatterPlotItem(
+            pos=mediapipe_trackedPoint_xyz, color=(0, 1, 1, 1), size=10,
+            pxMode=False
+        )
+        self.opengl_3d_plot_widget.addItem(self.skeleton_scatter_item)
+
+    def initialize_skel_lines(self, mediapipe_trackedPoint_xyz: np.ndarray):
+        self._skeleton_connections_list = []
+        for this_connection in self.mediapipe_body_connections:
+            this_skel_line = gl.GLLinePlotItem(
+                pos=mediapipe_trackedPoint_xyz[this_connection, :])
+            self._skeleton_connections_list.append(this_skel_line)
+            self.opengl_3d_plot_widget.addItem(this_skel_line)
+
+    def update_medaiapipe3d_skeleton(self, mediapipe3d_multi_frame_payload):
+        mediapipe3d_trackedPoint_xyz = mediapipe3d_multi_frame_payload.data3d_trackedPointNum_xyz
+        if not self._mediapipe_skeleton_initialized:
+            self.get_mediapipe_connections()
+            self.initialize_skel_dottos(mediapipe3d_trackedPoint_xyz)
+            self.initialize_skel_lines(mediapipe3d_trackedPoint_xyz)
+            self._mediapipe_skeleton_initialized = True
+
+        # skel dottos
+        self.skeleton_scatter_item.setData(
+            pos=mediapipe3d_trackedPoint_xyz
+        )
+
+        #skel lines
+        for this_skeleton_line_number, this_connection in enumerate(self.mediapipe_body_connections):
+            self._skeleton_connections_list[this_skeleton_line_number].setData(
+                pos=mediapipe3d_trackedPoint_xyz[this_connection, :]
+            )
+
 
 
 if __name__ == "__main__":

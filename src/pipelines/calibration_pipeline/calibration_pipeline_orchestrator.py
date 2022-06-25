@@ -130,7 +130,7 @@ class CalibrationPipelineOrchestrator:
                     cv2.destroyAllWindows()
                 for this_open_cv_camera in connected_cameras_dict.values():
                     if not save_video_in_frame_loop:
-                        this_open_cv_camera.video_recorder.save_frame_payload_list_to_disk()
+                        this_open_cv_camera.video_recorder.save_list_of_frames_to_list_to_video_file(this_open_cv_camera.frame_list)
                     this_open_cv_camera.video_recorder.close()
 
                 if show_visualizer_gui:
@@ -153,7 +153,10 @@ class CalibrationPipelineOrchestrator:
     def load_calibration_from_session_id(self, session_id:str):
         session_calibration_file_path = get_session_calibration_file_path(session_id)
         logger.info(f"loading camera calibration file from:{str(session_calibration_file_path)}")
-        return freemocap_anipose.CameraGroup.load(str(session_calibration_file_path))
+        if Path(session_calibration_file_path).is_file():
+            return freemocap_anipose.CameraGroup.load(str(session_calibration_file_path))
+
+        return self.load_most_recent_calibration()
 
 
 if __name__ == "__main__":

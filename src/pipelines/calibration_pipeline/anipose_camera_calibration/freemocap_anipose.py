@@ -11,7 +11,7 @@ from collections import defaultdict, Counter
 import toml
 import itertools
 from tqdm import trange
-from pprint import pprint
+from rich import print
 import time
 
 
@@ -608,7 +608,8 @@ class CameraGroup:
                 errors[point_ix] = best_point['error']
                 points_2d[cnums, point_ix] = best_point['points']
 
-        return out, picked_vals, points_2d, errors
+        # return out, picked_vals, points_2d, errors #original code from OG anipose
+        return out #simplify output so that `triangulate_ransac` can be used exactly the same way as `triangulate`
 
     def triangulate_ransac(self, points, undistort=True, min_cams=2, progress=False):
         """Given an CxNx2 array, this returns an Nx3 array of points,
@@ -732,9 +733,9 @@ class CameraGroup:
                 break
 
             if verbose:
-                pprint(error_dict)
+                print(error_dict)
                 print('error: {:.2f}, mu: {:.1f}, ratio: {:.3f}'.format(error, mu, np.mean(good)))
-                print(f'previous error scores: {error_list}')
+                print(f'previous error scores: [magenta] {error_list}[/magenta]')
 
             self.bundle_adjust(p2ds_samp, extra_samp,
                                loss='linear', ftol=ftol,
@@ -748,7 +749,7 @@ class CameraGroup:
         errors_norm = self.reprojection_error(p3ds, p2ds, mean=True)
         error_dict = get_error_dict(errors_full)
         if verbose:
-            pprint(error_dict)
+            print(error_dict)
 
         max_error = 0
         min_error = 0
@@ -771,7 +772,7 @@ class CameraGroup:
         errors_full = self.reprojection_error(p3ds, p2ds, mean=False)
         error_dict = get_error_dict(errors_full)
         if verbose:
-            pprint(error_dict)
+            print(error_dict)
 
         if verbose:
             print('error: ', error)

@@ -8,6 +8,8 @@ from matplotlib import pyplot as plt
 
 from src.config.home_dir import get_session_folder_path
 
+
+plt.set_loglevel("warning")
 logger = logging.getLogger(__name__)
 
 
@@ -141,7 +143,8 @@ class TimestampManager:
             this_multi_frame_timestamps.append(this_cam_frame.timestamp)
         return this_multi_frame_timestamps
 
-    def _get_intra_frame_interval_in_sec(self, this_multi_frame_timestamps) -> float:
+
+    def _get_intra_frame_interval_in_seconds(self, this_multi_frame_timestamps) -> float:
         timestamp_min = np.min(this_multi_frame_timestamps)
         timestamp_max = np.max(this_multi_frame_timestamps)
         return (timestamp_max - timestamp_min) / 1e9
@@ -151,16 +154,17 @@ class TimestampManager:
                                            expected_framerate: Union[int, None]) -> bool:
 
         this_multi_frame_timestamps = self._get_each_frame_timestamp(this_multi_frame_dict)
-        this_multiframe_timestamp_interval_sec = self._get_intra_frame_interval_in_sec(this_multi_frame_timestamps)
+        this_multiframe_timestamp_interval_in_seconds = self._get_intra_frame_interval_in_seconds(this_multi_frame_timestamps)
 
         self._multi_frame_timestamps_list.append(this_multi_frame_timestamps)
-        self._multi_frame_interval_list.append(this_multiframe_timestamp_interval_sec)
+        self._multi_frame_interval_list.append(this_multiframe_timestamp_interval_in_seconds)
 
         if expected_framerate is None:
             # logger.warning('`expected_framerate` not specified, Cannot verify multi_frame synchronization')
+            print(f"this_multiframe_timestamp_interval: {this_multiframe_timestamp_interval_in_seconds*1e3:.1f} milliseconds")
             return True
 
-        if this_multiframe_timestamp_interval_sec > 2*(expected_framerate ** -1):
+        if this_multiframe_timestamp_interval_in_seconds > 2*(expected_framerate ** -1):
             return False
 
         return True

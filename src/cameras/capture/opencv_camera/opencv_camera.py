@@ -3,6 +3,7 @@ import logging
 import platform
 import time
 import traceback
+from typing import List
 
 import cv2
 
@@ -20,7 +21,7 @@ class OpenCVCamera:
     Performant implementation of video capture against webcams
     """
 
-    def __init__(self, config: WebcamConfig, session_id: str = None, calibration_video_bool:bool=False):
+    def __init__(self, config: WebcamConfig, session_id: str = None, calibration_video_bool: bool = False):
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
@@ -53,20 +54,25 @@ class OpenCVCamera:
         return self._name
 
     @property
-    def webcam_id_as_str(self):
+    def webcam_id_as_str(self) -> str:
         return str(self._config.webcam_id)
 
     @property
-    def is_capturing_frames(self):
+    def is_capturing_frames(self) -> bool:
+        """Is the thread capturing frames from the cameras (but not necessarily recording them, that's handled by `self._running_thread.is_recording_frames`)"""
         if not self._running_thread:
             logger.info("Frame Capture thread not running yet")
             return False
         return self._running_thread.is_capturing_frames
 
     @property
-    def latest_frame(self):
+    def latest_frame(self) -> FramePayload:
         self._new_frame_ready = False
         return self._running_thread.latest_frame
+
+    @property
+    def frame_list(self) -> List:
+        return self._running_thread.frame_list
 
     @property
     def latest_frame_number(self):
@@ -85,6 +91,10 @@ class OpenCVCamera:
             return int(self._opencv_video_capture_object.get(4))
         except Exception as e:
             raise e
+
+    def record_frames(self, save_frames_bool:bool):
+        self._running_thread.is_recording_frames = save_frames_bool
+
 
     def connect(self):
         if platform.system() == "Windows":
@@ -123,7 +133,6 @@ class OpenCVCamera:
                                                  image_height=image_height,
                                                  session_id=self.session_id,
                                                  calibration_video_bool=self._calibration_video_bool)
-
 
         return success
 

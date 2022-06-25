@@ -56,13 +56,13 @@ def create_session_folder(session_id:str):
     session_path = Path(get_session_folder_path(session_id, create_folder=True))
     logger.info(f'Creating session folder at: {str(session_path)}')
 
-def get_synchronized_videos_folder_path(session_id: str, create_folder: bool = False):
+def get_synchronized_videos_folder_path(session_id: str, create_folder: bool = True):
     synchronized_videos_path = Path(get_session_folder_path(session_id)) / 'synchronized_videos'
     if create_folder:
         synchronized_videos_path.mkdir(exist_ok=create_folder, parents=True)
+        #this now counts as a "proper" session, so save it to the toml
+        save_most_recent_session_id_to_a_toml_in_the_freemocap_data_folder(session_id)
 
-    #this now counts as a "proper" session, so save it to the toml
-    save_most_recent_session_id_to_a_toml_in_the_freemocap_data_folder(session_id)
     return str(synchronized_videos_path)
 
 

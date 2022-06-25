@@ -12,7 +12,7 @@ from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
 from src.config.data_paths import freemocap_data_path
 from src.config.home_dir import create_session_id, get_session_folder_path, get_session_output_data_folder_path, \
-    get_most_recent_session_id, create_session_folder
+    get_most_recent_session_id, create_session_folder, get_synchronized_videos_folder_path
 from src.core_processor.camera_calibration.camera_calibrator import CameraCalibrator
 from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
 from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import MediaPipeSkeletonDetector, \
@@ -116,7 +116,7 @@ class SessionPipelineOrchestrator:
                     frame_width=cv_cam.image_width(),
                     frame_height=cv_cam.image_height(),
                 )
-                writer.save_frame_payload_list_to_disk(options)
+                writer.save_list_of_frames_to_list_to_video_file(options)
 
     def calibrate_camera_capture_volume(self, use_most_recent_calibration: bool = False,
                                         load_calibration_from_session_id: str = None,
@@ -218,7 +218,6 @@ class SessionPipelineOrchestrator:
 
                         if save_video:
                             create_session_folder(self.session_id)
-
                             print(
                                 f"Recording: {this_open_cv_camera.webcam_id_as_str}, Frame# {this_open_cv_camera.latest_frame_number}")
                             # # save this frame straight to the video file (no risk of memory overflow, but can't handle higher numbers of cameras)
@@ -240,7 +239,7 @@ class SessionPipelineOrchestrator:
                         if detect_mediapipe:
                             # detect mediapipe skeleton
                             this_mediapipe_frame_payload = self._mediapipe_skeleton_detector.detect_skeleton_in_image(
-                                this_cam_latest_frame,
+                                raw_frame_payload= this_cam_latest_frame,
                                 annotated_image=image_to_display)
                             image_to_display = this_mediapipe_frame_payload.annotated_image
 
@@ -278,7 +277,8 @@ class SessionPipelineOrchestrator:
                                 logger.info("GUI closed.")
                                 should_continue = False
 
-                            save_video = self._visualizer_gui.record_button_pressed
+                            #save frames if 'record' button is pressed
+                            this_open_cv_camera.record_frames(self._visualizer_gui.record_button_pressed)
 
                         # exit loop when user presses ESC key
                         exit_key = cv2.waitKey(1)
@@ -292,7 +292,7 @@ class SessionPipelineOrchestrator:
                 traceback.print_exc()
             finally:
                 for this_open_cv_camera in connected_cameras_dict.values():
-                    this_open_cv_camera.video_recorder.save_frame_payload_list_to_disk()
+                    this_open_cv_camera.video_recorder.save_list_of_frames_to_list_to_video_file(this_open_cv_camera.frame_list)
 
                     if show_camera_views_in_windows:
                         logger.info(f"Destroy window {this_open_cv_camera.webcam_id_as_str}")
@@ -371,10 +371,18 @@ class SessionPipelineOrchestrator:
         data2d_camNum_trackedPointNum_xy = np.asarray(each_cam2d_data_list)
 
         # THIS IS WHERE THE MAGIC HAPPENS - 2d data from calibrated, synchronized cameras has now become a 3d estimate. Hurray! :`D
+
+        # simple triangulation
         data3d_trackedPointNum_xyz = self._anipose_camera_calibration_object.triangulate(
             data2d_camNum_trackedPointNum_xy,
             progress=False,
             undistort=True)
+
+        # # triangulation with ransac (to find the best combo of cameras to minimize reprojection error, I think?
+        # data3d_trackedPointNum_xyz = self._anipose_camera_calibration_object.triangulate_ransac(
+        #     data2d_camNum_trackedPointNum_xy,
+        #     progress=False,
+        #     undistort=True)
 
         # Reprojection error is a measure of the quality of the reconstruction. It is the distance (error) between the original 2d point and a reprojection of the 3d point back onto the image plane.
         # TODO - use this for filtering data (i.e. if one view has very high reprojection error, re-do the triangulation without that camera's view data)

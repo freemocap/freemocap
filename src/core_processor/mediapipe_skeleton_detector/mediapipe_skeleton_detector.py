@@ -40,10 +40,19 @@ class Mediapipe2dNumpyArrays:
             # if there's no body data, there's no hand or face data either
             return
 
-        return np.vstack([self.body2d_frameNumber_trackedPointNumber_XY,
-                          self.rightHand2d_frameNumber_trackedPointNumber_XY,
-                          self.leftHand2d_frameNumber_trackedPointNumber_XY,
-                          self.face2d_frameNumber_trackedPointNumber_XY])
+        if len(self.body2d_frameNumber_trackedPointNumber_XY.shape) == 3: #multiple frames
+            return np.hstack([self.body2d_frameNumber_trackedPointNumber_XY,
+                              self.rightHand2d_frameNumber_trackedPointNumber_XY,
+                              self.leftHand2d_frameNumber_trackedPointNumber_XY,
+                              self.face2d_frameNumber_trackedPointNumber_XY])
+        elif len(self.body2d_frameNumber_trackedPointNumber_XY.shape) == 2: #single frame
+            return np.vstack([self.body2d_frameNumber_trackedPointNumber_XY,
+                              self.rightHand2d_frameNumber_trackedPointNumber_XY,
+                              self.leftHand2d_frameNumber_trackedPointNumber_XY,
+                              self.face2d_frameNumber_trackedPointNumber_XY])
+        else:
+            logger.error("data should have either 2 or 3 dimensions")
+
 
 
 @dataclass
@@ -93,14 +102,19 @@ class MediaPipeSkeletonDetector:
                                               self.number_of_right_hand_tracked_points + \
                                               self.number_of_face_tracked_points
 
-    def detect_skeleton_in_image(self, raw_frame_payload: FramePayload,
+    def detect_skeleton_in_image(self,
+                                 raw_image: np.ndarray = None,
+                                 raw_frame_payload: FramePayload = None,
                                  annotated_image: np.ndarray = None) -> Mediapipe2dDataPayload:
 
+        if raw_frame_payload is not None:
+            raw_image = raw_frame_payload.image.copy()
+
         mediapipe_results = self._holistic_tracker.process(
-            raw_frame_payload.image)  # <-this is where the magic happens, i.e. where the raw image is processed by a convolutional neural network to provide an estimate of joint position in pixel coordinates. Please don't forget that this is insane and should not be possible lol
+            raw_image)  # <-this is where the magic happens, i.e. where the raw image is processed by a convolutional neural network to provide an estimate of joint position in pixel coordinates. Please don't forget that this is insane and should not be possible lol
 
         if annotated_image is None:
-            annotated_image = raw_frame_payload.image.copy()
+            annotated_image = raw_image.copy()
 
         annotated_image = self._annotate_image(annotated_image, mediapipe_results)
 
@@ -127,7 +141,8 @@ class MediaPipeSkeletonDetector:
         each_video_frame_height_list = []
 
         mediapipe2d_single_camera_npy_arrays_list = []
-        for video_number, this_synchronized_video_file_path in enumerate(synchronized_videos_path.glob('*.mp4')):
+        for video_number, this_synchronized_video_file_path in track(enumerate(synchronized_videos_path.glob('*.mp4')),
+                                                                     description="detecting mediapipe skeletons"):
             logger.info(f"Running `mediapipe` skeleton detection on  video: {str(this_synchronized_video_file_path)}")
             this_video_capture_object = cv2.VideoCapture(str(this_synchronized_video_file_path))
 
@@ -143,9 +158,9 @@ class MediaPipeSkeletonDetector:
                 raise Exception
 
             while success and image is not None:
-                mediapipe_results = self.detect_skeleton_in_image(image, annotate_image=True)
-                this_video_mediapipe_results_list.append(mediapipe_results)
-                annotated_image = self._annotate_image(image, mediapipe_results)
+                mediapipe2d_data_payload = self.detect_skeleton_in_image(raw_image=image)
+                this_video_mediapipe_results_list.append(mediapipe2d_data_payload.mediapipe_results)
+                annotated_image = self._annotate_image(image, mediapipe2d_data_payload.mediapipe_results)
                 this_video_annotated_images_list.append(annotated_image)
 
                 success, image = this_video_capture_object.read()
@@ -208,8 +223,9 @@ class MediaPipeSkeletonDetector:
                                        self._session_id,
                                        mediapipe_annotated_video_bool=True)
 
-        logger.info(f'Saving mediapipe annotated video: {video_recorder.path_to_save_video_file}')
-        video_recorder.save_image_list_to_disk(annotated_images_list, frame_rate=30)
+        logger.info(f'Saving mediapipe annotated video: {this_video_name}')
+        video_recorder.save_image_list_to_disk(annotated_images_list, frames_per_second=30)
+        logger.info(f'mediapipe annotated video saved to: {video_recorder.path_to_save_video_file}')
 
     def _annotate_image(self, image, mediapipe_results):
         self._mp_drawing.draw_landmarks(image=image,

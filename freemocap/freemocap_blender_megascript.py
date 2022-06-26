@@ -272,6 +272,7 @@ try:
 
 
 
+<<<<<<< Updated upstream
     print('hip_center - midway between left and right hips')
     left_hip_index = 23
     right_hip_index = 24
@@ -282,6 +283,211 @@ try:
     this_empty.scale = [empty_size]*3
     this_empty.parent = freemocap_origin_axes
     mediapipe_tracked_point_names.append(this_empty.name)
+=======
+rig_constraint_dict_of_dicts = {
+    "spine": {
+        'COPY_LOCATION': 'hip_center',
+        'STRETCH_TO': 'chest_center',
+    },
+    "spine.001": {
+        'STRETCH_TO': 'neck_center',
+    },
+    "spine.002": {
+        'STRETCH_TO': 'head_center',
+    },
+    "spine.003": {
+        'STRETCH_TO': 'nose',
+    },
+    "pelvis.L": {
+        'STRETCH_TO': 'left_hip',
+    },
+    "thigh.L": {
+        'COPY_LOCATION': 'left_hip',
+        'STRETCH_TO': 'left_knee',
+    },
+    "shin.L": {
+        'STRETCH_TO': 'left_ankle',
+    },
+    "foot.L": {
+        'STRETCH_TO': 'left_foot_index',
+    },
+    "heel.02.L": {
+        'STRETCH_TO': 'left_ankle',
+    },
+    "shoulder.L": {
+        'COPY_LOCATION': 'neck_center',
+        'STRETCH_TO': 'left_shoulder',
+    },
+    "upper_arm.L": {
+        'STRETCH_TO': 'left_elbow',
+    },
+    "forearm.L": {
+        'STRETCH_TO': 'left_wrist',
+    },
+    "hand.L": {
+        'STRETCH_TO': 'left_index',
+    },
+    "pelvis.R": {
+        'STRETCH_TO': 'right_hip',
+    },
+    "thigh.R": {
+        'COPY_LOCATION': 'right_hip',
+        'STRETCH_TO': 'right_knee',
+    },
+    "shin.R": {
+        'STRETCH_TO': 'right_ankle',
+    },
+    "foot.R": {
+        'STRETCH_TO': 'right_foot_index',
+    },
+    "heel.02.R": {
+        'STRETCH_TO': 'right_ankle',
+    },
+    "shoulder.R": {
+        'COPY_LOCATION': 'neck_center',
+        'STRETCH_TO': 'right_shoulder',
+    },
+    "upper_arm.R": {
+        'STRETCH_TO': 'right_elbow',
+    },
+    "forearm.R": {
+        'STRETCH_TO': 'right_wrist',
+    },
+    "hand.R": {
+        'STRETCH_TO': 'right_index',
+    },
+    "thumb.01.R": {
+        'COPY_LOCATION': 'right_wrist',
+        'STRETCH_TO': 'right_hand_thumb_mcp',
+    },
+    "thumb.02.R": {
+        'STRETCH_TO': 'right_hand_thumb_ip',
+    },
+    "thumb.02.R": {
+        'STRETCH_TO': 'right_hand_thumb_tip',
+    },
+    "palm.01.R": {
+        'COPY_LOCATION': 'right_wrist',
+        'STRETCH_TO': 'right_hand_index_finger_mcp',
+    },
+    "f_index.01.R": {
+        'STRETCH_TO': 'right_hand_index_finger_pip',
+    },
+    "f_index.02.R": {
+        'STRETCH_TO': 'right_hand_index_finger_dip',
+    },
+    "f_index.03.R": {
+        'STRETCH_TO': 'right_hand_index_finger_tip',
+    },
+    "palm.02.R": {
+        'COPY_LOCATION': 'right_wrist',
+        'STRETCH_TO': 'right_hand_middle_finger_mcp',
+    },
+    "f_middle.01.R": {
+        'STRETCH_TO': 'right_hand_middle_finger_pip',
+    },
+    "f_middle.02.R": {
+        'STRETCH_TO': 'right_hand_middle_finger_dip',
+    },
+    "f_middle.03.R": {
+        'STRETCH_TO': 'right_hand_middle_finger_tip',
+    },
+    "palm.03.R": {
+        'COPY_LOCATION': 'right_wrist',
+        'STRETCH_TO': 'right_hand_ring_finger_mcp',
+    },
+    "f_ring.01.R": {
+        'STRETCH_TO': 'right_hand_ring_finger_pip',
+    },
+    "f_ring.02.R": {
+        'STRETCH_TO': 'right_hand_ring_finger_dip',
+    },
+    "f_ring.03.R": {
+        'STRETCH_TO': 'right_hand_ring_finger_tip',
+    },
+    "palm.04.R": {
+        'COPY_LOCATION': 'right_wrist',
+        'STRETCH_TO': 'right_hand_pinky_finger_mcp',
+    },
+    "f_pinky.01.R": {
+        'STRETCH_TO': 'right_hand_pinky_finger_pip',
+    },
+    "f_pinky.02.R": {
+        'STRETCH_TO': 'right_hand_pinky_finger_dip',
+    },
+    "f_pinky.03.R": {
+        'STRETCH_TO': 'right_hand_pinky_finger_tip',
+    },
+    "thumb.01.L": {
+        'COPY_LOCATION': 'left_wrist',
+        'STRETCH_TO': 'left_hand_thumb_mcp',
+    },
+    "thumb.02.L": {
+        'STRETCH_TO': 'left_hand_thumb_ip',
+    },
+    "thumb.03.L": {
+        'STRETCH_TO': 'left_hand_thumb_tip',
+    },
+    "palm.01.L": {
+        'COPY_LOCATION': 'left_wrist',
+        'STRETCH_TO': 'left_hand_index_finger_mcp',
+    },
+    "f_index.01.L": {
+        'STRETCH_TO': 'left_hand_index_finger_pip',
+    },
+    "f_index.02.L": {
+        'STRETCH_TO': 'left_hand_index_finger_dip',
+    },
+    "f_index.03.L": {
+        'STRETCH_TO': 'left_hand_index_finger_tip',
+    },
+    "palm.02.L": {
+        'COPY_LOCATION': 'left_wrist',
+        'STRETCH_TO': 'left_hand_middle_finger_mcp',
+    },
+    "f_middle.01.L": {
+        'STRETCH_TO': 'left_hand_middle_finger_pip',
+    },
+    "f_middle.02.L": {
+        'STRETCH_TO': 'left_hand_middle_finger_dip',
+    },
+    "f_middle.03.L": {
+        'STRETCH_TO': 'left_hand_middle_finger_tip',
+    },
+    "palm.03.L": {
+        'COPY_LOCATION': 'left_wrist',
+        'STRETCH_TO': 'left_hand_ring_finger_mcp',
+    },
+    "f_ring.01.L": {
+        'STRETCH_TO': 'left_hand_ring_finger_pip',
+    },
+    "f_ring.02.L": {
+        'STRETCH_TO': 'left_hand_ring_finger_dip',
+    },
+    "f_ring.03.L": {
+        'STRETCH_TO': 'left_hand_ring_finger_tip',
+    },
+    "palm.04.L": {
+        'COPY_LOCATION': 'left_wrist',
+        'STRETCH_TO': 'left_hand_pinky_finger_mcp',
+    },
+    "f_pinky.01.L": {
+        'STRETCH_TO': 'left_hand_pinky_finger_pip',
+    },
+    "f_pinky.02.L": {
+        'STRETCH_TO': 'left_hand_pinky_finger_dip',
+    },
+    "f_pinky.03.L": {
+        'STRETCH_TO': 'left_hand_pinky_finger_tip',
+    },
+}
+
+#loop through dictionary applying  constraints
+try:
+    bpy.ops.object.mode_set(mode='POSE')
+except:
+    pass
+>>>>>>> Stashed changes
 
     for frame_num in range(end_frame):
         this_empty.location = [hips_xyz[frame_num,0],

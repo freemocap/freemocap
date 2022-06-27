@@ -25,6 +25,7 @@ from rich.padding import Padding
 
 
 from freemocap import (
+    fmc_good_frame_finder,
     recordingconfig,
     runcams,
     calibrate,
@@ -33,6 +34,7 @@ from freemocap import (
     fmc_deeplabcut,
     fmc_origin_alignment,
     fmc_mediapipe_annotation,
+    fmc_skeleton_data_holder,
     reconstruct3D,
     play_skeleton_animation,
     session,
@@ -249,8 +251,11 @@ def RunMe(sessionID=None,
             if place_skeleton_on_origin:
                 sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated = sesh.mediaPipeSkel_fr_mar_xyz.copy()
                 np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed_unrotated.npy', sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated) #save data to npy
+                good_frame = fmc_good_frame_finder.find_good_frame(sesh.mediaPipeSkel_fr_mar_xyz, .6, debug = True) #.6 is an initial guess for the velocity. seems to be a safe bet for for all the cases I've tried
 
-                origin_aligned_skeleton_data_XYZ = fmc_origin_alignment.align_skeleton_with_origin(sesh,sesh.mediaPipeSkel_fr_mar_xyz,good_clean_frame_number)
+                mediapipe_indices = fmc_mediapipe.mediapipe_indices
+
+                origin_aligned_skeleton_data_XYZ = fmc_origin_alignment.align_skeleton_with_origin(sesh.mediaPipeSkel_fr_mar_xyz, mediapipe_indices, good_frame, debug = True)
                 np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', origin_aligned_skeleton_data_XYZ) #save data to npy
 
             else:

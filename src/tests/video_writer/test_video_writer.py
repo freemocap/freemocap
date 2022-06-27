@@ -43,7 +43,7 @@ class VideoWriterTestCase(TestCase):
             fps=1,
         )
 
-        vw.save_list_of_frames_to_list_to_video_file(save_options)
+        vw.save_list_of_frames_to_video_file(save_options)
         expected_path = Path().joinpath(file_path, "movie.mp4")
 
         assert save_options.full_path == expected_path, "Paths do not match"

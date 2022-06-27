@@ -1,4 +1,5 @@
 import logging
+import time
 from pathlib import Path
 from typing import Dict, List, Union
 
@@ -17,8 +18,11 @@ class TimestampLogger:
     _num_frames_processed: int
     _start_time: float
 
-    def __init__(self, _session_start_time_perf_counter_ns: int):
-        self._session_start_time_perf_counter_ns = _session_start_time_perf_counter_ns
+    def __init__(self, session_start_time_perf_counter_ns: int=None):
+        if session_start_time_perf_counter_ns is None:
+            self._session_start_time_perf_counter_ns = time.perf_counter_ns()
+        else:
+            self._session_start_time_perf_counter_ns = session_start_time_perf_counter_ns
         self._num_frames_processed = 0
         self._timestamps_ns = np.empty(0)
 
@@ -36,7 +40,7 @@ class TimestampLogger:
         return self._num_frames_processed
 
     @property
-    def timestamps_unix_ns(self):
+    def timestamps_from_record_start_ns(self):
         """return timestamps in nanoseconds in Unix epoch format (which is both the most useful, ugliest, AND funniest time format around. You can use `self.timestamps_in_seconds_from_zero()` for a more intuitive time format"""
         return self._timestamps_ns - self._session_start_time_perf_counter_ns
 
@@ -50,13 +54,13 @@ class TimestampLogger:
         return (self._timestamps_ns - self._session_start_time_perf_counter_ns) / 1e9
 
     @property
-    def latest_timestamp(self):
+    def latest_timestamp_in_seconds_from_record_start(self):
         """returns timestamps in seconds from session start"""
         if self.timestamps.shape[0] > 0:
             return self.timestamps[-1]
         return None
 
-    def log_new_timestamp_ns(self, timestamp):
+    def log_new_timestamp_perf_counter_ns(self, timestamp:int):
         self._timestamps_ns = np.append(self._timestamps_ns, timestamp)
         self._num_frames_processed += 1
 
@@ -65,22 +69,34 @@ class TimestampManager:
     def __init__(self,
                  session_id:str,
                  webcam_ids: List[str],
-                 session_start_time_unix_ns: int,
-                 _session_start_time_perf_counter_ns:int):
+                 session_start_time_unix_ns: int=None,
+                 _session_start_time_perf_counter_ns:int=None):
         self._session_id = session_id
-        self._session_start_time_unix_ns = session_start_time_unix_ns #time.time_ns(), UNIX epoch time, nanoseconds
-        self._session_start_time_perf_counter_ns = _session_start_time_perf_counter_ns #time.perf_counter_ns, arbitrary timebase, nanoseconds - corresponds to self.session_start_time_ns
+
+        if session_start_time_unix_ns is None:
+            self._session_start_time_unix_ns = time.time_ns() # UNIX epoch time, nanoseconds
+        else:
+            self._session_start_time_unix_ns = session_start_time_unix_ns
+
+        if _session_start_time_perf_counter_ns is None:
+            self._session_start_time_perf_counter_ns =  time.perf_counter_ns # arbitrary timebase, nanoseconds - corresponds to self._session_start_time_unix_ns
+        else:
+            self._session_start_time_perf_counter_ns = _session_start_time_perf_counter_ns
         self._webcam_ids = webcam_ids
         self._webcam_timestamp_loggers: Dict[str, TimestampLogger] = self._initialize_webcam_timestamp_loggers(
             webcam_ids)
-        self._main_loop_timestamp_logger = TimestampLogger(self._session_start_time_perf_counter_ns)
-        self._multi_frame_timestamp_logger = TimestampLogger(self._session_start_time_perf_counter_ns)
+        self._main_loop_timestamp_logger = TimestampLogger(session_start_time_perf_counter_ns=self._session_start_time_perf_counter_ns)
+        self._multi_frame_timestamp_logger = TimestampLogger(session_start_time_perf_counter_ns=self._session_start_time_perf_counter_ns)
         self._multi_frame_timestamps_list = []
         self._multi_frame_interval_list = []
 
     @property
     def webcam_timestamp_loggers(self):
         return self._webcam_timestamp_loggers
+
+    def timestamp_logger_for_webcam_id(self, webcam_id:str)->TimestampLogger:
+        return self._webcam_timestamp_loggers[webcam_id]
+
     @property
     def number_of_cameras(self):
         return len(self._webcam_timestamp_loggers)
@@ -108,7 +124,7 @@ class TimestampManager:
     def _initialize_webcam_timestamp_loggers(self, webcam_ids: List[str]):
         dictionary_of_timestamp_logger_objects = {}
         for webcam_id in webcam_ids:
-            dictionary_of_timestamp_logger_objects[webcam_id] = TimestampLogger(self._session_start_time_unix_ns)
+            dictionary_of_timestamp_logger_objects[webcam_id] = TimestampLogger(session_start_time_perf_counter_ns=self._session_start_time_perf_counter_ns)
         return dictionary_of_timestamp_logger_objects
 
     def get_timestamps_from_camera_in_seconds_from_session_start(self, webcam_id):
@@ -124,14 +140,14 @@ class TimestampManager:
         return self._webcam_timestamp_loggers[webcam_id].median_frames_per_second
 
     def log_new_timestamp_for_main_loop_ns(self, timestamp):
-        self._main_loop_timestamp_logger.log_new_timestamp_ns(timestamp)
+        self._main_loop_timestamp_logger.log_new_timestamp_perf_counter_ns(timestamp)
 
     def log_new_multi_frame_timestamp_ns(self, timestamp):
-        self._multi_frame_timestamp_logger.log_new_timestamp_ns(timestamp)
+        self._multi_frame_timestamp_logger.log_new_timestamp_perf_counter_ns(timestamp)
 
     def log_new_timestamp_for_webcam_ns(self, webcam_id: str, timestamp: Union[float, int],
                                         frame_number: int = None):
-        self._webcam_timestamp_loggers[webcam_id].log_new_timestamp_ns(timestamp)
+        self._webcam_timestamp_loggers[webcam_id].log_new_timestamp_perf_counter_ns(timestamp)
         if frame_number is not None:
             assert (self._webcam_timestamp_loggers[webcam_id].number_of_frames == frame_number,
                     f"Numer of timestamps ({self._webcam_timestamp_loggers[webcam_id].number_of_frames}) logged does not match frame_number ({frame_number})  for: camera_{webcam_id}")
@@ -140,7 +156,7 @@ class TimestampManager:
 
         this_multi_frame_timestamps = []
         for this_cam_id, this_cam_frame in this_multi_frame_dict.items():
-            this_multi_frame_timestamps.append(this_cam_frame.timestamp)
+            this_multi_frame_timestamps.append(this_cam_frame.timestamp_in_seconds_from_record_start)
         return this_multi_frame_timestamps
 
 

@@ -3,7 +3,7 @@ import logging
 import platform
 import time
 import traceback
-from typing import List
+from typing import List, Union
 
 import cv2
 
@@ -12,6 +12,7 @@ from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.cameras.viewer.cv_cam_viewer import CvCamViewer
 from src.config.webcam_config import WebcamConfig
 from src.cameras.capture.opencv_camera.camera_stream_thread_handler import VideoCaptureThread
+from src.core_processor.timestamp_manager.timestamp_manager import TimestampLogger
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,17 @@ class OpenCVCamera:
     Performant implementation of video capture against webcams
     """
 
-    def __init__(self, config: WebcamConfig, session_id: str = None, calibration_video_bool: bool = False):
+    def __init__(self,
+                 config: WebcamConfig,
+                 session_id: str = None,
+                 timestamp_logger: TimestampLogger = None,
+                 calibration_video_bool: bool = False):
+
+        if timestamp_logger is None:
+            self._timestamp_logger = TimestampLogger()
+        else:
+            self._timestamp_logger = timestamp_logger
+
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
@@ -71,10 +82,6 @@ class OpenCVCamera:
         return self._running_thread.latest_frame
 
     @property
-    def frame_list(self) -> List:
-        return self._running_thread.frame_list
-
-    @property
     def latest_frame_number(self):
         return self._number_of_frames_recorded
 
@@ -92,9 +99,8 @@ class OpenCVCamera:
         except Exception as e:
             raise e
 
-    def record_frames(self, save_frames_bool:bool):
+    def record_frames(self, save_frames_bool: bool):
         self._running_thread.is_recording_frames = save_frames_bool
-
 
     def connect(self):
         if platform.system() == "Windows":
@@ -178,12 +184,16 @@ class OpenCVCamera:
         if not self._opencv_video_capture_object.grab():
             return FramePayload(False, None, None)
 
-        timestamp_ns_pre = time.perf_counter_ns()
+        # timestamp_ns_pre = time.perf_counter_ns()
+        timestamp_ns_pre = time.time_ns()
         success, image = self._opencv_video_capture_object.retrieve()
-        timestamp_ns_post = time.perf_counter_ns()
+        timestamp_ns_post = time.time_ns()
+        # timestamp_ns_post = time.perf_counter_ns()
 
-        timestamp_ns = (timestamp_ns_pre + timestamp_ns_post) / 2
+        it_took_this_many_seconds_to_grab_the_frame = (timestamp_ns_post-timestamp_ns_pre)/1e9
 
+        self._timestamp_logger.log_new_timestamp_perf_counter_ns(time.perf_counter_ns())
+        latest_timestamp_in_seconds_from_record_start = self._timestamp_logger.latest_timestamp_in_seconds_from_record_start
         self._new_frame_ready = success
 
         if success:
@@ -191,7 +201,7 @@ class OpenCVCamera:
 
         return FramePayload(success=success,
                             image=image,
-                            timestamp=timestamp_ns,
+                            timestamp_in_seconds_from_record_start=latest_timestamp_in_seconds_from_record_start,
                             frame_number=self.latest_frame_number,
                             webcam_id=self.webcam_id_as_str)
 

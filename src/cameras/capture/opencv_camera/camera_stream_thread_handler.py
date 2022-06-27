@@ -74,7 +74,7 @@ class VideoCaptureThread(threading.Thread):
                 start = time.perf_counter_ns()
                 self._frame = self._get_next_frame()
                 self._elapsed_during_frame_grab.append(time.perf_counter_ns() - start)
-                self._timestamps_npy.append(self._frame.timestamp)
+                self._timestamps_npy.append(self._frame.timestamp_in_seconds_from_record_start)
                 self._num_frames_processed += 1
                 if self.is_recording_frames:
                     self._frame_list.append(self._frame)

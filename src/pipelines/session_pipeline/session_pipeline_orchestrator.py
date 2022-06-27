@@ -116,7 +116,7 @@ class SessionPipelineOrchestrator:
                     frame_width=cv_cam.image_width(),
                     frame_height=cv_cam.image_height(),
                 )
-                writer.save_list_of_frames_to_list_to_video_file(options)
+                writer.save_list_of_frames_to_video_file(options)
 
     def calibrate_camera_capture_volume(self, use_most_recent_calibration: bool = False,
                                         load_calibration_from_session_id: str = None,
@@ -144,7 +144,7 @@ class SessionPipelineOrchestrator:
             self,
             show_visualizer_gui=True,
             show_camera_views_in_windows=False,
-            detect_mediapipe=True,
+            detect_mediapipe=False,
             detect_charuco=True,
             reconstruct_3d=True,
             save_video=True,
@@ -210,7 +210,7 @@ class SessionPipelineOrchestrator:
                         image_to_display = this_cam_latest_frame.image.copy()
 
                         # log timestamp
-                        this_cam_this_frame_timestamp_ns = this_cam_latest_frame.timestamp
+                        this_cam_this_frame_timestamp_ns = this_cam_latest_frame.timestamp_in_seconds_from_record_start
                         this_cam_this_frame_number = this_cam_latest_frame.frame_number
                         timestamp_manager.log_new_timestamp_for_webcam_ns(this_webcam_id,
                                                                           this_cam_this_frame_timestamp_ns,
@@ -292,7 +292,7 @@ class SessionPipelineOrchestrator:
                 traceback.print_exc()
             finally:
                 for this_open_cv_camera in connected_cameras_dict.values():
-                    this_open_cv_camera.video_recorder.save_list_of_frames_to_list_to_video_file(this_open_cv_camera.frame_list)
+                    this_open_cv_camera.video_recorder.save_list_of_frames_to_video_file(this_open_cv_camera.frame_list)
 
                     if show_camera_views_in_windows:
                         logger.info(f"Destroy window {this_open_cv_camera.webcam_id_as_str}")

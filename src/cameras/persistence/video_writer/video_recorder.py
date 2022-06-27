@@ -64,6 +64,10 @@ class VideoRecorder:
     def frame_count(self):
         return len(self._frame_payload_list)
 
+    @property
+    def frame_list(self):
+        return self._frame_payload_list
+
 
 
     def save_frame_payload_to_video_file(self, frame_payload: FramePayload):
@@ -78,21 +82,24 @@ class VideoRecorder:
     def append_frame_payload_to_list(self, frame_payload: FramePayload):
         self._frame_payload_list.append(frame_payload)
 
-    def save_list_of_frames_to_list_to_video_file(self, list_of_frames:List[FramePayload]):
+    def save_list_of_frames_to_video_file(self,
+                                          list_of_frames:List[FramePayload],
+                                          frames_per_second:float=None):
         if len(list_of_frames) == 0:
             logging.error(f"No frames to save for camera: {self._video_name}")
-            return
+            raise Exception
 
-        self._timestamps_npy = self._gather_timestamps(list_of_frames)
+        if frames_per_second is None:
+            self._timestamps_npy = self._gather_timestamps(list_of_frames)
+            frames_per_second = np.nanmedian((np.diff(self._timestamps_npy) ** -1))
 
-        frames_per_second = float(np.nanmedian((np.diff(self._timestamps_npy) ** -1) / 1e9))
         self._initialize_video_writer(frames_per_second=frames_per_second)
         self._write_frame_list_to_video_file(list_of_frames)
         self._save_timestamps(self._timestamps_npy)
 
     def save_image_list_to_disk(self,
                                 image_list: List[np.ndarray],
-                                frames_per_second: Union[int, float] = None):
+                                frames_per_second:float):
         if len(image_list) == 0:
             logging.error(f"No frames to save for : {self._video_name}")
             return
@@ -143,7 +150,7 @@ class VideoRecorder:
         timestamps_npy = np.empty(0)
         try:
             for frame in list_of_frames:
-                timestamps_npy = np.append(timestamps_npy, frame.timestamp)
+                timestamps_npy = np.append(timestamps_npy, frame.timestamp_in_seconds_from_record_start)
         except:
             logger.error("Error gathering timestamps")
 

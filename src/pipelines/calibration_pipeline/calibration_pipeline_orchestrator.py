@@ -83,7 +83,7 @@ class CalibrationPipelineOrchestrator:
                             continue
 
                         # log timestamp
-                        this_cam_this_frame_timestamp_ns = this_cam_latest_frame.timestamp
+                        this_cam_this_frame_timestamp_ns = this_cam_latest_frame.timestamp_in_seconds_from_record_start
                         this_cam_this_frame_number = this_cam_latest_frame.frame_number
                         timestamp_manager.log_new_timestamp_for_webcam_ns(this_webcam_id,
                                                                           this_cam_this_frame_timestamp_ns,
@@ -130,7 +130,7 @@ class CalibrationPipelineOrchestrator:
                     cv2.destroyAllWindows()
                 for this_open_cv_camera in connected_cameras_dict.values():
                     if not save_video_in_frame_loop:
-                        this_open_cv_camera.video_recorder.save_list_of_frames_to_list_to_video_file(this_open_cv_camera.frame_list)
+                        this_open_cv_camera.video_recorder.save_list_of_frames_to_video_file(this_open_cv_camera.video_recorder.frame_list)
                     this_open_cv_camera.video_recorder.close()
 
                 if show_visualizer_gui:

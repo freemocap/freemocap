@@ -6,7 +6,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from jon_scratch.pupil_calibration_pipeline.qt_gl_laser_skeleton_visualizer import QtGlLaserSkeletonVisualizer
-from src.config.home_dir import create_session_id, get_session_folder_path, get_most_recent_session_id
+from src.config.home_dir import create_session_id, get_session_folder_path, get_most_recent_session_id, \
+    create_session_folder
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import CalibrationPipelineOrchestrator
 from src.pipelines.session_pipeline.session_pipeline_orchestrator import SessionPipelineOrchestrator, \
     load_mediapipe3d_skeleton_data, load_mediapipe2d_data
@@ -54,12 +55,12 @@ async def create_session(session_create_model: SessionCreateModel = SessionCreat
 def calibrate_session(session_calibrate_model: SessionCalibrateModel = SessionCalibrateModel()):
     """calibate capture volume - record synchronized videos (from all available camras wtih default parameters for now) and process with Anipose to produce a camera calibration (saved as a `.toml` file in the session folder"""
 
-    if session_calibrate_model.session_id is None or session_id_model.session_id == "string":
-        this_session_id = get_most_recent_session_id()
-    else:
-        this_session_id = session_calibrate_model.session_id
+    session_id = session_calibrate_model.session_id
+    if session_id is None or session_id == "string":
+        session_id = get_most_recent_session_id()
 
-    calibration_orchestrator = CalibrationPipelineOrchestrator(this_session_id)
+
+    calibration_orchestrator = CalibrationPipelineOrchestrator(session_id)
     calibration_orchestrator.record_videos(show_visualizer_gui=False,
                                            save_video_in_frame_loop=False,
                                            show_camera_views_in_windows=True,

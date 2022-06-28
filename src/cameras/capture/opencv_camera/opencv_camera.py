@@ -26,12 +26,15 @@ class OpenCVCamera:
                  config: WebcamConfig,
                  session_id: str = None,
                  timestamp_logger: TimestampLogger = None,
+                 camera_view_update_function = None,
                  calibration_video_bool: bool = False):
 
         if timestamp_logger is None:
             self._timestamp_logger = TimestampLogger()
         else:
             self._timestamp_logger = timestamp_logger
+
+        self._camera_view_update_function = camera_view_update_function
 
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
@@ -120,7 +123,8 @@ class OpenCVCamera:
                     self._config.webcam_id
                 )
             )
-            return False
+            raise Exception
+
 
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
         fps_input_stream = int(self._opencv_video_capture_object.get(5))
@@ -181,27 +185,36 @@ class OpenCVCamera:
         # https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and
         # -grab
 
-        if not self._opencv_video_capture_object.grab():
-            return FramePayload(False, None, None)
 
-        # timestamp_ns_pre = time.perf_counter_ns()
-        timestamp_ns_pre = time.time_ns()
-        success, image = self._opencv_video_capture_object.retrieve()
-        timestamp_ns_post = time.time_ns()
-        # timestamp_ns_post = time.perf_counter_ns()
-
-        it_took_this_many_seconds_to_grab_the_frame = (timestamp_ns_post-timestamp_ns_pre)/1e9
+        try:
+            #
+            # uncomment above and below these calls to measure the time it takes to grab a frame
+            #
+            # timestamp_ns_pre = time.perf_counter_ns()
+            # timestamp_ns_pre = time.time_ns()
+            if not self._opencv_video_capture_object.grab():
+                return FramePayload(False, None, None)
+            success, image = self._opencv_video_capture_object.retrieve()
+            # timestamp_ns_post = time.time_ns()
+            # timestamp_ns_post = time.perf_counter_ns()
+            # it_took_this_many_seconds_to_grab_the_frame = (timestamp_ns_post-timestamp_ns_pre)/1e9
+        except:
+            logger.error(f"Failed to read frame from Camera: {self.webcam_id_as_str}")
 
         self._timestamp_logger.log_new_timestamp_perf_counter_ns(time.perf_counter_ns())
+
         latest_timestamp_in_seconds_from_record_start = self._timestamp_logger.latest_timestamp_in_seconds_from_record_start
         self._new_frame_ready = success
 
         if success:
             self._number_of_frames_recorded += 1
+            if self._camera_view_update_function is not None:
+                self._camera_view_update_function(self.webcam_id_as_str, image)
 
         return FramePayload(success=success,
                             image=image,
                             timestamp_in_seconds_from_record_start=latest_timestamp_in_seconds_from_record_start,
+                            timestamp_unix_seconds = time.time_ns(),
                             frame_number=self.latest_frame_number,
                             webcam_id=self.webcam_id_as_str)
 

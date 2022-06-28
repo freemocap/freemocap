@@ -1529,60 +1529,60 @@ try:
 
         ##############################
         #%% Create mesh
-        # try:
-        #     bpy.ops.object.mode_set(mode='OBJECT')
-        # except:
-        #     pass
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+        except:
+            pass
 
-        # print('loading verticies')
-        # vertices = mediapipe_skel_fr_mar_dim[current_frame,:,:] #don't plot face dottos until we know what to do with them 
-        # print('done loading verticies')
-        # #edges defined above
-        # faces = []
-        # stick_figure_mesh = bpy.data.meshes.new('stick_figure_mesh')
-        # print('a')
-        # stick_figure_mesh.from_pydata(vertices, edges, faces)
-        # print('b')
-        # stick_figure_mesh.update()
-        # print('c')
-        # # make object from mesh
-        # stick_figure_mesh_object = bpy.data.objects.new('stick_figure_mesh', stick_figure_mesh)
-        # print('d')
-        # # make collection
-        # mesh_collection = bpy.data.collections.new('mesh_collection')
-        # print('e')
-        # bpy.context.scene.collection.children.link(mesh_collection)
-        # print('f')
-        # # add object to scene collection
-        # mesh_collection.objects.link(stick_figure_mesh_object)
-        # print('g')
+        print('loading verticies')
+        vertices = mediapipe_skel_fr_mar_dim[current_frame,:,:] #don't plot face dottos until we know what to do with them 
+        print('done loading verticies')
+        #edges defined above
+        faces = []
+        stick_figure_mesh = bpy.data.meshes.new('stick_figure_mesh')
+        print('a')
+        stick_figure_mesh.from_pydata(vertices, edges, faces)
+        print('b')
+        stick_figure_mesh.update()
+        print('c')
+        # make object from mesh
+        stick_figure_mesh_object = bpy.data.objects.new('stick_figure_mesh', stick_figure_mesh)
+        print('d')
+        # make collection
+        mesh_collection = bpy.data.collections.new('mesh_collection')
+        print('e')
+        bpy.context.scene.collection.children.link(mesh_collection)
+        print('f')
+        # add object to scene collection
+        mesh_collection.objects.link(stick_figure_mesh_object)
+        print('g')
 
-        # bpy.context.view_layer.objects.active = bpy.data.objects['stick_figure_mesh']
-        # print('h')
+        bpy.context.view_layer.objects.active = bpy.data.objects['stick_figure_mesh']
+        print('h')
 
-        # bpy.context.object.mode
-        # try:
-        #     bpy.ops.object.editmode_toggle()
-        # except:
-        #     pass
-        # print('i')
+        bpy.context.object.mode
+        try:
+            bpy.ops.object.editmode_toggle()
+        except:
+            pass
+        print('i')
 
-        # #### skin that mesh!
-        # print('skinning mesh \o/')
-        # bpy.data.objects['stick_figure_mesh'].modifiers.new('stick_figure_mesh_skin', 'SKIN')
-        # print('resizing mesh')
-        # skin_radius = .025
-        # bpy.ops.transform.skin_resize(value=(skin_radius, skin_radius, skin_radius))
+        #### skin that mesh!
+        print('skinning mesh \o/')
+        bpy.data.objects['stick_figure_mesh'].modifiers.new('stick_figure_mesh_skin', 'SKIN')
+        print('resizing mesh')
+        skin_radius = .025
+        bpy.ops.transform.skin_resize(value=(skin_radius, skin_radius, skin_radius))
 
-        # ########
-        # # # parent mesh to armature
-        # print('parenting mesh to armarture with automatic weights...')
-        # bpy.ops.object.mode_set(mode='OBJECT')
-        # bpy.data.objects['stick_figure_mesh'].parent = this_metarig
-        # bpy.context.view_layer.objects.active = this_metarig
-        # bpy.context.active_object.select_set(True)
-        # bpy.data.objects['stick_figure_mesh'].select_set(True)
-        # bpy.ops.object.parent_set(type='ARMATURE_AUTO')
+        ########
+        # # parent mesh to armature
+        print('parenting mesh to armarture with automatic weights...')
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.data.objects['stick_figure_mesh'].parent = this_metarig
+        bpy.context.view_layer.objects.active = this_metarig
+        bpy.context.active_object.select_set(True)
+        bpy.data.objects['stick_figure_mesh'].select_set(True)
+        bpy.ops.object.parent_set(type='ARMATURE_AUTO')
 
 
         #####################

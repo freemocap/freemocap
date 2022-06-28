@@ -6,6 +6,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from jon_scratch.pupil_calibration_pipeline.qt_gl_laser_skeleton_visualizer import QtGlLaserSkeletonVisualizer
+from src.cameras.launch_camera_frame_loop import launch_camera_frame_loop
+from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.config.home_dir import create_session_id, get_session_folder_path, get_most_recent_session_id, \
     create_session_folder
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import CalibrationPipelineOrchestrator
@@ -15,6 +17,10 @@ from src.pipelines.session_pipeline.session_pipeline_orchestrator import Session
 logger = logging.getLogger(__name__)
 
 session_router = APIRouter()
+
+class TweakedPydanticBaseModel(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class SessionCreateModel(BaseModel):
@@ -26,12 +32,14 @@ class SessionResponse(BaseModel):
     session_path: str
 
 
-class SessionCalibrateModel(BaseModel):
+class SessionCalibrateModel(TweakedPydanticBaseModel):
     """
     session_id: str, ID for the session we're calibrating
     charuco_square_size:Union[int, float], the size of one of the black squares on the charuco board (preferably) in milimeters
     """
     session_id: str = None
+    webcam_configs_dict: dict = None
+    opencv_camera_manager: OpenCVCameraManager = None
     charuco_square_size: Union[int, float] = 39
 
 
@@ -59,15 +67,22 @@ def calibrate_session(session_calibrate_model: SessionCalibrateModel = SessionCa
     if session_id is None or session_id == "string":
         session_id = get_most_recent_session_id()
 
-
     calibration_orchestrator = CalibrationPipelineOrchestrator(session_id)
-    calibration_orchestrator.record_videos(show_visualizer_gui=False,
-                                           save_video_in_frame_loop=False,
-                                           show_camera_views_in_windows=True,
-                                           )
+    # calibration_orchestrator.record_videos(show_visualizer_gui=True,
+    #                                        save_video_in_frame_loop=False,
+    #                                        show_camera_views_in_windows=False,
+    #                                        )
+
+    launch_camera_frame_loop(session_id=session_id,
+                             webcam_configs_dict=session_calibrate_model.webcam_configs_dict,
+                             opencv_camera_manager=session_calibrate_model.opencv_camera_manager,
+                             show_camera_views_in_windows=True,
+                             calibration_videos_bool=True,
+                             detect_charuco_in_image=True,
+                             )
     calibration_orchestrator.run_anipose_camera_calibration(
         charuco_square_size=session_calibrate_model.charuco_square_size,
-        pin_camera_0_to_origin = True)
+        pin_camera_0_to_origin=True)
 
 
 @session_router.post("/session/record")
@@ -96,9 +111,9 @@ def mediapipe_reconstruct_3D_skeletons_offline(session_id_model: SessionIdModel 
     else:
         session_id = session_id_model.session_id
 
-
     this_session_orchestrator = SessionPipelineOrchestrator(session_id=session_id)
-    this_session_orchestrator.anipose_camera_calibration_object = CalibrationPipelineOrchestrator().load_calibration_from_session_id(session_id)
+    this_session_orchestrator.anipose_camera_calibration_object = CalibrationPipelineOrchestrator().load_calibration_from_session_id(
+        session_id)
     this_session_orchestrator.mediapipe2d_numCams_numFrames_numTrackedPoints_XY = load_mediapipe2d_data(session_id)
     this_session_orchestrator.reconstruct3d_from_2d_data_offline()
 
@@ -121,17 +136,16 @@ def visualize_session_offline(session_id_model: SessionIdModel = None):
 
 
 if __name__ == "__main__":
-
-    #create_session
-    session_id = create_session_id('session_router_as_main')
+    # create_session
+    session_id_in = create_session_id('session_router_as_main')
     session_id_model = SessionIdModel(session_id=session_id)
 
     # #calibrate_session
-    session_calibrate_model = SessionCalibrateModel(session_id=session_id,
+    session_calibrate_model_in = SessionCalibrateModel(session_id=session_id_in,
                                                     charuco_square_size=39)
-    calibrate_session(session_calibrate_model)
+    calibrate_session(session_calibrate_model_in)
 
-    #record new session
+    # record new session
     record_session(session_id_model)
 
     # #process_

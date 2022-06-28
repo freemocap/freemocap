@@ -119,12 +119,16 @@ class OpenCVCameraManager:
     @contextmanager
     def start_capture_session_all_cams(
             self,
-            calibration_videos=False,
+            webcam_configs_dict: Dict[str, WebcamConfig] = None,
+            camera_view_update_function=None,
+            calibration_videos: bool = False,
     ) -> ContextManager[Dict[str, OpenCVCamera]]:
 
         self._initialize_timestamp_logger()
         open_cv_camera_objects = self._create_opencv_cameras(
+            webcam_configs_dict=webcam_configs_dict,
             timestamp_manager=self._timestamp_manager,
+            camera_view_update_function=camera_view_update_function,
             calibration_videos=calibration_videos, )
         try:
 
@@ -139,34 +143,52 @@ class OpenCVCameraManager:
             traceback.print_exc()
 
     def _create_opencv_cameras(self,
-                               timestamp_manager:TimestampManager,
+                               timestamp_manager: TimestampManager,
+                               webcam_configs_dict: Dict[str, WebcamConfig] = None,
+                               camera_view_update_function=None,
                                calibration_videos: bool = False,
                                ):
 
-
         raw_camera_objects = self._detected_cams_data.cameras_found_list
         open_cv_cameras: List[OpenCVCamera] = []
+
+        if webcam_configs_dict is None:
+            webcam_configs_dict = {}
+
         for this_raw_cam in raw_camera_objects:
-            this_cam_timestamp_logger = timestamp_manager.timestamp_logger_for_webcam_id(webcam_id=this_raw_cam.webcam_id)
+            this_cam_timestamp_logger = timestamp_manager.timestamp_logger_for_webcam_id(
+                webcam_id=this_raw_cam.webcam_id)
+
+            webcam_configs_dict[this_raw_cam.webcam_id] = WebcamConfig(webcam_id=this_raw_cam.webcam_id)
+
             opencv_cam_obj = self._create_single_opencv_cam(webcam_id=this_raw_cam.webcam_id,
+                                                            webcam_config=webcam_configs_dict[this_raw_cam.webcam_id],
                                                             timestamp_logger=this_cam_timestamp_logger,
+                                                            camera_view_update_function=camera_view_update_function,
                                                             calibration_video_bool=calibration_videos)
             open_cv_cameras.append(opencv_cam_obj)
         return open_cv_cameras
 
     def _create_single_opencv_cam(self,
                                   webcam_id: str,
-                                  timestamp_logger:TimestampLogger,
+                                  webcam_config: WebcamConfig(),
+                                  timestamp_logger: TimestampLogger,
+                                  camera_view_update_function=None,
                                   calibration_video_bool: bool = False,
                                   ):
-        webcam_config_model = self._config_service.webcam_config_by_id(webcam_id, self._session_id)
-        single_camera_config = WebcamConfig(webcam_id=webcam_config_model.webcam_id,
-                                            exposure=webcam_config_model.exposure,
-                                            resolution_width=webcam_config_model.resolution_width,
-                                            resolution_height=webcam_config_model.resolution_height, )
-        return OpenCVCamera(config=single_camera_config,
+        #
+        # JSM NOTE - This method seems to want to load webcam_config from disk? It might be useful, but I'll bypass it for now
+        #
+        # webcam_config_model = self._config_service.webcam_config_by_id(webcam_id, self._session_id)
+        # single_camera_config = WebcamConfig(webcam_id=webcam_config_model.webcam_id,
+        #                                     exposure=webcam_config_model.exposure,
+        #                                     resolution_width=webcam_config_model.resolution_width,
+        #                                     resolution_height=webcam_config_model.resolution_height, )
+        webcam_config.webcam_id = webcam_id
+        return OpenCVCamera(config=webcam_config,
                             session_id=self._session_id,
                             timestamp_logger=timestamp_logger,
+                            camera_view_update_function=camera_view_update_function,
                             calibration_video_bool=calibration_video_bool)
 
     def _initialize_timestamp_logger(self):

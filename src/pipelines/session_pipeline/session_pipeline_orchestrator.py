@@ -187,7 +187,7 @@ class SessionPipelineOrchestrator:
                                 mediapipe3d_multi_frame_payload = self._reconstruct_3d_mediapipe(
                                     dictionary_of_mediapipe_payloads_on_this_multi_frame)
                                 if show_visualizer_gui and mediapipe3d_multi_frame_payload is not None:
-                                    self._visualizer_gui.update_medaiapipe3d_skeleton(mediapipe3d_multi_frame_payload)
+                                    self._visualizer_gui.update_mediapipe3d_skeleton(mediapipe3d_multi_frame_payload)
                                 dictionary_of_mediapipe_payloads_on_this_multi_frame = {}
 
                     timestamp_manager.log_new_timestamp_for_main_loop_ns(time.perf_counter_ns())

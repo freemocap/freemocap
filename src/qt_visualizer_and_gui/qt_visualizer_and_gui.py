@@ -265,7 +265,7 @@ class QTVisualizerAndGui:
             self._skeleton_connections_list.append(this_skel_line)
             self.opengl_3d_plot_widget.addItem(this_skel_line)
 
-    def update_medaiapipe3d_skeleton(self, mediapipe3d_multi_frame_payload):
+    def update_mediapipe3d_skeleton(self, mediapipe3d_multi_frame_payload):
         mediapipe3d_trackedPoint_xyz = mediapipe3d_multi_frame_payload.data3d_trackedPointNum_xyz
         if not self._mediapipe_skeleton_initialized:
             self.get_mediapipe_connections()

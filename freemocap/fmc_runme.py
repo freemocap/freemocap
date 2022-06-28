@@ -251,11 +251,11 @@ def RunMe(sessionID=None,
             if place_skeleton_on_origin:
                 sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated = sesh.mediaPipeSkel_fr_mar_xyz.copy()
                 np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed_unrotated.npy', sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated) #save data to npy
-                good_frame = fmc_good_frame_finder.find_good_frame(sesh.mediaPipeSkel_fr_mar_xyz, .6, debug = True) #.6 is an initial guess for the velocity. seems to be a safe bet for for all the cases I've tried
+                good_frame = fmc_good_frame_finder.find_good_frame(sesh.mediaPipeSkel_fr_mar_xyz, .6, debug = False) #.6 is an initial guess for the velocity. seems to be a safe bet for for all the cases I've tried
 
                 mediapipe_indices = fmc_mediapipe.mediapipe_indices
 
-                origin_aligned_skeleton_data_XYZ = fmc_origin_alignment.align_skeleton_with_origin(sesh.mediaPipeSkel_fr_mar_xyz, mediapipe_indices, good_frame, debug = True)
+                origin_aligned_skeleton_data_XYZ = fmc_origin_alignment.align_skeleton_with_origin(sesh.mediaPipeSkel_fr_mar_xyz, mediapipe_indices, good_frame, debug = False)
                 np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', origin_aligned_skeleton_data_XYZ) #save data to npy
 
             else:

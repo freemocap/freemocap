@@ -150,11 +150,13 @@ def CalibrateCaptureVolume(session,board, calVideoFrameLength = 1):
                 except:
                     # print("failed frame:", frame)
                     continue
-
-        path_to_save_calibration_data = session.freemocap_module_path/'fmc_calibration'/'previous_calibration.toml'
-        path_to_save_charuco_data = session.freemocap_module_path/'fmc_calibration'/'charuco_2d_points.npy'
-        cgroup.dump(path_to_save_calibration_data)
-        np.save(path_to_save_charuco_data,charuco_nCams_nFrames_nImgPts_XY)
+                
+        saved_calibration_folder = session.freemocap_module_path/'fmc_calibration'
+        saved_calibration_folder.mkdir(exist_ok=True, parents=True)
+        calibration_toml_path = saved_calibration_folder/'previous_calibration.toml'
+        calibration_charuco2d_npy_path = saved_calibration_folder/'charuco_2d_points.npy'
+        cgroup.dump(calibration_toml_path)
+        np.save(calibration_charuco2d_npy_path,charuco_nCams_nFrames_nImgPts_XY)
         
         
     charuco2d_filename = session.dataArrayPath/'charuco_2d_points.npy'

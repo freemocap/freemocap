@@ -30,6 +30,7 @@ class OpenCVCameraManager:
     def __init__(self,
                  session_id: str = None,
                  expected_framerate: Union[int, float] = None,
+                 shut_down_event_bool:bool = None,
                  ):
         self._session_id = session_id
         self._config_service = UserConfigService()
@@ -39,6 +40,7 @@ class OpenCVCameraManager:
         self._connected_cameras_dict = {}
         self._available_cameras_dict = {}
         self._expected_framerate = expected_framerate
+        self._shut_down_event_bool = shut_down_event_bool
 
     @property
     def timestamp_manager(self):
@@ -206,3 +208,7 @@ class OpenCVCameraManager:
     def _stop_frame_capture(self, opencv_cam_objs: List[OpenCVCamera]):
         for cv_cam in opencv_cam_objs:
             cv_cam.stop_frame_capture()
+
+    def close(self):
+        for this_cam in self._connected_cameras_dict.values():
+            this_cam.close()

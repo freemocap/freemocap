@@ -112,7 +112,7 @@ class OpenCVCamera:
             cap_backend = cv2.CAP_ANY
 
         self._opencv_video_capture_object = cv2.VideoCapture(
-            self._config.webcam_id, cap_backend
+            int(self._config.webcam_id), cap_backend
         )
         self._apply_configuration()
         success, image = self._opencv_video_capture_object.read()
@@ -160,6 +160,7 @@ class OpenCVCamera:
 
     def _create_thread(self):
         return VideoCaptureThread(
+            webcam_id=self.webcam_id_as_str,
             get_next_frame=self.get_next_frame,
         )
 
@@ -209,7 +210,7 @@ class OpenCVCamera:
         if success:
             self._number_of_frames_recorded += 1
             if self._camera_view_update_function is not None:
-                self._camera_view_update_function(self.webcam_id_as_str, image)
+                self._camera_view_update_function(self.webcam_id_as_str, cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
         return FramePayload(success=success,
                             image=image,

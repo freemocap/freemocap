@@ -79,7 +79,7 @@ class VideoCaptureThread(threading.Thread):
                 self._elapsed_during_frame_grab.append(time.perf_counter_ns() - start)
                 self._timestamps_npy.append(self._frame.timestamp_in_seconds_from_record_start)
                 self._num_frames_processed += 1
-                logger.debug(f"Camera {self._webcam_id}: captured frame# {self._num_frames_processed}: Recording? {self.is_recording_frames}")
+                # logger.debug(f"Camera {self._webcam_id}: captured frame# {self._num_frames_processed}: Recording? {self.is_recording_frames}")
                 if self.is_recording_frames:
                     self._frame_list.append(self._frame)
         except:

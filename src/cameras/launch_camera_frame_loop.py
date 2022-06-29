@@ -23,9 +23,11 @@ def launch_camera_frame_loop(
         show_camera_views_in_windows: bool = False,
         calibration_videos_bool: bool = False,
         detect_charuco_in_image: bool = True,
-        camera_view_update_function=None
+        camera_view_update_function=None,
+        update_gui_function = None,
+        exit_event_bool:bool = False,
 ):
-    calibration_videos_bool = False
+
     any_frames_recorded = False
 
     if detect_charuco_in_image:
@@ -41,6 +43,10 @@ def launch_camera_frame_loop(
         try:
             should_continue = True
             while should_continue:
+
+                if update_gui_function is None:
+                    update_gui_function()
+
                 for this_webcam_id, this_opencv_camera in connected_cameras_dict.items():
                     this_frame_payload = this_opencv_camera.latest_frame
 
@@ -57,11 +63,16 @@ def launch_camera_frame_loop(
                             image_to_display,
                             opencv_camera_manager.timestamp_manager
                         )
+
                     # exit loop when user presses ESC key
                     exit_key = cv2.waitKey(1)
                     if exit_key == 27:
                         logger.info("ESC has been pressed.")
                         should_continue = False
+
+                    if exit_event_bool is not None:
+                        if exit_event_bool:
+                            should_continue = False
         except:
             logger.error("Printing traceback")
             traceback.print_exc()
@@ -72,3 +83,4 @@ def launch_camera_frame_loop(
                     this_open_cv_camera.video_recorder.save_list_of_frames_to_video_file(
                         this_open_cv_camera.video_recorder.frame_list)
                 this_open_cv_camera.video_recorder.close()
+                this_open_cv_camera.close()

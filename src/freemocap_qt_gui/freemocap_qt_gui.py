@@ -29,19 +29,35 @@ logger = logging.getLogger(__name__)
 default_webcam_config = WebcamConfig()
 
 
+class MainWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+
+    def closeEvent(self, QCloseEvent):
+        self.shut_it_down = True
+
+
 class FreemocapQtGUI:
     def __init__(self):
         self._camera_view_docks_dict = {}
         self._camera_view_update_functions_dict = {}
         self._camera_qt_image_items_dict = {}
         self.pyqtgraph_app = pg.mkQApp('freemocap pyqtgraph app! :D')
-        self._setup_and_launch()
         self._session_id = None
         self._shut_it_down = False
         self.gui_update_number = -1
         self._dictionary_of_available_webcam_configs = {}
         self._available_cameras_data_tree_widget = None
         self._have_calibration_bool = False
+        self._shut_it_down = False
+        self._opencv_camera_manager = None
+        self._setup_and_launch()
+
+    def shut_it_down(self):
+        if self._opencv_camera_manager is not None:
+            self._opencv_camera_manager.close()
+        self._main_window_widget.close()
+        return self._shut_it_down
 
     @property
     def session_id(self):
@@ -96,11 +112,20 @@ class FreemocapQtGUI:
         session_id_widget.setLayout(session_id_layout)
         self._welcome_panel_layout_widget.addWidget(session_id_widget, row='next')
 
-        self._start_button = QtWidgets.QPushButton('Start new session')
+        self._start_button_text = 'Start new session'
+        self._pointing_arrow_emoji = "  ⬅️⬅️  "
+        self._start_button = QtWidgets.QPushButton(self._start_button_text + self._pointing_arrow_emoji)
         self._start_button.setEnabled(True)
         self._start_button.clicked.connect(self._start)
 
         self._welcome_panel_layout_widget.addWidget(self._start_button, row='next')
+
+        self._shut_down_button = QtWidgets.QPushButton('Shut it down! 🦕')
+        self._shut_down_button.hide()
+        self._shut_down_button.setEnabled(True)
+        self._shut_down_button.clicked.connect(self.shut_it_down)
+
+        self._welcome_panel_layout_widget.addWidget(self._shut_down_button, row='next')
 
     def _create_setup_control_panel(self):
 
@@ -114,8 +139,8 @@ class FreemocapQtGUI:
         self._main_dock_area.addDock(self._setup_panel_dock,
                                      'bottom',
                                      self._welcome_panel_dock)
-
-        self._detect_cameras_button = QtWidgets.QPushButton('Detect Available Cameras 🔎🎥')
+        self._detect_available_cameras_text = 'Detect Available Cameras 🔎🎥'
+        self._detect_cameras_button = QtWidgets.QPushButton(self._detect_available_cameras_text + self._pointing_arrow_emoji)
         self._detect_cameras_button.setEnabled(True)
         self._detect_cameras_button.clicked.connect(self._detect_available_cameras)
         self._setup_panel_layout_widget.addWidget(self._detect_cameras_button)
@@ -124,7 +149,8 @@ class FreemocapQtGUI:
         self.hint_label.hide()
         self._setup_panel_layout_widget.addWidget(self.hint_label, row=1, col=0)
 
-        self._connect_to_cameras_button = QtWidgets.QPushButton('Connect to cameras 🎥 ✨')
+        self._connect_to_cameras_button_text = 'Connect to cameras 🎥 ✨'
+        self._connect_to_cameras_button = QtWidgets.QPushButton(self._connect_to_cameras_button_text)
         self._connect_to_cameras_button.setEnabled(True)
         self._connect_to_cameras_button.clicked.connect(self._connect_to_cameras)
         self._connect_to_cameras_button.hide()
@@ -134,7 +160,7 @@ class FreemocapQtGUI:
         self._calibrate_cameras_button.setEnabled(True)
         self._calibrate_cameras_button.clicked.connect(self._record_calibration_videos)
         self._calibrate_cameras_button.hide()
-        self._setup_panel_layout_widget.addWidget(self._calibrate_cameras_button, row=0, col=1)
+        self._setup_panel_layout_widget.addWidget(self._calibrate_cameras_button, row=1, col=1)
 
         # self._use_previous_calibration_checkbox = QtWidgets.QCheckBox("Use Previous Calibration 🎥 ⏳")
         # self._use_previous_calibration_checkbox.setChecked(False)
@@ -150,6 +176,10 @@ class FreemocapQtGUI:
 
     def _start(self):
         logger.debug('start button pressed')
+        self._start_button.text = self._start_button_text
+
+        self._shut_down_button.show()
+
         self._lock_in_session_id(self.session_id_line_edit.text())
         # self._start_button.setText("Reset 💫")
         self._start_button.hide()
@@ -178,7 +208,7 @@ class FreemocapQtGUI:
 
         logger.debug(
             f"`get_or_create_cams()` returned:_available_cameras_dictionary {self._dictionary_of_available_webcam_configs}")
-        self._detect_cameras_button.setText('Re-Detect Available Cameras 🔎🎥')
+        self._detect_cameras_button.setText('Re-Detect Available Cameras 🔎🎥' )
         self.hint_label.hide()
 
         if self._available_cameras_data_tree_widget is None:
@@ -187,16 +217,20 @@ class FreemocapQtGUI:
 
         self._update_webcam_config_parameter_tree(self._dictionary_of_available_webcam_configs)
         self._main_window_width *= 1.618
-        self._main_window_widget.resize(self._main_window_width, self._main_window_height)
+        self._main_window_widget.resize(int(self._main_window_width), int(self._main_window_height))
 
+        self._connect_to_cameras_button.setText(self._connect_to_cameras_button_text + self._pointing_arrow_emoji)
         self._connect_to_cameras_button.show()
-        self._calibrate_cameras_button.show()
+        # self._calibrate_cameras_button.show()
 
-        self._launch_camera_windows_button.show()
+        # self._launch_camera_windows_button.show()
 
         # self._use_previous_calibration_checkbox.show()
 
     def _connect_to_cameras(self):
+        self._main_window_width = self._main_window_width *2
+        # self._main_window_height
+        self._main_window_widget.resize(self._main_window_width, self._main_window_height)
 
         self._dictionary_of_camera_qt_image_items = self._create_camera_view_docks(
             self._dictionary_of_available_webcam_configs)
@@ -205,9 +239,12 @@ class FreemocapQtGUI:
         launch_camera_frame_loop(session_id=self.session_id,
                                  webcam_configs_dict=self._dictionary_of_available_webcam_configs,
                                  opencv_camera_manager=self._opencv_camera_manager,
-                                 camera_view_update_function=self.update_camera_view_image)
+                                 camera_view_update_function=self.update_camera_view_image,
+                                 update_gui_function=self.pyqtgraph_app.processEvents)
+
 
     def _create_camera_view_docks(self, dictionary_of_available_webcams) -> Dict:
+        pg.setConfigOptions(imageAxisOrder='row-major') #set this so camera images aren't rotated
         dictionary_of_camera_qt_image_items = {}
         for this_webcam_id in dictionary_of_available_webcams.keys():
             dictionary_of_camera_qt_image_items[this_webcam_id] = self._setup_camera_view_dock(this_webcam_id)
@@ -232,7 +269,7 @@ class FreemocapQtGUI:
             logger.warning(f'Could not find ViewBoxWidget for camera {webcam_id}')
             raise e
 
-        camera_image_item_widget.setImage(image_to_display)
+        camera_image_item_widget.setImage(image_to_display, )
 
     def _record_calibration_videos(self):
         logger.debug("`launch camera windows` button pressed")

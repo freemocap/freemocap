@@ -148,4 +148,7 @@ data/
 *.divx
 freemocap_runme_script_jsm.py
 freemocap-ui/threejs_stuff/
-fmc_calibration/
+
+freemocap/fmc_calibration/previous_calibration.toml
+freemocap/fmc_calibration/charuco_2d_points.npy
+

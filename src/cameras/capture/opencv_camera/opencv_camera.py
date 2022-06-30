@@ -180,29 +180,27 @@ class OpenCVCamera:
 
     def get_next_frame(self):
 
-        # Why `grab()` not `read()`? see ->
-        # https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and
-        # -grab
-
-
         try:
             #
             # uncomment above and below these calls to measure the time it takes to grab a frame
             #
             # timestamp_ns_pre = time.perf_counter_ns()
-            # timestamp_ns_pre = time.time_ns()
-            if not self._opencv_video_capture_object.grab():
-                return FramePayload(False, None, None)
+
+            ### Q - Why are we using `cv2.VideoCapture.grab();cv2.VideoCapture.retrieve();`  and not just `cv2.VideoCapture.read()`?
+            ### A - see -> https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
+            self._opencv_video_capture_object.grab()
             success, image = self._opencv_video_capture_object.retrieve()
-            # timestamp_ns_post = time.time_ns()
+
             # timestamp_ns_post = time.perf_counter_ns()
             # it_took_this_many_seconds_to_grab_the_frame = (timestamp_ns_post-timestamp_ns_pre)/1e9
         except:
             logger.error(f"Failed to read frame from Camera: {self.webcam_id_as_str}")
+            raise Exception
 
         self._timestamp_logger.log_new_timestamp_perf_counter_ns(time.perf_counter_ns())
 
-        latest_timestamp_in_seconds_from_record_start = self._timestamp_logger.latest_timestamp_in_seconds_from_record_start
+        self._timestamp_logger.log_new_timestamp_perf_counter_ns(time.perf_counter_ns())
+
         self._new_frame_ready = success
 
         if success:
@@ -212,8 +210,8 @@ class OpenCVCamera:
 
         return FramePayload(success=success,
                             image=image,
-                            timestamp_in_seconds_from_record_start=latest_timestamp_in_seconds_from_record_start,
-                            timestamp_unix_seconds = time.time_ns(),
+                            timestamp_in_seconds_from_record_start=self._timestamp_logger.latest_timestamp_in_seconds_from_record_start,
+                            timestamp_unix_time_seconds = time.time(),
                             frame_number=self.latest_frame_number,
                             webcam_id=self.webcam_id_as_str)
 

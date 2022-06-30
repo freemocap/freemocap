@@ -15,53 +15,43 @@ logger = logging.getLogger(__name__)
 
 
 class TimestampLogger:
-    _num_frames_processed: int
-    _start_time: float
-
-    def __init__(self, session_start_time_perf_counter_ns: int=None):
-        if session_start_time_perf_counter_ns is None:
-            self._session_start_time_perf_counter_ns = time.perf_counter_ns()
-        else:
-            self._session_start_time_perf_counter_ns = session_start_time_perf_counter_ns
+    def __init__(self,
+                 logger_name:str,
+                 session_start_time_perf_counter_ns:int,
+                 ):
+        self._logger_name = logger_name
+        self._session_start_time_perf_counter_ns = session_start_time_perf_counter_ns
         self._num_frames_processed = 0
-        self._timestamps_ns = np.empty(0)
+        self._timestamps_perf_counter_ns = np.empty(0)
 
-    def is_started(self):
-        return self._num_frames_processed > 0
-
+        
     @property
     def median_frames_per_second(self):
         if self._num_frames_processed <= 10:
             return 0
-        return np.nanmedian(np.diff(self._timestamps_ns) / 1e9) ** -1
+        return np.nanmedian(np.diff(self._timestamps_perf_counter_ns) / 1e9) ** -1
 
     @property
     def number_of_frames(self):
         return self._num_frames_processed
 
     @property
-    def timestamps_from_record_start_ns(self):
-        """return timestamps in nanoseconds in Unix epoch format (which is both the most useful, ugliest, AND funniest time format around. You can use `self.timestamps_in_seconds_from_zero()` for a more intuitive time format"""
-        return self._timestamps_ns - self._session_start_time_perf_counter_ns
-
-    @property
-    def timestamps(self):
-        return self.timestamps_in_seconds_from_session_start
-
-    @property
     def timestamps_in_seconds_from_session_start(self):
         """timestamps in seconds counting up from zero (where zero is the start time of the recording session)"""
-        return (self._timestamps_ns - self._session_start_time_perf_counter_ns) / 1e9
+        return (self._timestamps_perf_counter_ns - self._session_start_time_perf_counter_ns) / 1e9
 
     @property
     def latest_timestamp_in_seconds_from_record_start(self):
         """returns timestamps in seconds from session start"""
-        if self.timestamps.shape[0] > 0:
-            return self.timestamps[-1]
-        return None
+        try:
+            if self.timestamps_in_seconds_from_session_start.shape[0] > 0:
+                return self.timestamps_in_seconds_from_session_start[-1]
+        except:
+            logger.error(f"Failed to return latest timestamp")
+
 
     def log_new_timestamp_perf_counter_ns(self, timestamp:int):
-        self._timestamps_ns = np.append(self._timestamps_ns, timestamp)
+        self._timestamps_perf_counter_ns = np.append(self._timestamps_perf_counter_ns, timestamp)
         self._num_frames_processed += 1
 
 
@@ -69,24 +59,23 @@ class TimestampManager:
     def __init__(self,
                  session_id:str,
                  webcam_ids: List[str],
-                 session_start_time_unix_ns: int=None,
-                 _session_start_time_perf_counter_ns:int=None):
+                 session_start_time_unix_ns: int,
+                 _session_start_time_perf_counter_ns:int):
+
         self._session_id = session_id
+        self._session_start_time_unix_ns = session_start_time_unix_ns
+        self._session_start_time_perf_counter_ns = _session_start_time_perf_counter_ns
 
-        if session_start_time_unix_ns is None:
-            self._session_start_time_unix_ns = time.time_ns() # UNIX epoch time, nanoseconds
-        else:
-            self._session_start_time_unix_ns = session_start_time_unix_ns
-
-        if _session_start_time_perf_counter_ns is None:
-            self._session_start_time_perf_counter_ns =  time.perf_counter_ns # arbitrary timebase, nanoseconds - corresponds to self._session_start_time_unix_ns
-        else:
-            self._session_start_time_perf_counter_ns = _session_start_time_perf_counter_ns
         self._webcam_ids = webcam_ids
-        self._webcam_timestamp_loggers: Dict[str, TimestampLogger] = self._initialize_webcam_timestamp_loggers(
-            webcam_ids)
-        self._main_loop_timestamp_logger = TimestampLogger(session_start_time_perf_counter_ns=self._session_start_time_perf_counter_ns)
-        self._multi_frame_timestamp_logger = TimestampLogger(session_start_time_perf_counter_ns=self._session_start_time_perf_counter_ns)
+        self._webcam_timestamp_loggers: Dict[str, TimestampLogger] = self._initialize_webcam_timestamp_loggers(webcam_ids)
+        self._main_loop_timestamp_logger = TimestampLogger(logger_name = 'main_loop',
+                                                           session_start_time_perf_counter_ns=self._session_start_time_perf_counter_ns)
+
+        self._multi_frame_timestamp_logger = TimestampLogger(logger_name = 'multi_frame',
+                                                             session_start_time_perf_counter_ns=self._session_start_time_perf_counter_ns)
+
+
+
         self._multi_frame_timestamps_list = []
         self._multi_frame_interval_list = []
 
@@ -124,7 +113,8 @@ class TimestampManager:
     def _initialize_webcam_timestamp_loggers(self, webcam_ids: List[str]):
         dictionary_of_timestamp_logger_objects = {}
         for webcam_id in webcam_ids:
-            dictionary_of_timestamp_logger_objects[webcam_id] = TimestampLogger(session_start_time_perf_counter_ns=self._session_start_time_perf_counter_ns)
+            dictionary_of_timestamp_logger_objects[webcam_id] = TimestampLogger(logger_name = 'camera_'+webcam_id,
+                                                                                session_start_time_perf_counter_ns=self._session_start_time_perf_counter_ns)
         return dictionary_of_timestamp_logger_objects
 
     def get_timestamps_from_camera_in_seconds_from_session_start(self, webcam_id):
@@ -139,18 +129,20 @@ class TimestampManager:
     def median_frames_per_second_for_webcam(self, webcam_id):
         return self._webcam_timestamp_loggers[webcam_id].median_frames_per_second
 
-    def log_new_timestamp_for_main_loop_ns(self, timestamp):
+    def log_new_timestamp_for_main_loop_perf_coutner_ns(self, timestamp):
         self._main_loop_timestamp_logger.log_new_timestamp_perf_counter_ns(timestamp)
 
     def log_new_multi_frame_timestamp_ns(self, timestamp):
         self._multi_frame_timestamp_logger.log_new_timestamp_perf_counter_ns(timestamp)
 
-    def log_new_timestamp_for_webcam_ns(self, webcam_id: str, timestamp: Union[float, int],
+    def log_new_timestamp_for_webcam_ns(self,
+                                        webcam_id: str,
+                                        timestamp: Union[float, int],
                                         frame_number: int = None):
         self._webcam_timestamp_loggers[webcam_id].log_new_timestamp_perf_counter_ns(timestamp)
         if frame_number is not None:
-            assert (self._webcam_timestamp_loggers[webcam_id].number_of_frames == frame_number,
-                    f"Numer of timestamps ({self._webcam_timestamp_loggers[webcam_id].number_of_frames}) logged does not match frame_number ({frame_number})  for: camera_{webcam_id}")
+            if not self._webcam_timestamp_loggers[webcam_id].number_of_frames == frame_number:
+                logger.error("Numer of timestamps ({self._webcam_timestamp_loggers[webcam_id].number_of_frames}) logged does not match frame_number ({frame_number})  for: camera_{webcam_id}")
 
     def _get_each_frame_timestamp(self, this_multi_frame_dict) -> List:
 
@@ -177,7 +169,7 @@ class TimestampManager:
 
         if expected_framerate is None:
             # logger.warning('`expected_framerate` not specified, Cannot verify multi_frame synchronization')
-            print(f"this_multiframe_timestamp_interval: {this_multiframe_timestamp_interval_in_seconds*1e3:.1f} milliseconds")
+            print(f"this_multiframe_timestamp_interval: {this_multiframe_timestamp_interval_in_seconds*1e3:.6f} milliseconds")
             return True
 
         if this_multiframe_timestamp_interval_in_seconds > 2*(expected_framerate ** -1):

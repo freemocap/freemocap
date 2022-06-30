@@ -11,7 +11,9 @@ from src.config.webcam_config import WebcamConfig
 import asyncio
 
 from src.core_processor.show_cam_window import show_cam_window
+from src.core_processor.utils.image_fps_writer import write_fps_to_image
 from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import CharucoBoardDetector
+from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +24,8 @@ def launch_camera_frame_loop(
         show_camera_views_in_windows: bool = True,
         calibration_videos_bool: bool = False,
         detect_charuco_in_image: bool = True,
-        camera_view_update_function=None,
-        # update_gui_function=None,
-        record_frames_bool: bool = True
+        record_frames_bool: bool = True,
+        show_visualizer_gui:bool = False,
 ):
     any_frames_recorded = False
 
@@ -32,41 +33,67 @@ def launch_camera_frame_loop(
         charuco_board_detector = CharucoBoardDetector()
 
 
-    opencv_camera_manager = OpenCVCameraManager(session_id=session_id,
-                                                    expected_framerate=None)
 
-    with opencv_camera_manager.start_capture_session_all_cams(webcam_configs_dict=webcam_configs_dict,
-                                                              camera_view_update_function=camera_view_update_function,
-                                                              calibration_videos=calibration_videos_bool, ) as connected_cameras_dict:
+        opencv_camera_manager = OpenCVCameraManager(session_id=session_id,
+                                                    expected_framerate=None)
+    with opencv_camera_manager.start_capture_session_all_cams(
+            webcam_configs_dict=webcam_configs_dict,
+            calibration_videos=calibration_videos_bool,
+    ) as connected_cameras_dict:
+
+
+        timestamp_manager = opencv_camera_manager.timestamp_manager# <-this is defines the start-time of the timestamp loggers for each camera
+
         try:
+
+            if show_visualizer_gui:
+                visualizer_gui = QTVisualizerAndGui()
+                visualizer_gui.setup_and_launch(opencv_camera_manager.available_webcam_ids)
+
             should_continue = True
             while should_continue:
 
-                # if update_gui_function is None:
-                #     update_gui_function()
+                timestamp_manager.log_new_timestamp_for_main_loop_perf_coutner_ns(time.perf_counter_ns())
 
-                for this_webcam_id, this_opencv_camera in connected_cameras_dict.items():
-                    this_frame_payload = this_opencv_camera.latest_frame
+                if not opencv_camera_manager.new_multi_frame_ready():
+                    continue
 
-                    image_to_display = this_frame_payload.image
+                this_multi_frame_payload = opencv_camera_manager.latest_multi_frame
+
+                for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():
+
+                    this_cam_latest_frame = this_multi_frame_payload.frames_dict[this_webcam_id]
+
+                    if this_cam_latest_frame is None:
+                        continue
+
+                    # save frame to video file
+                    if record_frames_bool:
+                        any_frames_recorded = True
+                        this_open_cv_camera.video_recorder.append_frame_payload_to_list(this_cam_latest_frame)
+
+                    image_to_display = this_cam_latest_frame.image.copy()
 
                     if detect_charuco_in_image:
+                        # detect charuco board
                         this_charuco_frame_payload = charuco_board_detector.detect_charuco_board(
-                            this_frame_payload)
-                        image_to_display = this_charuco_frame_payload.annotated_image
+                            this_cam_latest_frame)
+                        image_to_display = this_charuco_frame_payload.annotated_image.copy()
+
+                    image_to_display = write_fps_to_image(
+                        image_to_display,
+                        timestamp_manager.median_frames_per_second_for_webcam(this_webcam_id),
+                    )
 
                     if show_camera_views_in_windows:
                         should_continue = show_cam_window(
-                            this_webcam_id,
-                            image_to_display,
-                            opencv_camera_manager.timestamp_manager
+                            this_webcam_id, image_to_display, timestamp_manager
                         )
 
-                    if record_frames_bool:
-                        any_frames_recorded = True
-                        this_opencv_camera.record_frames(True)
-                    else:
-                        this_opencv_camera.record_frames(False)
+                    if show_visualizer_gui:
+
+                        visualizer_gui.update_camera_view_image(this_webcam_id,
+                                                                      image_to_display)
 
                     # exit loop when user presses ESC key
                     exit_key = cv2.waitKey(1)
@@ -79,9 +106,21 @@ def launch_camera_frame_loop(
             traceback.print_exc()
         finally:
 
+            if show_visualizer_gui:
+                visualizer_gui.close()
+            if show_camera_views_in_windows:
+                # logger.info(f"Destroy window {this_open_cv_camera.webcam_id_as_str}")
+                # cv2.destroyWindow(this_open_cv_camera.webcam_id_as_str)
+                cv2.destroyAllWindows()
+
+
             for this_open_cv_camera in connected_cameras_dict.values():
                 if any_frames_recorded:
+                    logger.info(f"Saving {this_open_cv_camera.webcam_id_as_str} video to disk")
                     this_open_cv_camera.video_recorder.save_list_of_frames_to_video_file(
                         this_open_cv_camera.video_recorder.frame_list)
                 this_open_cv_camera.video_recorder.close()
-                this_open_cv_camera.close()
+
+            logger.info("Creating camera timestamp diagnostic plot")
+            timestamp_manager.create_diagnostic_plots()
+

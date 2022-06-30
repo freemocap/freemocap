@@ -127,8 +127,6 @@ class OpenCVCamera:
 
 
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
-        fps_input_stream = int(self._opencv_video_capture_object.get(5))
-        logger.debug("FPS of webcam hardware/input stream: {}".format(fps_input_stream))
 
         if self.session_id is False:
             logger.info(
@@ -209,8 +207,8 @@ class OpenCVCamera:
 
         if success:
             self._number_of_frames_recorded += 1
-            if self._camera_view_update_function is not None:
-                self._camera_view_update_function(self.webcam_id_as_str, cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+            # if self._camera_view_update_function is not None:
+            #     self._camera_view_update_function(self.webcam_id_as_str, cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
         return FramePayload(success=success,
                             image=image,

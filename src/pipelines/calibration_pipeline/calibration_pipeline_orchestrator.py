@@ -35,7 +35,7 @@ class CalibrationPipelineOrchestrator:
 
         self._calibration_start_time_unix_ns = time.time_ns()
         self._charuco_board_detector = CharucoBoardDetector()
-        self._visualizer_gui = QTVisualizerAndGui()
+        self._visualizer_gui = None
         self._expected_framerate = expected_framerate
         self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id,
                                                            expected_framerate=self._expected_framerate)
@@ -50,7 +50,7 @@ class CalibrationPipelineOrchestrator:
 
     def record_videos(
             self,
-            show_visualizer_gui=True,
+            show_visualizer_gui=False,
             show_camera_views_in_windows=True,
             save_video_in_frame_loop=False,
 
@@ -63,6 +63,7 @@ class CalibrationPipelineOrchestrator:
             timestamp_manager = self._open_cv_camera_manager.timestamp_manager
             try:
                 if show_visualizer_gui:
+                    self._visualizer_gui = QTVisualizerAndGui()
                     self._visualizer_gui.setup_and_launch(self._open_cv_camera_manager.available_webcam_ids)
 
                 should_continue = True

@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 session_router = APIRouter()
 
+
 class TweakedPydanticBaseModel(BaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -68,18 +69,17 @@ def calibrate_session(session_calibrate_model: SessionCalibrateModel = SessionCa
         session_id = get_most_recent_session_id()
 
     calibration_orchestrator = CalibrationPipelineOrchestrator(session_id)
-    # calibration_orchestrator.record_videos(show_visualizer_gui=True,
-    #                                        save_video_in_frame_loop=False,
-    #                                        show_camera_views_in_windows=False,
-    #                                        )
+    calibration_orchestrator.record_videos(show_visualizer_gui=False,
+                                           save_video_in_frame_loop=False,
+                                           show_camera_views_in_windows=True,
+                                           )
 
-    launch_camera_frame_loop(session_id=session_id,
-                             webcam_configs_dict=session_calibrate_model.webcam_configs_dict,
-                             opencv_camera_manager=session_calibrate_model.opencv_camera_manager,
-                             show_camera_views_in_windows=True,
-                             calibration_videos_bool=True,
-                             detect_charuco_in_image=True,
-                             )
+    # launch_camera_frame_loop(session_id=session_id,
+    #                          webcam_configs_dict=session_calibrate_model.webcam_configs_dict,
+    #                          show_camera_views_in_windows=True,
+    #                          calibration_videos_bool=True,
+    #                          detect_charuco_in_image=True,
+    #                          )
     calibration_orchestrator.run_anipose_camera_calibration(
         charuco_square_size=session_calibrate_model.charuco_square_size,
         pin_camera_0_to_origin=True)
@@ -138,20 +138,21 @@ def visualize_session_offline(session_id_model: SessionIdModel = None):
 if __name__ == "__main__":
     # create_session
     session_id_in = create_session_id('session_router_as_main')
-    session_id_model = SessionIdModel(session_id=session_id)
+    session_id_model = SessionIdModel(session_id=session_id_in)
 
     # #calibrate_session
     session_calibrate_model_in = SessionCalibrateModel(session_id=session_id_in,
-                                                    charuco_square_size=39)
+                                                       charuco_square_size=39)
     calibrate_session(session_calibrate_model_in)
 
-    # record new session
-    record_session(session_id_model)
-
-    # #process_
+    # # record new session
+    # record_session(session_id_model)
+    #
+    # # #process_
     # mediapipe_track_2D_skeletons_offline(session_id_model)
+    # #
+    # mediapipe_reconstruct_3D_skeletons_offline(session_id_model)
     #
-    mediapipe_reconstruct_3D_skeletons_offline(session_id_model)
+    # # #visualize with PyQt/OpenGL
     #
-    # #visualize with PyQt/OpenGL
     # visualize_session_offline(session_id_model)

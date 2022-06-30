@@ -19,23 +19,21 @@ logger = logging.getLogger(__name__)
 def launch_camera_frame_loop(
         session_id: str,
         webcam_configs_dict: Dict[str, WebcamConfig] = None,
-        opencv_camera_manager: OpenCVCameraManager = None,
-        show_camera_views_in_windows: bool = False,
+        show_camera_views_in_windows: bool = True,
         calibration_videos_bool: bool = False,
         detect_charuco_in_image: bool = True,
         camera_view_update_function=None,
-        update_gui_function = None,
-        exit_event_bool:bool = False,
+        # update_gui_function=None,
+        record_frames_bool: bool = True
 ):
-
     any_frames_recorded = False
 
     if detect_charuco_in_image:
         charuco_board_detector = CharucoBoardDetector()
 
-    if opencv_camera_manager is None:
-        opencv_camera_manager = OpenCVCameraManager(session_id=session_id,
-                                                     expected_framerate=None)
+
+    opencv_camera_manager = OpenCVCameraManager(session_id=session_id,
+                                                    expected_framerate=None)
 
     with opencv_camera_manager.start_capture_session_all_cams(webcam_configs_dict=webcam_configs_dict,
                                                               camera_view_update_function=camera_view_update_function,
@@ -44,8 +42,8 @@ def launch_camera_frame_loop(
             should_continue = True
             while should_continue:
 
-                if update_gui_function is None:
-                    update_gui_function()
+                # if update_gui_function is None:
+                #     update_gui_function()
 
                 for this_webcam_id, this_opencv_camera in connected_cameras_dict.items():
                     this_frame_payload = this_opencv_camera.latest_frame
@@ -64,15 +62,18 @@ def launch_camera_frame_loop(
                             opencv_camera_manager.timestamp_manager
                         )
 
+                    if record_frames_bool:
+                        any_frames_recorded = True
+                        this_opencv_camera.record_frames(True)
+                    else:
+                        this_opencv_camera.record_frames(False)
+
                     # exit loop when user presses ESC key
                     exit_key = cv2.waitKey(1)
                     if exit_key == 27:
                         logger.info("ESC has been pressed.")
                         should_continue = False
 
-                    if exit_event_bool is not None:
-                        if exit_event_bool:
-                            should_continue = False
         except:
             logger.error("Printing traceback")
             traceback.print_exc()

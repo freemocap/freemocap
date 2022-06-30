@@ -137,6 +137,7 @@ class OpenCVCameraManager:
             for cv_cam in open_cv_camera_objects:
                 self._connected_cameras_dict[cv_cam.webcam_id_as_str] = cv_cam
                 self._start_frame_capture_on_cam_id(cv_cam)
+
             yield self._connected_cameras_dict
 
             self._stop_frame_capture(open_cv_camera_objects)

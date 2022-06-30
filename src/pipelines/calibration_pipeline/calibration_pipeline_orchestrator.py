@@ -69,7 +69,7 @@ class CalibrationPipelineOrchestrator:
                 should_continue = True
                 while should_continue:
 
-                    timestamp_manager.log_new_timestamp_for_main_loop_ns(time.perf_counter_ns())
+                    timestamp_manager.log_new_timestamp_for_main_loop_perf_coutner_ns(time.perf_counter_ns())
 
                     if not self._open_cv_camera_manager.new_multi_frame_ready():
                         continue
@@ -83,12 +83,6 @@ class CalibrationPipelineOrchestrator:
                         if this_cam_latest_frame is None:
                             continue
 
-                        # log timestamp
-                        this_cam_this_frame_timestamp_ns = this_cam_latest_frame.timestamp_in_seconds_from_record_start
-                        this_cam_this_frame_number = this_cam_latest_frame.frame_number
-                        timestamp_manager.log_new_timestamp_for_webcam_ns(this_webcam_id,
-                                                                          this_cam_this_frame_timestamp_ns,
-                                                                          this_cam_this_frame_number)
 
                         # save frame to video file
                         if save_video_in_frame_loop:

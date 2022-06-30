@@ -1,4 +1,5 @@
 import logging
+import traceback
 from pathlib import Path
 from typing import Optional, Union
 
@@ -53,8 +54,10 @@ class SessionIdModel(BaseModel):
 @session_router.post("/session/create")
 async def create_session(session_create_model: SessionCreateModel = SessionCreateModel()) -> SessionResponse:
     session_id = create_session_id()
+    if session_create_model.user_session_tag_str is not None:
+        session_id = session_id + session_create_model.user_session_tag_str
+
     create_session_folder(session_id)
-    session_id_model = SessionIdModel(session_id=session_id)
 
     return SessionResponse(session_id=session_id,
                            session_path=get_session_folder_path(session_id))
@@ -69,20 +72,29 @@ def calibrate_session(session_calibrate_model: SessionCalibrateModel = SessionCa
         session_id = get_most_recent_session_id()
 
     calibration_orchestrator = CalibrationPipelineOrchestrator(session_id)
-    calibration_orchestrator.record_videos(show_visualizer_gui=False,
-                                           save_video_in_frame_loop=False,
-                                           show_camera_views_in_windows=True,
-                                           )
 
-    # launch_camera_frame_loop(session_id=session_id,
-    #                          webcam_configs_dict=session_calibrate_model.webcam_configs_dict,
-    #                          show_camera_views_in_windows=True,
-    #                          calibration_videos_bool=True,
-    #                          detect_charuco_in_image=True,
-    #                          )
-    calibration_orchestrator.run_anipose_camera_calibration(
-        charuco_square_size=session_calibrate_model.charuco_square_size,
-        pin_camera_0_to_origin=True)
+    # calibration_orchestrator.record_videos(show_visualizer_gui=False,
+    #                                        save_video_in_frame_loop=False,
+    #                                        show_camera_views_in_windows=True,
+    #                                        )
+
+    launch_camera_frame_loop(session_id=session_id,
+                             webcam_configs_dict=session_calibrate_model.webcam_configs_dict,
+                             show_camera_views_in_windows=True,
+                             calibration_videos_bool=True,
+                             detect_charuco_in_image=True,
+                             )
+
+    try:
+        calibration_orchestrator.run_anipose_camera_calibration(
+            charuco_square_size=session_calibrate_model.charuco_square_size,
+            pin_camera_0_to_origin=True)
+    except:
+        logger.error("Printing Traceback")
+        traceback.print_exc()
+
+    return calibration_orchestrator
+
 
 
 @session_router.post("/session/record")

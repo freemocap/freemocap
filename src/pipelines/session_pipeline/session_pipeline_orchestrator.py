@@ -190,7 +190,7 @@ class SessionPipelineOrchestrator:
                                     self._visualizer_gui.update_mediapipe3d_skeleton(mediapipe3d_multi_frame_payload)
                                 dictionary_of_mediapipe_payloads_on_this_multi_frame = {}
 
-                    timestamp_manager.log_new_timestamp_for_main_loop_ns(time.perf_counter_ns())
+                    timestamp_manager.log_new_timestamp_for_main_loop_perf_coutner_ns(time.perf_counter_ns())
 
                     if not self._open_cv_camera_manager.new_multi_frame_ready():
                         continue
@@ -209,12 +209,7 @@ class SessionPipelineOrchestrator:
 
                         image_to_display = this_cam_latest_frame.image.copy()
 
-                        # log timestamp
-                        this_cam_this_frame_timestamp_ns = this_cam_latest_frame.timestamp_in_seconds_from_record_start
-                        this_cam_this_frame_number = this_cam_latest_frame.frame_number
-                        timestamp_manager.log_new_timestamp_for_webcam_ns(this_webcam_id,
-                                                                          this_cam_this_frame_timestamp_ns,
-                                                                          this_cam_this_frame_number)
+
 
                         if save_video:
                             create_session_folder(self.session_id)

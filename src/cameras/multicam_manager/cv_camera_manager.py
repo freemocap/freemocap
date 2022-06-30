@@ -46,6 +46,7 @@ class OpenCVCameraManager:
     def timestamp_manager(self):
         if self._timestamp_manager is None:
             logger.error('timestamp manager has not been created yet')
+            raise Exception
         else:
             return self._timestamp_manager
 
@@ -132,6 +133,7 @@ class OpenCVCameraManager:
             timestamp_manager=self._timestamp_manager,
             camera_view_update_function=camera_view_update_function,
             calibration_videos=calibration_videos, )
+
         try:
 
             for cv_cam in open_cv_camera_objects:
@@ -195,12 +197,17 @@ class OpenCVCameraManager:
                             calibration_video_bool=calibration_video_bool)
 
     def _initialize_timestamp_logger(self):
+
         self._session_start_time_unix_ns = time.time_ns()
         self._session_start_time_perf_counter_ns = time.perf_counter_ns()
+
+        logger.info(f"Initializing timestamp loggers - _session_start_time_unix_ns: {self._session_start_time_unix_ns}, _session_start_time_perf_counter_ns: {self._session_start_time_perf_counter_ns} ")
+
         self._timestamp_manager = TimestampManager(self._session_id,
                                                    self.available_webcam_ids,
                                                    self._session_start_time_unix_ns,
                                                    self._session_start_time_perf_counter_ns)
+
 
     def _start_frame_capture_on_cam_id(self, opencv_cam: OpenCVCamera):
         opencv_cam.connect()

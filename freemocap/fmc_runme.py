@@ -32,8 +32,8 @@ from freemocap import (
     fmc_mediapipe_roboflow,
     fmc_openpose,
     fmc_deeplabcut,
-    fmc_origin_alignment,
-    fmc_mediapipe_annotation,
+    # fmc_origin_alignment,
+    # fmc_mediapipe_annotation,
     reconstruct3D,
     play_skeleton_animation,
     session,
@@ -406,4 +406,4 @@ def RunMe(sessionID=None,
     console.rule(style="color({})".format(14))
 
 
-# RunMe(sessionID='sesh_2022-05-26_slackline_gopro_test')
+RunMe(sessionID='aaron_test',stage=4,go_pro=False,runRoboflowMediapipe=True)

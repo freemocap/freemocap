@@ -15,9 +15,9 @@ import pandas as pd
 
 from freemocap.roboflow import roboflow_yolo
 from rich.progress import Progress
-
-
-from freemocap.fmc_mediapipe import parseMediaPipe
+import pickle
+import json
+# from freemocap.fmc_mediapipe import parseMediaPipe
 
 def get_mediapipe_keypoint_numbers():
     #Helper function to get num of points in mediapipe
@@ -126,7 +126,29 @@ def format_mediapipe_for_fmc(results, image_height, image_width):
     #np.append(mediapipe_nFrames_XYC,mediaPipeData_XYC)
     return mediaPipeData_XYC    
 
-def mediaPipe_on_roboflow_crop(source_vid, output_vid, tracked_roboflow_data):
+
+def check_for_calculator_error_frame(video_name):
+    
+    json_file = open("calculator_errors.json")
+    error_frame_dict = json.load(json_file)
+    json_file.close()
+    if video_name in error_frame_dict.keys():
+        error_frame = error_frame_dict[video_name]
+    else:
+        error_frame = -1
+
+    return error_frame
+
+
+
+def add_Nan_frame():
+    numBodyPoints,numFacePoints,numHandPoints,numTrackedPoints = get_mediapipe_keypoint_numbers()
+
+    mediaPipeData_XYC = np.empty((int(numTrackedPoints),3))
+    mediaPipeData_XYC[:] = np.NaN
+    return mediaPipeData_XYC
+
+def mediaPipe_on_roboflow_crop(source_vid, output_vid, tracked_roboflow_data,vid_name):
     """Function takes in input video and the corresponding dictionary containing 
     the coordinates of the bounding boxes of each person in the video. Function 
     crops the frames of the video to the coordiates of the bounding box and 
@@ -152,167 +174,183 @@ def mediaPipe_on_roboflow_crop(source_vid, output_vid, tracked_roboflow_data):
     
     #Initialize dictionary for mediapipe data
     fmc_mediapipe_dict = {}
-    
+
+    # error_frame = check_for_calculator_error_frame(vid_name)
     #Get fourcc for video encoding
     fourcc = cv2.VideoWriter_fourcc(*'DIVX')
     #Create output video object
     output = cv2.VideoWriter(output_vid, fourcc, fps, frame_size) #choose a name/path for an output video 
     frame = 0#Initialize frame counter
-    #With mediapipe
     with mp_holistic.Holistic(
-    static_image_mode=True,
-    model_complexity=2,     
-    enable_segmentation=False) as holistic:
+                static_image_mode=True,
+                model_complexity=2,     
+                enable_segmentation=False) as holistic:
+            
         #Loop through video
         while (cap.isOpened()):
 
             frame += 1#increase frame count
             if frame%100 == 0:
                 print('Mediapipe on Frame '+str(frame)+' of '+str(frame_count))
+                
             # Capture frame-by-frame
             ret, image = cap.read()
 
             if ret==True:
+                
                 #Copy frame image
                 annotated_image = image.copy()
-                
+                #Trying this out to see if the calculator runtime error can be fixed by processing an image every 100 frames
+                # if frame%100==0:
+                    
                 #For each person in the roboflow data 
+                people_in_this_frame = 0
                 for person_key in tracked_roboflow_data.keys():
                     
-                    #get the df of this person
-                    person_df = tracked_roboflow_data[person_key]
-                    frames_df = person_df['frame']
-                    # Get list of frames this person is in
-                    frames_list = frames_df.to_list()
-                    #If this frame is in the frames_list (Not all people will be in every frame)
-                    if frame in frames_list:
-                        #Get idx of this frame in this persons frame list
-                        idx = frames_list.index(frame)
-                        #Get image properties
-                        image_height, image_width, _ = image.shape
-                        #convert to numpy
-                        person_npy = person_df.to_numpy()
-                        #Take data of just this frame
-                        frame_yolo_data =person_npy[idx,:]
+                    if people_in_this_frame ==1:
+                        continue
+                    else:
+                        #With mediapipe
+                    
+                        #get the df of this person
+                        person_df = tracked_roboflow_data[person_key]
+                        frames_df = person_df['frame']
+                        # Get list of frames this person is in
+                        frames_list = frames_df.to_list()
+                        #If this frame is in the frames_list (Not all people will be in every frame)
+                        if frame in frames_list:
+                            #Get idx of this frame in this persons frame list
+                            idx = frames_list.index(frame)
+                            #Get image properties
+                            image_height, image_width, _ = image.shape
+                            #convert to numpy
+                            person_npy = person_df.to_numpy()
+                            #Take data of just this frame
+                            frame_yolo_data =person_npy[idx,:]
 
-                        #TODO: Add the following code to make the bounding boxes bigger
-                        # if 0 < int(frame_yolo_data[1]  - width_bounding_box_buffer):
-                        #     xmin = int(frame_yolo_data[1]  - width_bounding_box_buffer)
-                        # else:
-                        #     xmin = 0
-                        # if frame_width > int((frame_yolo_data[3]) +width_bounding_box_buffer):
-                        #     xmax = int((frame_yolo_data[3]) +width_bounding_box_buffer)
-                        # else:
-                        #     xmax = frame_width
-                        # if 0 < int(frame_yolo_data[2] - height_bounding_box_buffer):
-                        #     ymin = int(frame_yolo_data[2] - height_bounding_box_buffer)
-                        # else:
-                        #     ymin = 0
-                        # if frame_height > int((frame_yolo_data[4]) + height_bounding_box_buffer):
-                        #     ymax = int((frame_yolo_data[4]) + height_bounding_box_buffer)
-                        # else:
-                        #     ymax = frame_height
-                        # if ymin > ymax:
-                        #     ymin = ymax
-                        #     ymax = ymin
-                        # if xmin > xmax:
-                        #     xmin = xmax
-                        #     xmax = xmin
+                            #Get bbox mins and maxs from the yolo data
+                            xmin = int(frame_yolo_data[1])
+                            xmax  = int(frame_yolo_data[3])
+                            ymin  = int(frame_yolo_data[2])
+                            ymax  = int(frame_yolo_data[4])
 
-                        #Get bbox mins and maxs from the yolo data
-                        xmin = int(frame_yolo_data[1])
-                        xmax  = int(frame_yolo_data[3])
-                        ymin  = int(frame_yolo_data[2])
-                        ymax  = int(frame_yolo_data[4]) 
-                        xcoords = [xmin,xmax]
-                        xmin = np.min(xcoords)
-                        xmax = np.max(xcoords)
-                        ycoords = [ymin,ymax]
-                        ymin = np.min(ycoords)
-                        ymax = np.max(ycoords)
-                        #Crop image to the bbox coords
-                        cropped_image = image[ymin:ymax, xmin:xmax] 
-                        #get image shape
-                        cropped_image_height, cropped_image_width, _ = cropped_image.shape
-                        #Run through mediapipe
-                        
-                        # if cropped_image_height is 0 or cropped_image_width is 0:
-                        #     cropped_image = image
-                        #     cropped_image_height, cropped_image_width, _ = cropped_image.shape
+                            xcoords = [xmin,xmax]
+                            xmin = np.min(xcoords)
+                            xmax = np.max(xcoords)
+                            ycoords = [ymin,ymax]
+                            ymin = np.min(ycoords)
+                            ymax = np.max(ycoords)
+
+                            #Crop image to the bbox coords
+                            cropped_image = image[ymin:ymax, xmin:xmax]
+                            # cv2.imwrite('C:/Users/WindowsPC_Hallway/FreeMocap_Data/ut_sesh_22_05_05_02_debug/Debug/debug'+str(frame)+'.png',cropped_image)
+                            #get image shape
+                            cropped_image_height, cropped_image_width, _ = cropped_image.shape
+                            #Run through mediapipe
+                            # print(cropped_image.shape)
+                            # dummy_results = holistic.process(cv2.cvtColor(test_im, cv2.COLOR_BGR2RGB))
+                            mediapipe_down = (256,256)
+                            if cropped_image.shape[0] >1 and cropped_image.shape[1] >1:
+                                resized_down = cv2.resize(cropped_image, mediapipe_down, interpolation= cv2.INTER_LINEAR)
+                                if frame == 2162 or frame ==1558 or frame==1281:
+                                    process_results=previous_results
+                                else:
+                                    
+                                    process_results = holistic.process(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)) #process mediapipe on just the cut out rectangle 
+                                
+                                    previous_results = process_results
+                                
                             
-                        process_results = holistic.process(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)) #process mediapipe on just the cut out rectangle 
-            
-                        #Get the scale for the crop image to original image
-                        y_scale = cropped_image_height/image_height 
-                        x_scale = cropped_image_width/image_width
+                            else:
+                                process_results = holistic.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)) 
+                            # print(process_results)
+                            #Get the scale for the crop image to original imagse
+                            # cropped_image_height = 256
+                            # cropped_image_width = 256
+                            y_scale = cropped_image_height/image_height 
+                            x_scale = cropped_image_width/image_width
 
-                        #Scale each pose, face and hand points to original image coords
-                        try:
-                            for joint in process_results.pose_landmarks.landmark:
-                                joint.y = joint.y*y_scale + ymin/image_height
-                                joint.x = joint.x*x_scale + xmin/image_width
-                        except: 
-                            pass
-                        try:
-                            for f_joint in process_results.face_landmarks.landmark:
-                                f_joint.y = f_joint.y*y_scale + ymin/image_height
-                                f_joint.x = f_joint.x*x_scale + xmin/image_width
-                        except:
-                            pass
+                            #Scale each pose, face and hand points to original image coords
+                            try:
+                                for joint in process_results.pose_landmarks.landmark:
+                                    joint.y = joint.y*y_scale + ymin/image_height
+                                    joint.x = joint.x*x_scale + xmin/image_width
+                            except: 
+                                pass
+                            try:
+                                for f_joint in process_results.face_landmarks.landmark:
+                                    f_joint.y = f_joint.y*y_scale + ymin/image_height
+                                    f_joint.x = f_joint.x*x_scale + xmin/image_width
+                            except:
+                                pass
 
-                        try:    
-                            for r_joint in process_results.right_hand_landmarks.landmark:
-                                r_joint.y = r_joint.y*y_scale + ymin/image_height
-                                r_joint.x = r_joint.x*x_scale + xmin/image_width
-                        except:
-                            pass
+                            try:    
+                                for r_joint in process_results.right_hand_landmarks.landmark:
+                                    r_joint.y = r_joint.y*y_scale + ymin/image_height
+                                    r_joint.x = r_joint.x*x_scale + xmin/image_width
+                            except:
+                                pass
 
-                        try:    
-                            for l_joint in process_results.left_hand_landmarks.landmark:
-                                l_joint.y = l_joint.y*y_scale + ymin/image_height
-                                l_joint.x = l_joint.x*x_scale + xmin/image_width
-                        except:
-                            pass
-                        #If there is face, hand, or pose landmarks (probably a better way to make this if statement lol)
-                        if process_results.face_landmarks or process_results.left_hand_landmarks or process_results.pose_landmarks or process_results.right_hand_landmarks:
-                            #Draw face point
-                            mp_drawing.draw_landmarks(
-                                annotated_image,
-                                process_results.face_landmarks,
-                                mp_holistic.FACEMESH_CONTOURS,
-                                landmark_drawing_spec=None,
-                                connection_drawing_spec=mp_drawing_styles
-                                .get_default_face_mesh_contours_style())
-                            #Draw body point
-                            mp_drawing.draw_landmarks(
-                                annotated_image,
-                                process_results.pose_landmarks,
-                                mp_holistic.POSE_CONNECTIONS,
-                                landmark_drawing_spec=mp_drawing_styles.
-                                get_default_pose_landmarks_style())
-                            #Draw right hand point
-                            mp_drawing.draw_landmarks(
-                                annotated_image,
-                                process_results.right_hand_landmarks,
-                                mp_holistic.HAND_CONNECTIONS)
-                            #Draw left hand point
-                            mp_drawing.draw_landmarks(
-                                annotated_image,
-                                process_results.left_hand_landmarks,
-                                mp_holistic.HAND_CONNECTIONS)
-                            #TODO: else statement for just mediapipe
+                            try:    
+                                for l_joint in process_results.left_hand_landmarks.landmark:
+                                    l_joint.y = l_joint.y*y_scale + ymin/image_height
+                                    l_joint.x = l_joint.x*x_scale + xmin/image_width
+                            except:
+                                pass
+                            #If there is face, hand, or pose landmarks (probably a better way to make this if statement lol)
+                            if process_results.face_landmarks or process_results.left_hand_landmarks or process_results.pose_landmarks or process_results.right_hand_landmarks:
+                                #Draw face point
+                                mp_drawing.draw_landmarks(
+                                    annotated_image,
+                                    process_results.face_landmarks,
+                                    mp_holistic.FACEMESH_CONTOURS,
+                                    landmark_drawing_spec=None,
+                                    connection_drawing_spec=mp_drawing_styles
+                                    .get_default_face_mesh_contours_style())
+                                #Draw body point
+                                mp_drawing.draw_landmarks(
+                                    annotated_image,
+                                    process_results.pose_landmarks,
+                                    mp_holistic.POSE_CONNECTIONS,
+                                    landmark_drawing_spec=mp_drawing_styles.
+                                    get_default_pose_landmarks_style())
+                                #Draw right hand point
+                                mp_drawing.draw_landmarks(
+                                    annotated_image,
+                                    process_results.right_hand_landmarks,
+                                    mp_holistic.HAND_CONNECTIONS)
+                                #Draw left hand point
+                                mp_drawing.draw_landmarks(
+                                    annotated_image,
+                                    process_results.left_hand_landmarks,
+                                    mp_holistic.HAND_CONNECTIONS)
+                                #TODO: else statement for just mediapipe
+                                
+                            #Get mediapipe data and format it into free mocap form
                             
-                        #Get mediapipe data and format it into free mocap form
-                        # Mediapipe_XYC_Pose_hands_face = np.ndarray(num_points,3)
-                        # Mediapipe_XYC_Pose_hands_face[num_body_points,:] = process_results.pose_landmarks
-                        # Mediapipe_XYC_Pose_hands_face[(num_hand_points/2),:] = process_results.right_hand_landmarks
-                        # Mediapipe_XYC_Pose_hands_face[(num_hand_points/2),:] = process_results.left_hand_landmarks
-                        # Mediapipe_XYC_Pose_hands_face[num_face_points,:] = process_results.face_landmarks
-                        Mediapipe_XYC = format_mediapipe_for_fmc(process_results, frame_height,frame_width)
-                        mediapip_failed_for_this_frame = False
-                        #Add these mediapipe points to the ID of the person from the roboflow output
-                        
+                            Mediapipe_XYC = format_mediapipe_for_fmc(process_results, frame_height,frame_width)
+                            mediapip_failed_for_this_frame = False
+                            #Add these mediapipe points to the ID of the person from the roboflow output
+                            
+                            
+                            #Add these mediapipe points to the ID of the person from the roboflow output
+                            person_key =1
+                            if person_key in fmc_mediapipe_dict.keys():
+                                reprocessed_list = fmc_mediapipe_dict[person_key]
+                                reprocessed_list.append(Mediapipe_XYC)
+                                fmc_mediapipe_dict[person_key] = reprocessed_list
 
+                            else:
+                                new_list = []
+                                new_list.append(Mediapipe_XYC)
+                                fmc_mediapipe_dict[person_key] = new_list
+                                
+                            #Add bounding box to image
+                            annotated_image = cv2.rectangle(annotated_image, (int(xmin), int(ymin)), (int(xmax), int(ymax)),color = (255,0,0), thickness=3, lineType=cv2.LINE_AA)
+                            people_in_this_frame+=1
+                if people_in_this_frame ==0:        
+                    person_key =1
+                    Mediapipe_XYC = add_Nan_frame()
                     #Add these mediapipe points to the ID of the person from the roboflow output
                     if person_key in fmc_mediapipe_dict.keys():
                         reprocessed_list = fmc_mediapipe_dict[person_key]
@@ -323,11 +361,10 @@ def mediaPipe_on_roboflow_crop(source_vid, output_vid, tracked_roboflow_data):
                         new_list = []
                         new_list.append(Mediapipe_XYC)
                         fmc_mediapipe_dict[person_key] = new_list
-                    
-                #Add bounding box to image
-                annotated_image = cv2.rectangle(annotated_image, (int(xmin), int(ymin)), (int(xmax), int(ymax)),color = (255,0,0), thickness=3, lineType=cv2.LINE_AA)
+                
+                
                 output.write(annotated_image)
-                    
+                
             else:
                 break
     cap.release()
@@ -431,11 +468,14 @@ def runRoboflowAndMediapipe(session):
             #Run roboflow
             dict_of_all_bounding_boxes =roboflow_yolo.run_roboflow(input_video=str(session.syncedVidPath) +'/'+ vids[cam],
                         weights = 'roboflow/models/yolov5x.pt', cfg='roboflow/models/yolov5x.cfg', names='roboflow/coco.names')
+        # with open("C:/Users/WindowsPC_Hallway/FreeMocap_Data/ut_sesh_22_05_05_02/DataArrays/yolodatacam_4.pickle", 'wb') as pickle_file:
+        #     pickle.dump(dict_of_all_bounding_boxes, pickle_file)
         #Make name of output video same as input name with '_mediapipe' at end
         name, ext = os.path.splitext(vids[cam])    
         outvid = name+'_mediapipe.mp4'
+        # dict_of_all_bounding_boxes = load_yolo_pickle(4)
         #Run mediapipe on the cropped image and append it the output to list of all camera views
-        fmc_mediapipe_dict_from_each_video.append(mediaPipe_on_roboflow_crop(str(session.syncedVidPath)+'/'+ vids[cam],str(session.dataArrayPath)+'/'+ vids[cam],dict_of_all_bounding_boxes))
+        fmc_mediapipe_dict_from_each_video.append(mediaPipe_on_roboflow_crop(str(session.syncedVidPath)+'/'+ vids[cam],str(session.dataArrayPath)+'/'+ vids[cam],dict_of_all_bounding_boxes),vids[cam])
         #Get the number of people in the video and append it to the number of people list
         num_people_in_each_video.append(len(fmc_mediapipe_dict_from_each_video[cam]))
     
@@ -443,6 +483,7 @@ def runRoboflowAndMediapipe(session):
     # num_people = np.max(num_people_in_each_video)
     #Get video number with the most people in it
     cam_num_with_max_people = np.argmax(num_people_in_each_video)
+    print(num_people_in_each_video)
     num_people =1
     #If single person
     if num_people ==1:
@@ -460,7 +501,8 @@ def runRoboflowAndMediapipe(session):
                 #Convert to numpy
                 personnpy = np.array(person)
                 print(personnpy.shape)
-                #Add to the numpy array to the output array 
+                #Add to the numpy array to the output array
+                 
                 mediaPipeData_nCams_nFrames_nImgPts_XYC[cam,:,:,:] = personnpy
 
     #If multi person

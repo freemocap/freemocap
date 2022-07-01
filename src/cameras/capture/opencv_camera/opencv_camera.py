@@ -24,17 +24,11 @@ class OpenCVCamera:
 
     def __init__(self,
                  config: WebcamConfig,
-                 session_id: str = None,
-                 timestamp_logger: TimestampLogger = None,
-                 camera_view_update_function = None,
+                 session_id: str,
+                 session_start_time_perf_counter_ns:int,
                  calibration_video_bool: bool = False):
 
-        if timestamp_logger is None:
-            self._timestamp_logger = TimestampLogger()
-        else:
-            self._timestamp_logger = timestamp_logger
 
-        self._camera_view_update_function = camera_view_update_function
 
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
@@ -45,6 +39,7 @@ class OpenCVCamera:
         self._number_of_frames_recorded = 0
         self._calibration_video_bool = calibration_video_bool
         self._session_id = session_id
+        self._session_start_time_perf_counter_ns = session_start_time_perf_counter_ns
 
     @property
     def session_id(self):
@@ -190,6 +185,7 @@ class OpenCVCamera:
             ### A - see -> https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
             self._opencv_video_capture_object.grab()
             success, image = self._opencv_video_capture_object.retrieve()
+            this_frame_timestamp_perf_counter_ns = time.perf_counter_ns()-self._session_start_time_perf_counter_ns
 
             # timestamp_ns_post = time.perf_counter_ns()
             # it_took_this_many_seconds_to_grab_the_frame = (timestamp_ns_post-timestamp_ns_pre)/1e9
@@ -197,9 +193,6 @@ class OpenCVCamera:
             logger.error(f"Failed to read frame from Camera: {self.webcam_id_as_str}")
             raise Exception
 
-        self._timestamp_logger.log_new_timestamp_perf_counter_ns(time.perf_counter_ns())
-
-        self._timestamp_logger.log_new_timestamp_perf_counter_ns(time.perf_counter_ns())
 
         self._new_frame_ready = success
 
@@ -210,7 +203,7 @@ class OpenCVCamera:
 
         return FramePayload(success=success,
                             image=image,
-                            timestamp_in_seconds_from_record_start=self._timestamp_logger.latest_timestamp_in_seconds_from_record_start,
+                            timestamp_in_seconds_from_record_start=this_frame_timestamp_perf_counter_ns/1e9,
                             timestamp_unix_time_seconds = time.time(),
                             frame_number=self.latest_frame_number,
                             webcam_id=self.webcam_id_as_str)

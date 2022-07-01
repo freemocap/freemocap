@@ -6,7 +6,6 @@ from typing import List, Dict, Union, Any
 import cv2
 import numpy as np
 import mediapipe as mp
-from rich.progress import Progress, track
 
 from jon_scratch.opencv_camera import TweakedModel
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
@@ -141,8 +140,7 @@ class MediaPipeSkeletonDetector:
         each_video_frame_height_list = []
 
         mediapipe2d_single_camera_npy_arrays_list = []
-        for video_number, this_synchronized_video_file_path in track(enumerate(synchronized_videos_path.glob('*.mp4')),
-                                                                     description="detecting mediapipe skeletons"):
+        for video_number, this_synchronized_video_file_path in enumerate(synchronized_videos_path.glob('*.mp4')):
             logger.info(f"Running `mediapipe` skeleton detection on  video: {str(this_synchronized_video_file_path)}")
             this_video_capture_object = cv2.VideoCapture(str(this_synchronized_video_file_path))
 
@@ -344,9 +342,9 @@ class MediaPipeSkeletonDetector:
             # get Face data
             if this_frame_results.face_landmarks is not None:
                 for this_landmark_number, this_landmark_data in enumerate(this_frame_results.face_landmarks.landmark):
-                    face2d_frameNumber_trackedPointNumber_XY[this_frame_number, :,
+                    face2d_frameNumber_trackedPointNumber_XY[this_frame_number, this_landmark_number,
                     0] = this_landmark_data.x * image_width
-                    face2d_frameNumber_trackedPointNumber_XY[this_frame_number, :,
+                    face2d_frameNumber_trackedPointNumber_XY[this_frame_number, this_landmark_number,
                     1] = this_landmark_data.y * image_height
 
             # check if all tracked points are visible on this frame

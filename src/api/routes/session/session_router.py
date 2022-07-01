@@ -11,6 +11,7 @@ from src.cameras.launch_camera_frame_loop import launch_camera_frame_loop
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.config.home_dir import create_session_id, get_session_folder_path, get_most_recent_session_id, \
     create_session_folder
+from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import MediaPipeSkeletonDetector
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import CalibrationPipelineOrchestrator
 from src.pipelines.session_pipeline.session_pipeline_orchestrator import SessionPipelineOrchestrator, \
     load_mediapipe3d_skeleton_data, load_mediapipe2d_data
@@ -43,6 +44,10 @@ class SessionCalibrateModel(TweakedPydanticBaseModel):
     webcam_configs_dict: dict = None
     opencv_camera_manager: OpenCVCameraManager = None
     charuco_square_size: Union[int, float] = 39
+
+class SessionRecordModel(TweakedPydanticBaseModel):
+    session_id: str = None
+    webcam_configs_dict: dict = None
 
 
 class SessionIdModel(BaseModel):
@@ -98,10 +103,13 @@ def calibrate_session(session_calibrate_model: SessionCalibrateModel = SessionCa
 
 
 @session_router.post("/session/record")
-def record_session(session_id_model: SessionIdModel = SessionIdModel()):
-    this_session_orchestrator = SessionPipelineOrchestrator(session_id=session_id_model.session_id)
-    this_session_orchestrator.record_new_session()
-
+def record_session(session_record_model: SessionRecordModel = SessionRecordModel()):
+    launch_camera_frame_loop(session_id=session_record_model.session_id,
+                             webcam_configs_dict=session_record_model.webcam_configs_dict,
+                             show_camera_views_in_windows=True,
+                             calibration_videos_bool=False,
+                             detect_charuco_in_image=True,
+                             )
 
 @session_router.post("/session/mediapipe_track_skeletons_offline")
 def mediapipe_track_2D_skeletons_offline(session_id_model: SessionIdModel = SessionIdModel()):
@@ -112,8 +120,8 @@ def mediapipe_track_2D_skeletons_offline(session_id_model: SessionIdModel = Sess
         this_session_id = session_id_model.session_id
 
     logger.info(f"tracking 2D mediapipe skeletons in videos from session: {this_session_id}")
-    this_session_orchestrator = SessionPipelineOrchestrator(session_id=this_session_id)
-    this_session_orchestrator.mediapipe_track_skeletons_offline()
+    mediapipe_skeleton_detector = MediaPipeSkeletonDetector(this_session_id)
+    mediapipe_skeleton_detector.process_session_folder()
 
 
 @session_router.post("/session/reconstruct_mediapipe3d_offline")
@@ -152,19 +160,19 @@ if __name__ == "__main__":
     session_id_in = create_session_id('session_router_as_main')
     session_id_model = SessionIdModel(session_id=session_id_in)
 
-    # #calibrate_session
+    # # #calibrate_session
     session_calibrate_model_in = SessionCalibrateModel(session_id=session_id_in,
                                                        charuco_square_size=39)
     calibrate_session(session_calibrate_model_in)
 
     # # record new session
-    # record_session(session_id_model)
-    #
-    # # #process_
-    # mediapipe_track_2D_skeletons_offline(session_id_model)
-    # #
-    # mediapipe_reconstruct_3D_skeletons_offline(session_id_model)
-    #
-    # # #visualize with PyQt/OpenGL
-    #
-    # visualize_session_offline(session_id_model)
+    session_record_model_in = SessionRecordModel(session_id=session_id_in,)
+    record_session(session_record_model_in)
+
+    # #process_
+    mediapipe_track_2D_skeletons_offline()
+
+    mediapipe_reconstruct_3D_skeletons_offline()
+
+    # #visualize with PyQt/OpenGL
+    visualize_session_offline()

@@ -46,8 +46,7 @@ class SessionPipelineOrchestrator:
         self._expected_framerate = expected_framerate
 
         self._visualizer_gui = QTVisualizerAndGui()
-        self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id,
-                                                           expected_framerate=self.expected_framerate)
+        self._open_cv_camera_manager = None
         self._charuco_board_detector = CharucoBoardDetector()
         self._mediapipe_skeleton_detector = MediaPipeSkeletonDetector(self._session_id)
 
@@ -459,11 +458,11 @@ def load_mediapipe3d_skeleton_data(session_id: str = None):
     output_data_folder = Path(get_session_output_data_folder_path(session_id))
     mediapipe3d_xyz_file_path = output_data_folder / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
     logger.info(f"loading: {mediapipe3d_xyz_file_path}")
-    mediapipe3d_skeleton_nFrames_nTrajectories_xyz = np.load(mediapipe3d_xyz_file_path)
+    mediapipe3d_skeleton_nFrames_nTrajectories_xyz = np.load(str(mediapipe3d_xyz_file_path))
 
     mediapipe_reprojection_error_file_path = output_data_folder / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
     logger.info(f"loading: {mediapipe_reprojection_error_file_path}")
-    mediapipe3d_skeleton_nFrames_nTrajectories_reprojectionError = np.load(mediapipe_reprojection_error_file_path)
+    mediapipe3d_skeleton_nFrames_nTrajectories_reprojectionError = np.load(str(mediapipe_reprojection_error_file_path))
 
     return Data3dFullSessionPayload(
         data3d_numFrames_numTrackedPoints_XYZ=mediapipe3d_skeleton_nFrames_nTrajectories_xyz,

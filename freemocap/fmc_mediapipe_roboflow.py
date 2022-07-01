@@ -129,7 +129,7 @@ def format_mediapipe_for_fmc(results, image_height, image_width):
 
 def check_for_calculator_error_frame(video_name):
     
-    json_file = open("calculator_errors.json")
+    json_file = open("calculator_error.json")
     error_frame_dict = json.load(json_file)
     json_file.close()
     if video_name in error_frame_dict.keys():
@@ -175,7 +175,7 @@ def mediaPipe_on_roboflow_crop(source_vid, output_vid, tracked_roboflow_data,vid
     #Initialize dictionary for mediapipe data
     fmc_mediapipe_dict = {}
 
-    # error_frame = check_for_calculator_error_frame(vid_name)
+    error_frame = check_for_calculator_error_frame(vid_name)
     #Get fourcc for video encoding
     fourcc = cv2.VideoWriter_fourcc(*'DIVX')
     #Create output video object
@@ -252,7 +252,7 @@ def mediaPipe_on_roboflow_crop(source_vid, output_vid, tracked_roboflow_data,vid
                             mediapipe_down = (256,256)
                             if cropped_image.shape[0] >1 and cropped_image.shape[1] >1:
                                 resized_down = cv2.resize(cropped_image, mediapipe_down, interpolation= cv2.INTER_LINEAR)
-                                if frame == 2162 or frame ==1558 or frame==1281:
+                                if frame == error_frame:
                                     process_results=previous_results
                                 else:
                                     

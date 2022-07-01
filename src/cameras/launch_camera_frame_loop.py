@@ -34,8 +34,8 @@ def launch_camera_frame_loop(
 
 
 
-        opencv_camera_manager = OpenCVCameraManager(session_id=session_id,
-                                                    expected_framerate=None)
+        opencv_camera_manager = OpenCVCameraManager(session_id=session_id)
+
     with opencv_camera_manager.start_capture_session_all_cams(
             webcam_configs_dict=webcam_configs_dict,
             calibration_videos=calibration_videos_bool,
@@ -53,12 +53,12 @@ def launch_camera_frame_loop(
             should_continue = True
             while should_continue:
 
-                timestamp_manager.log_new_timestamp_for_main_loop_perf_coutner_ns(time.perf_counter_ns())
 
                 if not opencv_camera_manager.new_multi_frame_ready():
                     continue
 
                 this_multi_frame_payload = opencv_camera_manager.latest_multi_frame
+                timestamp_manager.multi_frame_timestamp_logger.log_new_timestamp_seconds_from_unspecified_zero(this_multi_frame_payload.multi_frame_timestamp_seconds)
 
                 for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():
 
@@ -66,6 +66,9 @@ def launch_camera_frame_loop(
 
                     if this_cam_latest_frame is None:
                         continue
+
+                    this_cam_timestamp_logger = timestamp_manager.timestamp_logger_for_webcam_id(this_webcam_id)
+                    this_cam_timestamp_logger.log_new_timestamp_seconds_from_unspecified_zero(this_cam_latest_frame.timestamp_in_seconds_from_record_start)
 
                     # save frame to video file
                     if record_frames_bool:
@@ -82,16 +85,13 @@ def launch_camera_frame_loop(
 
                     image_to_display = write_fps_to_image(
                         image_to_display,
-                        timestamp_manager.median_frames_per_second_for_webcam(this_webcam_id),
+                        timestamp_manager.timestamp_logger_for_webcam_id(this_webcam_id).median_frames_per_second,
                     )
 
                     if show_camera_views_in_windows:
-                        should_continue = show_cam_window(
-                            this_webcam_id, image_to_display, timestamp_manager
-                        )
+                        should_continue = show_cam_window(this_webcam_id, image_to_display )
 
                     if show_visualizer_gui:
-
                         visualizer_gui.update_camera_view_image(this_webcam_id,
                                                                       image_to_display)
 

@@ -37,8 +37,7 @@ class CalibrationPipelineOrchestrator:
         self._charuco_board_detector = CharucoBoardDetector()
         self._visualizer_gui = None
         self._expected_framerate = expected_framerate
-        self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id,
-                                                           expected_framerate=self._expected_framerate)
+        self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id)
 
     @property
     def session_id(self):

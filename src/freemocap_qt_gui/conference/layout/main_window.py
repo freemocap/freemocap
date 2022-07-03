@@ -3,7 +3,6 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMainWindow, QMenuBar, QVBoxLayout, \
     QWidget
 
-from src.cameras.detection.cam_singleton import get_or_create_cams
 from src.freemocap_qt_gui.conference.app import get_qt_app
 from src.freemocap_qt_gui.conference.qt_utils.clear_layout import clearLayout
 from src.freemocap_qt_gui.conference.workflows.camera_configuration import CameraConfiguration
@@ -68,7 +67,6 @@ class MainWindow(QMainWindow):
 
     def _show_cam_config_screen(self):
         clearLayout(self._main_layout)
-        # cams = get_or_create_cams()
         screen = CameraConfiguration()
         self._main_layout.addWidget(screen)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)

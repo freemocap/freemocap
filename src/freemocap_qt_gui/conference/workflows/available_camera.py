@@ -1,8 +1,5 @@
 from PyQt6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QWidget
 
-from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
-from src.config.webcam_config import WebcamConfig
-
 
 class AvailableCamera(QWidget):
 
@@ -14,9 +11,14 @@ class AvailableCamera(QWidget):
         name_layout.setSpacing(20)
         name_layout.addWidget(self._create_checkbox())
         name_layout.addWidget(self._create_title())
-        name_layout.addWidget(self._create_preview_button())
+        self._preview_button = self._create_preview_button()
+        name_layout.addWidget(self._preview_button)
 
         self.setLayout(name_layout)
+
+    @property
+    def preview(self):
+        return self._preview_button
 
     def _create_title(self):
         camera_title = QLabel(f"Camera {self._camera_name}")
@@ -29,14 +31,4 @@ class AvailableCamera(QWidget):
 
     def _create_preview_button(self):
         preview = QPushButton("Preview")
-        preview.clicked.connect(self._show)
         return preview
-
-    def _show(self):
-        cam = OpenCVCamera(
-            WebcamConfig()
-        )
-        cam.connect()
-        cam.start_frame_capture_thread()
-
-        cam.show()

@@ -6,9 +6,8 @@ from src.freemocap_qt_gui.conference.workflows.available_cameras_list import Ava
 
 class CameraConfiguration(QWidget):
 
-    def __init__(self, detected_cameras: FoundCamerasResponse):
+    def __init__(self):
         super().__init__()
-        self._detected = detected_cameras
         # Holds the Camera Configuration Title
         container = QVBoxLayout()
 
@@ -19,7 +18,8 @@ class CameraConfiguration(QWidget):
 
         # Shows the cameras that can be selected, and shows previews(TODO)
         camera_and_preview_container = QHBoxLayout()
-        list_widget = AvailableCamerasList(detected_cameras)
+        list_widget = AvailableCamerasList()
+        list_widget.PreviewClick.connect(lambda cam_id: print(f"Preview this camera: {cam_id}"))
         camera_and_preview_container.addWidget(list_widget)
 
         # Holds the Accept Button

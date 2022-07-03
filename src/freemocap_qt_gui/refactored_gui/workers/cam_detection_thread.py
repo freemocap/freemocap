@@ -1,11 +1,12 @@
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from src.cameras.detection.cam_singleton import get_or_create_cams
+from src.cameras.detection.models import FoundCamerasResponse
 
 
-class CamDetectionWorker(QObject):
-    finished = pyqtSignal()
+class CamDetectionWorker(QThread):
+    finished = pyqtSignal(FoundCamerasResponse)
 
     def run(self):
-        get_or_create_cams()
-        self.finished.emit()
+        cams = get_or_create_cams(always_create=True)
+        self.finished.emit(cams)

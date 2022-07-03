@@ -68,7 +68,7 @@ class MainWindow(QMainWindow):
 
     def _show_cam_config_screen(self):
         clearLayout(self._main_layout)
-        cams = get_or_create_cams()
-        screen = CameraConfiguration(cams)
+        # cams = get_or_create_cams()
+        screen = CameraConfiguration()
         self._main_layout.addWidget(screen)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)

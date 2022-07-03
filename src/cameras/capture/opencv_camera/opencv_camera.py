@@ -24,12 +24,9 @@ class OpenCVCamera:
 
     def __init__(self,
                  config: WebcamConfig,
-                 session_id: str,
-                 session_start_time_perf_counter_ns:int,
+                 session_id: str=None,
+                 session_start_time_perf_counter_ns:int=0,
                  calibration_video_bool: bool = False):
-
-
-
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
@@ -185,7 +182,7 @@ class OpenCVCamera:
             ### A - see -> https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
             self._opencv_video_capture_object.grab()
             success, image = self._opencv_video_capture_object.retrieve()
-            this_frame_timestamp_perf_counter_ns = time.perf_counter_ns()-self._session_start_time_perf_counter_ns
+            this_frame_timestamp_perf_counter_ns = time.perf_counter_ns() - self._session_start_time_perf_counter_ns
 
             # timestamp_ns_post = time.perf_counter_ns()
             # it_took_this_many_seconds_to_grab_the_frame = (timestamp_ns_post-timestamp_ns_pre)/1e9
@@ -211,13 +208,13 @@ class OpenCVCamera:
     def stop_frame_capture(self):
         self.close()
 
-    def show(self):
+    async def show(self):
         viewer = CvCamViewer()
         viewer.begin_viewer(self.webcam_id_as_str)
         while True:
             if self.new_frame_ready:
                 viewer.recv_img(self.latest_frame)
-                # await asyncio.sleep(0)
+                await asyncio.sleep(0)
 
     def close(self):
         try:

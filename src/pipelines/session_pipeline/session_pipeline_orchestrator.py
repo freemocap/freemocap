@@ -46,8 +46,7 @@ class SessionPipelineOrchestrator:
         self._expected_framerate = expected_framerate
 
         self._visualizer_gui = QTVisualizerAndGui()
-        self._open_cv_camera_manager = OpenCVCameraManager(session_id=self._session_id,
-                                                           expected_framerate=self.expected_framerate)
+        self._open_cv_camera_manager = None
         self._charuco_board_detector = CharucoBoardDetector()
         self._mediapipe_skeleton_detector = MediaPipeSkeletonDetector(self._session_id)
 
@@ -190,7 +189,7 @@ class SessionPipelineOrchestrator:
                                     self._visualizer_gui.update_mediapipe3d_skeleton(mediapipe3d_multi_frame_payload)
                                 dictionary_of_mediapipe_payloads_on_this_multi_frame = {}
 
-                    timestamp_manager.log_new_timestamp_for_main_loop_ns(time.perf_counter_ns())
+                    timestamp_manager.log_new_timestamp_for_main_loop_perf_coutner_ns(time.perf_counter_ns())
 
                     if not self._open_cv_camera_manager.new_multi_frame_ready():
                         continue
@@ -209,12 +208,7 @@ class SessionPipelineOrchestrator:
 
                         image_to_display = this_cam_latest_frame.image.copy()
 
-                        # log timestamp
-                        this_cam_this_frame_timestamp_ns = this_cam_latest_frame.timestamp_in_seconds_from_record_start
-                        this_cam_this_frame_number = this_cam_latest_frame.frame_number
-                        timestamp_manager.log_new_timestamp_for_webcam_ns(this_webcam_id,
-                                                                          this_cam_this_frame_timestamp_ns,
-                                                                          this_cam_this_frame_number)
+
 
                         if save_video:
                             create_session_folder(self.session_id)
@@ -464,11 +458,11 @@ def load_mediapipe3d_skeleton_data(session_id: str = None):
     output_data_folder = Path(get_session_output_data_folder_path(session_id))
     mediapipe3d_xyz_file_path = output_data_folder / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
     logger.info(f"loading: {mediapipe3d_xyz_file_path}")
-    mediapipe3d_skeleton_nFrames_nTrajectories_xyz = np.load(mediapipe3d_xyz_file_path)
+    mediapipe3d_skeleton_nFrames_nTrajectories_xyz = np.load(str(mediapipe3d_xyz_file_path))
 
     mediapipe_reprojection_error_file_path = output_data_folder / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
     logger.info(f"loading: {mediapipe_reprojection_error_file_path}")
-    mediapipe3d_skeleton_nFrames_nTrajectories_reprojectionError = np.load(mediapipe_reprojection_error_file_path)
+    mediapipe3d_skeleton_nFrames_nTrajectories_reprojectionError = np.load(str(mediapipe_reprojection_error_file_path))
 
     return Data3dFullSessionPayload(
         data3d_numFrames_numTrackedPoints_XYZ=mediapipe3d_skeleton_nFrames_nTrajectories_xyz,

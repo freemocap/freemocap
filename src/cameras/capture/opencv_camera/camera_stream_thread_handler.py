@@ -53,15 +53,6 @@ class VideoCaptureThread(threading.Thread):
         """Is the thread capturing frames from the cameras (but not necessarily recording them, that's handled by `is_recording_frames`)"""
         return self._is_capturing_frames
 
-    @property
-    def is_recording_frames(self) -> bool:
-        """Is the thread *recording* the frames that are being capture from the camera (see also - `is_capturing_frames"""
-        return self._is_recording_frames
-
-    @is_recording_frames.setter
-    def is_recording_frames(self, recording_frames_bool:bool):
-        self._is_recording_frames = recording_frames_bool
-
     def stop(self):
         self._is_capturing_frames = False
 
@@ -79,9 +70,7 @@ class VideoCaptureThread(threading.Thread):
                 self._elapsed_during_frame_grab.append(time.perf_counter_ns() - start)
                 self._timestamps_npy.append(self._frame.timestamp_in_seconds_from_record_start)
                 self._num_frames_processed += 1
-                # logger.debug(f"Camera {self._webcam_id}: captured frame# {self._num_frames_processed}: Recording? {self.is_recording_frames}")
-                if self.is_recording_frames:
-                    self._frame_list.append(self._frame)
+                # logger.debug(f"Camera {self._webcam_id}: captured frame# {self._num_frames_processed}")
         except:
             logger.error("Frame loop thread exited due to error")
             traceback.print_exc()

@@ -1554,6 +1554,7 @@ class CameraGroup:
             assert size is not None, \
                 "Camera with name {} has no specified frame size".format(camera.get_name())
 
+
             if init_intrinsics:
                 objp, imgp = board.get_all_calibration_points(rows)
                 mixed = [(o, i) for (o, i) in zip(objp, imgp) if len(o) >= 7]

@@ -18,10 +18,9 @@ imageio
 imageio-ffmpeg
 # Requirements for core-processor
 pyqtgraph==0.12.4
-pyqt5~=5.12.1
+pyqt6==6.3.1
 pyopengl==3.1.6
 mediapipe~=0.8.9.1
 setuptools~=58.0.4
 aniposelib~=0.4.3
 rich~=12.3.0
-pyzmq

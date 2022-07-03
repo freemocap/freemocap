@@ -222,13 +222,13 @@ class OpenCVCamera:
     def stop_frame_capture(self):
         self.close()
 
-    async def show(self):
+    def show(self):
         viewer = CvCamViewer()
         viewer.begin_viewer(self.webcam_id_as_str)
         while True:
             if self.new_frame_ready:
                 viewer.recv_img(self.latest_frame)
-                await asyncio.sleep(0)
+                # await asyncio.sleep(0)
 
     def close(self):
         try:

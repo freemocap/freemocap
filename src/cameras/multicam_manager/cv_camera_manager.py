@@ -30,7 +30,7 @@ class OpenCVCameraManager:
     def __init__(self,
                  session_id: str = None,
                  expected_framerate: Union[int, float] = None,
-                 shut_down_event_bool:bool = None,
+                 shut_down_event_bool: bool = None,
                  ):
         self._session_id = session_id
         self._config_service = UserConfigService()

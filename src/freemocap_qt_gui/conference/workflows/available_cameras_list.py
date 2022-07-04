@@ -11,6 +11,7 @@ from src.freemocap_qt_gui.refactored_gui.workers.cam_detection_thread import Cam
 
 class AvailableCamerasList(QWidget):
     PreviewClick = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self._worker = CamDetectionWorker()

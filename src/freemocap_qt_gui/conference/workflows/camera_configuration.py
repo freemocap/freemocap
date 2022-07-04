@@ -1,3 +1,5 @@
+import time
+
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
@@ -10,13 +12,16 @@ class CameraConfiguration(QWidget):
 
     def __init__(self):
         super().__init__()
-        # Holds the Camera Configuration Title
-        container = QVBoxLayout()
         self._worker = CamFrameWorker()
         self._worker.ImageUpdate.connect(self._handle_image_update)
 
-        config_title_layout = QHBoxLayout()
+        self._accept_button = self._create_accept_button()
+        self._accept_button.hide()
 
+        container = QVBoxLayout()
+
+        # Holds the Camera Configuration Title
+        config_title_layout = QHBoxLayout()
         cam_cfg_title = QLabel("Camera Configuration")
         config_title_layout.addWidget(cam_cfg_title)
 
@@ -28,14 +33,12 @@ class CameraConfiguration(QWidget):
         camera_and_preview_container.addWidget(self._video)
 
         # Holds the Accept Button
-        accept_container = QHBoxLayout()
-        self._accept_button = QPushButton("Accept")
-        self._accept_button.clicked.connect(self._handle_accept_button_click)
-        accept_container.addWidget(self._accept_button)
+        self._accept_container = QHBoxLayout()
+        self._accept_container.addWidget(self._accept_button)
 
         container.addLayout(config_title_layout)
         container.addLayout(camera_and_preview_container)
-        container.addLayout(accept_container)
+        container.addLayout(self._accept_container)
 
         self.setLayout(container)
 
@@ -43,9 +46,15 @@ class CameraConfiguration(QWidget):
     def config_accepted(self):
         return self._accept_button
 
+    def _create_accept_button(self):
+        accept_button = QPushButton("Accept")
+        accept_button.clicked.connect(self._handle_accept_button_click)
+        return accept_button
+
     def _create_available_cams_widget(self):
         list_widget = AvailableCamerasList()
         list_widget.PreviewClick.connect(self._create_preview_worker)
+        list_widget.detect.clicked.connect(self._accept_button.show)
         return list_widget
 
     def _create_preview_image(self):
@@ -53,8 +62,12 @@ class CameraConfiguration(QWidget):
         return video_preview
 
     def _create_preview_worker(self, cam_id):
+        self._video.clear()
         if self._worker.isRunning():
             self._worker.quit()
+            while not self._worker.isFinished():
+                time.sleep(.1)
+
         self._worker._cam_id = cam_id
         self._worker.start()
 
@@ -65,3 +78,4 @@ class CameraConfiguration(QWidget):
         # Save the selected cameras to app state
         selected_cams = self._list_widget.get_checked_cameras
         APP_STATE.selected_cameras = selected_cams
+        print(APP_STATE)

@@ -11,25 +11,36 @@ class CamFrameWorker(QThread):
 
     def __init__(self):
         super().__init__()
+        self._cam_id = None
+
+    def quit(self) -> None:
+        self._cam.close()
+        super().quit()
 
     def run(self):
         cam = OpenCVCamera(
-            WebcamConfig()
+            WebcamConfig(
+                webcam_id=self._cam_id
+            )
         )
         cam.connect()
         cam.start_frame_capture_thread()
-
-        while cam.is_capturing_frames and self.isRunning():
-            if not cam.new_frame_ready:
-                continue
-            payload = cam.latest_frame
-            image = cv2.flip(payload.image, 1)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            converted_frame = QImage(
-                image.data,
-                image.shape[1],
-                image.shape[0],
-                QImage.Format.Format_RGB888
-            )
-            converted_frame = converted_frame.scaled(640, 480, Qt.AspectRatioMode.KeepAspectRatio)
-            self.ImageUpdate.emit(converted_frame)
+        self._cam = cam
+        try:
+            while cam.is_capturing_frames:
+                if not cam.new_frame_ready:
+                    continue
+                payload = cam.latest_frame
+                image = cv2.flip(payload.image, 1)
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                converted_frame = QImage(
+                    image.data,
+                    image.shape[1],
+                    image.shape[0],
+                    QImage.Format.Format_RGB888
+                )
+                converted_frame = converted_frame.scaled(640, 480, Qt.AspectRatioMode.KeepAspectRatio)
+                self.ImageUpdate.emit(converted_frame)
+        finally:
+            print("Closing the camera")
+            self._cam.close()

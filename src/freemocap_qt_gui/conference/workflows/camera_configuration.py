@@ -1,6 +1,7 @@
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from src.cameras.detection.models import FoundCamerasResponse
+from src.freemocap_qt_gui.conference.workers.cam_frame_worker import CamFrameWorker
 from src.freemocap_qt_gui.conference.workflows.available_cameras_list import AvailableCamerasList
 
 
@@ -10,6 +11,8 @@ class CameraConfiguration(QWidget):
         super().__init__()
         # Holds the Camera Configuration Title
         container = QVBoxLayout()
+        self._worker = CamFrameWorker()
+        self._worker.ImageUpdate.connect(self._handle_image_update)
 
         config_title_layout = QHBoxLayout()
 
@@ -18,9 +21,10 @@ class CameraConfiguration(QWidget):
 
         # Shows the cameras that can be selected, and shows previews(TODO)
         camera_and_preview_container = QHBoxLayout()
-        list_widget = AvailableCamerasList()
-        list_widget.PreviewClick.connect(lambda cam_id: print(f"Preview this camera: {cam_id}"))
+        list_widget = self._create_available_cams_widget()
+        self._video = self._create_preview_image()
         camera_and_preview_container.addWidget(list_widget)
+        camera_and_preview_container.addWidget(self._video)
 
         # Holds the Accept Button
         accept_container = QHBoxLayout()
@@ -32,3 +36,21 @@ class CameraConfiguration(QWidget):
         container.addLayout(accept_container)
 
         self.setLayout(container)
+
+    def _create_available_cams_widget(self):
+        list_widget = AvailableCamerasList()
+        list_widget.PreviewClick.connect(self._create_preview_worker)
+        return list_widget
+
+    def _create_preview_image(self):
+        video_preview = QLabel()
+        return video_preview
+
+    def _create_preview_worker(self, cam_id):
+        if self._worker.isRunning():
+            self._worker.quit()
+        self._worker._cam_id = cam_id
+        self._worker.start()
+
+    def _handle_image_update(self, image):
+        self._video.setPixmap(QPixmap.fromImage(image))

@@ -1,4 +1,8 @@
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget, QGridLayout
+
+from src.freemocap_qt_gui.conference.qt_utils.set_font_size import set_font_size
 
 
 class Welcome(QWidget):
@@ -9,6 +13,7 @@ class Welcome(QWidget):
         self._new_session_button = QPushButton("Start New Session")
 
         container = QVBoxLayout()
+        # container.addLayout(self._create_logo())
         container.addLayout(self._create_title_layout())
         container.addLayout(self._create_new_session_button())
 
@@ -21,18 +26,23 @@ class Welcome(QWidget):
     def _create_title_layout(self):
         welcome_title_layout = QVBoxLayout()
 
-        welcome_l1_title = QLabel("Welcome")
-        welcome_l2_title = QLabel("to")
-        welcome_l3_title = QLabel("FreeMoCap")
+        welcome_l1_title = QLabel("Welcome to FreeMoCap")
 
+        set_font_size(welcome_l1_title, 30)
         welcome_title_layout.addWidget(welcome_l1_title)
-        welcome_title_layout.addWidget(welcome_l2_title)
-        welcome_title_layout.addWidget(welcome_l3_title)
-
+        welcome_l1_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         return welcome_title_layout
 
     def _create_new_session_button(self):
         new_session_container = QHBoxLayout()
         new_session_container.addWidget(self._new_session_button)
         return new_session_container
+    #
+    # def _create_logo(self):
+    #     grid = QGridLayout()
+    #     label = QLabel()
+    #     pixmap = QPixmap('../images/skelly-3-4-22.png')
+    #     label.setPixmap(pixmap)
+    #     grid.addWidget(label, 1, 1)
+    #     return grid
 

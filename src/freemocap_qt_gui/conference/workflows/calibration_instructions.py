@@ -5,7 +5,6 @@ class CalibrationInstructions(QWidget):
 
     def __init__(self):
         super().__init__()
-        # Holds the Camera Configuration Title
         self._continue_button = QPushButton("Continue")
 
         container = QVBoxLayout()

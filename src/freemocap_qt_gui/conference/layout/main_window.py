@@ -10,6 +10,7 @@ from src.freemocap_qt_gui.conference.workflows.calibration_instructions import \
 from src.freemocap_qt_gui.conference.workflows.camera_configuration import CameraConfiguration
 from src.freemocap_qt_gui.conference.workflows.new_recording_session import \
     NewRecordingSession
+from src.freemocap_qt_gui.conference.workflows.show_cams_charuco import ShowCamsCharuco
 
 
 class MainWindow(QMainWindow):
@@ -60,12 +61,14 @@ class MainWindow(QMainWindow):
         action.triggered.connect(self._show_recording_session_screen)
         return action
 
+    # more top-level screens go here
+    # this will be refactored later
     def _show_recording_session_screen(self):
         clearLayout(self._main_layout)
-        widg = NewRecordingSession()
-        self._main_layout.addWidget(widg)
+        screen = NewRecordingSession()
+        self._main_layout.addWidget(screen)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        widg.submit.clicked.connect(self._show_cam_config_screen)
+        screen.submit.clicked.connect(self._show_cam_config_screen)
 
     def _show_cam_config_screen(self):
         clearLayout(self._main_layout)
@@ -79,5 +82,11 @@ class MainWindow(QMainWindow):
         screen = CalibrationInstructions()
         self._main_layout.addWidget(screen)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        screen.continue_button.clicked.connect(self._show_calibration_screen)
 
+    def _show_calibration_screen(self):
+        clearLayout(self._main_layout)
+        screen = ShowCamsCharuco()
+        self._main_layout.addWidget(screen)
+        self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 

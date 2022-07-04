@@ -12,8 +12,7 @@ class CameraConfiguration(QWidget):
 
     def __init__(self):
         super().__init__()
-        self._worker = CamFrameWorker()
-        self._worker.ImageUpdate.connect(self._handle_image_update)
+        self._worker = self._init_frame_worker()
 
         self._accept_button = self._create_accept_button()
         self._accept_button.hide()
@@ -45,6 +44,11 @@ class CameraConfiguration(QWidget):
     @property
     def config_accepted(self):
         return self._accept_button
+
+    def _init_frame_worker(self):
+        worker = CamFrameWorker()
+        worker.ImageUpdate.connect(self._handle_image_update)
+        return worker
 
     def _create_accept_button(self):
         accept_button = QPushButton("Accept")
@@ -78,4 +82,3 @@ class CameraConfiguration(QWidget):
         # Save the selected cameras to app state
         selected_cams = self._list_widget.get_checked_cameras
         APP_STATE.selected_cameras = selected_cams
-        print(APP_STATE)

@@ -1,5 +1,7 @@
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from src.freemocap_qt_gui.conference.shared_widgets.page_title import PageTitle
+
 
 class CalibrationInstructions(QWidget):
 
@@ -20,7 +22,7 @@ class CalibrationInstructions(QWidget):
 
     def _create_title_layout(self):
         instructions_title_layout = QVBoxLayout()
-        instructions_title = QLabel("Spacial Positioning Calibration")
+        instructions_title = PageTitle("Multi-Camera Calibration")
         instructions_title_layout.addWidget(instructions_title)
         return instructions_title_layout
 

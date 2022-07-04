@@ -11,7 +11,6 @@ from src.freemocap_qt_gui.refactored_gui.workers.cam_detection_thread import Cam
 
 class AvailableCamerasList(QWidget):
     PreviewClick = pyqtSignal(str)
-
     def __init__(self):
         super().__init__()
         self._worker = CamDetectionWorker()
@@ -21,10 +20,10 @@ class AvailableCamerasList(QWidget):
 
         title_layout = QHBoxLayout()
         avail_cam_title = QLabel("Available Cameras")
-        self._refresh_button = self._create_refresh_button()
+        self._detect_button = self._create_refresh_button()
 
         title_layout.addWidget(avail_cam_title)
-        title_layout.addWidget(self._refresh_button)
+        title_layout.addWidget(self._detect_button)
         title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         self._camera_list_layout = QVBoxLayout()
@@ -42,6 +41,10 @@ class AvailableCamerasList(QWidget):
             if cam_widget.show_cam_checkbox.isChecked():
                 selected_cameras.append(cam_widget.webcam_id)
         return selected_cameras
+
+    @property
+    def detect(self):
+        return self._detect_button
 
     def _create_refresh_button(self):
         refresh_button = QPushButton("Detect")

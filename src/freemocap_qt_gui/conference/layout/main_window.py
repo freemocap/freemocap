@@ -11,6 +11,7 @@ from src.freemocap_qt_gui.conference.workflows.camera_configuration import Camer
 from src.freemocap_qt_gui.conference.workflows.new_recording_session import \
     NewRecordingSession
 from src.freemocap_qt_gui.conference.workflows.show_cams_charuco import ShowCamsCharuco
+from src.freemocap_qt_gui.conference.workflows.welcome import Welcome
 
 
 class MainWindow(QMainWindow):
@@ -21,6 +22,7 @@ class MainWindow(QMainWindow):
         self._create_menu_bar()
         self.statusBar()
         self._main_layout = self._create_basic_layout()
+        self._show_welcome_screen()
 
     def _create_basic_layout(self):
         main_layout = QVBoxLayout()
@@ -63,6 +65,13 @@ class MainWindow(QMainWindow):
 
     # more top-level screens go here
     # this will be refactored later
+    def _show_welcome_screen(self):
+        clearLayout(self._main_layout)
+        screen = Welcome()
+        self._main_layout.addWidget(screen)
+        self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        screen.new_session.clicked.connect(self._show_recording_session_screen)
+
     def _show_recording_session_screen(self):
         clearLayout(self._main_layout)
         screen = NewRecordingSession()

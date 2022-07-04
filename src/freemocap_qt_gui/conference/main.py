@@ -20,6 +20,5 @@ if __name__ == "__main__":
     timer.start(500)
     timer.timeout.connect(lambda: None)  # Let the interpreter run each 500 ms.
     win = MainWindow()
-    # win = AvailableCamera()
     win.show()
     sys.exit(app.exec())

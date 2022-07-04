@@ -37,9 +37,21 @@ class SingleCamera(QWidget):
 
         self.setLayout(layout)
 
+    @property
+    def should_record_frames(self):
+        return self._worker.should_save_frames
+
+    @should_record_frames.setter
+    def should_record_frames(self, value):
+        self._worker.should_save_frames = value
+
     def capture(self):
         self._create_preview_worker()
         self.started.emit()
+
+    def quit(self):
+        self._worker.quit()
+
 
     def _init_frame_worker(self):
         worker = construct_worker(WorkerType.CHARUCO)(self._cam_id)

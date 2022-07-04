@@ -3,6 +3,7 @@ import time
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from src.freemocap_qt_gui.conference.shared_widgets.page_title import PageTitle
 from src.freemocap_qt_gui.conference.workers.cam_frame_worker import CamFrameWorker
 from src.freemocap_qt_gui.conference.workflows.available_cameras_list import AvailableCamerasList
 from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
@@ -21,7 +22,7 @@ class CameraConfiguration(QWidget):
 
         # Holds the Camera Configuration Title
         config_title_layout = QHBoxLayout()
-        cam_cfg_title = QLabel("Camera Configuration")
+        cam_cfg_title = PageTitle("Camera Configuration")
         config_title_layout.addWidget(cam_cfg_title)
 
         # Shows the cameras that can be selected, and shows previews(TODO)

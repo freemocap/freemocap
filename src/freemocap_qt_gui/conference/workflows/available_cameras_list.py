@@ -14,6 +14,7 @@ class AvailableCamerasList(QWidget):
     def __init__(self):
         super().__init__()
         self._worker = CamDetectionWorker()
+        self._worker.finished.connect(self._clear_and_readd_widgets)
 
         container = QVBoxLayout()
 
@@ -39,7 +40,8 @@ class AvailableCamerasList(QWidget):
         return refresh_button
 
     def _detect(self):
-        self._worker.finished.connect(lambda detected: self._clear_and_readd_widgets(detected))
+        if self._worker.isRunning():
+            return
         self._worker.start()
 
     def _create_available_camera_widgets(self, detected: FoundCamerasResponse):

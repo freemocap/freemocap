@@ -36,8 +36,15 @@ class AvailableCamera(QWidget):
     def _create_checkbox(self):
         show_hide_checkbox = QCheckBox()
         show_hide_checkbox.setChecked(True)
+        show_hide_checkbox.stateChanged.connect(self._state_changed)
         return show_hide_checkbox
 
     def _create_preview_button(self):
         preview = QPushButton("Preview")
         return preview
+
+    def _state_changed(self, state):
+        if self._show_cam_checkbox.isChecked() == bool(state):
+            return
+        self._show_cam_checkbox.setChecked(state)
+        checked = self._show_cam_checkbox.isChecked()

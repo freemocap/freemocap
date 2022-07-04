@@ -1,7 +1,8 @@
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget, QPushButton
 
 from src.freemocap_qt_gui.conference.workflows.single_camera import SingleCamera
 from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import CalibrationPipelineOrchestrator
 
 
 class ShowCamsCharuco(QWidget):
@@ -18,15 +19,48 @@ class ShowCamsCharuco(QWidget):
         title_layout.addWidget(title)
 
         video_stream_layout = QHBoxLayout()
-        cam_widgets = []
+        self._cam_widgets = []
         for cam_id in self._selected_cams:
             single_cam = SingleCamera(cam_id)
             single_cam.capture()
             video_stream_layout.addWidget(single_cam)
-            cam_widgets.append(single_cam)
+            self._cam_widgets.append(single_cam)
 
         container.addLayout(title_layout)
         container.addLayout(video_stream_layout)
 
+        #start/stop recording button layout
+        record_button_layout = QHBoxLayout()
+        self._start_recording_button = QPushButton('Begin Recording')
+        self._stop_recording_button = QPushButton('Stop Recording')
+
+        self._start_recording_button.clicked.connect(self._start_recording_frames)
+        self._stop_recording_button.clicked.connect(self._stop_recording_frames)
+
+        record_button_layout.addWidget(self._start_recording_button)
+        record_button_layout.addWidget(self._stop_recording_button)
+        container.addLayout(record_button_layout)
+
         self.setLayout(container)
 
+
+    def _start_recording_frames(self):
+        for cam in self._cam_widgets:
+            cam.should_record_frames = True
+
+    def _stop_recording_frames(self):
+        for cam in self._cam_widgets:
+            cam.quit()
+
+        self._run_anipose_calibration()
+
+    def _run_anipose_calibration(self):
+        print('Beginning Anipose calibration')
+        calibration_orchestrator = CalibrationPipelineOrchestrator(APP_STATE.session_id)
+        try:
+            calibration_orchestrator.run_anipose_camera_calibration(
+                charuco_square_size=39,
+                pin_camera_0_to_origin=True)
+        except:
+            print('something failed in the anipose calibration')
+            raise Exception

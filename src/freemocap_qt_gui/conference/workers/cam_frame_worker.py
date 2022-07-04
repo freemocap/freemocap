@@ -27,6 +27,7 @@ class CamFrameWorker(QThread):
                 if not cam.new_frame_ready:
                     continue
                 payload = cam.latest_frame
+
                 image = cv2.flip(payload.image, 1)
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 converted_frame = QImage(

@@ -40,12 +40,12 @@ class VideoRecorder:
         self._session_id = session_id
         session_path = Path(get_session_folder_path(self._session_id))
 
-        if mediapipe_annotated_video_bool:
-            self._video_folder_path = Path(get_mediapipe_annotated_videos_folder_path(self._session_id))
-        elif calibration_video_bool:
-            self._video_folder_path = Path(get_calibration_videos_folder_path(self._session_id))
-        else:
-            self._video_folder_path = Path(get_synchronized_videos_folder_path(self._session_id))
+        # if mediapipe_annotated_video_bool:
+        #     self._video_folder_path = Path(get_mediapipe_annotated_videos_folder_path(self._session_id))
+        # elif calibration_video_bool:
+        #     self._video_folder_path = Path(get_calibration_videos_folder_path(self._session_id))
+        # else:
+        #     self._video_folder_path = Path(get_synchronized_videos_folder_path(self._session_id))
 
 
     @property
@@ -83,8 +83,12 @@ class VideoRecorder:
         self._frame_payload_list.append(frame_payload)
 
     def save_list_of_frames_to_video_file(self,
-                                          list_of_frames:List[FramePayload],
-                                          frames_per_second:float=None):
+                                          list_of_frames:List[FramePayload]=None,
+                                          frames_per_second:float=None,
+                                          calibration_videos:bool=False):
+        if list_of_frames is None:
+            list_of_frames = self._frame_payload_list
+
         if len(list_of_frames) == 0:
             logging.error(f"No frames to save for camera: {self._video_name}")
             raise Exception
@@ -93,7 +97,7 @@ class VideoRecorder:
             self._timestamps_npy = self._gather_timestamps(list_of_frames)
             frames_per_second = np.nanmedian((np.diff(self._timestamps_npy) ** -1))
 
-        self._initialize_video_writer(frames_per_second=frames_per_second)
+        self._initialize_video_writer(frames_per_second=frames_per_second, calibration_videos=calibration_videos)
         self._write_frame_list_to_video_file(list_of_frames)
         self._save_timestamps(self._timestamps_npy)
 
@@ -107,9 +111,15 @@ class VideoRecorder:
         self._initialize_video_writer(frames_per_second=frames_per_second)
         self._write_image_list_to_video_file(image_list)
 
-    def _initialize_video_writer(self, frames_per_second: Union[int, float] = None):
+    def _initialize_video_writer(self, frames_per_second: Union[int, float] = None, calibration_videos:bool=False):
 
         video_file_name = self._video_name + '.mp4'
+
+        if calibration_videos:
+            self._video_folder_path = Path(get_calibration_videos_folder_path(self._session_id))
+        else:
+            self._video_folder_path = Path(get_synchronized_videos_folder_path(self._session_id))
+
         self._path_to_save_video_file = self._video_folder_path / video_file_name
 
         frames_per_second = frames_per_second

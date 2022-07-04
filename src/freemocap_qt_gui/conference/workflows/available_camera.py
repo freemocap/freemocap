@@ -3,12 +3,13 @@ from PyQt6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QWidget
 
 class AvailableCamera(QWidget):
 
-    def __init__(self, camera_name: str = "0"):
+    def __init__(self, webcam_id: str = "0"):
         super().__init__()
-        self._camera_name = camera_name
+        self._webcam_id = webcam_id
 
         name_layout = QHBoxLayout()
         name_layout.setSpacing(20)
+        self._show_cam_checkbox = self._create_checkbox()
         name_layout.addWidget(self._create_checkbox())
         name_layout.addWidget(self._create_title())
         self._preview_button = self._create_preview_button()
@@ -20,8 +21,16 @@ class AvailableCamera(QWidget):
     def preview(self):
         return self._preview_button
 
+    @property
+    def webcam_id(self):
+        return self._webcam_id
+
+    @property
+    def show_cam_checkbox(self):
+        return self._show_cam_checkbox
+
     def _create_title(self):
-        camera_title = QLabel(f"Camera {self._camera_name}")
+        camera_title = QLabel(f"Camera {self._webcam_id}")
         return camera_title
 
     def _create_checkbox(self):

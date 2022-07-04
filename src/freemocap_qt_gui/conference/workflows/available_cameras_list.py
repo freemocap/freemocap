@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from src.cameras.detection.models import FoundCamerasResponse
+from src.freemocap_qt_gui.conference.qt_utils.clear_layout import clearLayout
 from src.freemocap_qt_gui.conference.workflows.available_camera import AvailableCamera
 from src.freemocap_qt_gui.refactored_gui.workers.cam_detection_thread import CamDetectionWorker
 
@@ -14,7 +15,7 @@ class AvailableCamerasList(QWidget):
     def __init__(self):
         super().__init__()
         self._worker = CamDetectionWorker()
-        self._worker.finished.connect(self._clear_and_readd_widgets)
+        self._worker.finished.connect(self._clear_and_add_widgets)
 
         container = QVBoxLayout()
 
@@ -33,6 +34,14 @@ class AvailableCamerasList(QWidget):
         container.addLayout(self._camera_list_layout)
 
         self.setLayout(container)
+
+    @property
+    def get_checked_cameras(self):
+        selected_cameras = []
+        for cam_widget in self._current_cam_widgets:
+            if cam_widget.show_cam_checkbox.isChecked():
+                selected_cameras.append(cam_widget.webcam_id)
+        return selected_cameras
 
     def _create_refresh_button(self):
         refresh_button = QPushButton("Detect")
@@ -55,9 +64,14 @@ class AvailableCamerasList(QWidget):
 
         return camera_widgets
 
-    def _clear_and_readd_widgets(self, detected: FoundCamerasResponse):
-        for widget in self._create_available_camera_widgets(detected):
+    def _clear_and_add_widgets(self, detected: FoundCamerasResponse):
+        clearLayout(self._camera_list_layout)
+        current_cam_widgets = self._create_available_camera_widgets(detected)
+        for widget in current_cam_widgets:
             self._camera_list_layout.addWidget(widget)
+
+        self._current_cam_widgets = current_cam_widgets
 
     def _handle_camera_preview_click(self, cam_id):
         self.PreviewClick.emit(cam_id)
+

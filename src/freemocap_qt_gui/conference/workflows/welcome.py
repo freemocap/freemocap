@@ -22,6 +22,3 @@ class Welcome(QWidget):
         new_session_button = QPushButton("Start New Session")
         new_session_container.addWidget(new_session_button)
 
-
-
-

@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidg
 
 from src.freemocap_qt_gui.conference.workers.cam_frame_worker import CamFrameWorker
 from src.freemocap_qt_gui.conference.workflows.available_cameras_list import AvailableCamerasList
+from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
 
 
 class CameraConfiguration(QWidget):
@@ -21,21 +22,26 @@ class CameraConfiguration(QWidget):
 
         # Shows the cameras that can be selected, and shows previews(TODO)
         camera_and_preview_container = QHBoxLayout()
-        list_widget = self._create_available_cams_widget()
+        self._list_widget = self._create_available_cams_widget()
         self._video = self._create_preview_image()
-        camera_and_preview_container.addWidget(list_widget)
+        camera_and_preview_container.addWidget(self._list_widget)
         camera_and_preview_container.addWidget(self._video)
 
         # Holds the Accept Button
         accept_container = QHBoxLayout()
-        accept_button = QPushButton("Accept")
-        accept_container.addWidget(accept_button)
+        self._accept_button = QPushButton("Accept")
+        self._accept_button.clicked.connect(self._handle_accept_button_click)
+        accept_container.addWidget(self._accept_button)
 
         container.addLayout(config_title_layout)
         container.addLayout(camera_and_preview_container)
         container.addLayout(accept_container)
 
         self.setLayout(container)
+
+    @property
+    def config_accepted(self):
+        return self._accept_button
 
     def _create_available_cams_widget(self):
         list_widget = AvailableCamerasList()
@@ -54,3 +60,8 @@ class CameraConfiguration(QWidget):
 
     def _handle_image_update(self, image):
         self._video.setPixmap(QPixmap.fromImage(image))
+
+    def _handle_accept_button_click(self):
+        # Save the selected cameras to app state
+        selected_cams = self._list_widget.get_checked_cameras
+        APP_STATE.selected_cameras = selected_cams

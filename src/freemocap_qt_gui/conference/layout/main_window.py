@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import QMainWindow, QMenuBar, QVBoxLayout, \
 
 from src.freemocap_qt_gui.conference.app import get_qt_app
 from src.freemocap_qt_gui.conference.qt_utils.clear_layout import clearLayout
+from src.freemocap_qt_gui.conference.workflows.calibration_instructions import \
+    CalibrationInstructions
 from src.freemocap_qt_gui.conference.workflows.camera_configuration import CameraConfiguration
 from src.freemocap_qt_gui.conference.workflows.new_recording_session import \
     NewRecordingSession
@@ -70,3 +72,12 @@ class MainWindow(QMainWindow):
         screen = CameraConfiguration()
         self._main_layout.addWidget(screen)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        screen.config_accepted.clicked.connect(self._show_calibration_instructions_screen)
+
+    def _show_calibration_instructions_screen(self):
+        clearLayout(self._main_layout)
+        screen = CalibrationInstructions()
+        self._main_layout.addWidget(screen)
+        self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+

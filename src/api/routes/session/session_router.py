@@ -156,23 +156,23 @@ def visualize_session_offline(session_id_model: SessionIdModel = None):
 
 
 if __name__ == "__main__":
-    # create_session
-    session_id_in = create_session_id('session_router_as_main')
-    session_id_model = SessionIdModel(session_id=session_id_in)
-
-    # # #calibrate_session
-    session_calibrate_model_in = SessionCalibrateModel(session_id=session_id_in,
-                                                       charuco_square_size=39)
-    calibrate_session(session_calibrate_model_in)
-
-    # # record new session
-    session_record_model_in = SessionRecordModel(session_id=session_id_in,)
-    record_session(session_record_model_in)
-
-    # #process_
-    mediapipe_track_2D_skeletons_offline()
-
-    mediapipe_reconstruct_3D_skeletons_offline()
+    # # create_session
+    # session_id_in = create_session_id('session_router_as_main')
+    # session_id_model = SessionIdModel(session_id=session_id_in)
+    #
+    # # # #calibrate_session
+    # session_calibrate_model_in = SessionCalibrateModel(session_id=session_id_in,
+    #                                                    charuco_square_size=39)
+    # calibrate_session(session_calibrate_model_in)
+    #
+    # # # record new session
+    # session_record_model_in = SessionRecordModel(session_id=session_id_in,)
+    # record_session(session_record_model_in)
+    #
+    # # #process_
+    # mediapipe_track_2D_skeletons_offline()
+    #
+    # mediapipe_reconstruct_3D_skeletons_offline()
 
     # #visualize with PyQt/OpenGL
     visualize_session_offline()

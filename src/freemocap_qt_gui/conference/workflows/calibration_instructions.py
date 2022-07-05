@@ -1,13 +1,14 @@
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from src.freemocap_qt_gui.conference.shared_widgets.page_title import PageTitle
+from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton
 
 
 class CalibrationInstructions(QWidget):
 
     def __init__(self):
         super().__init__()
-        self._continue_button = QPushButton("Continue")
+        self._continue_button = PrimaryButton("Continue")
 
         container = QVBoxLayout()
         container.addLayout(self._create_title_layout())

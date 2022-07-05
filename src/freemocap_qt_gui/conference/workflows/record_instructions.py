@@ -1,11 +1,13 @@
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+
+from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton
 
 
 class RecordInstructions(QWidget):
 
     def __init__(self):
         super().__init__()
-        self._record_button = QPushButton("Record")
+        self._record_button = PrimaryButton("Record")
 
         container = QVBoxLayout()
         container.addLayout(self._create_title_layout())

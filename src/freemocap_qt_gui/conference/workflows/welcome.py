@@ -1,8 +1,9 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget, QGridLayout
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget, QGridLayout, QSpacerItem
 
 from src.freemocap_qt_gui.conference.qt_utils.set_font_size import set_font_size
+from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton
 
 
 class Welcome(QWidget):
@@ -10,7 +11,7 @@ class Welcome(QWidget):
     def __init__(self):
         super().__init__()
 
-        self._new_session_button = QPushButton("Start New Session")
+        self._new_session_button = PrimaryButton("Start New Session")
 
         container = QVBoxLayout()
         # container.addLayout(self._create_logo())
@@ -45,4 +46,3 @@ class Welcome(QWidget):
     #     label.setPixmap(pixmap)
     #     grid.addWidget(label, 1, 1)
     #     return grid
-

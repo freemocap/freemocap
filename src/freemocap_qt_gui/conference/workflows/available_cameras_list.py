@@ -10,7 +10,7 @@ from src.freemocap_qt_gui.refactored_gui.workers.cam_detection_thread import Cam
 
 
 class AvailableCamerasList(QWidget):
-    PreviewClick = pyqtSignal(str)
+    PreviewClicked = pyqtSignal(str)
 
     def __init__(self):
         super().__init__()
@@ -44,7 +44,7 @@ class AvailableCamerasList(QWidget):
         return selected_cameras
 
     @property
-    def detect(self):
+    def detect_button(self):
         return self._detect_button
 
     def _create_refresh_button(self):
@@ -77,5 +77,5 @@ class AvailableCamerasList(QWidget):
         self._current_cam_widgets = current_cam_widgets
 
     def _handle_camera_preview_click(self, cam_id):
-        self.PreviewClick.emit(cam_id)
+        self.PreviewClicked.emit(cam_id)
 

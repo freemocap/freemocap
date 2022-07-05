@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget, QPushButton
 
+from src.cameras.save_synchronized_videos import save_synchronized_videos
 from src.freemocap_qt_gui.conference.workflows.single_camera import SingleCamera
 from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import CalibrationPipelineOrchestrator
@@ -49,9 +50,12 @@ class ShowCamsCharuco(QWidget):
             cam.should_record_frames = True
 
     def _stop_recording_frames(self):
+        video_recorders = []
         for cam in self._cam_widgets:
+            video_recorders.append(cam.video_recorder)
             cam.quit()
 
+        save_synchronized_videos(video_recorders, calibration_videos=True)
         self._run_anipose_calibration()
 
     def _run_anipose_calibration(self):

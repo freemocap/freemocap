@@ -45,6 +45,10 @@ class SingleCamera(QWidget):
     def should_record_frames(self, value):
         self._worker.should_save_frames = value
 
+    @property
+    def video_recorder(self):
+        return self._worker.video_recorder
+
     def capture(self):
         self._create_preview_worker()
         self.started.emit()

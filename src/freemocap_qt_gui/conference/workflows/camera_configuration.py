@@ -59,8 +59,8 @@ class CameraConfiguration(QWidget):
 
     def _create_available_cams_widget(self):
         list_widget = AvailableCamerasList()
-        list_widget.PreviewClick.connect(self._create_preview_worker)
-        list_widget.detect.clicked.connect(self._accept_button.show)
+        list_widget.PreviewClicked.connect(self._create_preview_worker)
+        list_widget.detect_button.clicked.connect(self._accept_button.show)
         return list_widget
 
     def _create_preview_image(self):

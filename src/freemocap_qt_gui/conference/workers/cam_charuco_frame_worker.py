@@ -27,6 +27,9 @@ class CamCharucoFrameWorker(QThread):
     def should_save_frames(self, value):
         self._should_save_frames = value
 
+    @property
+    def video_recorder(self):
+        return self._cam.video_recorder
 
     def run(self):
         cam = OpenCVCamera(
@@ -66,10 +69,10 @@ class CamCharucoFrameWorker(QThread):
         finally:
             print(f"Closing the camera {self._cam.webcam_id_as_str}, and saving video to disk")
             self._cam.close()
-            if any_frames_recorded:
-                print(f"saving video for camera {self._cam.webcam_id_as_str}")
-                self._cam.video_recorder.save_list_of_frames_to_video_file(calibration_videos=True)
-                print(f"Saved video to: {str(self._cam.video_recorder.path_to_save_video_file)}")
+            # if any_frames_recorded:
+            #     print(f"saving video for camera {self._cam.webcam_id_as_str}")
+            #     self._cam.video_recorder.save_list_of_frames_to_video_file(calibration_videos=True)
+            #     print(f"Saved video to: {str(self._cam.video_recorder.path_to_save_video_file)}")
 
     def quit(self):
         self._cam.close()

@@ -19,6 +19,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('freemocap')
         self.setGeometry(0, 0, 800, 600)
+        self.setStyleSheet("background-color: rgb(50,50,50)")
         self._create_menu_bar()
         self.statusBar()
         self._main_layout = self._create_basic_layout()

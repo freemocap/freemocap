@@ -1,6 +1,6 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget, QGridLayout, QSpacerItem
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget, QGridLayout, QSpacerItem
 
 from src.freemocap_qt_gui.conference.qt_utils.set_font_size import set_font_size
 from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton

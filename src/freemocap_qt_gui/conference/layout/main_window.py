@@ -106,3 +106,4 @@ class MainWindow(QMainWindow):
         screen = RecordVideos()
         self._main_layout.addWidget(screen)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+

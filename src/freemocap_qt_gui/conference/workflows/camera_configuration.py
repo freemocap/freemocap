@@ -4,6 +4,7 @@ from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from src.freemocap_qt_gui.conference.shared_widgets.page_title import PageTitle
+from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton
 from src.freemocap_qt_gui.conference.workers.cam_frame_worker import CamFrameWorker
 from src.freemocap_qt_gui.conference.workflows.available_cameras_list import AvailableCamerasList
 from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
@@ -52,7 +53,7 @@ class CameraConfiguration(QWidget):
         return worker
 
     def _create_accept_button(self):
-        accept_button = QPushButton("Accept")
+        accept_button = PrimaryButton("Accept")
         accept_button.clicked.connect(self._handle_accept_button_click)
         return accept_button
 

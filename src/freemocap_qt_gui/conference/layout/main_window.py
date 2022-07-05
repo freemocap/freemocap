@@ -10,6 +10,7 @@ from src.freemocap_qt_gui.conference.workflows.calibration_instructions import \
 from src.freemocap_qt_gui.conference.workflows.camera_configuration import CameraConfiguration
 from src.freemocap_qt_gui.conference.workflows.new_recording_session import \
     NewRecordingSession
+from src.freemocap_qt_gui.conference.workflows.record_videos import RecordVideos
 from src.freemocap_qt_gui.conference.workflows.show_cams_charuco import ShowCamsCharuco
 from src.freemocap_qt_gui.conference.workflows.welcome import Welcome
 
@@ -98,4 +99,10 @@ class MainWindow(QMainWindow):
         screen = ShowCamsCharuco()
         self._main_layout.addWidget(screen)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        screen.continue_button.clicked.connect(self._show_record_videos_screen)
 
+    def _show_record_videos_screen(self):
+        clearLayout(self._main_layout)
+        screen = RecordVideos()
+        self._main_layout.addWidget(screen)
+        self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)

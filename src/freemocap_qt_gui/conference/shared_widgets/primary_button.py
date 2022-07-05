@@ -7,7 +7,7 @@ class PrimaryButton(QPushButton):
         self.setStyleSheet("""
         QPushButton {
             background-color: #336e6d;
-            font-color: #ffffff;
+            color: #ffffff;
             border-radius: 4px;
             min-height: 32px;
             max-width: 160px;

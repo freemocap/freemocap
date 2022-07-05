@@ -13,6 +13,8 @@ class ShowCamsCharuco(QWidget):
         # TODO: Take it in from init
         self._selected_cams = APP_STATE.selected_cameras
 
+        self._continue_button = QPushButton("Continue")
+
         container = QVBoxLayout()
 
         title_layout = QHBoxLayout()
@@ -42,8 +44,18 @@ class ShowCamsCharuco(QWidget):
         record_button_layout.addWidget(self._stop_recording_button)
         container.addLayout(record_button_layout)
 
+        container.addLayout(self._create_continue_button_container())
+
         self.setLayout(container)
 
+    @property
+    def continue_button(self):
+        return self._continue_button
+
+    def _create_continue_button_container(self):
+        continue_button_layout = QHBoxLayout()
+        continue_button_layout.addWidget(self._continue_button)
+        return continue_button_layout
 
     def _start_recording_frames(self):
         for cam in self._cam_widgets:
@@ -57,6 +69,8 @@ class ShowCamsCharuco(QWidget):
 
         save_synchronized_videos(video_recorders, calibration_videos=True)
         self._run_anipose_calibration()
+        print("Multi-camera calibration complete!")
+
 
     def _run_anipose_calibration(self):
         print('Beginning Anipose calibration')
@@ -68,3 +82,4 @@ class ShowCamsCharuco(QWidget):
         except:
             print('something failed in the anipose calibration')
             raise Exception
+

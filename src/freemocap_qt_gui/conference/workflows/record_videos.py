@@ -8,6 +8,7 @@ from src.freemocap_qt_gui.conference.app import get_qt_app
 from src.freemocap_qt_gui.conference.workflows.single_camera import SingleCamera
 # from src.freemocap_qt_gui.conference.workflows.visualize_session import VisualizeSkeleton
 from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.open_in_blender.open_session_in_blender import open_session_in_blender
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import CalibrationPipelineOrchestrator
 from src.pipelines.session_pipeline.session_pipeline_orchestrator import SessionPipelineOrchestrator, \
     load_mediapipe2d_data, load_mediapipe3d_skeleton_data
@@ -65,9 +66,11 @@ class RecordVideos(QWidget):
         self._detect_2d_skeletons_button.clicked.connect(self._detect_2d_skeletons)
         self._reconstruct_3d_skeletons_button.clicked.connect(self._reconstruct_3d_skeletons)
         self._visualize_freemocap_session_button.clicked.connect(self._visualize_freemocap_session)
-        self._open_in_blender_button.clicked.connect(self._open_in_blender)
+        self._open_in_blender_button.clicked.connect(self._create_blender_scene_from_session_data)
 
         self._process_automatically_checkbox = QCheckBox("Process Videos Automatically")
+        self._process_automatically_checkbox.setChecked(True)
+
         container.addWidget(self._process_automatically_checkbox)
 
         post_recording_button_layout.addWidget( self._process_automatically_checkbox)
@@ -138,6 +141,10 @@ class RecordVideos(QWidget):
         self._reconstruct_3d_skeletons_button.setEnabled(False)
         self._open_in_blender_button.setEnabled(True)
 
+        if self._process_automatically_checkbox.isChecked():
+            self._create_blender_scene_from_session_data()
+
+
     def _visualize_freemocap_session(self):
         pass
         # mediapipe3d_data_payload = load_mediapipe3d_skeleton_data(APP_STATE.session_id)
@@ -152,7 +159,6 @@ class RecordVideos(QWidget):
         # visualize_skeleton_dialog.exec()
         # visualize_skeleton_dialog.start_animation()
 
-    def _open_in_blender(self):
+    def _create_blender_scene_from_session_data(self):
         print(f"Open in Blender : {APP_STATE.session_id}")
-
-        pass
+        open_session_in_blender(APP_STATE.session_id)

@@ -38,15 +38,8 @@ class VideoRecorder:
 
         # get yr paths straight
         self._session_id = session_id
-        session_path = Path(get_session_folder_path(self._session_id))
 
-        # if mediapipe_annotated_video_bool:
-        #     self._video_folder_path = Path(get_mediapipe_annotated_videos_folder_path(self._session_id))
-        # elif calibration_video_bool:
-        #     self._video_folder_path = Path(get_calibration_videos_folder_path(self._session_id))
-        # else:
-        #     self._video_folder_path = Path(get_synchronized_videos_folder_path(self._session_id))
-
+        self._mediapipe_annotated_video_bool = mediapipe_annotated_video_bool
 
     @property
     def video_name(self):
@@ -117,6 +110,8 @@ class VideoRecorder:
 
         if calibration_videos:
             self._video_folder_path = Path(get_calibration_videos_folder_path(self._session_id))
+        elif self._mediapipe_annotated_video_bool:
+            self._video_folder_path = Path(get_mediapipe_annotated_videos_folder_path(self._session_id))
         else:
             self._video_folder_path = Path(get_synchronized_videos_folder_path(self._session_id))
 

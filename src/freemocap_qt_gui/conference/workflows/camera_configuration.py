@@ -4,7 +4,8 @@ from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from src.freemocap_qt_gui.conference.shared_widgets.page_title import PageTitle
-from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton
+from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton, \
+    not_active_primary_button_style_sheet, active_primary_button_style_sheet
 from src.freemocap_qt_gui.conference.workers.cam_frame_worker import CamFrameWorker
 from src.freemocap_qt_gui.conference.workflows.available_cameras_list import AvailableCamerasList
 from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
@@ -15,9 +16,8 @@ class CameraConfiguration(QWidget):
     def __init__(self):
         super().__init__()
         self._worker = self._init_frame_worker()
-
         self._accept_button = self._create_accept_button()
-        self._accept_button.hide()
+
 
         container = QVBoxLayout()
 
@@ -50,17 +50,24 @@ class CameraConfiguration(QWidget):
     def _init_frame_worker(self):
         worker = CamFrameWorker()
         worker.ImageUpdate.connect(self._handle_image_update)
+
         return worker
 
     def _create_accept_button(self):
         accept_button = PrimaryButton("Accept")
         accept_button.clicked.connect(self._handle_accept_button_click)
+        accept_button.setEnabled(False)
+        accept_button.setStyleSheet(not_active_primary_button_style_sheet)
         return accept_button
+
+    def _enable_accept_button(self):
+        self._accept_button.setEnabled(True)
+        self._accept_button.setStyleSheet(active_primary_button_style_sheet)
 
     def _create_available_cams_widget(self):
         list_widget = AvailableCamerasList()
+        list_widget.enable_accept_button_callback = self._enable_accept_button
         list_widget.PreviewClicked.connect(self._create_preview_worker)
-        list_widget.detect_button.clicked.connect(self._accept_button.show)
         return list_widget
 
     def _create_preview_image(self):

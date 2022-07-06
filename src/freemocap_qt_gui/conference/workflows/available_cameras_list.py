@@ -35,6 +35,19 @@ class AvailableCamerasList(QWidget):
 
         self.setLayout(container)
 
+        self._enable_accept_button_callback = None
+
+        #automatically detect cameras on page load
+        self._detect()
+
+    @property
+    def enable_accept_button_callback(self):
+        return self._enable_accept_button_callback
+
+    @enable_accept_button_callback.setter
+    def enable_accept_button_callback(self, callback):
+        self._enable_accept_button_callback = callback
+
     @property
     def get_checked_cameras(self):
         selected_cameras = []
@@ -57,6 +70,8 @@ class AvailableCamerasList(QWidget):
             return
         self._worker.start()
 
+
+
     def _create_available_camera_widgets(self, detected: FoundCamerasResponse):
         camera_widgets = []
         for cam in detected.cameras_found_list:
@@ -65,6 +80,8 @@ class AvailableCamerasList(QWidget):
                 partial(self._handle_camera_preview_click, cam.webcam_id)
             )
             camera_widgets.append(available_cam)
+
+        self._enable_accept_button_callback()
 
         return camera_widgets
 

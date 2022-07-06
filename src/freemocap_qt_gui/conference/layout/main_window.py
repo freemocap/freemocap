@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMainWindow, QMenuBar, QVBoxLayout, \
-    QWidget
+    QWidget, QCheckBox
 
 from src.freemocap_qt_gui.conference.app import get_qt_app
 from src.freemocap_qt_gui.conference.qt_utils.clear_layout import clearLayout
@@ -13,6 +13,7 @@ from src.freemocap_qt_gui.conference.workflows.new_recording_session import \
 from src.freemocap_qt_gui.conference.workflows.record_videos import RecordVideos
 from src.freemocap_qt_gui.conference.workflows.show_cams_charuco import ShowCamsCharuco
 from src.freemocap_qt_gui.conference.workflows.welcome import Welcome
+from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
 
 
 class MainWindow(QMainWindow):
@@ -23,7 +24,9 @@ class MainWindow(QMainWindow):
         self._create_menu_bar()
         self.statusBar()
         self._main_layout = self._create_basic_layout()
+
         self._show_welcome_screen()
+
 
     def _create_basic_layout(self):
         main_layout = QVBoxLayout()
@@ -85,7 +88,12 @@ class MainWindow(QMainWindow):
         screen = CameraConfiguration()
         self._main_layout.addWidget(screen)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        screen.config_accepted.clicked.connect(self._show_calibration_instructions_screen)
+        # screen.config_accepted.clicked.connect(self._show_calibration_instructions_screen)
+        if APP_STATE.use_previous_calibration:
+            screen.config_accepted.clicked.connect(self._show_record_videos_screen)
+        else:
+            screen.config_accepted.clicked.connect(self._show_calibration_screen)
+
 
     def _show_calibration_instructions_screen(self):
         clearLayout(self._main_layout)

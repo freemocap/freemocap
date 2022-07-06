@@ -14,6 +14,7 @@ from src.config.home_dir import get_session_folder_path, get_synchronized_videos
     get_session_output_data_folder_path
 from src.core_processor.mediapipe_skeleton_detector.medaipipe_tracked_points_names_dict import \
     mediapipe_tracked_point_names_dict
+from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +156,13 @@ class MediaPipeSkeletonDetector:
                 logger.error(f"Failed to load an image from: {str(this_synchronized_video_file_path)}")
                 raise Exception
 
+            frame_number = 0
             while success and image is not None:
+
+                frame_number+=1
+                if frame_number%5==0:
+                    print(f"frame {frame_number} out of {APP_STATE.number_of_frames_in_the_mocap_videos}")
+
                 mediapipe2d_data_payload = self.detect_skeleton_in_image(raw_image=image)
                 this_video_mediapipe_results_list.append(mediapipe2d_data_payload.mediapipe_results)
                 annotated_image = self._annotate_image(image, mediapipe2d_data_payload.mediapipe_results)

@@ -148,3 +148,7 @@ freemocap-ui/threejs_stuff/
 *.mp4
 *.divx
 freemocap_runme_script_jsm.py
+
+freemocap/fmc_calibration/previous_calibration.toml
+
+freemocap/fmc_calibration/

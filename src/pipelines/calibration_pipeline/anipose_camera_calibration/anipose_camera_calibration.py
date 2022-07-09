@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-from cv2.cv2 import aruco_CharucoBoard
+from cv2 import aruco_CharucoBoard
 from scipy.spatial.transform import Rotation
 
 from src.config.home_dir import get_session_folder_path, get_freemocap_data_folder_path, \

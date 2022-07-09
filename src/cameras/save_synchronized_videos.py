@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 from matplotlib import pyplot as plt
 
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
 
@@ -19,6 +20,8 @@ def save_synchronized_videos(list_of_video_recorders:List[VideoRecorder], calibr
         first_frame_timestamps.append(cam_frame_list[0].timestamp_unix_time_seconds)
         final_frame_timestamps.append(cam_frame_list[-1].timestamp_unix_time_seconds)
         each_cam_frame_list.append(cam_frame_list)
+
+    number_of_cameras = len(each_cam_frame_list)
 
     latest_first_frame = np.max(first_frame_timestamps)
     earliest_final_frame = np.min(final_frame_timestamps)
@@ -45,21 +48,49 @@ def save_synchronized_videos(list_of_video_recorders:List[VideoRecorder], calibr
             each_cam_clipped_frame_list[-1].append(frame)
             each_cam_clipped_timestamp_list[-1].append(frame.timestamp_unix_time_seconds)
 
-    number_of_frames_per_camera = [len(f) for f in each_cam_clipped_frame_list]
-    min_number_of_frames = np.min(number_of_frames_per_camera)
-    print(f" (clipped) number_of_frames_per_camera: {number_of_frames_per_camera}, min:{min_number_of_frames}")
+    number_of_frames_per_camera_clipped = [len(f) for f in each_cam_clipped_frame_list]
+    min_number_of_frames = np.min(number_of_frames_per_camera_clipped)
+    index_of_the_camera_with_fewest_frames = np.argmin(number_of_frames_per_camera_clipped)
 
-    each_cam_not_really_synchronized_frame_list = [frame_list[:min_number_of_frames] for frame_list in each_cam_clipped_frame_list]
+    reference_frame_list = each_cam_clipped_frame_list[index_of_the_camera_with_fewest_frames]
+    number_of_frames_per_camera = len(reference_frame_list)
 
-    number_of_frames_per_camera = [len(f) for f in each_cam_not_really_synchronized_frame_list]
-    print(f" (not_really_synchronized) number_of_frames_per_camera: {number_of_frames_per_camera}")
+    each_cam_synchronized_frame_list = []
+    for this_cam_number, this_cam_frame_list in enumerate(each_cam_clipped_frame_list):
+        this_cam_synchronized_frame_list = []
+        for this_reference_frame in reference_frame_list:
+            closest_frame = get_nearest_frame(this_cam_frame_list, this_reference_frame)
+            this_cam_synchronized_frame_list.append(closest_frame)
+        each_cam_synchronized_frame_list.append(this_cam_synchronized_frame_list)
+
+    print(f" (clipped) number_of_frames_per_camera: {number_of_frames_per_camera_clipped}, min:{min_number_of_frames}")
+
+
+
 
     if mocap_videos:
-        APP_STATE.number_of_frames_in_the_mocap_videos = number_of_frames_per_camera[0]
+        APP_STATE.number_of_frames_in_the_mocap_videos = number_of_frames_per_camera
 
-    final_frame_timestamps = [frame_list[-1].timestamp_unix_time_seconds for frame_list in each_cam_not_really_synchronized_frame_list]
+    final_frame_timestamps = [frame_list[-1].timestamp_unix_time_seconds for frame_list in each_cam_synchronized_frame_list]
 
     print(f"np.diff(final_frame_timestamps): {np.diff(final_frame_timestamps)}")
 
-    for video_recoder, frame_list in  zip(list_of_video_recorders, each_cam_not_really_synchronized_frame_list):
+    for video_recoder, frame_list in  zip(list_of_video_recorders, each_cam_synchronized_frame_list):
         video_recoder.save_list_of_frames_to_video_file(list_of_frames=frame_list, calibration_videos=calibration_videos)
+
+
+
+def get_nearest_frame(frame_list, reference_frame)->FramePayload:
+    timestamps = gather_timestamps(frame_list)
+
+    close_frame_index = np.argmin(np.abs(timestamps-reference_frame.timestamp_unix_time_seconds))
+
+    return frame_list[close_frame_index]
+
+
+def gather_timestamps( frame_list: List[FramePayload]) -> np.ndarray:
+    timestamps_npy = np.empty(0)
+    for frame in frame_list:
+        timestamps_npy = np.append(timestamps_npy, frame.timestamp_unix_time_seconds)
+
+    return timestamps_npy

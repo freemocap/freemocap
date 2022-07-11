@@ -299,6 +299,11 @@ def RunMe(sessionID=None,
   - [Type]  = BOOL
   -  [Default] = False,
   -  When set to `True`, the system will run a bundle adjust optimization of all recorded 3d points produced in `stage=4` using `aniposelib`'s `optim_points` method. This takes a rather long time, but can signicantly clean up the resulting recordings. However,it may also "over smooth" the data. We're in the process of testing this method out now
+  
+- `use_previous_calibration`
+  - [Type]  = BOOL
+  -  [Default] = False,
+  -  Choose whether to use a calibration file from a previous session. When `False`, FreeMoCap will automatically save out calibration data whenever stage 3 is successfully completed. Only one saved calibration file is stored, so running another session will overwrite the currently saved calibration file. When `True` , FreeMoCap will instead load in the saved calibration data, which allows users to create recordings without needing to show the cameras the Charuco board. 
 
 
 ____

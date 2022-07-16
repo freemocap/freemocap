@@ -303,7 +303,7 @@ def update():
     else:
         s = np.clip(dt*3., 0, 1)
         fps = fps * (1-s) + (1.0/dt) * s
-    ui.fpsLabel.setText('%0.2f fps' % fps)
+    ui.fpsLabel.setText('%0.2f timestamp_manager' % fps)
     app.processEvents()  ## force complete redraw for every plot
 timer = QtCore.QTimer()
 timer.timeout.connect(update)

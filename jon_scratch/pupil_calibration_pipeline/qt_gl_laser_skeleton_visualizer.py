@@ -27,8 +27,8 @@ class QtGlLaserSkeletonVisualizer():
                  end_frame: int = None,
                  move_data_to_origin: bool = True):
 
-        if session_data is not None:
-            self.session_data = session_data
+        self.session_data = session_data
+        if self.session_data is not None:
             self.mediapipe_fr_mar_xyz = session_data.mediapipe_skel_fr_mar_dim
         elif mediapipe_skel_fr_mar_xyz is not None:
             self.mediapipe_fr_mar_xyz = mediapipe_skel_fr_mar_xyz
@@ -55,11 +55,12 @@ class QtGlLaserSkeletonVisualizer():
         self.get_mediapipe_connections()
         self.initialize_skel_dottos()
         self.initialize_skel_lines()
-        self.initialize_head_axes()
-        self.initialize_eye_socket_axes()
-        if self.session_data.right_gaze_vector_endpoint_fr_xyz is not None:
-            self.initialize_gaze_lasers()
-            self.initialize_gaze_laser_tails(tail_length=30)
+        if self.session_data is not None:
+            self.initialize_head_axes()
+            self.initialize_eye_socket_axes()
+            if self.session_data.right_gaze_vector_endpoint_fr_xyz is not None:
+                self.initialize_gaze_lasers()
+                self.initialize_gaze_laser_tails(tail_length=30)
 
     def create_app_window(self):
         self.app = pg.mkQApp("Laser Skeleton")
@@ -278,17 +279,22 @@ class QtGlLaserSkeletonVisualizer():
         if self.current_frame_number % 10 == 0:
             print(f'frame number: {self.current_frame_number}')
 
+
+        self.update_skeleton()
+        if self.session_data is not None:
+            self.update_head_axis_lines()
+            self.update_eye_axis_lines()
+            if self.session_data.right_gaze_vector_endpoint_fr_xyz is not None:
+                self.update_gaze_lasers()
+                self.update_gaze_laser_tails()
+
+    def update_skeleton(self):
+        # skel dottos
         self.skeleton_scatter_item.setData(
             pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, :, :]
         )
-        self.update_skeleton_lines()
-        self.update_head_axis_lines()
-        self.update_eye_axis_lines()
-        if self.session_data.right_gaze_vector_endpoint_fr_xyz is not None:
-            self.update_gaze_lasers()
-            self.update_gaze_laser_tails()
 
-    def update_skeleton_lines(self):
+        #skel lines
         for this_skeleton_line_number, this_connection in enumerate(self.mediapipe_body_connections):
             self.skeleton_connections_list[this_skeleton_line_number].setData(
                 pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, this_connection, :]
@@ -413,18 +419,19 @@ class QtGlLaserSkeletonVisualizer():
         self.mediapipe_fr_mar_xyz[:, :, 1] -= mean_position_xyz[1]
         self.mediapipe_fr_mar_xyz[:, :, 2] -= mean_position_xyz[2]
 
-        self.session_data.head_rotation_data.local_origin_fr_xyz[:, 0] -= mean_position_xyz[0]
-        self.session_data.head_rotation_data.local_origin_fr_xyz[:, 1] -= mean_position_xyz[1]
-        self.session_data.head_rotation_data.local_origin_fr_xyz[:, 2] -= mean_position_xyz[2]
+        if self.session_data is not None:
+            self.session_data.head_rotation_data.local_origin_fr_xyz[:, 0] -= mean_position_xyz[0]
+            self.session_data.head_rotation_data.local_origin_fr_xyz[:, 1] -= mean_position_xyz[1]
+            self.session_data.head_rotation_data.local_origin_fr_xyz[:, 2] -= mean_position_xyz[2]
 
-        if self.session_data.right_gaze_vector_endpoint_fr_xyz is not None:
-            self.session_data.right_gaze_vector_endpoint_fr_xyz[:, 0] -= mean_position_xyz[0]
-            self.session_data.right_gaze_vector_endpoint_fr_xyz[:, 1] -= mean_position_xyz[1]
-            self.session_data.right_gaze_vector_endpoint_fr_xyz[:, 2] -= mean_position_xyz[2]
+            if self.session_data.right_gaze_vector_endpoint_fr_xyz is not None:
+                self.session_data.right_gaze_vector_endpoint_fr_xyz[:, 0] -= mean_position_xyz[0]
+                self.session_data.right_gaze_vector_endpoint_fr_xyz[:, 1] -= mean_position_xyz[1]
+                self.session_data.right_gaze_vector_endpoint_fr_xyz[:, 2] -= mean_position_xyz[2]
 
-            self.session_data.left_gaze_vector_endpoint_fr_xyz[:, 0] -= mean_position_xyz[0]
-            self.session_data.left_gaze_vector_endpoint_fr_xyz[:, 1] -= mean_position_xyz[1]
-            self.session_data.left_gaze_vector_endpoint_fr_xyz[:, 2] -= mean_position_xyz[2]
+                self.session_data.left_gaze_vector_endpoint_fr_xyz[:, 0] -= mean_position_xyz[0]
+                self.session_data.left_gaze_vector_endpoint_fr_xyz[:, 1] -= mean_position_xyz[1]
+                self.session_data.left_gaze_vector_endpoint_fr_xyz[:, 2] -= mean_position_xyz[2]
 
 
 if __name__ == '__main__':

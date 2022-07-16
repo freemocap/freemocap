@@ -19,7 +19,7 @@ class DetectPossibleCameras:
             cap = cv2.VideoCapture(cam_id, cv2_backend)
             success, image = cap.read()
 
-            if success:
+            if success and image is not None:
                 try:
                     cams_to_use_list.append(
                         RawCamera(

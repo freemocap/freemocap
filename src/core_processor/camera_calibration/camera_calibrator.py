@@ -1,16 +1,14 @@
 import logging
-from dataclasses import dataclass
 
 import cv2
-import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.core_processor.camera_calibration.calibration_dataclasses import CameraCalibrationData
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_board_detector import CharucoBoardDetector
-from src.core_processor.camera_calibration.charuco_board_detection.charuco_image_annotator import \
+from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import CharucoBoardDetector
+from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_image_annotator import \
     annotate_image_with_charuco_data
-from src.core_processor.camera_calibration.charuco_board_detection.dataclasses.charuco_view_data import CharucoViewData
+from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_view_data import CharucoViewData
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +19,10 @@ class CameraCalibrator:
                  ):
         self._current_calibration = None
         self._charuco_board_detector = charuco_board_detector
+
+    @property
+    def charuco_board_detector(self):
+        return self._charuco_board_detector
 
     def calibrate(self, this_camera: OpenCVCamera):
         annotated_image = self._process_incoming_frame(this_camera.latest_frame)
@@ -40,10 +42,8 @@ class CameraCalibrator:
         if not charuco_view_data.full_board_found and self._current_calibration is None:
             return charuco_frame_payload.annotated_image, self._current_calibration
 
-
         if charuco_view_data.full_board_found:
             self._calibrate_camera(charuco_view_data)  # this is where the magic happens
-
 
         if charuco_view_data.some_charuco_corners_found:
             annotate_image_with_charuco_data(
@@ -77,7 +77,6 @@ class CameraCalibrator:
         image_width = charuco_view.image_width
         image_height = charuco_view.image_height
 
-
         # flag definitions -> https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga3207604e4b1a1758aa66acb6ed5aa65d
         flags = (cv2.CALIB_USE_INTRINSIC_GUESS +
                  cv2.CALIB_ZERO_TANGENT_DIST +
@@ -101,7 +100,7 @@ class CameraCalibrator:
          ) = cv2.aruco.calibrateCameraCharucoExtended(
             charucoCorners=[charuco_view.charuco_corners],
             charucoIds=[charuco_view.charuco_ids],
-            board=self._charuco_board_detector.charuco_board,
+            board=self._charuco_board_detector.cv2_aruco_charuco_board,
             imageSize=(image_width, image_height),
             cameraMatrix=self._current_calibration.camera_matrix,
             distCoeffs=self._current_calibration.lens_distortion_coefficients,
@@ -119,3 +118,6 @@ class CameraCalibrator:
                 translation_vectors_of_the_board=these_translation_vectors_of_the_board,
                 lens_distortion_std_dev=this_lens_distortion_std_dev,
                 camera_location_std_dev=this_camera_location_std_dev)
+
+    def reconstruct_3d_charuco(self, charuco_data_per_camera_dictionary):
+        pass

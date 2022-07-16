@@ -1,7 +1,7 @@
-from ._version import get_versions
+# from ._version import get_versions
 
-__version__ = get_versions()["version"]
-del get_versions
+# __version__ = get_versions()["version"]
+# del get_versions
 
 from freemocap.fmc_runme import RunMe
 from freemocap import fmc_demo, fmc_runme

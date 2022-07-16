@@ -92,7 +92,7 @@ end = time.time()
 webcam_stream1.stop()  # stop the webcam stream
 webcam_stream2.stop()  # stop the webcam stream
 
-# printing time elapsed and fps
+# printing time elapsed and timestamp_manager
 elapsed = end - start
 fps = num_frames_processed / elapsed
 print(

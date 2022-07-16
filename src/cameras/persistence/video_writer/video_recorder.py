@@ -61,8 +61,6 @@ class VideoRecorder:
     def frame_list(self):
         return self._frame_payload_list
 
-
-
     def save_frame_payload_to_video_file(self, frame_payload: FramePayload):
         if self._cv2_video_writer is None:
             self._initialize_video_writer()

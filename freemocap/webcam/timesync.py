@@ -14,7 +14,7 @@ def TimeSync(session,timeStampData,numCamRange,camNames):
 
     Then loop through the list of frame numbers from each camera. Update counts for missing frames and duplicated frames. Create a table with these counts
     and plots of statistics related to the recording
-    """     
+    """
     def CloseNeighb(camera,point): 
         """ 
         Find the timestamp in the camera timestamp list that most closely matches the input pointin the master timeline

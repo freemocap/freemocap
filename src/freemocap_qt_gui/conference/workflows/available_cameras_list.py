@@ -61,7 +61,7 @@ class AvailableCamerasList(QWidget):
         return self._detect_button
 
     def _create_refresh_button(self):
-        refresh_button = QPushButton("Detect")
+        refresh_button = QPushButton("Re-detect")
         refresh_button.clicked.connect(self._detect)
         return refresh_button
 

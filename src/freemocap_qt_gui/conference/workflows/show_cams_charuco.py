@@ -37,7 +37,7 @@ class ShowCamsCharuco(QWidget):
 
         container.addWidget(self._use_previous_calibration_checkbox)
 
-        #start/stop recording button layout
+        # start/stop recording button layout
         record_button_layout = QHBoxLayout()
         self._start_recording_button = QPushButton('Begin Recording')
         self._stop_recording_button = QPushButton('Stop Recording')
@@ -74,7 +74,6 @@ class ShowCamsCharuco(QWidget):
         self._continue_button.setEnabled(self._use_previous_calibration_checkbox.isChecked())
         APP_STATE.use_previous_calibration = self._use_previous_calibration_checkbox.isChecked()
 
-
     def _start_recording_frames(self):
         self._start_recording_button.setEnabled(False)
         self._stop_recording_button.setEnabled(True)
@@ -103,4 +102,3 @@ class ShowCamsCharuco(QWidget):
         except:
             print('something failed in the anipose calibration')
             raise Exception
-

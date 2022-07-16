@@ -1576,7 +1576,7 @@ try:
         ## Load nSynched Videos
         try:
             print('loading videos as planes...')
-            annotated_videos_path = session_path / 'annotated_videos'
+            annotated_videos_path = session_path / 'mediapipe_annotated_videos'
 
             if annotated_videos_path.is_dir():
                 vidFolderPath = annotated_videos_path

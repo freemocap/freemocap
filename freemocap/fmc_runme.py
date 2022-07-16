@@ -1,5 +1,4 @@
 
-from scipy.ndimage.measurements import center_of_mass
 from freemocap.fmc_startup import startup, startupGUI
 from freemocap.webcam import camera_settings, timesync
 
@@ -12,7 +11,6 @@ from aniposelib.boards import CharucoBoard
 import numpy as np
 from scipy.signal import savgol_filter
 
-from ruamel.yaml import YAML
 import cv2
 
 #Rich stuff
@@ -27,15 +25,20 @@ from rich.padding import Padding
 
 
 from freemocap import (
+    fmc_good_frame_finder,
     recordingconfig,
     runcams,
     calibrate,
     fmc_mediapipe,
     fmc_openpose,
     fmc_deeplabcut,
+    fmc_origin_alignment,
+    fmc_mediapipe_annotation,
+    fmc_skeleton_data_holder,
     reconstruct3D,
     play_skeleton_animation,
     session,
+
 )
 
 
@@ -58,11 +61,16 @@ def RunMe(sessionID=None,
         showAnimation = True,
         reconstructionConfidenceThreshold = .5,
         charucoSquareSize = 36,#mm - ~the size of the squares when printed on 8.5x11" paper based on parameters in ReadMe.md
-        calVideoFrameLength = .5,
+        calVideoFrameLength = 1,
         startFrame = 0,
         useBlender = False,
         resetBlenderExe = False,
         get_synced_unix_timestamps = True,
+        good_clean_frame_number = 0,
+        use_saved_calibration = False,
+        bundle_adjust_3d_points=False,
+        place_skeleton_on_origin = False,
+        save_annotated_videos = False,
         ):
     """
     Starts the freemocap pipeline based on either user-input values, or default values. Creates a new session class instance (called sesh)
@@ -85,8 +93,13 @@ def RunMe(sessionID=None,
     sesh.dataFolderName = recordingconfig.dataFolder
     sesh.startFrame = startFrame
     sesh.get_synced_unix_timestamps = get_synced_unix_timestamps
+    sesh.use_saved_calibration = use_saved_calibration
 
     # %% Startup
+    sesh.freemocap_module_path = Path(__file__).parent
+
+
+
     startup.get_user_preferences(sesh,stage)
 
     if sesh.useDLC and stage<5:
@@ -103,9 +116,10 @@ def RunMe(sessionID=None,
         console.rule()
         print('Running ' + str(sesh.sessionID) + ' from ' + str(sesh.dataFolderPath))
         console.rule()
+
     if useBlender == True:
-        here = Path(__file__).parent
-        subprocessPath = here/'fmc_blender.py'
+
+        subprocessPath = sesh.freemocap_module_path/'fmc_blender.py'
         blenderPath = startup.get_blender_path(sesh,resetBlenderExe)
 
 
@@ -173,40 +187,6 @@ def RunMe(sessionID=None,
 
         sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
 
-        ##this is supposed to cycle through tyhe videos with different windows to try to get Anipose to work. I can't get the dang thing working because something weird happens where a Thread will get spawned in one of the inner functions (maybe related to tqdm?) and that iteration will jump out of the try/except
-        # try:
-        #     sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, calVideoFrameLength)
-        #     # anipose_success = True
-        #     anipose_success = False
-        # except:
-        #     console.print_exception()
-        #     console.print('[bold red] - Anipose Calibration failed with user-provided (or default) `calVideoFrameLength` value! Trying again with other parts of the videos')
-        #     anipose_success = False
-
-        # if not anipose_success:
-        #     if calVideoFrameLength ==.25:
-        #         cal_video_frame_range = [round(sesh.numFrames*.25), round(sesh.numFrames*.5)]
-        #     else:
-        #         cal_video_frame_range = [0, round(sesh.numFrames*.25)]
-
-        #     for anipose_iter in range(4):
-
-        #         console.rule('Anipose Failed - Reprocessing - Iteration #{}'.format(anipose_iter), style="color({})".format(thisStage))
-        #         console.rule('Trying again with frame range {} - {}'.format(cal_video_frame_range[0], cal_video_frame_range[1]), style="color({})".format(thisStage))
-
-        #         try:
-        #             sesh.cgroup, sesh.mean_charuco_fr_mar_xyz = calibrate.CalibrateCaptureVolume(sesh,board, cal_video_frame_range)
-        #             break
-        #         except:
-        #             console.print_exception()
-        #             cal_video_frame_range = [cal_video_frame_range[0]+round(sesh.numFrames*.25), cal_video_frame_range[0]+round(sesh.numFrames*.5)]
-
-        #         if cal_video_frame_range[1] > sesh.numFrames:
-        #             console.print('[bold red] -Sorry, we couldn\'t get Anipose calibration to complete sucessfully. Are you using a Charuco board made with the parameters described in the ReadMe (here\s a sample png -https://github.com/jonmatthis/freemocap/blob/main/charuco_board_image.png ). Is the board clearly visible to each camera? Is there glare on it from from any of the camera\'s perspective? Is it too far away from the cameras? Is your `exposure` set low enough that the black squares are black (not grey)?')
-
-
-
-
         print('Anipose Calibration Successful!')
     else:
         print('Skipping Calibration')
@@ -214,31 +194,48 @@ def RunMe(sessionID=None,
     # %% Stage Four
     if stage <= 4:
         thisStage=4
-        console.rule(style="color({})".format(thisStage))
-        console.rule('Starting 2D Point Trackers'.upper(),style="color({})".format(thisStage))
+        thisStageColor=12
+        console.rule(style="color({})".format(thisStageColor))
+        console.rule('Starting 2D Point Trackers'.upper(),style="color({})".format(thisStageColor))
         stage4_msg ='This step implements various  computer vision that track the skeleton (and other objects) in the 2d videos, to produce the data that will be combined with the `camera projection matrices` from the calibration stage to produce the estimates of 3d movement. \n \n Each algorithm is different, but most involve using [bold magenta] convolutional neural networks [/bold magenta] trained from labeled videos to produce a 2d probability map of the likelihood that the tracked bodypart/object/feature (e.g. \'LeftElbow\') is in a given location. \n \n The peak of that distrubtion on each frame is recorded as the pixel-location of that item on that frame (e.g. \'LeftElbow(pixel-x, pixel-y, confidence\') where the a confidence value proportional to the underlying probability distribution (i.e. tall peaks in the probablitiy distribution indicate high confidence that the LeftElbow actually is at this pixel-x, pixel-y location) \n \nThis part is crazy future tech sci fi stuff. Seriously unbelievable this kind of thing is possible ✨'
-        console.print(Padding(stage4_msg, (1,4)), overflow="fold", justify='center',style="color({})".format(thisStage))
-        console.rule(style="color({})".format(thisStage))
+        console.print(Padding(stage4_msg, (1,4)), overflow="fold", justify='center',style="color({})".format(thisStageColor))
+        console.rule(style="color({})".format(thisStageColor))
 
 
         if sesh.useMediaPipe:
-            console.rule(style="color({})".format(thisStage))
-            console.rule('Running MediaPipe skeleton tracker - https://google.github.io/mediapipe', style="color({})".format(thisStage))
-            console.rule(style="color({})".format(thisStage))
 
+            console.rule(style="color({})".format(thisStage))    
+            console.rule('Running MediaPipe skeleton tracker - https://google.github.io/mediapipe', style="color({})".format(thisStage))    
+            console.rule(style="color({})".format(thisStage))    
 
             if runMediaPipe:
                 fmc_mediapipe.runMediaPipe(sesh)
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = fmc_mediapipe.parseMediaPipe(sesh)
 
-
-
-
             else:
                 print('`runMediaPipe` set to False, so we\'re loading MediaPipe data from npy file')
                 sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC = np.load(sesh.dataArrayPath/'mediaPipeData_2d.npy', allow_pickle=True)
+            
+            if save_annotated_videos:
+                fmc_mediapipe_annotation.annotate_session_videos_with_mediapipe(sesh)
+
 
             sesh.mediaPipeSkel_fr_mar_xyz, sesh.mediaPipeSkel_reprojErr = reconstruct3D.reconstruct3D(sesh,sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC, confidenceThreshold=reconstructionConfidenceThreshold)
+            
+            if bundle_adjust_3d_points:
+                sesh.mediaPipeSkel_fr_mar_xyz_og = sesh.mediaPipeSkel_fr_mar_xyz.copy()
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_raw.npy', sesh.mediaPipeSkel_fr_mar_xyz_og) #save data to npy
+
+                from mediapipe.python.solutions import holistic as mp_holistic
+                mediapipe_body_pose_connections = [this_connection for this_connection in mp_holistic.POSE_CONNECTIONS]
+                with console.status('Running bundle adjustment optimization on 3d points...'):
+                    sesh.mediaPipeSkel_fr_mar_xyz = sesh.cgroup.optim_points(sesh.mediaPipeData_nCams_nFrames_nImgPts_XYC[:,:,:,:2],
+                                                                            sesh.mediaPipeSkel_fr_mar_xyz, 
+                                                                            constraints=mediapipe_body_pose_connections,
+                                                                            verbose=True)
+                print('Done adjusting bundles!')
+
+
 
             np.save(sesh.dataArrayPath/'mediaPipeSkel_3d.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
             np.save(sesh.dataArrayPath/'mediaPipeSkel_reprojErr.npy', sesh.mediaPipeSkel_reprojErr) #save data to npy
@@ -250,7 +247,22 @@ def RunMe(sessionID=None,
                 for mm in range(sesh.mediaPipeSkel_fr_mar_xyz.shape[1]):
                     sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim] = savgol_filter(sesh.mediaPipeSkel_fr_mar_xyz[:,mm,dim], smoothWinLength, smoothOrder)
 
-            np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz) #save data to npy
+
+            if place_skeleton_on_origin:
+                sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated = sesh.mediaPipeSkel_fr_mar_xyz.copy()
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed_unrotated.npy', sesh.mediaPipeSkel_fr_mar_xyz_smoothed_unrotated) #save data to npy
+                good_frame = fmc_good_frame_finder.find_good_frame(sesh.mediaPipeSkel_fr_mar_xyz, .6, debug = False) #.6 is an initial guess for the velocity. seems to be a safe bet for for all the cases I've tried
+
+                mediapipe_indices = fmc_mediapipe.mediapipe_indices
+
+                origin_aligned_skeleton_data_XYZ = fmc_origin_alignment.align_skeleton_with_origin(sesh.mediaPipeSkel_fr_mar_xyz, mediapipe_indices, good_frame, debug = False)
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', origin_aligned_skeleton_data_XYZ) #save data to npy
+
+            else:
+                np.save(sesh.dataArrayPath/'mediaPipeSkel_3d_smoothed.npy', sesh.mediaPipeSkel_fr_mar_xyz)
+
+
+
 
         sesh.save_session()
 
@@ -302,6 +314,8 @@ def RunMe(sessionID=None,
 
     # %% Stage 5 - Use Blender to create output data files
     if stage <=5:
+
+
         try:
             if useBlender == True:
                 thisStage=5
@@ -313,18 +327,26 @@ def RunMe(sessionID=None,
                 path_to_this_py_file = Path(__file__).parent.resolve()
                 fmc_blender_script_path = path_to_this_py_file /'freemocap_blender_megascript.py'
  
-                command_str = str(blenderPath) + " --background" + " --python " +  str(fmc_blender_script_path) +  " -- " +  str(sesh.sessionPath)
+                command_str = str(blenderPath) + " --background" + " --python " +  str(fmc_blender_script_path) +  " -- " +  str(sesh.sessionPath) +' ' + str(good_clean_frame_number)
                 # command_str = [str(blenderPath), "--background", "--python", str(fmc_blender_script_path), "--", str(sesh.sessionPath)]
                 blender_process = subprocess.Popen(
                                         command_str,
                                         shell=False,
-                                        stdout=subprocess.PIPE)
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE
+                                        )
                 while True:
                     output = blender_process.stdout.readline()
                     if blender_process.poll() is not None:
                         break
                     if output:
                         print(output.strip().decode())
+                
+                if blender_process.returncode == 0:
+                    print("Blender returned an error:")
+                    print(blender_process.stderr.read().decode())
+                  
+
 
         except:
             console.print_exception()

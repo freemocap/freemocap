@@ -139,7 +139,8 @@ def parseOpenPose(session):
                 handRData = np.array(thisJsonData[0]['hand_right_keypoints_2d'])
                 handLData = np.array(thisJsonData[0]['hand_left_keypoints_2d'])
                 faceData  = np.array(thisJsonData[0]['face_keypoints_2d'])
-                thisFrameRow = np.hstack((bodyData,handRData, handLData, faceData)) #horizontally concatenate these arrays                
+                thisFrameRow = np.hstack((bodyData,handRData, handLData, faceData)) #horizontally concatenate these arrays      
+                f=2          
             else: #if this json is empty, just stuff it fulla NaNs
                 thisFrameRow = np.empty([headerLength])
                 thisFrameRow.fill(np.nan)

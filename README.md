@@ -2,7 +2,7 @@
 https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-9328-3be27a4b1ea4.mp4
 
 # This is all very much a work in progress! More to come!
-## (As of March 2022) We're currently working on building a proper API with documentation, but for now enjoy this pile of semi-spaghettified code and sloppy ReadMe 😅
+## (As of May 2022) We're currently working on building a proper API with documentation, but for now enjoy this pile of not-quite-spaghetti-but-definitely-lasagna-flavored code and sloppy ReadMe 😅
 
 ___________________________________
 ___
@@ -14,9 +14,9 @@ ___
   * We recommend installing Anaconda from here (https://www.anaconda.com/products/individual#Downloads) to create your Python environment.
 
 * Two or more USB webcams attached to viable USB ports 
-	*  ~~USB hubs typically don't work~~ I think they do now?
-	*  Note that two cameras is the minimum reuired for 3d reconstruction. However, with just two views, many points will be occluded/not visible to both cameras. For better performance, use three or four cameras
-* Each recording must (for now)  an unobstructed view of a  Charuco board within the first few seconds of recording (See below).
+	*  ~~USB hubs typically don't work~~ I think they do now? 
+	*  Note that two cameras is the **minimum** required for 3d reconstruction. However, with just two views, many points will be occluded/not visible to both cameras. For better performance, use three (or four or more?) cameras
+* Each camera must get a clean unobstructed view of a Charuco board at some (See below).
 ____
 ____
 # Installation
@@ -44,7 +44,7 @@ ___
 
  ##  HOW TO CREATE A *NEW* `FreeMoCap` RECORDING SESSION
 
-tl;dr- Activate the the freemocap Python environment and run the following lines of code (either in a script or in a console)
+tl;dr- **Activate the the freemocap Python environment** and run the following lines of code (either in a script or in a console)
 
 ```python
 import freemocap
@@ -85,16 +85,16 @@ This two-line script is a copy of the `freemocap_runme_script.py` file, which ca
 ```
 (freemocap-env)$ ipython
 ```
-### 4)  Within the `ipython` console, import the `freemocap` package as `fmc`
+### 4)  Within the `ipython` console, import the `freemocap` package
 
 ```Python
-[1]: import freemocap as fmc
+[1]: import freemocap
 ```
 
-### 5) Execute the `fmc.RunMe()` command (with default parameters, see [#runme-input-parameters](#runme-input-parameters) for more info)
+### 5) Execute the `freemocap.RunMe()` command (with default parameters, see [#runme-input-parameters](#runme-input-parameters) for more info)
 
 ```python
-[2]: fmc.RunMe() #<-this is where the magic happens!
+[2]: freemocap.RunMe() #<-this is where the magic happens!
 ```
 
 ### 6) Follow instructions in the Command window and pop-up GUI windows!
@@ -105,15 +105,15 @@ ___
 
 ## HOW TO REPROCESS A PREVIOUSLY RECORDED `FreeMoCap` RECORDING SESSION
 
-You can re-start the processing pipeline from any of the following processing stages (defined below)by specifying the `SessionID` desired `stage` in the call to `fmc.RunMe()`
+You can re-start the processing pipeline from any of the following processing stages (defined below)by specifying the `SessionID` desired `stage` in the call to `freemocap.RunMe()`
 
-So to process the session named `sesh_2021-11-21_19_42_07` starting from stage 3, run:
+So to process the session named `sesh_2021-11-21_19_42_07` starting from stage 3 (aka, skipping the `1- recording` and `2- synchronization` stages), run:
 ```python
-import freemocap as fmc
-fmc.RunMe(sessionID="sesh_2021-11-21_19_42_07", stage=3)
+import freemocap
+freemocap.RunMe(sessionID="sesh_2021-11-21_19_42_07", stage=3)
 ```
 
-Note - if you leave `sessionID` unspecified but set `stage` to a number higher than 1, it will attempt to use the last recorded session
+Note - if you leave `sessionID` unspecified but set `stage` to a number higher than 1, it will attempt to use the last recorded session (but this can be buggy atm)
 
 ___
 
@@ -140,23 +140,23 @@ ___
         -   Save to `/DataArrays` folder (e.g. `openPoseSkel_3d.npy`)
     -   NOTE - you might think it would make sense to separate the 2d tracking and 3d reconstruction into different stages, but the way the code is currently set up it's cleaner to combine them into the same processing stage ¯\\\_(ツ)_/¯
 
--   **Stage 5 - Use Blender to generate output data files (EXPERMENTAL, optional, requires [Blender](https://blender.org) installed. set `fmc.RunMe(useBlender=False)` to skip)**
-    -   Hijack a user-installed version of [Blender](https://blender.org) to format raw mocap data into various other formats, including `.blend`, `.fbx`, `.usd`, `.gltf`, etc.
-    -   Save each filetype to main session folder
-    -   NOTE - This is a new feature and still in a active development (as of 2021-11-28). It is still experimental and will be updating soon!
+-   **Stage 5 - Use Blender to generate output data files (optional, requires [Blender](https://blender.org) installed. set `freemocap.RunMe(useBlender=True)` to use)**
+    -   Hijack a user-installed version of [Blender](https://blender.org) to format raw mocap data into  a `.blend` file including the raw data as keyframed emtpies with a (sloppy,  inexpertly) rigged and meshed armatured based on the [Rigify](https://docs.blender.org/manual/en/2.81/addons/rigging/rigify.html) Human Metarig
+    -   Save `.blend` file to `[Session_Folder]/[Session_ID]/[Session_ID].blend` 
+    -   You can double click that `.blend` file to open it in Blender. 
+    -   For instructions on how to navigate a Blender Scene, try this [YouTube Tutorial](https://www.youtube.com/watch?v=nIoXOplUvAw)
 
 
 -   **Stage 6 - Save Skeleton Animation!**
     -   Create a [Matplotlib](https://matplotlib.org) based output animation video.
-    -   System will first attempt to use an [ffmpeg](https://ffmpeg.org) based video exporter, and if that fails (usually because ffmpeg is not installed) it will revert to a (much slower) alternative and print instructions on how to install `ffmpeg`
-        -  (basically it points you here - https://www.wikihow.com/Install-FFmpeg-on-Windows)
      -  Saves Animation video to: `[Session Folder]/[SessionID]_animVid.mp4`
+     -  Note - This part takes for-EVER 😅
      
 ____
 ____
-## `fmc.RunMe()` Specify recording session  paramters 
+## `freemocap.RunMe()` Specify recording session  paramters 
 ___
-The `fmc.RunMe()` function takes a number of parameters that can be used to alter it's default behavior in important ways. Here are the default parameters along with a followed by a brief description of each one. 
+The `freemocap.RunMe()` function takes a number of parameters that can be used to alter it's default behavior in important ways. Here are the default parameters along with a followed by a brief description of each one. 
 
 
 ### RunMe - Default parameters
@@ -179,8 +179,11 @@ def RunMe(sessionID=None,
         charucoSquareSize = 36, #mm
         calVideoFrameLength = .5,
         startFrame = 0,
-        useBlender = True,
+        useBlender = False,
         resetBlenderExe = False,
+      	get_synced_unix_timestamps = True,
+        good_clean_frame_number = 0,
+        bundle_adjust_3d_points=False
         ):
 ```
 
@@ -282,6 +285,26 @@ def RunMe(sessionID=None,
   -  [Default] = False,
   -  Whether to launch GUI to set Blender .exe path (usually something like `C:/Program Files/Blender Foundation/2.95/`)
 
+- `get_synced_unix_timestamps`
+  - [Type]  = BOOL
+  -  [Default] = True,
+  -  Whether to save camera timestamps in `Unix Epoch Time` in addition to the default 'counting up from zero' timestamps. Very helpful for synchronizing FreeMoCap with other softwares
+
+- `good_clean_frame_number`
+  - [Type]  = int
+  -  [Default] = 0,
+  -  A frame where the subject is standing in something like a T-pose or an A-pose, which will be used to scale the armature created via the `useBlender=True` option. If set to default (`0`) the software will attempt to locate this frame automatically by looking for a frame where all markers are visible with high `confidence` values (but this is buggy)
+
+- `bundle_adjust_3d_points` [EXPERIMENTAL as of May 2022]
+  - [Type]  = BOOL
+  -  [Default] = False,
+  -  When set to `True`, the system will run a bundle adjust optimization of all recorded 3d points produced in `stage=4` using `aniposelib`'s `optim_points` method. This takes a rather long time, but can signicantly clean up the resulting recordings. However,it may also "over smooth" the data. We're in the process of testing this method out now
+  
+- `use_previous_calibration`
+  - [Type]  = BOOL
+  -  [Default] = False,
+  -  Choose whether to use a calibration file from a previous session. When `False`, FreeMoCap will automatically save out calibration data whenever stage 3 is successfully completed. Only one saved calibration file is stored, so running another session will overwrite the currently saved calibration file. When `True` , FreeMoCap will instead load in the saved calibration data, which allows users to create recordings without needing to show the cameras the Charuco board. 
+
 
 ____
 ____
@@ -307,14 +330,20 @@ ___
 	
 	```
 
-**Optional**
-If you would like to use OpenPose for body tracking, install Cuda and the Windows Portable Demo of OpenPose. 
+# **Optional**
 
-* Install CUDA: https://developer.nvidia.com/cuda-downloads
+Both [Deeplabcut](https://deeplabcut.org) and [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) are technically supported, but both are rather under-tested at the moment. 
 
-* Install OpenPose (Windows Portable Demo): https://github.com/CMU-Perceptual-Computing-Lab/openpose/releases/tag/v1.6.0
+* To use DeepLabCut, install with set `freemocap.RunMe(useDLC=True)`
+  * Installation instructions for DeepLabCut may be found on their github - https://github.com/DeepLabCut/DeepLabCut
 
-* DeepLabCut is also supported, but it's a bit under-tested right now 
+* If you would like to use OpenPose for body tracking, install Cuda and the Windows Portable Demo of OpenPose and set `freemocap.RunMe(useOpenPose=True)`. 
+  * Install CUDA: https://developer.nvidia.com/cuda-downloads
+
+  * Install OpenPose (Windows Portable Demo): https://github.com/CMU-Perceptual-Computing-Lab/openpose/releases/tag/v1.6.0
+
+
+
 
 Follow the GitHub Repository and/or Join the Discord (https://discord.gg/HX7MTprYsK) for updates!
 

@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 import mediapipe as mp
 
-from jon_scratch.opencv_camera import TweakedModel
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.home_dir import get_session_folder_path, get_synchronized_videos_folder_path, \

@@ -117,7 +117,6 @@ class VideoRecorder:
 
         self._path_to_save_video_file = self._video_folder_path / video_file_name
 
-        frames_per_second = frames_per_second
 
         self._cv2_video_writer = cv2.VideoWriter(
             str(self.path_to_save_video_file),

@@ -7,9 +7,9 @@ _available_cameras: FoundCamerasResponse = None
 
 
 # If you want cams, you call this function
-def get_or_create_cams():
+def get_or_create_cams(always_create=False):
     global _available_cameras
-    if _available_cameras is None:
+    if _available_cameras is None or always_create:
         d = DetectPossibleCameras()
         _available_cameras = d.find_available_cameras()
 

@@ -142,13 +142,13 @@ freemocap/fmc_startup/user_preferences.yaml
 
 .obsidian/
 data/
+freemocap-ui/threejs_stuff/
 
 *.avi
 *.mp4
 *.divx
 freemocap_runme_script_jsm.py
-freemocap-ui/threejs_stuff/
 
 freemocap/fmc_calibration/previous_calibration.toml
-freemocap/fmc_calibration/charuco_2d_points.npy
 
+freemocap/fmc_calibration/

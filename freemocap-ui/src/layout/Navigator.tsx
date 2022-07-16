@@ -12,20 +12,20 @@ import {useNavigate} from "react-router";
 
 const categories = [
   {
-    id: 'Build',
+    id: 'Interact',
     children: [
+      {
+        id: 'Session',
+        route: "/session"
+      },
+      {
+        id: 'Setup and Preview',
+        route: "/setup_and_preview"
+      },
       {
         id: 'Show Cameras',
         route: "/show_cameras"
       },
-      {
-        id: "Board Detection",
-        route: "/charuco_board_detection"
-      },
-      {
-        id: "Skeleton Detection",
-        route: "/skeleton_detection"
-      }
     ],
   },
 ];
@@ -52,7 +52,7 @@ export const Navigator = function (props: DrawerProps) {
     <Drawer variant="permanent" {...other}>
       <List disablePadding>
         <ListItem sx={{...item, ...itemCategory, fontSize: 22, color: '#fff'}}>
-          FreeMoCap
+          freemocap
         </ListItem>
         <ListItem sx={{...item, ...itemCategory}}>
           <ListItemIcon>

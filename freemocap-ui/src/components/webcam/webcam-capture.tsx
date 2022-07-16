@@ -1,32 +1,38 @@
-import React from "react";
-import Webcam from "react-webcam";
+import React, {useEffect, useState} from "react";
+import {useDeviceStream} from "../../hooks/use-device-stream";
+import {Capture} from "../../services/Capture";
+import {Button} from "@mui/material";
 
-export const WebcamCapture = () => {
-  const [deviceId, setDeviceId] = React.useState<any>({});
-  const [devices, setDevices] = React.useState<any>([]);
+interface Props {
+  device: MediaDeviceInfo
+}
 
-  const handleDevices = React.useCallback(mediaDevices =>
+export const WebcamCapture = (props: Props) => {
+  const {device} = props
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const stream = useDeviceStream(device)
+  // const { sendMessage, getWebSocket } = useWebSocket("ws://localhost:8080/ws/hello_world")
+  const [capture, setCapture] = useState<Capture>()
+  useEffect(() => {
+    const {current} = videoRef
+    if (current) {
       // @ts-ignore
-      setDevices(mediaDevices.filter(({ kind }) => kind === "videoinput")),
-    [setDevices]
-  );
+      current.srcObject = stream
+      const capture = new Capture(videoRef)
+      setCapture(capture)
+    }
+  }, [stream, videoRef])
 
-  React.useEffect(
-    () => {
-      navigator.mediaDevices.enumerateDevices().then(handleDevices);
-    },
-    [handleDevices]
-  );
-
+  if (!stream) {
+    return null
+  }
   return (
     <>
-      {devices.map((device, key) => (
-        <div>
-          <Webcam audio={false} videoConstraints={{ deviceId: device.deviceId }} />
-          {device.label || `Device ${device.deviceId}`}
-        </div>
-
-      ))}
+      <video ref={videoRef} height={600} width={800} autoPlay />
+      <canvas id={"canvasOutput"} />
+      <Button onClick={() => {
+        capture?.processVideo()
+      }}>Start Capture</Button>
     </>
   );
 };

@@ -1,0 +1,3 @@
+
+[tool.taskipy.tasks]
+test = "python -m unittest src/tests/**/test_*"

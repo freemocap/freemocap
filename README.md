@@ -88,5 +88,4 @@ pip install -r requirements.txt
 * [Endurance Idehen](https://github.com/endurance)
 
 ## License
-
 This project is licensed under the APGL License - see the [LICENSE](LICENSE) file for details.

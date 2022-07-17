@@ -2,7 +2,7 @@
     <img src="https://raw.githubusercontent.com/freemocap/freemocap/main/logo/freemocap-logo-black-border.svg" height="64" alt="Project Logo">
 </p>
 <h3 align="center">freemocap</h3>
-<p align="center">📝 Free Motion Capture to convert human image data into skeletons</p>
+<p align="center">📝 The FreeMoCap Project: A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture system and platform for decentralized scientific research, education, and training</p>
 <p align="center">
     <a href="https://github.com/freemocap/freemocap/releases">
         <img src="https://img.shields.io/github/downloads/freemocap/freemocap/total.svg" alt="GitHub Downloads">
@@ -24,7 +24,8 @@
 - [Python 3.9](https://www.python.org/downloads/release/python-390/)
 - [Git](https://www.atlassian.com/git/tutorials/install-git)
 - [Blender](https://www.blender.org/download/)
-- At least 2 simple webcameras (more cameras, better quality) 
+- At least 2 simple webcameras (more cameras, better quality)
+    - [$10 camera here](https://www.amazon.com/1080P-Full-Webcam-Microphone-Conferencing/dp/B09JFPFVY4/ref=asc_df_B09JFPFVY4/?tag=hyprod-20&linkCode=df0&hvadid=563548498710&hvpos=&hvnetw=g&hvrand=17033983634274965573&hvpone=&hvptwo=&hvqmt=&hvdev=c&hvdvcmdl=&hvlocint=&hvlocphy=9028321&hvtargid=pla-1629009316502&psc=1)
 - Each Camera must have a clean, unobstructed view of a Charuco board during initialization.
     
 

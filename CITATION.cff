@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Matthis
+    given-names: Jonathan Samir
+    orcid: https://orcid.org/my-orcid?orcid=0000-0003-3683-646X
+  - family-names: Cherian
+    given-names: Aaron
+  
+
+title: "FreeMoCap: A free, open source markerless motion capture system"
+version: 0.0.54

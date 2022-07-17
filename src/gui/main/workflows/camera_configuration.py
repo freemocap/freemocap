@@ -3,12 +3,12 @@ import time
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from src.freemocap_qt_gui.conference.shared_widgets.page_title import PageTitle
-from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton, \
+from src.gui.main.shared_widgets.page_title import PageTitle
+from src.gui.main.shared_widgets.primary_button import PrimaryButton, \
     not_active_primary_button_style_sheet, active_primary_button_style_sheet
-from src.freemocap_qt_gui.conference.workers.cam_frame_worker import CamFrameWorker
-from src.freemocap_qt_gui.conference.workflows.available_cameras_list import AvailableCamerasList
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.gui.main.state.app_state import APP_STATE
+from src.gui.main.workers.cam_frame_worker import CamFrameWorker
+from src.gui.main.workflows.available_cameras_list import AvailableCamerasList
 
 
 class CameraConfiguration(QWidget):

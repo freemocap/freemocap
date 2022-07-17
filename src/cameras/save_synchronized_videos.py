@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.gui.main.state.app_state import APP_STATE
 
 
 def save_synchronized_videos(list_of_video_recorders:List[VideoRecorder], calibration_videos:bool=False, mocap_videos:bool=False):
@@ -64,9 +64,6 @@ def save_synchronized_videos(list_of_video_recorders:List[VideoRecorder], calibr
         each_cam_synchronized_frame_list.append(this_cam_synchronized_frame_list)
 
     print(f" (clipped) number_of_frames_per_camera: {number_of_frames_per_camera_clipped}, min:{min_number_of_frames}")
-
-
-
 
     if mocap_videos:
         APP_STATE.number_of_frames_in_the_mocap_videos = number_of_frames_per_camera

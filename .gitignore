@@ -1,4 +1,5 @@
 # Byte-compiled / optimized / DLL files
+.idea/*
 
 __pycache__/
 Data/
@@ -141,3 +142,13 @@ freemocap/fmc_startup/user_preferences.yaml
 
 .obsidian/
 data/
+freemocap-ui/threejs_stuff/
+
+*.avi
+*.mp4
+*.divx
+freemocap_runme_script_jsm.py
+
+freemocap/fmc_calibration/previous_calibration.toml
+
+freemocap/fmc_calibration/

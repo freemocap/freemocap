@@ -14,15 +14,16 @@ orjson==3.6.7
 aiomultiprocess==0.9.0
 pre-commit==2.17.0
 pandas==1.4.2
-imageio
-imageio-ffmpeg
-# Requirements for core-processor
 pyqtgraph==0.12.4
 pyqt6==6.3.1
 pyopengl==3.1.6
-mediapipe~=0.8.9.1
-setuptools~=58.0.4
-aniposelib~=0.4.3
-rich~=12.3.0
-protobuf~=3.19.0
-
+mediapipe==0.8.9.1
+setuptools==58.0.4
+aniposelib==0.4.3
+rich==12.3.0
+protobuf==3.19.0
+imageio
+imageio-ffmpeg
+pytest==7.1.2
+taskipy==1.10.2
+pytest-cov==3.0.0

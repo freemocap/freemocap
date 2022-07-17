@@ -24,6 +24,9 @@
 - [Python 3.9](https://www.python.org/downloads/release/python-390/)
 - [Git](https://www.atlassian.com/git/tutorials/install-git)
 - [Blender](https://www.blender.org/download/)
+- At least 2 simple webcameras (more cameras, better quality) 
+- Each Camera must have a clean, unobstructed view of a Charuco board during initialization.
+    
 
 ### Easy MacOSX Install Instructions
 1. Install the Homebrew Package manager (Skip this step if you already have it)
@@ -75,6 +78,8 @@ Install the Python Dependencies (into a virtual environment)
 python3 -m venv env
 pip install -r requirements.txt
 ```
+
+That's it! You're ready to run the freemocap application, and create your own digital skeletons.
 
 ## Usage
 

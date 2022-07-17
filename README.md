@@ -84,6 +84,21 @@ That's it! You're ready to run the freemocap application, and create your own di
 
 ## Usage
 
+## For Developers
+
+### Contribution Guidelines
+
+COMING SOON
+
+### Creating a new binary
+
+Create a new binary on your local system by running the below comand
+```bash
+task installer
+```
+
+Navigate to the `/dist/` directory and you'll see the new Freemocap Binary there.
+
 ## Related
 
 [//]: # (* [project-name]&#40;#&#41; - Project description)

@@ -21,17 +21,49 @@
 ## Pre-requisites
 
 ### General
-- Python 3.9 or higher
-- Git
-### MacOSX / Linux
-- 
+- [Python 3.9](https://www.python.org/downloads/release/python-390/)
+- [Git](https://www.atlassian.com/git/tutorials/install-git)
+- [Blender](https://www.blender.org/download/)
 
-## Installation
-
-Clone the repo
+### Easy MacOSX Install Instructions
+1. Install the Homebrew Package manager (Skip this step if you already have it)
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+2. Install Git (Skip this step if you already have it)
+```bash
+brew install git
+```
+3. Get the source code.
 ```bash
 git clone https://github.com/freemocap/freemocap.git
 ```
+4. Install the dependencies
+```bash
+brew install blender ffmpeg
+```
+5. Skip to our Getting Started section of the README below.
+
+### Easy Windows Install Instructions
+1. Install Chocolatey. Open Powershell, and run the below command
+```commandline
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+```
+2. Install Git
+```commandline
+choco install git
+```
+3. Get the source code.
+```bash
+git clone https://github.com/freemocap/freemocap.git
+```
+4. Install the dependencies
+```commandline
+choco install blender ffmpeg
+```
+5. Skip to our Getting Started section of the README below.
+
+## Getting Started
 
 Navigate into the newly cloned freemocap folder
 ```bash
@@ -44,37 +76,17 @@ python3 -m venv env
 pip install -r requirements.txt
 ```
 
-
-
 ## Usage
-
-
-## API
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin vulputate leo elit, id pharetra urna hendrerit nec. Integer hendrerit turpis sapien, vel scelerisque risus fringilla ac.
-
-### `lorem(ipsum)`
-
-Type: `type`
-
-Returns: `type`
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin vulputate leo elit, id pharetra urna hendrerit nec.
-
-#### `ipsum`
-
-Type: `type`
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin vulputate leo elit, id pharetra urna hendrerit nec.
 
 ## Related
 
-* [project-name](#) - Project description
+[//]: # (* [project-name]&#40;#&#41; - Project description)
 
 ## Maintainers
 
-* [Jamie Weavis](https://github.com/jamieweavis)
+* [Jon Matthis](https://github.com/jonmatthis)
+* [Endurance Idehen](https://github.com/endurance)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the APGL License - see the [LICENSE](LICENSE) file for details.

@@ -7,6 +7,8 @@ https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-
 ___________________________________
 ___
 
+[![Freemocap Tests](https://github.com/freemocap/freemocap/actions/workflows/python-testing.yml/badge.svg)](https://github.com/freemocap/freemocap/actions/workflows/python-testing.yml)
+
 ## Prerequisites - 
 **Required**
 * Windows only for now (sorry! Mac and Linux support coming very soon!😅)

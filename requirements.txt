@@ -25,3 +25,5 @@ protobuf==3.19.0
 pytest==7.1.2
 taskipy==1.10.2
 pytest-cov==3.0.0
+pyinstaller==5.2
+pyinstaller-hooks-contrib==2022.8

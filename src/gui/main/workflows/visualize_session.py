@@ -11,7 +11,7 @@ import numpy as np
 import sys
 from mediapipe.python.solutions import holistic as mp_holistic
 
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.gui.refactored_gui.state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)
 

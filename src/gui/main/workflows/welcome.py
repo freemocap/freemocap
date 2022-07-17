@@ -1,10 +1,8 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget, QGridLayout, QSpacerItem, QCheckBox
 
-from src.freemocap_qt_gui.conference.qt_utils.set_font_size import set_font_size
-from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.gui.main.qt_utils.set_font_size import set_font_size
+from src.gui.main.shared_widgets.primary_button import PrimaryButton
 
 
 class Welcome(QWidget):

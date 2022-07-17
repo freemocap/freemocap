@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton
+from src.gui.main.shared_widgets.primary_button import PrimaryButton
 
 
 class RecordInstructions(QWidget):

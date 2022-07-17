@@ -3,17 +3,17 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMainWindow, QMenuBar, QVBoxLayout, \
     QWidget, QCheckBox
 
-from src.freemocap_qt_gui.conference.app import get_qt_app
-from src.freemocap_qt_gui.conference.qt_utils.clear_layout import clearLayout
-from src.freemocap_qt_gui.conference.workflows.calibration_instructions import \
+from src.gui.main.app import get_qt_app
+from src.gui.main.qt_utils.clear_layout import clearLayout
+from src.gui.main.state.app_state import APP_STATE
+from src.gui.main.workflows.calibration_instructions import \
     CalibrationInstructions
-from src.freemocap_qt_gui.conference.workflows.camera_configuration import CameraConfiguration
-from src.freemocap_qt_gui.conference.workflows.new_recording_session import \
+from src.gui.main.workflows.camera_configuration import CameraConfiguration
+from src.gui.main.workflows.new_recording_session import \
     NewRecordingSession
-from src.freemocap_qt_gui.conference.workflows.record_videos import RecordVideos
-from src.freemocap_qt_gui.conference.workflows.show_cams_charuco import ShowCamsCharuco
-from src.freemocap_qt_gui.conference.workflows.welcome import Welcome
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.gui.main.workflows.record_videos import RecordVideos
+from src.gui.main.workflows.show_cams_charuco import ShowCamsCharuco
+from src.gui.main.workflows.welcome import Welcome
 
 
 class MainWindow(QMainWindow):

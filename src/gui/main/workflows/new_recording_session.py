@@ -2,9 +2,9 @@ from PyQt6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLa
     QWidget, QCheckBox
 
 from src.config.home_dir import create_session_id
-from src.freemocap_qt_gui.conference.shared_widgets.page_title import PageTitle
-from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.gui.main.shared_widgets.page_title import PageTitle
+from src.gui.main.shared_widgets.primary_button import PrimaryButton
+from src.gui.main.state.app_state import APP_STATE
 
 
 class NewRecordingSession(QWidget):

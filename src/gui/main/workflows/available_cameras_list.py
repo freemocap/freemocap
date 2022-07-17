@@ -4,9 +4,9 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from src.cameras.detection.models import FoundCamerasResponse
-from src.freemocap_qt_gui.conference.qt_utils.clear_layout import clearLayout
-from src.freemocap_qt_gui.conference.workflows.available_camera import AvailableCamera
-from src.freemocap_qt_gui.refactored_gui.workers.cam_detection_thread import CamDetectionWorker
+from src.gui.main.qt_utils.clear_layout import clearLayout
+from src.gui.main.workers.cam_detection_thread import CamDetectionWorker
+from src.gui.main.workflows.available_camera import AvailableCamera
 
 
 class AvailableCamerasList(QWidget):

@@ -13,7 +13,7 @@ from src.config.home_dir import get_session_folder_path, get_synchronized_videos
     get_session_output_data_folder_path
 from src.core_processor.mediapipe_skeleton_detector.medaipipe_tracked_points_names_dict import \
     mediapipe_tracked_point_names_dict
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.gui.main.state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)
 

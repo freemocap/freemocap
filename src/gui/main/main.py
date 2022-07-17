@@ -5,8 +5,8 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 
 # from src.api.routes.session.session_router import visualize_session_offline
-from src.freemocap_qt_gui.conference.layout.main_window import MainWindow
-from src.freemocap_qt_gui.refactored_gui.app import get_qt_app
+from src.gui.main.app import get_qt_app
+from src.gui.main.layout.main_window import MainWindow
 
 
 def sigint_handler(*args):

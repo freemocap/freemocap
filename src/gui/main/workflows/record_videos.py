@@ -3,8 +3,8 @@ from PyQt6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QVBoxLa
 from src.cameras.save_synchronized_videos import save_synchronized_videos
 from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import \
     MediaPipeSkeletonDetector
-from src.freemocap_qt_gui.conference.workflows.single_camera import SingleCamera
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.gui.main.state.app_state import APP_STATE
+from src.gui.main.workflows.single_camera import SingleCamera
 from src.open_in_blender.open_session_in_blender import open_session_in_blender
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import \
     CalibrationPipelineOrchestrator

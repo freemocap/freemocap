@@ -3,7 +3,6 @@ import sys
 from pathlib import Path
 import subprocess
 from src.config.home_dir import get_session_folder_path, get_most_recent_session_id
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
 
 # blender_exe_path = r"C:\Users\jonma\Blender Foundation\stable\blender-3.1.0-windows-x64\blender.exe"
 blender_exe_path = r"C:\Users\jonma\Blender Foundation\Blender 3.1\blender.exe"

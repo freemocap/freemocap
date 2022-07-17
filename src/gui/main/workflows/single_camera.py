@@ -4,8 +4,8 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
-from src.freemocap_qt_gui.conference.workers.cam_charuco_frame_worker import CamCharucoFrameWorker
-from src.freemocap_qt_gui.conference.workers.cam_frame_worker import CamFrameWorker
+from src.gui.main.workers.cam_charuco_frame_worker import CamCharucoFrameWorker
+from src.gui.main.workers.cam_frame_worker import CamFrameWorker
 
 
 class WorkerType(enum.Enum):

@@ -1,8 +1,9 @@
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget, QPushButton, QCheckBox
 
 from src.cameras.save_synchronized_videos import save_synchronized_videos
-from src.freemocap_qt_gui.conference.workflows.single_camera import SingleCamera
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.gui.main.state.app_state import APP_STATE
+from src.gui.main.workflows.single_camera import SingleCamera
+
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import CalibrationPipelineOrchestrator
 
 

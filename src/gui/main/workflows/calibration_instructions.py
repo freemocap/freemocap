@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from src.freemocap_qt_gui.conference.shared_widgets.page_title import PageTitle
-from src.freemocap_qt_gui.conference.shared_widgets.primary_button import PrimaryButton
+from src.gui.main.shared_widgets.page_title import PageTitle
+from src.gui.main.shared_widgets.primary_button import PrimaryButton
 
 
 class CalibrationInstructions(QWidget):

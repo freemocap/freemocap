@@ -4,7 +4,7 @@ from PyQt6.QtGui import QImage
 
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.config.webcam_config import WebcamConfig
-from src.freemocap_qt_gui.refactored_gui.state.app_state import APP_STATE
+from src.gui.main.state.app_state import APP_STATE
 from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import \
     CharucoBoardDetector
 

@@ -20,7 +20,10 @@ ___
 ____
 ____
 # Installation
+If you're a beginner (code / python wise), [here is a screen recording of someone from my lab installing freemocap from scratch](https://vimeo.com/582630758) up until the point where you start using it (configuring,charucco board, cameras, etc).
+
 Open an Anaconda-enabled command prompt or powershell window and perform the following steps:
+
 
 1) Create a Python3.7 Anaconda environment
 ``` 

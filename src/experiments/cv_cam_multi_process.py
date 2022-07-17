@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class CvCamByProcess:
-
     def __init__(self, config: WebcamConfig = WebcamConfig()):
         self._process: Process = None
         self._recv, self._send = multiprocessing.Pipe(duplex=False)
@@ -39,10 +38,7 @@ class CvCamByProcess:
     def begin_frame_capture(self):
         if not self._is_capturing_frames:
             self._is_capturing_frames = True
-            self._process = Process(
-                target=self._start_frame_loop,
-                args=(self._send,)
-            )
+            self._process = Process(target=self._start_frame_loop, args=(self._send,))
             self._process.start()
 
     def end_frame_capture(self):
@@ -56,9 +52,7 @@ class CvCamByProcess:
         else:
             cap_backend = cv2.CAP_ANY
 
-        opencv_video_capture_object = cv2.VideoCapture(
-            config.webcam_id, cap_backend
-        )
+        opencv_video_capture_object = cv2.VideoCapture(config.webcam_id, cap_backend)
         # self._apply_configuration()
         if not self._test_cap_connection(opencv_video_capture_object):
             raise Exception("Could not find camera")
@@ -108,11 +102,4 @@ class CvCamByProcess:
 
         self._new_frame_ready = success
 
-        return FramePayload(success=success,
-                            image=image,
-                            timestamp=timestamp_ns)
-
-
-
-
-
+        return FramePayload(success=success, image=image, timestamp=timestamp_ns)

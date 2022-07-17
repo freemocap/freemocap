@@ -5,14 +5,17 @@ from PyQt6.QtGui import QImage
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.config.webcam_config import WebcamConfig
 from src.gui.main.state.app_state import APP_STATE
-from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import \
-    CharucoBoardDetector
+from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import (
+    CharucoBoardDetector,
+)
 
 
 class CamCharucoFrameWorker(QThread):
     ImageUpdate = pyqtSignal(QImage)
 
-    def __init__(self, cam_id=None, should_save_frames:bool=False, calibration_videos=False):
+    def __init__(
+        self, cam_id=None, should_save_frames: bool = False, calibration_videos=False
+    ):
         super().__init__()
         self._board_thingy = CharucoBoardDetector()
         self._cam_id = cam_id
@@ -33,9 +36,7 @@ class CamCharucoFrameWorker(QThread):
 
     def run(self):
         cam = OpenCVCamera(
-            WebcamConfig(
-                webcam_id=self._cam_id
-            ),
+            WebcamConfig(webcam_id=self._cam_id),
             session_id=APP_STATE.session_id,
         )
         cam.connect()
@@ -62,12 +63,16 @@ class CamCharucoFrameWorker(QThread):
                     image_to_display.data,
                     image_to_display.shape[1],
                     image_to_display.shape[0],
-                    QImage.Format.Format_RGB888
+                    QImage.Format.Format_RGB888,
                 )
-                converted_frame = converted_frame.scaled(640, 480, Qt.AspectRatioMode.KeepAspectRatio)
+                converted_frame = converted_frame.scaled(
+                    640, 480, Qt.AspectRatioMode.KeepAspectRatio
+                )
                 self.ImageUpdate.emit(converted_frame)
         finally:
-            print(f"Closing the camera {self._cam.webcam_id_as_str}, and saving video to disk")
+            print(
+                f"Closing the camera {self._cam.webcam_id_as_str}, and saving video to disk"
+            )
             self._cam.close()
             # if any_frames_recorded:
             #     print(f"saving video for camera {self._cam.webcam_id_as_str}")

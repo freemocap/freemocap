@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://raw.githubusercontent.com/freemocap/freemocap/main/logo/freemocap-logo-black-border.svg" height="64" alt="Project Logo">
+    <img src="https://raw.githubusercontent.com/freemocap/freemocap/main/assets/logo/freemocap-logo-black-border.svg" height="64" alt="Project Logo">
 </p>
 <h3 align="center">freemocap</h3>
 <p align="center">📝 The FreeMoCap Project: A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture system and platform for decentralized scientific research, education, and training</p>
@@ -16,7 +16,12 @@
     <a href="https://github.com/freemocap/freemocap/issues">
         <img src="https://img.shields.io/badge/contributions-welcome-ff69b4.svg" alt="Contributions Welcome">
     </a>
+  <a href="https://github.com/psf/black">
+    <img alt="https://img.shields.io/badge/code%20style-black-000000.svg" src="https://img.shields.io/badge/code%20style-black-000000.svg">
+  </a>
 </p>
+
+
 
 ## Pre-requisites
 

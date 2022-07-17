@@ -14,11 +14,7 @@ class CamFrameWorker(QThread):
         self._cam_id = cam_id
 
     def run(self):
-        cam = OpenCVCamera(
-            WebcamConfig(
-                webcam_id=self._cam_id
-            )
-        )
+        cam = OpenCVCamera(WebcamConfig(webcam_id=self._cam_id))
         cam.connect()
         cam.start_frame_capture_thread()
         self._cam = cam
@@ -34,9 +30,11 @@ class CamFrameWorker(QThread):
                     image.data,
                     image.shape[1],
                     image.shape[0],
-                    QImage.Format.Format_RGB888
+                    QImage.Format.Format_RGB888,
                 )
-                converted_frame = converted_frame.scaled(640, 480, Qt.AspectRatioMode.KeepAspectRatio)
+                converted_frame = converted_frame.scaled(
+                    640, 480, Qt.AspectRatioMode.KeepAspectRatio
+                )
                 self.ImageUpdate.emit(converted_frame)
         finally:
             print("Closing the camera")

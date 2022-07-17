@@ -24,12 +24,16 @@ async def config_cam(webcam_config_model: WebcamConfigModel, session_id):
 
 
 @camera_router.post("/camera/show_camera/{webcam_id}")
-async def show_camera(webcam_id: str, camera_preview_model: CameraPreviewModel = CameraPreviewModel()):
+async def show_camera(
+    webcam_id: str, camera_preview_model: CameraPreviewModel = CameraPreviewModel()
+):
     cv_cam_manager = OpenCVCameraManager(session_id=camera_preview_model.session_id)
-    with cv_cam_manager.start_capture_session_single_cam(webcam_id) as connected_camera_and_writer:
+    with cv_cam_manager.start_capture_session_single_cam(
+        webcam_id
+    ) as connected_camera_and_writer:
         should_continue = True
         this_camera = connected_camera_and_writer.cv_camera
-        cv2_window_name = '(ESC to close) PREVIEWING camera_' + webcam_id
+        cv2_window_name = "(ESC to close) PREVIEWING camera_" + webcam_id
         while should_continue:
             if not this_camera.new_frame_ready:
                 continue
@@ -43,10 +47,12 @@ async def show_camera(webcam_id: str, camera_preview_model: CameraPreviewModel =
 
 
 @camera_router.post("/camera/show_cameras")
-async def cv2_imshow_all_camera(camera_preview_model: CameraPreviewModel = CameraPreviewModel()):
+async def cv2_imshow_all_camera(
+    camera_preview_model: CameraPreviewModel = CameraPreviewModel(),
+):
     cv_cam_manager = OpenCVCameraManager(session_id=camera_preview_model.session_id)
     with cv_cam_manager.start_capture_session_all_cams() as connected_cameras_dict:
-        logger.info(f'Available cameras: {connected_cameras_dict}')
+        logger.info(f"Available cameras: {connected_cameras_dict}")
         should_continue = True
         while should_continue:
             for this_webcam_id, this_open_cv_camera in connected_cameras_dict.items():
@@ -57,7 +63,7 @@ async def cv2_imshow_all_camera(camera_preview_model: CameraPreviewModel = Camer
                     cv2.destroyWindow(cv2_window_name)
                 if not this_open_cv_camera.new_frame_ready:
                     continue
-                cv2_window_name = '(ESC to close) PREVIEWING camera_' + this_webcam_id
+                cv2_window_name = "(ESC to close) PREVIEWING camera_" + this_webcam_id
                 cv2.imshow(cv2_window_name, this_open_cv_camera.latest_frame.image)
                 exit_key = cv2.waitKey(1)
                 if exit_key == 27:
@@ -74,4 +80,3 @@ async def get_cameras():
 @camera_router.get("/camera/redetect")
 async def redetect_cameras():
     return get_or_create_cams(always_create=True)
-

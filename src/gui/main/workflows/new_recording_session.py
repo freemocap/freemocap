@@ -1,5 +1,12 @@
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, \
-    QWidget, QCheckBox
+from PyQt6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+    QCheckBox,
+)
 
 from src.config.home_dir import create_session_id
 from src.gui.main.shared_widgets.page_title import PageTitle
@@ -8,12 +15,13 @@ from src.gui.main.state.app_state import APP_STATE
 
 
 class NewRecordingSession(QWidget):
-
     def __init__(self):
         super().__init__()
 
         self._submit_button = PrimaryButton("&Start Session")
-        self._use_previous_calibration_checkbox = self._create_use_previous_calibration_checkbox()
+        self._use_previous_calibration_checkbox = (
+            self._create_use_previous_calibration_checkbox()
+        )
 
         container = QVBoxLayout()
 
@@ -40,7 +48,9 @@ class NewRecordingSession(QWidget):
     def _create_use_previous_calibration_checkbox(self):
         previous_calibration_checkbox = QCheckBox("Use Previous Calibration")
         previous_calibration_checkbox.setChecked(False)
-        previous_calibration_checkbox.stateChanged.connect(self._use_previous_calibration_changed)
+        previous_calibration_checkbox.stateChanged.connect(
+            self._use_previous_calibration_changed
+        )
         return previous_calibration_checkbox
 
     def _create_record_sesion_title(self):
@@ -62,5 +72,6 @@ class NewRecordingSession(QWidget):
         APP_STATE.session_id = self._session_input.text()
 
     def _use_previous_calibration_changed(self):
-        APP_STATE.use_previous_calibration = self._use_previous_calibration_checkbox.isChecked()
-
+        APP_STATE.use_previous_calibration = (
+            self._use_previous_calibration_checkbox.isChecked()
+        )

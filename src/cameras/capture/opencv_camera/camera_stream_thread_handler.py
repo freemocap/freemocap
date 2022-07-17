@@ -13,10 +13,9 @@ logger = logging.getLogger(__name__)
 
 class VideoCaptureThread(threading.Thread):
     def __init__(
-            self,
-            get_next_frame,
-            webcam_id:str = 'unknown',
-
+        self,
+        get_next_frame,
+        webcam_id: str = "unknown",
     ):
         super().__init__()
         self._webcam_id = webcam_id
@@ -34,9 +33,13 @@ class VideoCaptureThread(threading.Thread):
     @property
     def median_framerate(self):
         if self._num_frames_processed == 0:
-            logger.warning(f"No Frames processed yet, cannot calculate median_framerate")
+            logger.warning(
+                f"No Frames processed yet, cannot calculate median_framerate"
+            )
         else:
-            self._median_framerate = np.nanmedian((np.diff(self._timestamps_npy) ** -1) / 1e9)
+            self._median_framerate = np.nanmedian(
+                (np.diff(self._timestamps_npy) ** -1) / 1e9
+            )
 
         return self._median_framerate
 
@@ -68,7 +71,9 @@ class VideoCaptureThread(threading.Thread):
                 start = time.perf_counter_ns()
                 self._frame = self._get_next_frame()
                 self._elapsed_during_frame_grab.append(time.perf_counter_ns() - start)
-                self._timestamps_npy.append(self._frame.timestamp_in_seconds_from_record_start)
+                self._timestamps_npy.append(
+                    self._frame.timestamp_in_seconds_from_record_start
+                )
                 self._num_frames_processed += 1
                 # logger.debug(f"Camera {self._webcam_id}: captured frame# {self._num_frames_processed}")
         except:

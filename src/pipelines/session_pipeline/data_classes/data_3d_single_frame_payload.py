@@ -10,6 +10,6 @@ class TweakedModel(BaseModel):
 
 
 class Data3dMultiFramePayload(TweakedModel):
-    has_data: bool = True,
+    has_data: bool = (True,)
     data3d_trackedPointNum_xyz: np.ndarray = None
     data3d_trackedPointNum_reprojectionError: np.ndarray = None

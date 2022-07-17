@@ -16,7 +16,9 @@ class WebcamConfig(BaseModel):
     base_save_video_dir = os_independent_home_dir()
 
 
-def webcam_config_to_qt_parameter_list(webcam_config:WebcamConfig = WebcamConfig())->List:
+def webcam_config_to_qt_parameter_list(
+    webcam_config: WebcamConfig = WebcamConfig(),
+) -> List:
     """
     take in a webcam_config and return a parameter_tree_group that you can feed into a pyqtgraph Parameter tree like this:
 
@@ -29,10 +31,18 @@ def webcam_config_to_qt_parameter_list(webcam_config:WebcamConfig = WebcamConfig
     """
     this_webcam_id = webcam_config.webcam_id
     parameter_list = [
-        {'name': 'use this camera❓', 'type': 'bool', 'value': True},
-        {'name': 'exposure', 'type': 'int', 'value': webcam_config.exposure},
-        {'name': 'resolution_width', 'type': 'int', 'value': webcam_config.resolution_width},
-        {'name': 'resolution_height', 'type': 'int', 'value': webcam_config.resolution_height},
+        {"name": "use this camera❓", "type": "bool", "value": True},
+        {"name": "exposure", "type": "int", "value": webcam_config.exposure},
+        {
+            "name": "resolution_width",
+            "type": "int",
+            "value": webcam_config.resolution_width,
+        },
+        {
+            "name": "resolution_height",
+            "type": "int",
+            "value": webcam_config.resolution_height,
+        },
     ]
 
     return parameter_list

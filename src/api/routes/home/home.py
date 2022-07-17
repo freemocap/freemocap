@@ -5,6 +5,6 @@ home_router = APIRouter()
 
 @home_router.get("/")
 async def hello():
-    response_string = 'hello :D'
-    print(f'response string: {response_string}')
+    response_string = "hello :D"
+    print(f"response string: {response_string}")
     return response_string

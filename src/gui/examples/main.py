@@ -1,16 +1,12 @@
-
 import sys
-from PyQt6.QtWidgets import (QWidget, QPushButton,
-        QHBoxLayout, QVBoxLayout, QApplication)
+from PyQt6.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication
 
 
 class Example(QWidget):
-
     def __init__(self):
         super().__init__()
 
         self.initUI()
-
 
     def initUI(self):
 
@@ -29,7 +25,7 @@ class Example(QWidget):
         self.setLayout(vbox)
 
         self.setGeometry(300, 300, 350, 250)
-        self.setWindowTitle('Buttons')
+        self.setWindowTitle("Buttons")
         self.show()
 
 
@@ -40,5 +36,5 @@ def main():
     sys.exit(app.exec())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

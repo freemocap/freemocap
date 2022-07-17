@@ -2,3 +2,4 @@
 [tool.taskipy.tasks]
 test = "python -m unittest src/tests/**/test_*"
 installer = "./bin/installer.sh"
+format = "black src/"

@@ -4,7 +4,6 @@ from src.gui.main.shared_widgets.primary_button import PrimaryButton
 
 
 class RecordInstructions(QWidget):
-
     def __init__(self):
         super().__init__()
         self._record_button = PrimaryButton("Record")
@@ -28,7 +27,9 @@ class RecordInstructions(QWidget):
 
     def _create_description_layout(self):
         description_layout = QVBoxLayout()
-        description_1 = QLabel("Cameras are configured & calibrated. Hit the record button when you're ready! ")
+        description_1 = QLabel(
+            "Cameras are configured & calibrated. Hit the record button when you're ready! "
+        )
         description_layout.addWidget(description_1)
         return description_layout
 

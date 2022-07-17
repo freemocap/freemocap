@@ -4,20 +4,21 @@ from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from src.gui.main.shared_widgets.page_title import PageTitle
-from src.gui.main.shared_widgets.primary_button import PrimaryButton, \
-    not_active_primary_button_style_sheet, active_primary_button_style_sheet
+from src.gui.main.shared_widgets.primary_button import (
+    PrimaryButton,
+    not_active_primary_button_style_sheet,
+    active_primary_button_style_sheet,
+)
 from src.gui.main.state.app_state import APP_STATE
 from src.gui.main.workers.cam_frame_worker import CamFrameWorker
 from src.gui.main.workflows.available_cameras_list import AvailableCamerasList
 
 
 class CameraConfiguration(QWidget):
-
     def __init__(self):
         super().__init__()
         self._worker = self._init_frame_worker()
         self._accept_button = self._create_accept_button()
-
 
         container = QVBoxLayout()
 
@@ -79,7 +80,7 @@ class CameraConfiguration(QWidget):
         if self._worker.isRunning():
             self._worker.quit()
             while not self._worker.isFinished():
-                time.sleep(.1)
+                time.sleep(0.1)
 
         self._worker._cam_id = cam_id
         self._worker.start()

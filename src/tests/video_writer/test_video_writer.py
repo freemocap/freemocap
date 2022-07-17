@@ -21,7 +21,7 @@ class VideoWriterTestCase(TestCase):
     def test_write_on_video_writer(self):
         example_payload = FramePayload(
             image=np.random.randint(0, 4, (720, 1280, 3)),
-            timestamp_in_seconds_from_record_start=time.time_ns()
+            timestamp_in_seconds_from_record_start=time.time_ns(),
         )
         vw = VideoRecorder("nothing", 100, 100, "nothing")
         vw.append_frame_payload_to_list(example_payload)

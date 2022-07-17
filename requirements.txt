@@ -27,3 +27,4 @@ taskipy==1.10.2
 pytest-cov==3.0.0
 pyinstaller==5.2
 pyinstaller-hooks-contrib==2022.8
+black

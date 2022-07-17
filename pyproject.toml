@@ -1,5 +1,7 @@
 
 [tool.taskipy.tasks]
+setup = "pre-commit install"
 test = "python -m unittest src/tests/**/test_*"
 installer = "./bin/installer.sh"
+# This command ensures that your code is formatted appropriately
 format = "black src/"

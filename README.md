@@ -32,7 +32,7 @@
 - At least 2 simple webcameras (more cameras, better quality)
     - [$10 camera here](https://www.amazon.com/1080P-Full-Webcam-Microphone-Conferencing/dp/B09JFPFVY4/ref=asc_df_B09JFPFVY4/?tag=hyprod-20&linkCode=df0&hvadid=563548498710&hvpos=&hvnetw=g&hvrand=17033983634274965573&hvpone=&hvptwo=&hvqmt=&hvdev=c&hvdvcmdl=&hvlocint=&hvlocphy=9028321&hvtargid=pla-1629009316502&psc=1)
 - Each Camera must have a clean, unobstructed view of a Charuco board during initialization.
-    
+
 
 ### Easy MacOSX Install Instructions
 1. Install the Homebrew Package manager (Skip this step if you already have it)
@@ -91,9 +91,22 @@ That's it! You're ready to run the freemocap application, and create your own di
 
 ## For Developers
 
+### Dev Setup
+
+After you've done the easy install instructions, you'll be able to run our repo commands
+
+1. Run the "setup" command to set up your environment
+```bash
+task setup
+```
+2. Run the tests to ensure that everything works appropriate
+```bash
+task test
+```
+
 ### Contribution Guidelines
 
-COMING SOON
+Please read our contribution doc: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ### Creating a new binary
 

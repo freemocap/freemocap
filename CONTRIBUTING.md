@@ -20,7 +20,7 @@ Pull requests are the best way to propose changes to the codebase (we use [Githu
 5. Make sure your code lints.
 6. Issue that pull request!
 
-## Any contributions you make will be under the MIT Software License
+## Any contributions you make will be under the AGPL Software License
 In short, when you submit code changes, your submissions are understood to be under the same [AGPL](LICENSE) that covers the project. Feel free to contact the maintainers to understand what that means.
 
 ## Report bugs using Github's [issues](https://github.com/freemocap/freemocap/issues)
@@ -45,9 +45,14 @@ People *love* thorough bug reports. The likelihood that the community and/or mai
 ## Use a Consistent Coding Style
 We use the [Black](https://black.readthedocs.io/en/stable/) autoformatter as the de-facto syntax style guide of choice.
 
+### PyQT Style Guide
+COMING SOON
+
+### API Style Guide
+COMING SOON
 
 ## License
-By contributing, you agree that your contributions will be licensed under its MIT License.
+By contributing, you agree that your contributions will be licensed under its [AGPL](LICENSE) License.
 
 ## References
 This document was adapted from the open-source contribution guidelines for [Facebook's Draft](https://github.com/facebook/draft-js/blob/a9316a723f9e918afde44dea68b5f9f39b7d9b00/CONTRIBUTING.md)

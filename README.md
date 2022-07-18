@@ -77,6 +77,7 @@ cd freemocap
 Install the Python Dependencies (into a virtual environment)
 ```bash
 python3 -m venv env
+/env/Scripts/activate
 pip install -r requirements.txt
 ```
 

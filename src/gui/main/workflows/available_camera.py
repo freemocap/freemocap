@@ -2,7 +2,6 @@ from PyQt6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QWidget
 
 
 class AvailableCamera(QWidget):
-
     def __init__(self, webcam_id: str = "0"):
         super().__init__()
         self._webcam_id = webcam_id

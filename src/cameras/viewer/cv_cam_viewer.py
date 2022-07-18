@@ -22,10 +22,7 @@ class CvCamViewer:
                 cv2.waitKey(1)
 
     def begin_viewer(self, webcam_id: Union[str, int]):
-        self._process = Process(
-            target=CvCamViewer._begin,
-            args=(self._recv, webcam_id)
-        )
+        self._process = Process(target=CvCamViewer._begin, args=(self._recv, webcam_id))
 
         self._process.start()
 

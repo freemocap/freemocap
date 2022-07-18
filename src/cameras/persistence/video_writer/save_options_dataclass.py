@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 @dataclass
-class SaveOptions():
+class SaveOptions:
     path_to_save_video: Path
     camera_name: str
     frame_width: int

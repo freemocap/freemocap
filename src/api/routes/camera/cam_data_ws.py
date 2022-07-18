@@ -30,8 +30,6 @@ async def preview_webcam(web_socket: WebSocket):
         byte_data = await web_socket.receive_bytes()
         time_since = time.perf_counter()
         print(f"Per Frame Time: {time_since - last_read:.4f}")
-        buffer = np.frombuffer(byte_data, dtype='uint8').reshape((600, 800, 4))
+        buffer = np.frombuffer(byte_data, dtype="uint8").reshape((600, 800, 4))
         buffer = cv2.cvtColor(buffer, cv2.COLOR_BGR2RGB)
         print(f"image shape: {buffer.shape}")
-
-

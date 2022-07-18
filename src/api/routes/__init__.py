@@ -6,4 +6,11 @@ from src.api.routes.session.session_router import session_router
 from src.api.routes.startup.startup import startup_router
 
 # REGISTER NEW ROUTES HERE
-enabled_routers = [healthcheck_router, camera_router, cam_ws_router, startup_router, home_router, session_router]
+enabled_routers = [
+    healthcheck_router,
+    camera_router,
+    cam_ws_router,
+    startup_router,
+    home_router,
+    session_router,
+]

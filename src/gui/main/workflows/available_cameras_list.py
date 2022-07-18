@@ -37,7 +37,7 @@ class AvailableCamerasList(QWidget):
 
         self._enable_accept_button_callback = None
 
-        #automatically detect cameras on page load
+        # automatically detect cameras on page load
         self._detect()
 
     @property
@@ -70,8 +70,6 @@ class AvailableCamerasList(QWidget):
             return
         self._worker.start()
 
-
-
     def _create_available_camera_widgets(self, detected: FoundCamerasResponse):
         camera_widgets = []
         for cam in detected.cameras_found_list:
@@ -95,4 +93,3 @@ class AvailableCamerasList(QWidget):
 
     def _handle_camera_preview_click(self, cam_id):
         self.PreviewClicked.emit(cam_id)
-

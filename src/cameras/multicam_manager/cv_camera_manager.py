@@ -12,8 +12,13 @@ from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.cameras.detection.cam_singleton import get_or_create_cams
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.webcam_config import WebcamConfig
-from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager, TimestampLogger
-from src.pipelines.session_pipeline.data_classes.multi_frame_payload import MultiFramePayload
+from src.core_processor.timestamp_manager.timestamp_manager import (
+    TimestampManager,
+    TimestampLogger,
+)
+from src.pipelines.session_pipeline.data_classes.multi_frame_payload import (
+    MultiFramePayload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +32,11 @@ class CamAndWriterResponse(BaseModel):
 
 
 class OpenCVCameraManager:
-    def __init__(self,
-                 session_id: str = None,
-                 shut_down_event_bool:bool = None,
-                 ):
+    def __init__(
+        self,
+        session_id: str = None,
+        shut_down_event_bool: bool = None,
+    ):
         self._session_id = session_id
         self._config_service = UserConfigService()
         self._detected_cams_data = get_or_create_cams()
@@ -41,11 +47,10 @@ class OpenCVCameraManager:
         self._shut_down_event_bool = shut_down_event_bool
         self._number_of_multi_frames = 0
 
-
     @property
     def timestamp_manager(self):
         if self._timestamp_manager is None:
-            logger.error('timestamp manager has not been created yet')
+            logger.error("timestamp manager has not been created yet")
             raise Exception
         else:
             return self._timestamp_manager
@@ -60,25 +65,30 @@ class OpenCVCameraManager:
             logging.error("a multi_frame was requested before it was ready!")
             raise Exception
 
-        this_multi_frame_timestamp_sec = (time.perf_counter_ns() - self._session_start_time_perf_counter_ns)/1e9
+        this_multi_frame_timestamp_sec = (
+            time.perf_counter_ns() - self._session_start_time_perf_counter_ns
+        ) / 1e9
 
         this_multi_frame_dict = {}
         each_cam_timestamp = []
 
         for this_cam in self._connected_cameras_dict.values():
             if not this_cam.new_frame_ready:
-                logger.error('It shouldnt be able to get here if the `new_multi_frame`')
+                logger.error("It shouldnt be able to get here if the `new_multi_frame`")
 
             this_multi_frame_dict[this_cam.webcam_id_as_str] = this_cam.latest_frame
-            each_cam_timestamp.append(this_cam.latest_frame.timestamp_in_seconds_from_record_start)
+            each_cam_timestamp.append(
+                this_cam.latest_frame.timestamp_in_seconds_from_record_start
+            )
 
-        self._number_of_multi_frames +=1
+        self._number_of_multi_frames += 1
 
-        return MultiFramePayload(frames_dict=this_multi_frame_dict,
-                                 multi_frame_number=self._number_of_multi_frames,
-                                 each_frame_timestamp=each_cam_timestamp,
-                                 multi_frame_timestamp_seconds=this_multi_frame_timestamp_sec
-                                 )
+        return MultiFramePayload(
+            frames_dict=this_multi_frame_dict,
+            multi_frame_number=self._number_of_multi_frames,
+            each_frame_timestamp=each_cam_timestamp,
+            multi_frame_timestamp_seconds=this_multi_frame_timestamp_sec,
+        )
 
     def new_multi_frame_ready(self):
         """cycle through connected cameras and return false if one isn't read yet
@@ -92,13 +102,15 @@ class OpenCVCameraManager:
         for this_raw_camera in self._detected_cams_data.cameras_found_list:
             this_webcam_config = WebcamConfig()
             this_webcam_config.webcam_id = this_raw_camera.webcam_id
-            self._available_cameras_dict[this_webcam_config.webcam_id] = this_webcam_config
+            self._available_cameras_dict[
+                this_webcam_config.webcam_id
+            ] = this_webcam_config
 
         return self._available_cameras_dict
 
     @contextmanager
     def start_capture_session_single_cam(
-            self, webcam_id: str
+        self, webcam_id: str
     ) -> ContextManager[CamAndWriterResponse]:
         """
         Context manager for easy start up, usage, and cleanup of camera resources.
@@ -106,7 +118,7 @@ class OpenCVCameraManager:
         """
 
         cv_camera = self._create_single_opencv_cam(webcam_id)
-        self._connected_cameras_dict['0'] = cv_camera
+        self._connected_cameras_dict["0"] = cv_camera
         try:
             self._start_frame_capture_on_cam_id(cv_camera)
             self._initialize_timestamp_logger()  # start timestamp logger and wha
@@ -118,17 +130,18 @@ class OpenCVCameraManager:
 
     @contextmanager
     def start_capture_session_all_cams(
-            self,
-            webcam_configs_dict: Dict[str, WebcamConfig] = None,
-            camera_view_update_function=None,
-            calibration_videos: bool = False,
+        self,
+        webcam_configs_dict: Dict[str, WebcamConfig] = None,
+        camera_view_update_function=None,
+        calibration_videos: bool = False,
     ) -> ContextManager[Dict[str, OpenCVCamera]]:
 
         self._initialize_timestamp_logger()
         open_cv_camera_objects = self._create_opencv_cameras(
             session_start_time_perf_counter_ns=self._session_start_time_perf_counter_ns,
             webcam_configs_dict=webcam_configs_dict,
-            calibration_videos=calibration_videos, )
+            calibration_videos=calibration_videos,
+        )
 
         try:
             for cv_cam in open_cv_camera_objects:
@@ -142,16 +155,15 @@ class OpenCVCameraManager:
             logger.error("Printing traceback from starting capture session by cam")
             traceback.print_exc()
 
-    def _create_opencv_cameras(self,
-                               session_start_time_perf_counter_ns: int,
-                               webcam_configs_dict: Dict[str, WebcamConfig] = None,
-                                calibration_videos: bool = False,
-                               ):
+    def _create_opencv_cameras(
+        self,
+        session_start_time_perf_counter_ns: int,
+        webcam_configs_dict: Dict[str, WebcamConfig] = None,
+        calibration_videos: bool = False,
+    ):
 
         raw_camera_objects = self._detected_cams_data.cameras_found_list
         open_cv_cameras: List[OpenCVCamera] = []
-
-
 
         for this_raw_cam in raw_camera_objects:
 
@@ -160,19 +172,22 @@ class OpenCVCameraManager:
             else:
                 this_webcam_config = webcam_configs_dict[this_raw_cam.webcam_id]
 
-            opencv_cam_obj = self._create_single_opencv_cam(webcam_id=this_raw_cam.webcam_id,
-                                                            webcam_config=this_webcam_config,
-                                                            session_start_time_perf_counter_ns = session_start_time_perf_counter_ns,
-                                                            calibration_video_bool=calibration_videos)
+            opencv_cam_obj = self._create_single_opencv_cam(
+                webcam_id=this_raw_cam.webcam_id,
+                webcam_config=this_webcam_config,
+                session_start_time_perf_counter_ns=session_start_time_perf_counter_ns,
+                calibration_video_bool=calibration_videos,
+            )
             open_cv_cameras.append(opencv_cam_obj)
         return open_cv_cameras
 
-    def _create_single_opencv_cam(self,
-                                  webcam_id: str,
-                                  webcam_config: WebcamConfig(),
-                                  session_start_time_perf_counter_ns:int,
-                                  calibration_video_bool: bool = False,
-                                  ):
+    def _create_single_opencv_cam(
+        self,
+        webcam_id: str,
+        webcam_config: WebcamConfig(),
+        session_start_time_perf_counter_ns: int,
+        calibration_video_bool: bool = False,
+    ):
         #
         # JSM NOTE - This method seems to want to load webcam_config from disk? It might be useful, but I'll bypass it for now
         #
@@ -182,23 +197,28 @@ class OpenCVCameraManager:
         #                                     resolution_width=webcam_config_model.resolution_width,
         #                                     resolution_height=webcam_config_model.resolution_height, )
         webcam_config.webcam_id = webcam_id
-        return OpenCVCamera(config=webcam_config,
-                            session_id=self._session_id,
-                            session_start_time_perf_counter_ns = session_start_time_perf_counter_ns,
-                            calibration_video_bool=calibration_video_bool)
+        return OpenCVCamera(
+            config=webcam_config,
+            session_id=self._session_id,
+            session_start_time_perf_counter_ns=session_start_time_perf_counter_ns,
+            calibration_video_bool=calibration_video_bool,
+        )
 
     def _initialize_timestamp_logger(self):
 
         self._session_start_time_unix_ns = time.time_ns()
         self._session_start_time_perf_counter_ns = time.perf_counter_ns()
 
-        logger.info(f"Initializing timestamp loggers - _session_start_time_unix_ns: {self._session_start_time_unix_ns}, _session_start_time_perf_counter_ns: {self._session_start_time_perf_counter_ns} ")
+        logger.info(
+            f"Initializing timestamp loggers - _session_start_time_unix_ns: {self._session_start_time_unix_ns}, _session_start_time_perf_counter_ns: {self._session_start_time_perf_counter_ns} "
+        )
 
-        self._timestamp_manager = TimestampManager(self._session_id,
-                                                   self.available_webcam_ids,
-                                                   self._session_start_time_unix_ns,
-                                                   self._session_start_time_perf_counter_ns)
-
+        self._timestamp_manager = TimestampManager(
+            self._session_id,
+            self.available_webcam_ids,
+            self._session_start_time_unix_ns,
+            self._session_start_time_perf_counter_ns,
+        )
 
     def _start_frame_capture_on_cam_id(self, opencv_cam: OpenCVCamera):
         opencv_cam.connect()

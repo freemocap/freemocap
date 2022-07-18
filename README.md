@@ -33,8 +33,8 @@ If you would like to access the `pre-alpha` code, you can find it here under the
 - [Python 3.9](https://www.python.org/downloads/release/python-390/)
 - [Git](https://www.atlassian.com/git/tutorials/install-git)
 - [Blender](https://www.blender.org/download/)
-- At least 2 simple webcameras (more cameras, better quality)
-    - [$10 camera here](https://www.amazon.com/1080P-Full-Webcam-Microphone-Conferencing/dp/B09JFPFVY4/ref=asc_df_B09JFPFVY4/?tag=hyprod-20&linkCode=df0&hvadid=563548498710&hvpos=&hvnetw=g&hvrand=17033983634274965573&hvpone=&hvptwo=&hvqmt=&hvdev=c&hvdvcmdl=&hvlocint=&hvlocphy=9028321&hvtargid=pla-1629009316502&psc=1)
+- At least 2 simple webcameras (but we recommend using at least 3 for better results)
+    - Any USB webcam should work [here's an example of a camera we have used successfully](https://www.amazon.com/Microphone-110-Degree-Widescreen-Streaming-Conferencing/dp/B084ZJFNKN)
 - Each Camera must have a clean, unobstructed view of a Charuco board during initialization.
 
 

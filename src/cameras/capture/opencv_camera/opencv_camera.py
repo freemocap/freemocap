@@ -11,7 +11,9 @@ from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.cameras.viewer.cv_cam_viewer import CvCamViewer
 from src.config.webcam_config import WebcamConfig
-from src.cameras.capture.opencv_camera.camera_stream_thread_handler import VideoCaptureThread
+from src.cameras.capture.opencv_camera.camera_stream_thread_handler import (
+    VideoCaptureThread,
+)
 from src.core_processor.timestamp_manager.timestamp_manager import TimestampLogger
 
 logger = logging.getLogger(__name__)
@@ -22,11 +24,13 @@ class OpenCVCamera:
     Performant implementation of video capture against webcams
     """
 
-    def __init__(self,
-                 config: WebcamConfig,
-                 session_id: str=None,
-                 session_start_time_perf_counter_ns:int=0,
-                 calibration_video_bool: bool = False):
+    def __init__(
+        self,
+        config: WebcamConfig,
+        session_id: str = None,
+        session_start_time_perf_counter_ns: int = 0,
+        calibration_video_bool: bool = False,
+    ):
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
@@ -117,22 +121,24 @@ class OpenCVCamera:
             )
             raise Exception
 
-
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
 
         if self.session_id is False:
             logger.info(
-                f"No `session_id` specified for {self._name}, video_recorder will not be created (because we won't know where to save the videos)")
+                f"No `session_id` specified for {self._name}, video_recorder will not be created (because we won't know where to save the videos)"
+            )
             self._video_recorder = None
         else:
             image_height = image.shape[0]
             image_width = image.shape[1]
 
-            self._video_recorder = VideoRecorder(self._name,
-                                                 image_width=image_width,
-                                                 image_height=image_height,
-                                                 session_id=self.session_id,
-                                                 calibration_video_bool=self._calibration_video_bool)
+            self._video_recorder = VideoRecorder(
+                self._name,
+                image_width=image_width,
+                image_height=image_height,
+                session_id=self.session_id,
+                calibration_video_bool=self._calibration_video_bool,
+            )
 
         return success
 
@@ -182,14 +188,15 @@ class OpenCVCamera:
             ### A - see -> https://stackoverflow.com/questions/57716962/difference-between-video-capture-read-and-grab
             self._opencv_video_capture_object.grab()
             success, image = self._opencv_video_capture_object.retrieve()
-            this_frame_timestamp_perf_counter_ns = time.perf_counter_ns() - self._session_start_time_perf_counter_ns
+            this_frame_timestamp_perf_counter_ns = (
+                time.perf_counter_ns() - self._session_start_time_perf_counter_ns
+            )
 
             # timestamp_ns_post = time.perf_counter_ns()
             # it_took_this_many_seconds_to_grab_the_frame = (timestamp_ns_post-timestamp_ns_pre)/1e9
         except:
             logger.error(f"Failed to read frame from Camera: {self.webcam_id_as_str}")
             raise Exception
-
 
         self._new_frame_ready = success
 
@@ -198,12 +205,15 @@ class OpenCVCamera:
             # if self._camera_view_update_function is not None:
             #     self._camera_view_update_function(self.webcam_id_as_str, cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
-        return FramePayload(success=success,
-                            image=image,
-                            timestamp_in_seconds_from_record_start=this_frame_timestamp_perf_counter_ns/1e9,
-                            timestamp_unix_time_seconds = time.time(),
-                            frame_number=self.latest_frame_number,
-                            webcam_id=self.webcam_id_as_str)
+        return FramePayload(
+            success=success,
+            image=image,
+            timestamp_in_seconds_from_record_start=this_frame_timestamp_perf_counter_ns
+            / 1e9,
+            timestamp_unix_time_seconds=time.time(),
+            frame_number=self.latest_frame_number,
+            webcam_id=self.webcam_id_as_str,
+        )
 
     def stop_frame_capture(self):
         self.close()

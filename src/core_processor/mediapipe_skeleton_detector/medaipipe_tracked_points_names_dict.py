@@ -86,6 +86,6 @@ mediapipe_tracked_point_names_dict = {
         "nose_tip",
         "mouth_center",
         "right_ear_tragion",
-        "left_ear_tragion"
-    ]
+        "left_ear_tragion",
+    ],
 }

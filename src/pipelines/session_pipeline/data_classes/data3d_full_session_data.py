@@ -10,6 +10,6 @@ class TweakedModel(BaseModel):
 
 
 class Data3dFullSessionPayload(TweakedModel):
-    has_data: bool = True,
+    has_data: bool = (True,)
     data3d_numFrames_numTrackedPoints_XYZ: np.ndarray = None
     data3d_numFrames_numTrackedPoint_reprojectionError: np.ndarray = None

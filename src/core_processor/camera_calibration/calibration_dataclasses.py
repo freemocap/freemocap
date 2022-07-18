@@ -18,11 +18,15 @@ class CameraCalibrationData:
 
     def __post_init__(self):
         if self.camera_matrix is None:
-            self.camera_matrix = np.array([[float(self.image_width), 0., self.image_width / 2.],
-                                           [0., float(self.image_width), self.image_height / 2.],
-                                           [0., 0., 1.]])
+            self.camera_matrix = np.array(
+                [
+                    [float(self.image_width), 0.0, self.image_width / 2.0],
+                    [0.0, float(self.image_width), self.image_height / 2.0],
+                    [0.0, 0.0, 1.0],
+                ]
+            )
 
         if self.lens_distortion_coefficients is None:
-            self.lens_distortion_coefficients = np.zeros((self.number_of_lens_distortion_coefficients, 1))
-
-
+            self.lens_distortion_coefficients = np.zeros(
+                (self.number_of_lens_distortion_coefficients, 1)
+            )

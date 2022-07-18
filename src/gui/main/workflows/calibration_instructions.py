@@ -5,7 +5,6 @@ from src.gui.main.shared_widgets.primary_button import PrimaryButton
 
 
 class CalibrationInstructions(QWidget):
-
     def __init__(self):
         super().__init__()
         self._continue_button = PrimaryButton("Continue")
@@ -29,8 +28,12 @@ class CalibrationInstructions(QWidget):
 
     def _create_description_layout(self):
         description_layout = QVBoxLayout()
-        description_1 = QLabel("Hold up the Charuko boards so all cameras can see every square. Don't have one? Get one here ")
-        description_2 = QLabel("Note: You may need to adjust the cameras if you are having an issue")
+        description_1 = QLabel(
+            "Hold up the Charuko boards so all cameras can see every square. Don't have one? Get one here "
+        )
+        description_2 = QLabel(
+            "Note: You may need to adjust the cameras if you are having an issue"
+        )
         description_layout.addWidget(description_1)
         description_layout.addWidget(description_2)
         return description_layout

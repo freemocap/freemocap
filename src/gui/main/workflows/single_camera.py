@@ -56,7 +56,6 @@ class SingleCamera(QWidget):
     def quit(self):
         self._worker.quit()
 
-
     def _init_frame_worker(self):
         worker = construct_worker(WorkerType.CHARUCO)(self._cam_id)
         worker.ImageUpdate.connect(self._handle_image_update)

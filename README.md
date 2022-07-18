@@ -17,6 +17,11 @@
         <img src="https://img.shields.io/badge/contributions-welcome-ff69b4.svg" alt="Contributions Welcome">
     </a>
 </p>
+## Pardon our dust as we transtion to the `alpha` phase of this project!
+
+We are currently in the process of transitioning from the  `pre-alpha` code base into the fully refactored `alpha` code base. Some things might be a bit clunky while we make the transition, but I promise it will be worth it!
+
+If you would like to access the `pre-alpha` code, you can find it here under the release tag `v0.0.54` [here](https://github.com/freemocap/freemocap/releases/tag/v0.0.54)
 
 ## Pre-requisites
 

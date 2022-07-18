@@ -11,16 +11,17 @@ class CharucoBoardDataClass:
     number_of_squares_width: int = 7
     number_of_squares_height: int = 5
     black_square_side_length: int = 1
-    aruco_marker_length_proportional: float = .8
+    aruco_marker_length_proportional: float = 0.8
 
     def __post_init__(self):
-        self.charuco_board = cv2.aruco.CharucoBoard_create(self.number_of_squares_width,
-                                                            self.number_of_squares_height,
-                                                            self.black_square_side_length,
-                                                            self.aruco_marker_length_proportional,
-                                                            self.aruco_marker_dict)
+        self.charuco_board = cv2.aruco.CharucoBoard_create(
+            self.number_of_squares_width,
+            self.number_of_squares_height,
+            self.black_square_side_length,
+            self.aruco_marker_length_proportional,
+            self.aruco_marker_dict,
+        )
 
-        self.number_of_charuco_corners = (self.number_of_squares_width - 1) * (self.number_of_squares_height - 1)
-
-
-
+        self.number_of_charuco_corners = (self.number_of_squares_width - 1) * (
+            self.number_of_squares_height - 1
+        )

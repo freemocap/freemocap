@@ -1,20 +1,29 @@
-from PyQt6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from src.cameras.save_synchronized_videos import save_synchronized_videos
-from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import \
-    MediaPipeSkeletonDetector
+from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import (
+    MediaPipeSkeletonDetector,
+)
 from src.gui.main.state.app_state import APP_STATE
 from src.gui.main.workflows.single_camera import SingleCamera
 from src.open_in_blender.open_session_in_blender import open_session_in_blender
-from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import \
-    CalibrationPipelineOrchestrator
-from src.pipelines.session_pipeline.session_pipeline_orchestrator import \
-    SessionPipelineOrchestrator, \
-    load_mediapipe2d_data
+from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
+    CalibrationPipelineOrchestrator,
+)
+from src.pipelines.session_pipeline.session_pipeline_orchestrator import (
+    SessionPipelineOrchestrator,
+    load_mediapipe2d_data,
+)
 
 
 class RecordVideos(QWidget):
-
     def __init__(self):
         super().__init__()
         # TODO: Take it in from init
@@ -39,8 +48,8 @@ class RecordVideos(QWidget):
 
         # start/stop recording button layout
         record_button_layout = QHBoxLayout()
-        self._start_recording_button = QPushButton('Begin Recording')
-        self._stop_recording_button = QPushButton('Stop Recording')
+        self._start_recording_button = QPushButton("Begin Recording")
+        self._stop_recording_button = QPushButton("Stop Recording")
         self._stop_recording_button.setEnabled(False)
 
         self._start_recording_button.clicked.connect(self._start_recording_frames)
@@ -55,7 +64,9 @@ class RecordVideos(QWidget):
 
         self._detect_2d_skeletons_button = QPushButton("Detect 2d Skeletons in Videos")
         self._reconstruct_3d_skeletons_button = QPushButton("Reconstruct 3d Skeletons")
-        self._visualize_freemocap_session_button = QPushButton("Visualize Freemocap Session")
+        self._visualize_freemocap_session_button = QPushButton(
+            "Visualize Freemocap Session"
+        )
         self._open_in_blender_button = QPushButton("Open Session in Blender")
 
         self._detect_2d_skeletons_button.setEnabled(False)
@@ -63,9 +74,15 @@ class RecordVideos(QWidget):
         self._visualize_freemocap_session_button.setEnabled(False)
 
         self._detect_2d_skeletons_button.clicked.connect(self._detect_2d_skeletons)
-        self._reconstruct_3d_skeletons_button.clicked.connect(self._reconstruct_3d_skeletons)
-        self._visualize_freemocap_session_button.clicked.connect(self._visualize_freemocap_session)
-        self._open_in_blender_button.clicked.connect(self._create_blender_scene_from_session_data)
+        self._reconstruct_3d_skeletons_button.clicked.connect(
+            self._reconstruct_3d_skeletons
+        )
+        self._visualize_freemocap_session_button.clicked.connect(
+            self._visualize_freemocap_session
+        )
+        self._open_in_blender_button.clicked.connect(
+            self._create_blender_scene_from_session_data
+        )
 
         self._process_automatically_checkbox = QCheckBox("Process Videos Automatically")
         self._process_automatically_checkbox.setChecked(True)
@@ -111,7 +128,9 @@ class RecordVideos(QWidget):
             self._detect_2d_skeletons()
 
     def _detect_2d_skeletons(self):
-        print(f"tracking 2D mediapipe skeletons in videos from session: {APP_STATE.session_id}")
+        print(
+            f"tracking 2D mediapipe skeletons in videos from session: {APP_STATE.session_id}"
+        )
         mediapipe_skeleton_detector = MediaPipeSkeletonDetector(APP_STATE.session_id)
         mediapipe_skeleton_detector.process_session_folder()
 
@@ -123,19 +142,24 @@ class RecordVideos(QWidget):
 
     def _reconstruct_3d_skeletons(self):
         print(f"Reconstruct 3D Skeletons : {APP_STATE.session_id}")
-        session_orchestrator = SessionPipelineOrchestrator(session_id=APP_STATE.session_id)
+        session_orchestrator = SessionPipelineOrchestrator(
+            session_id=APP_STATE.session_id
+        )
 
         if APP_STATE.use_previous_calibration:
-            session_orchestrator.anipose_camera_calibration_object = \
+            session_orchestrator.anipose_camera_calibration_object = (
                 CalibrationPipelineOrchestrator().load_most_recent_calibration()
+            )
         else:
-            session_orchestrator.anipose_camera_calibration_object = \
+            session_orchestrator.anipose_camera_calibration_object = (
                 CalibrationPipelineOrchestrator().load_calibration_from_session_id(
-                APP_STATE.session_id)
+                    APP_STATE.session_id
+                )
+            )
 
-        session_orchestrator.mediapipe2d_numCams_numFrames_numTrackedPoints_XY = \
-            load_mediapipe2d_data(
-            APP_STATE.session_id)
+        session_orchestrator.mediapipe2d_numCams_numFrames_numTrackedPoints_XY = (
+            load_mediapipe2d_data(APP_STATE.session_id)
+        )
         session_orchestrator.reconstruct3d_from_2d_data_offline()
 
         self._reconstruct_3d_skeletons_button.setEnabled(False)

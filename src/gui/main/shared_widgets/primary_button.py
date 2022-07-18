@@ -1,7 +1,6 @@
 from PyQt6.QtWidgets import QPushButton
 
 
-
 active_primary_button_style_sheet = """
         QPushButton {
             background-color: #336e6d;
@@ -32,8 +31,8 @@ not_active_primary_button_style_sheet = """
         }
         """
 
+
 class PrimaryButton(QPushButton):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setStyleSheet(active_primary_button_style_sheet)
-

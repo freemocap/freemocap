@@ -3,14 +3,18 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_board_definition import CharucoBoardDataClass
+from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_board_definition import (
+    CharucoBoardDataClass,
+)
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class CharucoViewData:
-    charuco_board_object: CharucoBoardDataClass = None  # the charuco board definition this 'view' was trying to detect
+    charuco_board_object: CharucoBoardDataClass = (
+        None  # the charuco board definition this 'view' was trying to detect
+    )
     charuco_corners: np.ndarray = None
     charuco_ids: np.ndarray = None
     aruco_square_corners: np.ndarray = None
@@ -26,4 +30,5 @@ class CharucoViewData:
             if self.some_charuco_corners_found:
                 if self.charuco_board_object is None:
                     logger.warning(
-                        'If there is any data in this view point, you should also include a copy of the charcuo_board that was being detected')
+                        "If there is any data in this view point, you should also include a copy of the charcuo_board that was being detected"
+                    )

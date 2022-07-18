@@ -21,11 +21,7 @@ class DetectPossibleCameras:
 
             if success and image is not None:
                 try:
-                    cams_to_use_list.append(
-                        RawCamera(
-                            webcam_id=str(cam_id)
-                        )
-                    )
+                    cams_to_use_list.append(RawCamera(webcam_id=str(cam_id)))
                 finally:
                     cap.release()
 

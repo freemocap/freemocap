@@ -27,6 +27,8 @@ We are currently in the process of transitioning from the  `pre-alpha` code base
 
 If you would like to access the `pre-alpha` code, you can find it here under the release tag `v0.0.54` [here](https://github.com/freemocap/freemocap/releases/tag/v0.0.54)
 
+(2022-07-19) [If you are interested in this project, please fill out this quick (<1min) survey to let use know who you are :D ](https://forms.gle/CPnMe3LvrRPn5cis6)
+
 ## Pre-requisites
 
 ### General

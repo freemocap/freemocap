@@ -21,14 +21,27 @@
   </a>
 </p>
 
+___
+:point_down: 
+___
 ## Pardon our dust as we transtion to the `alpha` phase of this project!
 
-We are currently in the process of transitioning from the  `pre-alpha` code base into the fully refactored `alpha` code base. Some things might be a bit clunky while we make the transition, but I promise it will be worth it!
+We're in the process of transitioning from the pre-alpha codebase into the next iteration of this software and you're looking at an early version of the `README.md` for the code I've been writing with @endurace for the past few months. It does run, but we haven't optimized the installation workflow just yet. Here's a rough roadmap of the work we're planning over the next few `%REASONABLE_TIME_UNITS%`): https://github.com/orgs/freemocap/projects/2/views/5
+
+:point_down: :point_down: :point_down: :point_down: :point_down: :point_down: :point_down: 
+
+**If you are new to software development and python code deveopment, I'd recommend following this instructions described in the previous version of the readme at : https://github.com/freemocap/freemocap/blob/main/OLD_README.md**
+
+:point_up: :point_up::point_up::point_up::point_up::point_up::point_up::point_up::point_up:
 
 If you would like to access the `pre-alpha` code, you can find it here under the release tag `v0.0.54` [here](https://github.com/freemocap/freemocap/releases/tag/v0.0.54)
 
 (2022-07-19) [If you are interested in this project, please fill out this quick (<1min) survey to let use know who you are :D ](https://forms.gle/CPnMe3LvrRPn5cis6)
 
+There's some really fun stuff coming, stay tuned and prepare for lift-off :smile: :rocket: :skull: :sparkles:
+___
+:point_up:
+___
 ## Pre-requisites
 
 ### General

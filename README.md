@@ -22,26 +22,53 @@
 </p>
 
 ___
-:point_down: 
+---
+# INSTALLATION
+
+Note: This will install the latest/last version from the `pre-alpha` phase of this project, frozen at release tag `v0.0.54` [here](https://github.com/freemocap/freemocap/releases/tag/v0.0.54)
+
+Open an Anaconda-enabled command prompt or powershell window and enter the following commands:
+
+1) Create a Python3.7 Anaconda environment
+```bash 
+conda create -n freemocap-env python=3.7
+``` 
+
+2) Activate that newly created environment
+```bash
+conda activate freemocap-env
+```
+3) Install freemocap (version `0.0.54`)  from PyPi using `pip`
+```bash
+pip install freemocap==0.0.54
+```
+That should be it!
 ___
-## Pardon our dust as we transtion to the `alpha` phase of this project!
+# BASIC USAGE
 
-We're in the process of transitioning from the pre-alpha codebase into the next iteration of this software and you're looking at an early version of the `README.md` for the code I've been writing with @endurace for the past few months. It does run, but we haven't optimized the installation workflow just yet. Here's a rough roadmap of the work we're planning over the next few `%REASONABLE_TIME_UNITS%`): https://github.com/orgs/freemocap/projects/2/views/5
+##  How to create a *NEW* `freemocap` recording session
 
-:point_down: :point_down: :point_down: :point_down: :point_down: :point_down: :point_down: 
+tl;dr- **Activate the freemocap Python environment** and run the following lines of code (either in a script or in a console)
 
-**If you are new to software development and python code deveopment, I'd recommend following this instructions described in the previous version of the readme at : https://github.com/freemocap/freemocap/blob/main/OLD_README.md**
+```python
+import freemocap
+freemocap.RunMe()
+```
 
-:point_up: :point_up::point_up::point_up::point_up::point_up::point_up::point_up::point_up:
+But COOL KIDS will install Blender ([blender.org](https://blender.org) and generate an awesome `.blend` file animation by setting `useBlender=True`: 
 
-If you would like to access the `pre-alpha` code, you can find it here under the release tag `v0.0.54` [here](https://github.com/freemocap/freemocap/releases/tag/v0.0.54)
+```python
+import freemocap
+freemocap.RunMe(useBlender=True)
+```
 
-(2022-07-19) [If you are interested in this project, please fill out this quick (<1min) survey to let use know who you are :D ](https://forms.gle/CPnMe3LvrRPn5cis6)
+**For additional, more detailed instructions (including methods to re-process recorded sessions), [refer to the `OLD_README.md` document](https://github.com/freemocap/freemocap/blob/main/OLD_README.md))**
 
-There's some really fun stuff coming, stay tuned and prepare for lift-off :smile: :rocket: :skull: :sparkles:
 ___
-:point_up:
 ___
+
+
+
 ## Pre-requisites
 
 ### General

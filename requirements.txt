@@ -1,4 +1,4 @@
-ipython
+ipython==8.2.0
 numpy>=1.19
 pydantic==1.9.0
 uvicorn==0.16.0
@@ -28,3 +28,4 @@ pytest-cov==3.0.0
 pyinstaller==5.2
 pyinstaller-hooks-contrib==2022.8
 black[d]==22.6.0
+mkdocs-material==8.3.9

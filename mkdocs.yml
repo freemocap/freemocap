@@ -1,3 +1,5 @@
+# originally copied from - https://squidfunk.github.io/mkdocs-material/creating-your-site/#configuration
+
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 site_name: My Docs
 theme:

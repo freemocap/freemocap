@@ -1,10 +1,10 @@
 # Welcome to the FreeMoCap 
 
-I'm just playing around with `mkdocs` right now
+I'm just playing around with `mkdocs` right now. Seems pretty cool!
 
-Seems pretty cool!
+We're planning to build a Knowledge Base that roughly follows the [structure outlined here](https://docs.google.com/presentation/d/1Xk15eYjGnGjuUlPOJgSoF2z5fhktZXMHNP_00blWi_s/edit#slide=id.gac39de1498_0_345) 
 
-Until we actually put together a proper Knowledge Base, I'm just going to point you back to the (`README.md`) in the main repository: 
+Until then, I'm just going to point you back to the (`README.md`) in the main repository: 
 
 https://github.com/freemocap/freemocap
 

@@ -94,6 +94,8 @@ def save_synchronized_videos(
             list_of_frames=frame_list, calibration_videos=calibration_videos
         )
 
+    # create_timestamp_diagnostic_plots(final_frame_timestamps) #breadcrumbs for a future function to generate timestamp diagnostic plots
+
 
 def get_nearest_frame(frame_list, reference_frame) -> FramePayload:
     timestamps = gather_timestamps(frame_list)

@@ -1,7 +1,6 @@
 from typing import List
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder

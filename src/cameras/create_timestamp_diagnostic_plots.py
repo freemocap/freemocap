@@ -1,11 +1,10 @@
-# from typing import List
 # import numpy as np
 # from matplotlib import pyplot as plt
 #
 # plt.set_loglevel("warning")
 
 
-def create_timestamp_diagnostic_plots(camera_timestamps: List):
+def create_timestamp_diagnostic_plots(camera_timestamps):
     """plot some diagnostics to assess quality of camera sync"""
     pass
 

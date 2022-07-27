@@ -21,13 +21,53 @@
   </a>
 </p>
 
-## Pardon our dust as we transtion to the `alpha` phase of this project!
+___
+---
+# INSTALLATION
 
-We are currently in the process of transitioning from the  `pre-alpha` code base into the fully refactored `alpha` code base. Some things might be a bit clunky while we make the transition, but I promise it will be worth it!
+Note: This will install the latest/last version from the `pre-alpha` phase of this project, frozen at release tag `v0.0.54` [here](https://github.com/freemocap/freemocap/releases/tag/v0.0.54)
 
-If you would like to access the `pre-alpha` code, you can find it here under the release tag `v0.0.54` [here](https://github.com/freemocap/freemocap/releases/tag/v0.0.54)
+Open an Anaconda-enabled command prompt or powershell window and enter the following commands:
 
-(2022-07-19) [If you are interested in this project, please fill out this quick (<1min) survey to let use know who you are :D ](https://forms.gle/CPnMe3LvrRPn5cis6)
+1) Create a Python3.7 Anaconda environment
+```bash 
+conda create -n freemocap-env python=3.7
+``` 
+
+2) Activate that newly created environment
+```bash
+conda activate freemocap-env
+```
+3) Install freemocap (version `0.0.54`)  from PyPi using `pip`
+```bash
+pip install freemocap==0.0.54
+```
+That should be it!
+___
+# BASIC USAGE
+
+##  How to create a *NEW* `freemocap` recording session
+
+tl;dr- **Activate the freemocap Python environment** and run the following lines of code (either in a script or in a console)
+
+```python
+import freemocap
+freemocap.RunMe()
+```
+
+But COOL KIDS will install Blender ([blender.org](https://blender.org) and generate an awesome `.blend` file animation by setting `useBlender=True`: 
+
+```python
+import freemocap
+freemocap.RunMe(useBlender=True)
+```
+
+**For additional, more detailed instructions (including methods to re-process recorded sessions), [refer to the `OLD_README.md` document](https://github.com/freemocap/freemocap/blob/main/OLD_README.md))**
+
+___
+___
+
+
 
 ## Pre-requisites
 

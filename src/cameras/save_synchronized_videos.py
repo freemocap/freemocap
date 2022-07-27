@@ -1,7 +1,6 @@
 from typing import List
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
@@ -93,6 +92,8 @@ def save_synchronized_videos(
         video_recoder.save_list_of_frames_to_video_file(
             list_of_frames=frame_list, calibration_videos=calibration_videos
         )
+
+    # create_timestamp_diagnostic_plots(final_frame_timestamps) #breadcrumbs for a future function to generate timestamp diagnostic plots
 
 
 def get_nearest_frame(frame_list, reference_frame) -> FramePayload:

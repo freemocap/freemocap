@@ -1,6 +1,13 @@
 # originally copied from - https://squidfunk.github.io/mkdocs-material/creating-your-site/#configuration
 
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
-site_name: My Docs
+site_name: FreeMoCap Documentation
 theme:
   name: material
+nav:
+  - 'index.md'
+  - 'about_us.md'
+  - 'friendly_handholding_tutorials.md'
+  - 'troubleshooting.md'
+  - 'glossary.md'
+  - 'python_reference.md'

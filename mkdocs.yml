@@ -7,7 +7,7 @@ theme:
 nav:
   - 'index.md'
   - 'about_us.md'
-  - 'friendly_handholding_tutorials.md'
+  - 'tutorials.md'
   - 'troubleshooting.md'
   - 'glossary.md'
   - 'python_reference.md'

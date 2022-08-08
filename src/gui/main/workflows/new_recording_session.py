@@ -34,10 +34,8 @@ class NewRecordingSession(QWidget):
         session_id_text_layout.addWidget(self._create_session_input())
 
         container.addLayout(session_id_text_layout)
-
-        container.addLayout(self._create_submit_button_layout())
-
         container.addWidget(self._use_previous_calibration_checkbox)
+        container.addLayout(self._create_submit_button_layout())
 
         self.setLayout(container)
 
@@ -54,7 +52,9 @@ class NewRecordingSession(QWidget):
         return previous_calibration_checkbox
 
     def _create_record_sesion_title(self):
-        session_title = PageTitle("Name Your Recording Session")
+        session_title = PageTitle(
+            "Welcome to FreeMoCap! \n  \U00002728 \U0001F480 \U00002728 "
+        )
         return session_title
 
     def _create_session_input(self):

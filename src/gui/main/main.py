@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import QApplication
 
 # from src.api.routes.session.session_router import visualize_session_offline
 from src.gui.main.app import get_qt_app
+from src.gui.main.layout.ICIS_conference_main_window import ICISConferenceMainWindow
 from src.gui.main.layout.main_window import MainWindow
 
 
@@ -20,6 +21,7 @@ if __name__ == "__main__":
     timer = QTimer()
     timer.start(500)
     timer.timeout.connect(lambda: None)  # Let the interpreter run each 500 ms.
+    # win = ICISConferenceMainWindow()
     win = MainWindow()
     win.show()
     sys.exit(app.exec())

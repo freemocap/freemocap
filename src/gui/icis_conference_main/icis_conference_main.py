@@ -4,8 +4,12 @@ import sys
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 
-from src.gui.main.app import get_qt_app
-from src.gui.main.main_window.main_window import MainWindow
+# from src.api.routes.session.session_router import visualize_session_offline
+from src.gui.icis_conference_main.icis_conference_app import get_qt_app
+from src.gui.icis_conference_main.layout.ICIS_conference_main_window import (
+    ICISConferenceMainWindow,
+)
+from src.gui.icis_conference_main.layout.slop_main_window import SlopMainWindow
 
 
 def sigint_handler(*args):
@@ -20,7 +24,7 @@ if __name__ == "__main__":
     timer.start(500)
     timer.timeout.connect(lambda: None)  # Let the interpreter run each 500 ms.
     # win = ICISConferenceMainWindow()
-    win = MainWindow()
+    win = SlopMainWindow()
     win.show()
     sys.exit(app.exec())
     # app.exec()

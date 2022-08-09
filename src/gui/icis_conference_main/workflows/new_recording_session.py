@@ -9,9 +9,9 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.home_dir import create_session_id
-from src.gui.main.shared_widgets.page_title import PageTitle
-from src.gui.main.shared_widgets.primary_button import PrimaryButton
-from src.gui.main.state.app_state import APP_STATE
+from src.gui.icis_conference_main.shared_widgets.page_title import PageTitle
+from src.gui.icis_conference_main.shared_widgets.primary_button import PrimaryButton
+from src.gui.icis_conference_main.state.app_state import APP_STATE
 
 
 class NewRecordingSession(QWidget):
@@ -53,7 +53,7 @@ class NewRecordingSession(QWidget):
 
     def _create_record_sesion_title(self):
         session_title = PageTitle(
-            "Welcome to FreeMoCap! \n  \U00002728 \U0001F480 \U00002728 "
+            "welcome \n to \n freemocap! \n  \U00002728 \U0001F480 \U00002728 "
         )
         return session_title
 

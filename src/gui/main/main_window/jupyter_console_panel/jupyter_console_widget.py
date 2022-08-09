@@ -37,11 +37,18 @@ class JupyterConsoleWidget(inprocess.QtInProcessRichJupyterWidget):
         self.kernel_manager.start_kernel()
         self.kernel_client = self.kernel_manager.client()
         self.kernel_client.start_channels()
+        self._import_stuff()
+        self.execute("%whos")
+        self.print("henlo")
         if dark_mode:
             self.set_default_style("linux")
 
+    def _import_stuff(self):
+        self.execute("import numpy as np")
+        self.execute("import matplotlib.pyplot as plt")
+
     def print(self, message: str):
-        self.execute(print(message))
+        self.execute(f"print('{message}')")
 
     def shutdown_kernel(self):
         self.kernel_client.stop_channels()

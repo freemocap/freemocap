@@ -84,7 +84,7 @@ class QTVisualizerAndGui:
 
     def _setup_main_window(self, window_width: int = 1000, window_height: int = 1000):
         """
-        This is the main main window for the GUI.
+        This is the icis_conference_main icis_conference_main window for the GUI.
         Its structure is based loosely on the 'Dock Widgets' example from `python -m pyqtgraph.examples`
         """
         self._main_window_widget = QtWidgets.QMainWindow()

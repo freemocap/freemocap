@@ -4,9 +4,9 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from src.cameras.detection.models import FoundCamerasResponse
-from src.gui.main.qt_utils.clear_layout import clearLayout
-from src.gui.main.workers.cam_detection_thread import CamDetectionWorker
-from src.gui.main.workflows.available_camera import AvailableCamera
+from src.gui.icis_conference_main.qt_utils.clear_layout import clearLayout
+from src.gui.icis_conference_main.workers.cam_detection_thread import CamDetectionWorker
+from src.gui.icis_conference_main.workflows.available_camera import AvailableCamera
 
 
 class AvailableCamerasList(QWidget):

@@ -3,15 +3,17 @@ import time
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from src.gui.main.shared_widgets.page_title import PageTitle
-from src.gui.main.shared_widgets.primary_button import (
+from src.gui.icis_conference_main.shared_widgets.page_title import PageTitle
+from src.gui.icis_conference_main.shared_widgets.primary_button import (
     PrimaryButton,
     not_active_primary_button_style_sheet,
     active_primary_button_style_sheet,
 )
-from src.gui.main.state.app_state import APP_STATE
-from src.gui.main.workers.cam_frame_worker import CamFrameWorker
-from src.gui.main.workflows.available_cameras_list import AvailableCamerasList
+from src.gui.icis_conference_main.state.app_state import APP_STATE
+from src.gui.icis_conference_main.workers.cam_frame_worker import CamFrameWorker
+from src.gui.icis_conference_main.workflows.available_cameras_list import (
+    AvailableCamerasList,
+)
 
 
 class CameraConfiguration(QWidget):

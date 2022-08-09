@@ -20,7 +20,7 @@ class CalibrationDiagnosticsVisualizer:
         self.image_point_original = np.empty(0)
         self.image_point_remapped = np.empty(0)
 
-        # create main app and window
+        # create icis_conference_main app and window
         self.pyqtgraph_app = pg.mkQApp("DockArea Example")
         self.main_window_widget = QtWidgets.QMainWindow()
         self.dock_area = DockArea()

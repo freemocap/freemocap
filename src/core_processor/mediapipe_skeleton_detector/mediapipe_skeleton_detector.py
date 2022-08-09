@@ -17,7 +17,7 @@ from src.config.home_dir import (
 from src.core_processor.mediapipe_skeleton_detector.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
 )
-from src.gui.main.state.app_state import APP_STATE
+from src.gui.icis_conference_main.state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)
 

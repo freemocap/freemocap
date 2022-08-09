@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from src.gui.main.state.app_state import APP_STATE
+from src.gui.icis_conference_main.state.app_state import APP_STATE
 
 
 def save_synchronized_videos(

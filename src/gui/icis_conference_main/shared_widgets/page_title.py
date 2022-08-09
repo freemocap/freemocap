@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QLabel
 
-from src.gui.main.qt_utils.set_font_size import set_font_size
+from src.gui.icis_conference_main.qt_utils.set_font_size import set_font_size
 
 
 class PageTitle(QLabel):

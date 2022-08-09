@@ -12,19 +12,27 @@ from PyQt6.QtWidgets import (
     QSplitter,
 )
 
-from src.gui.main.app import get_qt_app
-from src.gui.main.qt_utils.clear_layout import clearLayout
-from src.gui.main.qt_widgets.jupyter_console_widget import JupyterConsoleWidget
-from src.gui.main.state.app_state import APP_STATE
-from src.gui.main.workflows.calibration_instructions import CalibrationInstructions
-from src.gui.main.workflows.camera_configuration import CameraConfiguration
-from src.gui.main.workflows.new_recording_session import NewRecordingSession
-from src.gui.main.workflows.record_videos import RecordVideos
-from src.gui.main.workflows.show_cams_charuco import ShowCamsCharuco
-from src.gui.main.workflows.welcome import Welcome
+from src.gui.icis_conference_main.icis_conference_app import get_qt_app
+from src.gui.icis_conference_main.qt_utils.clear_layout import clearLayout
+from src.gui.icis_conference_main.qt_widgets.jupyter_console_widget import (
+    JupyterConsoleWidget,
+)
+from src.gui.icis_conference_main.state.app_state import APP_STATE
+from src.gui.icis_conference_main.workflows.calibration_instructions import (
+    CalibrationInstructions,
+)
+from src.gui.icis_conference_main.workflows.camera_configuration import (
+    CameraConfiguration,
+)
+from src.gui.icis_conference_main.workflows.new_recording_session import (
+    NewRecordingSession,
+)
+from src.gui.icis_conference_main.workflows.record_videos import RecordVideos
+from src.gui.icis_conference_main.workflows.show_cams_charuco import ShowCamsCharuco
+from src.gui.icis_conference_main.workflows.welcome import Welcome
 
 
-class MainWindow(QMainWindow):
+class SlopMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("freemocap")
@@ -43,7 +51,8 @@ class MainWindow(QMainWindow):
             self._jupyter_console_widget
         )
 
-        self._show_new_session_screen()
+        self._jupyter_console_widget.print("Hello there!")
+        self._show_welcome_view()
 
     def _create_basic_layout(self):
         main_layout = QHBoxLayout()
@@ -55,7 +64,7 @@ class MainWindow(QMainWindow):
 
     def _create_control_panel_layout(self):
         control_panel_frame = QFrame()
-        control_panel_frame.setFixedWidth(self._main_window_width * 0.3)
+        control_panel_frame.setFixedWidth(self._main_window_width * 0.2)
         control_panel_frame.setFrameShape(QFrame.Shape.StyledPanel)
         control_panel_layout = QVBoxLayout()
         control_panel_frame.setLayout(control_panel_layout)
@@ -77,7 +86,7 @@ class MainWindow(QMainWindow):
 
     def _create_console_panel_layout(self, jupyter_console_widget):
         console_panel_frame = QFrame()
-        console_panel_frame.setFixedWidth(self._main_window_width * 0.3)
+        console_panel_frame.setFixedWidth(self._main_window_width * 0.4)
         console_panel_frame.setFrameShape(QFrame.Shape.StyledPanel)
         console_panel_layout = QVBoxLayout()
         console_panel_layout.addWidget(jupyter_console_widget)
@@ -116,13 +125,15 @@ class MainWindow(QMainWindow):
         action.setStatusTip("Begin a new recording session")
 
         # On triggered, quit the application
-        action.triggered.connect(self._show_new_session_screen)
+        # action.triggered.connect(self._show_welcome_view)
+        action.triggered.connect(self._show_cam_config_screen)
         return action
 
     def _create_jupyter_console_widget(self):
         # create jupyter console widget
         jupyter_console_widget = JupyterConsoleWidget()
         get_qt_app().aboutToQuit.connect(jupyter_console_widget.shutdown_kernel)
+
         return jupyter_console_widget
 
     # # more top-level screens go here
@@ -132,27 +143,26 @@ class MainWindow(QMainWindow):
     #     screen = Welcome()
     #     self._main_layout.addWidget(screen)
     #     self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-    #     screen.new_session.clicked.connect(self._show_new_session_screen)
+    #     screen.new_session.clicked.connect(self._show_welcome_view)
 
-    def _show_new_session_screen(self):
+    def _show_welcome_view(self):
         clearLayout(self._control_panel_layout)
         screen = NewRecordingSession()
         self._control_panel_layout.addWidget(screen)
         # self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         # screen.submit.clicked.connect(self._show_cam_config_screen)
-        screen.submit.clicked.connect(self._show_record_videos_screen)
+        screen.submit.clicked.connect(self._show_cam_config_screen)
 
-    #
-    # def _show_cam_config_screen(self):
-    #     clearLayout(self._main_layout)
-    #     screen = CameraConfiguration()
-    #     self._main_layout.addWidget(screen)
-    #     self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-    #     # screen.config_accepted.clicked.connect(self._show_calibration_instructions_screen)
-    #     if APP_STATE.use_previous_calibration:
-    #         screen.config_accepted.clicked.connect(self._show_record_videos_screen)
-    #     else:
-    #         screen.config_accepted.clicked.connect(self._show_calibration_screen)
+    def _show_cam_config_screen(self):
+        clearLayout(self._camera_view_panel_layout)
+        screen = CameraConfiguration()
+        self._camera_view_panel_layout.addWidget(screen)
+        # self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # screen.config_accepted.clicked.connect(self._show_calibration_instructions_screen)
+        if APP_STATE.use_previous_calibration:
+            screen.config_accepted.clicked.connect(self._show_record_videos_screen)
+        else:
+            screen.config_accepted.clicked.connect(self._show_calibration_screen)
 
     # def _show_calibration_instructions_screen(self):
     #     clearLayout(self._main_layout)
@@ -161,20 +171,22 @@ class MainWindow(QMainWindow):
     #     self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
     #     screen.continue_button.clicked.connect(self._show_calibration_screen)
 
-    # def _show_calibration_screen(self):
-    #     clearLayout(self._main_layout)
-    #     screen = ShowCamsCharuco()
-    #     self._main_layout.addWidget(screen)
-    #     self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-    #     self._main_layout.addWidget(self._jupyter_console_widget)
-    #     screen.continue_button.clicked.connect(self._show_record_videos_screen)
+    def _show_calibration_screen(self):
+        clearLayout(self._main_layout)
+        screen = ShowCamsCharuco()
+        self._main_layout.addWidget(screen)
+        self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self._main_layout.addWidget(self._jupyter_console_widget)
+        screen.continue_button.clicked.connect(self._show_record_videos_screen)
 
     def _show_record_videos_screen(self):
         clearLayout(self._camera_view_panel_layout)
+        self._jupyter_console_widget.print(
+            f"Session started with id: {APP_STATE.session_id}"
+        )
         screen = RecordVideos()
         self._camera_view_panel_layout.addWidget(screen)
+
         # self._main_layout.addWidget(self._jupyter_console_widget)
-        self._jupyter_console_widget.print(
-            f"New session created with `session_id`: {APP_STATE.session_id}"
-        )
+
         # self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)

@@ -2,16 +2,24 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMainWindow, QMenuBar, QVBoxLayout, QWidget, QCheckBox
 
-from src.gui.main.app import get_qt_app
-from src.gui.main.qt_utils.clear_layout import clearLayout
-from src.gui.main.qt_widgets.jupyter_console_widget import JupyterConsoleWidget
-from src.gui.main.state.app_state import APP_STATE
-from src.gui.main.workflows.calibration_instructions import CalibrationInstructions
-from src.gui.main.workflows.camera_configuration import CameraConfiguration
-from src.gui.main.workflows.new_recording_session import NewRecordingSession
-from src.gui.main.workflows.record_videos import RecordVideos
-from src.gui.main.workflows.show_cams_charuco import ShowCamsCharuco
-from src.gui.main.workflows.welcome import Welcome
+from src.gui.icis_conference_main.icis_conference_app import get_qt_app
+from src.gui.icis_conference_main.qt_utils.clear_layout import clearLayout
+from src.gui.icis_conference_main.qt_widgets.jupyter_console_widget import (
+    JupyterConsoleWidget,
+)
+from src.gui.icis_conference_main.state.app_state import APP_STATE
+from src.gui.icis_conference_main.workflows.calibration_instructions import (
+    CalibrationInstructions,
+)
+from src.gui.icis_conference_main.workflows.camera_configuration import (
+    CameraConfiguration,
+)
+from src.gui.icis_conference_main.workflows.new_recording_session import (
+    NewRecordingSession,
+)
+from src.gui.icis_conference_main.workflows.record_videos import RecordVideos
+from src.gui.icis_conference_main.workflows.show_cams_charuco import ShowCamsCharuco
+from src.gui.icis_conference_main.workflows.welcome import Welcome
 
 
 class ICISConferenceMainWindow(QMainWindow):

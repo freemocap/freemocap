@@ -23,8 +23,8 @@ if __name__ == "__main__":
     timer = QTimer()
     timer.start(500)
     timer.timeout.connect(lambda: None)  # Let the interpreter run each 500 ms.
-    # win = ICISConferenceMainWindow()
-    win = SlopMainWindow()
+    win = ICISConferenceMainWindow()
+    # win = SlopMainWindow()
     win.show()
     sys.exit(app.exec())
     # app.exec()

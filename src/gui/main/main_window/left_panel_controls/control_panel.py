@@ -18,7 +18,7 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.new_session_ta
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.welcome_tab import (
     SelectWorkflowScreen,
 )
-from src.gui.main.qt_utils.clear_layout import clearLayout
+from src.gui.main.qt_utils.clear_layout import clear_layout
 
 
 class ControlPanel:
@@ -42,8 +42,12 @@ class ControlPanel:
     def layout(self):
         return self._layout
 
+    @property
+    def select_workflow_screen(self):
+        return self._select_workflow_screen
+
     def _start_standard_workflow(self):
-        clearLayout(self._layout)
+        clear_layout(self._layout)
         self._create_toolbox_widget()
 
     def _create_toolbox_widget(self):

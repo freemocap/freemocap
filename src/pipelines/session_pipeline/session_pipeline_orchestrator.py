@@ -259,10 +259,8 @@ class SessionPipelineOrchestrator:
 
                         if detect_charuco:
                             # detect charuco board
-                            this_charuco_frame_payload = (
-                                self._charuco_board_detector.detect_charuco_board(
-                                    this_cam_latest_frame
-                                )
+                            this_charuco_frame_payload = self._charuco_board_detector.detect_charuco_board_in_frame_payload(
+                                this_cam_latest_frame
                             )
                             image_to_display = (
                                 this_charuco_frame_payload.annotated_image

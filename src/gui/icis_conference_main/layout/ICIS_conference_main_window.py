@@ -107,7 +107,7 @@ class ICISConferenceMainWindow(QMainWindow):
             screen.config_accepted.clicked.connect(self._show_calibration_screen)
 
     # def _show_calibration_instructions_screen(self):
-    #     clearLayout(self._main_layout)
+    #     clear_layout(self._main_layout)
     #     screen = CalibrationInstructions()
     #     self._main_layout.addWidget(screen)
     #     self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)

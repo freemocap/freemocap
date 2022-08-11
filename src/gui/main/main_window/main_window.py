@@ -30,6 +30,8 @@ class MainWindow(QMainWindow):
         self._jupyter_console_widget = self._create_jupyter_console_widget()
         self._main_layout.addWidget(self._jupyter_console_widget.frame)
 
+        self._connect_buttons_to_stuff()
+
     def _create_main_layout(self):
         main_layout = QHBoxLayout()
         widget = QWidget()
@@ -54,3 +56,8 @@ class MainWindow(QMainWindow):
         panel.frame.setFixedWidth(self._main_window_width * 0.3)
         panel.frame.setFixedHeight(self._main_window_height)
         return panel
+
+    def _connect_buttons_to_stuff(self):
+        self._control_panel.select_workflow_screen.start_new_session_button.clicked.connect(
+            self._viewing_panel.show_camera_configuration_view
+        )

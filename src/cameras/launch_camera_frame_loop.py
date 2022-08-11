@@ -94,10 +94,8 @@ def launch_camera_frame_loop(
 
                     if detect_charuco_in_image:
                         # detect charuco board
-                        this_charuco_frame_payload = (
-                            charuco_board_detector.detect_charuco_board(
-                                this_cam_latest_frame
-                            )
+                        this_charuco_frame_payload = charuco_board_detector.detect_charuco_board_in_frame_payload(
+                            this_cam_latest_frame
                         )
                         image_to_display = (
                             this_charuco_frame_payload.annotated_image.copy()

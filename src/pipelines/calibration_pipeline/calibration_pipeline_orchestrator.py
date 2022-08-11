@@ -119,10 +119,8 @@ class CalibrationPipelineOrchestrator:
                             )
 
                         # detect charuco board
-                        this_charuco_frame_payload = (
-                            self._charuco_board_detector.detect_charuco_board(
-                                this_cam_latest_frame
-                            )
+                        this_charuco_frame_payload = self._charuco_board_detector.detect_charuco_board_in_frame_payload(
+                            this_cam_latest_frame
                         )
 
                         if show_camera_views_in_windows:

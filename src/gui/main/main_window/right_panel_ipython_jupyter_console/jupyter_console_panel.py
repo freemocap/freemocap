@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QFrame, QVBoxLayout
 
 from src.gui.main.app import get_qt_app
-from src.gui.main.main_window.jupyter_console_panel.jupyter_console_widget import (
+from src.gui.main.main_window.right_panel_ipython_jupyter_console.jupyter_console_widget import (
     JupyterConsoleWidget,
 )
 

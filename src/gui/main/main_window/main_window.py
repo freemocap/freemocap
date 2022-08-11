@@ -1,10 +1,12 @@
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 
-from src.gui.main.main_window.control_panel.control_panel import ControlPanel
-from src.gui.main.main_window.jupyter_console_panel.jupyter_console_panel import (
+from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
+from src.gui.main.main_window.right_panel_ipython_jupyter_console.jupyter_console_panel import (
     JupyterConsolePanel,
 )
-from src.gui.main.main_window.viewing_panel.viewing_panel import ViewingPanel
+from src.gui.main.main_window.middle_panel_camera_and_3D_viewer.viewing_panel import (
+    ViewingPanel,
+)
 
 
 class MainWindow(QMainWindow):

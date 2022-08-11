@@ -21,22 +21,25 @@ from pyqtgraph.Qt import QtWidgets
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
 
-try:
-    from qtconsole import inprocess
-except:
-    print(
-        "The example in `jupyter_console_example.py` requires `qtconsole` to run. Install with `pip install qtconsole` or equivalent."
-    )
+
+from qtconsole import inprocess
+
+from rich.console import Console
 
 
 class JupyterConsoleWidget(inprocess.QtInProcessRichJupyterWidget):
     def __init__(self, dark_mode: bool = True):
         super().__init__()
-
         self.kernel_manager = inprocess.QtInProcessKernelManager()
         self.kernel_manager.start_kernel()
         self.kernel_client = self.kernel_manager.client()
+        self._kernel = self.kernel_manager.kernel
+        self._kernel.shell.push(dict(np=np))
         self.kernel_client.start_channels()
+        self.console = Console()
+        self._kernel.shell.push(dict(console=self.console))
+        self._kernel.shell.run_code("print('Hello World')")
+        self.console.print("Welcome to the Jupyter Console")
         self._import_stuff()
         self.execute("%whos")
         self.print("henlo")
@@ -44,7 +47,6 @@ class JupyterConsoleWidget(inprocess.QtInProcessRichJupyterWidget):
             self.set_default_style("linux")
 
     def _import_stuff(self):
-        self.execute("import numpy as np")
         self.execute("import matplotlib.pyplot as plt")
 
     def print(self, message: str):

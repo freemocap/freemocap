@@ -37,7 +37,7 @@ class CamCharucoFrameWorker(QThread):
     def run(self):
         camera_config = APP_STATE.camera_configs[self._cam_id]
         cam = OpenCVCamera(
-            WebcamConfig(webcam_id=self._cam_id),
+            camera_config,
             session_id=APP_STATE.session_id,
         )
         cam.connect()

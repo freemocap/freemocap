@@ -25,11 +25,15 @@ class ViewingPanel(QWidget):
         self._layout = QVBoxLayout()
         self._frame.setLayout(self._layout)
 
-        self._layout.addWidget(self._welcome_to_freemocap_title())
+        self._welcome_to_freemocap_title_widget = self._welcome_to_freemocap_title()
+        self._central_layout = QVBoxLayout()
+        self._central_layout.addWidget(self._welcome_to_freemocap_title_widget)
+        self._layout.addLayout(self._central_layout)
 
         self._update_camera_configs_button = QPushButton(
             "Update Camera Configs in Control Panel"
         )
+        self._layout.addWidget(self._update_camera_configs_button)
 
     @property
     def frame(self):
@@ -45,14 +49,12 @@ class ViewingPanel(QWidget):
         )
         return session_title
 
-    def show_camera_configuration_view(self):
-        clear_layout(self._layout)
-        camera_configuration_view = CameraConfiguration()
-        self._layout.addWidget(camera_configuration_view)
+    def detect_and_connect_to_cameras(self):
+        self.detect_cameras()
+        self._connect_to_cameras()
 
-    def connect_to_cameras(self):
-        clear_layout(self._layout)
-        self._layout.addWidget(PageTitle("Connecting to cameras..."))
+    def detect_cameras(self):
+
         found_camera_ids_list = get_or_create_cams_list()
 
         APP_STATE.available_cameras = found_camera_ids_list
@@ -62,7 +64,12 @@ class ViewingPanel(QWidget):
         for camera_id in APP_STATE.selected_cameras:
             APP_STATE.camera_configs[camera_id] = WebcamConfig(webcam_id=camera_id)
 
+    def _connect_to_cameras(self):
+        clear_layout(self._central_layout)
         self._camera_stream_grid_view = CameraStreamGridView()
-        clear_layout(self._layout)
-        self._layout.addWidget(self._camera_stream_grid_view)
-        self._layout.addWidget(self._update_camera_configs_button)
+        self._camera_stream_grid_view.connect_to_camera_streams()
+        self._central_layout.addWidget(self._camera_stream_grid_view)
+
+    def reconnect_to_cameras(self):
+        self._camera_stream_grid_view.close_all_camera_streams()
+        self._camera_stream_grid_view.reconnect_to_cameras()

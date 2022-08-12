@@ -61,11 +61,20 @@ class MainWindow(QMainWindow):
         return panel
 
     def _connect_buttons_to_stuff(self):
+        # when 'start new session' button is clicked, connect to cameras and display in `viewing panel`
         self._control_panel.select_workflow_screen.start_new_session_button.clicked.connect(
-            self._viewing_panel.connect_to_cameras
+            self._viewing_panel.detect_and_connect_to_cameras
         )
 
         # I don't know how to make this happen automatically via 'emitted signals' but I DO know how to connect it to a dumb button, lol
         self._viewing_panel.update_camera_configs_button.clicked.connect(
             self._control_panel.update_camera_configs
         )
+
+        self._control_panel.camera_setup_control_panel.apply_settings_to_cameras_button.clicked.connect(
+            self._apply_webcam_configs_and_reconnect
+        )
+
+    def _apply_webcam_configs_and_reconnect(self):
+        self._control_panel.camera_setup_control_panel.save_settings_to_app_state()
+        self._viewing_panel.reconnect_to_cameras()

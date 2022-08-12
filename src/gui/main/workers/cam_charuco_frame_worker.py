@@ -17,7 +17,7 @@ class CamCharucoFrameWorker(QThread):
         self, cam_id=None, should_save_frames: bool = False, calibration_videos=False
     ):
         super().__init__()
-        self._board_thingy = CharucoBoardDetector()
+        self._charuco_board_detector = CharucoBoardDetector()
         self._cam_id = cam_id
         self._should_save_frames = should_save_frames
         self._should_continue = True
@@ -35,6 +35,7 @@ class CamCharucoFrameWorker(QThread):
         return self._cam.video_recorder
 
     def run(self):
+        camera_config = APP_STATE.camera_configs[self._cam_id]
         cam = OpenCVCamera(
             WebcamConfig(webcam_id=self._cam_id),
             session_id=APP_STATE.session_id,
@@ -56,7 +57,9 @@ class CamCharucoFrameWorker(QThread):
                     cam.video_recorder.append_frame_payload_to_list(payload)
 
                 charuco_payload = (
-                    self._board_thingy.detect_charuco_board_in_frame_payload(payload)
+                    self._charuco_board_detector.detect_charuco_board_in_frame_payload(
+                        payload
+                    )
                 )
                 image_to_display = charuco_payload.annotated_image
                 image_to_display = cv2.flip(image_to_display, 1)

@@ -33,6 +33,9 @@ class ControlPanel:
         self._select_workflow_screen.start_new_session_button.clicked.connect(
             self._start_standard_workflow
         )
+
+        self._camera_setup_control_panel = CameraSetupControlPanel()
+
         self._layout.addWidget(self._select_workflow_screen)
         self._frame.setLayout(self._layout)
 
@@ -48,13 +51,17 @@ class ControlPanel:
     def select_workflow_screen(self):
         return self._select_workflow_screen
 
+    @property
+    def camera_setup_control_panel(self):
+        return self._camera_setup_control_panel
+
     def _start_standard_workflow(self):
         clear_layout(self._layout)
         self._create_toolbox_widget()
 
     def _create_toolbox_widget(self):
         toolbox_widget = QToolBox()
-        toolbox_widget.addItem(CameraSetupControlPanel(), "Camera Setup")
+        toolbox_widget.addItem(self._camera_setup_control_panel, "Camera Setup")
         toolbox_widget.setItemToolTip(0, "This is a tooltip for Camera Setup")
 
         toolbox_widget.addItem(
@@ -70,3 +77,6 @@ class ControlPanel:
         )
 
         self._layout.addWidget(toolbox_widget)
+
+    def update_camera_configs(self):
+        self._camera_setup_control_panel.update_camera_configs()

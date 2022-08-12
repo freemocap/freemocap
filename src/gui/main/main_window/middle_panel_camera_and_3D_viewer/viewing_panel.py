@@ -1,7 +1,11 @@
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel, QWidget
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel, QWidget, QPushButton
 
-from src.cameras.detection.cam_singleton import get_or_create_cams
+from src.cameras.detection.cam_singleton import (
+    get_or_create_cams,
+    get_or_create_cams_list,
+)
+from src.config.webcam_config import WebcamConfig
 from src.gui.icis_conference_main.workflows.camera_configuration import (
     CameraConfiguration,
 )
@@ -23,13 +27,17 @@ class ViewingPanel(QWidget):
 
         self._layout.addWidget(self._welcome_to_freemocap_title())
 
+        self._update_camera_configs_button = QPushButton(
+            "Update Camera Configs in Control Panel"
+        )
+
     @property
     def frame(self):
         return self._frame
 
     @property
-    def layout(self):
-        return self._layout
+    def update_camera_configs_button(self):
+        return self._update_camera_configs_button
 
     def _welcome_to_freemocap_title(self):
         session_title = PageTitle(
@@ -44,9 +52,17 @@ class ViewingPanel(QWidget):
 
     def connect_to_cameras(self):
         clear_layout(self._layout)
-        found_cameras_response = get_or_create_cams()
-        APP_STATE.available_cameras = [
-            this_cam.webcam_id for this_cam in found_cameras_response.cameras_found_list
-        ]
+        self._layout.addWidget(PageTitle("Connecting to cameras..."))
+        found_camera_ids_list = get_or_create_cams_list()
+
+        APP_STATE.available_cameras = found_camera_ids_list
+
         APP_STATE.selected_cameras = APP_STATE.available_cameras
-        self._layout.addWidget(CameraStreamGridView())
+
+        for camera_id in APP_STATE.selected_cameras:
+            APP_STATE.camera_configs[camera_id] = WebcamConfig(webcam_id=camera_id)
+
+        self._camera_stream_grid_view = CameraStreamGridView()
+        clear_layout(self._layout)
+        self._layout.addWidget(self._camera_stream_grid_view)
+        self._layout.addWidget(self._update_camera_configs_button)

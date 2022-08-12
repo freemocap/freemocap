@@ -64,3 +64,8 @@ class MainWindow(QMainWindow):
         self._control_panel.select_workflow_screen.start_new_session_button.clicked.connect(
             self._viewing_panel.connect_to_cameras
         )
+
+        # I don't know how to make this happen automatically via 'emitted signals' but I DO know how to connect it to a dumb button, lol
+        self._viewing_panel.update_camera_configs_button.clicked.connect(
+            self._control_panel.update_camera_configs
+        )

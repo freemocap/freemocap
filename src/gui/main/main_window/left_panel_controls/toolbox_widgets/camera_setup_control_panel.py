@@ -9,21 +9,31 @@ from src.gui.main.qt_utils.clear_layout import clear_layout
 class CameraSetupControlPanel(QWidget):
     def __init__(self):
         super().__init__()
-        self._layout = QVBoxLayout()
-        self.setLayout(self._layout)
+        self._panel_layout = QVBoxLayout()
+        self.setLayout(self._panel_layout)
 
-        self._layout.addWidget(QLabel("Click the Update Button in the Viewing panel"))
+        self._panel_layout.addWidget(
+            QLabel("Click the Update Button in the Viewing panel")
+        )
 
         self._apply_settings_to_cameras_button = QPushButton(
-            "Apply settings to cameras"
+            "Apply settings to cameras",
         )
+        self._apply_settings_to_cameras_button.setEnabled(False)
+
+        self._panel_layout.addWidget(self._apply_settings_to_cameras_button)
+
+        self._parameter_tree_layout = QVBoxLayout()
+        self._panel_layout.addLayout(self._parameter_tree_layout)
 
     @property
     def apply_settings_to_cameras_button(self):
         return self._apply_settings_to_cameras_button
 
     def update_camera_configs(self):
+        clear_layout(self._parameter_tree_layout)
         self._parameter_tree_widget = ParameterTree()
+        self._parameter_tree_layout.addWidget(self._parameter_tree_widget)
 
         self._camera_parameter_groups_dict = {}
         for webcam_id, webcam_config in APP_STATE.camera_configs.items():
@@ -34,9 +44,9 @@ class CameraSetupControlPanel(QWidget):
                 self._camera_parameter_groups_dict[webcam_id]
             )
 
-        clear_layout(self._layout)
-        self._layout.addWidget(self._apply_settings_to_cameras_button)
-        self._layout.addWidget(self._parameter_tree_widget)
+        self._apply_settings_to_cameras_button.setEnabled(True)
+
+        self._panel_layout.addWidget(self._parameter_tree_widget)
 
     def _create_webcam_parameter_tree(self, webcam_config: WebcamConfig):
         return Parameter.create(

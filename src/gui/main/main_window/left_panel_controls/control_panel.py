@@ -8,9 +8,11 @@ from PyQt6.QtWidgets import (
 )
 from pyqtgraph.parametertree import ParameterTree, Parameter
 
+from src.cameras.detection.cam_singleton import get_or_create_cams
 from src.config.webcam_config import WebcamConfig
-from src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup import (
-    CameraSetup,
+from src.gui.icis_conference_main.state.app_state import APP_STATE
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup_control_panel import (
+    CameraSetupControlPanel,
 )
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.new_session_tab import (
     NewSessionTab,
@@ -52,7 +54,7 @@ class ControlPanel:
 
     def _create_toolbox_widget(self):
         toolbox_widget = QToolBox()
-        toolbox_widget.addItem(CameraSetup(), "Camera Setup")
+        toolbox_widget.addItem(CameraSetupControlPanel(), "Camera Setup")
         toolbox_widget.setItemToolTip(0, "This is a tooltip for Camera Setup")
 
         toolbox_widget.addItem(

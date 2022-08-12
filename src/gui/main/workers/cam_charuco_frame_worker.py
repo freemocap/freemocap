@@ -4,12 +4,13 @@ from PyQt6.QtGui import QImage
 
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.config.webcam_config import WebcamConfig
+from src.gui.main.app_state.app_state import APP_STATE
 from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
 
 
-class WebcamThreadWorker(QThread):
+class CamCharucoFrameWorker(QThread):
     ImageUpdate = pyqtSignal(QImage)
 
     def __init__(
@@ -66,8 +67,8 @@ class WebcamThreadWorker(QThread):
                     image_to_display.shape[0],
                     QImage.Format.Format_RGB888,
                 )
-                converted_frame = converted_frame.scaled(
-                    640, 480, Qt.AspectRatioMode.KeepAspectRatio
+                converted_frame = converted_frame.scaledToHeight(
+                    APP_STATE.main_window_height / len(APP_STATE.selected_cameras)
                 )
                 self.ImageUpdate.emit(converted_frame)
         finally:

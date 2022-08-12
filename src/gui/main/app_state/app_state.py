@@ -5,9 +5,10 @@ from pydantic import BaseModel
 
 class AppState(BaseModel):
     session_id: str = None
+    available_cameras: List[str] = []
     selected_cameras: List[str] = []
-    use_previous_calibration: bool = False
-    number_of_frames_in_the_mocap_videos: int = None
+    main_window_height: int = None
+    main_window_width: int = None
 
 
 APP_STATE = AppState()

@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 
+from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
 from src.gui.main.main_window.right_panel_ipython_jupyter_console.jupyter_console_panel import (
     JupyterConsolePanel,
@@ -13,9 +14,11 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("freemocap")
-        self._main_window_width = int(1920 * 0.8)
-        self._main_window_height = int(1080 * 0.8)
-        self.setGeometry(0, 0, self._main_window_width, self._main_window_height)
+        APP_STATE.main_window_width = int(1920 * 0.8)
+        APP_STATE.main_window_height = int(1080 * 0.8)
+        self.setGeometry(
+            0, 0, APP_STATE.main_window_width, APP_STATE.main_window_height
+        )
         self._main_layout = self._create_main_layout()
 
         # control panel
@@ -41,23 +44,23 @@ class MainWindow(QMainWindow):
 
     def _create_control_panel(self):
         panel = ControlPanel()
-        panel.frame.setFixedWidth(self._main_window_width * 0.2)
-        panel.frame.setFixedHeight(self._main_window_height)
+        panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.2)
+        panel.frame.setFixedHeight(APP_STATE.main_window_height)
         return panel
 
     def _create_viewing_panel(self):
         panel = ViewingPanel()
-        panel.frame.setFixedWidth(self._main_window_width * 0.5)
-        panel.frame.setFixedHeight(self._main_window_height)
+        panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.5)
+        panel.frame.setFixedHeight(APP_STATE.main_window_height)
         return panel
 
     def _create_jupyter_console_widget(self):
         panel = JupyterConsolePanel()
-        panel.frame.setFixedWidth(self._main_window_width * 0.3)
-        panel.frame.setFixedHeight(self._main_window_height)
+        panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.3)
+        panel.frame.setFixedHeight(APP_STATE.main_window_height)
         return panel
 
     def _connect_buttons_to_stuff(self):
         self._control_panel.select_workflow_screen.start_new_session_button.clicked.connect(
-            self._viewing_panel.show_camera_configuration_view
+            self._viewing_panel.connect_to_cameras
         )

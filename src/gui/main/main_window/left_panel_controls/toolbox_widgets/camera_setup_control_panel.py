@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QPushButton
+from PyQt6.QtWidgets import QVBoxLayout, QWidget, QPushButton, QComboBox
 from pyqtgraph.parametertree import ParameterTree, Parameter
 
 from src.config.webcam_config import WebcamConfig
@@ -26,15 +26,16 @@ webcam_setup_parameter_group = Parameter.create(
 )
 
 
-class CameraSetup(QWidget):
+class CameraSetupControlPanel(QWidget):
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        detect_camera_button = QPushButton("Detect Cameras")
-        detect_camera_button.clicked.connect(lambda: print("hello ;D"))
-        layout.addWidget(detect_camera_button)
+        detect_cameras_button = QPushButton("Detect Cameras")
+        detect_cameras_button.clicked.connect(lambda: print("hello ;D"))
+        layout.addWidget(detect_cameras_button)
+
         layout.addWidget(self._create_webcam_parameter_tree())
 
     def _create_webcam_parameter_tree(self):

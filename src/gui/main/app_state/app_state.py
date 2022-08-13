@@ -12,6 +12,7 @@ class AppState(BaseModel):
     )  # TODO - make this a dict of `WebcamConfigs`, but I don't know how to make Pydantic `accept_arbitraty_types`
     main_window_height: int = None
     main_window_width: int = None
+    use_previous_calibration: bool = False
 
 
 APP_STATE = AppState()

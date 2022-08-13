@@ -20,6 +20,9 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup_c
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.create_new_session_panel import (
     CreateNewSessionPanel,
 )
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.record_synchronized_videos_panel import (
+    RecordSynchronizedVideosPanel,
+)
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.welcome_tab import (
     SelectWorkflowScreen,
 )
@@ -54,12 +57,12 @@ class ControlPanel:
         return self._camera_setup_control_panel
 
     @property
-    def create_new_session_panel(self):
-        return self._create_new_session_panel
-
-    @property
     def calibrate_capture_volume_panel(self):
         return self._calibrate_capture_volume_panel
+
+    @property
+    def record_synchronized_videos_panel(self):
+        return self._record_synchronized_videos_panel
 
     @property
     def toolbox_widget(self):
@@ -83,7 +86,7 @@ class ControlPanel:
         )
 
         self._toolbox_widget.addItem(
-            QLabel("Record FreeMoCap Session"), "Record Synchronized Videos"
+            self._record_synchronized_videos_panel, "Record Synchronized Videos"
         )
         self._toolbox_widget.addItem(QLabel("Process Data"), "Process Data")
 
@@ -100,4 +103,4 @@ class ControlPanel:
         self._create_new_session_panel = CreateNewSessionPanel()
         self._camera_setup_control_panel = CameraSetupControlPanel()
         self._calibrate_capture_volume_panel = CalibrateCaptureVolumePanel()
-        self._record_synchronized_videos_panel
+        self._record_synchronized_videos_panel = RecordSynchronizedVideosPanel()

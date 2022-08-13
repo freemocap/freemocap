@@ -30,5 +30,6 @@ class JupyterConsoleWidget(inprocess.QtInProcessRichJupyterWidget):
         self.execute(f"print('{message}')")
 
     def shutdown_kernel(self):
+
         self.kernel_client.stop_channels()
         self.kernel_manager.shutdown_kernel()

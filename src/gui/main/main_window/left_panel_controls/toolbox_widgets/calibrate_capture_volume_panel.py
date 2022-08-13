@@ -36,8 +36,6 @@ class CalibrateCaptureVolumePanel(QWidget):
         record_button_layout = QVBoxLayout()
         self._central_layout.addLayout(record_button_layout)
 
-        self._record_calibration_videos_title = PageTitle("Record Calibration Videos")
-
         self._start_recording_button = QPushButton("Begin Recording")
         record_button_layout.addWidget(self._start_recording_button)
 

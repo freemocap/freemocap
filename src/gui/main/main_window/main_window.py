@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 
+from src.cameras.save_synchronized_videos import save_synchronized_videos
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
 from src.gui.main.main_window.right_side_panel.right_side_panel import (
@@ -89,24 +90,45 @@ class MainWindow(QMainWindow):
             self._apply_webcam_configs_and_reconnect
         )
 
-        # when click 'Begin Recording' button, start recording
+        # Calibration panel - when click 'Begin Recording' button, start recording
         self._control_panel.calibrate_capture_volume_panel.start_recording_button.clicked.connect(
-            self._start_recording_videos
+            lambda: self._start_recording_videos(
+                panel=self._control_panel.calibrate_capture_volume_panel
+            )
         )
 
-        # when click 'Stop Recording' button, stop recording (and save the videos as 'calibration' b/c they came from the calibrate panel')
+        # Calibration panel -  when click 'Stop Recording' button, stop recording (and save the videos as 'calibration' b/c they came from the calibrate panel')
         self._control_panel.calibrate_capture_volume_panel.stop_recording_button.clicked.connect(
-            self._stop_recording_videos_calibration
+            lambda: self._stop_recording_videos(calibration_videos=True)
+        )
+
+        # RecordVideos panel - when click 'Begin Recording' button, start recording
+        self._control_panel.record_synchronized_videos_panel.start_recording_button.clicked.connect(
+            lambda: self._start_recording_videos(
+                panel=self._control_panel.record_synchronized_videos_panel
+            )
+        )
+
+        # RecordVideos panel -  when click 'Stop Recording' button, stop recording (and save the videos as 'calibration' b/c they came from the calibrate panel')
+        self._control_panel.record_synchronized_videos_panel.stop_recording_button.clicked.connect(
+            lambda: self._stop_recording_videos(calibration_videos=False)
         )
 
     def _apply_webcam_configs_and_reconnect(self):
         self._control_panel.camera_setup_control_panel.save_settings_to_app_state()
         self._camera_view_panel.reconnect_to_cameras()
 
-    def _start_recording_videos(self):
-        self._control_panel.calibrate_capture_volume_panel.change_button_states_on_record_start()
+    def _start_recording_videos(self, panel):
+        panel.change_button_states_on_record_start()
         self._camera_view_panel.camera_stream_grid_view.start_recording_videos()
 
-    def _stop_recording_videos_calibration(self):
+    def _stop_recording_videos(self, calibration_videos: bool = False):
         self._control_panel.calibrate_capture_volume_panel.change_button_states_on_record_stop()
-        self._camera_view_panel.camera_stream_grid_view.stop_recording_videos_calibration()
+        self._camera_view_panel.camera_stream_grid_view.stop_recording_videos()
+        save_synchronized_videos(
+            self._camera_view_panel.camera_stream_grid_view.video_recorders,
+            calibration_videos=calibration_videos,
+        )
+
+        if calibration_videos:
+            self._camera_view_panel.reconnect_to_cameras()

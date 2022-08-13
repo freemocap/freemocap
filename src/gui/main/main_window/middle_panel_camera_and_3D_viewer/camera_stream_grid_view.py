@@ -15,6 +15,10 @@ class CameraStreamGridView(QWidget):
         self._camera_stream_layout = QVBoxLayout()
         self.setLayout(self._camera_stream_layout)
 
+    @property
+    def video_recorders(self):
+        return [cam.video_recorder for cam in self._camera_widgets]
+
     def connect_to_camera_streams(self):
         for webcam_id in APP_STATE.selected_cameras:
             single_cam_widget = SingleCameraWidget(webcam_id)
@@ -30,21 +34,14 @@ class CameraStreamGridView(QWidget):
         for camera_widget in self._camera_widgets:
             camera_widget.start_recording()
 
-    def stop_recording_videos_calibration(self):
-        self.stop_recording_videos(calibration_videos=True)
-
     def stop_recording_videos(self, calibration_videos: bool = False):
         for camera_widget in self._camera_widgets:
             camera_widget.stop_recording()
 
-        self._save_synchronized_videos(calibration_videos=calibration_videos)
-
-    def _save_synchronized_videos(self, calibration_videos: bool = False):
+    def save_synchronized_videos(self, calibration_videos: bool = False):
         video_recorders = []
         for cam in self._camera_widgets:
             video_recorders.append(cam.video_recorder)
-
-        save_synchronized_videos(video_recorders, calibration_videos=calibration_videos)
 
     def reconnect_to_cameras(self):
         self._camera_widgets = []

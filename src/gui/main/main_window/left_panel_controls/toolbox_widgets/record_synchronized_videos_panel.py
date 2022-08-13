@@ -1,19 +1,17 @@
 from PyQt6.QtWidgets import (
-    QCheckBox,
-    QHBoxLayout,
-    QLabel,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
-from src.cameras.save_synchronized_videos import save_synchronized_videos
 from src.config.home_dir import get_synchronized_videos_folder_path
 from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
 from src.gui.main.app_state.app_state import APP_STATE
-from src.open_in_blender.open_session_in_blender import open_session_in_blender
+from src.export_stuff.blender_stuff.open_session_in_blender import (
+    open_session_in_blender,
+)
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
     CalibrationPipelineOrchestrator,
 )

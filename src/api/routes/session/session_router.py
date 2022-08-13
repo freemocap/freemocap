@@ -191,7 +191,7 @@ def visualize_session_offline(session_id_model: SessionIdModel = None):
 
 
 if __name__ == "__main__":
-    # # create_session
+    # # create_blend_file_from_session_data
     # session_id_in = create_session_id('session_router_as_main')
     # session_id_model = SessionIdModel(session_id=session_id_in)
     #

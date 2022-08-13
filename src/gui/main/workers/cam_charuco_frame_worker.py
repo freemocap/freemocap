@@ -32,32 +32,35 @@ class CamCharucoFrameWorker(QThread):
 
     @property
     def video_recorder(self):
-        return self._cam.video_recorder
+        return self._open_cv_camera.video_recorder
 
     def start_recording(self):
         self._should_save_frames = True
 
+    def stop_recording(self):
+        self._should_save_frames = False
+        self._should_continue = False
+
     def run(self):
         camera_config = APP_STATE.camera_configs[self._cam_id]
-        cam = OpenCVCamera(
+        open_cv_camera = OpenCVCamera(
             camera_config,
             session_id=APP_STATE.session_id,
         )
-        cam.connect()
-        cam.start_frame_capture_thread()
+        open_cv_camera.connect()
+        open_cv_camera.start_frame_capture_thread()
 
-        self._cam = cam
-        any_frames_recorded = False
+        self._open_cv_camera = open_cv_camera
+        self._should_continue = True
         try:
-            while cam.is_capturing_frames:
-                if not cam.new_frame_ready:
+            while open_cv_camera.is_capturing_frames and self._should_continue:
+                if not open_cv_camera.new_frame_ready:
                     continue
-                payload = cam.latest_frame
+                payload = open_cv_camera.latest_frame
 
                 if self._should_save_frames:
-                    any_frames_recorded = True
                     print("saving frame :D")
-                    cam.video_recorder.append_frame_payload_to_list(payload)
+                    open_cv_camera.video_recorder.append_frame_payload_to_list(payload)
 
                 charuco_payload = (
                     self._charuco_board_detector.detect_charuco_board_in_frame_payload(
@@ -79,14 +82,14 @@ class CamCharucoFrameWorker(QThread):
                 self.ImageUpdate.emit(converted_frame)
         finally:
             print(
-                f"Closing the camera {self._cam.webcam_id_as_str}, and saving video to disk"
+                f"Closing the camera {self._open_cv_camera.webcam_id_as_str}, and saving video to disk"
             )
-            self._cam.close()
+            self._open_cv_camera.close()
             # if any_frames_recorded:
             #     print(f"saving video for camera {self._cam.webcam_id_as_str}")
             #     self._cam.video_recorder.save_list_of_frames_to_video_file(calibration_videos=True)
             #     print(f"Saved video to: {str(self._cam.video_recorder.path_to_save_video_file)}")
 
     def quit(self):
-        self._cam.close()
+        self._open_cv_camera.close()
         super().quit()

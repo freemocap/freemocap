@@ -16,8 +16,8 @@ class RightSidePanel:
         self._layout = QVBoxLayout()
         self._frame.setLayout(self._layout)
 
-        file_system_view_widget = FileSystemViewWidget()
-        self._layout.addWidget(file_system_view_widget)
+        self._file_system_view_widget = FileSystemViewWidget()
+        self._layout.addWidget(self._file_system_view_widget)
 
         self._jupyter_console_widget = self._create_jupyter_console_widget()
         self._layout.addWidget(self._jupyter_console_widget)
@@ -25,6 +25,10 @@ class RightSidePanel:
     @property
     def frame(self):
         return self._frame
+
+    @property
+    def file_system_view_widget(self):
+        return self._file_system_view_widget
 
     def _create_jupyter_console_widget(self):
         # create jupyter console widget

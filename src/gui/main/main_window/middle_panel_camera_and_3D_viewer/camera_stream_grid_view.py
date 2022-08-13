@@ -1,6 +1,7 @@
 import numpy as np
 from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout
 
+from src.cameras.save_synchronized_videos import save_synchronized_videos
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.custom_widgets.single_camera_widget import SingleCameraWidget
 from src.gui.main.qt_utils.clear_layout import clear_layout
@@ -28,6 +29,22 @@ class CameraStreamGridView(QWidget):
     def start_recording_videos(self):
         for camera_widget in self._camera_widgets:
             camera_widget.start_recording()
+
+    def stop_recording_videos_calibration(self):
+        self.stop_recording_videos(calibration_videos=True)
+
+    def stop_recording_videos(self, calibration_videos: bool = False):
+        for camera_widget in self._camera_widgets:
+            camera_widget.stop_recording()
+
+        self._save_synchronized_videos(calibration_videos=calibration_videos)
+
+    def _save_synchronized_videos(self, calibration_videos: bool = False):
+        video_recorders = []
+        for cam in self._camera_widgets:
+            video_recorders.append(cam.video_recorder)
+
+        save_synchronized_videos(video_recorders, calibration_videos=calibration_videos)
 
     def reconnect_to_cameras(self):
         self._camera_widgets = []

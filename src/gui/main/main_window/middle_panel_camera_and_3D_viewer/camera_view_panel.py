@@ -17,7 +17,7 @@ from src.gui.main.qt_utils.clear_layout import clear_layout
 from src.gui.main.styled_widgets.page_title import PageTitle
 
 
-class ViewingPanel(QWidget):
+class CameraViewPanel(QWidget):
     def __init__(self):
         super().__init__()
         self._frame = QFrame()
@@ -36,6 +36,8 @@ class ViewingPanel(QWidget):
         self._update_camera_configs_button.setVisible(False)
         self._layout.addWidget(self._update_camera_configs_button)
 
+        self._camera_stream_grid_view = CameraStreamGridView()
+
     @property
     def frame(self):
         return self._frame
@@ -43,6 +45,10 @@ class ViewingPanel(QWidget):
     @property
     def update_camera_configs_button(self):
         return self._update_camera_configs_button
+
+    @property
+    def camera_stream_grid_view(self):
+        return self._camera_stream_grid_view
 
     def _welcome_to_freemocap_title(self):
         session_title = PageTitle(
@@ -55,6 +61,8 @@ class ViewingPanel(QWidget):
         self._connect_to_cameras()
 
     def detect_cameras(self):
+        clear_layout(self._central_layout)
+        self._central_layout.addWidget(PageTitle("Detecting Cameras..."))
 
         found_camera_ids_list = get_or_create_cams_list()
 
@@ -66,9 +74,9 @@ class ViewingPanel(QWidget):
             APP_STATE.camera_configs[camera_id] = WebcamConfig(webcam_id=camera_id)
 
     def _connect_to_cameras(self):
-        clear_layout(self._central_layout)
-        self._camera_stream_grid_view = CameraStreamGridView()
         self._camera_stream_grid_view.connect_to_camera_streams()
+
+        clear_layout(self._central_layout)
         self._central_layout.addWidget(self._camera_stream_grid_view)
         self._update_camera_configs_button.setVisible(True)
 

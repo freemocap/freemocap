@@ -27,8 +27,7 @@ class FileSystemViewWidget(QWidget):
         layout.addWidget(self._tree_view_widget)
         self.setLayout(layout)
 
-        def set_file_path(self, file_path: Union[Path, str]):
-            self._file_system_model.setRootPath(file_path)
-            self._tree_view_widget.setRootIndex(
-                self._file_system_model.index(file_path)
-            )
+    def set_session_path_as_root(self):
+        session_path = get_session_folder_path(APP_STATE.session_id, create_folder=True)
+        self._file_system_model.setRootPath(session_path)
+        self._tree_view_widget.setRootIndex(self._file_system_model.index(session_path))

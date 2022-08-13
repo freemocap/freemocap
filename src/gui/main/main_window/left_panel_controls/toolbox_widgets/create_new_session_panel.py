@@ -8,9 +8,8 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.home_dir import create_session_id
-from src.gui.icis_conference_main.shared_widgets.primary_button import PrimaryButton
 from src.gui.main.app_state.app_state import APP_STATE
-from src.gui.main.styled_widgets.page_title import PageTitle
+from src.gui.main.styled_widgets.primary_button import PrimaryButton
 
 
 class CreateNewSessionPanel(QWidget):
@@ -32,7 +31,7 @@ class CreateNewSessionPanel(QWidget):
         self.setLayout(container_layout)
 
     @property
-    def submit(self):
+    def submit_button(self):
         return self._submit_button
 
     def _create_session_input(self):

@@ -4,6 +4,7 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
+from src.gui.main.app import get_qt_app
 from src.gui.main.workers.cam_charuco_frame_worker import CamCharucoFrameWorker
 from src.gui.main.workers.cam_frame_worker import CamFrameWorker
 
@@ -37,6 +38,8 @@ class SingleCameraWidget(QWidget):
 
         self.setLayout(layout)
 
+        get_qt_app().aboutToQuit.connect(self.quit)
+
     @property
     def should_record_frames(self):
         return self._worker.should_save_frames
@@ -48,6 +51,12 @@ class SingleCameraWidget(QWidget):
     @property
     def video_recorder(self):
         return self._worker.video_recorder
+
+    def start_recording(self):
+        self._worker.start_recording()
+
+    def stop_recording(self):
+        self._worker.stop_recording()
 
     def capture(self):
         self._create_preview_worker()

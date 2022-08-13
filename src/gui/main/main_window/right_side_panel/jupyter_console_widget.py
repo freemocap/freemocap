@@ -2,6 +2,8 @@ import numpy as np
 
 from qtconsole import inprocess
 
+from src.gui.main.app import get_qt_app
+
 
 class JupyterConsoleWidget(inprocess.QtInProcessRichJupyterWidget):
     def __init__(self, dark_mode: bool = True):
@@ -15,6 +17,8 @@ class JupyterConsoleWidget(inprocess.QtInProcessRichJupyterWidget):
         # self._kernel.iopub_socket.send(str('gehehehehe'))
         self._import_stuff()
         self.execute("%whos", hidden=True)
+
+        get_qt_app().aboutToQuit.connect(self.shutdown_kernel)
 
         if dark_mode:
             self.set_default_style("linux")

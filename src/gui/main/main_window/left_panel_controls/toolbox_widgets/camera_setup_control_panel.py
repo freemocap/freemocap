@@ -37,9 +37,11 @@ class CameraSetupControlPanel(QWidget):
 
         self._camera_parameter_groups_dict = {}
         for webcam_id, webcam_config in APP_STATE.camera_configs.items():
+
             self._camera_parameter_groups_dict[
                 webcam_id
             ] = self._create_webcam_parameter_tree(webcam_config)
+
             self._parameter_tree_widget.addParameters(
                 self._camera_parameter_groups_dict[webcam_id]
             )

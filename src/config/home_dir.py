@@ -43,7 +43,10 @@ def os_independent_home_dir():
 
 def get_freemocap_data_folder_path(create_folder: bool = True):
     freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FOLDER_NAME)
-    freemocap_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
+
+    if create_folder:
+        freemocap_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
+
     return str(freemocap_data_folder_path)
 
 

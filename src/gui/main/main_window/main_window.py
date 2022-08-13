@@ -2,8 +2,8 @@ from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
-from src.gui.main.main_window.right_panel_ipython_jupyter_console.jupyter_console_panel import (
-    JupyterConsolePanel,
+from src.gui.main.main_window.right_side_panel.right_side_panel import (
+    RightSidePanel,
 )
 from src.gui.main.main_window.middle_panel_camera_and_3D_viewer.viewing_panel import (
     ViewingPanel,
@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
         self._main_layout.addWidget(self._viewing_panel.frame)
 
         # jupyter console panel
-        self._jupyter_console_widget = self._create_jupyter_console_widget()
+        self._jupyter_console_widget = self._create_right_side_panel()
         self._main_layout.addWidget(self._jupyter_console_widget.frame)
 
         self._connect_buttons_to_stuff()
@@ -54,8 +54,8 @@ class MainWindow(QMainWindow):
         panel.frame.setFixedHeight(APP_STATE.main_window_height)
         return panel
 
-    def _create_jupyter_console_widget(self):
-        panel = JupyterConsolePanel()
+    def _create_right_side_panel(self):
+        panel = RightSidePanel()
         panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.3)
         panel.frame.setFixedHeight(APP_STATE.main_window_height)
         return panel

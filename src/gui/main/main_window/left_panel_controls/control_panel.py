@@ -31,18 +31,15 @@ class ControlPanel:
         self._frame = QFrame()
         self._frame.setFrameShape(QFrame.Shape.StyledPanel)
         self._layout = QVBoxLayout()
+        self._frame.setLayout(self._layout)
 
         self._select_workflow_screen = SelectWorkflowScreen()
         self._select_workflow_screen.start_new_session_button.clicked.connect(
             self._start_standard_workflow
         )
-
-        self._create_new_session_panel = CreateNewSessionPanel()
-        self._camera_setup_control_panel = CameraSetupControlPanel()
-        self._calibrate_capture_volume_panel = CalibrateCaptureVolumePanel()
-
         self._layout.addWidget(self._select_workflow_screen)
-        self._frame.setLayout(self._layout)
+
+        self._create_toolbox_panels()
 
     @property
     def frame(self):
@@ -98,3 +95,9 @@ class ControlPanel:
 
     def update_camera_configs(self):
         self._camera_setup_control_panel.update_camera_configs()
+
+    def _create_toolbox_panels(self):
+        self._create_new_session_panel = CreateNewSessionPanel()
+        self._camera_setup_control_panel = CameraSetupControlPanel()
+        self._calibrate_capture_volume_panel = CalibrateCaptureVolumePanel()
+        self._record_synchronized_videos_panel

@@ -12,7 +12,7 @@ from src.config.home_dir import (
     get_session_folder_path,
     get_freemocap_data_folder_path,
     get_session_output_data_folder_path,
-    get_session_calibration_file_path,
+    get_session_calibration_toml_file_path,
 )
 from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
 from src.core_processor.show_cam_window import show_cam_window
@@ -190,7 +190,9 @@ class CalibrationPipelineOrchestrator:
         return freemocap_anipose.CameraGroup.load(str(last_successful_calibration_path))
 
     def load_calibration_from_session_id(self, session_id: str):
-        session_calibration_file_path = get_session_calibration_file_path(session_id)
+        session_calibration_file_path = get_session_calibration_toml_file_path(
+            session_id
+        )
         logger.info(
             f"loading camera calibration file from:{str(session_calibration_file_path)}"
         )

@@ -104,7 +104,7 @@ def get_session_output_data_folder_path(session_id: str, create_folder: bool = T
     return str(output_data_folder_path)
 
 
-def get_session_calibration_file_path(session_id: str) -> str:
+def get_session_calibration_toml_file_path(session_id: str) -> str:
     calibration_file_name = f"{session_id}_camera_calibration.toml"
     calibration_file_path = (
         Path(get_session_folder_path(session_id)) / calibration_file_name

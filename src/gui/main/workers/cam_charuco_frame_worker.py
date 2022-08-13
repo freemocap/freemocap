@@ -34,6 +34,9 @@ class CamCharucoFrameWorker(QThread):
     def video_recorder(self):
         return self._cam.video_recorder
 
+    def start_recording(self):
+        self._should_save_frames = True
+
     def run(self):
         camera_config = APP_STATE.camera_configs[self._cam_id]
         cam = OpenCVCamera(

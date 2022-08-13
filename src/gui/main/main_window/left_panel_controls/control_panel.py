@@ -15,7 +15,7 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup_c
     CameraSetupControlPanel,
 )
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.new_session_tab import (
-    NewSessionTab,
+    CreateNewSessionPanel,
 )
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.welcome_tab import (
     SelectWorkflowScreen,
@@ -33,7 +33,7 @@ class ControlPanel:
         self._select_workflow_screen.start_new_session_button.clicked.connect(
             self._start_standard_workflow
         )
-
+        self._create_new_session_panel = CreateNewSessionPanel()
         self._camera_setup_control_panel = CameraSetupControlPanel()
 
         self._layout.addWidget(self._select_workflow_screen)
@@ -61,8 +61,8 @@ class ControlPanel:
 
     def _create_toolbox_widget(self):
         toolbox_widget = QToolBox()
+        toolbox_widget.addItem(self._create_new_session_panel, "Create New Session")
         toolbox_widget.addItem(self._camera_setup_control_panel, "Camera Setup")
-        toolbox_widget.setItemToolTip(0, "This is a tooltip for Camera Setup")
 
         toolbox_widget.addItem(
             QLabel("Calibrate Capture Volume"), "Calibrate Capture Volume"

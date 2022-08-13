@@ -13,7 +13,7 @@ from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.styled_widgets.page_title import PageTitle
 
 
-class NewSessionTab(QWidget):
+class CreateNewSessionPanel(QWidget):
     def __init__(self):
         super().__init__()
 

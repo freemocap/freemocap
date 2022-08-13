@@ -25,6 +25,10 @@ class CameraStreamGridView(QWidget):
         for camera_widget in self._camera_widgets:
             camera_widget.quit()
 
+    def start_recording_videos(self):
+        for camera_widget in self._camera_widgets:
+            camera_widget.start_recording()
+
     def reconnect_to_cameras(self):
         self._camera_widgets = []
         clear_layout(self._camera_stream_layout)

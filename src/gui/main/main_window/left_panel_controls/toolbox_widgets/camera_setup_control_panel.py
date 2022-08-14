@@ -12,10 +12,6 @@ class CameraSetupControlPanel(QWidget):
         self._panel_layout = QVBoxLayout()
         self.setLayout(self._panel_layout)
 
-        self._panel_layout.addWidget(
-            QLabel("Click the Update Button in the Viewing panel")
-        )
-
         self._apply_settings_to_cameras_button = QPushButton(
             "Apply settings to cameras",
         )
@@ -32,6 +28,7 @@ class CameraSetupControlPanel(QWidget):
 
     def update_camera_configs(self):
         clear_layout(self._parameter_tree_layout)
+        self._parameter_tree_layout = QVBoxLayout()
         self._parameter_tree_widget = ParameterTree()
         self._parameter_tree_layout.addWidget(self._parameter_tree_widget)
 
@@ -56,7 +53,7 @@ class CameraSetupControlPanel(QWidget):
             type="group",
             children=[
                 dict(name="Use this camera?", type="bool", value=True),
-                dict(name="Apply settings", type="action"),
+                # dict(name="Apply settings", type="action"),
                 dict(name="Exposure", type="int", value=webcam_config.exposure),
                 dict(
                     name="Resolution Width",

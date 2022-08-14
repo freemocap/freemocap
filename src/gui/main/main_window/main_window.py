@@ -34,6 +34,7 @@ class MainWindow(QMainWindow):
         self._right_side_panel = self._create_right_side_panel()
         self._main_layout.addWidget(self._right_side_panel.frame)
 
+        self._connect_signals_to_stuff()
         self._connect_buttons_to_stuff()
 
     def _create_main_layout(self):
@@ -79,12 +80,6 @@ class MainWindow(QMainWindow):
             )
         )
 
-        # After cameras are connected, click the button to load the config data into the control panel
-        # I don't know how to make this happen automatically via 'emitted signals' but I DO know how to connect it to a dumb button, lol
-        self._camera_view_panel.update_camera_configs_button.clicked.connect(
-            self._control_panel.update_camera_configs
-        )
-
         # after clicking "apply new settings to cameras" button, reconnect to cameras with new User specified `webcam_configs`
         self._control_panel.camera_setup_control_panel.apply_settings_to_cameras_button.clicked.connect(
             self._apply_webcam_configs_and_reconnect
@@ -112,6 +107,12 @@ class MainWindow(QMainWindow):
         # RecordVideos panel -  when click 'Stop Recording' button, stop recording (and save the videos as 'calibration' b/c they came from the calibrate panel')
         self._control_panel.record_synchronized_videos_panel.stop_recording_button.clicked.connect(
             lambda: self._stop_recording_videos(calibration_videos=False)
+        )
+
+    def _connect_signals_to_stuff(self):
+        # update the 'camera configs' panel when the 'camera view panel' connects to cameras
+        self._camera_view_panel.camera_stream_grid_view.cameras_connected_signal.connect(
+            self._control_panel.update_camera_configs
         )
 
     def _apply_webcam_configs_and_reconnect(self):

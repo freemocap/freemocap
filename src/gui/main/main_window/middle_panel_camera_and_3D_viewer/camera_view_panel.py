@@ -30,21 +30,11 @@ class CameraViewPanel(QWidget):
         self._central_layout.addWidget(self._welcome_to_freemocap_title_widget)
         self._layout.addLayout(self._central_layout)
 
-        self._update_camera_configs_button = QPushButton(
-            "Update Camera Configs in Control Panel"
-        )
-        self._update_camera_configs_button.setVisible(False)
-        self._layout.addWidget(self._update_camera_configs_button)
-
         self._camera_stream_grid_view = CameraStreamGridView()
 
     @property
     def frame(self):
         return self._frame
-
-    @property
-    def update_camera_configs_button(self):
-        return self._update_camera_configs_button
 
     @property
     def camera_stream_grid_view(self):
@@ -78,7 +68,6 @@ class CameraViewPanel(QWidget):
 
         clear_layout(self._central_layout)
         self._central_layout.addWidget(self._camera_stream_grid_view)
-        self._update_camera_configs_button.setVisible(True)
 
     def reconnect_to_cameras(self):
         self._camera_stream_grid_view.close_all_camera_streams()

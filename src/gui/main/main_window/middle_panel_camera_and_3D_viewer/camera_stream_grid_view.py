@@ -1,4 +1,5 @@
 import numpy as np
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout
 
 from src.cameras.save_synchronized_videos import save_synchronized_videos
@@ -8,6 +9,8 @@ from src.gui.main.qt_utils.clear_layout import clear_layout
 
 
 class CameraStreamGridView(QWidget):
+    cameras_connected_signal = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self._camera_widgets = []
@@ -25,6 +28,7 @@ class CameraStreamGridView(QWidget):
             single_cam_widget.capture()
             self._camera_stream_layout.addWidget(single_cam_widget)
             self._camera_widgets.append(single_cam_widget)
+        self.cameras_connected_signal.emit()
 
     def close_all_camera_streams(self):
         for camera_widget in self._camera_widgets:
@@ -34,11 +38,11 @@ class CameraStreamGridView(QWidget):
         for camera_widget in self._camera_widgets:
             camera_widget.start_recording()
 
-    def stop_recording_videos(self, calibration_videos: bool = False):
+    def stop_recording_videos(self):
         for camera_widget in self._camera_widgets:
             camera_widget.stop_recording()
 
-    def save_synchronized_videos(self, calibration_videos: bool = False):
+    def save_synchronized_videos(self):
         video_recorders = []
         for cam in self._camera_widgets:
             video_recorders.append(cam.video_recorder)

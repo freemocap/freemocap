@@ -12,7 +12,7 @@ from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.home_dir import (
     get_session_folder_path,
     get_synchronized_videos_folder_path,
-    get_session_output_data_folder_path,
+    get_output_data_folder_path,
 )
 from src.core_processor.mediapipe_skeleton_detector.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
@@ -280,13 +280,13 @@ class MediaPipeSkeletonDetector:
                 this_cam_num, :, :, :
             ] = all_cameras_data2d_list[this_cam_num]
 
-        self._save_mediapipe2d_data_to_npy(data2d_numCams_numFrames_numTrackedPts_XY)
-        return data2d_numCams_numFrames_numTrackedPts_XY
+        mediapipe_data_2d_npy_path = self._save_mediapipe2d_data_to_npy(
+            data2d_numCams_numFrames_numTrackedPts_XY
+        )
+        return str(mediapipe_data_2d_npy_path)
 
     def _save_mediapipe2d_data_to_npy(self, data2d_numCams_numFrames_numTrackedPts_XY):
-        output_data_folder = Path(
-            get_session_output_data_folder_path(APP_STATE.session_id)
-        )
+        output_data_folder = Path(get_output_data_folder_path(APP_STATE.session_id))
         mediapipe_2dData_save_path = (
             output_data_folder
             / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
@@ -295,6 +295,8 @@ class MediaPipeSkeletonDetector:
         np.save(
             str(mediapipe_2dData_save_path), data2d_numCams_numFrames_numTrackedPts_XY
         )
+
+        return mediapipe_2dData_save_path
 
     def save_annotated_videos(
         self,

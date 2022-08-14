@@ -95,7 +95,7 @@ def get_mediapipe_annotated_videos_folder_path(
     return str(mediapipe_annotated_videos_path)
 
 
-def get_session_output_data_folder_path(session_id: str, create_folder: bool = True):
+def get_output_data_folder_path(session_id: str, create_folder: bool = True):
     output_data_folder_path = (
         Path(get_session_folder_path(session_id)) / "output_data_files"
     )

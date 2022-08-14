@@ -13,7 +13,7 @@ from src.config.home_dir import (
     create_session_folder,
     create_session_id,
     get_most_recent_session_id,
-    get_session_output_data_folder_path,
+    get_output_data_folder_path,
 )
 from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
@@ -564,7 +564,7 @@ class SessionPipelineOrchestrator:
             )
         )
 
-        self._save_mediapipe3d_data_to_npy(
+        path_to_3d_data_npy = self._save_mediapipe3d_data_to_npy(
             data3d_numFrames_numTrackedPoints_XYZ,
             data3d_numFrames_numTrackedPoints_reprojectionError,
         )
@@ -574,12 +574,14 @@ class SessionPipelineOrchestrator:
             data3d_numFrames_numTrackedPoint_reprojectionError=data3d_numFrames_numTrackedPoints_reprojectionError,
         )
 
+        return path_to_3d_data_npy
+
     def _save_mediapipe3d_data_to_npy(
         self,
         data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
         data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
     ):
-        output_data_folder = Path(get_session_output_data_folder_path(self._session_id))
+        output_data_folder = Path(get_output_data_folder_path(self._session_id))
 
         # save spatial XYZ data
         self._mediapipe_3dData_save_path = (
@@ -602,6 +604,8 @@ class SessionPipelineOrchestrator:
             data3d_numFrames_numTrackedPoints_reprojectionError,
         )
 
+        return str(self._mediapipe_3dData_save_path)
+
     def _threshold_2d_data_by_confidence(
         self,
         mediapipe2d_data_payload: Mediapipe2dDataPayload,
@@ -613,7 +617,7 @@ class SessionPipelineOrchestrator:
 def load_mediapipe3d_skeleton_data(session_id: str = None):
     if session_id is None:
         session_id = get_most_recent_session_id()
-    output_data_folder = Path(get_session_output_data_folder_path(session_id))
+    output_data_folder = Path(get_output_data_folder_path(session_id))
     mediapipe3d_xyz_file_path = (
         output_data_folder
         / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
@@ -641,7 +645,7 @@ def load_mediapipe3d_skeleton_data(session_id: str = None):
 def load_mediapipe2d_data(session_id: str = None):
     if session_id is None:
         session_id = get_most_recent_session_id()
-    output_data_folder = Path(get_session_output_data_folder_path(session_id))
+    output_data_folder = Path(get_output_data_folder_path(session_id))
     mediapipe2d_xy_file_path = (
         output_data_folder
         / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"

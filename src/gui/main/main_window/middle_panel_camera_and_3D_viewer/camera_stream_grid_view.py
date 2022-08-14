@@ -28,6 +28,7 @@ class CameraStreamGridView(QWidget):
             single_cam_widget.capture()
             self._camera_stream_layout.addWidget(single_cam_widget)
             self._camera_widgets.append(single_cam_widget)
+
         self.cameras_connected_signal.emit()
 
     def close_all_camera_streams(self):

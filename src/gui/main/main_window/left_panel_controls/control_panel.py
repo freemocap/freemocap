@@ -14,6 +14,9 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup_c
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.create_or_load_new_session_panel import (
     CreateOrLoadNewSessionPanel,
 )
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.process_session_data_panel import (
+    ProcessSessionDataPanel,
+)
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.record_synchronized_videos_panel import (
     RecordSynchronizedVideosPanel,
 )
@@ -49,6 +52,10 @@ class ControlPanel:
         return self._record_synchronized_videos_panel
 
     @property
+    def process_session_data_panel(self):
+        return self._process_session_data_panel
+
+    @property
     def toolbox_widget(self):
         return self._toolbox_widget
 
@@ -72,7 +79,7 @@ class ControlPanel:
         toolbox_widget.addItem(
             self._record_synchronized_videos_panel, "Record Synchronized Videos"
         )
-        toolbox_widget.addItem(QLabel("Process Data"), "Process Data")
+        toolbox_widget.addItem(self._process_session_data_panel, "Process Session Data")
 
         toolbox_widget.addItem(
             QLabel("View Motion Capture Data"), "View Motion Capture Data"
@@ -88,3 +95,4 @@ class ControlPanel:
         self._camera_setup_control_panel = CameraSetupControlPanel()
         self._calibrate_capture_volume_panel = CalibrateCaptureVolumePanel()
         self._record_synchronized_videos_panel = RecordSynchronizedVideosPanel()
+        self._process_session_data_panel = ProcessSessionDataPanel()

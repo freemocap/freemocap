@@ -1,3 +1,4 @@
+import numpy as np
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 
 from src.cameras.save_synchronized_videos import save_synchronized_videos
@@ -52,13 +53,13 @@ class MainWindow(QMainWindow):
 
     def _create_cameras_view_panel(self):
         panel = CameraViewPanel()
-        panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.5)
+        panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.4)
         panel.frame.setFixedHeight(APP_STATE.main_window_height)
         return panel
 
     def _create_right_side_panel(self):
         panel = RightSidePanel()
-        panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.3)
+        panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.4)
         panel.frame.setFixedHeight(APP_STATE.main_window_height)
         return panel
 
@@ -78,6 +79,11 @@ class MainWindow(QMainWindow):
             lambda: self._control_panel.toolbox_widget.setCurrentWidget(
                 self._control_panel.camera_setup_control_panel
             )
+        )
+
+        # after clicking "redetect cameras", detect and connect to cameras
+        self._control_panel.camera_setup_control_panel.redetect_cameras_button.clicked.connect(
+            self._camera_view_panel.detect_and_connect_to_cameras
         )
 
         # after clicking "apply new settings to cameras" button, reconnect to cameras with new User specified `webcam_configs`
@@ -115,6 +121,15 @@ class MainWindow(QMainWindow):
             self._control_panel.update_camera_configs
         )
 
+        # when 2d data is caluclated, load it into the jupyter console namespace
+        self._control_panel.process_session_data_panel.data_2d_done_signal.connect(
+            self._load_2d_data_into_jupyter_console
+        )
+        # when 3d data is caluclated, load it into the jupyter console namespace
+        self._control_panel.process_session_data_panel.data_3d_done_signal.connect(
+            self._load_3d_data_into_jupyter_console
+        )
+
     def _apply_webcam_configs_and_reconnect(self):
         self._control_panel.camera_setup_control_panel.save_settings_to_app_state()
         self._camera_view_panel.reconnect_to_cameras()
@@ -133,3 +148,15 @@ class MainWindow(QMainWindow):
 
         if calibration_videos:
             self._camera_view_panel.reconnect_to_cameras()
+
+    def _load_2d_data_into_jupyter_console(self, path_to_data_2d_npy: str):
+        self._right_side_panel.jupyter_console_widget.execute(
+            f"mediapipe_2d_data = np.load(r'{path_to_data_2d_npy}')"
+        )
+        self._right_side_panel.jupyter_console_widget.execute("%whos")
+
+    def _load_3d_data_into_jupyter_console(self, path_to_data_3d_npy: str):
+        self._right_side_panel.jupyter_console_widget.execute(
+            f"mediapipe_3d_data = np.load(r'{path_to_data_3d_npy}')"
+        )
+        self._right_side_panel.jupyter_console_widget.execute("%whos")

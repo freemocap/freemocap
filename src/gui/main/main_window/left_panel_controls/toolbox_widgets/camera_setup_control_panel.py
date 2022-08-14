@@ -12,11 +12,16 @@ class CameraSetupControlPanel(QWidget):
         self._panel_layout = QVBoxLayout()
         self.setLayout(self._panel_layout)
 
+        self._redetect_cameras_button = QPushButton(
+            "TO-DO - Re-Detect Cameras",
+        )
+        self._redetect_cameras_button.setEnabled(False)
+        self._panel_layout.addWidget(self._redetect_cameras_button)
+
         self._apply_settings_to_cameras_button = QPushButton(
             "Apply settings to cameras",
         )
         self._apply_settings_to_cameras_button.setEnabled(False)
-
         self._panel_layout.addWidget(self._apply_settings_to_cameras_button)
 
         self._parameter_tree_layout = QVBoxLayout()
@@ -26,6 +31,10 @@ class CameraSetupControlPanel(QWidget):
     def apply_settings_to_cameras_button(self):
         return self._apply_settings_to_cameras_button
 
+    @property
+    def redetect_cameras_button(self):
+        return self._redetect_cameras_button
+
     def update_camera_configs(self):
         clear_layout(self._parameter_tree_layout)
         self._parameter_tree_layout = QVBoxLayout()
@@ -33,11 +42,19 @@ class CameraSetupControlPanel(QWidget):
         self._parameter_tree_layout.addWidget(self._parameter_tree_widget)
 
         self._camera_parameter_groups_dict = {}
-        for webcam_id, webcam_config in APP_STATE.camera_configs.items():
+        for webcam_id in APP_STATE.available_cameras:
 
-            self._camera_parameter_groups_dict[
-                webcam_id
-            ] = self._create_webcam_parameter_tree(webcam_config)
+            if webcam_id in APP_STATE.camera_configs:
+                self._camera_parameter_groups_dict[
+                    webcam_id
+                ] = self._create_webcam_parameter_tree(
+                    APP_STATE.camera_configs[webcam_id]
+                )
+
+            else:
+                self._camera_parameter_groups_dict[
+                    webcam_id
+                ] = self._create_webcam_parameter_tree_for_unselected_camera(webcam_id)
 
             self._parameter_tree_widget.addParameters(
                 self._camera_parameter_groups_dict[webcam_id]
@@ -68,6 +85,15 @@ class CameraSetupControlPanel(QWidget):
             ],
         )
 
+    def _create_webcam_parameter_tree_for_unselected_camera(self, webcam_id):
+        return Parameter.create(
+            name="Camera_" + str(webcam_id),
+            type="group",
+            children=[
+                dict(name="Use this camera?", type="bool", value=False),
+            ],
+        )
+
     def save_settings_to_app_state(self):
         new_selected_cameras_list = []
         new_camera_configs_dict = {}
@@ -78,15 +104,21 @@ class CameraSetupControlPanel(QWidget):
         ) in self._camera_parameter_groups_dict.items():
             if camera_parameter_group.param("Use this camera?").value():
                 new_selected_cameras_list.append(camera_id)
-                new_camera_configs_dict[camera_id] = WebcamConfig(
-                    webcam_id=camera_id,
-                    exposure=camera_parameter_group.param("Exposure").value(),
-                    resolution_width=camera_parameter_group.param(
-                        "Resolution Width"
-                    ).value(),
-                    resolution_height=camera_parameter_group.param(
-                        "Resolution Height"
-                    ).value(),
-                )
+                try:
+                    new_camera_configs_dict[camera_id] = WebcamConfig(
+                        webcam_id=camera_id,
+                        exposure=camera_parameter_group.param("Exposure").value(),
+                        resolution_width=camera_parameter_group.param(
+                            "Resolution Width"
+                        ).value(),
+                        resolution_height=camera_parameter_group.param(
+                            "Resolution Height"
+                        ).value(),
+                    )
+                except:
+                    new_camera_configs_dict[camera_id] = WebcamConfig(
+                        webcam_id=camera_id
+                    )
+
         APP_STATE.selected_cameras = new_selected_cameras_list
         APP_STATE.camera_configs = new_camera_configs_dict

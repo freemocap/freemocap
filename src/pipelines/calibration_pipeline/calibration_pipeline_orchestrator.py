@@ -11,7 +11,7 @@ from src.config.home_dir import (
     create_session_id,
     get_session_folder_path,
     get_freemocap_data_folder_path,
-    get_session_output_data_folder_path,
+    get_output_data_folder_path,
     get_session_calibration_toml_file_path,
 )
 from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager

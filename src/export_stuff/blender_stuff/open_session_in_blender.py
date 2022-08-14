@@ -1,7 +1,6 @@
 import os
-import sys
+
 from pathlib import Path
-import subprocess
 from src.config.home_dir import get_session_folder_path, get_most_recent_session_id
 from src.export_stuff.blender_stuff.create_blend_file_from_session_data import (
     create_blend_file_from_session_data,

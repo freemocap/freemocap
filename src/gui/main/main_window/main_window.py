@@ -64,17 +64,17 @@ class MainWindow(QMainWindow):
 
     def _connect_buttons_to_stuff(self):
         # after creating new session, set the session folder as root of the file system view widget
-        self._control_panel._create_new_session_panel.submit_button.clicked.connect(
+        self._control_panel._create_or_load_new_session_panel.submit_button.clicked.connect(
             self._right_side_panel.file_system_view_widget.set_session_path_as_root
         )
 
         # after creating new session, detect and connect to cameras
-        self._control_panel._create_new_session_panel.submit_button.clicked.connect(
+        self._control_panel._create_or_load_new_session_panel.submit_button.clicked.connect(
             self._camera_view_panel.detect_and_connect_to_cameras
         )
 
         # after creating new session, set active toolbox to 'calibrate'
-        self._control_panel._create_new_session_panel.submit_button.clicked.connect(
+        self._control_panel._create_or_load_new_session_panel.submit_button.clicked.connect(
             lambda: self._control_panel.toolbox_widget.setCurrentWidget(
                 self._control_panel.camera_setup_control_panel
             )

@@ -1,9 +1,28 @@
+import cv2
 from PyQt6.QtWidgets import QVBoxLayout, QWidget, QPushButton, QComboBox, QLabel
 from pyqtgraph.parametertree import ParameterTree, Parameter
 
 from src.config.webcam_config import WebcamConfig
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.qt_utils.clear_layout import clear_layout
+
+rotate_image_str_to_cv2_dict = {
+    "None": None,
+    "90_clockwise": cv2.ROTATE_90_CLOCKWISE,
+    "90_counterclockwise": cv2.ROTATE_90_COUNTERCLOCKWISE,
+    "180": cv2.ROTATE_180,
+}
+
+
+def find_rotate_video_value(rotate_video_value):
+    if rotate_video_value is None:
+        return None
+    elif rotate_video_value == cv2.ROTATE_90_CLOCKWISE:
+        return "90_clockwise"
+    elif rotate_video_value == cv2.ROTATE_90_COUNTERCLOCKWISE:
+        return "90_counterclockwise"
+    elif rotate_video_value == cv2.ROTATE_180:
+        return "180"
 
 
 class CameraSetupControlPanel(QWidget):
@@ -65,12 +84,25 @@ class CameraSetupControlPanel(QWidget):
         self._panel_layout.addWidget(self._parameter_tree_widget)
 
     def _create_webcam_parameter_tree(self, webcam_config: WebcamConfig):
+
+        try:
+            rotate_video_value = find_rotate_video_value(
+                APP_STATE.rotate_videos_dict[webcam_config.webcam_id]
+            )
+        except KeyError:
+            rotate_video_value = "None"
+
         return Parameter.create(
             name="Camera_" + str(webcam_config.webcam_id),
             type="group",
             children=[
                 dict(name="Use this camera?", type="bool", value=True),
-                # dict(name="Apply settings", type="action"),
+                dict(
+                    name="Rotate Image",
+                    type="list",
+                    limits=["None", "90_clockwise", "90_counterclockwise", "180"],
+                    value=rotate_video_value,
+                ),
                 dict(name="Exposure", type="int", value=webcam_config.exposure),
                 dict(
                     name="Resolution Width",
@@ -114,6 +146,11 @@ class CameraSetupControlPanel(QWidget):
                         resolution_height=camera_parameter_group.param(
                             "Resolution Height"
                         ).value(),
+                    )
+                    APP_STATE.rotate_videos_dict[camera_id] = (
+                        rotate_image_str_to_cv2_dict[
+                            camera_parameter_group.param("Rotate Image").value()
+                        ],
                     )
                 except:
                     new_camera_configs_dict[camera_id] = WebcamConfig(

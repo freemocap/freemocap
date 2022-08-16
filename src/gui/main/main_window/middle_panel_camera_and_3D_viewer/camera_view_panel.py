@@ -1,3 +1,4 @@
+import cv2
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel, QWidget, QPushButton
 
@@ -71,4 +72,4 @@ class CameraViewPanel(QWidget):
 
     def reconnect_to_cameras(self):
         self._camera_stream_grid_view.close_all_camera_streams()
-        self._camera_stream_grid_view.reconnect_to_cameras()
+        self._connect_to_cameras()

@@ -3,6 +3,7 @@ from PyQt6.QtCore import QThread, Qt, pyqtSignal
 from PyQt6.QtGui import QImage
 
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
+from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.webcam_config import WebcamConfig
 from src.gui.main.app_state.app_state import APP_STATE
 from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import (
@@ -14,11 +15,14 @@ class CamCharucoFrameWorker(QThread):
     ImageUpdate = pyqtSignal(QImage)
 
     def __init__(
-        self, cam_id=None, should_save_frames: bool = False, calibration_videos=False
+        self,
+        cam_id=None,
+        should_save_frames: bool = False,
     ):
         super().__init__()
         self._charuco_board_detector = CharucoBoardDetector()
         self._cam_id = cam_id
+        self._video_recorder = VideoRecorder()
         self._should_save_frames = should_save_frames
         self._should_continue = True
 
@@ -32,7 +36,7 @@ class CamCharucoFrameWorker(QThread):
 
     @property
     def video_recorder(self):
-        return self._open_cv_camera.video_recorder
+        return self._video_recorder
 
     def start_recording(self):
         self._should_save_frames = True
@@ -56,18 +60,18 @@ class CamCharucoFrameWorker(QThread):
             while open_cv_camera.is_capturing_frames and self._should_continue:
                 if not open_cv_camera.new_frame_ready:
                     continue
-                payload = open_cv_camera.latest_frame
+                frame_payload = open_cv_camera.latest_frame
 
                 if self._should_save_frames:
                     print("saving frame :D")
-                    open_cv_camera.video_recorder.append_frame_payload_to_list(payload)
+                    self._video_recorder.append_frame_payload_to_list(frame_payload)
 
-                charuco_payload = (
+                charuco_frame_payload = (
                     self._charuco_board_detector.detect_charuco_board_in_frame_payload(
-                        payload
+                        frame_payload
                     )
                 )
-                image_to_display = charuco_payload.annotated_image
+                image_to_display = charuco_frame_payload.annotated_image
                 image_to_display = cv2.flip(image_to_display, 1)
                 image_to_display = cv2.cvtColor(image_to_display, cv2.COLOR_BGR2RGB)
                 converted_frame = QImage(

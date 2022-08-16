@@ -1,4 +1,5 @@
-from typing import List
+from pathlib import Path
+from typing import List, Union, Dict
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -9,15 +10,14 @@ from src.gui.icis_conference_main.state.app_state import APP_STATE
 
 
 def save_synchronized_videos(
-    list_of_video_recorders: List[VideoRecorder],
-    calibration_videos: bool = False,
-    mocap_videos: bool = False,
+    dictionary_of_video_recorders: Dict[str, VideoRecorder],
+    folder_to_save_videos=Union[str, Path],
 ):
     each_cam_frame_list = []
     first_frame_timestamps = []
     final_frame_timestamps = []
 
-    for video_recoder in list_of_video_recorders:
+    for video_recoder in dictionary_of_video_recorders.values():
         cam_frame_list = video_recoder.frame_list
         # first_frame_timestamps.append(cam_frame_list[0].timestamp_in_seconds_from_record_start)
         # final_frame_timestamps.append(cam_frame_list[-1].timestamp_in_seconds_from_record_start)
@@ -77,9 +77,6 @@ def save_synchronized_videos(
         f" (clipped) number_of_frames_per_camera: {number_of_frames_per_camera_clipped}, min:{min_number_of_frames}"
     )
 
-    if mocap_videos:
-        APP_STATE.number_of_frames_in_the_mocap_videos = number_of_frames_per_camera
-
     final_frame_timestamps = [
         frame_list[-1].timestamp_unix_time_seconds
         for frame_list in each_cam_synchronized_frame_list
@@ -87,11 +84,15 @@ def save_synchronized_videos(
 
     print(f"np.diff(final_frame_timestamps): {np.diff(final_frame_timestamps)}")
 
-    for video_recoder, frame_list in zip(
-        list_of_video_recorders, each_cam_synchronized_frame_list
+    for camera_id, video_recoder, frame_list in zip(
+        dictionary_of_video_recorders.keys(),
+        dictionary_of_video_recorders.values(),
+        each_cam_synchronized_frame_list,
     ):
         video_recoder.save_list_of_frames_to_video_file(
-            list_of_frames=frame_list, calibration_videos=calibration_videos
+            list_of_frames=frame_list,
+            path_to_save_video_file=Path(folder_to_save_videos)
+            / f"Camera_{str(camera_id).zfill(3)}.mp4",
         )
 
 

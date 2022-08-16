@@ -27,9 +27,9 @@ def construct_worker(worker_type: WorkerType):
 class SingleCameraWidget(QWidget):
     started = pyqtSignal()
 
-    def __init__(self, cam_id):
+    def __init__(self, camera_id):
         super().__init__()
-        self._cam_id = cam_id
+        self._camera_id = camera_id
         self._worker = self._init_frame_worker()
         self._video = QLabel()
 
@@ -41,12 +41,13 @@ class SingleCameraWidget(QWidget):
         get_qt_app().aboutToQuit.connect(self.quit)
 
     @property
+    def camera_id(self):
+        """short int/str id for this camera"""
+        return self._camera_id
+
+    @property
     def should_record_frames(self):
         return self._worker.should_save_frames
-
-    @should_record_frames.setter
-    def should_record_frames(self, value):
-        self._worker.should_save_frames = value
 
     @property
     def video_recorder(self):
@@ -66,7 +67,7 @@ class SingleCameraWidget(QWidget):
         self._worker.quit()
 
     def _init_frame_worker(self):
-        worker = construct_worker(WorkerType.CHARUCO)(self._cam_id)
+        worker = construct_worker(WorkerType.CHARUCO)(self._camera_id)
         worker.ImageUpdate.connect(self._handle_image_update)
         return worker
 

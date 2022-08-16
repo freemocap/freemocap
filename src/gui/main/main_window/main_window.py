@@ -2,6 +2,10 @@ import numpy as np
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 
 from src.cameras.save_synchronized_videos import save_synchronized_videos
+from src.config.home_dir import (
+    get_calibration_videos_folder_path,
+    get_synchronized_videos_folder_path,
+)
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
 from src.gui.main.main_window.right_side_panel.right_side_panel import (
@@ -141,9 +145,19 @@ class MainWindow(QMainWindow):
     def _stop_recording_videos(self, calibration_videos: bool = False):
         self._control_panel.calibrate_capture_volume_panel.change_button_states_on_record_stop()
         self._camera_view_panel.camera_stream_grid_view.stop_recording_videos()
+
+        if calibration_videos:
+            folder_to_save_videos = get_calibration_videos_folder_path(
+                APP_STATE.session_id, create_folder=True
+            )
+        else:
+            folder_to_save_videos = get_synchronized_videos_folder_path(
+                APP_STATE.session_id, create_folder=True
+            )
+
         save_synchronized_videos(
-            self._camera_view_panel.camera_stream_grid_view.video_recorders,
-            calibration_videos=calibration_videos,
+            dictionary_of_video_recorders=self._camera_view_panel.camera_stream_grid_view.dictionary_of_video_recorders,
+            folder_to_save_videos=folder_to_save_videos,
         )
 
         if calibration_videos:

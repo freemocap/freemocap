@@ -3,8 +3,6 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-from cv2 import aruco_CharucoBoard
-from scipy.spatial.transform import Rotation
 
 from src.config.home_dir import (
     get_session_folder_path,

@@ -2,7 +2,7 @@ import time
 import logging
 import traceback
 from pathlib import Path
-from typing import Union
+from typing import Union, Callable
 
 import cv2
 
@@ -170,12 +170,14 @@ class CalibrationPipelineOrchestrator:
         self,
         charuco_square_size: Union[int, float] = 1,
         pin_camera_0_to_origin: bool = False,
+        progress_callback: Callable[[str], None] = None,
     ):
         anipose_camera_calibrator = AniposeCameraCalibrator(
             self.session_id,
             self._charuco_board_detector.charuco_board_data_class_object,
             charuco_square_size=charuco_square_size,
         )
+        progress_callback("Endurance is great wow wow wow")
         return anipose_camera_calibrator.calibrate_camera_capture_volume(
             pin_camera_0_to_origin=pin_camera_0_to_origin
         )

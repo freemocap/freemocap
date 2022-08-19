@@ -1,11 +1,19 @@
+from typing import List, Dict
+
 import numpy as np
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QLabel
 
+from src.cameras.detection.models import FoundCamerasResponse
 from src.cameras.save_synchronized_videos import save_synchronized_videos
+from src.config.webcam_config import WebcamConfig
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.custom_widgets.single_camera_widget import SingleCameraWidget
 from src.gui.main.qt_utils.clear_layout import clear_layout
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CameraStreamGridView(QWidget):
@@ -22,11 +30,19 @@ class CameraStreamGridView(QWidget):
     def video_recorders(self):
         return [cam.video_recorder for cam in self._camera_widgets]
 
-    def connect_to_camera_streams(self):
-        for webcam_id in APP_STATE.selected_cameras:
-            single_cam_widget = SingleCameraWidget(webcam_id)
+    def connect_to_camera_streams(
+        self, dictionary_of_webcam_configs=Dict[str, WebcamConfig]
+    ):
+        clear_layout(self._camera_stream_layout)
+        for webcam_config in dictionary_of_webcam_configs.values():
+            single_cam_widget = SingleCameraWidget(webcam_config)
             single_cam_widget.capture()
-            self._camera_stream_layout.addWidget(single_cam_widget)
+            single_camera_layout = QVBoxLayout()
+            single_camera_layout.addWidget(
+                QLabel(f"Camera {str(webcam_config.webcam_id)}")
+            )
+            single_camera_layout.addWidget(single_cam_widget)
+            self._camera_stream_layout.addLayout(single_camera_layout)
             self._camera_widgets.append(single_cam_widget)
 
         self.cameras_connected_signal.emit()
@@ -48,7 +64,8 @@ class CameraStreamGridView(QWidget):
         for cam in self._camera_widgets:
             video_recorders.append(cam.video_recorder)
 
-    def reconnect_to_cameras(self):
+    def close_and_reconnect_to_cameras(self):
+        self.close_all_camera_streams()
         self._camera_widgets = []
         clear_layout(self._camera_stream_layout)
         self.connect_to_camera_streams()

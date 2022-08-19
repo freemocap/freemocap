@@ -19,7 +19,9 @@ from src.core_processor.camera_calibration.charuco_default_values import (
 )
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.styled_widgets.page_title import PageTitle
-from src.gui.main.workers.anipose_calibration_worker import AniposeCalibrationWorker
+from src.gui.main.workers.anipose_calibration_thread_worker import (
+    AniposeCalibrationThreadWorker,
+)
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
     CalibrationPipelineOrchestrator,
 )
@@ -69,7 +71,7 @@ class CalibrateCaptureVolumePanel(QWidget):
 
         self.setLayout(self._central_layout)
 
-        self._anipose_calibration_worker = AniposeCalibrationWorker(
+        self._anipose_calibration_worker = AniposeCalibrationThreadWorker(
             session_id=APP_STATE.session_id,
             charuco_square_size_mm=default_charuco_square_size_mm,
         )

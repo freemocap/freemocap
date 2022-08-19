@@ -27,7 +27,6 @@ class OpenCVCamera:
     def __init__(
         self,
         config: WebcamConfig,
-        session_id: str = None,
         session_start_time_perf_counter_ns: int = 0,
         calibration_video_bool: bool = False,
     ):
@@ -39,14 +38,7 @@ class OpenCVCamera:
         self._new_frame_ready = False
         self._number_of_frames_recorded = 0
         self._calibration_video_bool = calibration_video_bool
-        self._session_id = session_id
         self._session_start_time_perf_counter_ns = session_start_time_perf_counter_ns
-
-    @property
-    def session_id(self):
-        if self._session_id is None:
-            return False
-        return self._session_id
 
     @property
     def new_frame_ready(self):
@@ -122,23 +114,6 @@ class OpenCVCamera:
             raise Exception
 
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
-
-        if self.session_id is False:
-            logger.info(
-                f"No `session_id` specified for {self._name}, video_recorder will not be created (because we won't know where to save the videos)"
-            )
-            self._video_recorder = None
-        else:
-            image_height = image.shape[0]
-            image_width = image.shape[1]
-
-            self._video_recorder = VideoRecorder(
-                self._name,
-                image_width=image_width,
-                image_height=image_height,
-                session_id=self.session_id,
-                calibration_video_bool=self._calibration_video_bool,
-            )
 
         return success
 

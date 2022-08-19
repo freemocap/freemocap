@@ -1,25 +1,28 @@
+from typing import Union
+
 import cv2
 from PyQt6.QtCore import QThread, Qt, pyqtSignal
 from PyQt6.QtGui import QImage
 
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.config.webcam_config import WebcamConfig
-from src.gui.main.app_state.app_state import APP_STATE
 from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
 
+import logging
 
-class CamCharucoFrameWorker(QThread):
+logger = logging.getLogger(__name__)
+
+
+class CamCharucoFrameThreadWorker(QThread):
     ImageUpdate = pyqtSignal(QImage)
 
-    def __init__(
-        self, cam_id=None, should_save_frames: bool = False, calibration_videos=False
-    ):
+    def __init__(self, webcam_config: WebcamConfig):
         super().__init__()
         self._charuco_board_detector = CharucoBoardDetector()
-        self._cam_id = cam_id
-        self._should_save_frames = should_save_frames
+        self._webcam_config = webcam_config
+        self._should_save_frames = False
         self._should_continue = True
 
     @property
@@ -42,11 +45,8 @@ class CamCharucoFrameWorker(QThread):
         self._should_continue = False
 
     def run(self):
-        camera_config = APP_STATE.camera_configs[self._cam_id]
-        open_cv_camera = OpenCVCamera(
-            camera_config,
-            session_id=APP_STATE.session_id,
-        )
+
+        open_cv_camera = OpenCVCamera(self._webcam_config)
         open_cv_camera.connect()
         open_cv_camera.start_frame_capture_thread()
 
@@ -76,14 +76,11 @@ class CamCharucoFrameWorker(QThread):
                     image_to_display.shape[0],
                     QImage.Format.Format_RGB888,
                 )
-                converted_frame = converted_frame.scaledToHeight(
-                    APP_STATE.main_window_height / len(APP_STATE.selected_cameras)
-                )
+                converted_frame = converted_frame.scaledToHeight(300)
+
                 self.ImageUpdate.emit(converted_frame)
         finally:
-            print(
-                f"Closing the camera {self._open_cv_camera.webcam_id_as_str}, and saving video to disk"
-            )
+            logger.info(f"Closing Camera {self._open_cv_camera.webcam_id_as_str}")
             self._open_cv_camera.close()
             # if any_frames_recorded:
             #     print(f"saving video for camera {self._cam.webcam_id_as_str}")

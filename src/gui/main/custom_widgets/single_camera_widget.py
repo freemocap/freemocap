@@ -4,9 +4,16 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
+from src.config.webcam_config import WebcamConfig
 from src.gui.main.app import get_qt_app
-from src.gui.main.workers.cam_charuco_frame_worker import CamCharucoFrameWorker
+from src.gui.main.workers.cam_charuco_frame_thread_worker import (
+    CamCharucoFrameThreadWorker,
+)
 from src.gui.main.workers.cam_frame_worker import CamFrameWorker
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class WorkerType(enum.Enum):
@@ -16,7 +23,7 @@ class WorkerType(enum.Enum):
 
 def construct_worker(worker_type: WorkerType):
     if worker_type.CHARUCO:
-        return CamCharucoFrameWorker
+        return CamCharucoFrameThreadWorker
 
     if worker_type.FRAME_CAPTURE:
         return CamFrameWorker
@@ -27,9 +34,11 @@ def construct_worker(worker_type: WorkerType):
 class SingleCameraWidget(QWidget):
     started = pyqtSignal()
 
-    def __init__(self, cam_id):
+    def __init__(self, webcam_config: WebcamConfig):
+        logger.info(f"Creating camera widget with WebcamConfig: {webcam_config}")
         super().__init__()
-        self._cam_id = cam_id
+        self._webcam_config = webcam_config
+
         self._worker = self._init_frame_worker()
         self._video = QLabel()
 
@@ -66,7 +75,7 @@ class SingleCameraWidget(QWidget):
         self._worker.quit()
 
     def _init_frame_worker(self):
-        worker = construct_worker(WorkerType.CHARUCO)(self._cam_id)
+        worker = construct_worker(WorkerType.CHARUCO)(self._webcam_config)
         worker.ImageUpdate.connect(self._handle_image_update)
         return worker
 

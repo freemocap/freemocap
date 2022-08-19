@@ -7,7 +7,7 @@ from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import
 )
 
 
-class AniposeCalibrationWorker(QThread):
+class AniposeCalibrationThreadWorker(QThread):
     finished = pyqtSignal()
     in_progress = pyqtSignal(str)
 

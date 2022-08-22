@@ -11,12 +11,17 @@ from src.gui.main.workers.cam_detection_thread_worker import CameraDetectionThre
 
 import logging
 
+from src.gui.main.workers.mediapipe_2d_detection_thread_worker import (
+    Mediapipe2dDetectionThreadWorker,
+)
 from src.gui.main.workers.save_to_video_thread_worker import SaveToVideoThreadWorker
 
 logger = logging.getLogger(__name__)
 
 
 class ThreadWorkerManager(QWidget):
+    """This guy's job is to hold on to the parts of threads that need to be kept alive while they are running"""
+
     camera_detection_finished = pyqtSignal(FoundCamerasResponse)
     cameras_connected_signal = pyqtSignal(dict)
 
@@ -78,3 +83,14 @@ class ThreadWorkerManager(QWidget):
             folder_to_save_videos=folder_to_save_videos,
         )
         self._save_to_video_thread_worker.start()
+
+    def launch_detect_2d_skeletons_thread_worker(
+        self, path_to_synchronized_videos: Union[str, Path]
+    ):
+        logger.info("Launching mediapipe 2d skeleton thread worker...")
+
+        self._mediapip_2d_detection_thread_worker = Mediapipe2dDetectionThreadWorker(
+            path_to_folder_of_videos_to_process=path_to_synchronized_videos
+        )
+
+        self._mediapip_2d_detection_thread_worker.start()

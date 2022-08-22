@@ -33,14 +33,13 @@ class ProcessSessionDataPanel(QWidget):
         processing_buttons_layout = QVBoxLayout()
         self._layout.addLayout(processing_buttons_layout)
 
-        self._process_all_button = QPushButton("Process All")
-        self._process_all_button.setEnabled(True)
-        self._process_all_button.clicked.connect(self._process_all)
-        processing_buttons_layout.addWidget(self._process_all_button)
+        # self._process_all_button = QPushButton("Process All")
+        # self._process_all_button.setEnabled(True)
+        # self._process_all_button.clicked.connect(self._process_all)
+        # processing_buttons_layout.addWidget(self._process_all_button)
 
         self._detect_2d_skeletons_button = QPushButton("Detect 2d Skeletons in Videos")
         self._detect_2d_skeletons_button.setEnabled(True)
-        self._detect_2d_skeletons_button.clicked.connect(self._detect_2d_skeletons)
         processing_buttons_layout.addWidget(self._detect_2d_skeletons_button)
 
         self._reconstruct_3d_skeletons_button = QPushButton("Reconstruct 3d Skeletons")
@@ -66,22 +65,14 @@ class ProcessSessionDataPanel(QWidget):
         self._open_in_blender_button.setEnabled(False)
         processing_buttons_layout.addWidget(self._open_in_blender_button)
 
-    def _process_all(self):
-        self._detect_2d_skeletons()
-        self._reconstruct_3d_skeletons()
-        self._create_blender_scene_from_session_data()
+    @property
+    def detect_2d_skeletons_button(self):
+        return self._detect_2d_skeletons_button
 
-    def _detect_2d_skeletons(self):
-        print(
-            f"tracking 2D mediapipe skeletons in videos from session: {APP_STATE.session_id}"
-        )
-        mediapipe_skeleton_detector = MediaPipeSkeletonDetector()
-        data_2d_npy_path = mediapipe_skeleton_detector.process_session_folder(
-            get_synchronized_videos_folder_path(APP_STATE.session_id)
-        )
-
-        self.data_2d_done_signal.emit(data_2d_npy_path)
-        self._reconstruct_3d_skeletons_button.setEnabled(True)
+    # def _process_all(self):
+    #     self._detect_2d_skeletons()
+    #     self._reconstruct_3d_skeletons()
+    #     self._create_blender_scene_from_session_data()
 
     def _reconstruct_3d_skeletons(self):
         print(f"Reconstruct 3D Skeletons : {APP_STATE.session_id}")

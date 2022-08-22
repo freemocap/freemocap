@@ -22,7 +22,8 @@ def sigint_handler(*args):
 def log_gui_loop():
     global gui_loop_count
     gui_loop_count += 1
-    logger.debug("GUI loop {}".format(gui_loop_count))
+    if gui_loop_count % 10 == 0:
+        logger.debug("GUI loop {}".format(gui_loop_count))
 
 
 if __name__ == "__main__":

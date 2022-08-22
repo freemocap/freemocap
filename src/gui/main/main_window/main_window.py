@@ -110,6 +110,13 @@ class MainWindow(QMainWindow):
             )
         )
 
+        # ProcessVideos panel
+        self._control_panel.process_session_data_panel.detect_2d_skeletons_button.clicked.connect(
+            lambda: self._thread_worker_manager.launch_detect_2d_skeletons_thread_worker(
+                get_synchronized_videos_folder_path(APP_STATE.session_id)
+            )
+        )
+
     def _connect_signals_to_stuff(self):
         logger.info("Connecting signals to stuff")
 

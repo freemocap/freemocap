@@ -8,7 +8,7 @@ class WebcamStream:
     def __init__(self, stream_id=0):
         self.stream_id = stream_id  # default is 0 for primary camera
 
-        # opening video capture stream
+        # opening video start stream
         self.vcap = cv2.VideoCapture(self.stream_id)
         if self.vcap.isOpened() is False:
             print("[Exiting]: Error accessing webcam stream.")
@@ -58,7 +58,7 @@ class WebcamStream:
     def stop(self):
         self.stopped = True
 
-    # initializing and starting multi-threaded webcam capture input stream
+    # initializing and starting multi-threaded webcam start input stream
 
 
 webcam_stream1 = WebcamStream(stream_id=0)  # stream_id = 0 is for primary camera

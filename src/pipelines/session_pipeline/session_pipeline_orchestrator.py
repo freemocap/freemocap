@@ -11,7 +11,7 @@ from src.cameras.persistence.video_writer.save_options_dataclass import SaveOpti
 from src.config.data_paths import freemocap_data_path
 from src.config.home_dir import (
     create_session_folder,
-    create_session_id,
+    create_default_session_id,
     get_most_recent_session_id,
     get_output_data_folder_path,
 )
@@ -51,7 +51,7 @@ class SessionPipelineOrchestrator:
         if session_id is not None:
             self._session_id = session_id
         else:
-            self._session_id = create_session_id()
+            self._session_id = create_default_session_id()
 
         self._expected_framerate = expected_framerate
 

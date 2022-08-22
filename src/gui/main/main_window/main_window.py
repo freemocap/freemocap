@@ -5,6 +5,7 @@ from src.cameras.save_synchronized_videos import save_synchronized_videos
 from src.config.home_dir import (
     get_calibration_videos_folder_path,
     get_synchronized_videos_folder_path,
+    get_session_folder_path,
 )
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
@@ -77,118 +78,83 @@ class MainWindow(QMainWindow):
 
     def _connect_buttons_to_stuff(self):
         logger.info("Connecting buttons to stuff")
-        # after creating new session, set the session folder as root of the file system view widget
-        self._control_panel._create_or_load_new_session_panel.submit_button.clicked.connect(
-            self._right_side_panel.file_system_view_widget.set_session_path_as_root
+
+        self._control_panel._create_or_load_new_session_panel.start_new_session_button.clicked.connect(
+            self._start_new_session
         )
 
-        # after creating new session, detect and connect to cameras
-        self._control_panel._create_or_load_new_session_panel.submit_button.clicked.connect(
-            self._thread_worker_manager.launch_detect_cameras_worker
-        )
-
-        # after creating new session, set active toolbox to 'calibrate'
-        self._control_panel._create_or_load_new_session_panel.submit_button.clicked.connect(
-            lambda: self._control_panel.toolbox_widget.setCurrentWidget(
-                self._control_panel.camera_setup_control_panel
-            )
-        )
-
-        # after clicking "redetect cameras", detect and connect to cameras
-        self._control_panel.camera_setup_control_panel.redetect_cameras_button.clicked.connect(
-            self._thread_worker_manager.launch_detect_cameras_worker
-        )
-
-        # after clicking "apply new settings to cameras" button, reconnect to cameras with new User specified `webcam_configs`
-        self._control_panel.camera_setup_control_panel.apply_settings_to_cameras_button.clicked.connect(
-            self._apply_webcam_configs_and_reconnect
-        )
-
-        # Calibration panel - when click 'Begin Recording' button, start recording
+        # Calibration panel
         self._control_panel.calibrate_capture_volume_panel.start_recording_button.clicked.connect(
             lambda: self._start_recording_videos(
                 panel=self._control_panel.calibrate_capture_volume_panel
             )
         )
 
-        # Calibration panel -  when click 'Stop Recording' button, stop recording (and save the videos as 'calibration' b/c they came from the calibrate panel')
         self._control_panel.calibrate_capture_volume_panel.stop_recording_button.clicked.connect(
-            lambda: self._stop_recording_videos(calibration_videos=True)
-        )
-
-        # RecordVideos panel - when click 'Begin Recording' button, start recording
-        self._control_panel.record_synchronized_videos_panel.start_recording_button.clicked.connect(
-            lambda: self._start_recording_videos(
-                panel=self._control_panel.record_synchronized_videos_panel
+            lambda: self._stop_recording_videos(
+                panel=self._control_panel.calibrate_capture_volume_panel,
+                calibration_videos=True,
             )
         )
 
-        # RecordVideos panel -  when click 'Stop Recording' button, stop recording (and save the videos as 'calibration' b/c they came from the calibrate panel')
+        # RecordVideos panel
+        self._control_panel.record_synchronized_videos_panel.start_recording_button.clicked.connect(
+            lambda: self._start_recording_videos(
+                panel=self._control_panel.record_synchronized_videos_panel,
+            )
+        )
+
         self._control_panel.record_synchronized_videos_panel.stop_recording_button.clicked.connect(
-            lambda: self._stop_recording_videos(calibration_videos=False)
+            lambda: self._stop_recording_videos(
+                panel=self._control_panel.record_synchronized_videos_panel
+            )
         )
 
     def _connect_signals_to_stuff(self):
         logger.info("Connecting signals to stuff")
 
-        self._control_panel.camera_setup_control_panel.camera_parameters_updated_signal.connect(
-            self._thread_worker_manager.create_camera_widgets_with_running_threads
-        )
-
         self._thread_worker_manager.camera_detection_finished.connect(
             self._control_panel.handle_found_camera_response
         )
 
-        # when 2d data is caluclated, load it into the jupyter console namespace
-        self._control_panel.process_session_data_panel.data_2d_done_signal.connect(
-            self._load_2d_data_into_jupyter_console
-        )
-        # when 3d data is calculated, load it into the jupyter console namespace
-        self._control_panel.process_session_data_panel.data_3d_done_signal.connect(
-            self._load_3d_data_into_jupyter_console
+        self._control_panel.camera_setup_control_panel.camera_parameters_updated_signal.connect(
+            self._thread_worker_manager.create_camera_widgets_with_running_threads
         )
 
         self._thread_worker_manager.cameras_connected_signal.connect(
             self._camera_view_panel.show_camera_streams
         )
 
-    def _apply_webcam_configs_and_reconnect(self):
-        self._control_panel.camera_setup_control_panel.save_settings_to_app_state()
-        self._camera_view_panel.reconnect_to_cameras()
+    def _start_new_session(self):
+        APP_STATE.session_id = (
+            self._control_panel._create_or_load_new_session_panel.session_id_input_string
+        )
+        session_path = get_session_folder_path(APP_STATE.session_id, create_folder=True)
+        self._right_side_panel.file_system_view_widget.set_session_path_as_root(
+            session_path
+        )
+        self._thread_worker_manager.launch_detect_cameras_worker()
+        self._control_panel.toolbox_widget.setCurrentWidget(
+            self._control_panel.camera_setup_control_panel
+        )
 
     def _start_recording_videos(self, panel):
         panel.change_button_states_on_record_start()
-        self._camera_view_panel.camera_stream_grid_view.start_recording_videos()
+        self._thread_worker_manager.start_recording_videos()
 
-    def _stop_recording_videos(self, calibration_videos: bool = False):
-        self._control_panel.calibrate_capture_volume_panel.change_button_states_on_record_stop()
-        self._camera_view_panel.camera_stream_grid_view.stop_recording_videos()
+    def _stop_recording_videos(self, panel, calibration_videos=False):
+        panel.change_button_states_on_record_stop()
+        self._thread_worker_manager.stop_recording_videos()
 
         if calibration_videos:
-            folder_to_save_videos = get_calibration_videos_folder_path(
-                APP_STATE.session_id, create_folder=True
+            path_to_save_videos = get_calibration_videos_folder_path(
+                APP_STATE.session_id
             )
         else:
-            folder_to_save_videos = get_synchronized_videos_folder_path(
-                APP_STATE.session_id, create_folder=True
+            path_to_save_videos = get_synchronized_videos_folder_path(
+                APP_STATE.session_id
             )
 
-        save_synchronized_videos(
-            dictionary_of_video_recorders=self._camera_view_panel.camera_stream_grid_view.dictionary_of_video_recorders,
-            folder_to_save_videos=folder_to_save_videos,
+        self._thread_worker_manager.launch_save_videos_thread_worker(
+            path_to_save_videos
         )
-
-        if calibration_videos:
-            self._camera_view_panel.reconnect_to_cameras()
-
-    def _load_2d_data_into_jupyter_console(self, path_to_data_2d_npy: str):
-        self._right_side_panel.jupyter_console_widget.execute(
-            f"mediapipe_2d_data = np.load(r'{path_to_data_2d_npy}')"
-        )
-        self._right_side_panel.jupyter_console_widget.execute("%whos")
-
-    def _load_3d_data_into_jupyter_console(self, path_to_data_3d_npy: str):
-        self._right_side_panel.jupyter_console_widget.execute(
-            f"mediapipe_3d_data = np.load(r'{path_to_data_3d_npy}')"
-        )
-        self._right_side_panel.jupyter_console_widget.execute("%whos")

@@ -34,10 +34,8 @@ class FileSystemViewWidget(QWidget):
         self._tree_view_widget.setAlternatingRowColors(True)
         self._tree_view_widget.resizeColumnToContents(1)
 
-    def set_session_path_as_root(self):
-        freemocap_data_folder_path = get_freemocap_data_folder_path(create_folder=False)
-        session_path = get_session_folder_path(APP_STATE.session_id, create_folder=True)
-        self._file_system_model.setRootPath(freemocap_data_folder_path)
+    def set_session_path_as_root(self, session_path: Union[str, Path]):
+        self._file_system_model.setRootPath(session_path)
         self._tree_view_widget.setRootIndex(self._file_system_model.index(session_path))
 
     def _context_menu(self):

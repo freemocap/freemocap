@@ -12,7 +12,7 @@ from jon_scratch.pupil_calibration_pipeline.qt_gl_laser_skeleton_visualizer impo
 from src.cameras.launch_camera_frame_loop import launch_camera_frame_loop
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.config.home_dir import (
-    create_session_id,
+    create_default_session_id,
     get_session_folder_path,
     get_most_recent_session_id,
     create_session_folder,
@@ -75,7 +75,7 @@ class SessionIdModel(BaseModel):
 async def create_session(
     session_create_model: SessionCreateModel = SessionCreateModel(),
 ) -> SessionResponse:
-    session_id = create_session_id()
+    session_id = create_default_session_id()
     if session_create_model.user_session_tag_str is not None:
         session_id = session_id + session_create_model.user_session_tag_str
 
@@ -90,7 +90,7 @@ async def create_session(
 def calibrate_session(
     session_calibrate_model: SessionCalibrateModel = SessionCalibrateModel(),
 ):
-    """calibate capture volume - record synchronized videos (from all available camras wtih default parameters for now) and process with Anipose to produce a camera calibration (saved as a `.toml` file in the session folder"""
+    """calibate start volume - record synchronized videos (from all available camras wtih default parameters for now) and process with Anipose to produce a camera calibration (saved as a `.toml` file in the session folder"""
 
     session_id = session_calibrate_model.session_id
     if session_id is None or session_id == "string":
@@ -192,7 +192,7 @@ def visualize_session_offline(session_id_model: SessionIdModel = None):
 
 if __name__ == "__main__":
     # # create_blend_file_from_session_data
-    # session_id_in = create_session_id('session_router_as_main')
+    # session_id_in = create_default_session_id('session_router_as_main')
     # session_id_model = SessionIdModel(session_id=session_id_in)
     #
     # # # #calibrate_session

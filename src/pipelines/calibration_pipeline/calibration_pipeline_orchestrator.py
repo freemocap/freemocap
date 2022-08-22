@@ -8,7 +8,7 @@ import cv2
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.config.home_dir import (
-    create_session_id,
+    create_default_session_id,
     get_session_folder_path,
     get_freemocap_data_folder_path,
     get_output_data_folder_path,
@@ -39,7 +39,7 @@ class CalibrationPipelineOrchestrator:
     ):
 
         if session_id is None:
-            self._session_id = create_session_id(
+            self._session_id = create_default_session_id(
                 string_tag="calibration"
             )  # create a 'calibration only' session
         else:
@@ -211,7 +211,7 @@ if __name__ == "__main__":
 
     record_new = True
     if record_new:
-        session_id = create_session_id("calibration")
+        session_id = create_default_session_id("calibration")
         session_path = Path(get_session_folder_path(session_id))
         logger.info(
             f"Creating `calibration only` session folder at: {str(session_path)}"

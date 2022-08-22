@@ -18,33 +18,14 @@ from src.config.home_dir import (
     get_mediapipe_annotated_videos_folder_path,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
 class VideoRecorder:
-    def __init__(
-        self,
-        # camera_name: str,
-        # image_width: int,
-        # image_height: int,
-        # session_id: str,
-        # fourcc: str = "MP4V",
-        # calibration_video_bool: bool = False,
-        # mediapipe_annotated_video_bool: bool = False,
-    ):
-        # self._video_name = video_name
-        # self._image_width = image_width
-        # self._image_height = image_height
-        # self._fourcc = fourcc
+    def __init__(self):
+
         self._frame_payload_list: List[FramePayload] = []
         self._timestamps_npy = np.empty(0)
-        # self._cv2_video_writer = None
-
-        # get yr paths straight
-        # self._session_id = session_id
-
-        # self._mediapipe_annotated_video_bool = mediapipe_annotated_video_bool
 
     @property
     def frame_count(self):
@@ -53,13 +34,6 @@ class VideoRecorder:
     @property
     def frame_list(self):
         return self._frame_payload_list
-
-    # def save_frame_payload_to_video_file(self, frame_payload: FramePayload):
-    #
-    #     if self._cv2_video_writer is None:
-    #         self._initialize_video_writer(frame_payload)
-    #
-    #     self._cv2_video_writer.write(frame_payload.image)
 
     def close(self):
         self._cv2_video_writer.release()
@@ -73,12 +47,6 @@ class VideoRecorder:
         path_to_save_video_file: Union[str, Path],
         frames_per_second: float = None,
     ):
-        # if list_of_frames is None:
-        #     list_of_frames = self._frame_payload_list
-        #
-        # if len(list_of_frames) == 0:
-        #     logging.error(f"No frames to save for camera: {self._video_name}")
-        #     raise Exception
 
         if frames_per_second is None:
             self._timestamps_npy = self._gather_timestamps(list_of_frames)

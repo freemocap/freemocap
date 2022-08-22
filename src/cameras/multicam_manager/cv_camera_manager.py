@@ -114,7 +114,7 @@ class OpenCVCameraManager:
     ) -> ContextManager[CamAndWriterResponse]:
         """
         Context manager for easy start up, usage, and cleanup of camera resources.
-        Can capture frames from a single webcam or all webcams detected.
+        Can start frames from a single webcam or all webcams detected.
         """
 
         cv_camera = self._create_single_opencv_cam(webcam_id)
@@ -125,7 +125,7 @@ class OpenCVCameraManager:
             yield CamAndWriterResponse(cv_camera=cv_camera)
             self._stop_frame_capture([cv_camera])
         except:
-            logger.error("Printing traceback from starting capture session by cam")
+            logger.error("Printing traceback from starting start session by cam")
             traceback.print_exc()
 
     @contextmanager
@@ -152,7 +152,7 @@ class OpenCVCameraManager:
 
             self._stop_frame_capture(open_cv_camera_objects)
         except:
-            logger.error("Printing traceback from starting capture session by cam")
+            logger.error("Printing traceback from starting start session by cam")
             traceback.print_exc()
 
     def _create_opencv_cameras(

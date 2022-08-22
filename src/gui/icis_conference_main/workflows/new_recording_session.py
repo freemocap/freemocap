@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
 )
 
-from src.config.home_dir import create_session_id
+from src.config.home_dir import create_default_session_id
 from src.gui.icis_conference_main.shared_widgets.page_title import PageTitle
 from src.gui.icis_conference_main.shared_widgets.primary_button import PrimaryButton
 from src.gui.icis_conference_main.state.app_state import APP_STATE
@@ -59,7 +59,7 @@ class NewRecordingSession(QWidget):
 
     def _create_session_input(self):
         session_text_input = QLineEdit()
-        session_text_input.setText(create_session_id())
+        session_text_input.setText(create_default_session_id())
         return session_text_input
 
     def _create_submit_button_layout(self):

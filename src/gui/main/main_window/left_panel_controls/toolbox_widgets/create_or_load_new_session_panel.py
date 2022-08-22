@@ -1,16 +1,13 @@
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QHBoxLayout,
     QLabel,
-    QCheckBox,
     QLineEdit,
     QFormLayout,
     QPushButton,
 )
 
-from src.config.home_dir import create_session_id
-from src.gui.main.app_state.app_state import APP_STATE
+from src.config.home_dir import create_default_session_id
 from src.gui.main.styled_widgets.primary_button import PrimaryButton
 
 
@@ -41,12 +38,16 @@ class CreateOrLoadNewSessionPanel(QWidget):
         self.setLayout(central_layout)
 
     @property
-    def submit_button(self):
-        return self._submit_button
+    def start_new_session_button(self):
+        return self._start_new_session_button
+
+    @property
+    def session_id_input_string(self):
+        return self._session_input.text()
 
     def _create_session_input(self):
         session_text_input = QLineEdit()
-        session_text_input.setText(create_session_id())
+        session_text_input.setText(create_default_session_id())
         return session_text_input
 
     def _create_new_session_layout(self):
@@ -57,10 +58,6 @@ class CreateOrLoadNewSessionPanel(QWidget):
         session_id_form_layout.addRow(QLabel("Session Id"), self._session_input)
         layout.addLayout(session_id_form_layout)
 
-        self._submit_button = PrimaryButton("&Start Session")
-        self._submit_button.clicked.connect(self._assign_session_id_to_state)
-        layout.addWidget(self._submit_button)
+        self._start_new_session_button = PrimaryButton("&Start Session")
+        layout.addWidget(self._start_new_session_button)
         return layout
-
-    def _assign_session_id_to_state(self):
-        APP_STATE.session_id = self._session_input.text()

@@ -150,7 +150,7 @@ class SlopMainWindow(QMainWindow):
         screen = NewRecordingSession()
         self._control_panel_layout.addWidget(screen)
         # self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        # screen.submit_button.clicked.connect(self._show_cam_config_screen)
+        # screen.start_new_session_button.clicked.connect(self._show_cam_config_screen)
         screen.submit.clicked.connect(self._show_cam_config_screen)
 
     def _show_cam_config_screen(self):

@@ -43,11 +43,11 @@ class CameraStreamGridView(QWidget):
 
     def start_recording_videos(self):
         for camera_widget in self._camera_widgets:
-            camera_widget.start_recording()
+            camera_widget.start_saving_frames()
 
     def stop_recording_videos(self):
         for camera_widget in self._camera_widgets:
-            camera_widget.stop_recording()
+            camera_widget.stop_saving_frames()
 
     def save_synchronized_videos(self):
         video_recorders = []

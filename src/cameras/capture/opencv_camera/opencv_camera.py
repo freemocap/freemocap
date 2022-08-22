@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class OpenCVCamera:
     """
-    Performant implementation of video capture against webcams
+    Performant implementation of video start against webcams
     """
 
     def __init__(
@@ -121,9 +121,7 @@ class OpenCVCamera:
                 f"Already capturing frames for webcam_id: {self.webcam_id_as_str}"
             )
             return
-        logger.info(
-            f"Beginning frame capture thread for webcam: {self.webcam_id_as_str}"
-        )
+        logger.info(f"Beginning frame start thread for webcam: {self.webcam_id_as_str}")
         self._running_thread = self._create_thread()
         self._running_thread.start()
 

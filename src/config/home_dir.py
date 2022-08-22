@@ -10,7 +10,7 @@ BASE_FOLDER_NAME = "freemocap_data"
 MOST_RECENT_SESSION_ID_FILENAME = "most_recent_session_id.toml"
 
 
-def create_session_id(string_tag: str = None):
+def create_default_session_id(string_tag: str = None):
     session_id = "session_" + time.strftime("%m-%d-%Y-%H_%M_%S")
 
     if string_tag is not None:

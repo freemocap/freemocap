@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
 )
 
-from src.config.home_dir import create_session_id
+from src.config.home_dir import create_default_session_id
 from src.gui.icis_conference_main.shared_widgets.primary_button import PrimaryButton
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.styled_widgets.page_title import PageTitle

@@ -24,6 +24,7 @@ class CamCharucoFrameThreadWorker(QThread):
     def __init__(self, webcam_config: WebcamConfig):
         super().__init__()
         self._charuco_board_detector = CharucoBoardDetector()
+        self._video_recorder = VideoRecorder()
         self._webcam_config = webcam_config
         self._should_save_frames = False
         self._should_continue = True
@@ -33,20 +34,15 @@ class CamCharucoFrameThreadWorker(QThread):
     def should_save_frames(self):
         return self._should_save_frames
 
-    @should_save_frames.setter
-    def should_save_frames(self, value):
-        self._should_save_frames = value
-
     @property
     def video_recorder(self):
-        return self._open_cv_camera.video_recorder
+        return self._video_recorder
 
-    def start_recording(self):
+    def start_saving_frames(self):
         self._should_save_frames = True
 
-    def stop_recording(self):
+    def stop_saving_frames(self):
         self._should_save_frames = False
-        self._should_continue = False
 
     def run(self):
 
@@ -66,7 +62,7 @@ class CamCharucoFrameThreadWorker(QThread):
                 if self._should_save_frames:
                     any_frames_recorded = True
                     print("saving frame :D")
-                    self._saved_frame_list.append(frame_payload)
+                    self._video_recorder.append_frame_payload_to_list(frame_payload)
 
                 charuco_payload = (
                     self._charuco_board_detector.detect_charuco_board_in_frame_payload(
@@ -88,11 +84,6 @@ class CamCharucoFrameThreadWorker(QThread):
         finally:
             logger.info(f"Closing Camera {self._open_cv_camera.webcam_id_as_str}")
             self._open_cv_camera.close()
-            if any_frames_recorded:
-                logger.info(
-                    f"Camera {self._open_cv_camera.webcam_id_as_str} is ready to save {len(self._saved_frame_list)} frames to video"
-                )
-                self.ready_to_save_to_video.emit(self._saved_frame_list)
 
     def quit(self):
         self._open_cv_camera.close()

@@ -38,6 +38,7 @@ class CameraWidget(QWidget):
         logger.info(f"Creating camera widget with WebcamConfig: {webcam_config}")
         super().__init__()
         self._webcam_config = webcam_config
+        self._camera_id = webcam_config.webcam_id
 
         self._worker = self._init_frame_worker()
         self._video = QLabel()
@@ -50,25 +51,25 @@ class CameraWidget(QWidget):
         get_qt_app().aboutToQuit.connect(self.quit)
 
     @property
+    def camera_id(self):
+        return self._camera_id
+
+    @property
     def should_record_frames(self):
         return self._worker.should_save_frames
-
-    @should_record_frames.setter
-    def should_record_frames(self, value):
-        self._worker.should_save_frames = value
 
     @property
     def video_recorder(self):
         return self._worker.video_recorder
 
-    def start_recording(self):
-        self._worker.start_recording()
+    def start_saving_frames(self):
+        self._worker.start_saving_frames()
 
-    def stop_recording(self):
-        self._worker.stop_recording()
+    def stop_saving_frames(self):
+        self._worker.stop_saving_frames()
 
-    def capture(self):
-        self._create_preview_worker()
+    def start(self):
+        self._worker.start()
         self.started.emit()
 
     def quit(self):
@@ -78,14 +79,6 @@ class CameraWidget(QWidget):
         worker = construct_worker(WorkerType.CHARUCO)(self._webcam_config)
         worker.image_updated_signal.connect(self._handle_image_update)
         return worker
-
-    def _create_preview_worker(self):
-        # self._video.clear()
-        # if self._worker.isRunning():
-        #     self._worker.quit()
-        #     while not self._worker.isFinished():
-        #         time.sleep(.1)
-        self._worker.start()
 
     def _handle_image_update(self, image):
         self._video.setPixmap(QPixmap.fromImage(image))

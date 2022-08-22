@@ -1,3 +1,5 @@
+from typing import List
+
 from PyQt6.QtWidgets import (
     QFrame,
     QVBoxLayout,
@@ -5,6 +7,8 @@ from PyQt6.QtWidgets import (
     QToolBox,
 )
 
+from src.cameras.detection.models import FoundCamerasResponse
+from src.config.webcam_config import WebcamConfig
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.calibrate_capture_volume_panel import (
     CalibrateCaptureVolumePanel,
 )
@@ -22,6 +26,10 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.record_synchro
 )
 
 from src.gui.main.qt_utils.clear_layout import clear_layout
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ControlPanel:
@@ -59,6 +67,13 @@ class ControlPanel:
     def toolbox_widget(self):
         return self._toolbox_widget
 
+    def handle_found_camera_response(
+        self, found_cameras_response: FoundCamerasResponse
+    ):
+        self._camera_setup_control_panel.handle_found_cameras_response(
+            found_cameras_response
+        )
+
     def _start_standard_workflow(self):
         clear_layout(self._layout)
         self._create_toolbox_widget()
@@ -86,9 +101,6 @@ class ControlPanel:
         )
 
         return toolbox_widget
-
-    def update_camera_configs(self):
-        self._camera_setup_control_panel.update_camera_configs()
 
     def _create_toolbox_panels(self):
         self._create_or_load_new_session_panel = CreateOrLoadNewSessionPanel()

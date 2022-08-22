@@ -19,8 +19,8 @@ class RightSidePanel:
         self._file_system_view_widget = FileSystemViewWidget()
         self._layout.addWidget(self._file_system_view_widget)
 
-        self._python_console_widget = self._create_python_console_widget()
-        self._layout.addWidget(self._python_console_widget.jupyter_console_widget)
+        # self._python_console_widget = self._create_python_console_widget()
+        # self._layout.addWidget(self._python_console_widget.jupyter_console_widget)
 
     @property
     def frame(self):

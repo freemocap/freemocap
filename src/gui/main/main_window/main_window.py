@@ -11,20 +11,26 @@ from src.gui.main.main_window.left_panel_controls.control_panel import ControlPa
 from src.gui.main.main_window.right_side_panel.right_side_panel import (
     RightSidePanel,
 )
-from src.gui.main.main_window.middle_panel_camera_and_3D_viewer.camera_view_panel import (
-    CameraViewPanel,
+from src.gui.main.main_window.middle_panel_viewers.middle_panel import (
+    MiddlePanel,
 )
+
+import logging
+
+from src.gui.main.workers.thread_worker_manager import ThreadWorkerManager
+
+logger = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        logger.info("Creating main window")
+
         super().__init__()
         self.setWindowTitle("freemocap")
-        APP_STATE.main_window_width = int(1920 * 0.8)
-        APP_STATE.main_window_height = int(1080 * 0.8)
-        self.setGeometry(
-            0, 0, APP_STATE.main_window_width, APP_STATE.main_window_height
-        )
+        self._main_window_width = int(1920 * 0.8)
+        self._main_window_height = int(1080 * 0.8)
+        self.setGeometry(0, 0, self._main_window_width, self._main_window_height)
         self._main_layout = self._create_main_layout()
 
         # control panel
@@ -39,6 +45,8 @@ class MainWindow(QMainWindow):
         self._right_side_panel = self._create_right_side_panel()
         self._main_layout.addWidget(self._right_side_panel.frame)
 
+        self._thread_worker_manager = ThreadWorkerManager()
+
         self._connect_signals_to_stuff()
         self._connect_buttons_to_stuff()
 
@@ -51,23 +59,24 @@ class MainWindow(QMainWindow):
 
     def _create_control_panel(self):
         panel = ControlPanel()
-        panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.2)
-        panel.frame.setFixedHeight(APP_STATE.main_window_height)
+        panel.frame.setFixedWidth(self._main_window_width * 0.2)
+        panel.frame.setFixedHeight(self._main_window_height)
         return panel
 
     def _create_cameras_view_panel(self):
-        panel = CameraViewPanel()
-        panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.4)
-        panel.frame.setFixedHeight(APP_STATE.main_window_height)
+        panel = MiddlePanel()
+        panel.frame.setFixedWidth(self._main_window_width * 0.4)
+        panel.frame.setFixedHeight(self._main_window_height)
         return panel
 
     def _create_right_side_panel(self):
         panel = RightSidePanel()
-        panel.frame.setFixedWidth(APP_STATE.main_window_width * 0.4)
-        panel.frame.setFixedHeight(APP_STATE.main_window_height)
+        panel.frame.setFixedWidth(self._main_window_width * 0.4)
+        panel.frame.setFixedHeight(self._main_window_height)
         return panel
 
     def _connect_buttons_to_stuff(self):
+        logger.info("Connecting buttons to stuff")
         # after creating new session, set the session folder as root of the file system view widget
         self._control_panel._create_or_load_new_session_panel.submit_button.clicked.connect(
             self._right_side_panel.file_system_view_widget.set_session_path_as_root
@@ -75,7 +84,7 @@ class MainWindow(QMainWindow):
 
         # after creating new session, detect and connect to cameras
         self._control_panel._create_or_load_new_session_panel.submit_button.clicked.connect(
-            self._camera_view_panel.detect_and_connect_to_cameras
+            self._thread_worker_manager.launch_detect_cameras_worker
         )
 
         # after creating new session, set active toolbox to 'calibrate'
@@ -87,7 +96,7 @@ class MainWindow(QMainWindow):
 
         # after clicking "redetect cameras", detect and connect to cameras
         self._control_panel.camera_setup_control_panel.redetect_cameras_button.clicked.connect(
-            self._camera_view_panel.detect_and_connect_to_cameras
+            self._thread_worker_manager.launch_detect_cameras_worker
         )
 
         # after clicking "apply new settings to cameras" button, reconnect to cameras with new User specified `webcam_configs`
@@ -120,9 +129,14 @@ class MainWindow(QMainWindow):
         )
 
     def _connect_signals_to_stuff(self):
-        # update the 'camera configs' panel when the 'camera view panel' connects to cameras
-        self._camera_view_panel.camera_stream_grid_view.cameras_connected_signal.connect(
-            self._control_panel.update_camera_configs
+        logger.info("Connecting signals to stuff")
+
+        self._control_panel.camera_setup_control_panel.camera_parameters_updated_signal.connect(
+            self._camera_view_panel.camera_stream_grid_view.connect_to_camera_streams
+        )
+
+        self._thread_worker_manager.camera_detection_thread_worker.finished.connect(
+            self._control_panel.handle_found_camera_response
         )
 
         # when 2d data is caluclated, load it into the jupyter console namespace

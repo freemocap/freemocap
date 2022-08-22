@@ -27,7 +27,6 @@ class OpenCVCamera:
     def __init__(
         self,
         config: WebcamConfig,
-        session_id: str = None,
         session_start_time_perf_counter_ns: int = 0,
         calibration_video_bool: bool = False,
     ):
@@ -39,14 +38,7 @@ class OpenCVCamera:
         self._new_frame_ready = False
         self._number_of_frames_recorded = 0
         self._calibration_video_bool = calibration_video_bool
-        self._session_id = session_id
         self._session_start_time_perf_counter_ns = session_start_time_perf_counter_ns
-
-    @property
-    def session_id(self):
-        if self._session_id is None:
-            return False
-        return self._session_id
 
     @property
     def new_frame_ready(self):

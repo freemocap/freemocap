@@ -17,7 +17,7 @@ from src.config.home_dir import (
     get_calibration_videos_folder_path,
     get_mediapipe_annotated_videos_folder_path,
 )
-from rich.progress import Progress
+
 
 logger = logging.getLogger(__name__)
 

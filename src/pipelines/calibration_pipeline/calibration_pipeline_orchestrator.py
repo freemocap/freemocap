@@ -11,8 +11,8 @@ from src.config.home_dir import (
     create_session_id,
     get_session_folder_path,
     get_freemocap_data_folder_path,
-    get_session_output_data_folder_path,
-    get_session_calibration_file_path,
+    get_output_data_folder_path,
+    get_session_calibration_toml_file_path,
 )
 from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
 from src.core_processor.show_cam_window import show_cam_window
@@ -119,10 +119,8 @@ class CalibrationPipelineOrchestrator:
                             )
 
                         # detect charuco board
-                        this_charuco_frame_payload = (
-                            self._charuco_board_detector.detect_charuco_board(
-                                this_cam_latest_frame
-                            )
+                        this_charuco_frame_payload = self._charuco_board_detector.detect_charuco_board_in_frame_payload(
+                            this_cam_latest_frame
                         )
 
                         if show_camera_views_in_windows:
@@ -192,7 +190,9 @@ class CalibrationPipelineOrchestrator:
         return freemocap_anipose.CameraGroup.load(str(last_successful_calibration_path))
 
     def load_calibration_from_session_id(self, session_id: str):
-        session_calibration_file_path = get_session_calibration_file_path(session_id)
+        session_calibration_file_path = get_session_calibration_toml_file_path(
+            session_id
+        )
         logger.info(
             f"loading camera calibration file from:{str(session_calibration_file_path)}"
         )

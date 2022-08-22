@@ -12,12 +12,13 @@ from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.home_dir import (
     get_session_folder_path,
     get_synchronized_videos_folder_path,
-    get_session_output_data_folder_path,
+    get_output_data_folder_path,
 )
 from src.core_processor.mediapipe_skeleton_detector.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
 )
-from src.gui.icis_conference_main.state.app_state import APP_STATE
+
+from src.gui.main.app_state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class Mediapipe2dDataPayload:
 
 class MediaPipeSkeletonDetector:
     def __init__(self, session_id: str = None):
-        self._session_id = session_id
+
         self.model_complexity = 2  # can be 0,1, or 2 - higher numbers  are more accurate but heavier computationally
         self.min_detection_confidence = 0.5
         self.min_tracking_confidence = 0.5
@@ -169,10 +170,15 @@ class MediaPipeSkeletonDetector:
             pixel_data_numpy_arrays=mediapipe_single_frame_npy_data,
         )
 
-    def process_session_folder(self, save_annotated_videos: bool = True):
-        synchronized_videos_path = Path(
-            get_synchronized_videos_folder_path(self._session_id)
-        )
+    def process_session_folder(
+        self,
+        synchronized_videos_path: Union[Path, str],
+        save_annotated_videos: bool = True,
+    ):
+
+        synchronized_videos_path = Path(synchronized_videos_path)
+        annotated_videos_path = synchronized_videos_path.parent / "annotated_videos"
+
         logger.info(f"loading synchronized videos from: {synchronized_videos_path}")
         each_video_frame_width_list = []
         each_video_frame_height_list = []
@@ -206,9 +212,7 @@ class MediaPipeSkeletonDetector:
 
                 frame_number += 1
                 if frame_number % 5 == 0:
-                    print(
-                        f"frame {frame_number} out of {APP_STATE.number_of_frames_in_the_mocap_videos}"
-                    )
+                    print(f"frame {frame_number}")
 
                 mediapipe2d_data_payload = self.detect_skeleton_in_image(
                     raw_image=image
@@ -229,6 +233,7 @@ class MediaPipeSkeletonDetector:
                     this_synchronized_video_file_path.stem,
                     this_video_width,
                     this_video_height,
+                    str(annotated_videos_path),
                 )
 
             this_camera_mediapipe_2d_single_camera_npy_arrays = (
@@ -275,11 +280,13 @@ class MediaPipeSkeletonDetector:
                 this_cam_num, :, :, :
             ] = all_cameras_data2d_list[this_cam_num]
 
-        self._save_mediapipe2d_data_to_npy(data2d_numCams_numFrames_numTrackedPts_XY)
-        return data2d_numCams_numFrames_numTrackedPts_XY
+        mediapipe_data_2d_npy_path = self._save_mediapipe2d_data_to_npy(
+            data2d_numCams_numFrames_numTrackedPts_XY
+        )
+        return str(mediapipe_data_2d_npy_path)
 
     def _save_mediapipe2d_data_to_npy(self, data2d_numCams_numFrames_numTrackedPts_XY):
-        output_data_folder = Path(get_session_output_data_folder_path(self._session_id))
+        output_data_folder = Path(get_output_data_folder_path(APP_STATE.session_id))
         mediapipe_2dData_save_path = (
             output_data_folder
             / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
@@ -289,12 +296,15 @@ class MediaPipeSkeletonDetector:
             str(mediapipe_2dData_save_path), data2d_numCams_numFrames_numTrackedPts_XY
         )
 
+        return mediapipe_2dData_save_path
+
     def save_annotated_videos(
         self,
         annotated_images_list: List[np.ndarray],
         video_file_name: str,
         image_width: Union[int, float],
         image_height: Union[int, float],
+        video_save_path: Union[Path, str],
     ):
 
         this_video_name = video_file_name + "_mediapipe.mp4"
@@ -303,16 +313,13 @@ class MediaPipeSkeletonDetector:
             this_video_name,
             image_width,
             image_height,
-            self._session_id,
+            session_id=APP_STATE.session_id,
             mediapipe_annotated_video_bool=True,
         )
 
         logger.info(f"Saving mediapipe annotated video: {this_video_name}")
         video_recorder.save_image_list_to_disk(
             annotated_images_list, frames_per_second=30
-        )
-        logger.info(
-            f"mediapipe annotated video saved to: {video_recorder.path_to_save_video_file}"
         )
 
     def _annotate_image(self, image, mediapipe_results):

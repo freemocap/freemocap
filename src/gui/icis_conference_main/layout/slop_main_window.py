@@ -139,7 +139,7 @@ class SlopMainWindow(QMainWindow):
     # # more top-level screens go here
     # # this will be refactored later
     # def _show_welcome_screen(self):
-    #     clearLayout(self._main_layout)
+    #     clear_layout(self._main_layout)
     #     screen = Welcome()
     #     self._main_layout.addWidget(screen)
     #     self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -150,7 +150,7 @@ class SlopMainWindow(QMainWindow):
         screen = NewRecordingSession()
         self._control_panel_layout.addWidget(screen)
         # self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        # screen.submit.clicked.connect(self._show_cam_config_screen)
+        # screen.submit_button.clicked.connect(self._show_cam_config_screen)
         screen.submit.clicked.connect(self._show_cam_config_screen)
 
     def _show_cam_config_screen(self):
@@ -165,7 +165,7 @@ class SlopMainWindow(QMainWindow):
             screen.config_accepted.clicked.connect(self._show_calibration_screen)
 
     # def _show_calibration_instructions_screen(self):
-    #     clearLayout(self._main_layout)
+    #     clear_layout(self._main_layout)
     #     screen = CalibrationInstructions()
     #     self._main_layout.addWidget(screen)
     #     self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)

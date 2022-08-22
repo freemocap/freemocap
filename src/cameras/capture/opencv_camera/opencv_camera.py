@@ -123,23 +123,6 @@ class OpenCVCamera:
 
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
 
-        if self.session_id is False:
-            logger.info(
-                f"No `session_id` specified for {self._name}, video_recorder will not be created (because we won't know where to save the videos)"
-            )
-            self._video_recorder = None
-        else:
-            image_height = image.shape[0]
-            image_width = image.shape[1]
-
-            self._video_recorder = VideoRecorder(
-                self._name,
-                image_width=image_width,
-                image_height=image_height,
-                session_id=self.session_id,
-                calibration_video_bool=self._calibration_video_bool,
-            )
-
         return success
 
     def start_frame_capture_thread(self):

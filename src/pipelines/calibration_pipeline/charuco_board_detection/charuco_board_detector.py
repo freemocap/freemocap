@@ -1,5 +1,5 @@
 import logging
-from typing import Dict
+from typing import Dict, List
 
 import cv2
 import numpy as np
@@ -33,7 +33,7 @@ class CharucoBoardDetector:
             self.charuco_board_data_class_object.number_of_charuco_corners
         )
 
-    def detect_charuco_board(
+    def detect_charuco_board_in_frame_payload(
         self, raw_frame_payload: FramePayload
     ) -> CharucoFramePayload:
 
@@ -77,7 +77,7 @@ class CharucoBoardDetector:
         termination_criteria_threshold = (
             cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
             100,
-            0.00001,
+            0.0001,
         )
 
         grayscale_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY)
@@ -137,9 +137,9 @@ class CharucoBoardDetector:
             image_height=image_height,
         )
 
-    def format_charuco2d_data(self, this_multi_frame_charuco_data) -> Dict:
+    def format_charuco2d_data(self, this_multi_frame_charuco_data_list: List) -> Dict:
 
-        number_of_tracked_points = this_multi_frame_charuco_data[
+        number_of_tracked_points = this_multi_frame_charuco_data_list[
             0
         ].charuco_view_data.charuco_board_object.number_of_charuco_corners
 
@@ -148,7 +148,7 @@ class CharucoBoardDetector:
             (number_of_tracked_points, 2)
         )
         base_charuco_data_npy_with_nans_for_missing_data_xy[:] = np.nan
-        for this_cam_data in this_multi_frame_charuco_data:
+        for this_cam_data in this_multi_frame_charuco_data_list:
             if this_cam_data.charuco_view_data.some_charuco_corners_found:
                 this_frame_charuco_data_xy = (
                     base_charuco_data_npy_with_nans_for_missing_data_xy.copy()

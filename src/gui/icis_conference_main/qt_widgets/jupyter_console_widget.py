@@ -76,7 +76,7 @@ class MainWindow(QtWidgets.QMainWindow):
         app.aboutToQuit.connect(self.jupyter_console_widget.shutdown_kernel)
 
         kernel = self.jupyter_console_widget.kernel_manager.kernel
-        kernel.shell.push(dict(np=np, pw=self.plot_widget))
+        kernel.shell.push_variables(dict(np=np, pw=self.plot_widget))
 
         # set dark mode
         if dark_mode:

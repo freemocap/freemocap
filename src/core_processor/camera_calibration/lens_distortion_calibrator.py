@@ -38,8 +38,10 @@ class LensDistortionCalibrator:
 
     def process_incoming_frame(self, raw_frame_payload: FramePayload):
 
-        charuco_frame_payload = self._board_detector.detect_charuco_board(
-            raw_frame_payload
+        charuco_frame_payload = (
+            self._board_detector.detect_charuco_board_in_frame_payload(
+                raw_frame_payload
+            )
         )
 
         charuco_view_data = charuco_frame_payload.charuco_view_data

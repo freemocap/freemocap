@@ -1,12 +1,19 @@
 from pathlib import Path
 from typing import Dict, Union
 
+import numpy as np
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.webcam_config import WebcamConfig
+from src.core_processes.capture_volume_calibration.charuco_default_values import (
+    default_charuco_square_size_mm,
+)
 from src.gui.main.custom_widgets.single_camera_widget import CameraWidget
+from src.gui.main.workers.anipose_calibration_thread_worker import (
+    AniposeCalibrationThreadWorker,
+)
 from src.gui.main.workers.cam_detection_thread_worker import CameraDetectionThreadWorker
 
 import logging
@@ -15,6 +22,9 @@ from src.gui.main.workers.mediapipe_2d_detection_thread_worker import (
     Mediapipe2dDetectionThreadWorker,
 )
 from src.gui.main.workers.save_to_video_thread_worker import SaveToVideoThreadWorker
+from src.gui.main.workers.triangulate_3d_data_thread_worker import (
+    Triangulate3dDataThreadWorker,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -83,14 +93,50 @@ class ThreadWorkerManager(QWidget):
             folder_to_save_videos=folder_to_save_videos,
         )
         self._save_to_video_thread_worker.start()
+        self._save_to_video_thread_worker.finished.connect(self._reset_video_recorders)
+
+    def _reset_video_recorders(self):
+        for camera_widget in self._camera_widgets:
+            camera_widget.reset_video_recorder()
+
+    def launch_anipose_calibration_thread_worker(
+        self,
+        calibration_videos_folder_path: Union[str, Path],
+        charuco_square_size_mm: float,
+    ):
+        self._anipose_calibration_worker = AniposeCalibrationThreadWorker(
+            calibration_videos_folder_path=calibration_videos_folder_path,
+            charuco_square_size_mm=charuco_square_size_mm,
+        )
+        self._anipose_calibration_worker.start()
+        self._anipose_calibration_worker.in_progress.connect(print)
 
     def launch_detect_2d_skeletons_thread_worker(
-        self, path_to_synchronized_videos: Union[str, Path]
+        self,
+        synchronized_videos_folder_path: Union[str, Path],
+        output_data_folder_path: Union[str, Path],
     ):
         logger.info("Launching mediapipe 2d skeleton thread worker...")
 
-        self._mediapip_2d_detection_thread_worker = Mediapipe2dDetectionThreadWorker(
-            path_to_folder_of_videos_to_process=path_to_synchronized_videos
+        self._mediapipe_2d_detection_thread_worker = Mediapipe2dDetectionThreadWorker(
+            path_to_folder_of_videos_to_process=synchronized_videos_folder_path,
+            output_data_folder_path=output_data_folder_path,
         )
 
-        self._mediapip_2d_detection_thread_worker.start()
+        self._mediapipe_2d_detection_thread_worker.start()
+
+    def launch_triangulate_3d_data_thread_worker(
+        self,
+        anipose_calibration_object,
+        mediapipe_2d_data: np.ndarray,
+        output_data_folder_path: Union[str, Path],
+    ):
+        logger.info("Launching mediapipe 2d skeleton thread worker...")
+
+        self._triangulate_3d_data_thread_worker = Triangulate3dDataThreadWorker(
+            anipose_calibration_object=anipose_calibration_object,
+            mediapipe_2d_data=mediapipe_2d_data,
+            output_data_folder_path=output_data_folder_path,
+        )
+
+        self._triangulate_3d_data_thread_worker.start()

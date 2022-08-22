@@ -7,7 +7,7 @@ from pyqtgraph.Qt import QtWidgets
 
 import cv2
 
-from src.core_processor.camera_calibration.calibration_dataclasses import (
+from src.core_processes.capture_volume_calibration.calibration_dataclasses import (
     CameraCalibrationData,
 )
 

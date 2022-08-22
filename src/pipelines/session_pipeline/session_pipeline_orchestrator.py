@@ -15,13 +15,13 @@ from src.config.home_dir import (
     get_most_recent_session_id,
     get_output_data_folder_path,
 )
-from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import (
+from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
     Mediapipe2dDataPayload,
 )
-from src.core_processor.show_cam_window import show_cam_window
-from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
-from src.core_processor.utils.image_fps_writer import write_fps_to_image
+from src.core_processes.show_cam_window import show_cam_window
+from src.core_processes.timestamp_manager.timestamp_manager import TimestampManager
+from src.core_processes.utils.image_fps_writer import write_fps_to_image
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
     CalibrationPipelineOrchestrator,
 )
@@ -640,23 +640,6 @@ def load_mediapipe3d_skeleton_data(session_id: str = None):
         data3d_numFrames_numTrackedPoints_XYZ=mediapipe3d_skeleton_nFrames_nTrajectories_xyz,
         data3d_numFrames_numTrackedPoint_reprojectionError=mediapipe3d_skeleton_nFrames_nTrajectories_reprojectionError,
     )
-
-
-def load_mediapipe2d_data(session_id: str = None):
-    if session_id is None:
-        session_id = get_most_recent_session_id()
-    output_data_folder = Path(get_output_data_folder_path(session_id))
-    mediapipe2d_xy_file_path = (
-        output_data_folder
-        / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
-    )
-    logger.info(f"loading: {mediapipe2d_xy_file_path}")
-    mediapipe2d_numCams_numFrames_numTrackedPoints_pixelXY = np.load(
-        mediapipe2d_xy_file_path
-    )
-    # TODO - create a dataclass for 2d mediapipe data, including things split up by body, hands,
-    #  and face (and maybe the raw `mediapipe results` data things if that's not too much data)
-    return mediapipe2d_numCams_numFrames_numTrackedPoints_pixelXY
 
 
 if __name__ == "__main__":

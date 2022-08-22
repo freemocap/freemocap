@@ -13,7 +13,7 @@ from src.config.webcam_config import WebcamConfig
 from src.cameras.capture.opencv_camera.camera_stream_thread_handler import (
     VideoCaptureThread,
 )
-from src.core_processor.timestamp_manager.timestamp_manager import TimestampLogger
+from src.core_processes.timestamp_manager.timestamp_manager import TimestampLogger
 
 logger = logging.getLogger(__name__)
 

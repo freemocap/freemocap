@@ -14,9 +14,9 @@ from src.config.home_dir import (
     get_output_data_folder_path,
     get_session_calibration_toml_file_path,
 )
-from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
-from src.core_processor.show_cam_window import show_cam_window
-from src.core_processor.utils.image_fps_writer import write_fps_to_image
+from src.core_processes.timestamp_manager.timestamp_manager import TimestampManager
+from src.core_processes.show_cam_window import show_cam_window
+from src.core_processes.utils.image_fps_writer import write_fps_to_image
 from src.pipelines.calibration_pipeline.anipose_camera_calibration import (
     freemocap_anipose,
 )

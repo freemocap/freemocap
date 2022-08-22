@@ -101,7 +101,7 @@ class ICISConferenceMainWindow(QMainWindow):
         self._main_layout.addWidget(screen)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         # screen.config_accepted.clicked.connect(self._show_calibration_instructions_screen)
-        if APP_STATE.use_previous_calibration:
+        if APP_STATE.use_previous_calibration_box_is_checked:
             screen.config_accepted.clicked.connect(self._show_record_videos_screen)
         else:
             screen.config_accepted.clicked.connect(self._show_calibration_screen)

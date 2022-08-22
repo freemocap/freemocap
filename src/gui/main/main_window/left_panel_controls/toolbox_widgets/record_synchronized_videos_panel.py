@@ -4,28 +4,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.home_dir import get_synchronized_videos_folder_path
-from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import (
-    MediaPipeSkeletonDetector,
-)
-from src.gui.main.app_state.app_state import APP_STATE
-from src.export_stuff.blender_stuff.open_session_in_blender import (
-    open_session_in_blender,
-)
-from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
-    CalibrationPipelineOrchestrator,
-)
-from src.pipelines.session_pipeline.session_pipeline_orchestrator import (
-    SessionPipelineOrchestrator,
-    load_mediapipe2d_data,
-)
-
 
 class RecordSynchronizedVideosPanel(QWidget):
     def __init__(self):
         super().__init__()
-        # TODO: Take it in from init
-        self._selected_cams = APP_STATE.selected_cameras
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)

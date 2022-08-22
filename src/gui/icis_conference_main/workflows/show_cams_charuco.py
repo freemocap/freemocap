@@ -87,7 +87,7 @@ class ShowCamsCharuco(QWidget):
         self._continue_button.setEnabled(
             self._use_previous_calibration_checkbox.isChecked()
         )
-        APP_STATE.use_previous_calibration = (
+        APP_STATE.use_previous_calibration_box_is_checked = (
             self._use_previous_calibration_checkbox.isChecked()
         )
 

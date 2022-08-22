@@ -17,7 +17,7 @@ from src.config.home_dir import (
     get_most_recent_session_id,
     create_session_folder,
 )
-from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import (
+from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (

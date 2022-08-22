@@ -72,6 +72,6 @@ class NewRecordingSession(QWidget):
         APP_STATE.session_id = self._session_input.text()
 
     def _use_previous_calibration_changed(self):
-        APP_STATE.use_previous_calibration = (
+        APP_STATE.use_previous_calibration_box_is_checked = (
             self._use_previous_calibration_checkbox.isChecked()
         )

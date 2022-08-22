@@ -68,6 +68,9 @@ class CameraWidget(QWidget):
     def stop_saving_frames(self):
         self._worker.stop_saving_frames()
 
+    def reset_video_recorder(self):
+        self._worker.reset_video_recorder()
+
     def start(self):
         self._worker.start()
         self.started.emit()

@@ -2,21 +2,10 @@ import numpy as np
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton
 
-from src.config.home_dir import get_synchronized_videos_folder_path
-from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import (
-    MediaPipeSkeletonDetector,
-)
 from src.export_stuff.blender_stuff.open_session_in_blender import (
     open_session_in_blender,
 )
 from src.gui.main.app_state.app_state import APP_STATE
-from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
-    CalibrationPipelineOrchestrator,
-)
-from src.pipelines.session_pipeline.session_pipeline_orchestrator import (
-    SessionPipelineOrchestrator,
-    load_mediapipe2d_data,
-)
 
 
 class ProcessSessionDataPanel(QWidget):
@@ -42,63 +31,61 @@ class ProcessSessionDataPanel(QWidget):
         self._detect_2d_skeletons_button.setEnabled(True)
         processing_buttons_layout.addWidget(self._detect_2d_skeletons_button)
 
-        self._reconstruct_3d_skeletons_button = QPushButton("Reconstruct 3d Skeletons")
-        self._reconstruct_3d_skeletons_button.setEnabled(False)
-        self._reconstruct_3d_skeletons_button.clicked.connect(
-            self._reconstruct_3d_skeletons
-        )
-        processing_buttons_layout.addWidget(self._reconstruct_3d_skeletons_button)
+        self._triangulate_3d_data_button = QPushButton("Triangulate 3d Data")
+        self._triangulate_3d_data_button.setEnabled(True)
+        processing_buttons_layout.addWidget(self._triangulate_3d_data_button)
 
-        self._visualize_freemocap_session_button = QPushButton(
-            "Visualize Freemocap Session"
-        )
-        self._visualize_freemocap_session_button.setEnabled(False)
-        self._visualize_freemocap_session_button.clicked.connect(
-            self._visualize_freemocap_session
-        )
-        processing_buttons_layout.addWidget(self._visualize_freemocap_session_button)
+        # self._visualize_freemocap_session_button = QPushButton(
+        #     "Visualize Freemocap Session"
+        # )
+        # self._visualize_freemocap_session_button.setEnabled(True)
+        # self._visualize_freemocap_session_button.clicked.connect(
+        #     self._visualize_freemocap_session
+        # )
+        # processing_buttons_layout.addWidget(self._visualize_freemocap_session_button)
 
         self._open_in_blender_button = QPushButton("Open Session in Blender")
-        self._open_in_blender_button.clicked.connect(
-            self._create_blender_scene_from_session_data
-        )
-        self._open_in_blender_button.setEnabled(False)
+        self._open_in_blender_button.setEnabled(True)
         processing_buttons_layout.addWidget(self._open_in_blender_button)
 
     @property
     def detect_2d_skeletons_button(self):
         return self._detect_2d_skeletons_button
 
-    # def _process_all(self):
-    #     self._detect_2d_skeletons()
-    #     self._reconstruct_3d_skeletons()
-    #     self._create_blender_scene_from_session_data()
+    @property
+    def triangulate_3d_data_button(self):
+        return self._triangulate_3d_data_button
+
+    @property
+    def open_in_blender_button(self):
+        return self._open_in_blender_button
 
     def _reconstruct_3d_skeletons(self):
-        print(f"Reconstruct 3D Skeletons : {APP_STATE.session_id}")
-        session_orchestrator = SessionPipelineOrchestrator(
-            session_id=APP_STATE.session_id
-        )
+        pass
 
-        if APP_STATE.use_previous_calibration:
-            session_orchestrator.anipose_camera_calibration_object = (
-                CalibrationPipelineOrchestrator().load_most_recent_calibration()
-            )
-        else:
-            session_orchestrator.anipose_camera_calibration_object = (
-                CalibrationPipelineOrchestrator().load_calibration_from_session_id(
-                    APP_STATE.session_id
-                )
-            )
-
-        session_orchestrator.mediapipe2d_numCams_numFrames_numTrackedPoints_XY = (
-            load_mediapipe2d_data(APP_STATE.session_id)
-        )
-        path_to_3d_data_npy = session_orchestrator.reconstruct3d_from_2d_data_offline()
-
-        self.data_3d_done_signal.emit(path_to_3d_data_npy)
-
-        self._open_in_blender_button.setEnabled(True)
+    #     session_orchestrator = SessionPipelineOrchestrator(
+    #         session_id=APP_STATE.session_id
+    #     )
+    #
+    #     if APP_STATE.use_previous_calibration:
+    #         session_orchestrator.anipose_camera_calibration_object = (
+    #             CalibrationPipelineOrchestrator().load_most_recent_anipose_calibration_toml()
+    #         )
+    #     else:
+    #         session_orchestrator.anipose_camera_calibration_object = (
+    #             CalibrationPipelineOrchestrator().load_calibration_from_session_id(
+    #                 APP_STATE.session_id
+    #             )
+    #         )
+    #
+    #     session_orchestrator.mediapipe2d_numCams_numFrames_numTrackedPoints_XY = (
+    #         load_mediapipe2d_data(APP_STATE.session_id)
+    #     )
+    #     path_to_3d_data_npy = session_orchestrator.reconstruct3d_from_2d_data_offline()
+    #
+    #     self.data_3d_done_signal.emit(path_to_3d_data_npy)
+    #
+    #     self._open_in_blender_button.setEnabled(True)
 
     def _visualize_freemocap_session(self):
         pass
@@ -115,7 +102,3 @@ class ProcessSessionDataPanel(QWidget):
         # get_qt_app().quit()
         # visualize_skeleton_dialog.exec()
         # visualize_skeleton_dialog.start_animation()
-
-    def _create_blender_scene_from_session_data(self):
-        print(f"Open in Blender : {APP_STATE.session_id}")
-        open_session_in_blender(APP_STATE.session_id)

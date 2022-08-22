@@ -1,13 +1,23 @@
 import numpy as np
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 
-from src.cameras.save_synchronized_videos import save_synchronized_videos
 from src.config.home_dir import (
     get_calibration_videos_folder_path,
     get_synchronized_videos_folder_path,
     get_session_folder_path,
+    get_session_calibration_toml_file_path,
+    get_output_data_folder_path,
 )
-from src.gui.main.app_state.app_state import APP_STATE
+from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
+    load_most_recent_anipose_calibration_toml,
+    load_calibration_from_session_id,
+)
+from src.core_processes.mediapipe_2d_skeleton_detector.load_mediapipe2d_data import (
+    load_mediapipe2d_data,
+)
+from src.export_stuff.blender_stuff.open_session_in_blender import (
+    open_session_in_blender,
+)
 from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
 from src.gui.main.main_window.right_side_panel.right_side_panel import (
     RightSidePanel,
@@ -97,6 +107,10 @@ class MainWindow(QMainWindow):
             )
         )
 
+        self._control_panel.calibrate_capture_volume_panel.calibrate_capture_volume_from_videos_button.clicked.connect(
+            self._setup_and_launch_anipose_calibration_thread_worker
+        )
+
         # RecordVideos panel
         self._control_panel.record_synchronized_videos_panel.start_recording_button.clicked.connect(
             lambda: self._start_recording_videos(
@@ -112,9 +126,15 @@ class MainWindow(QMainWindow):
 
         # ProcessVideos panel
         self._control_panel.process_session_data_panel.detect_2d_skeletons_button.clicked.connect(
-            lambda: self._thread_worker_manager.launch_detect_2d_skeletons_thread_worker(
-                get_synchronized_videos_folder_path(APP_STATE.session_id)
-            )
+            self._setup_and_launch_mediapipe_2d_detection_thread_worker
+        )
+
+        self._control_panel.process_session_data_panel.triangulate_3d_data_button.clicked.connect(
+            self._setup_and_launch_triangulate_3d_thread_worker
+        )
+
+        self._control_panel.process_session_data_panel.open_in_blender_button.clicked.connect(
+            self._launch_blender_export_subprocess
         )
 
     def _connect_signals_to_stuff(self):
@@ -133,10 +153,11 @@ class MainWindow(QMainWindow):
         )
 
     def _start_new_session(self):
-        APP_STATE.session_id = (
+        self._session_id = (
             self._control_panel._create_or_load_new_session_panel.session_id_input_string
         )
-        session_path = get_session_folder_path(APP_STATE.session_id, create_folder=True)
+
+        session_path = get_session_folder_path(self._session_id, create_folder=True)
         self._right_side_panel.file_system_view_widget.set_session_path_as_root(
             session_path
         )
@@ -154,14 +175,54 @@ class MainWindow(QMainWindow):
         self._thread_worker_manager.stop_recording_videos()
 
         if calibration_videos:
-            path_to_save_videos = get_calibration_videos_folder_path(
-                APP_STATE.session_id
-            )
+            path_to_save_videos = get_calibration_videos_folder_path(self._session_id)
         else:
-            path_to_save_videos = get_synchronized_videos_folder_path(
-                APP_STATE.session_id
-            )
+            path_to_save_videos = get_synchronized_videos_folder_path(self._session_id)
 
         self._thread_worker_manager.launch_save_videos_thread_worker(
             path_to_save_videos
         )
+
+    def _setup_and_launch_anipose_calibration_thread_worker(self):
+        calibration_videos_folder_path = get_calibration_videos_folder_path(
+            self._session_id
+        )
+        self._thread_worker_manager.launch_anipose_calibration_thread_worker(
+            calibration_videos_folder_path=calibration_videos_folder_path,
+            charuco_square_size_mm=float(
+                self._control_panel.calibrate_capture_volume_panel.charuco_square_size
+            ),
+        )
+
+    def _setup_and_launch_mediapipe_2d_detection_thread_worker(self):
+        synchronized_videos_folder_path = get_synchronized_videos_folder_path(
+            self._session_id
+        )
+        output_data_folder_path = get_output_data_folder_path(self._session_id)
+        self._thread_worker_manager.launch_detect_2d_skeletons_thread_worker(
+            synchronized_videos_folder_path=synchronized_videos_folder_path,
+            output_data_folder_path=output_data_folder_path,
+        )
+
+    def _setup_and_launch_triangulate_3d_thread_worker(self):
+        if (
+            self._control_panel.calibrate_capture_volume_panel.use_previous_calibration_box_is_checked
+        ):
+            anipose_calibration_object = load_most_recent_anipose_calibration_toml()
+        else:
+            anipose_calibration_object = load_calibration_from_session_id(
+                get_session_calibration_toml_file_path(self._session_id)
+            )
+
+        output_data_folder_path = get_output_data_folder_path(self._session_id)
+        mediapipe_2d_data = load_mediapipe2d_data(output_data_folder_path)
+
+        self._thread_worker_manager.launch_triangulate_3d_data_thread_worker(
+            anipose_calibration_object=anipose_calibration_object,
+            mediapipe_2d_data=mediapipe_2d_data,
+            output_data_folder_path=output_data_folder_path,
+        )
+
+    def _launch_blender_export_subprocess(self):
+        print(f"Open in Blender : {self._session_id}")
+        open_session_in_blender(self._session_id)

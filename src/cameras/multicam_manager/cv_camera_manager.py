@@ -12,7 +12,7 @@ from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.cameras.detection.cam_singleton import get_or_create_cams
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.webcam_config import WebcamConfig
-from src.core_processor.timestamp_manager.timestamp_manager import (
+from src.core_processes.timestamp_manager.timestamp_manager import (
     TimestampManager,
     TimestampLogger,
 )

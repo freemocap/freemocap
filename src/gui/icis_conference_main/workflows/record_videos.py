@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.cameras.save_synchronized_videos import save_synchronized_videos
-from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import (
+from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
 from src.gui.icis_conference_main.state.app_state import APP_STATE
@@ -148,7 +148,7 @@ class RecordVideos(QWidget):
             session_id=APP_STATE.session_id
         )
 
-        if APP_STATE.use_previous_calibration:
+        if APP_STATE.use_previous_calibration_box_is_checked:
             session_orchestrator.anipose_camera_calibration_object = (
                 CalibrationPipelineOrchestrator().load_most_recent_calibration()
             )

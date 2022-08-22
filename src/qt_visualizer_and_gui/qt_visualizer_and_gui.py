@@ -11,7 +11,7 @@ from pyqtgraph.dockarea.DockArea import DockArea
 from pyqtgraph.Qt import QtWidgets
 from mediapipe.python.solutions import holistic as mp_holistic
 
-from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
+from src.core_processes.timestamp_manager.timestamp_manager import TimestampManager
 from src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import (
     Data3dMultiFramePayload,
 )

@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 BASE_FOLDER_NAME = "freemocap_data"
 MOST_RECENT_SESSION_ID_FILENAME = "most_recent_session_id.toml"
+CAMERA_CALIBRATION_FILE_NAME = "camera_calibration_data.toml"
 
 
 def create_default_session_id(string_tag: str = None):
@@ -105,8 +106,7 @@ def get_output_data_folder_path(session_id: str, create_folder: bool = True):
 
 
 def get_session_calibration_toml_file_path(session_id: str) -> str:
-    calibration_file_name = f"{session_id}_camera_calibration.toml"
     calibration_file_path = (
-        Path(get_session_folder_path(session_id)) / calibration_file_name
+        Path(get_session_folder_path(session_id)) / CAMERA_CALIBRATION_FILE_NAME
     )
     return str(calibration_file_path)

@@ -44,6 +44,9 @@ class CamCharucoFrameThreadWorker(QThread):
     def stop_saving_frames(self):
         self._should_save_frames = False
 
+    def reset_video_recorder(self):
+        self._video_recorder = VideoRecorder()
+
     def run(self):
 
         open_cv_camera = OpenCVCamera(self._webcam_config)

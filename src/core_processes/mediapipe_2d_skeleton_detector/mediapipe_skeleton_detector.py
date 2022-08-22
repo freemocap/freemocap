@@ -14,7 +14,7 @@ from src.config.home_dir import (
     get_synchronized_videos_folder_path,
     get_output_data_folder_path,
 )
-from src.core_processor.mediapipe_skeleton_detector.medaipipe_tracked_points_names_dict import (
+from src.core_processes.mediapipe_2d_skeleton_detector.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
 )
 
@@ -168,6 +168,7 @@ class MediaPipeSkeletonDetector:
     def process_folder_full_of_videos(
         self,
         path_to_folder_of_videos_to_process: Union[Path, str],
+        output_data_folder_path: Union[str, Path],
         save_annotated_videos: bool = True,
     ):
 
@@ -286,14 +287,18 @@ class MediaPipeSkeletonDetector:
             ] = all_cameras_data2d_list[this_cam_num]
 
         mediapipe_data_2d_npy_path = self._save_mediapipe2d_data_to_npy(
-            data2d_numCams_numFrames_numTrackedPts_XY
+            data2d_numCams_numFrames_numTrackedPts_XY=data2d_numCams_numFrames_numTrackedPts_XY,
+            output_data_folder_path=Path(output_data_folder_path),
         )
         return str(mediapipe_data_2d_npy_path)
 
-    def _save_mediapipe2d_data_to_npy(self, data2d_numCams_numFrames_numTrackedPts_XY):
-        output_data_folder = Path(get_output_data_folder_path(APP_STATE.session_id))
+    def _save_mediapipe2d_data_to_npy(
+        self,
+        data2d_numCams_numFrames_numTrackedPts_XY: np.ndarray,
+        output_data_folder_path: Union[str, Path],
+    ):
         mediapipe_2dData_save_path = (
-            output_data_folder
+            Path(output_data_folder_path)
             / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
         )
         logger.info(f"saving: {mediapipe_2dData_save_path}")

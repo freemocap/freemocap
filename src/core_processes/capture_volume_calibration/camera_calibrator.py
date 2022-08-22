@@ -4,7 +4,7 @@ import cv2
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
-from src.core_processor.camera_calibration.calibration_dataclasses import (
+from src.core_processes.capture_volume_calibration.calibration_dataclasses import (
     CameraCalibrationData,
 )
 from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import (

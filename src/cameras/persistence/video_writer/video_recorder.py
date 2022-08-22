@@ -72,7 +72,6 @@ class VideoRecorder:
         list_of_frames: List[FramePayload],
         path_to_save_video_file: Union[str, Path],
         frames_per_second: float = None,
-        calibration_videos: bool = False,
     ):
         # if list_of_frames is None:
         #     list_of_frames = self._frame_payload_list

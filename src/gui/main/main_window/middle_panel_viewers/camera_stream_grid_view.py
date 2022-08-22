@@ -8,7 +8,7 @@ from src.cameras.detection.models import FoundCamerasResponse
 from src.cameras.save_synchronized_videos import save_synchronized_videos
 from src.config.webcam_config import WebcamConfig
 from src.gui.main.app_state.app_state import APP_STATE
-from src.gui.main.custom_widgets.single_camera_widget import SingleCameraWidget
+from src.gui.main.custom_widgets.single_camera_widget import CameraWidget
 from src.gui.main.qt_utils.clear_layout import clear_layout
 
 import logging
@@ -30,22 +30,12 @@ class CameraStreamGridView(QWidget):
     def video_recorders(self):
         return [cam.video_recorder for cam in self._camera_widgets]
 
-    def connect_to_camera_streams(
-        self, dictionary_of_webcam_configs=Dict[str, WebcamConfig]
+    def show_camera_streams(
+        self, dictionary_of_single_camera_layouts=(Dict[str, QVBoxLayout])
     ):
         clear_layout(self._camera_stream_layout)
-        for webcam_config in dictionary_of_webcam_configs.values():
-            single_cam_widget = SingleCameraWidget(webcam_config)
-            single_cam_widget.capture()
-            single_camera_layout = QVBoxLayout()
-            single_camera_layout.addWidget(
-                QLabel(f"Camera {str(webcam_config.webcam_id)}")
-            )
-            single_camera_layout.addWidget(single_cam_widget)
+        for single_camera_layout in dictionary_of_single_camera_layouts.values():
             self._camera_stream_layout.addLayout(single_camera_layout)
-            self._camera_widgets.append(single_cam_widget)
-
-        self.cameras_connected_signal.emit()
 
     def close_all_camera_streams(self):
         for camera_widget in self._camera_widgets:

@@ -8,7 +8,6 @@ from typing import List, Union
 import cv2
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
-from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.cameras.viewer.cv_cam_viewer import CvCamViewer
 from src.config.webcam_config import WebcamConfig
 from src.cameras.capture.opencv_camera.camera_stream_thread_handler import (
@@ -33,7 +32,6 @@ class OpenCVCamera:
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
-        self._video_recorder: VideoRecorder = None
         self._running_thread: VideoCaptureThread = None
         self._new_frame_ready = False
         self._number_of_frames_recorded = 0

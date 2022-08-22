@@ -31,7 +31,7 @@ def construct_worker(worker_type: WorkerType):
     raise Exception("What?")
 
 
-class SingleCameraWidget(QWidget):
+class CameraWidget(QWidget):
     started = pyqtSignal()
 
     def __init__(self, webcam_config: WebcamConfig):
@@ -76,7 +76,7 @@ class SingleCameraWidget(QWidget):
 
     def _init_frame_worker(self):
         worker = construct_worker(WorkerType.CHARUCO)(self._webcam_config)
-        worker.ImageUpdate.connect(self._handle_image_update)
+        worker.image_updated_signal.connect(self._handle_image_update)
         return worker
 
     def _create_preview_worker(self):

@@ -18,7 +18,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class MiddlePanel(QWidget):
+class CameraViewPanel(QWidget):
     def __init__(self):
         super().__init__()
         self._frame = QFrame()
@@ -57,3 +57,9 @@ class MiddlePanel(QWidget):
 
     def reconnect_to_cameras(self):
         self._camera_stream_grid_view.close_and_reconnect_to_cameras()
+
+    def show_camera_streams(self, dictionary_of_single_camera_layouts):
+        self._camera_stream_grid_view.show_camera_streams(
+            dictionary_of_single_camera_layouts
+        )
+        self._show_camera_stream_grid_view()

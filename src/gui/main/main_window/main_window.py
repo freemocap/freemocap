@@ -11,8 +11,8 @@ from src.gui.main.main_window.left_panel_controls.control_panel import ControlPa
 from src.gui.main.main_window.right_side_panel.right_side_panel import (
     RightSidePanel,
 )
-from src.gui.main.main_window.middle_panel_viewers.middle_panel import (
-    MiddlePanel,
+from src.gui.main.main_window.middle_panel_viewers.camera_view_panel import (
+    CameraViewPanel,
 )
 
 import logging
@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
         return panel
 
     def _create_cameras_view_panel(self):
-        panel = MiddlePanel()
+        panel = CameraViewPanel()
         panel.frame.setFixedWidth(self._main_window_width * 0.4)
         panel.frame.setFixedHeight(self._main_window_height)
         return panel
@@ -132,10 +132,10 @@ class MainWindow(QMainWindow):
         logger.info("Connecting signals to stuff")
 
         self._control_panel.camera_setup_control_panel.camera_parameters_updated_signal.connect(
-            self._camera_view_panel.camera_stream_grid_view.connect_to_camera_streams
+            self._thread_worker_manager.create_camera_widgets_with_running_threads
         )
 
-        self._thread_worker_manager.camera_detection_thread_worker.finished.connect(
+        self._thread_worker_manager.camera_detection_finished.connect(
             self._control_panel.handle_found_camera_response
         )
 
@@ -143,9 +143,13 @@ class MainWindow(QMainWindow):
         self._control_panel.process_session_data_panel.data_2d_done_signal.connect(
             self._load_2d_data_into_jupyter_console
         )
-        # when 3d data is caluclated, load it into the jupyter console namespace
+        # when 3d data is calculated, load it into the jupyter console namespace
         self._control_panel.process_session_data_panel.data_3d_done_signal.connect(
             self._load_3d_data_into_jupyter_console
+        )
+
+        self._thread_worker_manager.cameras_connected_signal.connect(
+            self._camera_view_panel.show_camera_streams
         )
 
     def _apply_webcam_configs_and_reconnect(self):

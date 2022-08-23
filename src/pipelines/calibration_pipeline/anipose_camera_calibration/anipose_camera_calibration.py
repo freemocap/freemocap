@@ -3,13 +3,9 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-from cv2 import aruco_CharucoBoard
-from scipy.spatial.transform import Rotation
 
 from src.config.home_dir import (
-    get_session_folder_path,
     get_freemocap_data_folder_path,
-    get_calibration_videos_folder_path,
 )
 from src.pipelines.calibration_pipeline.anipose_camera_calibration import (
     freemocap_anipose,
@@ -26,12 +22,11 @@ logger = logging.getLogger(__name__)
 class AniposeCameraCalibrator:
     def __init__(
         self,
-        session_id: str,
         charuco_board_object: CharucoBoardDataClass,
-        charuco_square_size: Union[int, float] = 1,
+        charuco_square_size: Union[int, float],
+        calibration_videos_folder_path: Union[str, Path],
     ):
 
-        self._session_id = session_id
         self._charuco_board_object = charuco_board_object
 
         if charuco_square_size == 1:
@@ -39,27 +34,28 @@ class AniposeCameraCalibrator:
                 "Charuco square size is not set, so units of 3d reconstructed data will be in units of `however_long_the_black_edge_of_the_charuco_square_was`. Please input `charuco_square_size` in millimeters (or your preferred unity of length)"
             )
         self._charuco_square_size = charuco_square_size
-        self.get_paths_and_whatnot()
-        self.initialize_anipose_objects()
+        self._calibration_videos_folder_path = calibration_videos_folder_path
+        self._session_folder_path = Path(self._calibration_videos_folder_path).parent
+        self._get_video_paths()
+        self._initialize_anipose_objects()
 
-    def get_paths_and_whatnot(self):
-        self.session_folder_path = Path(get_session_folder_path(self._session_id))
-        calibration_videos_folder = Path(
-            get_calibration_videos_folder_path(self._session_id)
-        )
+    def _get_video_paths(
+        self,
+    ):
         self._list_of_video_paths = [
             this_video_path
-            for this_video_path in calibration_videos_folder.glob("*.mp4".lower())
+            for this_video_path in Path(self._calibration_videos_folder_path).glob(
+                "*.mp4".lower()
+            )
         ]
 
-    def initialize_anipose_objects(self):
+    def _initialize_anipose_objects(self):
         list_of_camera_names = [
             this_video_path.stem for this_video_path in self._list_of_video_paths
         ]
         self._anipose_camera_group_object = freemocap_anipose.CameraGroup.from_names(
             list_of_camera_names
         )
-        self._anipose_camera_group_object.metadata["session_id"] = self._session_id
         self._anipose_camera_group_object.metadata[
             "charuco_square_size"
         ] = self._charuco_square_size
@@ -100,9 +96,9 @@ class AniposeCameraCalibrator:
             # self._anipose_camera_group_object = self.rotate_cameras_so_camera_zero_aligns_with_XYZ(self._anipose_camera_group_object)
 
         # save calibration info to files
-        calibration_toml_filename = f"{self._session_id}_camera_calibration.toml"
+        calibration_toml_filename = f"camera_calibration_data.toml"
         camera_calibration_toml_path = (
-            self.session_folder_path / calibration_toml_filename
+            self._session_folder_path / calibration_toml_filename
         )
 
         self._anipose_camera_group_object.dump(camera_calibration_toml_path)
@@ -166,7 +162,3 @@ class AniposeCameraCalibrator:
         #                                original_translation_vectors]
         # _anipose_camera_group_object.set_rotations(rotated_translation_vectors)
         # return _anipose_camera_group_object
-
-
-if __name__ == "__main__":
-    pass

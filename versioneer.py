@@ -92,7 +92,7 @@ See [INSTALL.md](./INSTALL.md) for detailed installation instructions.
 ## Version-String Flavors
 
 Code which uses Versioneer can learn about its version string at runtime by
-importing `_version` from your main `__init__.py` file and running the
+importing `_version` from your icis_conference_main `__init__.py` file and running the
 `get_versions()` function. From the "outside" (e.g. in `setup.py`), you can
 import the top-level `versioneer.py` and run `get_versions()`.
 
@@ -178,7 +178,7 @@ two common reasons why `setup.py` might not be in the root:
   "master" and "slave" subprojects, each with their own `setup.py`,
   `setup.cfg`, and `tox.ini`. Projects like these produce multiple PyPI
   distributions (and upload multiple independently-installable tarballs).
-* Source trees whose main purpose is to contain a C library, but which also
+* Source trees whose icis_conference_main purpose is to contain a C library, but which also
   provide bindings to Python (and perhaps other langauges) in subdirectories.
 
 Versioneer will look for `.git` in parent directories, and most operations
@@ -1529,9 +1529,9 @@ def get_cmdclass():
     if "versioneer" in sys.modules:
         del sys.modules["versioneer"]
         # this fixes the "python setup.py develop" case (also 'install' and
-        # 'easy_install .'), in which subdependencies of the main project are
+        # 'easy_install .'), in which subdependencies of the icis_conference_main project are
         # built (using setup.py bdist_egg) in the same python process. Assume
-        # a main project A and a dependency B, which use different versions
+        # a icis_conference_main project A and a dependency B, which use different versions
         # of Versioneer. A's setup.py imports A's Versioneer, leaving it in
         # sys.modules by the time B's setup.py is executed, causing B to run
         # with the wrong versioneer. Setuptools wraps the sub-dep builds in a

@@ -11,17 +11,17 @@ from src.cameras.persistence.video_writer.save_options_dataclass import SaveOpti
 from src.config.data_paths import freemocap_data_path
 from src.config.home_dir import (
     create_session_folder,
-    create_session_id,
+    create_default_session_id,
     get_most_recent_session_id,
-    get_session_output_data_folder_path,
+    get_output_data_folder_path,
 )
-from src.core_processor.mediapipe_skeleton_detector.mediapipe_skeleton_detector import (
+from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
     Mediapipe2dDataPayload,
 )
-from src.core_processor.show_cam_window import show_cam_window
-from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
-from src.core_processor.utils.image_fps_writer import write_fps_to_image
+from src.core_processes.show_cam_window import show_cam_window
+from src.core_processes.timestamp_manager.timestamp_manager import TimestampManager
+from src.core_processes.utils.image_fps_writer import write_fps_to_image
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
     CalibrationPipelineOrchestrator,
 )
@@ -51,7 +51,7 @@ class SessionPipelineOrchestrator:
         if session_id is not None:
             self._session_id = session_id
         else:
-            self._session_id = create_session_id()
+            self._session_id = create_default_session_id()
 
         self._expected_framerate = expected_framerate
 
@@ -259,10 +259,8 @@ class SessionPipelineOrchestrator:
 
                         if detect_charuco:
                             # detect charuco board
-                            this_charuco_frame_payload = (
-                                self._charuco_board_detector.detect_charuco_board(
-                                    this_cam_latest_frame
-                                )
+                            this_charuco_frame_payload = self._charuco_board_detector.detect_charuco_board_in_frame_payload(
+                                this_cam_latest_frame
                             )
                             image_to_display = (
                                 this_charuco_frame_payload.annotated_image
@@ -566,7 +564,7 @@ class SessionPipelineOrchestrator:
             )
         )
 
-        self._save_mediapipe3d_data_to_npy(
+        path_to_3d_data_npy = self._save_mediapipe3d_data_to_npy(
             data3d_numFrames_numTrackedPoints_XYZ,
             data3d_numFrames_numTrackedPoints_reprojectionError,
         )
@@ -576,12 +574,14 @@ class SessionPipelineOrchestrator:
             data3d_numFrames_numTrackedPoint_reprojectionError=data3d_numFrames_numTrackedPoints_reprojectionError,
         )
 
+        return path_to_3d_data_npy
+
     def _save_mediapipe3d_data_to_npy(
         self,
         data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
         data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
     ):
-        output_data_folder = Path(get_session_output_data_folder_path(self._session_id))
+        output_data_folder = Path(get_output_data_folder_path(self._session_id))
 
         # save spatial XYZ data
         self._mediapipe_3dData_save_path = (
@@ -604,6 +604,8 @@ class SessionPipelineOrchestrator:
             data3d_numFrames_numTrackedPoints_reprojectionError,
         )
 
+        return str(self._mediapipe_3dData_save_path)
+
     def _threshold_2d_data_by_confidence(
         self,
         mediapipe2d_data_payload: Mediapipe2dDataPayload,
@@ -615,7 +617,7 @@ class SessionPipelineOrchestrator:
 def load_mediapipe3d_skeleton_data(session_id: str = None):
     if session_id is None:
         session_id = get_most_recent_session_id()
-    output_data_folder = Path(get_session_output_data_folder_path(session_id))
+    output_data_folder = Path(get_output_data_folder_path(session_id))
     mediapipe3d_xyz_file_path = (
         output_data_folder
         / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
@@ -638,23 +640,6 @@ def load_mediapipe3d_skeleton_data(session_id: str = None):
         data3d_numFrames_numTrackedPoints_XYZ=mediapipe3d_skeleton_nFrames_nTrajectories_xyz,
         data3d_numFrames_numTrackedPoint_reprojectionError=mediapipe3d_skeleton_nFrames_nTrajectories_reprojectionError,
     )
-
-
-def load_mediapipe2d_data(session_id: str = None):
-    if session_id is None:
-        session_id = get_most_recent_session_id()
-    output_data_folder = Path(get_session_output_data_folder_path(session_id))
-    mediapipe2d_xy_file_path = (
-        output_data_folder
-        / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
-    )
-    logger.info(f"loading: {mediapipe2d_xy_file_path}")
-    mediapipe2d_numCams_numFrames_numTrackedPoints_pixelXY = np.load(
-        mediapipe2d_xy_file_path
-    )
-    # TODO - create a dataclass for 2d mediapipe data, including things split up by body, hands,
-    #  and face (and maybe the raw `mediapipe results` data things if that's not too much data)
-    return mediapipe2d_numCams_numFrames_numTrackedPoints_pixelXY
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ name: ci
 on:
   push:
     branches:
-      - main
+      - icis_conference_main
 jobs:
   deploy:
     runs-on: ubuntu-latest

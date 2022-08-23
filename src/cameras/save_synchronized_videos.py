@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import List, Union, Dict
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
@@ -100,6 +99,8 @@ def save_synchronized_videos(
             path_to_save_video_file=Path(folder_to_save_videos)
             / f"Camera_{str(camera_id).zfill(3)}.mp4",
         )
+
+    # create_timestamp_diagnostic_plots(final_frame_timestamps) #breadcrumbs for a future function to generate timestamp diagnostic plots
 
 
 def get_nearest_frame(frame_list, reference_frame) -> FramePayload:

@@ -14,10 +14,10 @@ export function supported() {
 //         // `${mimeType};codecs:${codec.toUpperCase()}`
 //       ].forEach(variation => {
 //         if(isSupported(variation))
-//             supported.push(variation);
+//             supported.push_variables(variation);
 //     }));
 //     if (isSupported(mimeType))
-//       supported.push(mimeType);
+//       supported.push_variables(mimeType);
 //   });
 //   return supported;
 // };

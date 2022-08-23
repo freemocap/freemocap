@@ -8,45 +8,35 @@ from typing import List, Union
 import cv2
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
-from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.cameras.viewer.cv_cam_viewer import CvCamViewer
 from src.config.webcam_config import WebcamConfig
 from src.cameras.capture.opencv_camera.camera_stream_thread_handler import (
     VideoCaptureThread,
 )
-from src.core_processor.timestamp_manager.timestamp_manager import TimestampLogger
+from src.core_processes.timestamp_manager.timestamp_manager import TimestampLogger
 
 logger = logging.getLogger(__name__)
 
 
 class OpenCVCamera:
     """
-    Performant implementation of video capture against webcams
+    Performant implementation of video start against webcams
     """
 
     def __init__(
         self,
         config: WebcamConfig,
-        session_id: str = None,
         session_start_time_perf_counter_ns: int = 0,
         calibration_video_bool: bool = False,
     ):
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
-        self._video_recorder: VideoRecorder = None
         self._running_thread: VideoCaptureThread = None
         self._new_frame_ready = False
         self._number_of_frames_recorded = 0
         self._calibration_video_bool = calibration_video_bool
-        self._session_id = session_id
         self._session_start_time_perf_counter_ns = session_start_time_perf_counter_ns
-
-    @property
-    def session_id(self):
-        if self._session_id is None:
-            return False
-        return self._session_id
 
     @property
     def new_frame_ready(self):
@@ -123,23 +113,6 @@ class OpenCVCamera:
 
         logger.debug(f"Camera found at port number {self._config.webcam_id}")
 
-        if self.session_id is False:
-            logger.info(
-                f"No `session_id` specified for {self._name}, video_recorder will not be created (because we won't know where to save the videos)"
-            )
-            self._video_recorder = None
-        else:
-            image_height = image.shape[0]
-            image_width = image.shape[1]
-
-            self._video_recorder = VideoRecorder(
-                self._name,
-                image_width=image_width,
-                image_height=image_height,
-                session_id=self.session_id,
-                calibration_video_bool=self._calibration_video_bool,
-            )
-
         return success
 
     def start_frame_capture_thread(self):
@@ -148,9 +121,7 @@ class OpenCVCamera:
                 f"Already capturing frames for webcam_id: {self.webcam_id_as_str}"
             )
             return
-        logger.info(
-            f"Beginning frame capture thread for webcam: {self.webcam_id_as_str}"
-        )
+        logger.info(f"Beginning frame start thread for webcam: {self.webcam_id_as_str}")
         self._running_thread = self._create_thread()
         self._running_thread.start()
 

@@ -17,46 +17,15 @@ from src.config.home_dir import (
     get_calibration_videos_folder_path,
     get_mediapipe_annotated_videos_folder_path,
 )
-from rich.progress import Progress
 
 logger = logging.getLogger(__name__)
 
 
 class VideoRecorder:
-    def __init__(
-        self,
-        video_name: str,
-        image_width: int,
-        image_height: int,
-        session_id: str,
-        fourcc: str = "MP4V",
-        calibration_video_bool: bool = False,
-        mediapipe_annotated_video_bool: bool = False,
-    ):
-        self._video_name = video_name
-        self._image_width = image_width
-        self._image_height = image_height
-        self._fourcc = fourcc
+    def __init__(self):
+
         self._frame_payload_list: List[FramePayload] = []
         self._timestamps_npy = np.empty(0)
-        self._cv2_video_writer = None
-
-        # get yr paths straight
-        self._session_id = session_id
-
-        self._mediapipe_annotated_video_bool = mediapipe_annotated_video_bool
-
-    @property
-    def video_name(self):
-        return self._video_name
-
-    @property
-    def video_folder_path(self):
-        return self._video_folder_path
-
-    @property
-    def path_to_save_video_file(self):
-        return self._path_to_save_video_file
 
     @property
     def frame_count(self):
@@ -66,12 +35,6 @@ class VideoRecorder:
     def frame_list(self):
         return self._frame_payload_list
 
-    def save_frame_payload_to_video_file(self, frame_payload: FramePayload):
-        if self._cv2_video_writer is None:
-            self._initialize_video_writer()
-
-        self._cv2_video_writer.write(frame_payload.image)
-
     def close(self):
         self._cv2_video_writer.release()
 
@@ -80,66 +43,74 @@ class VideoRecorder:
 
     def save_list_of_frames_to_video_file(
         self,
-        list_of_frames: List[FramePayload] = None,
+        list_of_frames: List[FramePayload],
+        path_to_save_video_file: Union[str, Path],
         frames_per_second: float = None,
-        calibration_videos: bool = False,
     ):
-        if list_of_frames is None:
-            list_of_frames = self._frame_payload_list
-
-        if len(list_of_frames) == 0:
-            logging.error(f"No frames to save for camera: {self._video_name}")
-            raise Exception
 
         if frames_per_second is None:
             self._timestamps_npy = self._gather_timestamps(list_of_frames)
-            frames_per_second = np.nanmedian((np.diff(self._timestamps_npy) ** -1))
+            try:
+                frames_per_second = np.nanmedian((np.diff(self._timestamps_npy) ** -1))
+            except Exception as e:
+                logger.debug("Error calculating frames per second")
+                traceback.print_exc()
+                raise e
 
-        self._initialize_video_writer(
-            frames_per_second=frames_per_second, calibration_videos=calibration_videos
+        self._path_to_save_video_file = path_to_save_video_file
+
+        self._cv2_video_writer = self._initialize_video_writer(
+            image_height=list_of_frames[0].image.shape[0],
+            image_width=list_of_frames[0].image.shape[1],
+            frames_per_second=frames_per_second,
         )
         self._write_frame_list_to_video_file(list_of_frames)
-        self._save_timestamps(self._timestamps_npy)
+        self._save_timestamps(timestamps_npy=self._timestamps_npy)
+        self._cv2_video_writer.release()
 
     def save_image_list_to_disk(
-        self, image_list: List[np.ndarray], frames_per_second: float
+        self,
+        image_list: List[np.ndarray],
+        path_to_save_video_file: Union[str, Path],
+        frames_per_second: float,
     ):
+
+        self._path_to_save_video_file = path_to_save_video_file
+
         if len(image_list) == 0:
-            logging.error(f"No frames to save for : {self._video_name}")
+            logging.error(f"No frames to save for : {self._path_to_save_video_file}")
             return
 
-        self._initialize_video_writer(frames_per_second=frames_per_second)
+        self._cv2_video_writer = self._initialize_video_writer(
+            image_height=image_list[0].shape[0],
+            image_width=image_list[0].shape[1],
+            frames_per_second=frames_per_second,
+        )
         self._write_image_list_to_video_file(image_list)
 
     def _initialize_video_writer(
         self,
+        image_height: Union[int, float],
+        image_width: Union[int, float],
         frames_per_second: Union[int, float] = None,
-        calibration_videos: bool = False,
-    ):
+        fourcc: str = "MP4V",
+        # calibration_videos: bool = False,
+    ) -> cv2.VideoWriter:
 
-        video_file_name = self._video_name + ".mp4"
-
-        if calibration_videos:
-            self._video_folder_path = Path(
-                get_calibration_videos_folder_path(self._session_id)
-            )
-        elif self._mediapipe_annotated_video_bool:
-            self._video_folder_path = Path(
-                get_mediapipe_annotated_videos_folder_path(self._session_id)
-            )
-        else:
-            self._video_folder_path = Path(
-                get_synchronized_videos_folder_path(self._session_id)
-            )
-
-        self._path_to_save_video_file = self._video_folder_path / video_file_name
-
-        self._cv2_video_writer = cv2.VideoWriter(
-            str(self.path_to_save_video_file),
-            cv2.VideoWriter_fourcc(*self._fourcc),
+        video_writer_object = cv2.VideoWriter(
+            str(self._path_to_save_video_file),
+            cv2.VideoWriter_fourcc(*fourcc),
             frames_per_second,
-            (int(self._image_width), int(self._image_height)),
+            (int(image_width), int(image_height)),
         )
+
+        if not video_writer_object.isOpened():
+            logger.error(
+                f"cv2.VideoWriter failed to initialize for: {str(self._path_to_save_video_file)}"
+            )
+            raise Exception
+
+        return video_writer_object
 
     def _write_frame_list_to_video_file(self, list_of_frames: List[FramePayload]):
         try:
@@ -147,26 +118,26 @@ class VideoRecorder:
                 self._cv2_video_writer.write(frame.image)
 
         except Exception as e:
-            logger.debug("Failed during save in video writer")
+            logger.error(
+                f"Failed during save in video writer for video {str(self._path_to_save_video_file)}"
+            )
             traceback.print_exc()
             raise e
         finally:
-            logger.info(f"Saved video to path: {self.path_to_save_video_file}")
+            logger.info(f"Saved video to path: {self._path_to_save_video_file}")
             self._cv2_video_writer.release()
 
     def _write_image_list_to_video_file(self, image_list: List[np.ndarray]):
         try:
             for image in image_list:
                 self._cv2_video_writer.write(image)
-
         except Exception as e:
             logger.error(
-                f"Failed during save in video writer: {self.path_to_save_video_file}"
+                f"Failed during save in video writer for video {str(self._path_to_save_video_file)}"
             )
             traceback.print_exc()
             raise e
         finally:
-            logger.info(f"Saved video to path: {self.path_to_save_video_file}")
             self._cv2_video_writer.release()
 
     def _gather_timestamps(self, list_of_frames: List[FramePayload]) -> np.ndarray:
@@ -182,13 +153,22 @@ class VideoRecorder:
         return timestamps_npy
 
     def _save_timestamps(self, timestamps_npy: np.ndarray):
-        timestamp_file_name_npy = self._video_name + "_timestamps_binary.npy"
-        timestamp_npy_full_save_path = self._video_folder_path / timestamp_file_name_npy
-        np.save(str(timestamp_npy_full_save_path), timestamps_npy)
-        logger.info(f"Saved timestamps to path: {timestamp_file_name_npy}")
+        timestamp_folder_path = self._path_to_save_video_file.parent / "timestamps"
+        timestamp_folder_path.mkdir(parents=True, exist_ok=True)
 
-        timestamp_file_name_csv = self._video_name + "_timestamps_human_readable.csv"
-        timestamp_csv_full_save_path = self._video_folder_path / timestamp_file_name_csv
+        base_timestamp_path_str = str(
+            timestamp_folder_path / self._path_to_save_video_file.stem
+        )
+
+        # save timestamps to npy (binary) file (via numpy.ndarray)
+        path_to_save_timestamps_npy = base_timestamp_path_str + "_binary.npy"
+        np.save(str(path_to_save_timestamps_npy), timestamps_npy)
+        logger.info(f"Saved timestamps to path: {str(path_to_save_timestamps_npy)}")
+
+        # save timestamps to human readable (csv/text) file (via pandas.DataFrame)
+        path_to_save_timestamps_csv = (
+            base_timestamp_path_str + "_timestamps_human_readable.csv"
+        )
         timestamp_dataframe = pd.DataFrame(timestamps_npy)
-        timestamp_dataframe.to_csv(str(timestamp_csv_full_save_path))
-        logger.info(f"Saved timestamps to path: {timestamp_file_name_csv}")
+        timestamp_dataframe.to_csv(str(path_to_save_timestamps_csv))
+        logger.info(f"Saved timestamps to path: {str(path_to_save_timestamps_csv)}")

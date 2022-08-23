@@ -2,21 +2,21 @@ import time
 import logging
 import traceback
 from pathlib import Path
-from typing import Union
+from typing import Union, Callable
 
 import cv2
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.config.home_dir import (
-    create_session_id,
+    create_default_session_id,
     get_session_folder_path,
     get_freemocap_data_folder_path,
-    get_session_output_data_folder_path,
-    get_session_calibration_file_path,
+    get_output_data_folder_path,
+    get_session_calibration_toml_file_path,
 )
-from src.core_processor.timestamp_manager.timestamp_manager import TimestampManager
-from src.core_processor.show_cam_window import show_cam_window
-from src.core_processor.utils.image_fps_writer import write_fps_to_image
+from src.core_processes.timestamp_manager.timestamp_manager import TimestampManager
+from src.core_processes.show_cam_window import show_cam_window
+from src.core_processes.utils.image_fps_writer import write_fps_to_image
 from src.pipelines.calibration_pipeline.anipose_camera_calibration import (
     freemocap_anipose,
 )
@@ -39,7 +39,7 @@ class CalibrationPipelineOrchestrator:
     ):
 
         if session_id is None:
-            self._session_id = create_session_id(
+            self._session_id = create_default_session_id(
                 string_tag="calibration"
             )  # create a 'calibration only' session
         else:
@@ -119,10 +119,8 @@ class CalibrationPipelineOrchestrator:
                             )
 
                         # detect charuco board
-                        this_charuco_frame_payload = (
-                            self._charuco_board_detector.detect_charuco_board(
-                                this_cam_latest_frame
-                            )
+                        this_charuco_frame_payload = self._charuco_board_detector.detect_charuco_board_in_frame_payload(
+                            this_cam_latest_frame
                         )
 
                         if show_camera_views_in_windows:
@@ -172,12 +170,14 @@ class CalibrationPipelineOrchestrator:
         self,
         charuco_square_size: Union[int, float] = 1,
         pin_camera_0_to_origin: bool = False,
+        progress_callback: Callable[[str], None] = None,
     ):
         anipose_camera_calibrator = AniposeCameraCalibrator(
             self.session_id,
             self._charuco_board_detector.charuco_board_data_class_object,
             charuco_square_size=charuco_square_size,
         )
+        progress_callback("Endurance is great wow wow wow")
         return anipose_camera_calibrator.calibrate_camera_capture_volume(
             pin_camera_0_to_origin=pin_camera_0_to_origin
         )
@@ -192,7 +192,9 @@ class CalibrationPipelineOrchestrator:
         return freemocap_anipose.CameraGroup.load(str(last_successful_calibration_path))
 
     def load_calibration_from_session_id(self, session_id: str):
-        session_calibration_file_path = get_session_calibration_file_path(session_id)
+        session_calibration_file_path = get_session_calibration_toml_file_path(
+            session_id
+        )
         logger.info(
             f"loading camera calibration file from:{str(session_calibration_file_path)}"
         )
@@ -209,7 +211,7 @@ if __name__ == "__main__":
 
     record_new = True
     if record_new:
-        session_id = create_session_id("calibration")
+        session_id = create_default_session_id("calibration")
         session_path = Path(get_session_folder_path(session_id))
         logger.info(
             f"Creating `calibration only` session folder at: {str(session_path)}"

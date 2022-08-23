@@ -1,4 +1,3 @@
-import numpy as np
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 
 from src.config.home_dir import (
@@ -91,6 +90,11 @@ class MainWindow(QMainWindow):
 
         self._control_panel._create_or_load_new_session_panel.start_new_session_button.clicked.connect(
             self._start_new_session
+        )
+
+        # Camera Control Panel
+        self._control_panel.camera_setup_control_panel.apply_settings_to_cameras_button.clicked.connect(
+            self._control_panel.camera_setup_control_panel.get_webcam_configs_from_parameter_tree
         )
 
         # Calibration panel
@@ -208,7 +212,9 @@ class MainWindow(QMainWindow):
         if (
             self._control_panel.calibrate_capture_volume_panel.use_previous_calibration_box_is_checked
         ):
-            anipose_calibration_object = load_most_recent_anipose_calibration_toml()
+            anipose_calibration_object = load_most_recent_anipose_calibration_toml(
+                get_session_folder_path(self._session_id)
+            )
         else:
             anipose_calibration_object = load_calibration_from_session_id(
                 get_session_calibration_toml_file_path(self._session_id)

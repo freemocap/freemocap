@@ -5,9 +5,7 @@ from typing import Union
 import numpy as np
 
 from src.config.home_dir import (
-    get_session_folder_path,
     get_freemocap_data_folder_path,
-    get_calibration_videos_folder_path,
 )
 from src.pipelines.calibration_pipeline.anipose_camera_calibration import (
     freemocap_anipose,

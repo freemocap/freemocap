@@ -1,3 +1,4 @@
+import logging
 import signal
 import sys
 
@@ -6,8 +7,6 @@ from PyQt6.QtWidgets import QApplication
 
 from src.gui.main.app import get_qt_app
 from src.gui.main.main_window.main_window import MainWindow
-
-import logging
 
 logger = logging.getLogger(__name__)
 

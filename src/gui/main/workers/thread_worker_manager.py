@@ -7,9 +7,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.webcam_config import WebcamConfig
-from src.core_processes.capture_volume_calibration.charuco_default_values import (
-    default_charuco_square_size_mm,
-)
+
 from src.gui.main.custom_widgets.single_camera_widget import CameraWidget
 from src.gui.main.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
@@ -131,7 +129,7 @@ class ThreadWorkerManager(QWidget):
         mediapipe_2d_data: np.ndarray,
         output_data_folder_path: Union[str, Path],
     ):
-        logger.info("Launching mediapipe 2d skeleton thread worker...")
+        logger.info("Launching Triangulate 3d data thread worker...")
 
         self._triangulate_3d_data_thread_worker = Triangulate3dDataThreadWorker(
             anipose_calibration_object=anipose_calibration_object,

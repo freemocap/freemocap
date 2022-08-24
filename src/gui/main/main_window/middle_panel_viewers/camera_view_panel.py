@@ -46,23 +46,17 @@ class CameraViewPanel(QWidget):
         )
         return session_title
 
-    def _show_camera_stream_grid_view(self):
-        logger.info("Showing camera stream grid view")
-        if self._welcome_to_freemocap_title_widget.isVisible():
-            self._welcome_to_freemocap_title_widget.hide()
-
-        self._central_layout.addWidget(self._camera_stream_grid_view)
-
     def reconnect_to_cameras(self):
         self._camera_stream_grid_view.close_and_reconnect_to_cameras()
 
     def show_camera_streams(self, dictionary_of_single_camera_layouts):
-        if self._camera_stream_grid_view is not None:
-            self._central_layout.removeWidget(self._camera_stream_grid_view)
+
+        clear_layout(self._central_layout)
 
         self._camera_stream_grid_view = CameraStreamGridView()
 
         self._camera_stream_grid_view.show_camera_streams(
             dictionary_of_single_camera_layouts
         )
-        self._show_camera_stream_grid_view()
+        logger.info("Showing camera stream grid view")
+        self._central_layout.addWidget(self._camera_stream_grid_view)

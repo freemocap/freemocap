@@ -94,7 +94,7 @@ class MainWindow(QMainWindow):
 
         # Camera Control Panel
         self._control_panel.camera_setup_control_panel.apply_settings_to_cameras_button.clicked.connect(
-            self._control_panel.camera_setup_control_panel.get_webcam_configs_from_parameter_tree
+            self._restart_cameras_with_new_settings
         )
 
         self._control_panel.camera_setup_control_panel.redetect_cameras_button.clicked.connect(
@@ -236,3 +236,12 @@ class MainWindow(QMainWindow):
     def _launch_blender_export_subprocess(self):
         print(f"Open in Blender : {self._session_id}")
         open_session_in_blender(self._session_id)
+
+    def _restart_cameras_with_new_settings(self):
+        self._thread_worker_manager.close_camera_widgets()
+        while self._thread_worker_manager.are_the_cameras_running():
+            pass
+            logger.debug(
+                "Waiting for cameras to shut down before gathering webcam configs..."
+            )
+        self._control_panel.camera_setup_control_panel.get_webcam_configs_from_parameter_tree()

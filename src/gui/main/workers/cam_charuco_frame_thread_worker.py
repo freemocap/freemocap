@@ -38,6 +38,10 @@ class CamCharucoFrameThreadWorker(QThread):
     def video_recorder(self):
         return self._video_recorder
 
+    @property
+    def opencv_camera_is_open(self):
+        return self._open_cv_camera.is_open
+
     def start_saving_frames(self):
         self._should_save_frames = True
 
@@ -89,5 +93,6 @@ class CamCharucoFrameThreadWorker(QThread):
             self._open_cv_camera.close()
 
     def quit(self):
+        self._should_continue = False
         self._open_cv_camera.close()
         super().quit()

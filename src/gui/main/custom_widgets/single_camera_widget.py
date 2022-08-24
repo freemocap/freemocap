@@ -62,6 +62,10 @@ class CameraWidget(QWidget):
     def video_recorder(self):
         return self._worker.video_recorder
 
+    @property
+    def opencv_camera_is_open(self):
+        return self._worker.opencv_camera_is_open
+
     def start_saving_frames(self):
         self._worker.start_saving_frames()
 

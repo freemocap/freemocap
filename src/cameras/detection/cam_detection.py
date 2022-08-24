@@ -22,6 +22,7 @@ class DetectPossibleCameras:
             if success:
                 if image is not None:
                     try:
+                        logger.debug(f"Camera found at port number {cam_id}")
                         cams_to_use_list.append(RawCamera(webcam_id=str(cam_id)))
                     finally:
                         cap.release()

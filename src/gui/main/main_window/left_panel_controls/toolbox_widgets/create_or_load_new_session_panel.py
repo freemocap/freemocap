@@ -1,3 +1,4 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -20,7 +21,7 @@ class CreateOrLoadNewSessionPanel(QWidget):
         central_layout.addLayout(self._create_new_session_layout())
 
         self._load_most_recent_session_button = QPushButton(
-            "TO DO - Load Most &Recent Session"
+            "TO DO - Load Most &Recent Session",
         )
         self._load_most_recent_session_button.setEnabled(False)
         central_layout.addWidget(self._load_most_recent_session_button)
@@ -57,6 +58,7 @@ class CreateOrLoadNewSessionPanel(QWidget):
         self._session_input = self._create_session_input()
         session_id_form_layout.addRow(QLabel("Session Id"), self._session_input)
         layout.addLayout(session_id_form_layout)
+        layout.setAlignment(Qt.AlignBottom)
 
         self._start_new_session_button = PrimaryButton("&Start Session")
         layout.addWidget(self._start_new_session_button)

@@ -35,6 +35,7 @@ class ThreadWorkerManager(QWidget):
 
     def __init__(self):
         super().__init__()
+        self._camera_widgets = []
 
     def launch_detect_cameras_worker(self):
         logger.info("Launch camera detection worker")
@@ -48,6 +49,8 @@ class ThreadWorkerManager(QWidget):
         self, dictionary_of_webcam_configs=Dict[str, WebcamConfig]
     ):
         logger.info("creating camera widgets with running threads")
+        if len(self._camera_widgets) > 0:
+            self._close_camera_widgets()
 
         self._camera_widgets = []
         dictionary_of_single_camera_layouts = {}
@@ -138,3 +141,7 @@ class ThreadWorkerManager(QWidget):
         )
 
         self._triangulate_3d_data_thread_worker.start()
+
+    def _close_camera_widgets(self):
+        for camera_widget in self._camera_widgets:
+            camera_widget.quit()

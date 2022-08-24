@@ -33,7 +33,6 @@ class CameraStreamGridView(QWidget):
     def show_camera_streams(
         self, dictionary_of_single_camera_layouts=(Dict[str, QVBoxLayout])
     ):
-        clear_layout(self._camera_stream_layout)
         for single_camera_layout in dictionary_of_single_camera_layouts.values():
             self._camera_stream_layout.addLayout(single_camera_layout)
 

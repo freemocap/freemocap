@@ -97,6 +97,10 @@ class MainWindow(QMainWindow):
             self._control_panel.camera_setup_control_panel.get_webcam_configs_from_parameter_tree
         )
 
+        self._control_panel.camera_setup_control_panel.redetect_cameras_button.clicked.connect(
+            self._thread_worker_manager.launch_detect_cameras_worker
+        )
+
         # Calibration panel
         self._control_panel.calibrate_capture_volume_panel.start_recording_button.clicked.connect(
             lambda: self._start_recording_videos(

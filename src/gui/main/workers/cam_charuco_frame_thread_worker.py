@@ -1,5 +1,3 @@
-from typing import Union, List
-
 import cv2
 from PyQt6.QtCore import QThread, Qt, pyqtSignal
 from PyQt6.QtGui import QImage
@@ -54,6 +52,8 @@ class CamCharucoFrameThreadWorker(QThread):
     def run(self):
 
         open_cv_camera = OpenCVCamera(self._webcam_config)
+
+        open_cv_camera.release()
         open_cv_camera.connect()
         open_cv_camera.start_frame_capture_thread()
 
@@ -66,8 +66,21 @@ class CamCharucoFrameThreadWorker(QThread):
                     continue
                 frame_payload = open_cv_camera.latest_frame
 
+                if self._webcam_config.rotate_video_cv2_code is not None:
+                    rotated_image = cv2.rotate(
+                        frame_payload.image,
+                        self._webcam_config.rotate_video_cv2_code,
+                    )
+                    frame_payload = FramePayload(
+                        success=frame_payload.success,
+                        image=rotated_image,
+                        timestamp_in_seconds_from_record_start=frame_payload.timestamp_in_seconds_from_record_start,
+                        timestamp_unix_time_seconds=frame_payload.timestamp_unix_time_seconds,
+                        frame_number=frame_payload.frame_number,
+                        webcam_id=frame_payload.webcam_id,
+                    )
+
                 if self._should_save_frames:
-                    any_frames_recorded = True
                     print("saving frame :D")
                     self._video_recorder.append_frame_payload_to_list(frame_payload)
 

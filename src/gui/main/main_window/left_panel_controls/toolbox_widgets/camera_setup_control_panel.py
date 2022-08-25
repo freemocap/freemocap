@@ -1,5 +1,6 @@
 from typing import List, Dict
 
+import cv2
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QVBoxLayout, QWidget, QPushButton
 from pyqtgraph.parametertree import ParameterTree, Parameter
@@ -15,8 +16,33 @@ from src.gui.main.styled_widgets.primary_button import PrimaryButton
 logger = logging.getLogger(__name__)
 
 
+def rotate_image_str_to_cv2_code(rotate_str: str):
+
+    if rotate_str == "90_clockwise":
+        return cv2.ROTATE_90_CLOCKWISE
+    elif rotate_str == "90_counterclockwise":
+        return cv2.ROTATE_90_COUNTERCLOCKWISE
+    elif rotate_str == "180":
+        return cv2.ROTATE_180
+
+    return None
+
+
+def rotate_cv2_code_to_str(rotate_video_value):
+    if rotate_video_value is None:
+        return None
+    elif rotate_video_value == cv2.ROTATE_90_CLOCKWISE:
+        return "90_clockwise"
+    elif rotate_video_value == cv2.ROTATE_90_COUNTERCLOCKWISE:
+        return "90_counterclockwise"
+    elif rotate_video_value == cv2.ROTATE_180:
+        return "180"
+
+
 class CameraSetupControlPanel(QWidget):
+
     camera_parameters_updated_signal = pyqtSignal(dict)
+    new_webcam_configs_received_signal = pyqtSignal(dict)
 
     def __init__(self):
         super().__init__()
@@ -37,6 +63,10 @@ class CameraSetupControlPanel(QWidget):
         self._parameter_tree_widget = ParameterTree()
         self._parameter_tree_layout.addWidget(self._parameter_tree_widget)
         self._panel_layout.addLayout(self._parameter_tree_layout)
+
+        self.new_webcam_configs_received_signal.connect(
+            self.update_camera_config_parameter_tree
+        )
 
     @property
     def apply_settings_to_cameras_button(self):
@@ -61,9 +91,13 @@ class CameraSetupControlPanel(QWidget):
                 webcam_id=camera_id
             )
 
-        self.update_camera_config_parameter_tree()
+        self.new_webcam_configs_received_signal.emit(
+            self._dictionary_of_webcam_configs.copy()
+        )
 
-    def update_camera_config_parameter_tree(self):
+    def update_camera_config_parameter_tree(
+        self, dictionary_of_webcam_configs: Dict[str, WebcamConfig]
+    ):
         logger.info("Updating camera configs")
         clear_layout(self._parameter_tree_layout)
         self._parameter_tree_widget = ParameterTree()
@@ -71,7 +105,7 @@ class CameraSetupControlPanel(QWidget):
 
         self._camera_parameter_groups_dictionary = {}
         for webcam_id in self._list_of_available_camera_ids:
-            if not webcam_id in self._dictionary_of_webcam_configs:
+            if not webcam_id in dictionary_of_webcam_configs:
 
                 self._camera_parameter_groups_dictionary[
                     webcam_id
@@ -80,14 +114,14 @@ class CameraSetupControlPanel(QWidget):
                 self._camera_parameter_groups_dictionary[
                     webcam_id
                 ] = self._create_webcam_parameter_tree(
-                    self._dictionary_of_webcam_configs[webcam_id]
+                    dictionary_of_webcam_configs[webcam_id]
                 )
 
             self._parameter_tree_widget.addParameters(
                 self._camera_parameter_groups_dictionary[webcam_id]
             )
 
-        self.camera_parameters_updated_signal.emit(self._dictionary_of_webcam_configs)
+        self.camera_parameters_updated_signal.emit(dictionary_of_webcam_configs)
 
     def get_webcam_configs_from_parameter_tree(self):
         new_selected_cameras_list = []
@@ -109,21 +143,40 @@ class CameraSetupControlPanel(QWidget):
                         resolution_height=camera_parameter_group.param(
                             "Resolution Height"
                         ).value(),
+                        rotate_video_cv2_code=rotate_image_str_to_cv2_code(
+                            camera_parameter_group.param("Rotate Image").value()
+                        ),
                     )
-                except:
-                    new_camera_configs_dict[camera_id] = WebcamConfig(
-                        webcam_id=camera_id
+                except Exception as e:
+                    logger.error(
+                        f"Problem creating webcam config from parameter tree for camera: {camera_id} "
                     )
+                    raise e
         self._dictionary_of_webcam_configs = new_camera_configs_dict
-        self.update_camera_config_parameter_tree()
+
+        self.new_webcam_configs_received_signal.emit(
+            self._dictionary_of_webcam_configs.copy()
+        )
 
     def _create_webcam_parameter_tree(self, webcam_config: WebcamConfig):
+        try:
+            rotate_video_value = rotate_cv2_code_to_str(
+                webcam_config.rotate_video_cv2_code
+            )
+        except KeyError:
+            rotate_video_value = "None"
+
         return Parameter.create(
             name="Camera_" + str(webcam_config.webcam_id),
             type="group",
             children=[
                 dict(name="Use this camera?", type="bool", value=True),
-                # dict(name="Apply settings", type="action"),
+                dict(
+                    name="Rotate Image",
+                    type="list",
+                    limits=["None", "90_clockwise", "90_counterclockwise", "180"],
+                    value=rotate_video_value,
+                ),
                 dict(name="Exposure", type="int", value=webcam_config.exposure),
                 dict(
                     name="Resolution Width",

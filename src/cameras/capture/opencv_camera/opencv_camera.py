@@ -92,6 +92,13 @@ class OpenCVCamera:
     def is_open(self):
         return self._opencv_video_capture_object.isOpened()
 
+    def release(self):
+        if self._opencv_video_capture_object is not None:
+            logger.debug(
+                f"Releasing `opencv_video_capture_object` for Camera: {self._config.webcam_id}"
+            )
+            self._opencv_video_capture_object.release()
+
     def record_frames(self, save_frames_bool: bool):
         self._running_thread.is_recording_frames = save_frames_bool
 
@@ -108,7 +115,6 @@ class OpenCVCamera:
         self._opencv_video_capture_object = cv2.VideoCapture(
             int(self._config.webcam_id), cap_backend
         )
-        self._apply_configuration()
 
         try:
             success, image = self._opencv_video_capture_object.read()
@@ -126,6 +132,9 @@ class OpenCVCamera:
                 f"returned image: {image}"
             )
             raise Exception
+
+        self._apply_configuration()
+
         logger.info(f"Successfully connected to Camera: {self._config.webcam_id}!")
         return success
 
@@ -148,7 +157,7 @@ class OpenCVCamera:
     def _apply_configuration(self):
         # set camera stream parameters
         logger.info(
-            f"Applying congfiguration to Camera {self._config.webcam_id}:"
+            f"Applying configuration to Camera {self._config.webcam_id}:"
             f"Exposure: {self._config.exposure}, "
             f"Resolution width: {self._config.resolution_width}, "
             f"Resolution height: {self._config.resolution_height}, "

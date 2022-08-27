@@ -49,13 +49,16 @@ class ThreadWorkerManager(QWidget):
         self, dictionary_of_webcam_configs=Dict[str, WebcamConfig]
     ):
         logger.info("creating camera widgets with running threads")
+
         if len(self._camera_widgets) > 0:
             self.close_camera_widgets()
+
         self._camera_widgets = []
+
         dictionary_of_single_camera_layouts = {}
         for webcam_config in dictionary_of_webcam_configs.values():
-            camera_widget = CameraWidget(webcam_config)
-            camera_widget.start()
+            camera_widget = CameraWidget()
+            camera_widget.start(webcam_config)
 
             camera_layout = QVBoxLayout()
             camera_layout.addWidget(QLabel(f"Camera {str(webcam_config.webcam_id)}"))

@@ -53,7 +53,6 @@ class CamCharucoFrameThreadWorker(QThread):
 
         open_cv_camera = OpenCVCamera(self._webcam_config)
 
-        open_cv_camera.release()
         open_cv_camera.connect()
         open_cv_camera.start_frame_capture_thread()
 
@@ -89,6 +88,7 @@ class CamCharucoFrameThreadWorker(QThread):
                         frame_payload
                     )
                 )
+
                 image_to_display = charuco_payload.annotated_image
                 image_to_display = cv2.flip(image_to_display, 1)
                 image_to_display = cv2.cvtColor(image_to_display, cv2.COLOR_BGR2RGB)

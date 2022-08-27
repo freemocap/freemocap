@@ -51,9 +51,9 @@ class MainWindow(QMainWindow):
         self._camera_view_panel = self._create_cameras_view_panel()
         self._main_layout.addWidget(self._camera_view_panel.frame)
 
-        # jupyter console panel
-        self._right_side_panel = self._create_right_side_panel()
-        self._main_layout.addWidget(self._right_side_panel.frame)
+        # # jupyter console panel
+        # self._right_side_panel = self._create_right_side_panel()
+        # self._main_layout.addWidget(self._right_side_panel.frame)
 
         self._thread_worker_manager = ThreadWorkerManager()
 

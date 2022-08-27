@@ -5,7 +5,6 @@ from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 from src.config.webcam_config import WebcamConfig
-from src.gui.main.app import get_qt_app
 from src.gui.main.workers.cam_charuco_frame_thread_worker import (
     CamCharucoFrameThreadWorker,
 )
@@ -34,13 +33,9 @@ def construct_worker(worker_type: WorkerType):
 class CameraWidget(QWidget):
     started = pyqtSignal()
 
-    def __init__(self, webcam_config: WebcamConfig):
-        logger.info(f"Creating camera widget with WebcamConfig: {webcam_config}")
+    def __init__(self):
         super().__init__()
-        self._webcam_config = webcam_config
-        self._camera_id = webcam_config.webcam_id
 
-        self._worker = self._init_frame_worker()
         self._video = QLabel()
 
         layout = QHBoxLayout()
@@ -48,11 +43,9 @@ class CameraWidget(QWidget):
 
         self.setLayout(layout)
 
-        get_qt_app().aboutToQuit.connect(self.quit)
-
     @property
     def camera_id(self):
-        return self._camera_id
+        return self._webcam_config.webcam_id
 
     @property
     def should_record_frames(self):
@@ -66,6 +59,15 @@ class CameraWidget(QWidget):
     def opencv_camera_is_open(self):
         return self._worker.opencv_camera_is_open
 
+    def start(self, webcam_config: WebcamConfig):
+        self._webcam_config = webcam_config
+        self._worker = self._init_frame_worker()
+        self._worker.start()
+        self.started.emit()
+
+    def quit(self):
+        self._worker.quit()
+
     def start_saving_frames(self):
         self._worker.start_saving_frames()
 
@@ -74,13 +76,6 @@ class CameraWidget(QWidget):
 
     def reset_video_recorder(self):
         self._worker.reset_video_recorder()
-
-    def start(self):
-        self._worker.start()
-        self.started.emit()
-
-    def quit(self):
-        self._worker.quit()
 
     def _init_frame_worker(self):
         worker = construct_worker(WorkerType.CHARUCO)(self._webcam_config)

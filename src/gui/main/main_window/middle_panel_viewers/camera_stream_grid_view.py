@@ -21,7 +21,6 @@ class CameraStreamGridView(QWidget):
 
     def __init__(self):
         super().__init__()
-        self._camera_widgets = []
 
         self._camera_stream_layout = QVBoxLayout()
         self.setLayout(self._camera_stream_layout)
@@ -30,15 +29,40 @@ class CameraStreamGridView(QWidget):
     def video_recorders(self):
         return [cam.video_recorder for cam in self._camera_widgets]
 
-    def show_camera_streams(
-        self, dictionary_of_single_camera_layouts=(Dict[str, QVBoxLayout])
+    def create_and_start_camera_widgets(
+        self, dictionary_of_webcam_configs=Dict[str, WebcamConfig]
     ):
-        for single_camera_layout in dictionary_of_single_camera_layouts.values():
-            self._camera_stream_layout.addLayout(single_camera_layout)
+        logger.info("creating camera widgets")
+        clear_layout(self._camera_stream_layout)
 
-    def close_all_camera_streams(self):
+        try:
+            self.close_camera_widgets()
+        except:
+            pass
+
+        self._camera_configs_dict = dictionary_of_webcam_configs
+        self._camera_widgets = {}
+
+        for webcam_config in dictionary_of_webcam_configs.values():
+            self._camera_widgets[str(webcam_config.webcam_id)] = CameraWidget(
+                webcam_config
+            )
+            camera_layout = QVBoxLayout()
+            camera_layout.addWidget(QLabel(f"Camera {str(webcam_config.webcam_id)}"))
+            camera_layout.addWidget(self._camera_widgets[str(webcam_config.webcam_id)])
+            self._camera_stream_layout.addLayout(camera_layout)
+
+        self._start_camera_workers()
+
+    def close_camera_widgets(self):
+        logger.info("Quitting running cameras")
         for camera_widget in self._camera_widgets:
             camera_widget.quit()
+
+    def _start_camera_workers(self):
+        for webcam_id in self._camera_configs_dict.keys():
+            self._camera_widgets[webcam_id].start()
+        self.cameras_connected_signal.emit()
 
     def start_recording_videos(self):
         for camera_widget in self._camera_widgets:
@@ -53,8 +77,6 @@ class CameraStreamGridView(QWidget):
         for cam in self._camera_widgets:
             video_recorders.append(cam.video_recorder)
 
-    def close_and_reconnect_to_cameras(self):
-        self.close_all_camera_streams()
-        self._camera_widgets = []
-        clear_layout(self._camera_stream_layout)
-        self.connect_to_camera_streams()
+    def _reset_video_recorders(self):
+        for camera_widget in self._camera_widgets:
+            camera_widget.reset_video_recorder()

@@ -51,9 +51,9 @@ class MainWindow(QMainWindow):
         self._camera_view_panel = self._create_cameras_view_panel()
         self._main_layout.addWidget(self._camera_view_panel.frame)
 
-        # # jupyter console panel
-        # self._right_side_panel = self._create_right_side_panel()
-        # self._main_layout.addWidget(self._right_side_panel.frame)
+        # jupyter console panel
+        self._right_side_panel = self._create_right_side_panel()
+        self._main_layout.addWidget(self._right_side_panel.frame)
 
         self._thread_worker_manager = ThreadWorkerManager()
 
@@ -94,7 +94,7 @@ class MainWindow(QMainWindow):
 
         # Camera Control Panel
         self._control_panel.camera_setup_control_panel.apply_settings_to_cameras_button.clicked.connect(
-            self._restart_cameras_with_new_settings
+            self._apply_settings_and_launch_camera_threads
         )
 
         self._control_panel.camera_setup_control_panel.redetect_cameras_button.clicked.connect(
@@ -153,10 +153,10 @@ class MainWindow(QMainWindow):
         )
 
         self._control_panel.camera_setup_control_panel.camera_parameters_updated_signal.connect(
-            self._thread_worker_manager.create_camera_widgets_with_running_threads
+            self._camera_view_panel.camera_stream_grid_view.create_and_start_camera_widgets
         )
 
-        self._thread_worker_manager.cameras_connected_signal.connect(
+        self._camera_view_panel.camera_stream_grid_view.cameras_connected_signal.connect(
             self._camera_view_panel.show_camera_streams
         )
 
@@ -170,8 +170,17 @@ class MainWindow(QMainWindow):
             session_path
         )
         self._thread_worker_manager.launch_detect_cameras_worker()
+
         self._control_panel.toolbox_widget.setCurrentWidget(
             self._control_panel.camera_setup_control_panel
+        )
+
+    def _apply_settings_and_launch_camera_threads(self):
+        webcam_configs = (
+            self._control_panel.camera_setup_control_panel.get_webcam_configs_from_parameter_tree()
+        )
+        self._camera_view_panel.camera_stream_grid_view.create_and_start_camera_widgets(
+            webcam_configs
         )
 
     def _start_recording_videos(self, panel):
@@ -236,12 +245,3 @@ class MainWindow(QMainWindow):
     def _launch_blender_export_subprocess(self):
         print(f"Open in Blender : {self._session_id}")
         open_session_in_blender(self._session_id)
-
-    def _restart_cameras_with_new_settings(self):
-        self._thread_worker_manager.close_camera_widgets()
-        while self._thread_worker_manager.are_the_cameras_running():
-            pass
-            logger.debug(
-                "Waiting for cameras to shut down before gathering webcam configs..."
-            )
-        self._control_panel.camera_setup_control_panel.get_webcam_configs_from_parameter_tree()

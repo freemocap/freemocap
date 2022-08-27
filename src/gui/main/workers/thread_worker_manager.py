@@ -31,7 +31,6 @@ class ThreadWorkerManager(QWidget):
     """This guy's job is to hold on to the parts of threads that need to be kept alive while they are running"""
 
     camera_detection_finished = pyqtSignal(FoundCamerasResponse)
-    cameras_connected_signal = pyqtSignal(dict)
 
     def __init__(self):
         super().__init__()
@@ -44,31 +43,6 @@ class ThreadWorkerManager(QWidget):
             self.camera_detection_finished.emit
         )
         self._camera_detection_thread_worker.start()
-
-    def create_camera_widgets_with_running_threads(
-        self, dictionary_of_webcam_configs=Dict[str, WebcamConfig]
-    ):
-        logger.info("creating camera widgets with running threads")
-
-        if len(self._camera_widgets) > 0:
-            self.close_camera_widgets()
-
-        self._camera_widgets = []
-
-        dictionary_of_single_camera_layouts = {}
-        for webcam_config in dictionary_of_webcam_configs.values():
-            camera_widget = CameraWidget()
-            camera_widget.start(webcam_config)
-
-            camera_layout = QVBoxLayout()
-            camera_layout.addWidget(QLabel(f"Camera {str(webcam_config.webcam_id)}"))
-            camera_layout.addWidget(camera_widget)
-
-            dictionary_of_single_camera_layouts[webcam_config.webcam_id] = camera_layout
-
-            self._camera_widgets.append(camera_widget)
-
-        self.cameras_connected_signal.emit(dictionary_of_single_camera_layouts)
 
     def start_recording_videos(self):
         logger.info("starting to save frames in camera streams for later recording")
@@ -97,10 +71,6 @@ class ThreadWorkerManager(QWidget):
         )
         self._save_to_video_thread_worker.start()
         self._save_to_video_thread_worker.finished.connect(self._reset_video_recorders)
-
-    def _reset_video_recorders(self):
-        for camera_widget in self._camera_widgets:
-            camera_widget.reset_video_recorder()
 
     def launch_anipose_calibration_thread_worker(
         self,
@@ -143,14 +113,3 @@ class ThreadWorkerManager(QWidget):
         )
 
         self._triangulate_3d_data_thread_worker.start()
-
-    def close_camera_widgets(self):
-        logger.info("Quitting running cameras")
-        for camera_widget in self._camera_widgets:
-            camera_widget.quit()
-
-    def are_the_cameras_running(self):
-        for camera_widget in self._camera_widgets:
-            if camera_widget.opencv_camera_is_open:
-                return True
-        return False

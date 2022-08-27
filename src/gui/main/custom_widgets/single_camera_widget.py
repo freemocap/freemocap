@@ -33,9 +33,9 @@ def construct_worker(worker_type: WorkerType):
 class CameraWidget(QWidget):
     started = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, webcam_config: WebcamConfig):
         super().__init__()
-
+        self._webcam_config = webcam_config
         self._video = QLabel()
 
         layout = QHBoxLayout()
@@ -59,8 +59,7 @@ class CameraWidget(QWidget):
     def opencv_camera_is_open(self):
         return self._worker.opencv_camera_is_open
 
-    def start(self, webcam_config: WebcamConfig):
-        self._webcam_config = webcam_config
+    def start(self):
         self._worker = self._init_frame_worker()
         self._worker.start()
         self.started.emit()

@@ -1,3 +1,5 @@
+import traceback
+
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 
 from src.config.home_dir import (
@@ -176,6 +178,12 @@ class MainWindow(QMainWindow):
         )
 
     def _apply_settings_and_launch_camera_threads(self):
+        try:
+            self._camera_view_panel.camera_stream_grid_view.close_camera_widgets()
+        except Exception as e:
+            traceback.print_exception()
+            raise e
+
         webcam_configs = (
             self._control_panel.camera_setup_control_panel.get_webcam_configs_from_parameter_tree()
         )

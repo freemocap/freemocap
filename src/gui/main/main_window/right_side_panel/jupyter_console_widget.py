@@ -22,11 +22,11 @@ def make_jupyter_widget_with_kernel():
     return jupyter_widget
 
 
-class PythonConsoleWidget(QWidget):
+class JupyterConsoleWidget(QWidget):
     def __init__(self, dark_mode: bool = True):
         super().__init__()
 
-        self._jupyter_console_widget = make_jupyter_widget_with_kernel()
+        self._start_kernel_and_whatnot()
         self._import_stuff()
 
         self.execute("import numpy as np")
@@ -41,13 +41,26 @@ class PythonConsoleWidget(QWidget):
     def jupyter_console_widget(self):
         return self._jupyter_console_widget
 
+    def _start_kernel_and_whatnot():
+        """Start a kernel, connect to it, and create a RichJupyterWidget to use it"""
+        kernel_manager = QtKernelManager(kernel_name="python3")
+        kernel_manager.start_kernel()
+
+        kernel_client = kernel_manager.client()
+        kernel_client.start_channels()
+
+        jupyter_widget = RichJupyterWidget()
+        jupyter_widget.kernel_manager = kernel_manager
+        jupyter_widget.kernel_client = kernel_client
+        return jupyter_widget
+
     def _import_stuff(self):
         self.execute("import matplotlib.pyplot as plt")
 
     def execute(self, code: str, hidden: bool = False):
         self._jupyter_console_widget.execute(code, hidden=hidden)
 
-    def print(self, message: str):
+    def print_to_console(self, message: str):
         self.execute(f"print('{message}')")
 
     def shutdown_kernel(self):

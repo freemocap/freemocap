@@ -24,7 +24,7 @@ from aniposelib.boards import (
 from aniposelib.utils import get_initial_extrinsics, make_M, get_rtvec, get_connections
 
 numba_logger = logging.getLogger("numba")
-numba_logger.setLevel(logging.DEBUG)
+numba_logger.setLevel(logging.INFO)
 
 
 @jit(nopython=True, parallel=True)

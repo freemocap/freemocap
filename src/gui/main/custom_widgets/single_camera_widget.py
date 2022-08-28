@@ -2,7 +2,7 @@ import enum
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget, QSizePolicy
 
 from src.config.webcam_config import WebcamConfig
 from src.gui.main.workers.cam_charuco_frame_thread_worker import (
@@ -37,7 +37,7 @@ class CameraWidget(QWidget):
         super().__init__()
         self._webcam_config = webcam_config
         self._video = QLabel()
-
+        # self._video.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         layout = QHBoxLayout()
         layout.addWidget(self._video)
 

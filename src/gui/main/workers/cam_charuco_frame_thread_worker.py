@@ -1,16 +1,18 @@
 import cv2
-from PyQt6.QtCore import QThread, Qt, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QImage
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.webcam_config import WebcamConfig
-from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
 
 import logging
+
+from src.gui.main.app_state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +100,9 @@ class CamCharucoFrameThreadWorker(QThread):
                     image_to_display.shape[0],
                     QImage.Format.Format_RGB888,
                 )
-                converted_frame = converted_frame.scaledToHeight(300)
+                converted_frame = converted_frame.scaledToHeight(
+                    APP_STATE.main_window_height / len(APP_STATE.available_cameras)
+                )
 
                 self.image_updated_signal.emit(converted_frame)
         finally:
@@ -107,5 +111,8 @@ class CamCharucoFrameThreadWorker(QThread):
 
     def quit(self):
         self._should_continue = False
-        self._open_cv_camera.close()
+        try:
+            self._open_cv_camera.close()
+        except Exception as e:
+            print(e)
         super().quit()

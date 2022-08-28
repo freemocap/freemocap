@@ -67,13 +67,6 @@ class ControlPanel:
     def toolbox_widget(self):
         return self._toolbox_widget
 
-    def handle_found_camera_response(
-        self, found_cameras_response: FoundCamerasResponse
-    ):
-        self._camera_setup_control_panel.handle_found_cameras_response(
-            found_cameras_response
-        )
-
     def _start_standard_workflow(self):
         clear_layout(self._layout)
         self._create_toolbox_widget()

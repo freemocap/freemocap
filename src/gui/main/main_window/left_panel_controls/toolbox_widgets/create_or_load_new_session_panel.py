@@ -21,9 +21,9 @@ class CreateOrLoadNewSessionPanel(QWidget):
         central_layout.addLayout(self._create_new_session_layout())
 
         self._load_most_recent_session_button = QPushButton(
-            "TO DO - Load Most &Recent Session",
+            "Load Most &Recent Session",
         )
-        self._load_most_recent_session_button.setEnabled(False)
+        self._load_most_recent_session_button.setEnabled(True)
         central_layout.addWidget(self._load_most_recent_session_button)
 
         self._load_session_button = QPushButton("TO DO - &Load Session")
@@ -41,6 +41,10 @@ class CreateOrLoadNewSessionPanel(QWidget):
     @property
     def start_new_session_button(self):
         return self._start_new_session_button
+
+    @property
+    def load_most_recent_session_button(self):
+        return self._load_most_recent_session_button
 
     @property
     def session_id_input_string(self):

@@ -7,12 +7,8 @@ from PyQt6.QtWidgets import (
     QLineEdit,
 )
 
-from src.core_processes.capture_volume_calibration.charuco_default_values import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.default_charuco_square_size import (
     default_charuco_square_size_mm,
-)
-from src.gui.main.app_state.app_state import APP_STATE
-from src.gui.main.workers.anipose_calibration_thread_worker import (
-    AniposeCalibrationThreadWorker,
 )
 
 

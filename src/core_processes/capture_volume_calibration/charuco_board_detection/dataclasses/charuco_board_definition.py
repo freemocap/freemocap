@@ -8,8 +8,8 @@ import numpy as np
 @dataclass
 class CharucoBoardDataClass:
     aruco_marker_dict: Dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
-    number_of_squares_width: int = 7
-    number_of_squares_height: int = 5
+    number_of_squares_width: int = 5
+    number_of_squares_height: int = 3
     black_square_side_length: int = 1
     aruco_marker_length_proportional: float = 0.8
 

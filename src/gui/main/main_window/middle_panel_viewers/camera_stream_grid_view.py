@@ -25,10 +25,6 @@ class CameraStreamGridView(QWidget):
         self._camera_stream_layout = QVBoxLayout()
         self.setLayout(self._camera_stream_layout)
 
-    @property
-    def video_recorders(self):
-        return [cam.video_recorder for cam in self._dictionary_of_camera_widgets]
-
     def create_and_start_camera_widgets(
         self, dictionary_of_webcam_configs=Dict[str, WebcamConfig]
     ):
@@ -55,29 +51,32 @@ class CameraStreamGridView(QWidget):
         self._start_camera_workers()
 
     def close_camera_widgets(self):
-        logger.info("Quitting running cameras")
+        if hasattr(self, "_dictionary_of_camera_widgets"):
+            logger.info("Quitting running cameras")
+            for camera_widget in self._dictionary_of_camera_widgets.values():
+                camera_widget.quit()
+                camera_widget.close()
+
+    def start_recording_videos(self):
         for camera_widget in self._dictionary_of_camera_widgets.values():
-            camera_widget.quit()
-            camera_widget.close()
+            camera_widget.start_saving_frames()
+
+    def stop_recording_videos(self):
+        for camera_widget in self._dictionary_of_camera_widgets.values():
+            camera_widget.stop_saving_frames()
+
+    def gather_video_recorders(self):
+        video_recorders = {}
+        for camera_id, camera_widget in self._dictionary_of_camera_widgets.items():
+            video_recorders[camera_id] = camera_widget.video_recorder
+
+        return video_recorders
+
+    def reset_video_recorders(self):
+        for camera_widget in self._dictionary_of_camera_widgets.values():
+            camera_widget.reset_video_recorder()
 
     def _start_camera_workers(self):
         for webcam_id in self._dictionary_of_camera_configs.keys():
             self._dictionary_of_camera_widgets[webcam_id].start()
         self.cameras_connected_signal.emit()
-
-    def start_recording_videos(self):
-        for camera_widget in self._dictionary_of_camera_widgets:
-            camera_widget.start_saving_frames()
-
-    def stop_recording_videos(self):
-        for camera_widget in self._dictionary_of_camera_widgets:
-            camera_widget.stop_saving_frames()
-
-    def save_synchronized_videos(self):
-        video_recorders = []
-        for cam in self._dictionary_of_camera_widgets:
-            video_recorders.append(cam.video_recorder)
-
-    def _reset_video_recorders(self):
-        for camera_widget in self._dictionary_of_camera_widgets:
-            camera_widget.reset_video_recorder()

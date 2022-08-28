@@ -2,8 +2,8 @@ import numpy as np
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton
 
-from src.export_stuff.blender_stuff.open_session_in_blender import (
-    open_session_in_blender,
+from src.export_stuff.blender_stuff.export_to_blender import (
+    export_to_blender,
 )
 from src.gui.main.app_state.app_state import APP_STATE
 
@@ -44,7 +44,9 @@ class ProcessSessionDataPanel(QWidget):
         # )
         # processing_buttons_layout.addWidget(self._visualize_freemocap_session_button)
 
-        self._open_in_blender_button = QPushButton("Open Session in Blender")
+        self._open_in_blender_button = QPushButton(
+            "Open Session in Blender (Freezes GUI, sorry!)"
+        )
         self._open_in_blender_button.setEnabled(True)
         processing_buttons_layout.addWidget(self._open_in_blender_button)
 

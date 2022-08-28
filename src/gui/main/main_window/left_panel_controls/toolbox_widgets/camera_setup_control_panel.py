@@ -49,8 +49,8 @@ class CameraSetupControlPanel(QWidget):
         self._panel_layout = QVBoxLayout()
         self.setLayout(self._panel_layout)
 
-        self._redetect_cameras_button = QPushButton("TO DO- Re-Detect Cameras")
-        self._redetect_cameras_button.setEnabled(False)
+        self._redetect_cameras_button = QPushButton("Re-Detect Cameras")
+        self._redetect_cameras_button.setEnabled(True)
         self._panel_layout.addWidget(self._redetect_cameras_button)
 
         self._apply_settings_to_cameras_button = PrimaryButton(
@@ -75,9 +75,7 @@ class CameraSetupControlPanel(QWidget):
     def handle_found_cameras_response(
         self, found_cameras_response: FoundCamerasResponse
     ):
-        self._list_of_available_camera_ids = [
-            raw_cam.webcam_id for raw_cam in found_cameras_response.cameras_found_list
-        ]
+        self._list_of_available_camera_ids = found_cameras_response.cameras_found_list
 
         logger.info(f"Found cameras with IDs:  {self._list_of_available_camera_ids}")
 

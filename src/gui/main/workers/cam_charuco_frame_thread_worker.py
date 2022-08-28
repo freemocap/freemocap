@@ -52,6 +52,8 @@ class CamCharucoFrameThreadWorker(QThread):
         self._video_recorder = VideoRecorder()
 
     def run(self):
+        if self.opencv_camera_is_open:
+            self._open_cv_camera.release()
 
         open_cv_camera = OpenCVCamera(self._webcam_config)
 

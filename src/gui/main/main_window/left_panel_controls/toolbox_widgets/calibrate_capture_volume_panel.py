@@ -1,3 +1,4 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -6,6 +7,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QLineEdit,
 )
+from PyQt6.uic.properties import QtCore
 
 from src.core_processes.capture_volume_calibration.charuco_board_detection.default_charuco_square_size import (
     default_charuco_square_size_mm,
@@ -48,10 +50,10 @@ class CalibrateCaptureVolumePanel(QWidget):
         self._calibrate_capture_volume_from_videos_button = QPushButton(
             "Calibrate Capture Volume From Videos"
         )
-
-        self._calibrate_capture_volume_from_videos_button.setEnabled(False)
+        self._calibrate_capture_volume_from_videos_button.setEnabled(True)
         self._central_layout.addWidget(
-            self._calibrate_capture_volume_from_videos_button
+            self._calibrate_capture_volume_from_videos_button,
+            # alignment=Qt.AlignTop,
         )
 
         self.setLayout(self._central_layout)

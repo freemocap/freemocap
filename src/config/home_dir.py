@@ -82,6 +82,8 @@ def get_calibration_videos_folder_path(session_id: str, create_folder: bool = Tr
     )
     if create_folder:
         calibration_videos_path.mkdir(exist_ok=create_folder, parents=True)
+        # this now counts as a "proper" session, so save it to the toml
+        save_most_recent_session_id_to_a_toml_in_the_freemocap_data_folder(session_id)
     return str(calibration_videos_path)
 
 

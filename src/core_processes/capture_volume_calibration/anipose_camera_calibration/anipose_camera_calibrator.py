@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Union, Callable
 
 import numpy as np
 
@@ -25,10 +25,12 @@ class AniposeCameraCalibrator:
         charuco_board_object: CharucoBoardDataClass,
         charuco_square_size: Union[int, float],
         calibration_videos_folder_path: Union[str, Path],
+        progress_callback: Callable[[str], None] = None,
         session_id: str = None,
     ):
 
         self._charuco_board_object = charuco_board_object
+        self._progress_callback = progress_callback
         self._session_id = session_id
 
         if charuco_square_size == 1:
@@ -93,9 +95,9 @@ class AniposeCameraCalibrator:
         ) = self._anipose_camera_group_object.calibrate_videos(
             video_paths_list_of_list_of_strings, self._anipose_charuco_board
         )
-
-        logger.info("Anipose Calibration Successful!")
-
+        success_str = "Anipose Calibration Successful!"
+        logger.info(success_str)
+        self._progress_callback(success_str)
         if pin_camera_0_to_origin:
             # translate cameras so camera0 is on `0,0,0`
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(

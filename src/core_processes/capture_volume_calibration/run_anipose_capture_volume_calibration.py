@@ -21,10 +21,9 @@ def run_anipose_capture_volume_calibration(
         charuco_square_size=charuco_square_size,
         calibration_videos_folder_path=calibration_videos_folder_path,
         session_id=session_id,
+        progress_callback=progress_callback,
     )
-    progress_callback(
-        "Endurance is great wow wow wow\nEndurance is great wow wow wow\nEndurance is great wow wow wow\n"
-    )
+    progress_callback("Endurance is great wow wow wow")
     return anipose_camera_calibrator.calibrate_camera_capture_volume(
         pin_camera_0_to_origin=pin_camera_0_to_origin
     )

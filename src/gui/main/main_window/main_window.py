@@ -3,7 +3,7 @@ import traceback
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QSplitter
+from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QSplitter, QSizePolicy
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.home_dir import (
@@ -13,6 +13,7 @@ from src.config.home_dir import (
     get_session_calibration_toml_file_path,
     get_output_data_folder_path,
     get_most_recent_session_id,
+    get_freemocap_data_folder_path,
 )
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_most_recent_anipose_calibration_toml,
@@ -46,7 +47,7 @@ class MainWindow(QMainWindow):
 
         super().__init__()
         self.setWindowTitle("freemocap")
-        self._main_window_width = int(1920 * 0.8)
+        self._main_window_width = int(1920 * 0.9)
         self._main_window_height = int(1080 * 0.8)
         APP_STATE.main_window_height = self._main_window_height
         APP_STATE.main_window_width = self._main_window_width
@@ -65,6 +66,10 @@ class MainWindow(QMainWindow):
 
         # right side (info) panel
         self._right_side_panel = self._create_right_side_panel()
+        self._right_side_panel.file_system_view_widget.set_freemocap_data_path(
+            get_freemocap_data_folder_path()
+        )
+
         self._main_layout.addWidget(self._right_side_panel.frame)
 
         self._thread_worker_manager = ThreadWorkerManager()
@@ -80,21 +85,42 @@ class MainWindow(QMainWindow):
         return main_layout
 
     def _create_control_panel(self):
+
         panel = ControlPanel()
-        panel.frame.setMinimumWidth(self._main_window_width * 0.2)
-        panel.frame.setMinimumHeight(self._main_window_height)
+
+        width = self._main_window_width * 0.2
+        height = self._main_window_height
+        panel.frame.setMinimumHeight(height)
+        panel.frame.setMinimumWidth(width / 2)
+        size_hint = panel.frame.sizeHint()
+        size_hint.setWidth(width)
+        size_hint.setHeight(height)
+
         return panel
 
     def _create_cameras_view_panel(self):
         panel = CameraViewPanel()
-        panel.frame.setMinimumWidth(self._main_window_width * 0.5)
-        panel.frame.setMinimumHeight(self._main_window_height)
+        width = self._main_window_width * 0.7
+        height = self._main_window_height
+        panel.frame.setMinimumHeight(height)
+        panel.frame.setMinimumWidth(width / 2)
+        size_hint = panel.frame.sizeHint()
+        size_hint.setWidth(width)
+        size_hint.setHeight(height)
+
         return panel
 
     def _create_right_side_panel(self):
         panel = RightSidePanel()
-        panel.frame.setMinimumWidth(self._main_window_width * 0.2)
-        panel.frame.setMinimumHeight(self._main_window_height)
+
+        width = self._main_window_width * 0.1
+        height = self._main_window_height
+        panel.frame.setMinimumHeight(height)
+        panel.frame.setMinimumWidth(width / 2)
+        size_hint = panel.frame.sizeHint()
+        size_hint.setWidth(width)
+        size_hint.setHeight(height)
+
         return panel
 
     def _connect_buttons_to_stuff(self):
@@ -166,6 +192,10 @@ class MainWindow(QMainWindow):
     def _connect_signals_to_stuff(self):
         logger.info("Connecting signals to stuff")
 
+        self._right_side_panel.file_system_view_widget.load_session_folder_signal.connect(
+            self._start_session
+        )
+
         self._thread_worker_manager.camera_detection_finished.connect(
             self._handle_found_cameras_response
         )
@@ -190,9 +220,7 @@ class MainWindow(QMainWindow):
         self._session_id = session_id
 
         session_path = get_session_folder_path(self._session_id, create_folder=True)
-        self._right_side_panel.file_system_view_widget.set_session_path_as_root(
-            session_path
-        )
+        self._right_side_panel.file_system_view_widget.set_folder_as_root(session_path)
         self._thread_worker_manager.launch_detect_cameras_worker()
 
         self._control_panel.toolbox_widget.setCurrentWidget(
@@ -260,7 +288,7 @@ class MainWindow(QMainWindow):
                 self._control_panel.calibrate_capture_volume_panel.charuco_square_size
             ),
             session_id=self._session_id,
-            # jupyter_console_print_function_callable=self._right_side_panel.jupyter_console_widget.prin
+            jupyter_console_print_function_callable=self._right_side_panel.jupyter_console_widget.print_to_console,
         )
 
     def _setup_and_launch_mediapipe_2d_detection_thread_worker(self):

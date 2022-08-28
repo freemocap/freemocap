@@ -19,19 +19,19 @@ class RightSidePanel:
         self._file_viewer_tab_widget = QTabWidget()
         self._main_layout.addWidget(self._file_viewer_tab_widget)
 
-        self._mocap_file_system_view_widget = FileSystemViewWidget()
+        self._file_system_view_widget = FileSystemViewWidget()
         self._file_viewer_tab_widget.addTab(
-            self._mocap_file_system_view_widget, "Motion Capture Sessions"
+            self._file_system_view_widget, "Motion Capture Sessions"
         )
 
-        # self._log_and_console_tab_widget = QTabWidget()
-        # self._main_layout.addWidget(self._log_and_console_tab_widget)
-        #
-        # self._jupyter_console_widget = JupyterConsoleWidget()
-        # self._log_and_console_tab_widget.addTab(
-        #     self._python_console_widget.jupyter_console_widget,
-        #     "iPython Jupyter Console",
-        # )
+        self._log_and_console_tab_widget = QTabWidget()
+        self._main_layout.addWidget(self._log_and_console_tab_widget)
+
+        self._jupyter_console_widget = JupyterConsoleWidget()
+        self._log_and_console_tab_widget.addTab(
+            self._jupyter_console_widget.jupyter_widget,
+            "iPython Jupyter Console",
+        )
 
         self._log_widget = self._create_log_widget()
 
@@ -41,18 +41,18 @@ class RightSidePanel:
 
     @property
     def file_system_view_widget(self):
-        return self._mocap_file_system_view_widget
+        return self._file_system_view_widget
 
     @property
     def jupyter_console_widget(self):
-        return self._python_console_widget.jupyter_console_widget
+        return self._jupyter_console_widget
 
     # def _create_jupyter_console_widget(self):
     #     # create jupyter console widget
-    #     jupyter_console_widget = JupyterConsoleWidget()
-    #     # get_qt_app().aboutToQuit.connect(jupyter_console_widget.shutdown_kernel)
+    #     jupyter_widget = JupyterConsoleWidget()
+    #     # get_qt_app().aboutToQuit.connect(jupyter_widget.shutdown_kernel)
     #
-    #     return jupyter_console_widget
+    #     return jupyter_widget
 
     def _create_log_widget(self):
         pass

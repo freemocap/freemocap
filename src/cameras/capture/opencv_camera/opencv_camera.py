@@ -92,16 +92,6 @@ class OpenCVCamera:
     def is_open(self):
         return self._opencv_video_capture_object.isOpened()
 
-    def release(self):
-        if self._opencv_video_capture_object is not None:
-            logger.debug(
-                f"Releasing `opencv_video_capture_object` for Camera: {self._config.webcam_id}"
-            )
-            self._opencv_video_capture_object.release()
-
-    def record_frames(self, save_frames_bool: bool):
-        self._running_thread.is_recording_frames = save_frames_bool
-
     def connect(self):
         logger.info(f"Connecting to Camera: {self._config.webcam_id}...")
 
@@ -111,6 +101,11 @@ class OpenCVCamera:
         else:
             logger.info(f"Non-Windows machine detected - using backend `cv2.CAP_ANY`")
             cap_backend = cv2.CAP_ANY
+
+        try:
+            self.release()
+        except:
+            pass
 
         self._opencv_video_capture_object = cv2.VideoCapture(
             int(self._config.webcam_id), cap_backend
@@ -137,6 +132,17 @@ class OpenCVCamera:
 
         logger.info(f"Successfully connected to Camera: {self._config.webcam_id}!")
         return success
+
+
+    def release(self):
+        if self._opencv_video_capture_object is not None:
+            logger.debug(
+                f"Releasing `opencv_video_capture_object` for Camera: {self._config.webcam_id}"
+            )
+            self._opencv_video_capture_object.release()
+
+    def record_frames(self, save_frames_bool: bool):
+        self._running_thread.is_recording_frames = save_frames_bool
 
     def start_frame_capture_thread(self):
         if self.is_capturing_frames:

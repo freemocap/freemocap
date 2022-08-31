@@ -1,7 +1,14 @@
 import time
 
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QWidget
-
+from PyQt6 import QtCore
+from PyQt6.QtWidgets import (
+    QFrame,
+    QVBoxLayout,
+    QWidget,
+    QPushButton,
+    QLabel,
+    QSpacerItem,
+)
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.webcam_config import WebcamConfig
@@ -27,14 +34,9 @@ class CameraViewPanel(QWidget):
         self._frame.setLayout(self._layout)
 
         self._welcome_to_freemocap_title_widget = self._welcome_to_freemocap_title()
-        self._central_layout = QVBoxLayout()
-        self._central_layout.addWidget(self._welcome_to_freemocap_title_widget)
-        self._layout.addLayout(self._central_layout)
+        self._layout.addWidget(self._welcome_to_freemocap_title_widget)
 
         self._camera_stream_grid_view = CameraStreamGridView()
-        self._camera_stream_grid_view.cameras_connected_signal.connect(
-            self._show_camera_stream_grid_view
-        )
 
     @property
     def frame(self):
@@ -45,21 +47,32 @@ class CameraViewPanel(QWidget):
         return self._camera_stream_grid_view
 
     def _welcome_to_freemocap_title(self):
-        session_title = PageTitle(
+        # TO DO - this shouldn't be part of the `camera_view_panel` - it should be its own thing that gets swapped out on session start
+        logger.info("Creating `welcome to freemocap` widget")
+        welcome_widget = QWidget()
+        layout = QVBoxLayout()
+        welcome_widget.setLayout(layout)
+
+        layout.addStretch()
+
+        session_title_widget = PageTitle(
             "Welcome  to  FreeMoCap! \n  \U00002728 \U0001F480 \U00002728 "
         )
-        return session_title
+        layout.addWidget(session_title_widget, QtCore.Qt.AlignCenter)
 
-    def _show_camera_stream_grid_view(self):
+        alpha_version_text_str = "This is an *early* version of the `alpha` version of this software, so like - Manage your Expectations lol "
+        layout.addWidget(QLabel(alpha_version_text_str), QtCore.Qt.AlignCenter)
+
+        layout.addStretch()
+
+        return welcome_widget
+
+    def show_camera_streams(self):
+
+        try:
+            self._welcome_to_freemocap_title_widget.close()
+        except:
+            pass
+
         logger.info("Showing camera stream grid view")
-        clear_layout(self._central_layout)
-        self._central_layout.addWidget(self._camera_stream_grid_view)
-
-    def reconnect_to_cameras(self):
-        self._camera_stream_grid_view.close_and_reconnect_to_cameras()
-
-    def show_camera_streams(self, dictionary_of_single_camera_layouts):
-        self._camera_stream_grid_view.show_camera_streams(
-            dictionary_of_single_camera_layouts
-        )
-        self._show_camera_stream_grid_view()
+        self._layout.addWidget(self._camera_stream_grid_view)

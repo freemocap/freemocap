@@ -48,6 +48,10 @@ class ControlPanel:
         return self._frame
 
     @property
+    def create_or_load_new_session_panel(self):
+        return self._create_or_load_new_session_panel
+
+    @property
     def camera_setup_control_panel(self):
         return self._camera_setup_control_panel
 
@@ -66,13 +70,6 @@ class ControlPanel:
     @property
     def toolbox_widget(self):
         return self._toolbox_widget
-
-    def handle_found_camera_response(
-        self, found_cameras_response: FoundCamerasResponse
-    ):
-        self._camera_setup_control_panel.handle_found_cameras_response(
-            found_cameras_response
-        )
 
     def _start_standard_workflow(self):
         clear_layout(self._layout)

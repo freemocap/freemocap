@@ -6,14 +6,16 @@ from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.core_processes.capture_volume_calibration.calibration_dataclasses import (
     LensDistortionCalibrationData,
 )
-from src.pipelines.calibration_pipeline.charuco_board_detection import BoardDetector
+from src.core_processes.capture_volume_calibration.charuco_board_detection import (
+    BoardDetector,
+)
 from src.core_processes.capture_volume_calibration.calibration_diagnostics_visualizer import (
     CalibrationDiagnosticsVisualizer,
 )
-from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection import (
     CharucoViewData,
 )
-from src.pipelines.calibration_pipeline.charuco_board_detection import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection import (
     annotate_image_with_charuco_data,
 )
 

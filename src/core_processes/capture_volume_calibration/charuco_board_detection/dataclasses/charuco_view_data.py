@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_board_definition import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDataClass,
 )
 

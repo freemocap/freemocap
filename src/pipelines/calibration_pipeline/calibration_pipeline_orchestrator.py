@@ -11,19 +11,17 @@ from src.config.home_dir import (
     create_default_session_id,
     get_session_folder_path,
     get_freemocap_data_folder_path,
-    get_output_data_folder_path,
     get_session_calibration_toml_file_path,
 )
-from src.core_processes.timestamp_manager.timestamp_manager import TimestampManager
 from src.core_processes.show_cam_window import show_cam_window
 from src.core_processes.utils.image_fps_writer import write_fps_to_image
-from src.pipelines.calibration_pipeline.anipose_camera_calibration import (
+from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
-from src.pipelines.calibration_pipeline.anipose_camera_calibration.anipose_camera_calibration import (
+from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     AniposeCameraCalibrator,
 )
-from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
 from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Union
 
 from src.config.home_dir import get_freemocap_data_folder_path
-from src.pipelines.calibration_pipeline.anipose_camera_calibration import (
+from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
 

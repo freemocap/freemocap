@@ -1,3 +1,4 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -6,13 +7,10 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QLineEdit,
 )
+from PyQt6.uic.properties import QtCore
 
-from src.core_processes.capture_volume_calibration.charuco_default_values import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.default_charuco_square_size import (
     default_charuco_square_size_mm,
-)
-from src.gui.main.app_state.app_state import APP_STATE
-from src.gui.main.workers.anipose_calibration_thread_worker import (
-    AniposeCalibrationThreadWorker,
 )
 
 
@@ -20,16 +18,18 @@ class CalibrateCaptureVolumePanel(QWidget):
     def __init__(self):
         super().__init__()
 
-        self._central_layout = QVBoxLayout()
+        self._layout = QVBoxLayout()
+        self.setLayout(self._layout)
+        self._layout.addStretch()
 
         self._use_previous_calibration_checkbox = (
             self._create_use_previous_calibration_checkbox()
         )
-        self._central_layout.addWidget(self._use_previous_calibration_checkbox)
+        self._layout.addWidget(self._use_previous_calibration_checkbox)
 
         # start/stop recording button layout
         record_button_layout = QVBoxLayout()
-        self._central_layout.addLayout(record_button_layout)
+        self._layout.addLayout(record_button_layout)
 
         self._start_recording_button = QPushButton("Begin Recording")
         record_button_layout.addWidget(self._start_recording_button)
@@ -47,18 +47,24 @@ class CalibrateCaptureVolumePanel(QWidget):
             "Charuco Square Size (mm):", self._charuco_square_size_line_edit_widget
         )
 
-        self._central_layout.addLayout(self._charuco_square_size_form_layout)
+        self._layout.addLayout(self._charuco_square_size_form_layout)
 
         self._calibrate_capture_volume_from_videos_button = QPushButton(
             "Calibrate Capture Volume From Videos"
         )
-
-        self._calibrate_capture_volume_from_videos_button.setEnabled(False)
-        self._central_layout.addWidget(
-            self._calibrate_capture_volume_from_videos_button
+        self._calibrate_capture_volume_from_videos_button.setEnabled(True)
+        self._layout.addWidget(
+            self._calibrate_capture_volume_from_videos_button,
         )
 
-        self.setLayout(self._central_layout)
+        self._process_automatically_checkbox = QCheckBox("Process Automatically")
+        self._process_automatically_checkbox.setChecked(True)
+        self._layout.addWidget(self._process_automatically_checkbox)
+        self._layout.addStretch()
+
+    @property
+    def process_recording_automatically_checkbox(self):
+        return self._process_automatically_checkbox
 
     @property
     def start_recording_button(self):
@@ -77,8 +83,8 @@ class CalibrateCaptureVolumePanel(QWidget):
         return self._use_previous_calibration_checkbox.isChecked()
 
     @property
-    def charuco_square_size(self):
-        return self._charuco_square_size_line_edit_widget.text()
+    def charuco_square_size(self) -> float:
+        return float(self._charuco_square_size_line_edit_widget.text())
 
     def _create_use_previous_calibration_checkbox(self):
         previous_calibration_checkbox = QCheckBox("Use Previous Calibration")

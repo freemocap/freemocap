@@ -1640,7 +1640,7 @@ try:
         ## Load nSynched Videos
         try:
             print("loading videos as planes...")
-            annotated_videos_path = session_path / "mediapipe_annotated_videos"
+            annotated_videos_path = session_path / "annotated_videos"
 
             if annotated_videos_path.is_dir():
                 vidFolderPath = annotated_videos_path
@@ -1690,6 +1690,7 @@ except Exception as e:
     )
 
 # set shading type to 'Material Preview' so you can see the videos
+# bpy.context.space_data.shading.type = "MATERIAL"
 
 # save .blend file
 sessionID = session_path.stem

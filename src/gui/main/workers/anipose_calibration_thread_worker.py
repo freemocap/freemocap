@@ -19,10 +19,12 @@ class AniposeCalibrationThreadWorker(QThread):
         self,
         calibration_videos_folder_path: Union[str, Path],
         charuco_square_size_mm: Union[int, float],
+        session_id: str,
     ):
         super().__init__()
         self._charuco_square_size_mm = charuco_square_size_mm
         self._calibration_videos_folder_path = calibration_videos_folder_path
+        self._session_id = session_id
 
     def _emit_in_progress_data(self, message: str):
         self.in_progress.emit(message)
@@ -40,6 +42,7 @@ class AniposeCalibrationThreadWorker(QThread):
                 calibration_videos_folder_path=self._calibration_videos_folder_path,
                 pin_camera_0_to_origin=True,
                 progress_callback=self._emit_in_progress_data,
+                session_id=self._session_id,
             )
         except:
             logger.error("something failed in the anipose calibration")

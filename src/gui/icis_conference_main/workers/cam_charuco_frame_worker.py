@@ -5,7 +5,7 @@ from PyQt6.QtGui import QImage
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.config.webcam_config import WebcamConfig
 from src.gui.icis_conference_main.state.app_state import APP_STATE
-from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
 

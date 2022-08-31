@@ -21,11 +21,15 @@ class Triangulate3dDataThreadWorker(QThread):
         anipose_calibration_object,
         mediapipe_2d_data: np.ndarray,
         output_data_folder_path: Union[str, Path],
+        mediapipe_confidence_cutoff_threshold: float = 0.0,
     ):
         super().__init__()
         self._anipose_calibration_object = anipose_calibration_object
         self._mediapipe_2d_data = mediapipe_2d_data
         self._output_data_folder_path = output_data_folder_path
+        self._mediapipe_confidence_cutoff_threshold = (
+            mediapipe_confidence_cutoff_threshold
+        )
 
     def run(self):
         logger.info(
@@ -36,6 +40,7 @@ class Triangulate3dDataThreadWorker(QThread):
             anipose_calibration_object=self._anipose_calibration_object,
             mediapipe_2d_data=self._mediapipe_2d_data,
             output_data_folder_path=self._output_data_folder_path,
+            mediapipe_confidence_cutoff_threshold=self._mediapipe_confidence_cutoff_threshold,
         )
 
         self.finished.emit()

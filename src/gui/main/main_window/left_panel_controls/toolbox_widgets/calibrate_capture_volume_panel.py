@@ -83,8 +83,8 @@ class CalibrateCaptureVolumePanel(QWidget):
         return self._use_previous_calibration_checkbox.isChecked()
 
     @property
-    def charuco_square_size(self):
-        return self._charuco_square_size_line_edit_widget.text()
+    def charuco_square_size(self) -> float:
+        return float(self._charuco_square_size_line_edit_widget.text())
 
     def _create_use_previous_calibration_checkbox(self):
         previous_calibration_checkbox = QCheckBox("Use Previous Calibration")

@@ -32,7 +32,7 @@ class ThreadWorkerManager(QWidget):
     camera_detection_finished = pyqtSignal(FoundCamerasResponse)
     videos_saved_signal = pyqtSignal(bool)
     start_3d_processing_signal = pyqtSignal()
-    start_blender_processing_signal = pyqtSignal(bool)
+    start_blender_processing_signal = pyqtSignal()
     blender_file_created_signal = pyqtSignal(str)
 
     def __init__(self):
@@ -105,6 +105,7 @@ class ThreadWorkerManager(QWidget):
         anipose_calibration_object,
         mediapipe_2d_data: np.ndarray,
         output_data_folder_path: Union[str, Path],
+        mediapipe_confidence_cutoff_threshold: float = 0.0,
         auto_process_next_stage: bool = False,
     ):
         logger.info("Launching `Triangulate 3d Data` thread worker...")
@@ -113,6 +114,7 @@ class ThreadWorkerManager(QWidget):
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=mediapipe_2d_data,
             output_data_folder_path=output_data_folder_path,
+            mediapipe_confidence_cutoff_threshold=mediapipe_confidence_cutoff_threshold,
         )
 
         self._triangulate_3d_data_thread_worker.start()

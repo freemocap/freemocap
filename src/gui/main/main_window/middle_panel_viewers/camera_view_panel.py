@@ -1,6 +1,14 @@
 import time
 
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QWidget, QPushButton
+from PyQt6 import QtCore
+from PyQt6.QtWidgets import (
+    QFrame,
+    QVBoxLayout,
+    QWidget,
+    QPushButton,
+    QLabel,
+    QSpacerItem,
+)
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.webcam_config import WebcamConfig
@@ -39,10 +47,25 @@ class CameraViewPanel(QWidget):
         return self._camera_stream_grid_view
 
     def _welcome_to_freemocap_title(self):
-        session_title = PageTitle(
+        # TO DO - this shouldn't be part of the `camera_view_panel` - it should be its own thing that gets swapped out on session start
+        logger.info("Creating `welcome to freemocap` widget")
+        welcome_widget = QWidget()
+        layout = QVBoxLayout()
+        welcome_widget.setLayout(layout)
+
+        layout.addStretch()
+
+        session_title_widget = PageTitle(
             "Welcome  to  FreeMoCap! \n  \U00002728 \U0001F480 \U00002728 "
         )
-        return session_title
+        layout.addWidget(session_title_widget, QtCore.Qt.AlignCenter)
+
+        alpha_version_text_str = "Please note! This is an *early* version of the `alpha` version of this software, so like - Manage your Expectations lol "
+        layout.addWidget(QLabel(alpha_version_text_str), QtCore.Qt.AlignCenter)
+
+        layout.addStretch()
+
+        return welcome_widget
 
     def show_camera_streams(self):
 

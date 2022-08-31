@@ -63,14 +63,14 @@ class CameraSetupControlPanel(QWidget):
         self._pop_out_cameras_button.setEnabled(False)
         self._panel_layout.addWidget(self._pop_out_cameras_button)
 
+        self._close_cameras_button = QPushButton("Close cameras")
+        self._close_cameras_button.setEnabled(False)
+        self._panel_layout.addWidget(self._close_cameras_button)
+
         self._parameter_tree_layout = QVBoxLayout()
         self._parameter_tree_widget = ParameterTree()
         self._parameter_tree_layout.addWidget(self._parameter_tree_widget)
         self._panel_layout.addLayout(self._parameter_tree_layout)
-
-    @property
-    def pop_out_cameras_button(self):
-        return self._pop_out_cameras_button
 
     @property
     def apply_settings_to_cameras_button(self):
@@ -79,6 +79,14 @@ class CameraSetupControlPanel(QWidget):
     @property
     def redetect_cameras_button(self):
         return self._redetect_cameras_button
+
+    @property
+    def pop_out_cameras_button(self):
+        return self._pop_out_cameras_button
+
+    @property
+    def close_cameras_button(self):
+        return self._close_cameras_button
 
     def handle_found_cameras_response(
         self, found_cameras_response: FoundCamerasResponse

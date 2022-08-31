@@ -7,10 +7,31 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def threshold_by_confidence(
+    mediapipe_2d_data: np.ndarray,
+    mediapipe_confidence_cutoff_threshold: float = 0.0,
+):
+
+    mediapipe_2d_data[
+        mediapipe_2d_data <= mediapipe_confidence_cutoff_threshold
+    ] = np.NaN
+
+    number_of_nans = np.sum(np.isnan(mediapipe_2d_data))
+    number_of_points = np.prod(mediapipe_2d_data.shape)
+    percentage_that_are_nans = (
+        np.sum(np.isnan(mediapipe_2d_data)) / number_of_points
+    ) * 100
+    logger.info(
+        f"After thresholding `mediapipe_2d` with a confidence threshold {mediapipe_confidence_cutoff_threshold}, it has {number_of_nans} NaN values out of {number_of_points} ({percentage_that_are_nans} %)"
+    )
+    return mediapipe_2d_data
+
+
 def triangulate_3d_data(
     anipose_calibration_object,
     mediapipe_2d_data: np.ndarray,
     output_data_folder_path: Union[str, Path],
+    mediapipe_confidence_cutoff_threshold: float = 0.0,
 ):
     number_of_cameras = mediapipe_2d_data.shape[0]
     number_of_frames = mediapipe_2d_data.shape[1]
@@ -22,6 +43,11 @@ def triangulate_3d_data(
             f"This is supposed to be 2D data but, number_of_spatial_dimensions: {number_of_spatial_dimensions}"
         )
         raise Exception
+
+    mediapipe_2d_data = threshold_by_confidence(
+        mediapipe_2d_data=mediapipe_2d_data,
+        mediapipe_confidence_cutoff_threshold=mediapipe_confidence_cutoff_threshold,
+    )
 
     # reshape data to collapse across 'frames' so it becomes [number_of_cameras,
     # number_of_2d_points(numFrames*numPoints), XY]

@@ -229,7 +229,9 @@ class MainWindow(QMainWindow):
         )
 
         self._thread_worker_manager.start_3d_processing_signal.connect(
-            self._setup_and_launch_triangulate_3d_thread_worker
+            lambda: self._setup_and_launch_triangulate_3d_thread_worker(
+                auto_process_next_stage=True
+            )
         )
 
         self._thread_worker_manager.start_blender_processing_signal.connect(
@@ -357,9 +359,7 @@ class MainWindow(QMainWindow):
         )
         self._thread_worker_manager.launch_anipose_calibration_thread_worker(
             calibration_videos_folder_path=calibration_videos_folder_path,
-            charuco_square_size_mm=float(
-                self._control_panel.calibrate_capture_volume_panel.charuco_square_size
-            ),
+            charuco_square_size_mm=self._control_panel.calibrate_capture_volume_panel.charuco_square_size,
             session_id=self._session_id,
             jupyter_console_print_function_callable=self._right_side_panel.jupyter_console_widget.print_to_console,
         )
@@ -383,7 +383,9 @@ class MainWindow(QMainWindow):
             auto_process_next_stage=auto_process_next_stage,
         )
 
-    def _setup_and_launch_triangulate_3d_thread_worker(self):
+    def _setup_and_launch_triangulate_3d_thread_worker(
+        self, auto_process_next_stage: bool = False
+    ):
         if (
             self._control_panel.calibrate_capture_volume_panel.use_previous_calibration_box_is_checked
         ):
@@ -402,6 +404,8 @@ class MainWindow(QMainWindow):
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=mediapipe_2d_data,
             output_data_folder_path=output_data_folder_path,
+            mediapipe_confidence_cutoff_threshold=self._control_panel.process_session_data_panel.mediapipe_confidence_cutoff_threshold,
+            auto_process_next_stage=auto_process_next_stage,
         )
 
     def _export_to_blender(self):

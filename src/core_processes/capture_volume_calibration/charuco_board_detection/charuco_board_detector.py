@@ -5,17 +5,17 @@ import cv2
 import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
-from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_board_definition import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDataClass,
 )
-from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_frame_payload import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_frame_payload import (
     CharucoFramePayload,
 )
-from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_view_data import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_view_data import (
     CharucoViewData,
 )
 
-from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_image_annotator import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
 )
 

@@ -7,7 +7,6 @@ from typing import Dict, Union
 import cv2
 import numpy as np
 
-from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
 from src.config.data_paths import freemocap_data_path
 from src.config.home_dir import (
     create_session_folder,
@@ -20,12 +19,11 @@ from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_skeleton_detect
     Mediapipe2dDataPayload,
 )
 from src.core_processes.show_cam_window import show_cam_window
-from src.core_processes.timestamp_manager.timestamp_manager import TimestampManager
 from src.core_processes.utils.image_fps_writer import write_fps_to_image
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
     CalibrationPipelineOrchestrator,
 )
-from src.pipelines.calibration_pipeline.charuco_board_detection.charuco_board_detector import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
 from src.pipelines.session_pipeline.data_classes.data3d_full_session_data import (

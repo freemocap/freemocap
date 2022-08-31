@@ -1,3 +1,4 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -20,14 +21,18 @@ class CreateOrLoadNewSessionPanel(QWidget):
         central_layout.addLayout(self._create_new_session_layout())
 
         self._load_most_recent_session_button = QPushButton(
-            "TO DO - Load Most &Recent Session"
+            "Load Most &Recent Session",
         )
-        self._load_most_recent_session_button.setEnabled(False)
+        self._load_most_recent_session_button.setEnabled(True)
         central_layout.addWidget(self._load_most_recent_session_button)
 
-        self._load_session_button = QPushButton("TO DO - &Load Session")
-        self._load_session_button.setEnabled(False)
-        central_layout.addWidget(self._load_session_button)
+        self._reset_folder_view_to_freemocap_data_folder_button = QPushButton(
+            "Reset Folder view to FreeMoCap folder"
+        )
+        self._reset_folder_view_to_freemocap_data_folder_button.setEnabled(True)
+        central_layout.addWidget(
+            self._reset_folder_view_to_freemocap_data_folder_button
+        )
 
         self._import_external_videos_button = QPushButton(
             "TO DO - Import External &Videos"
@@ -40,6 +45,14 @@ class CreateOrLoadNewSessionPanel(QWidget):
     @property
     def start_new_session_button(self):
         return self._start_new_session_button
+
+    @property
+    def load_most_recent_session_button(self):
+        return self._load_most_recent_session_button
+
+    @property
+    def reset_folder_view_to_freemocap_data_folder_button(self):
+        return self._reset_folder_view_to_freemocap_data_folder_button
 
     @property
     def session_id_input_string(self):
@@ -57,6 +70,7 @@ class CreateOrLoadNewSessionPanel(QWidget):
         self._session_input = self._create_session_input()
         session_id_form_layout.addRow(QLabel("Session Id"), self._session_input)
         layout.addLayout(session_id_form_layout)
+        layout.setAlignment(Qt.AlignBottom)
 
         self._start_new_session_button = PrimaryButton("&Start Session")
         layout.addWidget(self._start_new_session_button)

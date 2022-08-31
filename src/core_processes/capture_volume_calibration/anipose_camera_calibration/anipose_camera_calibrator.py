@@ -1,18 +1,18 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Union, Callable
 
 import numpy as np
 
 from src.config.home_dir import (
     get_freemocap_data_folder_path,
 )
-from src.pipelines.calibration_pipeline.anipose_camera_calibration import (
+from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
 from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
 
-from src.pipelines.calibration_pipeline.charuco_board_detection.dataclasses.charuco_board_definition import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDataClass,
 )
 
@@ -25,9 +25,13 @@ class AniposeCameraCalibrator:
         charuco_board_object: CharucoBoardDataClass,
         charuco_square_size: Union[int, float],
         calibration_videos_folder_path: Union[str, Path],
+        progress_callback: Callable[[str], None] = None,
+        session_id: str = None,
     ):
 
         self._charuco_board_object = charuco_board_object
+        self._progress_callback = progress_callback
+        self._session_id = session_id
 
         if charuco_square_size == 1:
             logger.warning(
@@ -56,11 +60,17 @@ class AniposeCameraCalibrator:
         self._anipose_camera_group_object = freemocap_anipose.CameraGroup.from_names(
             list_of_camera_names
         )
+
+        # add metadata
         self._anipose_camera_group_object.metadata[
             "charuco_square_size"
         ] = self._charuco_square_size
         self._anipose_camera_group_object.metadata["charuco_board_object"] = str(
             self._charuco_board_object
+        )
+
+        self._anipose_camera_group_object.metadata["charuco_board_object"] = str(
+            self._session_id
         )
 
         self._anipose_charuco_board = AniposeCharucoBoard(
@@ -85,9 +95,9 @@ class AniposeCameraCalibrator:
         ) = self._anipose_camera_group_object.calibrate_videos(
             video_paths_list_of_list_of_strings, self._anipose_charuco_board
         )
-
-        logger.info("Anipose Calibration Successful!")
-
+        success_str = "Anipose Calibration Successful!"
+        logger.info(success_str)
+        self._progress_callback(success_str)
         if pin_camera_0_to_origin:
             # translate cameras so camera0 is on `0,0,0`
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(
@@ -141,9 +151,9 @@ class AniposeCameraCalibrator:
             )
 
         _anipose_camera_group_object.set_translations(altered_translation_vectors)
-        logger.info(f"original translation vectors: {original_translation_vectors}")
+        logger.info(f"original translation vectors:\n {original_translation_vectors}")
         logger.info(
-            f"altered translation vectors: {_anipose_camera_group_object.get_translations()}"
+            f"altered translation vectors:\n {_anipose_camera_group_object.get_translations()}"
         )
         return _anipose_camera_group_object
 

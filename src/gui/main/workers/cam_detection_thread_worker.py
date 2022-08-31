@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 class CameraDetectionThreadWorker(QThread):
     finished = pyqtSignal(FoundCamerasResponse)
 
+    def __init__(self):
+        super().__init__()
+        self.finished.connect(self.quit)
+
     def run(self):
         logger.info("Detecting cameras....")
         found_cameras_response = get_or_create_cams(always_create=True)

@@ -13,8 +13,8 @@ from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_skeleton_detect
 )
 from src.gui.icis_conference_main.state.app_state import APP_STATE
 from src.gui.icis_conference_main.workflows.single_camera import SingleCamera
-from src.export_stuff.blender_stuff.open_session_in_blender import (
-    open_session_in_blender,
+from src.export_stuff.blender_stuff.export_to_blender import (
+    export_to_blender,
 )
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
     CalibrationPipelineOrchestrator,
@@ -188,4 +188,4 @@ class RecordVideos(QWidget):
 
     def _create_blender_scene_from_session_data(self):
         print(f"Open in Blender : {APP_STATE.session_id}")
-        open_session_in_blender(APP_STATE.session_id)
+        export_to_blender(APP_STATE.session_id)

@@ -8,4 +8,9 @@ def clear_layout(layout):
     while layout.count():
         child = layout.takeAt(0)
         if child.widget():
+            logger.debug(f"Deleting child widget {child.widget}")
             child.widget().deleteLater()
+        elif child.layout():
+            clear_layout(child.layout())
+            logger.debug(f"Deleting sub-layout {child.layout}")
+            child.layout().deleteLater()

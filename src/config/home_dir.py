@@ -7,6 +7,11 @@ import toml
 logger = logging.getLogger(__name__)
 
 BASE_FOLDER_NAME = "freemocap_data"
+LOG_FILE_FOLDER_NAME = "logs"
+SYNCHRONIZED_VIDEOS_FOLDER_NAME = "synchronized_videos"
+CALIBRATION_VIDEOS_FOLDER_NAME = "calibration_videos"
+ANNOTATED_VIDEOS_FOLDER_NAME = "annotated_videos"
+OUTPUT_DATA_FOLDER_NAME = "output_data"
 MOST_RECENT_SESSION_ID_FILENAME = "most_recent_session_id.toml"
 CAMERA_CALIBRATION_FILE_NAME = "camera_calibration_data.toml"
 
@@ -20,12 +25,24 @@ def create_default_session_id(string_tag: str = None):
     return session_id
 
 
+def get_log_file_path():
+    log_folder_path = Path(get_freemocap_data_folder_path()) / LOG_FILE_FOLDER_NAME
+    log_folder_path.mkdir(exist_ok=True, parents=True)
+    log_file_path = log_folder_path / create_log_file_name()
+    return log_file_path
+
+
+def create_log_file_name():
+    return "log_" + time.strftime("%m-%d-%Y-%H_%M_%S") + ".log"
+
+
 def save_most_recent_session_id_to_a_toml_in_the_freemocap_data_folder(session_id: str):
     session_id_dict = {}
     session_id_dict["session_id"] = session_id
 
-    output_file_name = MOST_RECENT_SESSION_ID_FILENAME
-    output_file_path = Path(get_freemocap_data_folder_path()) / output_file_name
+    output_file_path = (
+        Path(get_freemocap_data_folder_path()) / MOST_RECENT_SESSION_ID_FILENAME
+    )
     with open(str(output_file_path), "w") as toml_file:
         toml.dump(session_id_dict, toml_file)
 
@@ -66,7 +83,7 @@ def create_session_folder(session_id: str):
 
 def get_synchronized_videos_folder_path(session_id: str, create_folder: bool = True):
     synchronized_videos_path = (
-        Path(get_session_folder_path(session_id)) / "synchronized_videos"
+        Path(get_session_folder_path(session_id)) / SYNCHRONIZED_VIDEOS_FOLDER_NAME
     )
     if create_folder:
         synchronized_videos_path.mkdir(exist_ok=create_folder, parents=True)
@@ -78,7 +95,7 @@ def get_synchronized_videos_folder_path(session_id: str, create_folder: bool = T
 
 def get_calibration_videos_folder_path(session_id: str, create_folder: bool = True):
     calibration_videos_path = (
-        Path(get_session_folder_path(session_id)) / "calibration_videos"
+        Path(get_session_folder_path(session_id)) / CALIBRATION_VIDEOS_FOLDER_NAME
     )
     if create_folder:
         calibration_videos_path.mkdir(exist_ok=create_folder, parents=True)
@@ -90,17 +107,17 @@ def get_calibration_videos_folder_path(session_id: str, create_folder: bool = Tr
 def get_mediapipe_annotated_videos_folder_path(
     session_id: str, create_folder: bool = True
 ):
-    mediapipe_annotated_videos_path = (
-        Path(get_session_folder_path(session_id)) / "mediapipe_annotated_videos"
+    annotated_videos_path = (
+        Path(get_session_folder_path(session_id)) / ANNOTATED_VIDEOS_FOLDER_NAME
     )
     if create_folder:
-        mediapipe_annotated_videos_path.mkdir(exist_ok=create_folder, parents=True)
-    return str(mediapipe_annotated_videos_path)
+        annotated_videos_path.mkdir(exist_ok=create_folder, parents=True)
+    return str(annotated_videos_path)
 
 
 def get_output_data_folder_path(session_id: str, create_folder: bool = True):
     output_data_folder_path = (
-        Path(get_session_folder_path(session_id)) / "output_data_files"
+        Path(get_session_folder_path(session_id)) / OUTPUT_DATA_FOLDER_NAME
     )
     if create_folder:
         output_data_folder_path.mkdir(exist_ok=create_folder, parents=True)

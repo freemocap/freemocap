@@ -1,4 +1,5 @@
 import os
+import shutil
 import traceback
 from pathlib import Path
 from typing import Union
@@ -15,6 +16,7 @@ from src.config.home_dir import (
     get_output_data_folder_path,
     get_most_recent_session_id,
     get_freemocap_data_folder_path,
+    get_log_file_path,
 )
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_most_recent_anipose_calibration_toml,
@@ -427,4 +429,19 @@ class MainWindow(QMainWindow):
         os.startfile(str(blender_file_path))
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        logger.info("Close Event detected... ")
         self._camera_view_panel.camera_stream_grid_view.close_camera_widgets()
+
+        try:
+            log_file_path = get_log_file_path()
+            session_log_path = (
+                Path(get_session_folder_path(self._session_id)) / self._session_id
+                + "log.log"
+            )
+            logger.info(
+                f"Trying to copy log file from {log_file_path} to session folder: {session_log_path}..."
+            )
+            shutil.copy2(get_log_file_path(), get_session_folder_path(self._session_id))
+        except Exception as e:
+            logger.error(f"Something went wrong copying the log file")
+            print(e)

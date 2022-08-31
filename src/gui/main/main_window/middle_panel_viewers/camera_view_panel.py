@@ -60,7 +60,7 @@ class CameraViewPanel(QWidget):
         )
         layout.addWidget(session_title_widget, QtCore.Qt.AlignCenter)
 
-        alpha_version_text_str = "Please note! This is an *early* version of the `alpha` version of this software, so like - Manage your Expectations lol "
+        alpha_version_text_str = "This is an *early* version of the `alpha` version of this software, so like - Manage your Expectations lol "
         layout.addWidget(QLabel(alpha_version_text_str), QtCore.Qt.AlignCenter)
 
         layout.addStretch()

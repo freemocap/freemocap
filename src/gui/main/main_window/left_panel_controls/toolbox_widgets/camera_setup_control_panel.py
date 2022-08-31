@@ -49,20 +49,28 @@ class CameraSetupControlPanel(QWidget):
         self._panel_layout = QVBoxLayout()
         self.setLayout(self._panel_layout)
 
+        self._apply_settings_to_cameras_button = PrimaryButton(
+            "Launch Cameras",
+        )
+        self._apply_settings_to_cameras_button.setEnabled(True)
+        self._panel_layout.addWidget(self._apply_settings_to_cameras_button)
+
         self._redetect_cameras_button = QPushButton("Re-Detect Cameras")
         self._redetect_cameras_button.setEnabled(True)
         self._panel_layout.addWidget(self._redetect_cameras_button)
 
-        self._apply_settings_to_cameras_button = PrimaryButton(
-            "Apply settings to cameras",
-        )
-        self._apply_settings_to_cameras_button.setEnabled(True)
-        self._panel_layout.addWidget(self._apply_settings_to_cameras_button)
+        self._pop_out_cameras_button = QPushButton("Pop out cameras")
+        self._pop_out_cameras_button.setEnabled(False)
+        self._panel_layout.addWidget(self._pop_out_cameras_button)
 
         self._parameter_tree_layout = QVBoxLayout()
         self._parameter_tree_widget = ParameterTree()
         self._parameter_tree_layout.addWidget(self._parameter_tree_widget)
         self._panel_layout.addLayout(self._parameter_tree_layout)
+
+    @property
+    def pop_out_cameras_button(self):
+        return self._pop_out_cameras_button
 
     @property
     def apply_settings_to_cameras_button(self):

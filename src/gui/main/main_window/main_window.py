@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Union
 
 from PyQt6 import QtGui
-from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QSplitter, QSizePolicy
+from PyQt6.QtWidgets import QMainWindow, QSplitter
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.home_dir import (
@@ -76,6 +76,8 @@ class MainWindow(QMainWindow):
         self._connect_buttons_to_stuff()
 
         self._auto_process_next_stage = False
+        self._cameras_are_popped_out = False
+        self._cameras_are_popped_out = False
 
     def _create_main_layout(self):
         main_layout = QSplitter()
@@ -151,6 +153,10 @@ class MainWindow(QMainWindow):
             self._redetect_cameras
         )
 
+        self._control_panel.camera_setup_control_panel.pop_out_cameras_button.clicked.connect(
+            self._handle_pop_out_cameras_button_pressed
+        )
+
         # Calibration panel
         self._control_panel.calibrate_capture_volume_panel.start_recording_button.clicked.connect(
             lambda: self._start_recording_videos(
@@ -206,9 +212,9 @@ class MainWindow(QMainWindow):
             self._handle_found_cameras_response
         )
 
-        self._control_panel.camera_setup_control_panel.camera_parameters_updated_signal.connect(
-            self._camera_view_panel.camera_stream_grid_view.create_and_start_camera_widgets
-        )
+        # self._control_panel.camera_setup_control_panel.camera_parameters_updated_signal.connect(
+        #     self._apply_settings_and_launch_camera_threads
+        # )
 
         self._camera_view_panel.camera_stream_grid_view.cameras_connected_signal.connect(
             self._camera_view_panel.show_camera_streams
@@ -261,19 +267,50 @@ class MainWindow(QMainWindow):
             raise e
         self._thread_worker_manager.launch_detect_cameras_worker()
 
-    def _apply_settings_and_launch_camera_threads(self):
+    def _apply_settings_and_launch_camera_threads(
+        self, pop_out_camera_windows: bool = False
+    ):
+        logger.info("Applying settings and launching camera threads")
+
+        self._control_panel.camera_setup_control_panel.apply_settings_to_cameras_button.setText(
+            "Apply settings and re-launch cameras"
+        )
+        self._control_panel.camera_setup_control_panel.pop_out_cameras_button.setEnabled(
+            True
+        )
+
         try:
             self._camera_view_panel.camera_stream_grid_view.close_camera_widgets()
         except Exception as e:
             logger.info(e)
             raise e
 
-        webcam_configs = (
+        dictionary_of_webcam_configs = (
             self._control_panel.camera_setup_control_panel.get_webcam_configs_from_parameter_tree()
         )
+
+        self._cameras_are_popped_out = pop_out_camera_windows
+
+        if self._cameras_are_popped_out:
+            self._control_panel.camera_setup_control_panel.pop_out_cameras_button.setText(
+                "Re-dock cameras"
+            )
+        else:
+            self._control_panel.camera_setup_control_panel.pop_out_cameras_button.setText(
+                "Pop out cameras"
+            )
+
         self._camera_view_panel.camera_stream_grid_view.create_and_start_camera_widgets(
-            webcam_configs
+            dictionary_of_webcam_configs=dictionary_of_webcam_configs,
+            pop_out_camera_windows=pop_out_camera_windows,
         )
+
+    def _handle_pop_out_cameras_button_pressed(self):
+        logger.info("`Pop out cameras` button pressed.")
+        if not self._cameras_are_popped_out:
+            self._apply_settings_and_launch_camera_threads(pop_out_camera_windows=True)
+        else:
+            self._apply_settings_and_launch_camera_threads(pop_out_camera_windows=False)
 
     def _start_recording_videos(self, panel):
         panel.change_button_states_on_record_start()

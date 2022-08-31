@@ -3,7 +3,14 @@ from typing import List, Dict, Callable
 import numpy as np
 from PyQt6 import QtCore
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QLabel, QDockWidget
+from PyQt6.QtWidgets import (
+    QWidget,
+    QGridLayout,
+    QVBoxLayout,
+    QLabel,
+    QDockWidget,
+    QPushButton,
+)
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.cameras.save_synchronized_videos import save_synchronized_videos
@@ -23,34 +30,48 @@ class CameraStreamGridView(QWidget):
     def __init__(self):
         super().__init__()
 
-        self._camera_stream_layout = QVBoxLayout()
-        self.setLayout(self._camera_stream_layout)
+        self._layout = QVBoxLayout()
+        self.setLayout(self._layout)
 
     def create_and_start_camera_widgets(
-        self, dictionary_of_webcam_configs=Dict[str, WebcamConfig]
+        self,
+        dictionary_of_webcam_configs=Dict[str, WebcamConfig],
+        pop_out_camera_windows: bool = False,
     ):
-        logger.info("creating camera widgets")
-        clear_layout(self._camera_stream_layout)
+        logger.info("Creating camera widgets...")
+        clear_layout(self._layout)
 
         if hasattr(self, "_dictionary_of_camera_widgets"):
             self.close_camera_widgets()
 
         self._dictionary_of_camera_configs = dictionary_of_webcam_configs
         self._dictionary_of_camera_widgets = {}
-        self._dictionary_of_camera_docks = {}
 
         for webcam_config in dictionary_of_webcam_configs.values():
             id = str(webcam_config.webcam_id)
             self._dictionary_of_camera_widgets[id] = SingleCameraWidget(webcam_config)
-            self._dictionary_of_camera_widgets[id].show()
-            # camera_layout = QVBoxLayout()
-            # camera_layout.addWidget(QLabel(f"Camera {str(webcam_config.webcam_id)}"))
-            # camera_layout.addWidget(
-            #     self._dictionary_of_camera_widgets[str(webcam_config.webcam_id)]
-            # )
-            # self._camera_stream_layout.addLayout(camera_layout)
 
-        self._start_camera_workers()
+            if pop_out_camera_windows:
+                self._dictionary_of_camera_widgets[id].setWindowTitle(f"Camera {id}")
+                self._dictionary_of_camera_widgets[id].show()
+            else:
+                camera_layout = QVBoxLayout()
+                camera_layout.addWidget(
+                    QLabel(f"Camera {str(webcam_config.webcam_id)}")
+                )
+                camera_layout.addWidget(
+                    self._dictionary_of_camera_widgets[str(webcam_config.webcam_id)]
+                )
+                self._layout.addLayout(camera_layout)
+
+        self.start_camera_widgets()
+
+    def start_camera_widgets(self):
+        if hasattr(self, "_dictionary_of_camera_widgets"):
+            logger.info("Starting cameras")
+            for camera_widget in self._dictionary_of_camera_widgets.values():
+                camera_widget.start()
+            self.cameras_connected_signal.emit()
 
     def close_camera_widgets(self):
         if hasattr(self, "_dictionary_of_camera_widgets"):
@@ -77,8 +98,3 @@ class CameraStreamGridView(QWidget):
     def reset_video_recorders(self):
         for camera_widget in self._dictionary_of_camera_widgets.values():
             camera_widget.reset_video_recorder()
-
-    def _start_camera_workers(self):
-        for webcam_id in self._dictionary_of_camera_configs.keys():
-            self._dictionary_of_camera_widgets[webcam_id].start()
-        self.cameras_connected_signal.emit()

@@ -38,7 +38,7 @@ class SingleCameraWidget(QWidget):
         super().__init__()
         self._webcam_config = webcam_config
         self._video = QLabel()
-        self._video.setScaledContents(True)
+        # self._video.setScaledContents(True)
         layout = QHBoxLayout()
         layout.addWidget(self._video)
 
@@ -87,11 +87,14 @@ class SingleCameraWidget(QWidget):
         self._video.setPixmap(self._pixmap)
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
-        print("window resized")
+        logging.info(f" Camera {self._webcam_config.webcam_id} window resized")
+
+        # TO DO - Some kinda something here to make the videos scale properly and keep their aspect ratio
+
         # self._pixmap.scaled(
         #     self.width(), self.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation
         # )
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        print("window closed")
+        logging.info(f" Camera {self._webcam_config.webcam_id} window closed")
         self._worker.quit()

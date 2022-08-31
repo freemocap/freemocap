@@ -1,6 +1,6 @@
 import time
 
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QWidget, QPushButton
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.webcam_config import WebcamConfig
@@ -26,9 +26,7 @@ class CameraViewPanel(QWidget):
         self._frame.setLayout(self._layout)
 
         self._welcome_to_freemocap_title_widget = self._welcome_to_freemocap_title()
-        self._central_layout = QVBoxLayout()
-        self._central_layout.addWidget(self._welcome_to_freemocap_title_widget)
-        self._layout.addLayout(self._central_layout)
+        self._layout.addWidget(self._welcome_to_freemocap_title_widget)
 
         self._camera_stream_grid_view = CameraStreamGridView()
 
@@ -54,4 +52,4 @@ class CameraViewPanel(QWidget):
             pass
 
         logger.info("Showing camera stream grid view")
-        self._central_layout.addWidget(self._camera_stream_grid_view)
+        self._layout.addWidget(self._camera_stream_grid_view)

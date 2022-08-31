@@ -26,9 +26,13 @@ class CreateOrLoadNewSessionPanel(QWidget):
         self._load_most_recent_session_button.setEnabled(True)
         central_layout.addWidget(self._load_most_recent_session_button)
 
-        self._load_session_button = QPushButton("TO DO - &Load Session")
-        self._load_session_button.setEnabled(False)
-        central_layout.addWidget(self._load_session_button)
+        self._reset_folder_view_to_freemocap_data_folder_button = QPushButton(
+            "Reset Folder view to FreeMoCap folder"
+        )
+        self._reset_folder_view_to_freemocap_data_folder_button.setEnabled(True)
+        central_layout.addWidget(
+            self._reset_folder_view_to_freemocap_data_folder_button
+        )
 
         self._import_external_videos_button = QPushButton(
             "TO DO - Import External &Videos"
@@ -45,6 +49,10 @@ class CreateOrLoadNewSessionPanel(QWidget):
     @property
     def load_most_recent_session_button(self):
         return self._load_most_recent_session_button
+
+    @property
+    def reset_folder_view_to_freemocap_data_folder_button(self):
+        return self._reset_folder_view_to_freemocap_data_folder_button
 
     @property
     def session_id_input_string(self):

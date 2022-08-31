@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
+    QCheckBox,
 )
 
 
@@ -12,16 +13,35 @@ class RecordSynchronizedVideosPanel(QWidget):
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
-        # start/stop recording button layout
-        record_button_layout = QVBoxLayout()
-        self._layout.addLayout(record_button_layout)
+        self._layout.addStretch()
 
         self._start_recording_button = QPushButton("Begin Recording")
-        record_button_layout.addWidget(self._start_recording_button)
+        self._layout.addWidget(self._start_recording_button)
 
         self._stop_recording_button = QPushButton("Stop Recording")
         self._stop_recording_button.setEnabled(False)
-        record_button_layout.addWidget(self._stop_recording_button)
+        self._layout.addWidget(self._stop_recording_button)
+
+        self._process_automatically_checkbox = QCheckBox(
+            "Process Recording Automatically"
+        )
+        self._process_automatically_checkbox.setChecked(True)
+        self._layout.addWidget(self._process_automatically_checkbox)
+
+        self._open_in_blender_automatically_checkbox = QCheckBox(
+            "Open in Blender automatically"
+        )
+        self._open_in_blender_automatically_checkbox.setChecked(True)
+        self._layout.addWidget(self._open_in_blender_automatically_checkbox)
+        self._layout.addStretch()
+
+    @property
+    def open_in_blender_automatically_checkbox(self):
+        return self._open_in_blender_automatically_checkbox
+
+    @property
+    def process_recording_automatically_checkbox(self):
+        return self._process_automatically_checkbox
 
     @property
     def start_recording_button(self):

@@ -26,7 +26,7 @@ class Mediapipe2dDetectionThreadWorker(QThread):
         self._output_data_folder_path = output_data_folder_path
 
     def run(self):
-        logger.info(f"tracking 2D mediapipe skeletons in videos ")
+        logger.info(f"Tracking 2D mediapipe skeletons in videos ")
         mediapipe_skeleton_detector = MediaPipeSkeletonDetector()
         mediapipe_skeleton_detector.process_folder_full_of_videos(
             self._path_to_folder_of_videos_to_process, self._output_data_folder_path

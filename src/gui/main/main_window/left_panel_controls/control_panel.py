@@ -48,6 +48,10 @@ class ControlPanel:
         return self._frame
 
     @property
+    def create_or_load_new_session_panel(self):
+        return self._create_or_load_new_session_panel
+
+    @property
     def camera_setup_control_panel(self):
         return self._camera_setup_control_panel
 

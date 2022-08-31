@@ -3,6 +3,7 @@ import traceback
 from pathlib import Path
 from typing import Union
 
+from PyQt6 import QtGui
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QSplitter, QSizePolicy
 
 from src.cameras.detection.models import FoundCamerasResponse
@@ -66,9 +67,6 @@ class MainWindow(QMainWindow):
 
         # right side (info) panel
         self._right_side_panel = self._create_right_side_panel()
-        self._right_side_panel.file_system_view_widget.set_freemocap_data_path(
-            get_freemocap_data_folder_path()
-        )
 
         self._main_layout.addWidget(self._right_side_panel.frame)
 
@@ -76,6 +74,8 @@ class MainWindow(QMainWindow):
 
         self._connect_signals_to_stuff()
         self._connect_buttons_to_stuff()
+
+        self._auto_process_next_stage = False
 
     def _create_main_layout(self):
         main_layout = QSplitter()
@@ -111,7 +111,9 @@ class MainWindow(QMainWindow):
         return panel
 
     def _create_right_side_panel(self):
-        panel = RightSidePanel()
+        panel = RightSidePanel(
+            freemocap_data_folder_path=get_freemocap_data_folder_path()
+        )
 
         width = self._main_window_width * 0.1
         height = self._main_window_height
@@ -126,10 +128,14 @@ class MainWindow(QMainWindow):
     def _connect_buttons_to_stuff(self):
         logger.info("Connecting buttons to stuff")
 
-        self._control_panel._create_or_load_new_session_panel.start_new_session_button.clicked.connect(
+        self._control_panel.create_or_load_new_session_panel.start_new_session_button.clicked.connect(
             lambda: self._start_session(
                 self._control_panel._create_or_load_new_session_panel.session_id_input_string
             )
+        )
+
+        self._control_panel.create_or_load_new_session_panel.reset_folder_view_to_freemocap_data_folder_button.clicked.connect(
+            self._right_side_panel.file_system_view_widget.set_folder_view_to_freemocap_data_folder
         )
 
         self._control_panel._create_or_load_new_session_panel.load_most_recent_session_button.clicked.connect(
@@ -209,10 +215,22 @@ class MainWindow(QMainWindow):
         )
 
         self._thread_worker_manager.videos_saved_signal.connect(
-            self._camera_view_panel.camera_stream_grid_view.reset_video_recorders
+            self._handle_videos_saved_signal
         )
 
-        self._thread_worker_manager.blender_file_created_signal.connect(
+        self._control_panel.process_session_data_panel.process_all_button.clicked.connect(
+            self._fully_process_mocap_videos
+        )
+
+        self._thread_worker_manager.start_3d_processing_signal.connect(
+            self._setup_and_launch_triangulate_3d_thread_worker
+        )
+
+        self._thread_worker_manager.start_blender_processing_signal.connect(
+            self._export_to_blender
+        )
+
+        self._control_panel.process_session_data_panel.open_in_blender_button.clicked.connect(
             self._open_blender_file
         )
 
@@ -270,13 +288,31 @@ class MainWindow(QMainWindow):
         )
 
         if calibration_videos:
-            path_to_save_videos = get_calibration_videos_folder_path(self._session_id)
+            folder_to_save_videos = get_calibration_videos_folder_path(self._session_id)
         else:
-            path_to_save_videos = get_synchronized_videos_folder_path(self._session_id)
+            folder_to_save_videos = get_synchronized_videos_folder_path(
+                self._session_id
+            )
 
         self._thread_worker_manager.launch_save_videos_thread_worker(
-            path_to_save_videos, dictionary_of_video_recorders
+            folder_to_save_videos=folder_to_save_videos,
+            dictionary_of_video_recorders=dictionary_of_video_recorders,
+            calibration_videos=calibration_videos,
         )
+
+    def _handle_videos_saved_signal(self, calibration_videos: bool = False):
+        self._camera_view_panel.camera_stream_grid_view.reset_video_recorders()
+
+        if calibration_videos:
+            if (
+                self._control_panel._calibrate_capture_volume_panel.process_recording_automatically_checkbox.isChecked()
+            ):
+                self._setup_and_launch_anipose_calibration_thread_worker()
+        else:  # mocap videos
+            if (
+                self._control_panel.record_synchronized_videos_panel.process_recording_automatically_checkbox.isChecked()
+            ):
+                self._fully_process_mocap_videos()
 
     def _setup_and_launch_anipose_calibration_thread_worker(self):
         calibration_videos_folder_path = get_calibration_videos_folder_path(
@@ -291,7 +327,15 @@ class MainWindow(QMainWindow):
             jupyter_console_print_function_callable=self._right_side_panel.jupyter_console_widget.print_to_console,
         )
 
-    def _setup_and_launch_mediapipe_2d_detection_thread_worker(self):
+    def _fully_process_mocap_videos(self):
+        self._auto_process_next_stage = True
+        self._setup_and_launch_mediapipe_2d_detection_thread_worker(
+            auto_process_next_stage=True
+        )
+
+    def _setup_and_launch_mediapipe_2d_detection_thread_worker(
+        self, auto_process_next_stage: bool = False
+    ):
         synchronized_videos_folder_path = get_synchronized_videos_folder_path(
             self._session_id
         )
@@ -299,6 +343,7 @@ class MainWindow(QMainWindow):
         self._thread_worker_manager.launch_detect_2d_skeletons_thread_worker(
             synchronized_videos_folder_path=synchronized_videos_folder_path,
             output_data_folder_path=output_data_folder_path,
+            auto_process_next_stage=auto_process_next_stage,
         )
 
     def _setup_and_launch_triangulate_3d_thread_worker(self):
@@ -323,13 +368,22 @@ class MainWindow(QMainWindow):
         )
 
     def _export_to_blender(self):
-        logger.debug("Open Session in Blender button clicked.")
+        logger.debug(
+            "Open Session in Blender button clicked (this will freeze the GUI while it is running, sorry! I tried to run it in a thread instead of a 'subprocess' but I got some kind of permission error when it tried to save the `.blend` file, so.... here we are. Frozen in the GUI.  How are you? "
+        )
         # self._thread_worker_manager.launch_export_to_blender_thread_worker(
         #     get_session_folder_path(self._session_id)
         # )
         blender_file_path = export_to_blender(get_session_folder_path(self._session_id))
-        self._open_blender_file(blender_file_path)
+
+        if (
+            self._control_panel.record_synchronized_videos_panel.open_in_blender_automatically_checkbox.isChecked()
+        ):
+            self._open_blender_file(blender_file_path)
 
     def _open_blender_file(self, blender_file_path: Union[str, Path]):
         logger.info(f"Opening {Path(blender_file_path)}")
         os.startfile(str(blender_file_path))
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        self._camera_view_panel.camera_stream_grid_view.close_camera_widgets()

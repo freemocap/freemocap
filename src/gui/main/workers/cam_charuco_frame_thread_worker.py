@@ -103,7 +103,7 @@ class CamCharucoFrameThreadWorker(QThread):
                     QImage.Format.Format_RGB888,
                 )
                 converted_frame = converted_frame.scaledToHeight(
-                    APP_STATE.main_window_height / len(APP_STATE.available_cameras)
+                    APP_STATE.main_window_height / 2  # len(APP_STATE.available_cameras)
                 )
 
                 self.image_updated_signal.emit(converted_frame)

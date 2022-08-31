@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Union
+
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QTabWidget
 
 from src.gui.main.app import get_qt_app
@@ -10,7 +13,7 @@ from src.gui.main.main_window.right_side_panel.jupyter_console_widget import (
 
 
 class RightSidePanel:
-    def __init__(self):
+    def __init__(self, freemocap_data_folder_path: Union[str, Path]):
         self._frame = QFrame()
         self._frame.setFrameShape(QFrame.Shape.StyledPanel)
         self._main_layout = QVBoxLayout()
@@ -19,7 +22,9 @@ class RightSidePanel:
         self._file_viewer_tab_widget = QTabWidget()
         self._main_layout.addWidget(self._file_viewer_tab_widget)
 
-        self._file_system_view_widget = FileSystemViewWidget()
+        self._file_system_view_widget = FileSystemViewWidget(
+            freemocap_data_folder_path=freemocap_data_folder_path
+        )
         self._file_viewer_tab_widget.addTab(
             self._file_system_view_widget, "Motion Capture Sessions"
         )

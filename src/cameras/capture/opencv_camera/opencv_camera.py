@@ -133,7 +133,6 @@ class OpenCVCamera:
         logger.info(f"Successfully connected to Camera: {self._config.webcam_id}!")
         return success
 
-
     def release(self):
         if self._opencv_video_capture_object is not None:
             logger.debug(

@@ -1,8 +1,9 @@
 import enum
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6 import QtGui
+from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget, QSizePolicy
+from PyQt6.QtWidgets import QHBoxLayout, QWidget, QLabel
 
 from src.config.webcam_config import WebcamConfig
 from src.gui.main.workers.cam_charuco_frame_thread_worker import (
@@ -30,14 +31,14 @@ def construct_worker(worker_type: WorkerType):
     raise Exception("What?")
 
 
-class CameraWidget(QWidget):
+class SingleCameraWidget(QWidget):
     started = pyqtSignal()
 
     def __init__(self, webcam_config: WebcamConfig):
         super().__init__()
         self._webcam_config = webcam_config
         self._video = QLabel()
-        # self._video.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        self._video.setScaledContents(True)
         layout = QHBoxLayout()
         layout.addWidget(self._video)
 
@@ -82,4 +83,15 @@ class CameraWidget(QWidget):
         return worker
 
     def _handle_image_update(self, image):
-        self._video.setPixmap(QPixmap.fromImage(image))
+        self._pixmap = QPixmap.fromImage(image)
+        self._video.setPixmap(self._pixmap)
+
+    def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
+        print("window resized")
+        # self._pixmap.scaled(
+        #     self.width(), self.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+        # )
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        print("window closed")
+        self._worker.quit()

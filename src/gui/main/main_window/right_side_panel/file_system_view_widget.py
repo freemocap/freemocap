@@ -19,8 +19,12 @@ logger = logging.getLogger(__name__)
 class FileSystemViewWidget(QWidget):
     load_session_folder_signal = pyqtSignal(str)
 
-    def __init__(self):
+    def __init__(self, freemocap_data_folder_path: Union[str, Path]):
+        logger.info("Creating FileSystemViewWidget")
         super().__init__()
+
+        self._freemocap_data_folder_path = freemocap_data_folder_path
+
         layout = QVBoxLayout()
         self.setLayout(layout)
 
@@ -40,11 +44,14 @@ class FileSystemViewWidget(QWidget):
         self._tree_view_widget.setAlternatingRowColors(True)
         self._tree_view_widget.resizeColumnToContents(1)
 
-    def set_freemocap_data_path(self, freemocap_data_path: Union[str, Path]):
-        self._freemocap_data_path = freemocap_data_path
-        self.set_folder_as_root(self._freemocap_data_path)
+        self.set_folder_view_to_freemocap_data_folder()
+
+    def set_folder_view_to_freemocap_data_folder(self):
+        logger.info(f"Setting root folder to {str(self._freemocap_data_folder_path)}")
+        self.set_folder_as_root(self._freemocap_data_folder_path)
 
     def set_folder_as_root(self, folder_path: Union[str, Path]):
+        logger.info(f"Setting root folder to {str(folder_path)}")
         self._file_system_model.setRootPath(folder_path)
         self._tree_view_widget.setRootIndex(self._file_system_model.index(folder_path))
 
@@ -69,7 +76,7 @@ class FileSystemViewWidget(QWidget):
         file_path = Path(self._file_system_model.filePath(index))
         if file_path.is_file():
             file_path = Path(file_path).parent
-        session_id = str(file_path.relative_to(self._freemocap_data_path))
+        session_id = str(file_path.relative_to(self._freemocap_data_folder_path))
 
         logger.info(f"Loading session - {session_id} - from file_system_view_widget")
 

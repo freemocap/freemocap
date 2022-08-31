@@ -18,16 +18,18 @@ class CalibrateCaptureVolumePanel(QWidget):
     def __init__(self):
         super().__init__()
 
-        self._central_layout = QVBoxLayout()
+        self._layout = QVBoxLayout()
+        self.setLayout(self._layout)
+        self._layout.addStretch()
 
         self._use_previous_calibration_checkbox = (
             self._create_use_previous_calibration_checkbox()
         )
-        self._central_layout.addWidget(self._use_previous_calibration_checkbox)
+        self._layout.addWidget(self._use_previous_calibration_checkbox)
 
         # start/stop recording button layout
         record_button_layout = QVBoxLayout()
-        self._central_layout.addLayout(record_button_layout)
+        self._layout.addLayout(record_button_layout)
 
         self._start_recording_button = QPushButton("Begin Recording")
         record_button_layout.addWidget(self._start_recording_button)
@@ -45,18 +47,24 @@ class CalibrateCaptureVolumePanel(QWidget):
             "Charuco Square Size (mm):", self._charuco_square_size_line_edit_widget
         )
 
-        self._central_layout.addLayout(self._charuco_square_size_form_layout)
+        self._layout.addLayout(self._charuco_square_size_form_layout)
 
         self._calibrate_capture_volume_from_videos_button = QPushButton(
             "Calibrate Capture Volume From Videos"
         )
         self._calibrate_capture_volume_from_videos_button.setEnabled(True)
-        self._central_layout.addWidget(
+        self._layout.addWidget(
             self._calibrate_capture_volume_from_videos_button,
-            # alignment=Qt.AlignTop,
         )
 
-        self.setLayout(self._central_layout)
+        self._process_automatically_checkbox = QCheckBox("Process Automatically")
+        self._process_automatically_checkbox.setChecked(True)
+        self._layout.addWidget(self._process_automatically_checkbox)
+        self._layout.addStretch()
+
+    @property
+    def process_recording_automatically_checkbox(self):
+        return self._process_automatically_checkbox
 
     @property
     def start_recording_button(self):

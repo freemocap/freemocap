@@ -21,7 +21,7 @@ def get_logging_handlers():
     default_formatter = logging.Formatter(
         "[%(asctime)s.%(msecs)04d] [%(levelname)8s] [%(name)s] [%(funcName)s():%(lineno)s] [PID:%(process)d "
         "TID:%(thread)d] %(message)s",
-        "%Y/%m/%d %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
     )
 
     console_handler = logging.StreamHandler(sys.stdout)

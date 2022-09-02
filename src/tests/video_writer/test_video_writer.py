@@ -23,7 +23,7 @@ class VideoWriterTestCase(TestCase):
             image=np.random.randint(0, 4, (720, 1280, 3)),
             timestamp_in_seconds_from_record_start=time.time_ns(),
         )
-        vw = VideoRecorder("nothing", 100, 100, "nothing")
+        vw = VideoRecorder()
         vw.append_frame_payload_to_list(example_payload)
 
         assert vw.frame_count == 1

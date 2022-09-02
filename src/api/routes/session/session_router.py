@@ -6,7 +6,7 @@ from typing import Optional, Union
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from jon_scratch.pupil_calibration_pipeline.qt_gl_laser_skeleton_visualizer import (
+from src.pupil_labs_stuff.qt_gl_laser_skeleton_visualizer import (
     QtGlLaserSkeletonVisualizer,
 )
 from src.cameras.launch_camera_frame_loop import launch_camera_frame_loop
@@ -26,6 +26,9 @@ from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import
 from src.pipelines.session_pipeline.session_pipeline_orchestrator import (
     SessionPipelineOrchestrator,
     load_mediapipe3d_skeleton_data,
+)
+
+from src.core_processes.mediapipe_2d_skeleton_detector.load_mediapipe2d_data import (
     load_mediapipe2d_data,
 )
 

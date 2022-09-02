@@ -18,7 +18,7 @@ from src.core_processes.utils.image_fps_writer import write_fps_to_image
 from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
-from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
+from src.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_camera_calibrator import (
     AniposeCameraCalibrator,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (

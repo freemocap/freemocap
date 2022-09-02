@@ -5,7 +5,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from jon_scratch.pupil_calibration_pipeline.data_classes.pupil_dataclass_and_handler import (
+from src.pupil_labs_stuff.data_classes.pupil_dataclass_and_handler import (
     PupilLabsDataClass,
     PupilDataHandler,
 )

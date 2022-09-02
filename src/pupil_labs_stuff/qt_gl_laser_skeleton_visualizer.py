@@ -10,13 +10,13 @@ import numpy as np
 import sys
 from mediapipe.python.solutions import holistic as mp_holistic
 
-from jon_scratch.pupil_calibration_pipeline.data_classes.freemocap_session_data_class import (
+from src.pupil_labs_stuff.data_classes.freemocap_session_data_class import (
     FreemocapSessionDataClass,
 )
-from jon_scratch.pupil_calibration_pipeline.data_classes.rotation_data_class import (
+from src.pupil_labs_stuff.data_classes.rotation_data_class import (
     RotationDataClass,
 )
-from jon_scratch.pupil_calibration_pipeline.session_data_loader import SessionDataLoader
+from src.pupil_labs_stuff.session_data_loader import SessionDataLoader
 
 logger = logging.getLogger(__name__)
 

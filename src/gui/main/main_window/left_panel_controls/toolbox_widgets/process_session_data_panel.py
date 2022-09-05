@@ -12,10 +12,7 @@ from PyQt6.QtWidgets import (
 from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_default_settings import (
     default_mediapipe_confidence_threshold,
 )
-from src.export_stuff.blender_stuff.export_to_blender import (
-    export_to_blender,
-)
-from src.gui.main.app_state.app_state import APP_STATE
+
 from src.gui.main.tool_tips.tool_tips import mediapipe_confidence_cutoff_tool_tip_str
 
 
@@ -56,7 +53,7 @@ class ProcessSessionDataPanel(QWidget):
         # )
 
         self._open_in_blender_button = QPushButton(
-            "Open Session in Blender (Freezes GUI, sorry!)"
+            "Export to Blender (Freezes GUI, sorry!)"
         )
         self._open_in_blender_button.setEnabled(True)
         self._layout.addWidget(self._open_in_blender_button)

@@ -178,15 +178,15 @@ class MainWindow(QMainWindow):
         )
 
         # RecordVideos panel
-        self._control_panel.record_synchronized_videos_panel.start_recording_button.clicked.connect(
+        self._control_panel.record_motion_capture_videos_panel.start_recording_button.clicked.connect(
             lambda: self._start_recording_videos(
-                panel=self._control_panel.record_synchronized_videos_panel,
+                panel=self._control_panel.record_motion_capture_videos_panel,
             )
         )
 
-        self._control_panel.record_synchronized_videos_panel.stop_recording_button.clicked.connect(
+        self._control_panel.record_motion_capture_videos_panel.stop_recording_button.clicked.connect(
             lambda: self._stop_recording_videos(
-                panel=self._control_panel.record_synchronized_videos_panel
+                panel=self._control_panel.record_motion_capture_videos_panel
             )
         )
 
@@ -351,7 +351,7 @@ class MainWindow(QMainWindow):
                 self._setup_and_launch_anipose_calibration_thread_worker()
         else:  # mocap videos
             if (
-                self._control_panel.record_synchronized_videos_panel.process_recording_automatically_checkbox.isChecked()
+                self._control_panel.record_motion_capture_videos_panel.process_recording_automatically_checkbox.isChecked()
             ):
                 self._fully_process_mocap_videos()
 
@@ -420,7 +420,7 @@ class MainWindow(QMainWindow):
         blender_file_path = export_to_blender(get_session_folder_path(self._session_id))
 
         if (
-            self._control_panel.record_synchronized_videos_panel.open_in_blender_automatically_checkbox.isChecked()
+            self._control_panel.record_motion_capture_videos_panel.open_in_blender_automatically_checkbox.isChecked()
         ):
             self._open_blender_file(blender_file_path)
 

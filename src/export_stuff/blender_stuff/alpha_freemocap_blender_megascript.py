@@ -37,12 +37,12 @@ print(str(session_path))
 session_path = Path(session_path)
 path_to_mediapipe_npy = (
     session_path
-    / "output_data_files"
+    / "output_data"
     / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
 )
 path_to_mediapipe_3d_reproj = (
     session_path
-    / "output_data_files"
+    / "output_data"
     / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
 )
 

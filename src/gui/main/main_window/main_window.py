@@ -16,7 +16,6 @@ from src.config.home_dir import (
     get_output_data_folder_path,
     get_most_recent_session_id,
     get_freemocap_data_folder_path,
-    get_log_file_path,
 )
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_most_recent_anipose_calibration_toml,

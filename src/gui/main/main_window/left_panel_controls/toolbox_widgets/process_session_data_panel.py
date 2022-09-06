@@ -141,6 +141,7 @@ class ProcessSessionDataPanel(QWidget):
         return blender_path_layout
 
     def _open_blender_path_file_dialog(self):
+        # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
         self._blender_exe_path_str = QFileDialog.getOpenFileName()
         self._blender_exe_path_str = self._blender_exe_path_str[0]
         logger.info(f"User selected Blender path:{self._blender_exe_path_str}")

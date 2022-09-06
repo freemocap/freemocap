@@ -49,13 +49,13 @@ class CameraSetupControlPanel(QWidget):
         self._panel_layout = QVBoxLayout()
         self.setLayout(self._panel_layout)
 
-        self._apply_settings_to_cameras_button = PrimaryButton(
-            "Launch Cameras",
+        self._apply_settings_to_cameras_button = QPushButton(
+            "Apply settings and Launch Cameras",
         )
         self._apply_settings_to_cameras_button.setEnabled(True)
         self._panel_layout.addWidget(self._apply_settings_to_cameras_button)
 
-        self._redetect_cameras_button = QPushButton("Re-Detect Cameras")
+        self._redetect_cameras_button = QPushButton("Detect Cameras")
         self._redetect_cameras_button.setEnabled(True)
         self._panel_layout.addWidget(self._redetect_cameras_button)
 

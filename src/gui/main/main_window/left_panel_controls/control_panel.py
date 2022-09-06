@@ -21,8 +21,8 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.create_or_load
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.process_session_data_panel import (
     ProcessSessionDataPanel,
 )
-from src.gui.main.main_window.left_panel_controls.toolbox_widgets.record_synchronized_videos_panel import (
-    RecordSynchronizedVideosPanel,
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.record_motion_capture_videos_panel import (
+    RecordMotionCatpureVideosPanel,
 )
 
 from src.gui.main.qt_utils.clear_layout import clear_layout
@@ -60,12 +60,12 @@ class ControlPanel:
         return self._calibrate_capture_volume_panel
 
     @property
-    def record_synchronized_videos_panel(self):
-        return self._record_synchronized_videos_panel
+    def record_motion_capture_videos_panel(self):
+        return self._record_motion_capture_videos_panel
 
     @property
     def process_session_data_panel(self):
-        return self._process_session_data_panel
+        return self._record_motion_capture_videos_panel.process_session_data_panel
 
     @property
     def toolbox_widget(self):
@@ -89,9 +89,9 @@ class ControlPanel:
         )
 
         toolbox_widget.addItem(
-            self._record_synchronized_videos_panel, "Record Synchronized Videos"
+            self._record_motion_capture_videos_panel, "Record Motion Capture Videos"
         )
-        toolbox_widget.addItem(self._process_session_data_panel, "Process Session Data")
+        # toolbox_widget.addItem(self._process_session_data_panel, "Process Session Data")
 
         toolbox_widget.addItem(
             QLabel("View Motion Capture Data"), "View Motion Capture Data"
@@ -103,5 +103,5 @@ class ControlPanel:
         self._create_or_load_new_session_panel = CreateOrLoadNewSessionPanel()
         self._camera_setup_control_panel = CameraSetupControlPanel()
         self._calibrate_capture_volume_panel = CalibrateCaptureVolumePanel()
-        self._record_synchronized_videos_panel = RecordSynchronizedVideosPanel()
-        self._process_session_data_panel = ProcessSessionDataPanel()
+        self._record_motion_capture_videos_panel = RecordMotionCatpureVideosPanel()
+        # self._process_session_data_panel = ProcessSessionDataPanel()

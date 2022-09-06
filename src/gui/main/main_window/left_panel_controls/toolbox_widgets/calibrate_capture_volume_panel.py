@@ -99,12 +99,13 @@ class CalibrateCaptureVolumePanel(QWidget):
         return previous_calibration_checkbox
 
     def _enable_or_disable_calibrate_from_videos_button(self):
-        logger.debug('Process calibration videos automatically checkbox state changed')
+        logger.debug(
+            "`Process calibration videos automatically checkbox` state changed"
+        )
         if self._process_automatically_checkbox.isChecked():
             self._calibrate_capture_volume_from_videos_button.setEnabled(False)
         else:
             self._calibrate_capture_volume_from_videos_button.setEnabled(True)
-
 
     def change_button_states_on_record_start(self):
         self._start_recording_button.setEnabled(False)

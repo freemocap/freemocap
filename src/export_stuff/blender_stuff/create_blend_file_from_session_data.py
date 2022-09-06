@@ -4,9 +4,9 @@ from typing import Union
 
 from src.config.home_dir import get_session_folder_path
 
-blender_exe_path = (
-    r"C:\Users\jonma\Blender Foundation\stable\blender-3.1.0-windows-x64\blender.exe"
-)
+# blender_exe_path = (
+#     r"C:\Users\jonma\Blender Foundation\stable\blender-3.1.0-windows-x64\blender.exe"
+# )
 # blender_exe_path = r"C:\Users\jonma\Blender Foundation\Blender 3.1\blender.exe"
 
 import logging
@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 def create_blend_file_from_session_data(
-    session_folder_path: Union[str, Path], good_clean_frame_number: int = 0
+    session_folder_path: Union[str, Path],
+    blender_exe_path: Union[str, Path],
+    good_clean_frame_number: int = 0,
 ):
     path_to_this_py_file = Path(__file__).parent.resolve()
     freemocap_blender_megascript_path = (
@@ -48,4 +50,4 @@ def create_blend_file_from_session_data(
     if blender_process.returncode == 0:
         print("Blender returned an error:")
         print(blender_process.stderr.read().decode())
-    print(f"done with blender stuff :D")
+    logger.info(f"Done with blender stuff :D")

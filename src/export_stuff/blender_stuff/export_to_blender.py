@@ -12,7 +12,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def export_to_blender(session_folder_path: Union[str, Path]):
+def export_to_blender(
+    session_folder_path: Union[str, Path], blender_exe_path: Union[str, Path]
+):
 
     blender_file_name = Path(session_folder_path).stem + ".blend"
     blender_file_path = Path(session_folder_path) / blender_file_name
@@ -20,7 +22,9 @@ def export_to_blender(session_folder_path: Union[str, Path]):
         f"Exporting session data to a Blender scene at: {str(blender_file_path)}"
     )
 
-    create_blend_file_from_session_data(session_folder_path)
+    create_blend_file_from_session_data(
+        session_folder_path=session_folder_path, blender_exe_path=blender_exe_path
+    )
 
     return str(blender_file_path)
 

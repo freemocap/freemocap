@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import (
@@ -7,13 +9,20 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFormLayout,
     QLineEdit,
+    QFileDialog,
+    QLabel,
 )
 
 from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_default_settings import (
     default_mediapipe_confidence_threshold,
 )
+from src.export_stuff.blender_stuff.get_best_guess_of_blender_path import (
+    get_best_guess_of_blender_path,
+)
 
 from src.gui.main.tool_tips.tool_tips import mediapipe_confidence_cutoff_tool_tip_str
+
+logger = logging.getLogger(__name__)
 
 
 class ProcessSessionDataPanel(QWidget):
@@ -48,6 +57,9 @@ class ProcessSessionDataPanel(QWidget):
         self._visualize_freemocap_session_button.setEnabled(False)
         self._layout.addWidget(self._visualize_freemocap_session_button)
 
+        self._blender_path_form_layout = self._make_blender_path_layout()
+        self._layout.addLayout(self._blender_path_form_layout)
+
         # self._visualize_freemocap_session_button.clicked.connect(
         #     self._visualize_freemocap_session
         # )
@@ -78,7 +90,12 @@ class ProcessSessionDataPanel(QWidget):
 
     @property
     def open_in_blender_button(self):
+
         return self._open_in_blender_button
+
+    @property
+    def blender_exe_path_str(self):
+        return self._blender_exe_path_str
 
     def _make_mediapipe_confidence_cutoff_layout(self):
         layout = QFormLayout()
@@ -99,3 +116,32 @@ class ProcessSessionDataPanel(QWidget):
         q_line_edit_widget.setToolTip(mediapipe_confidence_cutoff_tool_tip_str)
 
         return q_line_edit_widget
+
+    def _make_blender_path_layout(self):
+
+        blender_path_layout = QVBoxLayout()
+
+        self._open_blender_path_file_dialog_button = QPushButton(
+            "Locate Blender Executable"
+        )
+        blender_path_layout.addWidget(self._open_blender_path_file_dialog_button)
+        self._open_blender_path_file_dialog_button.clicked.connect(
+            self._open_blender_path_file_dialog
+        )
+        self._open_blender_path_file_dialog_button.setToolTip(
+            "This is the path executable that we will send the `blender export` subprocess command"
+        )
+
+        self._blender_exe_path_str = get_best_guess_of_blender_path()
+        self._current_blender_path_label = QLabel(self._blender_exe_path_str)
+        # if self._blender_exe_path is None:
+        #     self._open_blender_path_file_dialog()
+        blender_path_layout.addWidget(self._current_blender_path_label)
+
+        return blender_path_layout
+
+    def _open_blender_path_file_dialog(self):
+        self._blender_exe_path_str = QFileDialog.getOpenFileName()
+        self._blender_exe_path_str = self._blender_exe_path_str[0]
+        logger.info(f"User selected Blender path:{self._blender_exe_path_str}")
+        self._current_blender_path_label.setText(self._blender_exe_path_str)

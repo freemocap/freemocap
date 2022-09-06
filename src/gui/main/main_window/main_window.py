@@ -417,7 +417,10 @@ class MainWindow(QMainWindow):
         # self._thread_worker_manager.launch_export_to_blender_thread_worker(
         #     get_session_folder_path(self._session_id)
         # )
-        blender_file_path = export_to_blender(get_session_folder_path(self._session_id))
+        blender_file_path = export_to_blender(
+            session_folder_path=get_session_folder_path(self._session_id),
+            blender_exe_path=self._control_panel.process_session_data_panel.blender_exe_path_str,
+        )
 
         if (
             self._control_panel.record_motion_capture_videos_panel.open_in_blender_automatically_checkbox.isChecked()

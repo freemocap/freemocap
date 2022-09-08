@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Union
 
 from PyQt6 import QtGui
-from PyQt6.QtWidgets import QMainWindow, QSplitter
+from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.home_dir import (
@@ -149,6 +149,10 @@ class MainWindow(QMainWindow):
             lambda: self._start_session(get_most_recent_session_id())
         )
 
+        self._middle_viewing_panel.welcome_create_or_load_session_panel.load_session_button.clicked.connect(
+            self._load_session_dialog
+        )
+
         # Camera Control Panel
         self._control_panel.camera_setup_control_panel.apply_settings_to_cameras_button.clicked.connect(
             self._apply_settings_and_launch_camera_threads
@@ -264,6 +268,24 @@ class MainWindow(QMainWindow):
     def _set_session_folder_as_root_for_file_viewer(self, session_id: str):
         session_path = get_session_folder_path(session_id, create_folder=True)
         self._right_side_panel.file_system_view_widget.set_folder_as_root(session_path)
+
+    def _load_session_dialog(self):
+        # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
+        user_selected_path = QFileDialog.getExistingDirectory(
+            self,
+            "Select the session folder you want to load...",
+            get_freemocap_data_folder_path(),
+        )
+
+        self._session_id = str(
+            Path(user_selected_path).relative_to(get_freemocap_data_folder_path())
+        )
+
+        logger.info(
+            f"User selected session path:{user_selected_path}, `session_id` set to  {self._session_id}"
+        )
+
+        self._start_session(self._session_id)
 
     def _start_session(self, session_id: str, new_session: bool = False):
         self._session_id = session_id

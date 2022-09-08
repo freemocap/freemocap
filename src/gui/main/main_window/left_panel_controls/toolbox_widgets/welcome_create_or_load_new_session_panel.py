@@ -38,6 +38,12 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         self._load_most_recent_session_button.setEnabled(True)
         self._layout.addWidget(self._load_most_recent_session_button)
 
+        self._load_session_button = QPushButton(
+            "Load Session",
+        )
+        self._load_session_button.setEnabled(True)
+        self._layout.addWidget(self._load_session_button)
+
         self._import_external_videos_button = QPushButton(
             "TO DO - Import External &Videos"
         )
@@ -53,6 +59,10 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
     @property
     def load_most_recent_session_button(self):
         return self._load_most_recent_session_button
+
+    @property
+    def load_session_button(self):
+        return self._load_session_button
 
     @property
     def session_id_input_string(self):

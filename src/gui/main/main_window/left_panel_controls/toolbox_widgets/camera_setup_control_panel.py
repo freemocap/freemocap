@@ -70,7 +70,7 @@ class CameraSetupControlPanel(QWidget):
         self._layout.addWidget(self._pop_out_cameras_button)
 
         self._close_cameras_button = QPushButton("Close cameras")
-        self._close_cameras_button.setEnabled(False)
+        self._close_cameras_button.setEnabled(True)
         self._layout.addWidget(self._close_cameras_button)
 
         self._parameter_tree_layout = QVBoxLayout()

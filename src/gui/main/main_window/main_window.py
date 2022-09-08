@@ -162,6 +162,10 @@ class MainWindow(QMainWindow):
             self._handle_pop_out_cameras_button_pressed
         )
 
+        self._control_panel.camera_setup_control_panel.close_cameras_button.clicked.connect(
+            self._middle_viewing_panel.camera_stream_grid_view.close_camera_widgets
+        )
+
         # Calibration panel
         self._control_panel.calibrate_capture_volume_panel.start_recording_button.clicked.connect(
             lambda: self._start_recording_videos(

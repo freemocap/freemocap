@@ -500,21 +500,30 @@ class MainWindow(QMainWindow):
         self._middle_viewing_panel.camera_stream_grid_view.close_camera_widgets()
 
         if self._session_id is not None:
-            try:
-                session_log_path = (
-                    str(
-                        Path(get_session_folder_path(self._session_id))
-                        / self._session_id
+            session_folder = get_session_folder_path(self._session_id)
+            dir = os.listdir(session_folder)
+            if len(dir) == 0:
+                logger.info(f"{self._session_id} folder is empty, so let's delete it")
+                Path(session_folder).rmdir()
+                return
+            else:
+                try:
+                    session_log_path = (
+                        str(
+                            Path(get_session_folder_path(self._session_id))
+                            / self._session_id
+                        )
+                        + "_log.log"
                     )
-                    + "_log.log"
-                )
-                logger.info(
-                    f"Trying to copy log file from {LOG_FILE_PATH} as session log file: {session_log_path}..."
-                )
-                shutil.copy2(LOG_FILE_PATH, get_session_folder_path(self._session_id))
-            except Exception as e:
-                logger.error(f"Something went wrong copying the log file")
-                print(e)
+                    logger.info(
+                        f"Trying to copy log file from {LOG_FILE_PATH} as session log file: {session_log_path}..."
+                    )
+                    shutil.copy2(
+                        LOG_FILE_PATH, get_session_folder_path(self._session_id)
+                    )
+                except Exception as e:
+                    logger.error(f"Something went wrong copying the log file")
+                    print(e)
 
     # def _set_icon(self):
     #

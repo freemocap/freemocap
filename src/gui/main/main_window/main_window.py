@@ -28,6 +28,7 @@ from src.core_processes.mediapipe_2d_skeleton_detector.load_mediapipe2d_data imp
 from src.export_stuff.blender_stuff.export_to_blender import (
     export_to_blender,
 )
+from src.gui.main.app import get_qt_app
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
 from src.gui.main.main_window.right_side_panel.right_side_panel import (
@@ -41,6 +42,10 @@ import logging
 
 from src.gui.main.workers.thread_worker_manager import ThreadWorkerManager
 from src.log.config import LOG_FILE_PATH
+
+# reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
+EXIT_CODE_REBOOT = -123456789
+
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +70,10 @@ class MainWindow(QMainWindow):
 
         # create actions
         self._create_actions()
+        self._connect_actions_to_slots()
 
         # menu bar
         self._create_menu_bar()
-        self._connect_menu_actions_to_slots()
 
         # left side (control) panel
         self._control_panel = self._create_control_panel()
@@ -102,21 +107,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_layout)
         return main_layout
 
-    def _create_actions(self):
-        self._new_session_action = QAction("&Start New Session", parent=self)
-        self._load_session_action = QAction("&Load Session...", parent=self)
-        self._reset_gui_state_action = QAction("&Reset GUI State", parent=self)
-        self._exit_action = QAction("E&xit", parent=self)
-
-        self._open_docs_action = QAction("Open  &Documentation", parent=self)
-        self._about_us_action = QAction("&About Us", parent=self)
-
-        self._donate_action = QAction("&Donate", parent=self)
-        self._send_usage_statistics_action = QAction(
-            "Send &User Statistics", parent=self
-        )
-        self._user_survey_action = QAction("&User Survey", parent=self)
-
     def _create_menu_bar(self):
         """
         based mostly on: https://realpython.com/python-menus-toolbars/
@@ -129,19 +119,24 @@ class MainWindow(QMainWindow):
         menu_bar.addMenu(file_menu)
 
         file_menu.addAction(self._new_session_action)
+        file_menu.addAction(self._load_most_recent_session_action)
         file_menu.addAction(self._load_session_action)
-        file_menu.addAction(self._reset_gui_state_action)
+        file_menu.addAction(self._reboot_gui_action)
         file_menu.addAction(self._exit_action)
 
         # help menu
         help_menu = QMenu("&Help", parent=menu_bar)
         menu_bar.addMenu(help_menu)
+        help_menu.setEnabled(False)
 
         help_menu.addAction(self._open_docs_action)
         help_menu.addAction(self._about_us_action)
 
         # support menu
-        support_menu = QMenu("\U00002665 &Support", parent=menu_bar)
+        support_menu = QMenu(
+            "\U00002665 &Support the FreeMoCap Project", parent=menu_bar
+        )
+        support_menu.setEnabled(False)
         menu_bar.addMenu(support_menu)
 
         support_menu.addAction(self._donate_action)
@@ -191,16 +186,40 @@ class MainWindow(QMainWindow):
 
         return panel
 
-    def _connect_menu_actions_to_slots(self):
+    def _create_actions(self):
+        self._new_session_action = QAction("&Start New Session", parent=self)
+        self._load_most_recent_session_action = QAction(
+            "Load &Most Recent Session", parent=self
+        )
+        self._load_session_action = QAction("&Load Session...", parent=self)
+        self._reboot_gui_action = QAction("&Reboot GUI", parent=self)
+        self._exit_action = QAction("E&xit", parent=self)
+
+        self._open_docs_action = QAction("Open  &Documentation", parent=self)
+        self._about_us_action = QAction("&About Us", parent=self)
+
+        self._donate_action = QAction("&Donate", parent=self)
+        self._send_usage_statistics_action = QAction(
+            "Send &User Statistics", parent=self
+        )
+        self._user_survey_action = QAction("&User Survey", parent=self)
+
+    def _connect_actions_to_slots(self):
         self._new_session_action.triggered.connect(
             lambda: self._start_session(
                 session_id=self._middle_viewing_panel.welcome_create_or_load_session_panel.session_id_input_string,
                 new_session=True,
             )
         )
-        # self._load_session_action.triggered.connect()
-        # self._reset_gui_state_action.triggered.connect()
-        # self._exit_action.triggered.connect()
+
+        self._load_most_recent_session_action.triggered.connect(
+            lambda: self._start_session(get_most_recent_session_id())
+        )
+
+        self._load_session_action.triggered.connect(self._load_session_dialog)
+
+        self._reboot_gui_action.triggered.connect(self._reboot_gui)
+        self._exit_action.triggered.connect(self.close)
         # self._open_docs_action.triggered.connect()
         # self._about_us_action.triggered.connect()
         # self._donate_action.triggered.connect()
@@ -215,11 +234,11 @@ class MainWindow(QMainWindow):
         )
 
         self._middle_viewing_panel.welcome_create_or_load_session_panel.load_most_recent_session_button.clicked.connect(
-            lambda: self._start_session(get_most_recent_session_id())
+            self._load_most_recent_session_action.trigger
         )
 
         self._middle_viewing_panel.welcome_create_or_load_session_panel.load_session_button.clicked.connect(
-            self._load_session_dialog
+            self._load_session_action.trigger
         )
 
         # Camera Control Panel
@@ -564,8 +583,12 @@ class MainWindow(QMainWindow):
             "`self._control_panel.visualize_motion_capture_data.load_session_data_button` was pressed "
         )
 
+    def _reboot_gui(self):
+        logger.info("Rebooting GUI... ")
+        get_qt_app().exit(EXIT_CODE_REBOOT)
+
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        logger.info("Close Event detected... ")
+        logger.info("Close Event detected for main window... ")
         self._middle_viewing_panel.camera_stream_grid_view.close_camera_widgets()
 
         if self._session_id is not None:

@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Union
 
 from PyQt6 import QtGui
-from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog
+from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.home_dir import (
@@ -62,6 +63,13 @@ class MainWindow(QMainWindow):
         self.setMaximumHeight(1000)
         self._main_layout = self._create_main_layout()
 
+        # create actions
+        self._create_actions()
+
+        # menu bar
+        self._create_menu_bar()
+        self._connect_menu_actions_to_slots()
+
         # left side (control) panel
         self._control_panel = self._create_control_panel()
         self._main_layout.addWidget(self._control_panel.frame)
@@ -93,6 +101,54 @@ class MainWindow(QMainWindow):
         # widget.setLayout(main_layout)
         self.setCentralWidget(main_layout)
         return main_layout
+
+    def _create_actions(self):
+        self._new_session_action = QAction("&Start New Session", parent=self)
+        self._load_session_action = QAction("&Load Session...", parent=self)
+        self._reset_gui_state_action = QAction("&Reset GUI State", parent=self)
+        self._exit_action = QAction("E&xit", parent=self)
+
+        self._open_docs_action = QAction("Open  &Documentation", parent=self)
+        self._about_us_action = QAction("&About Us", parent=self)
+
+        self._donate_action = QAction("&Donate", parent=self)
+        self._send_usage_statistics_action = QAction(
+            "Send &User Statistics", parent=self
+        )
+        self._user_survey_action = QAction("&User Survey", parent=self)
+
+    def _create_menu_bar(self):
+        """
+        based mostly on: https://realpython.com/python-menus-toolbars/
+        """
+        menu_bar = QMenuBar()
+        self.setMenuBar(menu_bar)
+
+        # file menu
+        file_menu = QMenu("&File", parent=menu_bar)
+        menu_bar.addMenu(file_menu)
+
+        file_menu.addAction(self._new_session_action)
+        file_menu.addAction(self._load_session_action)
+        file_menu.addAction(self._reset_gui_state_action)
+        file_menu.addAction(self._exit_action)
+
+        # help menu
+        help_menu = QMenu("&Help", parent=menu_bar)
+        menu_bar.addMenu(help_menu)
+
+        help_menu.addAction(self._open_docs_action)
+        help_menu.addAction(self._about_us_action)
+
+        # support menu
+        support_menu = QMenu("\U00002665 &Support", parent=menu_bar)
+        menu_bar.addMenu(support_menu)
+
+        support_menu.addAction(self._donate_action)
+        support_menu.addAction(self._send_usage_statistics_action)
+        support_menu.addAction(self._user_survey_action)
+
+        return menu_bar
 
     def _create_control_panel(self):
 
@@ -135,14 +191,27 @@ class MainWindow(QMainWindow):
 
         return panel
 
-    def _connect_buttons_to_stuff(self):
-        logger.info("Connecting buttons to stuff")
-
-        self._middle_viewing_panel.welcome_create_or_load_session_panel.start_new_session_button.clicked.connect(
+    def _connect_menu_actions_to_slots(self):
+        self._new_session_action.triggered.connect(
             lambda: self._start_session(
                 session_id=self._middle_viewing_panel.welcome_create_or_load_session_panel.session_id_input_string,
                 new_session=True,
             )
+        )
+        # self._load_session_action.triggered.connect()
+        # self._reset_gui_state_action.triggered.connect()
+        # self._exit_action.triggered.connect()
+        # self._open_docs_action.triggered.connect()
+        # self._about_us_action.triggered.connect()
+        # self._donate_action.triggered.connect()
+        # self._send_usage_statistics_action.triggered.connect()
+        # self._user_survey_action.triggered.connect()
+
+    def _connect_buttons_to_stuff(self):
+        logger.info("Connecting buttons to stuff")
+
+        self._middle_viewing_panel.welcome_create_or_load_session_panel.start_new_session_button.clicked.connect(
+            self._new_session_action.trigger
         )
 
         self._middle_viewing_panel.welcome_create_or_load_session_panel.load_most_recent_session_button.clicked.connect(

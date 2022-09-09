@@ -30,7 +30,11 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         self._layout.addWidget(self._welcome_to_freemocap_title_widget)
 
         self._layout.addStretch()
-        self._layout.addLayout(self._create_new_session_layout())
+
+        self._layout.addLayout(self._create_get_session_id_form_layout())
+
+        self._start_new_session_button = PrimaryButton("&Start New Session")
+        self._layout.addWidget(self._start_new_session_button)
 
         self._load_most_recent_session_button = QPushButton(
             "Load Most &Recent Session",
@@ -85,20 +89,13 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
 
         return welcome_widget
 
-    def _create_session_input(self):
+    def _create_session_id_input(self):
         session_text_input = QLineEdit()
         session_text_input.setText(create_default_session_id())
         return session_text_input
 
-    def _create_new_session_layout(self):
-        layout = QVBoxLayout()
-
+    def _create_get_session_id_form_layout(self):
         session_id_form_layout = QFormLayout()
-        self._session_input = self._create_session_input()
+        self._session_input = self._create_session_id_input()
         session_id_form_layout.addRow(QLabel("Session Id"), self._session_input)
-        layout.addLayout(session_id_form_layout)
-        layout.setAlignment(Qt.AlignBottom)
-
-        self._start_new_session_button = PrimaryButton("&Start Session")
-        layout.addWidget(self._start_new_session_button)
-        return layout
+        return session_id_form_layout

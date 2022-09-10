@@ -1,22 +1,28 @@
-from typing import List
+from pathlib import Path
+from typing import List, Union, Dict
 
 import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from src.gui.main.state.app_state import APP_STATE
+from src.gui.icis_conference_main.state.app_state import APP_STATE
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def save_synchronized_videos(
-    list_of_video_recorders: List[VideoRecorder],
-    calibration_videos: bool = False,
-    mocap_videos: bool = False,
+    dictionary_of_video_recorders: Dict[str, VideoRecorder],
+    folder_to_save_videos=Union[str, Path],
 ):
+    logger.info(f"saving synchronized video to folder: {str(folder_to_save_videos)}")
+
     each_cam_frame_list = []
     first_frame_timestamps = []
     final_frame_timestamps = []
 
-    for video_recoder in list_of_video_recorders:
+    for video_recoder in dictionary_of_video_recorders.values():
         cam_frame_list = video_recoder.frame_list
         # first_frame_timestamps.append(cam_frame_list[0].timestamp_in_seconds_from_record_start)
         # final_frame_timestamps.append(cam_frame_list[-1].timestamp_in_seconds_from_record_start)
@@ -29,13 +35,13 @@ def save_synchronized_videos(
     latest_first_frame = np.max(first_frame_timestamps)
     earliest_final_frame = np.min(final_frame_timestamps)
 
-    print(f"first_frame_timestamps: {first_frame_timestamps}")
-    print(f"np.diff(first_frame_timestamps): {np.diff(first_frame_timestamps)}")
-    print(f"latest_first_frame: {latest_first_frame}")
+    logger.info(f"first_frame_timestamps: {first_frame_timestamps}")
+    logger.info(f"np.diff(first_frame_timestamps): {np.diff(first_frame_timestamps)}")
+    logger.info(f"latest_first_frame: {latest_first_frame}")
 
-    print(f"final_frame_timestamps: {final_frame_timestamps}")
-    print(f"np.diff(final_frame_timestamps): {np.diff(final_frame_timestamps)}")
-    print(f"earliest_final_frame: {earliest_final_frame}")
+    logger.info(f"final_frame_timestamps: {final_frame_timestamps}")
+    logger.info(f"np.diff(final_frame_timestamps): {np.diff(final_frame_timestamps)}")
+    logger.info(f"earliest_final_frame: {earliest_final_frame}")
 
     each_cam_clipped_frame_list = []
     each_cam_clipped_timestamp_list = []
@@ -72,25 +78,26 @@ def save_synchronized_videos(
             this_cam_synchronized_frame_list.append(closest_frame)
         each_cam_synchronized_frame_list.append(this_cam_synchronized_frame_list)
 
-    print(
+    logger.info(
         f" (clipped) number_of_frames_per_camera: {number_of_frames_per_camera_clipped}, min:{min_number_of_frames}"
     )
-
-    if mocap_videos:
-        APP_STATE.number_of_frames_in_the_mocap_videos = number_of_frames_per_camera
 
     final_frame_timestamps = [
         frame_list[-1].timestamp_unix_time_seconds
         for frame_list in each_cam_synchronized_frame_list
     ]
 
-    print(f"np.diff(final_frame_timestamps): {np.diff(final_frame_timestamps)}")
+    logger.info(f"np.diff(final_frame_timestamps): {np.diff(final_frame_timestamps)}")
 
-    for video_recoder, frame_list in zip(
-        list_of_video_recorders, each_cam_synchronized_frame_list
+    for camera_id, video_recoder, frame_list in zip(
+        dictionary_of_video_recorders.keys(),
+        dictionary_of_video_recorders.values(),
+        each_cam_synchronized_frame_list,
     ):
         video_recoder.save_list_of_frames_to_video_file(
-            list_of_frames=frame_list, calibration_videos=calibration_videos
+            list_of_frames=frame_list,
+            path_to_save_video_file=Path(folder_to_save_videos)
+            / f"Camera_{str(camera_id).zfill(3)}.mp4",
         )
 
     # create_timestamp_diagnostic_plots(final_frame_timestamps) #breadcrumbs for a future function to generate timestamp diagnostic plots

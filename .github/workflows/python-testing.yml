@@ -2,7 +2,7 @@ name: Freemocap Tests
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ icis_conference_main ]
     paths:
       - src
 

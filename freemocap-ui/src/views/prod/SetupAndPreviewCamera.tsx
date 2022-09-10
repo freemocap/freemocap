@@ -20,7 +20,7 @@ export const SetupAndPreviewCamera = (props: Props) => {
     <Box>
       <Box display={'flex'} flexDirection={'column'} width={400}>
         <Button>Preview in CV2</Button>
-        {!frameCapture.isConnectionClosed && <img src={data} alt={"video capture"} />}
+        {!frameCapture.isConnectionClosed && <img src={data} alt={"video start"} />}
       </Box>
       <ConfigForm onSubmit={onSubmit}/>
     </Box>

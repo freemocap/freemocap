@@ -20,7 +20,9 @@ from src.export_stuff.blender_stuff.get_best_guess_of_blender_path import (
     get_best_guess_of_blender_path,
 )
 
-from src.gui.main.tool_tips.tool_tips import mediapipe_confidence_cutoff_tool_tip_str
+from src.gui.main.tool_tips.tool_tips_strings import (
+    mediapipe_confidence_cutoff_tool_tip_str,
+)
 
 logger = logging.getLogger(__name__)
 

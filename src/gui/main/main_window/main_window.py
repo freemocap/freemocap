@@ -582,6 +582,8 @@ class MainWindow(QMainWindow):
         logger.info(
             "`self._control_panel.visualize_motion_capture_data.load_session_data_button` was pressed "
         )
+        self._middle_viewing_panel.show_3d_view_port()
+        self._thread_worker_manager.launch_3d_visualization_thread()
 
     def _reboot_gui(self):
         logger.info("Rebooting GUI... ")

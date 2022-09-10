@@ -25,7 +25,7 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.record_motion_
     RecordMotionCatpureVideosPanel,
 )
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.visualize_motion_capture_data import (
-    VisualizeMotionCaptureData,
+    VisualizeMotionCaptureDataPanel,
 )
 
 from src.gui.main.qt_utils.clear_layout import clear_layout
@@ -108,7 +108,7 @@ class ControlPanel:
         ] = RecordMotionCatpureVideosPanel()
         dictionary_of_toolbox_panels[
             "Visualize Motion Capture Data"
-        ] = VisualizeMotionCaptureData()
+        ] = VisualizeMotionCaptureDataPanel()
         # self._process_session_data_panel = ProcessSessionDataPanel()
         return dictionary_of_toolbox_panels
 

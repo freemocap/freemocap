@@ -21,6 +21,7 @@ from src.gui.main.main_window.middle_panel_viewers.camera_stream_grid_view impor
 )
 from src.gui.main.qt_utils.clear_layout import clear_layout
 from src.gui.main.styled_widgets.page_title import PageTitle
+from src.gui.main.visualize_session.gl_3d_view_port import Gl3dViewPort
 from src.gui.main.workers.cam_detection_thread_worker import CameraDetectionThreadWorker
 
 import logging
@@ -41,6 +42,8 @@ class MiddleViewingPanel(QWidget):
         self._layout.addWidget(self._welcome_create_or_load_session_panel)
 
         self._camera_stream_grid_view = CameraStreamGridView()
+
+        self._gl_3d_view_port_widget = Gl3dViewPort()
 
     @property
     def frame(self):
@@ -63,3 +66,7 @@ class MiddleViewingPanel(QWidget):
 
         logger.info("Showing camera stream grid view")
         self._layout.addWidget(self._camera_stream_grid_view)
+
+    def show_3d_view_port(self):
+        logger.info("Showing 3d view port")
+        self._layout.addWidget(self._gl_3d_view_port_widget)

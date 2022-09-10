@@ -136,3 +136,5 @@ class ThreadWorkerManager(QWidget):
     #         self.blender_file_created_signal.emit
     #     )
     #     self._export_to_blender_thread_worker.start()
+    def launch_3d_visualization_thread(self):
+        pass

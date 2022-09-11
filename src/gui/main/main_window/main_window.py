@@ -1,6 +1,5 @@
 import os
 import shutil
-import traceback
 from pathlib import Path
 from typing import Union
 
@@ -17,13 +16,17 @@ from src.config.home_dir import (
     get_output_data_folder_path,
     get_most_recent_session_id,
     get_freemocap_data_folder_path,
+    get_annotated_videos_folder_path,
 )
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_most_recent_anipose_calibration_toml,
     load_calibration_from_session_id,
 )
-from src.core_processes.mediapipe_2d_skeleton_detector.load_mediapipe2d_data import (
+from src.core_processes.mediapipe_stuff.load_mediapipe2d_data import (
     load_mediapipe2d_data,
+)
+from src.core_processes.mediapipe_stuff.load_mediapipe3d_data import (
+    load_mediapipe3d_data,
 )
 from src.export_stuff.blender_stuff.export_to_blender import (
     export_to_blender,
@@ -34,7 +37,7 @@ from src.gui.main.main_window.left_panel_controls.control_panel import ControlPa
 from src.gui.main.main_window.right_side_panel.right_side_panel import (
     RightSidePanel,
 )
-from src.gui.main.main_window.middle_panel_viewers.middle_viewing_panel import (
+from src.gui.main.main_window.middle_panel_viewers.session_playback_view.middle_viewing_panel import (
     MiddleViewingPanel,
 )
 
@@ -582,8 +585,30 @@ class MainWindow(QMainWindow):
         logger.info(
             "`self._control_panel.visualize_motion_capture_data.load_session_data_button` was pressed "
         )
-        self._middle_viewing_panel.show_3d_view_port()
-        self._thread_worker_manager.launch_3d_visualization_thread()
+
+        skeleton_3d_npy = load_mediapipe3d_data(
+            get_output_data_folder_path(self._session_id)
+        )
+
+        video_path_iterator = Path(
+            get_annotated_videos_folder_path(self._session_id)
+        ).glob("*.mp4".lower())
+        list_of_video_paths = [str(video_path) for video_path in video_path_iterator]
+
+        dictionary_of_video_image_update_callbacks = (
+            self._middle_viewing_panel.dictionary_of_video_image_update_callbacks
+        )
+        self._middle_viewing_panel.show_session_playback_view(
+            mediapipe3d_trackedPoint_xyz=skeleton_3d_npy[0, :, :],
+            list_of_video_paths=list_of_video_paths,
+        )
+        self._thread_worker_manager.launch_session_playback_thread(
+            frames_per_second=30,
+            list_of_video_paths=list_of_video_paths,
+            dictionary_of_video_image_update_callbacks=dictionary_of_video_image_update_callbacks,
+            skeleton_3d_npy=skeleton_3d_npy,
+            update_3d_skeleton_callback=self._middle_viewing_panel.session_playback_view.update_3d_skeleton_callback,
+        )
 
     def _reboot_gui(self):
         logger.info("Rebooting GUI... ")

@@ -7,7 +7,7 @@ import pyqtgraph.opengl as gl
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from pyqtgraph.dockarea.Dock import Dock
 
-from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_skeleton_names_and_connections import (
+from src.core_processes.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_body_connections,
 )
 from src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import (
@@ -22,8 +22,10 @@ class Gl3dViewPort(QWidget):
         logger.info("setting up Visualizer3d")
         super().__init__()
 
-        self._mediapipe_connections_dict = {}
         self._base_scalar = 2e3  # 2 meters, probably
+        self._frame_number = -1
+
+        self._mediapipe_connections_dict = {}
         self._mediapipe_skeleton_scatter_item = None
         self._mediapipe_body_connections = mediapipe_body_connections
 
@@ -82,43 +84,46 @@ class Gl3dViewPort(QWidget):
         self._opengl_3d_plot_widget.addItem(grid_plane_z)
 
     def _initialize_mediapipe_skeleton_dottos(
-        self, mediapipe_trackedPoint_xyz: np.ndarray
+        self, mediapipe3d_trackedPoint_xyz: np.ndarray
     ):
         self._mediapipe_skeleton_scatter_item = gl.GLScatterPlotItem(
-            pos=mediapipe_trackedPoint_xyz, color=(0, 1, 1, 1), size=10, pxMode=False
+            pos=mediapipe3d_trackedPoint_xyz,
+            color=(0, 1, 1, 1),
+            size=10,
+            pxMode=False,
         )
         self._opengl_3d_plot_widget.addItem(self._mediapipe_skeleton_scatter_item)
 
     def _initialize_mediapipe_skeleton_connections(
-        self, mediapipe_trackedPoint_xyz: np.ndarray
+        self, mediapipe3d_trackedPoint_xyz: np.ndarray
     ):
         self._skeleton_connections_list = []
         for this_connection in self._mediapipe_body_connections:
             this_skel_line = gl.GLLinePlotItem(
-                pos=mediapipe_trackedPoint_xyz[this_connection, :]
+                pos=mediapipe3d_trackedPoint_xyz[this_connection, :]
             )
             self._skeleton_connections_list.append(this_skel_line)
             self._opengl_3d_plot_widget.addItem(this_skel_line)
 
-    def update_mediapipe3d_skeleton(self, mediapipe3d_trackedPoint_xyz):
+    def initialize_mediapipe_3d_skeleton(
+        self, mediapipe3d_trackedPoint_xyz: np.ndarray
+    ):
 
-        if self._mediapipe_skeleton_scatter_item is None:
-            self._initialize_mediapipe_skeleton_dottos(mediapipe3d_trackedPoint_xyz)
-            self._initialize_mediapipe_skeleton_connections(
-                mediapipe3d_trackedPoint_xyz
-            )
+        self._initialize_mediapipe_skeleton_dottos(mediapipe3d_trackedPoint_xyz)
+        self._initialize_mediapipe_skeleton_connections(mediapipe3d_trackedPoint_xyz)
 
-        # skel dottos
-        self._mediapipe_skeleton_scatter_item.setData(pos=mediapipe3d_trackedPoint_xyz)
+    def update_mediapipe3d_skeleton(self, mediapipe3d_trackedPoint_xyz: np.ndarray):
+        print("helloough892y 89yu23roo")
 
-        # skel lines
+        # update skel dottos
+        self._mediapipe_skeleton_scatter_item.setData(
+            pos=mediapipe3d_trackedPoint_xyz,
+        )
+
+        # update skel lines
         for this_skeleton_line_number, this_connection in enumerate(
             self._mediapipe_body_connections
         ):
             self._skeleton_connections_list[this_skeleton_line_number].setData(
                 pos=mediapipe3d_trackedPoint_xyz[this_connection, :]
             )
-
-
-if __name__ == "__main__":
-    pass

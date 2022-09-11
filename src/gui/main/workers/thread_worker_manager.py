@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Union, Callable
+from typing import Dict, Union, Callable, List
 
 import numpy as np
 from PyQt6.QtCore import pyqtSignal
@@ -19,6 +19,9 @@ from src.gui.main.workers.mediapipe_2d_detection_thread_worker import (
     Mediapipe2dDetectionThreadWorker,
 )
 from src.gui.main.workers.save_to_video_thread_worker import SaveToVideoThreadWorker
+from src.gui.main.workers.session_playback_thread_worker import (
+    SessionPlaybackThreadWorker,
+)
 from src.gui.main.workers.triangulate_3d_data_thread_worker import (
     Triangulate3dDataThreadWorker,
 )
@@ -136,5 +139,23 @@ class ThreadWorkerManager(QWidget):
     #         self.blender_file_created_signal.emit
     #     )
     #     self._export_to_blender_thread_worker.start()
-    def launch_3d_visualization_thread(self):
-        pass
+
+    def launch_session_playback_thread(
+        self,
+        frames_per_second: Union[int, float],
+        list_of_video_paths: List[Union[str, Path]],
+        dictionary_of_video_image_update_callbacks: Dict[str, Callable],
+        skeleton_3d_npy: np.ndarray,
+        update_3d_skeleton_callback: Callable,
+    ):
+        logger.info(
+            f"Launching `session_playback_thread_worker` with frames_per_second set to {frames_per_second} "
+        )
+        self._session_playback_viewer_thread_worker = SessionPlaybackThreadWorker(
+            frames_per_second=frames_per_second,
+            list_of_video_paths=list_of_video_paths,
+            dictionary_of_video_image_update_callbacks=dictionary_of_video_image_update_callbacks,
+            skeleton_3d_npy=skeleton_3d_npy,
+            update_3d_skeleton_callback=update_3d_skeleton_callback,
+        )
+        self._session_playback_viewer_thread_worker.start()

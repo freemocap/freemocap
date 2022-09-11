@@ -9,14 +9,7 @@ import numpy as np
 import pandas as pd
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
-from src.cameras.persistence.video_writer.save_options_dataclass import SaveOptions
-from src.config.data_paths import freemocap_data_path
-from src.config.home_dir import (
-    get_session_folder_path,
-    get_synchronized_videos_folder_path,
-    get_calibration_videos_folder_path,
-    get_mediapipe_annotated_videos_folder_path,
-)
+
 
 logger = logging.getLogger(__name__)
 

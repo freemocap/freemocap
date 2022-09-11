@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
     QLabel,
 )
 
-from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_default_settings import (
+from src.core_processes.mediapipe_stuff.mediapipe_default_settings import (
     default_mediapipe_confidence_threshold,
 )
 from src.export_stuff.blender_stuff.get_best_guess_of_blender_path import (

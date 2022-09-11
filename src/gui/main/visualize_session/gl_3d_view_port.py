@@ -38,6 +38,8 @@ class Gl3dViewPort(QWidget):
 
     def _setup_3d_view(self, initial_viewing_distance: Union[float, int] = 2e3):
         self._opengl_3d_plot_widget.opts["distance"] = initial_viewing_distance
+        self._opengl_3d_plot_widget.opts["azimuth"] = 90
+        self._opengl_3d_plot_widget.opts["elevation"] = 90
         self._create_grid_planes(grid_scale=initial_viewing_distance)
         self._create_rgb_origin_axes()
 
@@ -113,7 +115,6 @@ class Gl3dViewPort(QWidget):
         self._initialize_mediapipe_skeleton_connections(mediapipe3d_trackedPoint_xyz)
 
     def update_mediapipe3d_skeleton(self, mediapipe3d_trackedPoint_xyz: np.ndarray):
-        print("helloough892y 89yu23roo")
 
         # update skel dottos
         self._mediapipe_skeleton_scatter_item.setData(

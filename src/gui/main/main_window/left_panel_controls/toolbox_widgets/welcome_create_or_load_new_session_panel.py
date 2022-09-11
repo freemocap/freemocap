@@ -33,17 +33,17 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
 
         self._layout.addLayout(self._create_get_session_id_form_layout())
 
-        self._start_new_session_button = PrimaryButton("&Start New Session")
+        self._start_new_session_button = PrimaryButton("&Start New Session (Ctrl+N)")
         self._layout.addWidget(self._start_new_session_button)
 
         self._load_most_recent_session_button = QPushButton(
-            "Load Most &Recent Session",
+            "Load Most &Recent Session (Ctrl+D)",
         )
         self._load_most_recent_session_button.setEnabled(True)
         self._layout.addWidget(self._load_most_recent_session_button)
 
         self._load_session_button = QPushButton(
-            "Load Session",
+            "Load Session (Ctrl+O)",
         )
         self._load_session_button.setEnabled(True)
         self._layout.addWidget(self._load_session_button)

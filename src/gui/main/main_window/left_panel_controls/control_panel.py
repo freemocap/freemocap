@@ -58,16 +58,16 @@ class ControlPanel:
 
     @property
     def camera_setup_control_panel(self):
-        return self._dictionary_of_toolbox_panels["Camera Setup and Control"]
+        return self._dictionary_of_toolbox_panels["1 - Camera Setup and Control"]
 
     @property
     def calibrate_capture_volume_panel(self):
-        return self._dictionary_of_toolbox_panels["Calibrate Capture Volume"]
+        return self._dictionary_of_toolbox_panels["2 - Calibrate Capture Volume"]
 
     @property
     def record_motion_capture_videos_panel(self):
         return self._dictionary_of_toolbox_panels[
-            "Record and Process Motion Capture Videos"
+            "3 - Record and Process Motion Capture Videos"
         ]
 
     @property
@@ -76,7 +76,7 @@ class ControlPanel:
 
     @property
     def visualize_motion_capture_data_panel(self):
-        return self._dictionary_of_toolbox_panels["Visualize Motion Capture Data"]
+        return self._dictionary_of_toolbox_panels["4 - Visualize Motion Capture Data"]
 
     @property
     def toolbox_widget(self):
@@ -98,16 +98,16 @@ class ControlPanel:
         dictionary_of_toolbox_panels = {}
         # self._create_or_load_new_session_panel = WelcomeCreateOrLoadNewSessionPanel()
         dictionary_of_toolbox_panels[
-            "Camera Setup and Control"
+            "1 - Camera Setup and Control"
         ] = CameraSetupControlPanel()
         dictionary_of_toolbox_panels[
-            "Calibrate Capture Volume"
+            "2 - Calibrate Capture Volume"
         ] = CalibrateCaptureVolumePanel()
         dictionary_of_toolbox_panels[
-            "Record and Process Motion Capture Videos"
+            "3 - Record and Process Motion Capture Videos"
         ] = RecordMotionCatpureVideosPanel()
         dictionary_of_toolbox_panels[
-            "Visualize Motion Capture Data"
+            "4 - Visualize Motion Capture Data"
         ] = VisualizeMotionCaptureDataPanel()
         # self._process_session_data_panel = ProcessSessionDataPanel()
         return dictionary_of_toolbox_panels

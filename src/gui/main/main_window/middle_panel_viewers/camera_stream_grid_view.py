@@ -1,7 +1,7 @@
 from typing import List, Dict, Callable
 
 import numpy as np
-from PyQt6 import QtCore
+from PyQt6 import QtCore, QtGui
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget,
@@ -98,3 +98,6 @@ class CameraStreamGridView(QWidget):
     def reset_video_recorders(self):
         for camera_widget in self._dictionary_of_camera_widgets.values():
             camera_widget.reset_video_recorder()
+
+    def hideEvent(self, a0: QtGui.QHideEvent) -> None:
+        self.close_camera_widgets()

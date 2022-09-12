@@ -6,7 +6,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 import logging
 
-from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_skeleton_detector import (
+from src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
 

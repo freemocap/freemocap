@@ -15,14 +15,17 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.calibrate_capt
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup_control_panel import (
     CameraSetupControlPanel,
 )
-from src.gui.main.main_window.left_panel_controls.toolbox_widgets.create_or_load_new_session_panel import (
-    CreateOrLoadNewSessionPanel,
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.welcome_create_or_load_new_session_panel import (
+    WelcomeCreateOrLoadNewSessionPanel,
 )
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.process_session_data_panel import (
     ProcessSessionDataPanel,
 )
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.record_motion_capture_videos_panel import (
     RecordMotionCatpureVideosPanel,
+)
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.visualize_motion_capture_data import (
+    VisualizeMotionCaptureDataPanel,
 )
 
 from src.gui.main.qt_utils.clear_layout import clear_layout
@@ -39,69 +42,84 @@ class ControlPanel:
         self._layout = QVBoxLayout()
         self._frame.setLayout(self._layout)
 
-        self._create_toolbox_panels()
+        self._dictionary_of_toolbox_panels = self._create_dictionary_of_toolbox_panels()
         self._toolbox_widget = self._create_toolbox_widget()
+        self._hide_toolbox_panels()
+        self._toolbox_widget.setEnabled(False)
         self._layout.addWidget(self._toolbox_widget)
 
     @property
     def frame(self):
         return self._frame
 
-    @property
-    def create_or_load_new_session_panel(self):
-        return self._create_or_load_new_session_panel
+    # @property
+    # def create_or_load_new_session_panel(self):
+    #     return self._create_or_load_new_session_panel
 
     @property
     def camera_setup_control_panel(self):
-        return self._camera_setup_control_panel
+        return self._dictionary_of_toolbox_panels["Camera Setup and Control"]
 
     @property
     def calibrate_capture_volume_panel(self):
-        return self._calibrate_capture_volume_panel
+        return self._dictionary_of_toolbox_panels["Calibrate Capture Volume"]
 
     @property
     def record_motion_capture_videos_panel(self):
-        return self._record_motion_capture_videos_panel
+        return self._dictionary_of_toolbox_panels[
+            "Record and Process Motion Capture Videos"
+        ]
 
     @property
     def process_session_data_panel(self):
-        return self._record_motion_capture_videos_panel.process_session_data_panel
+        return self.record_motion_capture_videos_panel.process_session_data_panel
+
+    @property
+    def visualize_motion_capture_data_panel(self):
+        return self._dictionary_of_toolbox_panels["Visualize Motion Capture Data"]
 
     @property
     def toolbox_widget(self):
         return self._toolbox_widget
 
-    def _start_standard_workflow(self):
-        clear_layout(self._layout)
-        self._create_toolbox_widget()
+    def show_toolbox_panels(self):
+        for panel in self._dictionary_of_toolbox_panels.values():
+            panel.show()
 
     def _create_toolbox_widget(self):
         toolbox_widget = QToolBox()
 
-        toolbox_widget.addItem(
-            self._create_or_load_new_session_panel, "Create or Load Session"
-        )
-
-        toolbox_widget.addItem(self._camera_setup_control_panel, "Camera Setup")
-
-        toolbox_widget.addItem(
-            self._calibrate_capture_volume_panel, "Calibrate Capture Volume"
-        )
-
-        toolbox_widget.addItem(
-            self._record_motion_capture_videos_panel, "Record Motion Capture Videos"
-        )
-        # toolbox_widget.addItem(self._process_session_data_panel, "Process Session Data")
-
-        toolbox_widget.addItem(
-            QLabel("View Motion Capture Data"), "View Motion Capture Data"
-        )
-
+        for item_name, panel in self._dictionary_of_toolbox_panels.items():
+            toolbox_widget.addItem(panel, item_name)
+            toolbox_widget.setCurrentWidget(panel)
         return toolbox_widget
 
-    def _create_toolbox_panels(self):
-        self._create_or_load_new_session_panel = CreateOrLoadNewSessionPanel()
-        self._camera_setup_control_panel = CameraSetupControlPanel()
-        self._calibrate_capture_volume_panel = CalibrateCaptureVolumePanel()
-        self._record_motion_capture_videos_panel = RecordMotionCatpureVideosPanel()
+    def _create_dictionary_of_toolbox_panels(self):
+        dictionary_of_toolbox_panels = {}
+        # self._create_or_load_new_session_panel = WelcomeCreateOrLoadNewSessionPanel()
+        dictionary_of_toolbox_panels[
+            "Camera Setup and Control"
+        ] = CameraSetupControlPanel()
+        dictionary_of_toolbox_panels[
+            "Calibrate Capture Volume"
+        ] = CalibrateCaptureVolumePanel()
+        dictionary_of_toolbox_panels[
+            "Record and Process Motion Capture Videos"
+        ] = RecordMotionCatpureVideosPanel()
+        dictionary_of_toolbox_panels[
+            "Visualize Motion Capture Data"
+        ] = VisualizeMotionCaptureDataPanel()
         # self._process_session_data_panel = ProcessSessionDataPanel()
+        return dictionary_of_toolbox_panels
+
+    def _hide_toolbox_panels(self):
+        for panel in self._dictionary_of_toolbox_panels.values():
+            panel.hide()
+
+    def _show_toolbox_panels(self):
+        for panel in self._dictionary_of_toolbox_panels.values():
+            panel.show()
+
+    def enable_toolbox_panels(self):
+        self._toolbox_widget.setEnabled(True)
+        self._show_toolbox_panels()

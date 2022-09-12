@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QTabWidget
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QTabWidget, QPushButton
 
 from src.gui.main.app import get_qt_app
 from src.gui.main.main_window.right_side_panel.file_system_view_widget import (
@@ -12,15 +12,16 @@ from src.gui.main.main_window.right_side_panel.jupyter_console_widget import (
 )
 
 
-class RightSidePanel:
+class RightSidePanel(QTabWidget):
     def __init__(self, freemocap_data_folder_path: Union[str, Path]):
+        super().__init__()
         self._frame = QFrame()
         self._frame.setFrameShape(QFrame.Shape.StyledPanel)
-        self._main_layout = QVBoxLayout()
-        self._frame.setLayout(self._main_layout)
+        self._layout = QVBoxLayout()
+        self._frame.setLayout(self._layout)
 
         self._file_viewer_tab_widget = QTabWidget()
-        self._main_layout.addWidget(self._file_viewer_tab_widget)
+        self._layout.addWidget(self._file_viewer_tab_widget)
 
         self._file_system_view_widget = FileSystemViewWidget(
             freemocap_data_folder_path=freemocap_data_folder_path
@@ -30,15 +31,13 @@ class RightSidePanel:
         )
 
         self._log_and_console_tab_widget = QTabWidget()
-        self._main_layout.addWidget(self._log_and_console_tab_widget)
+        self._layout.addWidget(self._log_and_console_tab_widget)
 
         self._jupyter_console_widget = JupyterConsoleWidget()
         self._log_and_console_tab_widget.addTab(
             self._jupyter_console_widget.jupyter_widget,
             "iPython Jupyter Console",
         )
-
-        self._log_widget = self._create_log_widget()
 
     @property
     def frame(self):

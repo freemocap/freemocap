@@ -5,7 +5,7 @@ from typing import Union
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFileSystemModel
-from PyQt6.QtWidgets import QWidget, QTreeView, QVBoxLayout, QMenu
+from PyQt6.QtWidgets import QWidget, QTreeView, QVBoxLayout, QMenu, QPushButton
 from qtpy import QtGui
 
 from src.config.home_dir import get_freemocap_data_folder_path, get_session_folder_path
@@ -45,6 +45,25 @@ class FileSystemViewWidget(QWidget):
         self._tree_view_widget.resizeColumnToContents(1)
 
         self.set_folder_view_to_freemocap_data_folder()
+
+        self._show_current_session_folder_button = QPushButton(
+            "Show Current Session Folder"
+        )
+        self._show_current_session_folder_button.setEnabled(False)
+        layout.addWidget(self._show_current_session_folder_button)
+
+        self._reset_folder_view_to_freemocap_data_folder_button = QPushButton(
+            "Show FreeMoCap Data folder"
+        )
+        self._reset_folder_view_to_freemocap_data_folder_button.setEnabled(True)
+        self._reset_folder_view_to_freemocap_data_folder_button.clicked.connect(
+            self.set_folder_view_to_freemocap_data_folder
+        )
+        layout.addWidget(self._reset_folder_view_to_freemocap_data_folder_button)
+
+    @property
+    def show_current_session_folder_button(self):
+        return self._show_current_session_folder_button
 
     def set_folder_view_to_freemocap_data_folder(self):
         logger.info(f"Setting root folder to {str(self._freemocap_data_folder_path)}")

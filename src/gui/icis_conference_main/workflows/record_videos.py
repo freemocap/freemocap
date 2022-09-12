@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.cameras.save_synchronized_videos import save_synchronized_videos
-from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_skeleton_detector import (
+from src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
 from src.gui.icis_conference_main.state.app_state import APP_STATE

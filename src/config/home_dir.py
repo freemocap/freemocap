@@ -104,9 +104,7 @@ def get_calibration_videos_folder_path(session_id: str, create_folder: bool = Tr
     return str(calibration_videos_path)
 
 
-def get_mediapipe_annotated_videos_folder_path(
-    session_id: str, create_folder: bool = True
-):
+def get_annotated_videos_folder_path(session_id: str, create_folder: bool = False):
     annotated_videos_path = (
         Path(get_session_folder_path(session_id)) / ANNOTATED_VIDEOS_FOLDER_NAME
     )

@@ -45,6 +45,7 @@ import logging
 
 from src.gui.main.workers.thread_worker_manager import ThreadWorkerManager
 from src.log.config import LOG_FILE_PATH
+from src.sending_anonymous_user_info_to_places.send_pipedream_ping import send_pipedream_ping
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 EXIT_CODE_REBOOT = -123456789
@@ -379,6 +380,10 @@ class MainWindow(QMainWindow):
         self._start_session(self._session_id)
 
     def _start_session(self, session_id: str, new_session: bool = False):
+
+        if self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked():
+            send_pipedream_ping()
+
         self._session_id = session_id
         self._control_panel.enable_toolbox_panels()
         self._set_session_folder_as_root_for_file_viewer(self._session_id)

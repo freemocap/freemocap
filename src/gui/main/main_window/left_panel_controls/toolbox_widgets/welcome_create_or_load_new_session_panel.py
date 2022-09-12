@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QFormLayout,
-    QPushButton,
+    QPushButton, QCheckBox,
 )
 
 from src.config.home_dir import create_default_session_id
@@ -56,6 +56,10 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
 
         self._layout.addStretch()
 
+        self._send_pings_checkbox = QCheckBox("Send ping to devs to let us know when you make a new session because that will help us get funding for this project :D ")
+        self._send_pings_checkbox.setChecked(True)
+        self._layout.addWidget(self._send_pings_checkbox)
+
     @property
     def start_new_session_button(self):
         return self._start_new_session_button
@@ -67,6 +71,10 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
     @property
     def load_session_button(self):
         return self._load_session_button
+
+    @property
+    def send_pings_checkbox(self):
+        return self._send_pings_checkbox
 
     @property
     def session_id_input_string(self):

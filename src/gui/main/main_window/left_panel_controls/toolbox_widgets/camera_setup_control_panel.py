@@ -1,8 +1,8 @@
-from typing import List, Dict
+from typing import Dict
 
 import cv2
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QPushButton
+from PyQt6.QtWidgets import QVBoxLayout, QWidget, QPushButton, QTextEdit, QLabel
 from pyqtgraph.parametertree import ParameterTree, Parameter
 
 from src.cameras.detection.models import FoundCamerasResponse
@@ -11,7 +11,9 @@ from src.gui.main.qt_utils.clear_layout import clear_layout
 
 import logging
 
-from src.gui.main.styled_widgets.primary_button import PrimaryButton
+from src.gui.workflow_helper_blurbs.camera_setup_control_panel_help_blurb import (
+    camera_setup_control_panel_help_blurb_str,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,31 +48,35 @@ class CameraSetupControlPanel(QWidget):
 
     def __init__(self):
         super().__init__()
-        self._panel_layout = QVBoxLayout()
-        self.setLayout(self._panel_layout)
+        self._layout = QVBoxLayout()
+        self.setLayout(self._layout)
 
-        self._apply_settings_to_cameras_button = PrimaryButton(
-            "Launch Cameras",
+        helper_qlabel_widget = QLabel(camera_setup_control_panel_help_blurb_str)
+        helper_qlabel_widget.setWordWrap(True)
+        self._layout.addWidget(helper_qlabel_widget)
+
+        self._redetect_cameras_button = QPushButton("Detect Cameras")
+        self._redetect_cameras_button.setEnabled(True)
+        self._layout.addWidget(self._redetect_cameras_button)
+
+        self._apply_settings_to_cameras_button = QPushButton(
+            "Apply settings and Launch Cameras",
         )
         self._apply_settings_to_cameras_button.setEnabled(True)
-        self._panel_layout.addWidget(self._apply_settings_to_cameras_button)
-
-        self._redetect_cameras_button = QPushButton("Re-Detect Cameras")
-        self._redetect_cameras_button.setEnabled(True)
-        self._panel_layout.addWidget(self._redetect_cameras_button)
+        self._layout.addWidget(self._apply_settings_to_cameras_button)
 
         self._pop_out_cameras_button = QPushButton("Pop out cameras")
         self._pop_out_cameras_button.setEnabled(False)
-        self._panel_layout.addWidget(self._pop_out_cameras_button)
+        self._layout.addWidget(self._pop_out_cameras_button)
 
         self._close_cameras_button = QPushButton("Close cameras")
-        self._close_cameras_button.setEnabled(False)
-        self._panel_layout.addWidget(self._close_cameras_button)
+        self._close_cameras_button.setEnabled(True)
+        self._layout.addWidget(self._close_cameras_button)
 
         self._parameter_tree_layout = QVBoxLayout()
         self._parameter_tree_widget = ParameterTree()
         self._parameter_tree_layout.addWidget(self._parameter_tree_widget)
-        self._panel_layout.addLayout(self._parameter_tree_layout)
+        self._layout.addLayout(self._parameter_tree_layout)
 
     @property
     def apply_settings_to_cameras_button(self):

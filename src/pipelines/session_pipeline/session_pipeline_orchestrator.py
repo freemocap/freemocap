@@ -14,7 +14,7 @@ from src.config.home_dir import (
     get_most_recent_session_id,
     get_output_data_folder_path,
 )
-from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_skeleton_detector import (
+from src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
     Mediapipe2dDataPayload,
 )

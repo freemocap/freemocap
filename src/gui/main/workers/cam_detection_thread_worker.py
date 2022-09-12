@@ -13,7 +13,6 @@ class CameraDetectionThreadWorker(QThread):
 
     def __init__(self):
         super().__init__()
-        self.finished.connect(self.quit)
 
     def run(self):
         logger.info("Detecting cameras....")

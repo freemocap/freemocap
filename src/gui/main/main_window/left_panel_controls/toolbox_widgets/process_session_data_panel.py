@@ -13,14 +13,16 @@ from PyQt6.QtWidgets import (
     QLabel,
 )
 
-from src.core_processes.mediapipe_2d_skeleton_detector.mediapipe_default_settings import (
+from src.core_processes.mediapipe_stuff.mediapipe_default_settings import (
     default_mediapipe_confidence_threshold,
 )
 from src.export_stuff.blender_stuff.get_best_guess_of_blender_path import (
     get_best_guess_of_blender_path,
 )
 
-from src.gui.main.tool_tips.tool_tips import mediapipe_confidence_cutoff_tool_tip_str
+from src.gui.main.tool_tips.tool_tips_strings import (
+    mediapipe_confidence_cutoff_tool_tip_str,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +143,7 @@ class ProcessSessionDataPanel(QWidget):
         return blender_path_layout
 
     def _open_blender_path_file_dialog(self):
+        # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
         self._blender_exe_path_str = QFileDialog.getOpenFileName()
         self._blender_exe_path_str = self._blender_exe_path_str[0]
         logger.info(f"User selected Blender path:{self._blender_exe_path_str}")

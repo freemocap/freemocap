@@ -7,6 +7,8 @@ from src.config.home_dir import get_log_file_path
 
 DEFAULT_LOGGING = {"version": 1, "disable_existing_loggers": False}
 
+LOG_FILE_PATH = None
+
 
 def get_logging_handlers():
     """
@@ -29,8 +31,9 @@ def get_logging_handlers():
     console_handler.setFormatter(default_formatter)
 
     # Setup File handler (from https://stackoverflow.com/a/24507130/14662833 )
-    log_file_path = get_log_file_path()
-    file_handler = logging.FileHandler(log_file_path)
+    global LOG_FILE_PATH
+    LOG_FILE_PATH = get_log_file_path()
+    file_handler = logging.FileHandler(LOG_FILE_PATH)
     file_handler.setFormatter(default_formatter)
     file_handler.setLevel(logging.DEBUG)
 

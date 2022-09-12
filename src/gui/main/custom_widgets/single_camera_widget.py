@@ -45,10 +45,6 @@ class SingleCameraWidget(QWidget):
         self.setLayout(layout)
 
     @property
-    def camera_id(self):
-        return self._webcam_config.webcam_id
-
-    @property
     def should_record_frames(self):
         return self._worker.should_save_frames
 

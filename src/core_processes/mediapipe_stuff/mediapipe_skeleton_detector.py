@@ -14,7 +14,7 @@ from src.config.home_dir import (
     get_synchronized_videos_folder_path,
     get_output_data_folder_path,
 )
-from src.core_processes.mediapipe_2d_skeleton_detector.medaipipe_tracked_points_names_dict import (
+from src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
 )
 

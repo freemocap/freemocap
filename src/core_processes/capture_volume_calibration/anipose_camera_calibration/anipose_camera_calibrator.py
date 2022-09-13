@@ -13,7 +13,7 @@ from src.core_processes.capture_volume_calibration.anipose_camera_calibration im
 from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
 
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
-    CharucoBoardDataClass,
+    CharucoBoardDefinition,
 )
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class AniposeCameraCalibrator:
     def __init__(
         self,
-        charuco_board_object: CharucoBoardDataClass,
+        charuco_board_object: CharucoBoardDefinition,
         charuco_square_size: Union[int, float],
         calibration_videos_folder_path: Union[str, Path],
         progress_callback: Callable[[str], None] = None,

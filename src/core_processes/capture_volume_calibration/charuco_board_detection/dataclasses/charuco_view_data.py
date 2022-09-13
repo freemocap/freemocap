@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
-    CharucoBoardDataClass,
+    CharucoBoardDefinition,
 )
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class CharucoViewData:
-    charuco_board_object: CharucoBoardDataClass = (
+    charuco_board_object: CharucoBoardDefinition = (
         None  # the charuco board definition this 'view' was trying to detect
     )
     charuco_corners: np.ndarray = None

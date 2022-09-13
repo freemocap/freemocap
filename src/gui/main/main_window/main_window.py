@@ -18,6 +18,9 @@ from src.config.home_dir import (
     get_freemocap_data_folder_path,
     get_annotated_videos_folder_path,
 )
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
+    CharucoBoardDefinition,
+)
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_most_recent_anipose_calibration_toml,
     load_calibration_from_session_id,
@@ -571,12 +574,29 @@ class MainWindow(QMainWindow):
         calibration_videos_folder_path = get_calibration_videos_folder_path(
             self._session_id
         )
+        charuco_board_definition = self._get_user_specified_charuco_definition()
         self._thread_worker_manager.launch_anipose_calibration_thread_worker(
+            charuco_board_definition=charuco_board_definition,
             calibration_videos_folder_path=calibration_videos_folder_path,
             charuco_square_size_mm=self._control_panel.calibrate_capture_volume_panel.charuco_square_size,
             session_id=self._session_id,
             jupyter_console_print_function_callable=self._right_side_panel.jupyter_console_widget.print_to_console,
         )
+
+    def _get_user_specified_charuco_definition(self):
+        charuco_board_definition = CharucoBoardDefinition()
+        user_charuco_selection = (
+            self._control_panel.calibrate_capture_volume_panel.charuco_combo_box_selection
+        )
+
+        if user_charuco_selection == "Default (3x5 squares)":
+            charuco_board_definition.number_of_squares_width = 5
+            charuco_board_definition.number_of_squares_height = 3
+        elif user_charuco_selection == "Pre-Alpha (5x7 squares)":
+            charuco_board_definition.number_of_squares_width = 7
+            charuco_board_definition.number_of_squares_height = 5
+
+        return charuco_board_definition
 
     def _fully_process_mocap_videos(self):
         self._auto_process_next_stage = True

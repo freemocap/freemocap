@@ -6,7 +6,7 @@ import numpy as np
 
 
 @dataclass
-class CharucoBoardDataClass:
+class CharucoBoardDefinition:
     aruco_marker_dict: Dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
     # number_of_squares_width: int = 5
     # number_of_squares_height: int = 3

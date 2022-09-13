@@ -6,7 +6,7 @@ import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
-    CharucoBoardDataClass,
+    CharucoBoardDefinition,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_frame_payload import (
     CharucoFramePayload,
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class CharucoBoardDetector:
     def __init__(self):
-        self.charuco_board_data_class_object = CharucoBoardDataClass()
+        self.charuco_board_data_class_object = CharucoBoardDefinition()
         self.cv2_aruco_charuco_board = (
             self.charuco_board_data_class_object.charuco_board
         )

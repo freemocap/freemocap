@@ -382,7 +382,7 @@ class MainWindow(QMainWindow):
     def _start_session(self, session_id: str, new_session: bool = False):
 
         if self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked():
-            send_pipedream_ping()
+            send_pipedream_ping('session_started')
 
         self._session_id = session_id
         self._control_panel.enable_toolbox_panels()

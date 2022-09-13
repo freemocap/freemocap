@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QFormLayout,
+
     QPushButton, QCheckBox,
 )
 
@@ -33,17 +34,19 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
 
         self._layout.addLayout(self._create_get_session_id_form_layout())
 
-        self._start_new_session_button = PrimaryButton("&Start New Session")
+        self._start_new_session_button = PrimaryButton("&Start New Session (Ctrl+N)")
         self._layout.addWidget(self._start_new_session_button)
 
         self._load_most_recent_session_button = QPushButton(
-            "Load Most &Recent Session",
+            "Load Most &Recent Session (Ctrl+D)",
+
         )
         self._load_most_recent_session_button.setEnabled(True)
         self._layout.addWidget(self._load_most_recent_session_button)
 
         self._load_session_button = QPushButton(
-            "Load Session",
+            "Load Session (Ctrl+O)",
+
         )
         self._load_session_button.setEnabled(True)
         self._layout.addWidget(self._load_session_button)
@@ -55,6 +58,7 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         self._layout.addWidget(self._import_external_videos_button)
 
         self._layout.addStretch()
+
 
         self._send_pings_checkbox = QCheckBox("Send ping to devs to let us know when you make a new session because that will help us get funding for this project :D ")
         self._send_pings_checkbox.setChecked(True)
@@ -73,6 +77,7 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         return self._load_session_button
 
     @property
+
     def send_pings_checkbox(self):
         return self._send_pings_checkbox
 

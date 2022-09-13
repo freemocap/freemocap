@@ -4,6 +4,9 @@ from typing import Union
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
+    CharucoBoardDefinition,
+)
 from src.core_processes.capture_volume_calibration.run_anipose_capture_volume_calibration import (
     run_anipose_capture_volume_calibration,
 )
@@ -17,11 +20,13 @@ class AniposeCalibrationThreadWorker(QThread):
 
     def __init__(
         self,
+        charuco_board_definition: CharucoBoardDefinition,
         calibration_videos_folder_path: Union[str, Path],
         charuco_square_size_mm: Union[int, float],
         session_id: str,
     ):
         super().__init__()
+        self._charuco_board_definition = charuco_board_definition
         self._charuco_square_size_mm = charuco_square_size_mm
         self._calibration_videos_folder_path = calibration_videos_folder_path
         self._session_id = session_id
@@ -38,6 +43,7 @@ class AniposeCalibrationThreadWorker(QThread):
 
         try:
             run_anipose_capture_volume_calibration(
+                charuco_board_definition=self._charuco_board_definition,
                 charuco_square_size=self._charuco_square_size_mm,
                 calibration_videos_folder_path=self._calibration_videos_folder_path,
                 pin_camera_0_to_origin=True,

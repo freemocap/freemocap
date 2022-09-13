@@ -7,8 +7,14 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFormLayout,
     QLineEdit,
+    QComboBox,
+    QLabel,
 )
+from pyqtgraph.parametertree import Parameter, ParameterTree
 
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
+    CharucoBoardDefinition,
+)
 from src.core_processes.capture_volume_calibration.charuco_board_detection.default_charuco_square_size import (
     default_charuco_square_size_mm,
 )
@@ -40,6 +46,17 @@ class CalibrateCaptureVolumePanel(QWidget):
         self._stop_recording_button.setEnabled(False)
         record_button_layout.addWidget(self._stop_recording_button)
 
+        self._process_automatically_checkbox = QCheckBox(
+            "Process Calibration Videos Automatically"
+        )
+
+        self._layout.addWidget(QLabel("Charuco Checkerboard Type:"))
+        self._charuco_board_definition = CharucoBoardDefinition()
+        self._charuco_combo_box = QComboBox()
+        self._charuco_combo_box.addItem("Default (3x5 squares)")
+        self._charuco_combo_box.addItem("Pre-Alpha (5x7 squares)")
+        self._layout.addWidget(self._charuco_combo_box)
+
         self._charuco_square_size_form_layout = QFormLayout()
         self._charuco_square_size_line_edit_widget = QLineEdit()
         self._charuco_square_size_line_edit_widget.setText(
@@ -51,6 +68,12 @@ class CalibrateCaptureVolumePanel(QWidget):
 
         self._layout.addLayout(self._charuco_square_size_form_layout)
 
+        self._process_automatically_checkbox.setChecked(True)
+        self._process_automatically_checkbox.stateChanged.connect(
+            self._enable_or_disable_calibrate_from_videos_button
+        )
+        self._layout.addWidget(self._process_automatically_checkbox)
+
         self._calibrate_capture_volume_from_videos_button = QPushButton(
             "Calibrate Capture Volume From Videos"
         )
@@ -58,13 +81,6 @@ class CalibrateCaptureVolumePanel(QWidget):
         self._layout.addWidget(
             self._calibrate_capture_volume_from_videos_button,
         )
-
-        self._process_automatically_checkbox = QCheckBox("Process Automatically")
-        self._process_automatically_checkbox.setChecked(True)
-        self._process_automatically_checkbox.stateChanged.connect(
-            self._enable_or_disable_calibrate_from_videos_button
-        )
-        self._layout.addWidget(self._process_automatically_checkbox)
 
         self._layout.addStretch()
 
@@ -91,6 +107,10 @@ class CalibrateCaptureVolumePanel(QWidget):
     @property
     def charuco_square_size(self) -> float:
         return float(self._charuco_square_size_line_edit_widget.text())
+
+    @property
+    def charuco_combo_box_selection(self):
+        return self._charuco_combo_box.currentText()
 
     def _create_use_previous_calibration_checkbox(self):
         previous_calibration_checkbox = QCheckBox("Use Previous Calibration")

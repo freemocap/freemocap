@@ -6,6 +6,9 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
 from src.cameras.detection.models import FoundCamerasResponse
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
+    CharucoBoardDefinition,
+)
 
 from src.gui.main.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
@@ -68,6 +71,7 @@ class ThreadWorkerManager(QWidget):
 
     def launch_anipose_calibration_thread_worker(
         self,
+        charuco_board_definition: CharucoBoardDefinition,
         calibration_videos_folder_path: Union[str, Path],
         charuco_square_size_mm: float,
         session_id: str,
@@ -75,6 +79,7 @@ class ThreadWorkerManager(QWidget):
     ):
         logger.info("Launching `Anipose (Charuco Board) Calibration` thread worker")
         self._anipose_calibration_worker = AniposeCalibrationThreadWorker(
+            charuco_board_definition=charuco_board_definition,
             calibration_videos_folder_path=calibration_videos_folder_path,
             charuco_square_size_mm=charuco_square_size_mm,
             session_id=session_id,

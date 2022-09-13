@@ -40,6 +40,7 @@ class Gl3dViewPort(QWidget):
         self._opengl_3d_plot_widget.opts["distance"] = initial_viewing_distance
         self._opengl_3d_plot_widget.opts["azimuth"] = 90
         self._opengl_3d_plot_widget.opts["elevation"] = 90
+
         self._create_grid_planes(grid_scale=initial_viewing_distance)
         self._create_rgb_origin_axes()
 

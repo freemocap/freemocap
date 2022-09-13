@@ -20,6 +20,7 @@ from src.config.home_dir import (
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
+
 )
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_most_recent_anipose_calibration_toml,
@@ -49,6 +50,8 @@ import logging
 from src.gui.main.workers.thread_worker_manager import ThreadWorkerManager
 from src.log.config import LOG_FILE_PATH
 
+from src.sending_anonymous_user_info_to_places.send_pipedream_ping import send_pipedream_ping
+
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 EXIT_CODE_REBOOT = -123456789
 
@@ -73,6 +76,13 @@ class MainWindow(QMainWindow):
         self.setGeometry(0, 0, self._main_window_width, self._main_window_height)
         self.setMaximumHeight(1000)
         self._main_layout = self._create_main_layout()
+
+        # create actions
+        self._create_actions()
+        self._connect_actions_to_slots()
+
+        # menu bar
+        self._create_menu_bar()
 
         # left side (control) panel
         self._control_panel = self._create_control_panel()
@@ -109,6 +119,44 @@ class MainWindow(QMainWindow):
         # widget.setLayout(main_layout)
         self.setCentralWidget(main_layout)
         return main_layout
+
+    def _create_menu_bar(self):
+        """
+        based mostly on: https://realpython.com/python-menus-toolbars/
+        """
+        menu_bar = QMenuBar()
+        self.setMenuBar(menu_bar)
+
+        # file menu
+        file_menu = QMenu("&File", parent=menu_bar)
+        menu_bar.addMenu(file_menu)
+
+        file_menu.addAction(self._new_session_action)
+        file_menu.addAction(self._load_most_recent_session_action)
+        file_menu.addAction(self._load_session_action)
+        file_menu.addAction(self._reboot_gui_action)
+        file_menu.addAction(self._exit_action)
+
+        # help menu
+        help_menu = QMenu("&Help", parent=menu_bar)
+        menu_bar.addMenu(help_menu)
+        help_menu.setEnabled(False)
+
+        help_menu.addAction(self._open_docs_action)
+        help_menu.addAction(self._about_us_action)
+
+        # support menu
+        support_menu = QMenu(
+            "\U00002665 &Support the FreeMoCap Project", parent=menu_bar
+        )
+        support_menu.setEnabled(False)
+        menu_bar.addMenu(support_menu)
+
+        support_menu.addAction(self._donate_action)
+        support_menu.addAction(self._send_usage_statistics_action)
+        support_menu.addAction(self._user_survey_action)
+
+        return menu_bar
 
     def _create_control_panel(self):
 
@@ -251,6 +299,24 @@ class MainWindow(QMainWindow):
     def _connect_actions_to_slots(self):
 
         # File menu
+        self._new_session_action = QAction("&Start New Session", parent=self)
+        self._load_most_recent_session_action = QAction(
+            "Load &Most Recent Session", parent=self
+        )
+        self._load_session_action = QAction("&Load Session...", parent=self)
+        self._reboot_gui_action = QAction("&Reboot GUI", parent=self)
+        self._exit_action = QAction("E&xit", parent=self)
+
+        self._open_docs_action = QAction("Open  &Documentation", parent=self)
+        self._about_us_action = QAction("&About Us", parent=self)
+
+        self._donate_action = QAction("&Donate", parent=self)
+        self._send_usage_statistics_action = QAction(
+            "Send &User Statistics", parent=self
+        )
+        self._user_survey_action = QAction("&User Survey", parent=self)
+
+    def _connect_actions_to_slots(self):
         self._new_session_action.triggered.connect(
             lambda: self._start_session(
                 session_id=self._middle_viewing_panel.welcome_create_or_load_session_panel.session_id_input_string,
@@ -289,6 +355,7 @@ class MainWindow(QMainWindow):
                 self._control_panel.visualize_motion_capture_data_panel
             )
         )
+
 
         # self._open_docs_action.triggered.connect()
         # self._about_us_action.triggered.connect()
@@ -446,6 +513,11 @@ class MainWindow(QMainWindow):
         self._start_session(self._session_id)
 
     def _start_session(self, session_id: str, new_session: bool = False):
+
+
+        if self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked():
+            send_pipedream_ping('session_started')
+
         self._session_id = session_id
         self._control_panel.enable_toolbox_panels()
         self._set_session_folder_as_root_for_file_viewer(self._session_id)
@@ -463,6 +535,11 @@ class MainWindow(QMainWindow):
         self._thread_worker_manager.launch_detect_cameras_worker()
 
         self._show_camera_control_panel_action.trigger()
+
+        self._middle_viewing_panel.show_camera_streams()
+
+        if new_session:
+            self._auto_launch_camera_streams = True
 
         self._middle_viewing_panel.show_camera_streams()
 

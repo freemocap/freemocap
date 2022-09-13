@@ -97,6 +97,7 @@ class SessionPlaybackThreadWorker(QThread):
 
     def _update_skeleton(self, frame_number: int):
 
+
         this_frame_skeleton_data = self._skeleton_3d_frame_trackedPoint_dimension[
             frame_number, :, :
         ]

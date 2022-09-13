@@ -64,10 +64,12 @@ class ControlPanel:
     def calibrate_capture_volume_panel(self):
         return self._dictionary_of_toolbox_panels["2 - Calibrate Capture Volume"]
 
+
     @property
     def record_motion_capture_videos_panel(self):
         return self._dictionary_of_toolbox_panels[
             "3 - Record and Process Motion Capture Videos"
+
         ]
 
     @property
@@ -77,6 +79,7 @@ class ControlPanel:
     @property
     def visualize_motion_capture_data_panel(self):
         return self._dictionary_of_toolbox_panels["4 - Visualize Motion Capture Data"]
+
 
     @property
     def toolbox_widget(self):
@@ -108,6 +111,7 @@ class ControlPanel:
         ] = RecordMotionCatpureVideosPanel()
         dictionary_of_toolbox_panels[
             "4 - Visualize Motion Capture Data"
+
         ] = VisualizeMotionCaptureDataPanel()
         # self._process_session_data_panel = ProcessSessionDataPanel()
         return dictionary_of_toolbox_panels

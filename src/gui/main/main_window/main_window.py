@@ -165,9 +165,9 @@ class MainWindow(QMainWindow):
         width = self._main_window_width * 0.2
         height = self._main_window_height
         panel.frame.setMinimumHeight(height)
-        panel.frame.setMinimumWidth(width / 2)
+        panel.frame.setMinimumWidth(int(width/ 2))
         size_hint = panel.frame.sizeHint()
-        size_hint.setWidth(width)
+        size_hint.setWidth(int(width))
         size_hint.setHeight(height)
 
         return panel
@@ -177,9 +177,9 @@ class MainWindow(QMainWindow):
         width = self._main_window_width * 0.7
         height = self._main_window_height
         panel.frame.setMinimumHeight(height)
-        panel.frame.setMinimumWidth(width / 2)
+        panel.frame.setMinimumWidth(int(width / 2))
         size_hint = panel.frame.sizeHint()
-        size_hint.setWidth(width)
+        size_hint.setWidth(int(width))
         size_hint.setHeight(height)
 
         return panel
@@ -192,9 +192,9 @@ class MainWindow(QMainWindow):
         width = self._main_window_width * 0.1
         height = self._main_window_height
         panel.frame.setMinimumHeight(height)
-        panel.frame.setMinimumWidth(width / 2)
+        panel.frame.setMinimumWidth(int(width / 2))
         size_hint = panel.frame.sizeHint()
-        size_hint.setWidth(width)
+        size_hint.setWidth(int(width))
         size_hint.setHeight(height)
 
         return panel

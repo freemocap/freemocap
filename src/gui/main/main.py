@@ -5,8 +5,16 @@ import sys
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 
+# boilerplate and helper functions to assist with unittest creation #
+from pathlib import Path
+
+repo = Path(__file__).parent.parent.parent.parent
+source = Path(repo)
+sys.path.insert(0, str(source))
+
 from src.gui.main.app import get_qt_app
 from src.gui.main.main_window.main_window import MainWindow, EXIT_CODE_REBOOT
+
 
 logger = logging.getLogger(__name__)
 

@@ -64,18 +64,18 @@ class VideoCaptureThread(threading.Thread):
 
     def _start_frame_loop(self):
         self._is_capturing_frames = True
-
+        logger.info(f"Starting frame loop for {self._webcam_id}")
         try:
             while self._is_capturing_frames:
 
-                start = time.perf_counter_ns()
                 self._frame = self._get_next_frame()
-                self._elapsed_during_frame_grab.append(time.perf_counter_ns() - start)
                 self._timestamps_npy.append(
                     self._frame.timestamp_in_seconds_from_record_start
                 )
                 self._num_frames_processed += 1
-                # logger.debug(f"Camera {self._webcam_id}: captured frame# {self._num_frames_processed}")
+                # logger.debug(
+                #     f"Camera {self._webcam_id}: captured frame# {self._num_frames_processed}"
+                # )
         except:
             logger.error("Frame loop thread exited due to error")
             traceback.print_exc()

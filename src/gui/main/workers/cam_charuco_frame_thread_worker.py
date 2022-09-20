@@ -96,17 +96,17 @@ class CamCharucoFrameThreadWorker(QThread):
                 image_to_display = charuco_payload.annotated_image
                 image_to_display = cv2.flip(image_to_display, 1)
                 image_to_display = cv2.cvtColor(image_to_display, cv2.COLOR_BGR2RGB)
-                converted_frame = QImage(
+                q_image = QImage(
                     image_to_display.data,
                     image_to_display.shape[1],
                     image_to_display.shape[0],
                     QImage.Format.Format_RGB888,
                 )
-                converted_frame = converted_frame.scaledToHeight(
-                    APP_STATE.main_window_height / len(APP_STATE.available_cameras)
+                q_image = q_image.scaledToHeight(
+                    APP_STATE.main_window_height / 1  # len(APP_STATE.available_cameras)
                 )
 
-                self.image_updated_signal.emit(converted_frame)
+                self.image_updated_signal.emit(q_image)
         finally:
             logger.info(f"Closing Camera {self._open_cv_camera.webcam_id_as_str}")
             self._open_cv_camera.close()

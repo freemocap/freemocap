@@ -140,6 +140,12 @@ class OpenCVCamera:
             )
             self._opencv_video_capture_object.release()
 
+        if self._running_thread.is_capturing_frames:
+            logger.debug(
+                f"Stopping frame capture thread for Camera: {self._config.webcam_id}"
+            )
+            self._running_thread.stop()
+
     def record_frames(self, save_frames_bool: bool):
         self._running_thread.is_recording_frames = save_frames_bool
 
@@ -154,6 +160,7 @@ class OpenCVCamera:
         self._running_thread.start()
 
     def _create_thread(self):
+        logger.debug(f"Creating thread for webcam: {self.webcam_id_as_str}")
         return VideoCaptureThread(
             webcam_id=self.webcam_id_as_str,
             get_next_frame=self.get_next_frame,

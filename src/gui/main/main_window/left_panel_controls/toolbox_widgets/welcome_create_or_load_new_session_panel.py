@@ -8,8 +8,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QFormLayout,
-
-    QPushButton, QCheckBox,
+    QPushButton,
+    QCheckBox,
 )
 
 from src.config.home_dir import create_default_session_id
@@ -39,28 +39,25 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
 
         self._load_most_recent_session_button = QPushButton(
             "Load Most &Recent Session (Ctrl+D)",
-
         )
         self._load_most_recent_session_button.setEnabled(True)
         self._layout.addWidget(self._load_most_recent_session_button)
 
         self._load_session_button = QPushButton(
             "Load Session (Ctrl+O)",
-
         )
         self._load_session_button.setEnabled(True)
         self._layout.addWidget(self._load_session_button)
 
-        self._import_external_videos_button = QPushButton(
-            "TO DO - Import External &Videos"
-        )
-        self._import_external_videos_button.setEnabled(False)
+        self._import_external_videos_button = QPushButton("Import External &Videos")
+        self._import_external_videos_button.setEnabled(True)
         self._layout.addWidget(self._import_external_videos_button)
 
         self._layout.addStretch()
 
-
-        self._send_pings_checkbox = QCheckBox("Send ping to devs to let us know when you make a new session because that will help us get funding for this project :D ")
+        self._send_pings_checkbox = QCheckBox(
+            "Send ping to devs to let us know when you make a new session because that will help us get funding for this project :D "
+        )
         self._send_pings_checkbox.setChecked(True)
         self._layout.addWidget(self._send_pings_checkbox)
 
@@ -77,7 +74,10 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         return self._load_session_button
 
     @property
+    def import_external_videos_button(self):
+        return self._import_external_videos_button
 
+    @property
     def send_pings_checkbox(self):
         return self._send_pings_checkbox
 

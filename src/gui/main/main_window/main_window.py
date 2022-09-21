@@ -5,7 +5,7 @@ from typing import Union
 
 from PyQt6 import QtGui
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu
+from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu, QLabel
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.home_dir import (
@@ -114,44 +114,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_layout)
         return main_layout
 
-    def _create_menu_bar(self):
-        """
-        based mostly on: https://realpython.com/python-menus-toolbars/
-        """
-        menu_bar = QMenuBar()
-        self.setMenuBar(menu_bar)
-
-        # file menu
-        file_menu = QMenu("&File", parent=menu_bar)
-        menu_bar.addMenu(file_menu)
-
-        file_menu.addAction(self._new_session_action)
-        file_menu.addAction(self._load_most_recent_session_action)
-        file_menu.addAction(self._load_session_action)
-        file_menu.addAction(self._reboot_gui_action)
-        file_menu.addAction(self._exit_action)
-
-        # help menu
-        help_menu = QMenu("&Help", parent=menu_bar)
-        menu_bar.addMenu(help_menu)
-        help_menu.setEnabled(False)
-
-        help_menu.addAction(self._open_docs_action)
-        help_menu.addAction(self._about_us_action)
-
-        # support menu
-        support_menu = QMenu(
-            "\U00002665 &Support the FreeMoCap Project", parent=menu_bar
-        )
-        support_menu.setEnabled(False)
-        menu_bar.addMenu(support_menu)
-
-        support_menu.addAction(self._donate_action)
-        support_menu.addAction(self._send_usage_statistics_action)
-        support_menu.addAction(self._user_survey_action)
-
-        return menu_bar
-
     def _create_control_panel(self):
 
         panel = ControlPanel()
@@ -206,10 +168,10 @@ class MainWindow(QMainWindow):
         self._load_session_action = QAction("&Load Session...", parent=self)
         self._load_session_action.setShortcut("Ctrl+O")
 
-        self._import_external_video_action = QAction(
+        self._import_external_videos_action = QAction(
             "&Import External Videos...", parent=self
         )
-        self._import_external_video_action.setShortcut("Ctrl+I")
+        self._import_external_videos_action.setShortcut("Ctrl+I")
 
         self._reboot_gui_action = QAction("&Reboot GUI", parent=self)
         self._reboot_gui_action.setShortcut("Ctrl+R")
@@ -297,26 +259,6 @@ class MainWindow(QMainWindow):
 
     def _connect_actions_to_slots(self):
 
-        # File menu
-        self._new_session_action = QAction("&Start New Session", parent=self)
-        self._load_most_recent_session_action = QAction(
-            "Load &Most Recent Session", parent=self
-        )
-        self._load_session_action = QAction("&Load Session...", parent=self)
-        self._reboot_gui_action = QAction("&Reboot GUI", parent=self)
-        self._exit_action = QAction("E&xit", parent=self)
-
-        self._open_docs_action = QAction("Open  &Documentation", parent=self)
-        self._about_us_action = QAction("&About Us", parent=self)
-
-        self._donate_action = QAction("&Donate", parent=self)
-        self._send_usage_statistics_action = QAction(
-            "Send &User Statistics", parent=self
-        )
-        self._user_survey_action = QAction("&User Survey", parent=self)
-
-    def _connect_actions_to_slots(self):
-
         self._new_session_action.triggered.connect(
             lambda: self._start_session(
                 session_id=self._middle_viewing_panel.welcome_create_or_load_session_panel.session_id_input_string,
@@ -330,10 +272,11 @@ class MainWindow(QMainWindow):
 
         self._load_session_action.triggered.connect(self._load_session_dialog)
 
-        self._import_external_video_action.triggered.connect(
-            lambda: print(
-                "pop up 'session id' panel, then a 'select video folder' dialog and copy those videos into the session folder"
-            )
+        self._todo_import_videos_pop_up = QLabel(
+            "\nTODO - pop up 'session id' panel, then a 'select video folder' dialog and copy those videos into the session folder\n"
+        )
+        self._import_external_videos_action.triggered.connect(
+            self._todo_import_videos_pop_up.show
         )
 
         self._reboot_gui_action.triggered.connect(self._reboot_gui)
@@ -386,7 +329,7 @@ class MainWindow(QMainWindow):
         )
 
         self._middle_viewing_panel.welcome_create_or_load_session_panel.import_external_videos_button.clicked.connect(
-            self._import_external_videos.trigger
+            self._import_external_videos_action.trigger
         )
 
         # Camera Control Panel

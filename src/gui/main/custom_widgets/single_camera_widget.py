@@ -3,7 +3,7 @@ import enum
 from PyQt6 import QtGui
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QWidget, QLabel, QFrame
+from PyQt6.QtWidgets import QHBoxLayout, QWidget, QLabel, QFrame, QVBoxLayout
 
 from src.config.webcam_config import WebcamConfig
 from src.gui.main.workers.cam_charuco_frame_thread_worker import (
@@ -37,14 +37,19 @@ class SingleCameraWidget(QWidget):
     def __init__(self, webcam_config: WebcamConfig):
         super().__init__()
         self._webcam_config = webcam_config
+
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        self._camera_name_str = f"Camera {self._webcam_config.webcam_id}"
+        layout.addWidget(QLabel(self._camera_name_str))
+
         self._video_label = QLabel()
         self._video_label.setFrameStyle((QFrame.Panel | QFrame.Plain))
         self._video_label.setLineWidth(3)
         # self._video.setScaledContents(True)
-        layout = QHBoxLayout()
-        layout.addWidget(self._video_label)
 
-        self.setLayout(layout)
+        layout.addWidget(self._video_label)
 
     @property
     def should_record_frames(self):

@@ -5,6 +5,10 @@ import sys
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 
+from pathlib import Path
+repo = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(repo))
+
 from src.gui.main.app import get_qt_app
 from src.gui.main.main_window.main_window import MainWindow, EXIT_CODE_REBOOT
 

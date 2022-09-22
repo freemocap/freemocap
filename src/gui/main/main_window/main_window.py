@@ -69,6 +69,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("freemocap \U0001F480 \U00002728")
         # self._set_icon()
 
+
+
+
         self._main_window_width = int(1920 * 0.9)
         self._main_window_height = int(1080 * 0.8)
         APP_STATE.main_window_height = self._main_window_height

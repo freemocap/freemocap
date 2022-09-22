@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QImage
 
@@ -103,7 +104,7 @@ class CamCharucoFrameThreadWorker(QThread):
                     QImage.Format.Format_RGB888,
                 )
                 q_image = q_image.scaledToHeight(
-                    APP_STATE.main_window_height / len(APP_STATE.available_cameras)
+                    APP_STATE.main_window_height / np.min([3,len(APP_STATE.available_cameras)])
                 )
 
                 self.image_updated_signal.emit(q_image)

@@ -1,7 +1,6 @@
 import logging
 
 from PyQt6 import QtCore
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -13,8 +12,9 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.home_dir import create_default_session_id
-from src.gui.main.styled_widgets.page_title import PageTitle
-from src.gui.main.styled_widgets.primary_button import PrimaryButton
+from src.gui.main.style_stuff.css_style_sheet import recommended_next_button_style_sheet
+from src.gui.main.style_stuff.styled_widgets.page_title import PageTitle
+from src.gui.main.style_stuff.styled_widgets.primary_button import PrimaryButton
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,8 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
 
         self._layout.addLayout(self._create_get_session_id_form_layout())
 
-        self._start_new_session_button = PrimaryButton("&Start New Session (Ctrl+N)")
+        self._start_new_session_button = QPushButton("&Start New Session (Ctrl+N)")
+        self._start_new_session_button.setStyleSheet(recommended_next_button_style_sheet)
         self._layout.addWidget(self._start_new_session_button)
 
         self._load_most_recent_session_button = QPushButton(

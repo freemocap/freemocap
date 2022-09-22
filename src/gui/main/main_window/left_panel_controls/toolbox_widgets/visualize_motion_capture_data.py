@@ -1,15 +1,8 @@
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QLabel,
-    QLineEdit,
-    QFormLayout,
     QPushButton,
 )
-
-from src.config.home_dir import create_default_session_id
-from src.gui.main.styled_widgets.primary_button import PrimaryButton
 
 
 class VisualizeMotionCaptureDataPanel(QWidget):

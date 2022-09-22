@@ -36,10 +36,11 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, sigint_handler)
     app = get_qt_app()
     app.setStyleSheet(qt_app_css_style_sheet)
-    # timer = QTimer()
-    # timer.start(500)
+    timer = QTimer()
+    timer.start(500)
     # # timer.timeout.connect(log_gui_loop)  # Let the interpreter run each 500 ms.
     # timer.timeout.connect(lambda: None)  # Let the interpreter run each 500 ms.
+
 
     while True:
         # rebootable GUI method based on this - https://stackoverflow.com/a/56563926/14662833

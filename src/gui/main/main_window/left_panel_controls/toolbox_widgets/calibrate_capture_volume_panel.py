@@ -53,8 +53,9 @@ class CalibrateCaptureVolumePanel(QWidget):
         self._layout.addWidget(QLabel("Charuco Checkerboard Type:"))
         self._charuco_board_definition = CharucoBoardDefinition()
         self._charuco_combo_box = QComboBox()
-        self._charuco_combo_box.addItem("Default (3x5 squares)")
         self._charuco_combo_box.addItem("Pre-Alpha (5x7 squares)")
+        self._charuco_combo_box.addItem("Bigger Squares (3x5 squares)")
+
         self._layout.addWidget(self._charuco_combo_box)
 
         self._charuco_square_size_form_layout = QFormLayout()

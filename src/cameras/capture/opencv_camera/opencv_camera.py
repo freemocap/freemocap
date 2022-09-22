@@ -176,6 +176,18 @@ class OpenCVCamera:
             f"Fourcc: {self._config.fourcc}"
         )
         try:
+            if not self._opencv_video_capture_object.isOpened():
+                logger.error(
+                    f"Failed to apply configuration to Camera {self._config.webcam_id} - camera is not open"
+                )
+                return
+        except Exception as e:
+            logger.error(
+                f"Failed when trying to check if Camera {self._config.webcam_id} is open"
+            )
+            return
+
+        try:
             self._opencv_video_capture_object.set(
                 cv2.CAP_PROP_EXPOSURE, self._config.exposure
             )

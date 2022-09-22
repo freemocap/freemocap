@@ -608,6 +608,7 @@ class MainWindow(QMainWindow):
             self._session_id
         )
         charuco_board_definition = self._get_user_specified_charuco_definition()
+        logger.info(f"Launching Anipose calibration thread worker with the following parameters: {charuco_board_definition.__dict__}")
         self._thread_worker_manager.launch_anipose_calibration_thread_worker(
             charuco_board_definition=charuco_board_definition,
             calibration_videos_folder_path=calibration_videos_folder_path,
@@ -693,7 +694,7 @@ class MainWindow(QMainWindow):
             self._open_blender_file(blender_file_path)
 
     def _open_blender_file(self, blender_file_path: Union[str, Path]):
-        logger.info(f"Opening {Path(blender_file_path)}")
+        logger.info(f"Opening {str(blender_file_path)}")
         os.startfile(str(blender_file_path))
 
     def _visualize_motion_capture_data(self):

@@ -7,10 +7,11 @@ from PyQt6.QtWidgets import QApplication
 
 from pathlib import Path
 
-from src.gui.main.style_stuff.css_style_sheet import qt_app_css_style_sheet
-
 repo = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(repo))
+
+
+from src.gui.main.style_stuff.css_style_sheet import qt_app_css_style_sheet
 
 from src.gui.main.app import get_qt_app
 from src.gui.main.main_window.main_window import MainWindow, EXIT_CODE_REBOOT

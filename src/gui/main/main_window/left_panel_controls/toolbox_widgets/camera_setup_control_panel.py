@@ -2,7 +2,14 @@ from typing import Dict
 
 import cv2
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QPushButton, QTextEdit, QLabel
+from PyQt6.QtWidgets import (
+    QVBoxLayout,
+    QWidget,
+    QPushButton,
+    QTextEdit,
+    QLabel,
+    QHBoxLayout,
+)
 from pyqtgraph.parametertree import ParameterTree, Parameter
 
 from src.cameras.detection.models import FoundCamerasResponse
@@ -65,9 +72,16 @@ class CameraSetupControlPanel(QWidget):
         self._apply_settings_to_cameras_button.setEnabled(True)
         self._layout.addWidget(self._apply_settings_to_cameras_button)
 
+        self._pop_dock_buttons_layout = QHBoxLayout()
+        self._layout.addLayout(self._pop_dock_buttons_layout)
+
         self._pop_out_cameras_button = QPushButton("Pop out cameras")
-        self._pop_out_cameras_button.setEnabled(False)
-        self._layout.addWidget(self._pop_out_cameras_button)
+        self._pop_out_cameras_button.setEnabled(True)
+        self._pop_dock_buttons_layout.addWidget(self._pop_out_cameras_button)
+
+        self._dock_cameras_button = QPushButton("Dock cameras")
+        self._dock_cameras_button.setEnabled(False)
+        self._pop_dock_buttons_layout.addWidget(self._dock_cameras_button)
 
         self._close_cameras_button = QPushButton("Close cameras")
         self._close_cameras_button.setEnabled(True)
@@ -89,6 +103,10 @@ class CameraSetupControlPanel(QWidget):
     @property
     def pop_out_cameras_button(self):
         return self._pop_out_cameras_button
+
+    @property
+    def dock_cameras_button(self):
+        return self._dock_cameras_button
 
     @property
     def close_cameras_button(self):

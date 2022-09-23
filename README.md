@@ -22,8 +22,15 @@
 </p>
 
 ___
+# How to use the `pre-alpha` code
+
+
+We're in the process of switching over to the `alpha` phase of this project (`v0.1.0` and on) , which use full refactor code written with help from a professional experienced software architect. 
+
+Until the new code stabilizes, you may have more luck using the `pre-alpha` code (e.g. `v0.0.54`)
+
 ---
-# INSTALLATION
+## INSTALLATION 
 
 Note: This will install the latest/last version from the `pre-alpha` phase of this project, frozen at release tag `v0.0.54` [here](https://github.com/freemocap/freemocap/releases/tag/v0.0.54)
 
@@ -42,10 +49,11 @@ conda activate freemocap-env
 ```bash
 pip install freemocap==0.0.54
 ```
+
+BUG FIX - Update `mediapipe` with: `pip install mediapipe --upgrade`
+
 That should be it!
 ___
-# BASIC USAGE
-
 ##  How to create a *NEW* `freemocap` recording session
 
 tl;dr- **Activate the freemocap Python environment** and run the following lines of code (either in a script or in a console)
@@ -62,79 +70,62 @@ import freemocap
 freemocap.RunMe(useBlender=True)
 ```
 
-**For additional, more detailed instructions (including methods to re-process recorded sessions), [refer to the `OLD_README.md` document](https://github.com/freemocap/freemocap/blob/main/OLD_README.md))**
+:point_right: **For additional, more detailed instructions (including methods to re-process recorded sessions), [refer to the `OLD_README.md` document](https://github.com/freemocap/freemocap/blob/main/OLD_README.md))** :point_left: 
 
 ___
-___
 
+#  HOW TO RUN THE `alpha` GUI
 
+NOTES
+- no promises here, friends. Work in progress lol :joy:    
+- Personally, I run the gui through PyCharm, but its easier to write instructions on how to run from an anaconda prompt
+ 
+## Pre-requisites:
+1. Install Anaconda
+    - https://anaconda.org
+2. Install git 
+     - https://git-scm.com/book/en/v2/Getting-Started-Installing-Git (just use the defaults)  
+3. (OPTIONAL) Install Blender - https://blender.org
 
-## Pre-requisites
+## Installation instructions
 
-### General
-- [Python 3.9](https://www.python.org/downloads/release/python-390/)
-- [Git](https://www.atlassian.com/git/tutorials/install-git)
-- [Blender](https://www.blender.org/download/)
-- At least 2 simple webcameras (but we recommend using at least 3 for better results)
-    - Any USB webcam should work [here's an example of a camera we have used successfully](https://www.amazon.com/Microphone-110-Degree-Widescreen-Streaming-Conferencing/dp/B084ZJFNKN)
-- Each Camera must have a clean, unobstructed view of a Charuco board during initialization.
+1. Open anaconda enabled terminal
 
-
-### Easy MacOSX Install Instructions
-1. Install the Homebrew Package manager (Skip this step if you already have it)
+2. Create a `python=3.9` environment
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+conda create -n freemocap-gui python=3.9
 ```
-2. Install Git (Skip this step if you already have it)
-```bash
-brew install git
-```
-3. Get the source code.
-```bash
-git clone https://github.com/freemocap/freemocap.git
-```
-4. Install the dependencies
-```bash
-brew install blender ffmpeg
-```
-5. Skip to our Getting Started section of the README below.
 
-### Easy Windows Install Instructions
-1. Install Chocolatey. Open Powershell, and run the below command
-```commandline
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+3. Activate that environment:
 ```
-2. Install Git
-```commandline
-choco install git
+conda activate freemocap-gui
 ```
-3. Get the source code.
-```bash
-git clone https://github.com/freemocap/freemocap.git
-```
-4. Install the dependencies
-```commandline
-choco install blender ffmpeg
-```
-5. Skip to our Getting Started section of the README below.
 
-## Getting Started
+4. Clone the repository (i.e. download the code from github. It'll show up in the current working directory of your terminal session)
+```
+git clone https://github.com/freemocap/freemocap
+```
 
-Navigate into the newly cloned freemocap folder
-```bash
+5. Navigate into that newly cloned/downloaded `freemocap` folder with:
+```
 cd freemocap
 ```
 
-Install the Python Dependencies (into a virtual environment)
-```bash
-python3 -m venv env
-/env/Scripts/activate
+6. Install the dependencies listed in the `requirements.txt` file:
+```
 pip install -r requirements.txt
 ```
+7. Run the GUI by running the `src/gui/main/main.py` file by entering this command into the terminal:
 
-That's it! You're ready to run the freemocap application, and create your own digital skeletons.
+```bash
+python src/gui/main/main.py
+```
 
-## Usage
+8. Hopefully a GUI popped up! There are no docs on usage yet, so just click and see what you can figure out :joy:
+
+
+___
+
 
 ## For Developers
 
@@ -155,14 +146,14 @@ task test
 
 Please read our contribution doc: [CONTRIBUTING.md](CONTRIBUTING.md)
 
-### Creating a new binary
+### Creating a new binary (may or may not work lol)
 
 Create a new binary on your local system by running the below comand
 ```bash
 task installer
 ```
 
-Navigate to the `/dist/` directory and you'll see the new Freemocap Binary there.
+Navigate to the `/dist/` directory and you'll see the new FreeMoCap Binary there.
 
 ## Related
 
@@ -175,3 +166,5 @@ Navigate to the `/dist/` directory and you'll see the new Freemocap Binary there
 
 ## License
 This project is licensed under the APGL License - see the [LICENSE](LICENSE) file for details.
+
+If the AGPL does not work for your needs, we are happy to discuss terms to license this software to you with a different license at a price point that will increase exponentially as you move from AGPL towards fully closed source software. 

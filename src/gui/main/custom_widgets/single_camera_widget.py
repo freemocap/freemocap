@@ -3,7 +3,7 @@ import enum
 from PyQt6 import QtGui
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QWidget, QLabel
+from PyQt6.QtWidgets import QHBoxLayout, QWidget, QLabel, QFrame, QVBoxLayout
 
 from src.config.webcam_config import WebcamConfig
 from src.gui.main.workers.cam_charuco_frame_thread_worker import (
@@ -37,12 +37,19 @@ class SingleCameraWidget(QWidget):
     def __init__(self, webcam_config: WebcamConfig):
         super().__init__()
         self._webcam_config = webcam_config
-        self._video = QLabel()
-        # self._video.setScaledContents(True)
-        layout = QHBoxLayout()
-        layout.addWidget(self._video)
 
+        layout = QVBoxLayout()
         self.setLayout(layout)
+
+        self._camera_name_str = f"Camera {self._webcam_config.webcam_id}"
+        layout.addWidget(QLabel(self._camera_name_str))
+
+        self._video_label = QLabel()
+        self._video_label.setFrameStyle((QFrame.Panel | QFrame.Plain))
+        self._video_label.setLineWidth(3)
+        # self._video.setScaledContents(True)
+
+        layout.addWidget(self._video_label)
 
     @property
     def should_record_frames(self):
@@ -78,18 +85,32 @@ class SingleCameraWidget(QWidget):
         worker.image_updated_signal.connect(self._handle_image_update)
         return worker
 
-    def _handle_image_update(self, image):
-        self._pixmap = QPixmap.fromImage(image)
-        self._video.setPixmap(self._pixmap)
+    def _handle_image_update(self, q_image):
+        self._pixmap = QPixmap.fromImage(q_image)
 
-    def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
-        logging.info(f" Camera {self._webcam_config.webcam_id} window resized")
+        if (
+            self._video_label.width() < self._webcam_config.resolution_width
+            or self._video_label.height() < self._webcam_config.resolution_height
+        ):
+            scaled_width = self._video_label.width()
+            scaled_height = self._video_label.height()
+        else:
+            scaled_width = self._webcam_config.resolution_width
+            scaled_height = self._webcam_config.resolution_height
 
-        # TO DO - Some kinda something here to make the videos scale properly and keep their aspect ratio
+        self._pixmap = self._pixmap.scaled(
+            scaled_width,
+            scaled_height,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation,
+        )
 
-        # self._pixmap.scaled(
-        #     self.width(), self.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation
-        # )
+        self._video_label.setPixmap(self._pixmap)
+
+    # def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
+    #     logging.info(f" Camera {self._webcam_config.webcam_id} window resized")
+
+    # TO DO - Some kinda something here to make the videos scale properly and keep their aspect ratio
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         logging.info(f" Camera {self._webcam_config.webcam_id} window closed")

@@ -168,4 +168,5 @@ Navigate to the `/dist/` directory and you'll see the new FreeMoCap Binary there
 ## License
 This project is licensed under the APGL License - see the [LICENSE](LICENSE) file for details.
 
-If the AGPL does not work for your needs, we are happy to discuss terms to license this software to you with a different license at a price point that will increase exponentially as you move from AGPL towards fully closed source software. 
+If the AGPL does not work for your needs, we are happy to discuss terms to license this software to you with a different agreement at a price point that  increases exponentially as you move [spiritually](https://www.gnu.org/philosophy/open-source-misses-the-point.en.html) away from the `AGPL`
+

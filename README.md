@@ -4,9 +4,6 @@
 <h3 align="center">freemocap</h3>
 <p align="center">📝 The FreeMoCap Project: A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture system and platform for decentralized scientific research, education, and training</p>
 <p align="center">
-    <a href="https://github.com/freemocap/freemocap/releases">
-        <img src="https://img.shields.io/github/downloads/freemocap/freemocap/total.svg" alt="GitHub Downloads">
-    </a>
     <a href="https://github.com/freemocap/freemocap/releases/latest">
         <img src="https://img.shields.io/github/release/freemocap/freemocap.svg" alt="Latest Release">
     </a>

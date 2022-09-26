@@ -24,6 +24,16 @@ def create_blend_file_from_session_data(
         path_to_this_py_file / "alpha_freemocap_blender_megascript.py"
     )
 
+    try:
+        blender_exe_path = Path(blender_exe_path)
+        if not blender_exe_path.exists():
+            raise FileNotFoundError(
+                f"Could not find the blender executable at {blender_exe_path}"
+            )
+    except Exception as e:
+        logger.error(e)
+        return
+
     command_str = (
         str(blender_exe_path)
         + " --background"

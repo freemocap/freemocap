@@ -5,7 +5,7 @@ from typing import Union
 
 from PyQt6 import QtGui
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu
+from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu, QLabel
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.home_dir import (
@@ -20,7 +20,6 @@ from src.config.home_dir import (
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
-
 )
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_most_recent_anipose_calibration_toml,
@@ -50,7 +49,9 @@ import logging
 from src.gui.main.workers.thread_worker_manager import ThreadWorkerManager
 from src.log.config import LOG_FILE_PATH
 
-from src.sending_anonymous_user_info_to_places.send_pipedream_ping import send_pipedream_ping
+from src.sending_anonymous_user_info_to_places.send_pipedream_ping import (
+    send_pipedream_ping,
+)
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 EXIT_CODE_REBOOT = -123456789
@@ -68,6 +69,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("freemocap \U0001F480 \U00002728")
         # self._set_icon()
 
+
+
+
         self._main_window_width = int(1920 * 0.9)
         self._main_window_height = int(1080 * 0.8)
         APP_STATE.main_window_height = self._main_window_height
@@ -76,13 +80,6 @@ class MainWindow(QMainWindow):
         self.setGeometry(0, 0, self._main_window_width, self._main_window_height)
         self.setMaximumHeight(1000)
         self._main_layout = self._create_main_layout()
-
-        # create actions
-        self._create_actions()
-        self._connect_actions_to_slots()
-
-        # menu bar
-        self._create_menu_bar()
 
         # left side (control) panel
         self._control_panel = self._create_control_panel()
@@ -119,44 +116,6 @@ class MainWindow(QMainWindow):
         # widget.setLayout(main_layout)
         self.setCentralWidget(main_layout)
         return main_layout
-
-    def _create_menu_bar(self):
-        """
-        based mostly on: https://realpython.com/python-menus-toolbars/
-        """
-        menu_bar = QMenuBar()
-        self.setMenuBar(menu_bar)
-
-        # file menu
-        file_menu = QMenu("&File", parent=menu_bar)
-        menu_bar.addMenu(file_menu)
-
-        file_menu.addAction(self._new_session_action)
-        file_menu.addAction(self._load_most_recent_session_action)
-        file_menu.addAction(self._load_session_action)
-        file_menu.addAction(self._reboot_gui_action)
-        file_menu.addAction(self._exit_action)
-
-        # help menu
-        help_menu = QMenu("&Help", parent=menu_bar)
-        menu_bar.addMenu(help_menu)
-        help_menu.setEnabled(False)
-
-        help_menu.addAction(self._open_docs_action)
-        help_menu.addAction(self._about_us_action)
-
-        # support menu
-        support_menu = QMenu(
-            "\U00002665 &Support the FreeMoCap Project", parent=menu_bar
-        )
-        support_menu.setEnabled(False)
-        menu_bar.addMenu(support_menu)
-
-        support_menu.addAction(self._donate_action)
-        support_menu.addAction(self._send_usage_statistics_action)
-        support_menu.addAction(self._user_survey_action)
-
-        return menu_bar
 
     def _create_control_panel(self):
 
@@ -211,6 +170,11 @@ class MainWindow(QMainWindow):
 
         self._load_session_action = QAction("&Load Session...", parent=self)
         self._load_session_action.setShortcut("Ctrl+O")
+
+        self._import_external_videos_action = QAction(
+            "&Import External Videos...", parent=self
+        )
+        self._import_external_videos_action.setShortcut("Ctrl+I")
 
         self._reboot_gui_action = QAction("&Reboot GUI", parent=self)
         self._reboot_gui_action.setShortcut("Ctrl+R")
@@ -298,25 +262,6 @@ class MainWindow(QMainWindow):
 
     def _connect_actions_to_slots(self):
 
-        # File menu
-        self._new_session_action = QAction("&Start New Session", parent=self)
-        self._load_most_recent_session_action = QAction(
-            "Load &Most Recent Session", parent=self
-        )
-        self._load_session_action = QAction("&Load Session...", parent=self)
-        self._reboot_gui_action = QAction("&Reboot GUI", parent=self)
-        self._exit_action = QAction("E&xit", parent=self)
-
-        self._open_docs_action = QAction("Open  &Documentation", parent=self)
-        self._about_us_action = QAction("&About Us", parent=self)
-
-        self._donate_action = QAction("&Donate", parent=self)
-        self._send_usage_statistics_action = QAction(
-            "Send &User Statistics", parent=self
-        )
-        self._user_survey_action = QAction("&User Survey", parent=self)
-
-    def _connect_actions_to_slots(self):
         self._new_session_action.triggered.connect(
             lambda: self._start_session(
                 session_id=self._middle_viewing_panel.welcome_create_or_load_session_panel.session_id_input_string,
@@ -330,7 +275,15 @@ class MainWindow(QMainWindow):
 
         self._load_session_action.triggered.connect(self._load_session_dialog)
 
+        self._todo_import_videos_pop_up = QLabel(
+            "\nTODO - pop up 'session id' panel, then a 'select video folder' dialog and copy those videos into the session folder\n"
+        )
+        self._import_external_videos_action.triggered.connect(
+            self._todo_import_videos_pop_up.show
+        )
+
         self._reboot_gui_action.triggered.connect(self._reboot_gui)
+
         self._exit_action.triggered.connect(self.close)
 
         # Navigation Menu
@@ -356,7 +309,6 @@ class MainWindow(QMainWindow):
             )
         )
 
-
         # self._open_docs_action.triggered.connect()
         # self._about_us_action.triggered.connect()
         # self._donate_action.triggered.connect()
@@ -366,6 +318,7 @@ class MainWindow(QMainWindow):
     def _connect_buttons_to_stuff(self):
         logger.info("Connecting buttons to stuff")
 
+        # Welcome Panel
         self._middle_viewing_panel.welcome_create_or_load_session_panel.start_new_session_button.clicked.connect(
             self._new_session_action.trigger
         )
@@ -376,6 +329,10 @@ class MainWindow(QMainWindow):
 
         self._middle_viewing_panel.welcome_create_or_load_session_panel.load_session_button.clicked.connect(
             self._load_session_action.trigger
+        )
+
+        self._middle_viewing_panel.welcome_create_or_load_session_panel.import_external_videos_button.clicked.connect(
+            self._import_external_videos_action.trigger
         )
 
         # Camera Control Panel
@@ -514,9 +471,10 @@ class MainWindow(QMainWindow):
 
     def _start_session(self, session_id: str, new_session: bool = False):
 
-
-        if self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked():
-            send_pipedream_ping('session_started')
+        if (
+            self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked()
+        ):
+            send_pipedream_ping("session_started")
 
         self._session_id = session_id
         self._control_panel.enable_toolbox_panels()
@@ -587,14 +545,12 @@ class MainWindow(QMainWindow):
 
         self._cameras_are_popped_out = pop_out_camera_windows
 
-        if self._cameras_are_popped_out:
-            self._control_panel.camera_setup_control_panel.pop_out_cameras_button.setText(
-                "Dock cameras"
-            )
-        else:
-            self._control_panel.camera_setup_control_panel.pop_out_cameras_button.setText(
-                "Pop out cameras"
-            )
+        self._control_panel.camera_setup_control_panel.pop_out_cameras_button.setEnabled(
+            not pop_out_camera_windows
+        )
+        self._control_panel.camera_setup_control_panel.dock_cameras_button.setEnabled(
+            pop_out_camera_windows
+        )
 
         self._middle_viewing_panel.camera_stream_grid_view.create_and_start_camera_widgets(
             dictionary_of_webcam_configs=dictionary_of_webcam_configs,
@@ -652,6 +608,7 @@ class MainWindow(QMainWindow):
             self._session_id
         )
         charuco_board_definition = self._get_user_specified_charuco_definition()
+        logger.info(f"Launching Anipose calibration thread worker with the following parameters: {charuco_board_definition.__dict__}")
         self._thread_worker_manager.launch_anipose_calibration_thread_worker(
             charuco_board_definition=charuco_board_definition,
             calibration_videos_folder_path=calibration_videos_folder_path,
@@ -737,7 +694,7 @@ class MainWindow(QMainWindow):
             self._open_blender_file(blender_file_path)
 
     def _open_blender_file(self, blender_file_path: Union[str, Path]):
-        logger.info(f"Opening {Path(blender_file_path)}")
+        logger.info(f"Opening {str(blender_file_path)}")
         os.startfile(str(blender_file_path))
 
     def _visualize_motion_capture_data(self):

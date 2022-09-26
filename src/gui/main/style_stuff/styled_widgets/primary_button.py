@@ -8,9 +8,6 @@ active_primary_button_style_sheet = """
             min-height: 24px;
             font-size: 16px;
         }
-        QPushButton:hover {
-            background-color: #365d5f;
-        }
         """
 
 

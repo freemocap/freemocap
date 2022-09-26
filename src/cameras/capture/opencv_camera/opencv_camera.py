@@ -140,6 +140,12 @@ class OpenCVCamera:
             )
             self._opencv_video_capture_object.release()
 
+        if self._running_thread.is_capturing_frames:
+            logger.debug(
+                f"Stopping frame capture thread for Camera: {self._config.webcam_id}"
+            )
+            self._running_thread.stop()
+
     def record_frames(self, save_frames_bool: bool):
         self._running_thread.is_recording_frames = save_frames_bool
 
@@ -154,6 +160,7 @@ class OpenCVCamera:
         self._running_thread.start()
 
     def _create_thread(self):
+        logger.debug(f"Creating thread for webcam: {self.webcam_id_as_str}")
         return VideoCaptureThread(
             webcam_id=self.webcam_id_as_str,
             get_next_frame=self.get_next_frame,
@@ -168,6 +175,18 @@ class OpenCVCamera:
             f"Resolution height: {self._config.resolution_height}, "
             f"Fourcc: {self._config.fourcc}"
         )
+        try:
+            if not self._opencv_video_capture_object.isOpened():
+                logger.error(
+                    f"Failed to apply configuration to Camera {self._config.webcam_id} - camera is not open"
+                )
+                return
+        except Exception as e:
+            logger.error(
+                f"Failed when trying to check if Camera {self._config.webcam_id} is open"
+            )
+            return
+
         try:
             self._opencv_video_capture_object.set(
                 cv2.CAP_PROP_EXPOSURE, self._config.exposure

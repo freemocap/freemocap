@@ -4,6 +4,9 @@ from typing import List, Union, Dict
 import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.cameras.create_timestamp_diagnostic_plots import (
+    create_timestamp_diagnostic_plots,
+)
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.gui.icis_conference_main.state.app_state import APP_STATE
 
@@ -100,7 +103,10 @@ def save_synchronized_videos(
             / f"Camera_{str(camera_id).zfill(3)}.mp4",
         )
 
-    # create_timestamp_diagnostic_plots(final_frame_timestamps) #breadcrumbs for a future function to generate timestamp diagnostic plots
+    create_timestamp_diagnostic_plots(
+        each_cam_synchronized_frame_list,
+        Path(folder_to_save_videos) / f"timestamp_synchronization_diagnostic_plots.png",
+    )
 
 
 def get_nearest_frame(frame_list, reference_frame) -> FramePayload:

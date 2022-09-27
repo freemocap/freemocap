@@ -59,14 +59,18 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         self._import_external_videos_button.setEnabled(True)
         self._layout.addWidget(self._import_external_videos_button)
 
-        self._layout.addStretch()
-
+        send_pings_label = QLabel(
+            "(being able to show that people are using this thing will help us get funding for this project :D )"
+        )
+        send_pings_label.setWordWrap(True)
         self._send_pings_checkbox = QCheckBox(
-            "Send ping to devs to let us know when you make a new session because that will help us get funding for this project :D "
+            "Send ping to devs to let us know when you make a new session"
         )
         self._send_pings_checkbox.setChecked(True)
         self._layout.addWidget(self._send_pings_checkbox)
+        self._layout.addWidget(send_pings_label)
 
+        self._layout.addStretch()
         # show this if user selects 'new session' button
         self._session_id_form_layout = self._create_get_session_id_form_layout()
         self._auto_detect_cameras_checkbox = QCheckBox("Automatically detect cameras")

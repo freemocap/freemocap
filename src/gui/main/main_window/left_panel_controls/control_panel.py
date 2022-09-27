@@ -1,25 +1,14 @@
-from typing import List
-
 from PyQt6.QtWidgets import (
     QFrame,
     QVBoxLayout,
-    QLabel,
     QToolBox,
 )
 
-from src.cameras.detection.models import FoundCamerasResponse
-from src.config.webcam_config import WebcamConfig
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.calibrate_capture_volume_panel import (
     CalibrateCaptureVolumePanel,
 )
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup_control_panel import (
     CameraSetupControlPanel,
-)
-from src.gui.main.main_window.left_panel_controls.toolbox_widgets.welcome_create_or_load_new_session_panel import (
-    WelcomeCreateOrLoadNewSessionPanel,
-)
-from src.gui.main.main_window.left_panel_controls.toolbox_widgets.process_session_data_panel import (
-    ProcessSessionDataPanel,
 )
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.record_motion_capture_videos_panel import (
     RecordMotionCatpureVideosPanel,
@@ -27,8 +16,6 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.record_motion_
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.visualize_motion_capture_data import (
     VisualizeMotionCaptureDataPanel,
 )
-
-from src.gui.main.qt_utils.clear_layout import clear_layout
 
 import logging
 

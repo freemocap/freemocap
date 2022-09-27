@@ -103,9 +103,10 @@ class CamCharucoFrameThreadWorker(QThread):
                     image_to_display.shape[0],
                     QImage.Format.Format_RGB888,
                 )
-                #TODO - Figure out why this is needed lol
+                # TODO - Figure out why this is needed lol
                 q_image = q_image.scaledToHeight(
-                    APP_STATE.main_window_height / 1#np.min([3,len(APP_STATE.available_cameras)])
+                    APP_STATE.main_window_height
+                    / 1  # np.min([3,len(APP_STATE.available_cameras)])
                 )
 
                 self.image_updated_signal.emit(q_image)

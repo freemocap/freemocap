@@ -25,12 +25,6 @@ def sigint_handler(*args):
     """Handler for the SIGINT signal."""
     QApplication.quit()
 
-def log_gui_loop():
-    global loop_count
-    loop_count += 1
-    if loop_count % 10 == 0:
-        logger.debug("GUI loop {}".format(loop_count))
-
 
 if __name__ == "__main__":
     logger.info("Starting main...")
@@ -39,9 +33,7 @@ if __name__ == "__main__":
     app.setStyleSheet(qt_app_css_style_sheet)
     timer = QTimer()
     timer.start(500)
-    # # timer.timeout.connect(log_gui_loop)  # Let the interpreter run each 500 ms.
-    # timer.timeout.connect(lambda: None)  # Let the interpreter run each 500 ms.
-
+    timer.timeout.connect(lambda: None)  # Let the interpreter run each 500 ms.
 
     while True:
         # rebootable GUI method based on this - https://stackoverflow.com/a/56563926/14662833

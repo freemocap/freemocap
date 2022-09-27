@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.main.main_window.left_panel_controls.toolbox_widgets.welcome_create_or_load_new_session_panel import (
+from src.gui.main.main_window.middle_panel_viewers.welcome_view.welcome_create_or_load_new_session_panel import (
     WelcomeCreateOrLoadNewSessionPanel,
 )
 
@@ -17,10 +17,6 @@ from src.gui.main.main_window.middle_panel_viewers.camera_stream_grid_view impor
 from src.gui.main.main_window.middle_panel_viewers.session_playback_view.session_playback_view import (
     SessionPlaybackView,
 )
-from src.gui.main.main_window.middle_panel_viewers.session_playback_view.video_playback_grid_view import (
-    VideoPlaybackGridView,
-)
-from src.gui.main.visualize_session.gl_3d_view_port import Gl3dViewPort
 
 import logging
 

@@ -56,7 +56,6 @@ from src.sending_anonymous_user_info_to_places.send_pipedream_ping import (
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 EXIT_CODE_REBOOT = -123456789
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -69,18 +68,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("freemocap \U0001F480 \U00002728")
         # self._set_icon()
 
-
-
-
         self._main_window_width = int(1920 * 0.9)
         self._main_window_height = int(1080 * 0.8)
         APP_STATE.main_window_height = self._main_window_height
         APP_STATE.main_window_width = self._main_window_width
 
         self.setGeometry(0, 0, self._main_window_width, self._main_window_height)
-        self.setMaximumHeight(1000)
         self._main_layout = self._create_main_layout()
-
+        self._main_layout.setMaximumHeight(self._main_window_height)
         # left side (control) panel
         self._control_panel = self._create_control_panel()
         self._main_layout.addWidget(self._control_panel.frame)
@@ -123,7 +118,7 @@ class MainWindow(QMainWindow):
 
         width = self._main_window_width * 0.2
         height = self._main_window_height
-        panel.frame.setMinimumHeight(height)
+        panel.frame.setMinimumHeight(height / 2)
         panel.frame.setMinimumWidth(width / 2)
         size_hint = panel.frame.sizeHint()
         size_hint.setWidth(width)
@@ -135,7 +130,7 @@ class MainWindow(QMainWindow):
         panel = MiddleViewingPanel()
         width = self._main_window_width * 0.7
         height = self._main_window_height
-        panel.frame.setMinimumHeight(height)
+        panel.frame.setMinimumHeight(height / 2)
         panel.frame.setMinimumWidth(width / 2)
         size_hint = panel.frame.sizeHint()
         size_hint.setWidth(width)
@@ -150,7 +145,7 @@ class MainWindow(QMainWindow):
 
         width = self._main_window_width * 0.1
         height = self._main_window_height
-        panel.frame.setMinimumHeight(height)
+        # panel.frame.setMinimumHeight(height)
         panel.frame.setMinimumWidth(width / 2)
         size_hint = panel.frame.sizeHint()
         size_hint.setWidth(width)
@@ -263,10 +258,7 @@ class MainWindow(QMainWindow):
     def _connect_actions_to_slots(self):
 
         self._new_session_action.triggered.connect(
-            lambda: self._start_session(
-                session_id=self._middle_viewing_panel.welcome_create_or_load_session_panel.session_id_input_string,
-                new_session=True,
-            )
+            self._middle_viewing_panel.welcome_create_or_load_session_panel.show_new_session_setup_view
         )
 
         self._load_most_recent_session_action.triggered.connect(
@@ -319,8 +311,11 @@ class MainWindow(QMainWindow):
         logger.info("Connecting buttons to stuff")
 
         # Welcome Panel
-        self._middle_viewing_panel.welcome_create_or_load_session_panel.start_new_session_button.clicked.connect(
-            self._new_session_action.trigger
+        self._middle_viewing_panel.welcome_create_or_load_session_panel.start_session_button.clicked.connect(
+            lambda: self._start_session(
+                session_id=self._middle_viewing_panel.welcome_create_or_load_session_panel.session_id_input_string,
+                new_session=True,
+            )
         )
 
         self._middle_viewing_panel.welcome_create_or_load_session_panel.load_most_recent_session_button.clicked.connect(
@@ -490,7 +485,10 @@ class MainWindow(QMainWindow):
             text + ", session_id: " + self._session_id
         )
 
-        self._thread_worker_manager.launch_detect_cameras_worker()
+        if (
+            self._middle_viewing_panel.welcome_create_or_load_session_panel.auto_detect_cameras_checkbox.isChecked()
+        ):
+            self._thread_worker_manager.launch_detect_cameras_worker()
 
         self._show_camera_control_panel_action.trigger()
 
@@ -501,7 +499,10 @@ class MainWindow(QMainWindow):
 
         self._middle_viewing_panel.show_camera_streams()
 
-        if new_session:
+        if (
+            new_session
+            and self._middle_viewing_panel.welcome_create_or_load_session_panel.auto_connect_to_cameras_checkbox.isChecked()
+        ):
             self._auto_launch_camera_streams = True
 
     def _handle_found_cameras_response(
@@ -608,7 +609,9 @@ class MainWindow(QMainWindow):
             self._session_id
         )
         charuco_board_definition = self._get_user_specified_charuco_definition()
-        logger.info(f"Launching Anipose calibration thread worker with the following parameters: {charuco_board_definition.__dict__}")
+        logger.info(
+            f"Launching Anipose calibration thread worker with the following parameters: {charuco_board_definition.__dict__}"
+        )
         self._thread_worker_manager.launch_anipose_calibration_thread_worker(
             charuco_board_definition=charuco_board_definition,
             calibration_videos_folder_path=calibration_videos_folder_path,

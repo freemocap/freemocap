@@ -7,7 +7,7 @@ qt_app_css_style_sheet = """
     QPushButton {
         background-color: #2b4e50;
         color: #ffffff;
-        border-radius: 4px;        
+        border-radius: 4px;
         font-size: 13px;
     }
     QPushButton:hover {
@@ -16,7 +16,7 @@ qt_app_css_style_sheet = """
     QPushButton:disabled {
         background-color: #6d8587;
     }
-    
+
     """
 
 recommended_next_button_style_sheet = """

@@ -19,7 +19,9 @@ def get_best_guess_of_blender_path():
                 return str(blender_exe_path)
         except Exception as e:
             print(e)
-            logger.warning("Couldn't find Blender path automatically, need to select it manually")
+            logger.warning(
+                "Couldn't find Blender path automatically, need to select it manually"
+            )
 
         return None
 

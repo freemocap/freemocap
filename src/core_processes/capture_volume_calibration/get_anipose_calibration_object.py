@@ -3,7 +3,10 @@ import shutil
 from pathlib import Path
 from typing import Union
 
-from src.config.home_dir import get_freemocap_data_folder_path
+from src.config.home_dir import (
+    get_freemocap_data_folder_path,
+    CAMERA_CALIBRATION_FILE_NAME,
+)
 from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
@@ -21,11 +24,49 @@ def load_most_recent_anipose_calibration_toml(
         f"loading `most recent calibration from:{str(session_calibration_file_path)}"
     )
     if save_copy_of_calibration_to_this_path is not None:
+        logger.info(
+            f"Saving copy of `most_recent_calibration.toml` to {save_copy_of_calibration_to_this_path}"
+        )
+
         shutil.copy(
-            str(session_calibration_file_path), save_copy_of_calibration_to_this_path
+            str(session_calibration_file_path),
+            str(
+                Path(save_copy_of_calibration_to_this_path)
+                / CAMERA_CALIBRATION_FILE_NAME
+            ),
         )
 
     return freemocap_anipose.CameraGroup.load(str(session_calibration_file_path))
+
+
+def load_anipose_calibration_toml_from_user_selection(
+    user_selected_toml_path: Union[str, Path],
+    save_copy_of_calibration_to_this_path: Union[str, Path] = None,
+):
+    logger.info(f"loading camera calibration file from:{str(user_selected_toml_path)}")
+    try:
+        anipose_calibration_object = freemocap_anipose.CameraGroup.load(
+            str(user_selected_toml_path)
+        )
+
+        if save_copy_of_calibration_to_this_path is not None:
+            logger.info(
+                f"Saving copy of {user_selected_toml_path} to {save_copy_of_calibration_to_this_path}"
+            )
+            shutil.copy(
+                str(user_selected_toml_path),
+                str(
+                    Path(save_copy_of_calibration_to_this_path)
+                    / CAMERA_CALIBRATION_FILE_NAME
+                ),
+            )
+        return anipose_calibration_object
+    except Exception as e:
+        logger.error(
+            f"Failed to load anipose calibration info from {str(user_selected_toml_path)}"
+        )
+        raise e
+        return None
 
 
 def load_calibration_from_session_id(

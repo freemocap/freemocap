@@ -32,3 +32,4 @@ mkdocs-material==8.3.9
 qtconsole==5.3.0
 qtpy==2.0.1
 pyside2==5.15.2.1
+c3d==0.5.1

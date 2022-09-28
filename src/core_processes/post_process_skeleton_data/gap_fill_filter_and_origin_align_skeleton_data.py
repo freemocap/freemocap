@@ -1,4 +1,5 @@
 # %%
+import logging
 from pathlib import Path
 import pickle
 from typing import Union
@@ -8,7 +9,7 @@ import pandas as pd
 from rich.progress import track
 from scipy import signal
 
-
+logger = logging.getLogger(__name__)
 # %%
 def interpolate_freemocap_data(freemocap_marker_data: np.ndarray) -> np.ndarray:
     """Takes in a 3d skeleton numpy array from freemocap and interpolates missing NaN values"""
@@ -901,7 +902,7 @@ def gap_fill_filter_and_interpolate_3d_data(
     # Align the data
     if reference_frame_number is None:
         print("Aligning Data with Origin")
-        good_frame = find_good_frame(
+        reference_frame_number = find_good_frame(
             freemocap_filtered_marker_data, mediapipe_indices, 0.3
         )
 
@@ -909,6 +910,7 @@ def gap_fill_filter_and_interpolate_3d_data(
         freemocap_filtered_marker_data, mediapipe_indices, reference_frame_number
     )
     origin_aligned_freemocap_marker_data = freemocap_alignment_marker_data_tuple[0]
+    logger.info("Saving Origin Aligned Data")
     np.save(
         data_arrays_path / "mediaPipeSkel_3d_origin_aligned",
         origin_aligned_freemocap_marker_data,

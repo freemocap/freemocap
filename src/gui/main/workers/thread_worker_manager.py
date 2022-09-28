@@ -144,7 +144,8 @@ class ThreadWorkerManager(QWidget):
         order: int,
         reference_frame_number: int = None,
     ):
-        post_process_3d_data_thread_worker = PostProcess3dDataThreadWorker(
+        logger.info("Launching `Post Process 3d Data` thread worker...")
+        self._post_process_3d_data_thread_worker = PostProcess3dDataThreadWorker(
             skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
             data_save_path=data_save_path,
             sampling_rate=sampling_rate,
@@ -152,7 +153,7 @@ class ThreadWorkerManager(QWidget):
             order=order,
             reference_frame_number=reference_frame_number,
         )
-        post_process_3d_data_thread_worker.start()
+        self._post_process_3d_data_thread_worker.start()
 
         # def launch_export_to_blender_thread_worker(
         #     self, session_folder_path: Union[str, Path]

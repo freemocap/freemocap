@@ -53,8 +53,13 @@ class ProcessSessionDataPanel(QWidget):
         )
         self._layout.addLayout(self._mediapipe_confidence_cutoff_form_layout)
 
+        self._gap_fill_filter_origin_align_button = QPushButton(
+            "Gap Fill, Butterworth Filter, and Origin Align skeleton data"
+        )
+        self._layout.addWidget(self._gap_fill_filter_origin_align_button)
+
         self._visualize_freemocap_session_button = QPushButton(
-            "TO DO - Visualize Freemocap Session"
+            "Visualize Freemocap Session"
         )
         self._visualize_freemocap_session_button.setEnabled(False)
         self._layout.addWidget(self._visualize_freemocap_session_button)
@@ -89,6 +94,10 @@ class ProcessSessionDataPanel(QWidget):
     @property
     def triangulate_3d_data_button(self):
         return self._triangulate_3d_data_button
+
+    @property
+    def gap_fill_filter_origin_align_button(self):
+        return self._gap_fill_filter_origin_align_button
 
     @property
     def open_in_blender_button(self):

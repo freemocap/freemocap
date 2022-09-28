@@ -21,6 +21,9 @@ from src.gui.main.workers.export_to_blender_worker import ExportToBlenderThreadW
 from src.gui.main.workers.mediapipe_2d_detection_thread_worker import (
     Mediapipe2dDetectionThreadWorker,
 )
+from src.gui.main.workers.post_process_3d_data_thread_worker import (
+    PostProcess3dDataThreadWorker,
+)
 from src.gui.main.workers.save_to_video_thread_worker import SaveToVideoThreadWorker
 from src.gui.main.workers.session_playback_thread_worker import (
     SessionPlaybackThreadWorker,
@@ -132,18 +135,37 @@ class ThreadWorkerManager(QWidget):
                 self.start_blender_processing_signal.emit
             )
 
-    # def launch_export_to_blender_thread_worker(
-    #     self, session_folder_path: Union[str, Path]
-    # ):
-    #     logger.info("Launching `Export to Blender` thread worker...")
-    #
-    #     self._export_to_blender_thread_worker = ExportToBlenderThreadWorker(
-    #         session_folder_path
-    #     )
-    #     self._export_to_blender_thread_worker.finished.connect(
-    #         self.blender_file_created_signal.emit
-    #     )
-    #     self._export_to_blender_thread_worker.start()
+    def launch_post_process_3d_data_thread_worker(
+        self,
+        skel3d_frame_marker_xyz: np.ndarray,
+        data_save_path: Union[str, Path],
+        sampling_rate: int,
+        cut_off: float,
+        order: int,
+        reference_frame_number: int = None,
+    ):
+        post_process_3d_data_thread_worker = PostProcess3dDataThreadWorker(
+            skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            data_save_path=data_save_path,
+            sampling_rate=sampling_rate,
+            cut_off=cut_off,
+            order=order,
+            reference_frame_number=reference_frame_number,
+        )
+        post_process_3d_data_thread_worker.start()
+
+        # def launch_export_to_blender_thread_worker(
+        #     self, session_folder_path: Union[str, Path]
+        # ):
+        #     logger.info("Launching `Export to Blender` thread worker...")
+        #
+        #     self._export_to_blender_thread_worker = ExportToBlenderThreadWorker(
+        #         session_folder_path
+        #     )
+        #     self._export_to_blender_thread_worker.finished.connect(
+        #         self.blender_file_created_signal.emit
+        #     )
+        #     self._export_to_blender_thread_worker.start()
 
     def launch_session_playback_thread(
         self,

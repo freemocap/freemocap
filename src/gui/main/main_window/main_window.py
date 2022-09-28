@@ -387,6 +387,10 @@ class MainWindow(QMainWindow):
             self._setup_and_launch_triangulate_3d_thread_worker
         )
 
+        self._control_panel.process_session_data_panel.gap_fill_filter_origin_align_button.clicked.connect(
+            self._setup_and_launch_gap_fill_filter_origin_align_thread_worker
+        )
+
         self._control_panel.process_session_data_panel.open_in_blender_button.clicked.connect(
             self._export_to_blender
         )
@@ -660,9 +664,17 @@ class MainWindow(QMainWindow):
         if (
             self._control_panel.calibrate_capture_volume_panel.use_previous_calibration_box_is_checked
         ):
+
             anipose_calibration_object = load_most_recent_anipose_calibration_toml(
                 get_session_folder_path(self._session_id)
             )
+            calibration_toml_filename = f"camera_calibration_data.toml"
+            camera_calibration_toml_path = (
+                Path(get_session_folder_path(self._session_id))
+                / calibration_toml_filename
+            )
+            anipose_calibration_object.dump(camera_calibration_toml_path)
+
         else:
             anipose_calibration_object = load_calibration_from_session_id(
                 get_session_calibration_toml_file_path(self._session_id)
@@ -677,6 +689,25 @@ class MainWindow(QMainWindow):
             output_data_folder_path=output_data_folder_path,
             mediapipe_confidence_cutoff_threshold=self._control_panel.process_session_data_panel.mediapipe_confidence_cutoff_threshold,
             auto_process_next_stage=auto_process_next_stage,
+        )
+
+    def _setup_and_launch_gap_fill_filter_origin_align_thread_worker(self):
+        output_data_folder_path = Path(get_output_data_folder_path(self._session_id))
+        skel3d_frame_marker_xyz = load_mediapipe3d_data(output_data_folder_path)
+        data_save_path = output_data_folder_path / "post_processed_data"
+        data_save_path.mkdir(exist_ok=True)
+        sampling_rate = 30
+        cut_off = 7
+        order = 4
+        reference_frame_number = None
+
+        self._thread_worker_manager.launch_post_process_3d_data_thread_worker(
+            skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            data_save_path=data_save_path,
+            sampling_rate=sampling_rate,
+            cut_off=cut_off,
+            order=order,
+            reference_frame_number=reference_frame_number,
         )
 
     def _export_to_blender(self):

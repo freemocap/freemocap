@@ -4,6 +4,9 @@ from typing import List, Union, Dict
 import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.cameras.create_timestamp_diagnostic_plots import (
+    create_timestamp_diagnostic_plots,
+)
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.gui.icis_conference_main.state.app_state import APP_STATE
 
@@ -18,7 +21,7 @@ def save_synchronized_videos(
 ):
     logger.info(f"saving synchronized video to folder: {str(folder_to_save_videos)}")
 
-    each_cam_frame_list = []
+    each_cam_raw_frame_list = []
     first_frame_timestamps = []
     final_frame_timestamps = []
 
@@ -28,9 +31,9 @@ def save_synchronized_videos(
         # final_frame_timestamps.append(cam_frame_list[-1].timestamp_in_seconds_from_record_start)
         first_frame_timestamps.append(cam_frame_list[0].timestamp_unix_time_seconds)
         final_frame_timestamps.append(cam_frame_list[-1].timestamp_unix_time_seconds)
-        each_cam_frame_list.append(cam_frame_list)
+        each_cam_raw_frame_list.append(cam_frame_list)
 
-    number_of_cameras = len(each_cam_frame_list)
+    number_of_cameras = len(each_cam_raw_frame_list)
 
     latest_first_frame = np.max(first_frame_timestamps)
     earliest_final_frame = np.min(final_frame_timestamps)
@@ -45,7 +48,7 @@ def save_synchronized_videos(
 
     each_cam_clipped_frame_list = []
     each_cam_clipped_timestamp_list = []
-    for og_frame_list in each_cam_frame_list:
+    for og_frame_list in each_cam_raw_frame_list:
         each_cam_clipped_frame_list.append([])
         each_cam_clipped_timestamp_list.append([])
         for frame in og_frame_list:
@@ -100,7 +103,11 @@ def save_synchronized_videos(
             / f"Camera_{str(camera_id).zfill(3)}.mp4",
         )
 
-    # create_timestamp_diagnostic_plots(final_frame_timestamps) #breadcrumbs for a future function to generate timestamp diagnostic plots
+    create_timestamp_diagnostic_plots(
+        each_cam_raw_frame_list,
+        each_cam_synchronized_frame_list,
+        Path(folder_to_save_videos) / f"timestamp_synchronization_diagnostic_plots.png",
+    )
 
 
 def get_nearest_frame(frame_list, reference_frame) -> FramePayload:

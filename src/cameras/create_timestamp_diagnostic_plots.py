@@ -1,109 +1,109 @@
-# import numpy as np
-# from matplotlib import pyplot as plt
-#
-# plt.set_loglevel("warning")
+import logging
+from pathlib import Path
+from typing import Union, Dict, List
+
+import numpy as np
+
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
+
+logger = logging.getLogger(__name__)
 
 
-def create_timestamp_diagnostic_plots(camera_timestamps):
+def gather_timestamps(list_of_frames: List[FramePayload]) -> np.ndarray:
+    timestamps_npy = np.empty(0)
+
+    for frame in list_of_frames:
+        timestamps_npy = np.append(
+            timestamps_npy, frame.timestamp_in_seconds_from_record_start
+        )
+    return timestamps_npy
+
+
+def create_timestamp_diagnostic_plots(
+    each_cam_raw_frame_list: List[List[FramePayload]],
+    each_cam_synchronized_frame_list: List[List[FramePayload]],
+    path_to_save_plots: Union[str, Path],
+):
     """plot some diagnostics to assess quality of camera sync"""
-    pass
 
+    # opportunistic load of matplotlib to avoid startup time costs
+    from matplotlib import pyplot as plt
 
-#     multi_frame_timestamp_list = (
-#         self.multi_frame_timestamp_logger.timestamps_in_seconds_from_unspecified_zero
-#     )
-#     # multi_frame_interval_list = self.multi_frame_interval_list
-#
-#     fig = plt.figure(figsize=(18, 10))
-#     max_frame_duration = 0.1
-#     ax1 = plt.subplot(
-#         231,
-#         title="Camera Frame Timestamp vs Frame#",
-#         xlabel="Frame#",
-#         ylabel="Timestamp (sec)",
-#     )
-#     ax2 = plt.subplot(
-#         232,
-#         ylim=(0, max_frame_duration),
-#         title="Camera Frame Duration Trace",
-#         xlabel="Frame#",
-#         ylabel="Duration (sec)",
-#     )
-#     ax3 = plt.subplot(
-#         233,
-#         xlim=(0, max_frame_duration),
-#         title="Camera Frame Duration Histogram (count)",
-#         xlabel="Duration(s, 1ms bins)",
-#         ylabel="Probability",
-#     )
-#     ax4 = plt.subplot(
-#         234,
-#         title="MuliFrame Timestamp vs Frame#",
-#         xlabel="Frame#",
-#         ylabel="Timestamp (sec)",
-#     )
-#     ax5 = plt.subplot(
-#         235,
-#         ylim=(0, max_frame_duration),
-#         title="Multi Frame Duration/Span Trace",
-#         xlabel="Frame#",
-#         ylabel="Duration (sec)",
-#     )
-#     ax6 = plt.subplot(
-#         236,
-#         xlim=(0, max_frame_duration),
-#         title="MultiFrame Duration Histogram (count)",
-#         xlabel="Duration(s, 1ms bins)",
-#         ylabel="Probability",
-#     )
-#
-#     for (
-#             this_camera_id,
-#             this_camera_timestamp_logger,
-#     ) in self._webcam_timestamp_loggers.items():
-#         this_camera_timestamps = this_camera_timestamp_logger._timestamps_from_zero
-#         ax1.plot(this_camera_timestamps, label=f"Camera# {this_camera_id}")
-#         ax1.legend()
-#         ax2.plot(np.diff(this_camera_timestamps), ".")
-#         ax3.hist(
-#             np.diff(this_camera_timestamps),
-#             bins=np.arange(0, max_frame_duration, 0.0025),
-#             alpha=0.5,
-#         )
-#
-#     ax4.plot(multi_frame_timestamp_list, color="darkslategrey", label=f"MultiFrame")
-#     ax5.plot(
-#         np.diff(np.asarray(multi_frame_timestamp_list)),
-#         ".",
-#         color="darkslategrey",
-#         label="Multi Frame Duration",
-#     )
-#     # ax5.plot(
-#     #     multi_frame_interval_list, ".", color="orangered", label="Frame TimeSpan"
-#     # )
-#     ax5.legend()
-#     ax6.hist(
-#         np.diff(np.asarray(multi_frame_timestamp_list)),
-#         bins=np.arange(0, max_frame_duration, 0.0025),
-#         density=True,
-#         alpha=0.5,
-#         color="darkslategrey",
-#         label="Frame Duration",
-#     )
-#     # ax6.hist(
-#     #     np.diff(multi_frame_interval_list),
-#     #     bins=np.arange(0, max_frame_duration, 0.0025),
-#     #     density=True,
-#     #     alpha=0.5,
-#     #     color="orangered",
-#     #     label="Frame Timespan",
-#     # )
-#     ax5.legend()
-#
-#     fig_save_path = (
-#             Path(get_session_folder_path(self._session_id))
-#             / "camera_timestamp_diagnostics.png"
-#     )
-#     plt.savefig(str(fig_save_path))
-#     logger.info(f"Saving diagnostic figure to - {str(fig_save_path)}")
-#     # plt.show()
+    plt.set_loglevel("warning")
+
+    each_cam_synchronized_timestamps = []
+
+    for cam_frame_list in each_cam_synchronized_frame_list:
+        each_cam_synchronized_timestamps.append(gather_timestamps(cam_frame_list))
+
+    each_cam_raw_timestamps = []
+    for cam_frame_list in each_cam_raw_frame_list:
+        each_cam_raw_timestamps.append(gather_timestamps(cam_frame_list))
+
+    fig = plt.figure(figsize=(18, 10))
+    max_frame_duration = 0.1
+    ax1 = plt.subplot(
+        231,
+        title="(Raw) Camera Frame Timestamp vs Frame#",
+        xlabel="Frame#",
+        ylabel="Timestamp (sec)",
+    )
+    ax2 = plt.subplot(
+        232,
+        ylim=(0, max_frame_duration),
+        title="(Raw) Camera Frame Duration Trace",
+        xlabel="Frame#",
+        ylabel="Duration (sec)",
+    )
+    ax3 = plt.subplot(
+        233,
+        xlim=(0, max_frame_duration),
+        title="(Raw) Camera Frame Duration Histogram (count)",
+        xlabel="Duration(s, 1ms bins)",
+        ylabel="Probability",
+    )
+    ax4 = plt.subplot(
+        234,
+        title="(Synchronized) Camera Frame Timestamp vs Frame#",
+        xlabel="Frame#",
+        ylabel="Timestamp (sec)",
+    )
+    ax5 = plt.subplot(
+        235,
+        ylim=(0, max_frame_duration),
+        title="(Synchronized) Camera Frame Duration Trace",
+        xlabel="Frame#",
+        ylabel="Duration (sec)",
+    )
+    ax6 = plt.subplot(
+        236,
+        xlim=(0, max_frame_duration),
+        title="(Synchronized) Camera Frame Duration Histogram (count)",
+        xlabel="Duration(s, 1ms bins)",
+        ylabel="Probability",
+    )
+
+    for camera_number, timestamps in enumerate(each_cam_raw_timestamps):
+        ax1.plot(timestamps, label=f"Camera# {str(camera_number)}")
+        ax1.legend()
+        ax2.plot(np.diff(timestamps), ".")
+        ax3.hist(
+            np.diff(timestamps),
+            bins=np.arange(0, max_frame_duration, 0.0025),
+            alpha=0.5,
+        )
+
+    for camera_number, timestamps in enumerate(each_cam_synchronized_timestamps):
+        ax4.plot(timestamps, label=f"Camera# {str(camera_number)}")
+        ax4.legend()
+        ax5.plot(np.diff(timestamps), ".")
+        ax6.hist(
+            np.diff(timestamps),
+            bins=np.arange(0, max_frame_duration, 0.0025),
+            alpha=0.5,
+        )
+
+    fig_save_path = Path(path_to_save_plots)
+    plt.savefig(str(fig_save_path))
+    logger.info(f"Saving diagnostic figure as png")
+    # plt.show()

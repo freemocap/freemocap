@@ -21,7 +21,7 @@ def save_synchronized_videos(
 ):
     logger.info(f"saving synchronized video to folder: {str(folder_to_save_videos)}")
 
-    each_cam_frame_list = []
+    each_cam_raw_frame_list = []
     first_frame_timestamps = []
     final_frame_timestamps = []
 
@@ -31,9 +31,9 @@ def save_synchronized_videos(
         # final_frame_timestamps.append(cam_frame_list[-1].timestamp_in_seconds_from_record_start)
         first_frame_timestamps.append(cam_frame_list[0].timestamp_unix_time_seconds)
         final_frame_timestamps.append(cam_frame_list[-1].timestamp_unix_time_seconds)
-        each_cam_frame_list.append(cam_frame_list)
+        each_cam_raw_frame_list.append(cam_frame_list)
 
-    number_of_cameras = len(each_cam_frame_list)
+    number_of_cameras = len(each_cam_raw_frame_list)
 
     latest_first_frame = np.max(first_frame_timestamps)
     earliest_final_frame = np.min(final_frame_timestamps)
@@ -48,7 +48,7 @@ def save_synchronized_videos(
 
     each_cam_clipped_frame_list = []
     each_cam_clipped_timestamp_list = []
-    for og_frame_list in each_cam_frame_list:
+    for og_frame_list in each_cam_raw_frame_list:
         each_cam_clipped_frame_list.append([])
         each_cam_clipped_timestamp_list.append([])
         for frame in og_frame_list:
@@ -104,6 +104,7 @@ def save_synchronized_videos(
         )
 
     create_timestamp_diagnostic_plots(
+        each_cam_raw_frame_list,
         each_cam_synchronized_frame_list,
         Path(folder_to_save_videos) / f"timestamp_synchronization_diagnostic_plots.png",
     )

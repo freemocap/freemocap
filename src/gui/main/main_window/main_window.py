@@ -24,6 +24,7 @@ from src.core_processes.capture_volume_calibration.charuco_board_detection.datac
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_most_recent_anipose_calibration_toml,
     load_calibration_from_session_id,
+    load_anipose_calibration_toml_from_user_selection,
 )
 from src.core_processes.mediapipe_stuff.load_mediapipe2d_data import (
     load_mediapipe2d_data,
@@ -166,10 +167,10 @@ class MainWindow(QMainWindow):
         self._load_session_action = QAction("&Load Session...", parent=self)
         self._load_session_action.setShortcut("Ctrl+O")
 
-        self._import_external_videos_action = QAction(
-            "&Import External Videos...", parent=self
+        self._import_videos_action = QAction(
+            "Import Synchronized &Videos...", parent=self
         )
-        self._import_external_videos_action.setShortcut("Ctrl+I")
+        self._import_videos_action.setShortcut("Ctrl+I")
 
         self._reboot_gui_action = QAction("&Reboot GUI", parent=self)
         self._reboot_gui_action.setShortcut("Ctrl+R")
@@ -223,6 +224,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self._new_session_action)
         file_menu.addAction(self._load_most_recent_session_action)
         file_menu.addAction(self._load_session_action)
+        file_menu.addAction(self._import_videos_action)
         file_menu.addAction(self._reboot_gui_action)
         file_menu.addAction(self._exit_action)
 
@@ -267,11 +269,8 @@ class MainWindow(QMainWindow):
 
         self._load_session_action.triggered.connect(self._load_session_dialog)
 
-        self._todo_import_videos_pop_up = QLabel(
-            "\nTODO - pop up 'session id' panel, then a 'select video folder' dialog and copy those videos into the session folder\n"
-        )
-        self._import_external_videos_action.triggered.connect(
-            self._todo_import_videos_pop_up.show
+        self._import_videos_action.triggered.connect(
+            self._middle_viewing_panel.welcome_create_or_load_session_panel.show_import_videos_view
         )
 
         self._reboot_gui_action.triggered.connect(self._reboot_gui)
@@ -326,8 +325,8 @@ class MainWindow(QMainWindow):
             self._load_session_action.trigger
         )
 
-        self._middle_viewing_panel.welcome_create_or_load_session_panel.import_external_videos_button.clicked.connect(
-            self._import_external_videos_action.trigger
+        self._middle_viewing_panel.welcome_create_or_load_session_panel.synchronized_videos_selection_dialog_button.clicked.connect(
+            self._import_videos
         )
 
         # Camera Control Panel
@@ -468,6 +467,30 @@ class MainWindow(QMainWindow):
 
         self._start_session(self._session_id)
 
+    def _import_videos(self):
+        # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
+        external_videos_path = QFileDialog.getExistingDirectory(
+            self,
+            "Select a folder containig synchronized videos (each video must have *exactly* the same number of frames)",
+            str(Path.home()),
+        )
+        self._session_id = (
+            self._middle_viewing_panel.welcome_create_or_load_session_panel.session_id_input_string
+        )
+
+        synchronized_videos_folder_path = get_synchronized_videos_folder_path(
+            self._session_id, create_folder=True
+        )
+
+        logger.info(
+            f"Copying videos from {external_videos_path} to {synchronized_videos_folder_path}"
+        )
+
+        for video_path in Path(external_videos_path).glob("*.mp4"):
+            shutil.copy(video_path, synchronized_videos_folder_path)
+
+        self._start_session(self._session_id)
+
     def _start_session(self, session_id: str, new_session: bool = False):
 
         if (
@@ -490,16 +513,12 @@ class MainWindow(QMainWindow):
         )
 
         if (
-            self._middle_viewing_panel.welcome_create_or_load_session_panel.auto_detect_cameras_checkbox.isChecked()
+            new_session
+            and self._middle_viewing_panel.welcome_create_or_load_session_panel.auto_detect_cameras_checkbox.isChecked()
         ):
             self._thread_worker_manager.launch_detect_cameras_worker()
 
         self._show_camera_control_panel_action.trigger()
-
-        self._middle_viewing_panel.show_camera_streams()
-
-        if new_session:
-            self._auto_launch_camera_streams = True
 
         self._middle_viewing_panel.show_camera_streams()
 
@@ -668,12 +687,26 @@ class MainWindow(QMainWindow):
             anipose_calibration_object = load_most_recent_anipose_calibration_toml(
                 get_session_folder_path(self._session_id)
             )
+
             calibration_toml_filename = f"camera_calibration_data.toml"
             camera_calibration_toml_path = (
                 Path(get_session_folder_path(self._session_id))
                 / calibration_toml_filename
             )
             anipose_calibration_object.dump(camera_calibration_toml_path)
+
+        elif (
+            self._control_panel.calibrate_capture_volume_panel.load_camera_calibration_checkbox_is_checked
+        ):
+            anipose_calibration_object = load_anipose_calibration_toml_from_user_selection(
+                self._control_panel.calibrate_capture_volume_panel.user_selected_calibration_toml_path,
+                get_session_folder_path(self._session_id),
+            )
+            if anipose_calibration_object is None:
+                logger.error(
+                    "Could not load user selected calibration file! Aborting '_setup_and_launch_triangulate_3d_thread_worker'..."
+                )
+                return
 
         else:
             anipose_calibration_object = load_calibration_from_session_id(

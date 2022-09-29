@@ -55,9 +55,17 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         self._load_session_button.setEnabled(True)
         self._layout.addWidget(self._load_session_button)
 
-        self._import_external_videos_button = QPushButton("Import External &Videos")
-        self._import_external_videos_button.setEnabled(True)
-        self._layout.addWidget(self._import_external_videos_button)
+        self._import_synchronized_videos_button = QPushButton(
+            "&Import Synchronized Videos (Ctrl+I)"
+        )
+        self._import_synchronized_videos_button.setEnabled(True)
+        self._import_synchronized_videos_button.setToolTip(
+            "Import videos that were recorded and synchronized externally. Each video must have the *exact* same number of frames"
+        )
+        self._import_synchronized_videos_button.clicked.connect(
+            self.show_import_videos_view
+        )
+        self._layout.addWidget(self._import_synchronized_videos_button)
 
         send_pings_label = QLabel(
             "(being able to show that people are using this thing will help us get funding for this project :D )"
@@ -71,6 +79,7 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         self._layout.addWidget(send_pings_label)
 
         self._layout.addStretch()
+
         # show this if user selects 'new session' button
         self._session_id_form_layout = self._create_get_session_id_form_layout()
         self._auto_detect_cameras_checkbox = QCheckBox("Automatically detect cameras")
@@ -83,6 +92,20 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
 
         self._start_session_button = QPushButton("Start Session \U00002728")
         self._start_session_button.setStyleSheet(recommended_next_button_style_sheet)
+
+        # show this if user selects 'import videos' button
+        self._synchronize_videos_checkbox = QCheckBox(
+            "TODO - Synchronized videos using audio channels"
+        )
+        self._synchronize_videos_checkbox.setChecked(False)
+        self._synchronize_videos_checkbox.setEnabled(False)
+
+        self._launch_synchronized_videos_selection_dialog_button = QPushButton(
+            "Select set of synchronized videos..."
+        )
+        self._launch_synchronized_videos_selection_dialog_button.setStyleSheet(
+            recommended_next_button_style_sheet
+        )
 
     @property
     def create_new_session_button(self):
@@ -101,10 +124,6 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         return self._load_session_button
 
     @property
-    def import_external_videos_button(self):
-        return self._import_external_videos_button
-
-    @property
     def send_pings_checkbox(self):
         return self._send_pings_checkbox
 
@@ -119,6 +138,10 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
     @property
     def auto_connect_to_cameras_checkbox(self):
         return self._auto_connect_to_cameras_checkbox
+
+    @property
+    def synchronized_videos_selection_dialog_button(self):
+        return self._launch_synchronized_videos_selection_dialog_button
 
     def _welcome_to_freemocap_title(self):
         # TO DO - this shouldn't be part of the `camera_view_panel` - it should be its own thing that gets swapped out on session start
@@ -158,4 +181,17 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         self._layout.addWidget(self._auto_connect_to_cameras_checkbox)
         self._layout.addWidget(self._start_session_button)
         self._start_session_button.setFocus()
+        self._layout.addStretch()
+
+    def show_import_videos_view(self):
+        hide_all_in_layout(self._layout)
+        self._layout.addStretch()
+        self._layout.addWidget(
+            QLabel("Create a session folder with external recorded/synchronized videos")
+        )
+        self._layout.addLayout(self._session_id_form_layout)
+
+        self._layout.addWidget(self._synchronize_videos_checkbox)
+        self._layout.addWidget(self._launch_synchronized_videos_selection_dialog_button)
+        self._launch_synchronized_videos_selection_dialog_button.setFocus()
         self._layout.addStretch()

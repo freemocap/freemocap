@@ -1,1 +1,1 @@
-default_charuco_square_size_mm = 54
+default_charuco_square_size_mm = 39

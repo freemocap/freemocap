@@ -53,18 +53,12 @@ class ProcessSessionDataPanel(QWidget):
         )
         self._layout.addLayout(self._mediapipe_confidence_cutoff_form_layout)
 
-        self._visualize_freemocap_session_button = QPushButton(
-            "TO DO - Visualize Freemocap Session"
-        )
-        self._visualize_freemocap_session_button.setEnabled(False)
-        self._layout.addWidget(self._visualize_freemocap_session_button)
+        self._convert_npy_to_csv_checkbox = QCheckBox("Convert 3D npy data to csv")
+        self._convert_npy_to_csv_checkbox.setChecked(True)
+        self._layout.addWidget(self._convert_npy_to_csv_checkbox)
 
         self._blender_path_form_layout = self._make_blender_path_layout()
         self._layout.addLayout(self._blender_path_form_layout)
-
-        # self._visualize_freemocap_session_button.clicked.connect(
-        #     self._visualize_freemocap_session
-        # )
 
         self._open_in_blender_button = QPushButton(
             "Export to Blender (Freezes GUI, sorry!)"
@@ -85,6 +79,10 @@ class ProcessSessionDataPanel(QWidget):
     @property
     def mediapipe_confidence_cutoff_threshold(self) -> float:
         return float(self._mediapipe_confidence_cutoff_line_edit_widget.text())
+
+    @property
+    def convert_npy_to_csv_checkbox(self):
+        return self._convert_npy_to_csv_checkbox
 
     @property
     def triangulate_3d_data_button(self):

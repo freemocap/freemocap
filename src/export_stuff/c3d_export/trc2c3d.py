@@ -1,54 +1,15 @@
 # %%
-# import sys
-import copy
-import c3d
 import numpy as np
-
-import sys
-from pathlib import Path
-
-import os
-
-writer = c3d.Writer()
-reader = c3d.Reader(open(Path("2014015_C4_05.c3d"), 'rb'))
-
-new_header = c3d.c3d.Header()
-new_header.frame_rate = 100.0
-
-writer._header = new_header
-writer.set_start_frame(new_header.first_frame)
-
-point_names = np.array([str(i) for i in range(0,52)], dtype=object)
-
-writer.set_point_labels(point_names)
-
-# single blank analog label, otherwise no file creation
-writer.set_analog_labels(np.array(['empty'], dtype=object))
-
-# gen_scale, analog_scales, analog_offsets = reader.get_analog_transform_parameters()
-# gen_scale = 1
-# writer.set_analog_general_scale(gen_scale) 
-
-# analog_scales = np.array([])
-# writer.set_analog_scales(analog_scales)
-
-# analog_offsets = np.array([])
-# writer.set_analog_offsets(analog_offsets)
-
-# %%
-for i, points, analog in reader.read_frames():
-    # print('frame {}: point {}, analog {}'.format(i, points.shape, analog.shape))
-    writer.add_frames((points,np.array([[]]) ))
-
-with open(Path("random-points.c3d"), 'wb') as h:
-    writer.write(h)
-
-
-# %%
-
-
-import re
 from collections import defaultdict
+
+import c3d
+from pathlib import Path
+import re
+
+
+# %%
+
+
 
 def parse_trc_header(trc_filepath):
     """
@@ -130,17 +91,12 @@ point_names, points_by_frame = parse_trc_points(trc_sample_path)
 # Use variables from parse function to create new c3d file
 # %%
 writer = c3d.Writer()
-# reader = c3d.Reader(open(Path("2014015_C4_05.c3d"), 'rb'))
-
 writer._point_units= units
 new_header = c3d.c3d.Header()
 new_header.frame_rate = frame_rate
 new_header.first_frame= frame_start
 new_header.last_frame = frame_count - frame_start + 1
 new_header.point_count = len(point_names)
-
-# new_header.scale_factor = -.0001
-
 writer._header = new_header
 writer.set_start_frame(new_header.first_frame)
 
@@ -151,9 +107,6 @@ writer.set_point_labels(point_names)
 # single blank analog label, otherwise no file creation
 writer.set_analog_labels(np.array([''], dtype=object))
 
-  
-# %%
-
 for frame in points_by_frame.keys():
     frame_points = []
 
@@ -162,20 +115,5 @@ for frame in points_by_frame.keys():
 
     writer.add_frames((np.array(frame_points, dtype=np.float32), np.array([[]])))
 
-
-
-
 with open(Path("from_trc.c3d"), 'wb') as h:
     writer.write(h)
-
-# %%
-for i, points, analog in reader.read_frames():
-    # print('frame {}: point {}, analog {}'.format(i, points.shape, analog.shape))
-    writer.add_frames((points,np.array([[]]) ))
-
-with open(Path("random-points.c3d"), 'wb') as h:
-    writer.write(h)
-
-
-
-# %% 

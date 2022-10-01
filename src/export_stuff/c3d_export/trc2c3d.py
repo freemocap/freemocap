@@ -6,11 +6,6 @@ import c3d
 from pathlib import Path
 import re
 
-
-# %%
-
-
-
 def parse_trc_header(trc_filepath):
     """
     from a given .trc file, return the information that will be used
@@ -92,6 +87,7 @@ point_names, points_by_frame = parse_trc_points(trc_sample_path)
 # %%
 writer = c3d.Writer()
 writer._point_units= units
+
 new_header = c3d.c3d.Header()
 new_header.frame_rate = frame_rate
 new_header.first_frame= frame_start

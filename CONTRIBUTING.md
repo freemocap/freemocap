@@ -42,6 +42,14 @@ We use GitHub issues to track public bugs. Report a bug by [opening a new issue]
 
 People *love* thorough bug reports. The likelihood that the community and/or maintainers will help you with your issues stems from how well you can help them understand you. :)
 
+## Pull Request (PR) Guidelines
+
+> **DISCLAIMER:** These are the guidelines we expect all pull requests from contibuters to follow. If your PR does not follow these guidelines, we may ask you to make some changes before we can review it.
+
+- Any code that comes through a PR should be covered with tests
+- Those test must pass our Github Actions workflow before they may be merged
+- Any UI changes should include a small video of the working application with the change included
+
 ## Use a Consistent Coding Style
 We use the [Black](https://black.readthedocs.io/en/stable/) autoformatter as the de-facto syntax style guide of choice.
 

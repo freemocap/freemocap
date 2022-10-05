@@ -4,6 +4,10 @@ from typing import Union
 import numpy as np
 import logging
 
+from src.core_processes.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
+    convert_mediapipe_npy_to_csv,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +35,8 @@ def triangulate_3d_data(
     anipose_calibration_object,
     mediapipe_2d_data: np.ndarray,
     output_data_folder_path: Union[str, Path],
-    mediapipe_confidence_cutoff_threshold: float = 0.0,
+    mediapipe_confidence_cutoff_threshold: float,
+    save_data_as_csv: bool,
 ):
     number_of_cameras = mediapipe_2d_data.shape[0]
     number_of_frames = mediapipe_2d_data.shape[1]
@@ -81,6 +86,11 @@ def triangulate_3d_data(
         data3d_numFrames_numTrackedPoints_reprojectionError=data3d_numFrames_numTrackedPoints_reprojectionError,
         output_data_folder_path=output_data_folder_path,
     )
+
+    if save_data_as_csv:
+        convert_mediapipe_npy_to_csv(
+            data3d_numFrames_numTrackedPoints_XYZ, output_data_folder_path
+        )
 
     return path_to_3d_data_npy
 

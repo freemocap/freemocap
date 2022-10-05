@@ -113,7 +113,8 @@ class ThreadWorkerManager(QWidget):
         anipose_calibration_object,
         mediapipe_2d_data: np.ndarray,
         output_data_folder_path: Union[str, Path],
-        mediapipe_confidence_cutoff_threshold: float = 0.0,
+        mediapipe_confidence_cutoff_threshold: float,
+        save_data_as_csv: bool,
         auto_process_next_stage: bool = False,
     ):
         logger.info("Launching `Triangulate 3d Data` thread worker...")
@@ -123,6 +124,7 @@ class ThreadWorkerManager(QWidget):
             mediapipe_2d_data=mediapipe_2d_data,
             output_data_folder_path=output_data_folder_path,
             mediapipe_confidence_cutoff_threshold=mediapipe_confidence_cutoff_threshold,
+            save_data_as_csv=save_data_as_csv,
         )
 
         self._triangulate_3d_data_thread_worker.start()

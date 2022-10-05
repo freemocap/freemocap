@@ -53,7 +53,9 @@ class ProcessSessionDataPanel(QWidget):
         )
         self._layout.addLayout(self._mediapipe_confidence_cutoff_form_layout)
 
-        self._convert_npy_to_csv_checkbox = QCheckBox("Convert 3D npy data to csv")
+        self._convert_npy_to_csv_checkbox = QCheckBox(
+            "Convert 3D npy data to csv (experimental)"
+        )
         self._convert_npy_to_csv_checkbox.setChecked(True)
         self._layout.addWidget(self._convert_npy_to_csv_checkbox)
 

@@ -54,7 +54,7 @@ class ProcessSessionDataPanel(QWidget):
         self._layout.addLayout(self._mediapipe_confidence_cutoff_form_layout)
 
         self._gap_fill_filter_origin_align_button = QPushButton(
-            "Gap Fill, Butterworth Filter, and Origin Align Skeleton data (checkbox)"
+            "Gap Fill, Butterworth Filter, and Origin Align Skeleton data (experimental)"
         )
         self._layout.addWidget(self._gap_fill_filter_origin_align_button)
 

@@ -64,8 +64,14 @@ def estimate_skeleton_segment_lengths(
             + (proximal_y - distal_y) ** 2
             + (proximal_z - distal_z) ** 2
         )
-
-        skeleton_segment_lengths_dict[segment_name] = np.median(
+        skeleton_segment_lengths_dict[segment_name] = {}
+        skeleton_segment_lengths_dict[segment_name]["median"] = np.nanmedian(
+            segment_length_per_frame
+        )
+        skeleton_segment_lengths_dict[segment_name]["mean"] = np.nanmean(
+            segment_length_per_frame
+        )
+        skeleton_segment_lengths_dict[segment_name]["standard_deviation"] = np.nanstd(
             segment_length_per_frame
         )
 
@@ -132,7 +138,7 @@ if __name__ == "__main__":
 
     json_file_path = path_to_skeleton_body_csv.parent / "skeleton_segment_lengths.json"
 
-    with open("json_file_path", "w") as file:
+    with open(json_file_path, "w") as file:
         json.dump(skeleton_segment_lengths, file, indent=4)
 
     print(f"Saved skeleton segment lengths to: {json_file_path}")

@@ -1,7 +1,14 @@
 import bpy
+import addon_utils
+
 import numpy as np
 from pathlib import Path
 import json
+
+#######################################################################
+##% Activate necessary addons
+addon_utils.enable("io_import_images_as_planes")
+addon_utils.enable("rigify")
 
 #####################################################################
 ###%% clear the scene - Scorch the earth \o/
@@ -19,8 +26,8 @@ except:
 
 ##################
 ### Getcher paths straight
-path_to_data_folder = Path("/Users/jon/Dropbox/FreeMoCapProject/FreeMocap_Data/")
-# path_to_data_folder = Path("D:\Dropbox\FreeMoCapProject\FreeMocap_Data")
+# path_to_data_folder = Path("/Users/jon/Dropbox/FreeMoCapProject/FreeMocap_Data/")
+path_to_data_folder = Path("D:\Dropbox\FreeMoCapProject\FreeMocap_Data")
 
 session_id = "sesh_2022-09-19_16_16_50_in_class_jsm"
 
@@ -42,7 +49,7 @@ print(f" json path - {str(path_to_segment_length_json)}")
 f = open(path_to_segment_length_json)
 skeleton_segment_lengths_dict = json.load(f)
 
-path_to_mixamo_fbx = r"/Users/jon/Dropbox/FreeMoCapProject/teddy_animation/mixamo_binding_stuff/mixamo_mannequin_fbx_Ch36_nonPBR.fbx"
+# path_to_mixamo_fbx = r"/Users/jon/Dropbox/FreeMoCapProject/teddy_animation/mixamo_binding_stuff/mixamo_mannequin_fbx_Ch36_nonPBR.fbx"
 # path_to_mixamo_fbx = r"D:\Dropbox\FreeMoCapProject\teddy_animation\mixamo_binding_stuff\mixamo_mannequin_fbx_Ch36_nonPBR.fbx"
 
 #########################
@@ -274,33 +281,30 @@ for frame_num in range(end_frame):
 
 ######################
 ### Load Mixamo Armature
-print(f"Loading Mixamo rigged mesh from: {path_to_mixamo_fbx}")
-bpy.ops.import_scene.fbx(filepath=path_to_mixamo_fbx, use_anim=False)
-bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-armature_name = "Armature"
-armature = bpy.data.objects[armature_name]
-
+print(f"Loading rigify human meta-rig")
+bpy.ops.object.armature_human_metarig_add()
+human_metarig = bpy.context.active_object
 freemocap_origin_axes.rotation_euler[2] = np.pi
 ##################
 ### Scale armature
 
 rig_name = "mixamorig1"
-mixamo_bone_to_skeleton_segment_name_correspondance = {
-    "lower_spine": ["Hips", "Spine"],
-    "upper_spine": ["Spine1", "Spine2"],
-    "head": ["Neck", "Head"],
-    "left_upper_arm": ["LeftArm"],
-    "left_forearm": ["LeftForeArm"],
-    "left_hand": ["LeftHand"],
-    "right_upper_arm": ["RightArm"],
-    "right_forearm": ["RightForeArm"],
-    "right_hand": ["RightHand"],
-    "left_thigh": ["LeftUpLeg"],
-    "left_calf": ["LeftLeg"],
-    "left_foot": ["LeftFoot"],
-    "right_thigh": ["RightUpLeg"],
-    "right_calf": ["RightLeg"],
-    "right_foot": ["RightFoot"],
+rigify_bone_to_skeleton_segment_name_correspondance = {
+    "lower_spine": ["spine", "spine.001"],
+    "upper_spine": ["spine.002", "spine.003"],
+    "head": ["spine.004", "spine.005", "spine.006"],
+    "left_hand": ["hand.L"],
+    "left_forearm": ["forearm.L"],
+    "left_upper_arm": ["upper_arm.L"],
+    "right_hand": ["hand.R"],
+    "right_forearm": ["forearm.R"],
+    "right_upper_arm": ["upper_arm.R"],
+    "left_thigh": ["thigh.L"],
+    "left_calf": ["shin.L"],
+    "left_foot": ["foot.L"],
+    "right_thigh": ["thigh.R"],
+    "right_calf": ["shin.R"],
+    "right_foot": ["foot.R"],
 }
 
 try:
@@ -310,110 +314,97 @@ except:
 
 for (
     segment_name,
-    mixamo_bones_list,
-) in mixamo_bone_to_skeleton_segment_name_correspondance.items():
+    rigify_bones_list,
+) in rigify_bone_to_skeleton_segment_name_correspondance.items():
     print(
-        f"segment: {segment_name}, length: {skeleton_segment_lengths_dict[segment_name]['median']}mm"
+        f"segment: {segment_name}, length: {skeleton_segment_lengths_dict[segment_name]['median']:.3f}mm"
     )
 
-    for mixamo_bone in mixamo_bones_list:
+    for rigify_bone_name in rigify_bones_list:
         segment_length = (
             skeleton_segment_lengths_dict[segment_name]["median"]
-            / len(mixamo_bones_list)
+            / len(rigify_bones_list)
         ) * 0.001
-        print(f"setting: {mixamo_bone} length to: {segment_length} m")
-        armature.data.edit_bones[f"{rig_name}:{mixamo_bone}"].length = segment_length
+        print(f"setting {rigify_bone_name} length to: {segment_length:.3f} m")
+        human_metarig.data.edit_bones[rigify_bone_name].length = segment_length
 
-    ####################
-#### get segment lengths
+
+##also, make the face bone tiny so it's centered on the head
+human_metarig.data.edit_bones["face"].length = 0.01
 
 ########################
 ### Constrain mixamo bones to track empty locations
 
 
-rig_constraint_dict_of_dicts_og = {
-    "Hips": {
-        "COPY_LOCATION": "hip_center",
+rig_constraint_dict_of_dicts = {
+    "spine": {
+        "COPY_LOCATION": {"target": "hip_center"},
     },
-    "Spine": {
-        "IK": "chest_center",
+    "spine.003": {
+        "IK": {"target": "neck_center", "chain_length": 4},
     },
-    "Spine1": {
-        "COPY_LOCATION": "chest_center",
+    "spine.004": {
+        "COPY_LOCATION": {"target": "neck_center"},
     },
-    "Spine2": {
-        "IK": "neck_center",
+    "spine.006": {
+        "IK": {"target": "head_center", "chain_length": 2},
     },
-    "Neck": {
-        "COPY_LOCATION": "neck_center",
+    "face": {
+        "COPY_LOCATION": {"target": "head_center"},
+        "DAMPED_TRACK": {
+            "target": "mouth_left",
+            "track_axis": "TRACK_Z",
+            "influence": 1.0,
+        },
+        "DAMPED_TRACK.001": {
+            "target": "mouth_left",
+            "track_axis": "TRACK_Z",
+            "influence": 0.5,
+        },
     },
-    "Head": {
-        "IK": "head_center",
+    "shoulder.R": {
+        "DAMPED_TRACK": {"target": "right_shoulder"},
     },
-    "RightShoulder": {
-        "COPY_LOCATION": "neck_center",
-        "DAMPED_TRACK": "right_shoulder",
+    "upper_arm.R": {
+        "DAMPED_TRACK": {"target": "right_elbow"},
     },
-    "RightArm": {
-        "COPY_LOCATION": "right_shoulder",
-        "DAMPED_TRACK": "right_elbow",
+    "forearm.R": {
+        "DAMPED_TRACK": {"target": "right_wrist"},
     },
-    "RightForeArm": {
-        "COPY_LOCATION": "right_elbow",
-        "DAMPED_TRACK": "right_wrist",
+    "hand.R": {
+        "DAMPED_TRACK": {"target": "right_index"},
     },
-    "RightHand": {
-        "COPY_LOCATION": "right_wrist",
-        "DAMPED_TRACK": "right_index",
+    "shoulder.L": {
+        "DAMPED_TRACK": {"target": "left_shoulder"},
     },
-    "LeftShoulder": {
-        "COPY_LOCATION": "neck_center",
-        "DAMPED_TRACK": "left_shoulder",
+    "upper_arm.L": {
+        "DAMPED_TRACK": {"target": "left_elbow"},
     },
-    "LeftArm": {
-        "COPY_LOCATION": "left_shoulder",
-        "DAMPED_TRACK": "left_elbow",
+    "forearm.L": {
+        "DAMPED_TRACK": {"target": "left_wrist"},
     },
-    "LeftForeArm": {
-        "COPY_LOCATION": "left_elbow",
-        "DAMPED_TRACK": "left_wrist",
+    "hand.L": {
+        "DAMPED_TRACK": {"target": "left_index"},
     },
-    "LeftHand": {
-        "COPY_LOCATION": "left_wrist",
-        "DAMPED_TRACK": "left_index",
+    "thigh.R": {
+        "DAMPED_TRACK": {"target": "right_knee"},
     },
-    "RightUpLeg": {
-        "COPY_LOCATION": "right_hip",
-        "DAMPED_TRACK": "right_knee",
+    "shin.R": {
+        "DAMPED_TRACK": {"target": "right_ankle"},
     },
-    "RightLeg": {
-        "COPY_LOCATION": "right_knee",
-        "DAMPED_TRACK": "right_ankle",
+    "foot.R": {
+        "DAMPED_TRACK": {"target": "right_foot_index"},
     },
-    "RightFoot": {
-        "COPY_LOCATION": "right_ankle",
-        "DAMPED_TRACK": "right_foot_index",
+    "thigh.L": {
+        "DAMPED_TRACK": {"target": "left_knee"},
     },
-    "LeftUpLeg": {
-        "COPY_LOCATION": "left_hip",
-        "DAMPED_TRACK": "left_knee",
+    "shin.L": {
+        "DAMPED_TRACK": {"target": "left_ankle"},
     },
-    "LeftLeg": {
-        "COPY_LOCATION": "left_knee",
-        "DAMPED_TRACK": "left_ankle",
-    },
-    "LeftFoot": {
-        "COPY_LOCATION": "left_ankle",
-        "DAMPED_TRACK": "left_foot_index",
+    "foot.L": {
+        "DAMPED_TRACK": {"target": "left_foot_index"},
     },
 }
-
-### Pre-pend `rig_name` or whatever to bone names
-rig_constraint_dict_of_dicts = {}
-for key in rig_constraint_dict_of_dicts_og.keys():
-    rig_constraint_dict_of_dicts[f"{rig_name}:{key}"] = rig_constraint_dict_of_dicts_og[
-        key
-    ]
 
 ####
 #### Constrain bones to empties
@@ -425,21 +416,50 @@ try:
 except:
     pass
 
-for this_bone_name, this_bone_dict in rig_constraint_dict_of_dicts.items():
-    print(f"---Setting constraints for bone:{this_bone_name}---")
+for bone_name, bone_dict in rig_constraint_dict_of_dicts.items():
+    print(f"---Setting constraints for bone:{bone_name}---")
 
     for (
-        this_constraint_name,
-        this_constraint_target_empty_name,
-    ) in this_bone_dict.items():
+        constraint_name,
+        constrain_parameters_dict,
+    ) in bone_dict.items():
+        constraint_name = constraint_name.split(".")[
+            0
+        ]  # for duplicated constraints, named `[constraint_name].001`, etc
         print(
-            f"constraint: {this_constraint_name} with target:{this_constraint_target_empty_name}"
+            f"constraint: {constraint_name} with parameters:{constrain_parameters_dict}"
         )
-        print("grab bone")
-        this_bone = armature.pose.bones[this_bone_name]
-        print("apply bone")
-        this_constraint = this_bone.constraints.new(type=this_constraint_name)
-        this_constraint.name = this_constraint_name
-        this_constraint.target = bpy.data.objects[
-            this_constraint_target_empty_name
+
+        bone = human_metarig.pose.bones[bone_name]
+        print(f"bone: {bone.name}")
+
+        constraint = bone.constraints.new(type=constraint_name)
+        print(f"constraint: {constraint.name}")
+        # constraint.name = constraint_name
+        constraint.target = bpy.data.objects[
+            constrain_parameters_dict["target"]
         ]  # point constraint at relevant empty object
+        print(f"constraint.target: {constraint.target.name}")
+
+        if "influence" in constrain_parameters_dict:
+            constraint.influence = constrain_parameters_dict["influence"]
+            print(f"constraint.influence: {constraint.influence}")
+
+        if constraint_name == "IK":
+            constraint.chain_count = constrain_parameters_dict["chain_length"]
+            print(f"constraint.chain_count: {constraint.chain_count}")
+
+        if constraint_name == "LOCKED_TRACK":
+            constraint.track_axis = constrain_parameters_dict["track_axis"]
+            constraint.lock_axis = constrain_parameters_dict["lock_axis"]
+            print(f"constraint.track_axis: {constraint.track_axis}")
+            print(f"constraint.lock_axis: {constraint.lock_axis}")
+
+        if constraint_name == "DAMPED_TRACK":
+            if "track_axis" in constrain_parameters_dict:
+                constraint.track_axis = constrain_parameters_dict["track_axis"]
+                print(f"constraint.track_axis: {constraint.track_axis}")
+
+
+bpy.context.scene.frame_start = 500
+bpy.context.scene.frame_current = 500

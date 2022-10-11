@@ -1,6 +1,7 @@
 import bpy
 import numpy as np
 from pathlib import Path
+import json
 
 #####################################################################
 ###%% clear the scene - Scorch the earth \o/
@@ -18,7 +19,9 @@ except:
 
 ##################
 ### Getcher paths straight
-path_to_data_folder = Path("/Users/jon/Dropbox/FreeMoCapProject/FreeMocap_Data/")
+# path_to_data_folder = Path("/Users/jon/Dropbox/FreeMoCapProject/FreeMocap_Data/")
+path_to_data_folder = Path("D:\Dropbox\FreeMoCapProject\FreeMocap_Data")
+
 session_id = "sesh_2022-09-19_16_16_50_in_class_jsm"
 
 session_path = path_to_data_folder / session_id
@@ -32,7 +35,12 @@ if annotated_videos_path.is_dir():
 else:
     vidFolderPath = session_path / "synchronized_videos"
 
-path_to_mixamo_fbx = r"/Users/jon/Dropbox/FreeMoCapProject/teddy_animation/mixamo_binding_stuff/mixamo_mannequin_fbx_Ch36_nonPBR.fbx"
+path_to_segment_length_json = (
+    path_to_data_arrays_folder / "skeleton_segment_lengths.json"
+)
+
+# path_to_mixamo_fbx = r"/Users/jon/Dropbox/FreeMoCapProject/teddy_animation/mixamo_binding_stuff/mixamo_mannequin_fbx_Ch36_nonPBR.fbx"
+path_to_mixamo_fbx = r"D:\Dropbox\FreeMoCapProject\teddy_animation\mixamo_binding_stuff\mixamo_mannequin_fbx_Ch36_nonPBR.fbx"
 
 #########################
 ### Create Origin Axes
@@ -57,8 +65,8 @@ try:
     vid_location_scale = 1
 
     for (
-            vid_number,
-            thisVidPath,
+        vid_number,
+        thisVidPath,
     ) in enumerate(vidFolderPath.glob("*.mp4")):
         print(thisVidPath)
         # use 'images as planes' add on to load in the video files as planes
@@ -125,7 +133,8 @@ mediapipe_body_names = [
     "left_heel",
     "right_heel",
     "left_foot_index",
-    "right_foot_index", ]
+    "right_foot_index",
+]
 
 #######################################################################
 # %% load mediapipe data
@@ -184,9 +193,9 @@ left_ear_index = 7
 right_ear_index = 8
 print("head_center - midway between left and right ears")
 head_xyz = (
-                   mediapipe_skel_fr_mar_dim[:, left_ear_index, :]
-                   + mediapipe_skel_fr_mar_dim[:, right_ear_index, :]
-           ) / 2
+    mediapipe_skel_fr_mar_dim[:, left_ear_index, :]
+    + mediapipe_skel_fr_mar_dim[:, right_ear_index, :]
+) / 2
 bpy.ops.object.empty_add(type="SPHERE")
 this_empty = bpy.context.active_object
 this_empty.name = "head_center"
@@ -205,9 +214,9 @@ print("neck_center - midway between left and right shoulders")
 left_shoulder_index = 11
 right_shoulder_index = 12
 neck_xyz = (
-                   mediapipe_skel_fr_mar_dim[:, left_shoulder_index, :]
-                   + mediapipe_skel_fr_mar_dim[:, right_shoulder_index, :]
-           ) / 2
+    mediapipe_skel_fr_mar_dim[:, left_shoulder_index, :]
+    + mediapipe_skel_fr_mar_dim[:, right_shoulder_index, :]
+) / 2
 bpy.ops.object.empty_add(type="PLAIN_AXES")
 this_empty = bpy.context.active_object
 this_empty.name = "neck_center"
@@ -226,9 +235,9 @@ print("hip_center - midway between left and right hips")
 left_hip_index = 23
 right_hip_index = 24
 hips_xyz = (
-                   mediapipe_skel_fr_mar_dim[:, left_hip_index, :]
-                   + mediapipe_skel_fr_mar_dim[:, right_hip_index, :]
-           ) / 2
+    mediapipe_skel_fr_mar_dim[:, left_hip_index, :]
+    + mediapipe_skel_fr_mar_dim[:, right_hip_index, :]
+) / 2
 bpy.ops.object.empty_add(type="PLAIN_AXES")
 this_empty = bpy.context.active_object
 this_empty.name = "hip_center"
@@ -243,105 +252,149 @@ for frame_num in range(end_frame):
     ]
     this_empty.keyframe_insert(data_path="location", frame=frame_num)
 
+print("chest_center - midway between hips and neck centers")
+
+chest_xyz = (hips_xyz + neck_xyz) / 2
+bpy.ops.object.empty_add(type="PLAIN_AXES")
+this_empty = bpy.context.active_object
+this_empty.name = "chest_center"
+this_empty.scale = [empty_size] * 3
+this_empty.parent = freemocap_origin_axes
+
+for frame_num in range(end_frame):
+    this_empty.location = [
+        chest_xyz[frame_num, 0],
+        chest_xyz[frame_num, 1],
+        chest_xyz[frame_num, 2],
+    ]
+    this_empty.keyframe_insert(data_path="location", frame=frame_num)
+
 ######################
 ### Load Mixamo Armature
 print(f"Loading Mixamo rigged mesh from: {path_to_mixamo_fbx}")
 bpy.ops.import_scene.fbx(filepath=path_to_mixamo_fbx, use_anim=False)
 
-#######################
-## Constrain mixamo bones to track empty locations
-
+##################
+### Scale armature
+skeleton_segment_lengths_dict = json.load(str(path_to_segment_length_json))
 
 rig_name = "mixamorig1"
-rig_constraint_dict_of_dicts_og = {
-    "Hips": {
-        "COPY_LOCATION": "hip_center",
-    },
-    "Spine2": {
-        "IK": "neck_center",
-    },
-    "RightShoulder": {
-        "DAMPED_TRACK": "right_shoulder",
-    },
-    "RightArm": {
-        "DAMPED_TRACK": "right_elbow",
-    },
-    "RightForeArm": {
-        "DAMPED_TRACK": "right_wrist",
-    },
-    "RightHand": {
-        "DAMPED_TRACK": "right_index",
-    },
-    "LeftShoulder": {
-        "DAMPED_TRACK": "left_shoulder",
-    },
-    "LeftArm": {
-        "DAMPED_TRACK": "left_elbow",
-    },
-    "LeftForeArm": {
-        "DAMPED_TRACK": "left_wrist",
-    },
-    "LeftHand": {
-        "DAMPED_TRACK": "left_index",
-    },
-    "Head": {
-        "IK": "head_center",
-    },
-    "RightUpLeg": {
-        "COPY_LOCATION": "right_hip",
-        "DAMPED_TRACK": "right_knee",
-    },
-    "RightLeg": {
-        "DAMPED_TRACK": "right_ankle",
-    },
-    "RightFoot": {
-        "DAMPED_TRACK": "right_foot_index",
-    },
-    "RightToeBase": {
-        "STRETCH_TO": "right_foot_index",
-    },
-    "LeftToeBase": {
-        "STRETCH_TO": "left_foot_index",
-    },
-    "Head": {
-        "COPY_LOCATION": "head_center",
-        "DAMPED_TRACK": "head_center",
-    },
+mixamo_bone_to_skeleton_segment_name_correspondance = {
+    "lower_spine": ["Hips", "Spine"],
+    "upper_spine": ["Spine1", "Spine2"],
+    "head": ["Neck", "Head"],
+    "left_upper_arm": ["LeftArm"],
+    "left_lower_arm": ["LeftForeArm"],
+    "left_hand": ["LeftHand"],
+    "right_upper_arm": ["RightArm"],
+    "right_lower_arm": ["RightForeArm"],
+    "right_hand": ["RightHand"],
+    "left_thigh": ["LeftUpLeg"],
+    "left_calf": ["LeftLeg"],
+    "left_foot": ["LeftFoot"],
+    "right_thigh": ["RightUpLeg"],
+    "right_calf": ["RightLeg"],
+    "right_foot": ["RightFoot"],
 }
 
 ### Pre-pend `rig_name` or whatever to bone names
 rig_constraint_dict_of_dicts = {}
-for key in rig_constraint_dict_of_dicts_og.keys():
-    rig_constraint_dict_of_dicts[f"{rig_name}:{key}"] = rig_constraint_dict_of_dicts_og[key]
+for key in mixamo_bone_to_skeleton_segment_name_correspondance.keys():
+    mixamo_bone_to_skeleton_segment_name_correspondance[
+        f"{rig_name}:{key}"
+    ] = mixamo_bone_to_skeleton_segment_name_correspondance[key]
 
-####
-#### Constrain bones to empties
-####
-armature_name = "Armature"
-armature = bpy.data.objects[armature_name]
-# loop through dictionary applying  constraints
-try:
-    bpy.ops.object.mode_set(mode="POSE")
-except:
-    pass
+########################
+### Constrain mixamo bones to track empty locations
 
-for this_bone_name, this_bone_dict in rig_constraint_dict_of_dicts.items():
-    print(f"---Setting constraints for bone:{this_bone_name}---")
 
-    for (
-            this_constraint_name,
-            this_constraint_target_empty_name,
-    ) in this_bone_dict.items():
-        print(
-            f"constraint: {this_constraint_name} with target:{this_constraint_target_empty_name}"
-        )
-        print("grab bone")
-        this_bone = armature.pose.bones[this_bone_name]
-        print("apply bone")
-        this_constraint = this_bone.constraints.new(type=this_constraint_name)
-        this_constraint.name = this_constraint_name
-        this_constraint.target = bpy.data.objects[
-            this_constraint_target_empty_name
-        ]  # point constraint at relevant empty object
+# rig_constraint_dict_of_dicts_og = {
+#    "Hips": {
+#        "COPY_LOCATION": "hip_center",
+#    },
+#    "Spine2": {
+#        "IK": "neck_center",
+#    },
+#    "RightShoulder": {
+#        "DAMPED_TRACK": "right_shoulder",
+#    },
+#    "RightArm": {
+#        "DAMPED_TRACK": "right_elbow",
+#    },
+#    "RightForeArm": {
+#        "DAMPED_TRACK": "right_wrist",
+#    },
+#    "RightHand": {
+#        "DAMPED_TRACK": "right_index",
+#    },
+#    "LeftShoulder": {
+#        "DAMPED_TRACK": "left_shoulder",
+#    },
+#    "LeftArm": {
+#        "DAMPED_TRACK": "left_elbow",
+#    },
+#    "LeftForeArm": {
+#        "DAMPED_TRACK": "left_wrist",
+#    },
+#    "LeftHand": {
+#        "DAMPED_TRACK": "left_index",
+#    },
+#    "Head": {
+#        "IK": "head_center",
+#    },
+#    "RightUpLeg": {
+#        "COPY_LOCATION": "right_hip",
+#        "DAMPED_TRACK": "right_knee",
+#    },
+#    "RightLeg": {
+#        "DAMPED_TRACK": "right_ankle",
+#    },
+#    "RightFoot": {
+#        "DAMPED_TRACK": "right_foot_index",
+#    },
+#    "RightToeBase": {
+#        "STRETCH_TO": "right_foot_index",
+#    },
+#    "LeftToeBase": {
+#        "STRETCH_TO": "left_foot_index",
+#    },
+#    "Head": {
+#        "COPY_LOCATION": "head_center",
+#        "DAMPED_TRACK": "head_center",
+#    },
+# }
 
-bpy.context.object.pose.bones["mixamorig1:Head"].constraints["Locked Track"].lock_axis = 'LOCK_Z'
+#### Pre-pend `rig_name` or whatever to bone names
+# rig_constraint_dict_of_dicts = {}
+# for key in rig_constraint_dict_of_dicts_og.keys():
+#    rig_constraint_dict_of_dicts[f"{rig_name}:{key}"] = rig_constraint_dict_of_dicts_og[key]
+
+#####
+##### Constrain bones to empties
+#####
+# armature_name = "Armature"
+# armature = bpy.data.objects[armature_name]
+## loop through dictionary applying  constraints
+# try:
+#    bpy.ops.object.mode_set(mode="POSE")
+# except:
+#    pass
+
+# for this_bone_name, this_bone_dict in rig_constraint_dict_of_dicts.items():
+#    print(f"---Setting constraints for bone:{this_bone_name}---")
+
+#    for (
+#            this_constraint_name,
+#            this_constraint_target_empty_name,
+#    ) in this_bone_dict.items():
+#        print(
+#            f"constraint: {this_constraint_name} with target:{this_constraint_target_empty_name}"
+#        )
+#        print("grab bone")
+#        this_bone = armature.pose.bones[this_bone_name]
+#        print("apply bone")
+#        this_constraint = this_bone.constraints.new(type=this_constraint_name)
+#        this_constraint.name = this_constraint_name
+#        this_constraint.target = bpy.data.objects[
+#            this_constraint_target_empty_name
+#        ]  # point constraint at relevant empty object

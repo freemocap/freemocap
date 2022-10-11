@@ -288,7 +288,7 @@ freemocap_origin_axes.rotation_euler[2] = np.pi
 ##################
 ### Scale armature
 
-rig_name = "mixamorig1"
+
 rigify_bone_to_skeleton_segment_name_correspondance = {
     "lower_spine": ["spine", "spine.001"],
     "upper_spine": ["spine.002", "spine.003"],
@@ -461,5 +461,5 @@ for bone_name, bone_dict in rig_constraint_dict_of_dicts.items():
                 print(f"constraint.track_axis: {constraint.track_axis}")
 
 
-bpy.context.scene.frame_start = 500
-bpy.context.scene.frame_current = 500
+# bpy.context.scene.frame_start = 500
+# bpy.context.scene.frame_current = 500

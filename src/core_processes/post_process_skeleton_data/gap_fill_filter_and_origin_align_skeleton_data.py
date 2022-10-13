@@ -40,7 +40,7 @@ def interpolate_freemocap_data(freemocap_marker_data: np.ndarray) -> np.ndarray:
 
 
 # %%
-def butter_lowpass_filter(data, cutoff, sampling_rate, order):
+def butterworth_lowpass_zerolag_filter(data, cutoff, sampling_rate, order):
     """Run a low pass butterworth filter on a single column of data"""
     nyquist_freq = 0.5 * sampling_rate
     normal_cutoff = cutoff / nyquist_freq
@@ -58,7 +58,7 @@ def filter_skeleton(skeleton_3d_data, cutoff, sampling_rate, order):
 
     for marker in range(num_markers):
         for x in range(3):
-            filtered_data[:, marker, x] = butter_lowpass_filter(
+            filtered_data[:, marker, x] = butterworth_lowpass_zerolag_filter(
                 skeleton_3d_data[:, marker, x], cutoff, sampling_rate, order
             )
 
@@ -401,7 +401,7 @@ def rotate_skeleton_to_vector(
 
 def align_skeleton_with_origin(
     skeleton_data: np.ndarray, skeleton_indices: list, good_frame: int
-) -> np.ndarray:
+) -> tuple:
     """
     Takes in freemocap skeleton data and translates the skeleton to the origin, and then rotates the data
     so that the skeleton is facing the +y direction and standing in the +z direction
@@ -878,7 +878,7 @@ def run(
 
 
 # %%
-def gap_fill_filter_and_interpolate_3d_data(
+def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     skel3d_frame_marker_xyz: np.ndarray,
     data_arrays_path: [str, Path],
     # Filter the data, set the filtering options here
@@ -890,6 +890,7 @@ def gap_fill_filter_and_interpolate_3d_data(
     # Interpolate the data
     freemocap_interpolated_data = interpolate_freemocap_data(skel3d_frame_marker_xyz)
 
+    # Filter the data
     freemocap_filtered_marker_data = filter_skeleton(
         freemocap_interpolated_data, cut_off, sampling_rate, order
     )

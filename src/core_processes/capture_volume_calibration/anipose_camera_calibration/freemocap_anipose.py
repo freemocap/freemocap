@@ -1,3 +1,6 @@
+# Most of this was copied (with permission) from the original `aniposelib` package (https://github.com/lambdaloop/aniposelib), and we're adapting it to our needs here. M
+# ore info on Anipoise: https://anipose.readthedocs.io/en/latest/
+
 import logging
 
 import cv2

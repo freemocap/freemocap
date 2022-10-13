@@ -54,8 +54,14 @@ print("loading data")
 mediapipe_skel_fr_mar_dim = np.load(str(path_to_mediapipe_npy))
 mediapipe_skel_fr_mar_dim = mediapipe_skel_fr_mar_dim / 1000  # convert to meters
 
-mediapipe_reproj_fr_mar = np.load(str(path_to_mediapipe_3d_reproj))
-mediapipe_reproj_fr_mar = mediapipe_reproj_fr_mar / 1000  # convert to meters
+mediapipe_reprojection_error_cam_fr_mar = np.load(str(path_to_mediapipe_3d_reproj))
+mediapipe_reprojection_error_fr_mar = np.squeeze(
+    np.mean(mediapipe_reprojection_error_cam_fr_mar, axis=0)
+)
+
+mediapipe_reprojection_error_fr_mar = (
+    mediapipe_reprojection_error_fr_mar / 1000
+)  # convert to meters
 
 body_marker_range = np.arange(0, 33)
 right_hand_marker_range = np.arange(33, 33 + 21)
@@ -104,7 +110,7 @@ if good_clean_frame_number == 0:
             np.sum(np.isnan(mediapipe_skel_fr_mar_dim[this_frame, :, 0]))
         )
         frame_mean_reproj_error.append(
-            np.nanmean(mediapipe_reproj_fr_mar[this_frame, :])
+            np.nanmean(mediapipe_reprojection_error_fr_mar[this_frame, :])
         )
 
     nan_times_vis = np.array(frame_nan_counts) * np.array(frame_mean_reproj_error)

@@ -24,7 +24,7 @@ from src.core_processes.capture_volume_calibration.charuco_board_detection.datac
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_most_recent_anipose_calibration_toml,
     load_calibration_from_session_id,
-    load_anipose_calibration_toml_from_user_selection,
+    load_anipose_calibration_toml_from_path,
 )
 from src.core_processes.mediapipe_stuff.load_mediapipe2d_data import (
     load_mediapipe2d_data,
@@ -698,7 +698,7 @@ class MainWindow(QMainWindow):
         elif (
             self._control_panel.calibrate_capture_volume_panel.load_camera_calibration_checkbox_is_checked
         ):
-            anipose_calibration_object = load_anipose_calibration_toml_from_user_selection(
+            anipose_calibration_object = load_anipose_calibration_toml_from_path(
                 self._control_panel.calibrate_capture_volume_panel.user_selected_calibration_toml_path,
                 get_session_folder_path(self._session_id),
             )

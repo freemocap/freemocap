@@ -4,6 +4,8 @@ from typing import Union
 import numpy as np
 import logging
 
+import toml
+
 from src.core_processes.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
     convert_mediapipe_npy_to_csv,
 )
@@ -15,7 +17,6 @@ def threshold_by_confidence(
     mediapipe_2d_data: np.ndarray,
     mediapipe_confidence_cutoff_threshold: float = 0.0,
 ):
-
     mediapipe_2d_data[
         mediapipe_2d_data <= mediapipe_confidence_cutoff_threshold
     ] = np.NaN
@@ -37,6 +38,7 @@ def triangulate_3d_data(
     output_data_folder_path: Union[str, Path],
     mediapipe_confidence_cutoff_threshold: float,
     save_data_as_csv: bool,
+    use_triangulate_ransac: bool = True,
 ):
     number_of_cameras = mediapipe_2d_data.shape[0]
     number_of_frames = mediapipe_2d_data.shape[1]
@@ -66,33 +68,38 @@ def triangulate_3d_data(
         f" number_of_spatial_dimensions: {number_of_spatial_dimensions}"
     )
 
-    data3d_flat = anipose_calibration_object.triangulate(data2d_flat, progress=True)
+    if use_triangulate_ransac:
+        logger.info("Using `triangulate_ransac` method (slower, but more accurate)")
+        data3d_flat = anipose_calibration_object.triangulate_ransac(
+            data2d_flat, progress=True
+        )
+    else:
+        logger.info("Using `triangulate` method (faster, but less accurate)")
+        data3d_flat = anipose_calibration_object.triangulate(data2d_flat, progress=True)
 
     data3d_reprojectionError_flat = anipose_calibration_object.reprojection_error(
-        data3d_flat, data2d_flat, mean=True
+        data3d_flat, data2d_flat, mean=False
     )
 
-    data3d_numFrames_numTrackedPoints_XYZ = data3d_flat.reshape(
+    spatial_data3d_numFrames_numTrackedPoints_XYZ = data3d_flat.reshape(
         number_of_frames, number_of_tracked_points, 3
     )
-    data3d_numFrames_numTrackedPoints_reprojectionError = (
+    reprojection_error_data3d_numCams_numFrames_numTrackedPoints_error = (
         data3d_reprojectionError_flat.reshape(
-            number_of_frames, number_of_tracked_points
+            number_of_cameras, number_of_frames, number_of_tracked_points, 2
         )
     )
 
-    path_to_3d_data_npy = save_mediapipe_3d_data_to_npy(
-        data3d_numFrames_numTrackedPoints_XYZ=data3d_numFrames_numTrackedPoints_XYZ,
-        data3d_numFrames_numTrackedPoints_reprojectionError=data3d_numFrames_numTrackedPoints_reprojectionError,
+    save_mediapipe_3d_data_to_npy(
+        data3d_numFrames_numTrackedPoints_XYZ=spatial_data3d_numFrames_numTrackedPoints_XYZ,
+        data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_error_data3d_numCams_numFrames_numTrackedPoints_error,
         output_data_folder_path=output_data_folder_path,
     )
 
     if save_data_as_csv:
         convert_mediapipe_npy_to_csv(
-            data3d_numFrames_numTrackedPoints_XYZ, output_data_folder_path
+            spatial_data3d_numFrames_numTrackedPoints_XYZ, output_data_folder_path
         )
-
-    return path_to_3d_data_npy
 
 
 def save_mediapipe_3d_data_to_npy(
@@ -119,4 +126,83 @@ def save_mediapipe_3d_data_to_npy(
     np.save(
         str(mediapipe_reprojection_error_save_path),
         data3d_numFrames_numTrackedPoints_reprojectionError,
+    )
+
+
+if __name__ == "__main__":
+    import argparse
+    from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
+        load_anipose_calibration_toml_from_path,
+    )
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--mediapipe_2d_data_path",
+        type=str,
+        help="path to mediapipe 2d data",
+        required=True,
+    )
+    parser.add_argument(
+        "--output_data_folder_path",
+        type=str,
+        help="path to output folder",
+        required=False,
+    )
+    parser.add_argument(
+        "--calibration_file_path",
+        type=str,
+        help="path to calibration file",
+        required=False,
+    )
+    parser.add_argument(
+        "--mediapipe_confidence_cutoff_threshold",
+        type=float,
+        help="confidence cutoff threshold",
+        required=False,
+    )
+    parser.add_argument(
+        "--save_data_as_csv",
+        type=bool,
+        help="save data as csv",
+        required=False,
+    )
+    parser.add_argument(
+        "--use_triangulate_ransac",
+        type=bool,
+        help="use triangulate ransac anipose method ",
+        required=False,
+    )
+    args = parser.parse_args()
+
+    mediapipe_2d_data = np.load(args.mediapipe_2d_data_path)
+
+    if args.mediapipe_confidence_cutoff_threshold is None:
+        args.mediapipe_confidence_cutoff_threshold = 0.7  # default
+
+    if args.output_data_folder_path is None:
+        args.output_data_folder_path = Path(args.mediapipe_2d_data_path).parent
+
+    if args.save_data_as_csv is None:
+        args.save_data_as_csv = True  # default
+
+    if args.use_triangulate_ransac is None:
+        args.use_triangulate_ransac = False
+
+    if args.calibration_file_path:
+        anipose_calibration_object = load_anipose_calibration_toml_from_path(
+            args.calibration_file_path
+        )
+    else:
+        anipose_calibration_object = load_anipose_calibration_toml_from_path(
+            Path(args.mediapipe_2d_data_path).parent.parent
+            / "camera_calibration_data.toml"
+        )
+
+    triangulate_3d_data(
+        anipose_calibration_object=anipose_calibration_object,
+        mediapipe_2d_data=mediapipe_2d_data,
+        output_data_folder_path=args.output_data_folder_path,
+        mediapipe_confidence_cutoff_threshold=args.mediapipe_confidence_cutoff_threshold,
+        save_data_as_csv=args.save_data_as_csv,
+        use_triangulate_ransac=args.use_triangulate_ransac,
     )

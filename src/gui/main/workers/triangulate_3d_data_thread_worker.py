@@ -43,6 +43,7 @@ class Triangulate3dDataThreadWorker(QThread):
             mediapipe_2d_data=self._mediapipe_2d_data,
             output_data_folder_path=self._output_data_folder_path,
             mediapipe_confidence_cutoff_threshold=self._mediapipe_confidence_cutoff_threshold,
+            use_triangulate_ransac=False,
             save_data_as_csv=self._save_data_as_csv,
         )
 

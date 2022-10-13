@@ -10,7 +10,7 @@ from src.cameras.detection.models import FoundCamerasResponse
 import logging
 
 from src.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import (
-    gap_fill_filter_and_interpolate_3d_data,
+    gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class PostProcess3dDataThreadWorker(QThread):
         self.reference_frame_number = reference_frame_number
 
     def run(self):
-        gap_fill_filter_and_interpolate_3d_data(
+        gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
             self.skel3d_frame_marker_xyz,
             data_arrays_path=self.data_save_path,
             sampling_rate=self.sample_rate,

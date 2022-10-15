@@ -10,6 +10,8 @@ from rich.progress import track
 from scipy import signal
 
 logger = logging.getLogger(__name__)
+
+
 # %%
 def interpolate_freemocap_data(freemocap_marker_data: np.ndarray) -> np.ndarray:
     """Takes in a 3d skeleton numpy array from freemocap and interpolates missing NaN values"""
@@ -20,6 +22,7 @@ def interpolate_freemocap_data(freemocap_marker_data: np.ndarray) -> np.ndarray:
 
     for marker in track(range(num_markers), description="Interpolating Data"):
         this_marker_skel3d_data = freemocap_marker_data[:, marker, :]
+
         df = pd.DataFrame(this_marker_skel3d_data)
         df2 = df.interpolate(
             method="linear", axis=0
@@ -101,6 +104,8 @@ def find_best_velocity_guess(
     This function iterates over velocity data and tries to pare down to a single frame that has the closest velocity to 0 for all foot markers
     """
 
+    print(f"Velocity guess: {velocity_guess}, iteration range: {iteration_range}")
+
     right_heel_index = skeleton_indices.index("right_heel")
     right_toe_index = skeleton_indices.index("right_foot_index")
     left_heel_index = skeleton_indices.index("left_heel")
@@ -110,6 +115,14 @@ def find_best_velocity_guess(
     skeleton_data_velocity_x_right_toe = skeleton_velocity_data[:, right_toe_index, 0]
     skeleton_data_velocity_x_left_heel = skeleton_velocity_data[:, left_heel_index, 0]
     skeleton_data_velocity_x_left_toe = skeleton_velocity_data[:, left_toe_index, 0]
+
+    print(
+        f"sum nan right heel: {np.sum(np.isnan(skeleton_data_velocity_x_right_heel))}, "
+        f"sum nan right toe: {np.sum(np.isnan(skeleton_data_velocity_x_right_toe))}, "
+        f"sum nan left heel: {np.sum(np.isnan(skeleton_data_velocity_x_left_heel))}, "
+        f"sum nan left toe: {np.sum(np.isnan(skeleton_data_velocity_x_left_toe))}, "
+        f"num frames: {len(skeleton_data_velocity_x_right_heel)}"
+    )
 
     # get a list of the frames where the velocity for that marker is within the velocity limit
     right_heel_x_velocity_limits = find_velocity_values_within_limit(
@@ -186,14 +199,14 @@ def find_good_frame(
     """
 
     skeleton_velocity_data = np.diff(skeleton_data, axis=0)
-
+    print("finding best velocity guess...")
     matching_values, velocity_guess = find_best_velocity_guess(
         skeleton_velocity_data,
         skeleton_indices,
         initial_velocity_guess,
         iteration_range=0.1,
     )
-
+    print(f"Return values: {matching_values}")
     good_frame = matching_values[0]
 
     return good_frame
@@ -902,10 +915,11 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
 
     # Align the data
     if reference_frame_number is None:
-        print("Aligning Data with Origin")
-        reference_frame_number = find_good_frame(
-            freemocap_filtered_marker_data, mediapipe_indices, 0.3
-        )
+        reference_frame_number = 0
+        # print("Finding good frame to align data with origin ")
+        # reference_frame_number = find_good_frame(
+        #     freemocap_filtered_marker_data, mediapipe_indices, 0.3
+        # )
 
     freemocap_alignment_marker_data_tuple = align_skeleton_with_origin(
         freemocap_filtered_marker_data, mediapipe_indices, reference_frame_number

@@ -109,7 +109,7 @@ def create_virtual_markers(
 
 if __name__ == "__main__":
     path_to_skeleton_body_csv = Path(
-        r"D:\Dropbox\FreeMoCapProject\FreeMocap_Data\sesh_2022-09-19_16_16_50_in_class_jsm\DataArrays\mediapipe_body_3d_xyz.csv"
+        r"D:\Dropbox\FreeMoCapProject\teddy_animation\FreeMocap_Data\sesh_2022-10-09_13_55_45_calib_and_take_1_alpha\output_data\mediapipe_body_3d_xyz.csv"
     )
     skeleton_dataframe = pd.read_csv(path_to_skeleton_body_csv)
     skeleton_data_dictionary_in = skeleton_dataframe.to_dict(orient="list")

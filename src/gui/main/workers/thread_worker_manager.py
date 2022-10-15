@@ -17,6 +17,9 @@ from src.gui.main.workers.cam_detection_thread_worker import CameraDetectionThre
 
 import logging
 
+from src.gui.main.workers.convert_npy_to_csv_thread_worker import (
+    ConvertNpyToCsvThreadWorker,
+)
 from src.gui.main.workers.export_to_blender_worker import ExportToBlenderThreadWorker
 from src.gui.main.workers.mediapipe_2d_detection_thread_worker import (
     Mediapipe2dDetectionThreadWorker,
@@ -41,6 +44,8 @@ class ThreadWorkerManager(QWidget):
     camera_detection_finished = pyqtSignal(FoundCamerasResponse)
     videos_saved_signal = pyqtSignal(bool)
     start_3d_processing_signal = pyqtSignal()
+    start_post_processing_signal = pyqtSignal()
+    start_convert_npy_to_to_csv_signal = pyqtSignal()
     start_blender_processing_signal = pyqtSignal()
     blender_file_created_signal = pyqtSignal(str)
 
@@ -106,6 +111,7 @@ class ThreadWorkerManager(QWidget):
         )
 
         if auto_process_next_stage:
+            logger.info("Emitting `start_3d_processing_signal`")
             self._mediapipe_2d_detection_thread_worker.finished.connect(
                 self.start_3d_processing_signal.emit
             )
@@ -117,7 +123,6 @@ class ThreadWorkerManager(QWidget):
         mediapipe_2d_data: np.ndarray,
         output_data_folder_path: Union[str, Path],
         mediapipe_confidence_cutoff_threshold: float,
-        save_data_as_csv: bool,
         auto_process_next_stage: bool = False,
     ):
         logger.info("Launching `Triangulate 3d Data` thread worker...")
@@ -127,14 +132,14 @@ class ThreadWorkerManager(QWidget):
             mediapipe_2d_data=mediapipe_2d_data,
             output_data_folder_path=output_data_folder_path,
             mediapipe_confidence_cutoff_threshold=mediapipe_confidence_cutoff_threshold,
-            save_data_as_csv=save_data_as_csv,
         )
 
         self._triangulate_3d_data_thread_worker.start()
 
         if auto_process_next_stage:
+            logger.info("Emitting `start_post_processing_signal`")
             self._triangulate_3d_data_thread_worker.finished.connect(
-                self.start_blender_processing_signal.emit
+                self.start_post_processing_signal.emit
             )
 
     def launch_post_process_3d_data_thread_worker(
@@ -145,6 +150,7 @@ class ThreadWorkerManager(QWidget):
         cut_off: float,
         order: int,
         reference_frame_number: int = None,
+        auto_process_next_stage: bool = False,
     ):
         logger.info("Launching `Post Process 3d Data` thread worker...")
         self._post_process_3d_data_thread_worker = PostProcess3dDataThreadWorker(
@@ -157,18 +163,29 @@ class ThreadWorkerManager(QWidget):
         )
         self._post_process_3d_data_thread_worker.start()
 
-        # def launch_export_to_blender_thread_worker(
-        #     self, session_folder_path: Union[str, Path]
-        # ):
-        #     logger.info("Launching `Export to Blender` thread worker...")
-        #
-        #     self._export_to_blender_thread_worker = ExportToBlenderThreadWorker(
-        #         session_folder_path
-        #     )
-        #     self._export_to_blender_thread_worker.finished.connect(
-        #         self.blender_file_created_signal.emit
-        #     )
-        #     self._export_to_blender_thread_worker.start()
+        logger.info("Emitting `convert_to_csv_signal`")
+        self._post_process_3d_data_thread_worker.finished.connect(
+            self.start_convert_npy_to_to_csv_signal.emit
+        )
+
+    def launch_convert_npy_to_csv_thread_worker(
+        self,
+        skel3d_frame_marker_xyz: np.ndarray,
+        output_data_folder_path: Union[str, Path],
+        auto_process_next_stage: bool = False,
+    ):
+        logger.info("Launching `Convert Npy to Csv` thread worker...")
+        self._convert_npy_to_csv_thread_worker = ConvertNpyToCsvThreadWorker(
+            skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            output_data_folder_path=output_data_folder_path,
+        )
+        self._convert_npy_to_csv_thread_worker.start()
+
+        if auto_process_next_stage:
+            logger.info("Emitting `start_export_to_blender_signal`")
+            self._convert_npy_to_csv_thread_worker.finished.connect(
+                self.start_blender_processing_signal.emit
+            )
 
     def launch_session_playback_thread(
         self,

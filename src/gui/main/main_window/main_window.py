@@ -30,7 +30,8 @@ from src.core_processes.mediapipe_stuff.load_mediapipe2d_data import (
     load_mediapipe2d_data,
 )
 from src.core_processes.mediapipe_stuff.load_mediapipe3d_data import (
-    load_mediapipe3d_data,
+    load_raw_mediapipe3d_data,
+    load_post_processed_mediapipe3d_data,
 )
 from src.export_stuff.blender_stuff.export_to_blender import (
     export_to_blender,
@@ -437,6 +438,18 @@ class MainWindow(QMainWindow):
             )
         )
 
+        self._thread_worker_manager.start_post_processing_signal.connect(
+            lambda: self._setup_and_launch_gap_fill_filter_origin_align_thread_worker(
+                auto_process_next_stage=True
+            )
+        )
+
+        self._thread_worker_manager.start_convert_npy_to_to_csv_signal.connect(
+            lambda: self._setup_and_launch_convert_npy_to_csv_thread_worker(
+                auto_process_next_stage=True
+            )
+        )
+
         self._thread_worker_manager.start_blender_processing_signal.connect(
             self._export_to_blender
         )
@@ -721,13 +734,16 @@ class MainWindow(QMainWindow):
             mediapipe_2d_data=mediapipe_2d_data,
             output_data_folder_path=output_data_folder_path,
             mediapipe_confidence_cutoff_threshold=self._control_panel.process_session_data_panel.mediapipe_confidence_cutoff_threshold,
-            save_data_as_csv=self._control_panel.process_session_data_panel.convert_npy_to_csv_checkbox.isChecked(),
             auto_process_next_stage=auto_process_next_stage,
         )
 
-    def _setup_and_launch_gap_fill_filter_origin_align_thread_worker(self):
+    def _setup_and_launch_gap_fill_filter_origin_align_thread_worker(
+        self, auto_process_next_stage: bool = False
+    ):
         output_data_folder_path = Path(get_output_data_folder_path(self._session_id))
-        skel3d_frame_marker_xyz = load_mediapipe3d_data(output_data_folder_path)
+
+        skel3d_frame_marker_xyz = load_raw_mediapipe3d_data(output_data_folder_path)
+
         data_save_path = output_data_folder_path / "post_processed_data"
         data_save_path.mkdir(exist_ok=True)
         sampling_rate = 30
@@ -742,6 +758,23 @@ class MainWindow(QMainWindow):
             cut_off=cut_off,
             order=order,
             reference_frame_number=reference_frame_number,
+            auto_process_next_stage=auto_process_next_stage,
+        )
+
+    def _setup_and_launch_convert_npy_to_csv_thread_worker(
+        self, auto_process_next_stage: bool = False
+    ):
+        logger.info("Launching convert npy to csv thread worker")
+
+        output_data_folder_path = Path(get_output_data_folder_path(self._session_id))
+        skel3d_frame_marker_xyz = load_post_processed_mediapipe3d_data(
+            output_data_folder_path
+        )
+
+        self._thread_worker_manager.launch_convert_npy_to_csv_thread_worker(
+            skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            output_data_folder_path=output_data_folder_path,
+            auto_process_next_stage=auto_process_next_stage,
         )
 
     def _export_to_blender(self):
@@ -770,7 +803,7 @@ class MainWindow(QMainWindow):
             "`self._control_panel.visualize_motion_capture_data.load_session_data_button` was pressed "
         )
 
-        skeleton_3d_npy = load_mediapipe3d_data(
+        skeleton_3d_npy = load_post_processed_mediapipe3d_data(
             get_output_data_folder_path(self._session_id)
         )
 

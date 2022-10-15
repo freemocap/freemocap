@@ -13,3 +13,10 @@ def simple_plot_3d(data_pt_xyz):
     ax3d.scatter(x, y, z)
     plt.pause(0.1)
     plt.show()
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    data_pt_xyz = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    simple_plot_3d(data_pt_xyz)

@@ -38,11 +38,13 @@ session_path = Path(session_path)
 path_to_mediapipe_npy = (
     session_path
     / "output_data"
-    / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+    / "post_processed_data"
+    / "mediaPipeSkel_3d_origin_aligned.npy"
 )
 path_to_mediapipe_3d_reproj = (
     session_path
     / "output_data"
+    / "raw_data"
     / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
 )
 

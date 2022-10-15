@@ -37,8 +37,7 @@ def triangulate_3d_data(
     mediapipe_2d_data: np.ndarray,
     output_data_folder_path: Union[str, Path],
     mediapipe_confidence_cutoff_threshold: float,
-    save_data_as_csv: bool,
-    use_triangulate_ransac: bool = True,
+    use_triangulate_ransac: bool = False,
 ):
     number_of_cameras = mediapipe_2d_data.shape[0]
     number_of_frames = mediapipe_2d_data.shape[1]
@@ -96,20 +95,16 @@ def triangulate_3d_data(
         output_data_folder_path=output_data_folder_path,
     )
 
-    if save_data_as_csv:
-        convert_mediapipe_npy_to_csv(
-            spatial_data3d_numFrames_numTrackedPoints_XYZ, output_data_folder_path
-        )
-
 
 def save_mediapipe_3d_data_to_npy(
     data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
     data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
     output_data_folder_path: Union[str, Path],
 ):
-    # save spatial XYZ data
+    raw_data_folder_path = Path(output_data_folder_path) / "raw_data"
+    raw_data_folder_path.mkdir(parents=True, exist_ok=True)  # save spatial XYZ data
     mediapipe_3dData_save_path = (
-        Path(output_data_folder_path)
+        raw_data_folder_path
         / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
     )
 
@@ -118,7 +113,7 @@ def save_mediapipe_3d_data_to_npy(
 
     # save reprojection error
     mediapipe_reprojection_error_save_path = (
-        Path(output_data_folder_path)
+        raw_data_folder_path
         / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
     )
 

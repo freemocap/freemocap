@@ -27,12 +27,14 @@ except:
 ##################
 ### Getcher paths straight
 # path_to_data_folder = Path("/Users/jon/Dropbox/FreeMoCapProject/FreeMocap_Data/")
-path_to_data_folder = Path("D:\Dropbox\FreeMoCapProject\FreeMocap_Data")
+path_to_data_folder = Path(
+    r"D:\Dropbox\FreeMoCapProject\teddy_animation\FreeMocap_Data"
+)
 
-session_id = "sesh_2022-09-19_16_16_50_in_class_jsm"
+session_id = "sesh_2022-10-09_13_55_45_calib_and_take_1_alpha"
 
 session_path = path_to_data_folder / session_id
-path_to_data_arrays_folder = session_path / "DataArrays"
+path_to_data_arrays_folder = session_path / "output_data"
 path_to_body_npy = path_to_data_arrays_folder / "mediapipe_body_3d_xyz.npy"
 
 annotated_videos_path = session_path / "annotated_videos"

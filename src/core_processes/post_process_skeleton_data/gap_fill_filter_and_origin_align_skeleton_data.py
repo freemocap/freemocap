@@ -12,6 +12,55 @@ from scipy import signal
 logger = logging.getLogger(__name__)
 
 
+def find_good_clean_frame(skeleton_3d_fr_mar_xyz, skeleton_reprojection_error_fr_mar):
+    """
+    Find the frame with the fewest nans, scaled by reprojection error (i.e. hopefully a frame where all tracked points are visible and well tracked)
+    """
+    print(
+        "estimating good clean frame as the one where there few `nans`, reprojection error is low, and velocity is low..."
+    )
+
+    nans_per_frame = np.sum(np.isnan(skeleton_3d_fr_mar_xyz[:, :, 0]), axis=1)
+    reprojection_error_per_frame = np.nanmedian(
+        skeleton_reprojection_error_fr_mar, axis=1
+    )
+    marker_velocity_per_frame = np.nanmedian(
+        np.abs(np.diff(skeleton_3d_fr_mar_xyz, axis=1)), axis=1
+    )
+    print(f"nans_per_frame.shape: {nans_per_frame.shape}")
+    print(f"reprojection_error_per_frame.shape: {reprojection_error_per_frame.shape}")
+    print(f"marker_velocity_per_frame.shape: {marker_velocity_per_frame.shape}")
+
+    # normalize errors by relevant thing
+    nans_per_frame_normalized = nans_per_frame / skeleton_3d_fr_mar_xyz.shape[1]
+    reprojection_error_per_frame_normalized = (
+        reprojection_error_per_frame / np.nanmedian(reprojection_error_per_frame)
+    )
+    marker_velocity_per_frame_normalized = marker_velocity_per_frame / np.nanmedian(
+        marker_velocity_per_frame
+    )
+
+    print(
+        f"nans_per_frame_normalized (mean, [standard_deviation] : {np.nanmean(nans_per_frame_normalized):.3f} [{np.nanstd(nans_per_frame_normalized):.3f}]"
+    )
+    print(
+        f"reprojection_error_per_frame_normalized (mean, [standard_deviation] : {np.nanmean(reprojection_error_per_frame_normalized):.3f} [{np.nanstd(reprojection_error_per_frame_normalized):.3f}]"
+    )
+    print(
+        f"marker_velocity_per_frame_normalized (mean, [standard_deviation] : {np.nanmean(marker_velocity_per_frame_normalized):.3f} [{np.nanstd(marker_velocity_per_frame_normalized):.3f}]"
+    )
+
+    frame_cleanliness_score = (
+        nans_per_frame_normalized
+        + reprojection_error_per_frame_normalized
+        + marker_velocity_per_frame_normalized
+    )
+
+    good_clean_frame_number = np.nanargmin(frame_cleanliness_score)
+    print(f"----estimated good_clean_frame_number: {good_clean_frame_number}----")
+    return good_clean_frame_number
+
+
 # %%
 def interpolate_freemocap_data(freemocap_marker_data: np.ndarray) -> np.ndarray:
     """Takes in a 3d skeleton numpy array from freemocap and interpolates missing NaN values"""

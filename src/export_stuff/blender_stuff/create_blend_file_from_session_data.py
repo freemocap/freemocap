@@ -20,8 +20,13 @@ def create_blend_file_from_session_data(
     good_clean_frame_number: int = 0,
 ):
     path_to_this_py_file = Path(__file__).parent.resolve()
+
+    # freemocap_blender_megascript_path = (
+    #     path_to_this_py_file / "alpha_freemocap_blender_megascript.py"
+    # )
+
     freemocap_blender_megascript_path = (
-        path_to_this_py_file / "alpha_freemocap_blender_megascript.py"
+        path_to_this_py_file / "create_blend_file_from_freemocap_data.py"
     )
 
     try:

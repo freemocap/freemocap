@@ -1,13 +1,16 @@
+import logging
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 import pandas as pd
 import json
 
-
 from rich import print
 
-skeleton_segment_definitions = {
+logger = logging.getLogger(__name__)
+
+mediapipe_skeleton_segment_definitions = {
     "lower_spine": {"proximal": "hips_center", "distal": "chest_center"},
     "upper_spine": {"proximal": "chest_center", "distal": "neck_center"},
     "head": {"proximal": "neck_center", "distal": "head_center"},
@@ -31,7 +34,7 @@ skeleton_segment_definitions = {
 
 
 def estimate_skeleton_segment_lengths(
-    skeleton_data_dictionary: dict, skeleton_segment_definitions: dict
+    skeleton_dataframe: pd.DataFrame, skeleton_segment_definitions: dict
 ) -> dict:
     """Estimate the length of each skeleton segment.
 
@@ -42,12 +45,18 @@ def estimate_skeleton_segment_lengths(
     Returns:
         dict: Dictionary containing the estimated length of each skeleton segment.
     """
-    print("Estimating skeleton segment lengths...")
+    logger.debug("Estimating skeleton segment lengths (mm)...")
+    skeleton_data_dictionary = create_skeleton_dictionary_from_skeleton_body_data_frame(
+        skeleton_dataframe
+    )
+
     skeleton_segment_lengths_dict = {}
     for segment_name, segment_definition_dict in skeleton_segment_definitions.items():
-        print(
-            f"Estimating length of segment '{segment_name}' based on proximal joint: '{segment_definition_dict['proximal']}' and distal joint:'{segment_definition_dict['distal']}'"
-        )
+        # print(
+        #     f"Estimating length of segment '{segment_name}' "
+        #     f"based on proximal joint: '{segment_definition_dict['proximal']}' and "
+        #     f"distal joint:'{segment_definition_dict['distal']}'"
+        # )
         proximal_joint_name = segment_definition_dict["proximal"]
         distal_joint_name = segment_definition_dict["distal"]
 
@@ -59,6 +68,7 @@ def estimate_skeleton_segment_lengths(
         distal_y = skeleton_data_dictionary[f"{distal_joint_name}_y"]
         distal_z = skeleton_data_dictionary[f"{distal_joint_name}_z"]
 
+        # good ol pythag <3
         segment_length_per_frame = np.sqrt(
             (proximal_x - distal_x) ** 2
             + (proximal_y - distal_y) ** 2
@@ -81,9 +91,9 @@ def estimate_skeleton_segment_lengths(
 def create_virtual_markers(
     skeleton_data_dictionary, virtual_marker_name: str, marker_name_list: list
 ) -> dict:
-    print(
-        f"Creating virtual marker '{virtual_marker_name}' from markers: {marker_name_list}"
-    )
+    # print(
+    #     f"Creating virtual marker '{virtual_marker_name}' from markers: {marker_name_list}"
+    # )
 
     x = []
     y = []
@@ -107,38 +117,57 @@ def create_virtual_markers(
     return skeleton_data_dictionary
 
 
+def create_skeleton_dictionary_from_skeleton_body_data_frame(
+    skeleton_body_dataframe: pd.DataFrame,
+) -> dict:
+    skeleton_data_dictionary = skeleton_body_dataframe.to_dict(orient="list")
+
+    for key, value in skeleton_data_dictionary.items():
+        skeleton_data_dictionary[key] = np.asarray(value)
+
+    skeleton_data_dictionary = create_virtual_markers(
+        skeleton_data_dictionary, "hips_center", ["left_hip", "right_hip"]
+    )
+    skeleton_data_dictionary = create_virtual_markers(
+        skeleton_data_dictionary, "neck_center", ["left_shoulder", "right_shoulder"]
+    )
+    skeleton_data_dictionary = create_virtual_markers(
+        skeleton_data_dictionary, "head_center", ["left_ear", "right_ear"]
+    )
+
+    skeleton_data_dictionary = create_virtual_markers(
+        skeleton_data_dictionary, "chest_center", ["hips_center", "neck_center"]
+    )
+    return skeleton_data_dictionary
+
+
+def save_skeleton_segment_lengths_to_json(
+    save_path: Union[Path, str], skeleton_segment_lengths_dict: dict
+):
+    logger.info("Saving skeleton segment lengths to JSON file...")
+    json_file_path = Path(save_path) / "skeleton_segment_lengths.json"
+
+    with open(json_file_path, "w") as file:
+        json.dump(skeleton_segment_lengths_dict, file, indent=4)
+
+    print(f"Saved skeleton segment lengths to: {json_file_path}")
+
+
 if __name__ == "__main__":
     path_to_skeleton_body_csv = Path(
         r"D:\Dropbox\FreeMoCapProject\teddy_animation\FreeMocap_Data\sesh_2022-10-09_13_55_45_calib_and_take_1_alpha\output_data\mediapipe_body_3d_xyz.csv"
     )
     skeleton_dataframe = pd.read_csv(path_to_skeleton_body_csv)
-    skeleton_data_dictionary_in = skeleton_dataframe.to_dict(orient="list")
 
-    for key, value in skeleton_data_dictionary_in.items():
-        skeleton_data_dictionary_in[key] = np.asarray(value)
-
-    skeleton_data_dictionary_in = create_virtual_markers(
-        skeleton_data_dictionary_in, "hips_center", ["left_hip", "right_hip"]
-    )
-    skeleton_data_dictionary_in = create_virtual_markers(
-        skeleton_data_dictionary_in, "neck_center", ["left_shoulder", "right_shoulder"]
-    )
-    skeleton_data_dictionary_in = create_virtual_markers(
-        skeleton_data_dictionary_in, "head_center", ["left_ear", "right_ear"]
+    estimate_skeleton_segment_lengths(
+        skeleton_dataframe, mediapipe_skeleton_segment_definitions
     )
 
-    skeleton_data_dictionary_in = create_virtual_markers(
-        skeleton_data_dictionary_in, "chest_center", ["hips_center", "neck_center"]
+    skeleton_data_dictionary_in = (
+        create_skeleton_dictionary_from_skeleton_body_data_frame(skeleton_dataframe)
     )
 
     skeleton_segment_lengths = estimate_skeleton_segment_lengths(
-        skeleton_data_dictionary_in, skeleton_segment_definitions
+        skeleton_data_dictionary_in, mediapipe_skeleton_segment_definitions
     )
     print(skeleton_segment_lengths)
-
-    json_file_path = path_to_skeleton_body_csv.parent / "skeleton_segment_lengths.json"
-
-    with open(json_file_path, "w") as file:
-        json.dump(skeleton_segment_lengths, file, indent=4)
-
-    print(f"Saved skeleton segment lengths to: {json_file_path}")

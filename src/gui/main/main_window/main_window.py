@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 from typing import Union
 
+import pandas as pd
 from PyQt6 import QtGui
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu, QLabel
@@ -17,6 +18,7 @@ from src.config.home_dir import (
     get_most_recent_session_id,
     get_freemocap_data_folder_path,
     get_annotated_videos_folder_path,
+    get_skeleton_body_csv_path,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
@@ -32,6 +34,11 @@ from src.core_processes.mediapipe_stuff.load_mediapipe2d_data import (
 from src.core_processes.mediapipe_stuff.load_mediapipe3d_data import (
     load_raw_mediapipe3d_data,
     load_post_processed_mediapipe3d_data,
+)
+from src.core_processes.post_process_skeleton_data.estimate_skeleton_segment_lengths import (
+    mediapipe_skeleton_segment_definitions,
+    estimate_skeleton_segment_lengths,
+    save_skeleton_segment_lengths_to_json,
 )
 from src.export_stuff.blender_stuff.export_to_blender import (
     export_to_blender,
@@ -735,6 +742,7 @@ class MainWindow(QMainWindow):
             output_data_folder_path=output_data_folder_path,
             mediapipe_confidence_cutoff_threshold=self._control_panel.process_session_data_panel.mediapipe_confidence_cutoff_threshold,
             auto_process_next_stage=auto_process_next_stage,
+            use_triangulate_ransac=self._control_panel.process_session_data_panel.use_triangulate_ransac_checkbox.isChecked(),
         )
 
     def _setup_and_launch_gap_fill_filter_origin_align_thread_worker(
@@ -784,6 +792,18 @@ class MainWindow(QMainWindow):
         # self._thread_worker_manager.launch_export_to_blender_thread_worker(
         #     get_session_folder_path(self._session_id)
         # )
+        path_to_skeleton_body_csv = get_skeleton_body_csv_path(self._session_id)
+        skeleton_dataframe = pd.read_csv(path_to_skeleton_body_csv)
+
+        skeleton_segment_lengths_dict = estimate_skeleton_segment_lengths(
+            skeleton_dataframe=skeleton_dataframe,
+            skeleton_segment_definitions=mediapipe_skeleton_segment_definitions,
+        )
+
+        save_skeleton_segment_lengths_to_json(
+            get_output_data_folder_path(self._session_id), skeleton_segment_lengths_dict
+        )
+
         blender_file_path = export_to_blender(
             session_folder_path=get_session_folder_path(self._session_id),
             blender_exe_path=self._control_panel.process_session_data_panel.blender_exe_path_str,
@@ -796,6 +816,11 @@ class MainWindow(QMainWindow):
 
     def _open_blender_file(self, blender_file_path: Union[str, Path]):
         logger.info(f"Opening {str(blender_file_path)}")
+
+        if not Path(blender_file_path).exists():
+            logger.error(f"ERROR - {str(blender_file_path)} does not exist!")
+            return
+
         os.startfile(str(blender_file_path))
 
     def _visualize_motion_capture_data(self):

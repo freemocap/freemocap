@@ -124,6 +124,7 @@ class ThreadWorkerManager(QWidget):
         output_data_folder_path: Union[str, Path],
         mediapipe_confidence_cutoff_threshold: float,
         auto_process_next_stage: bool = False,
+        use_triangulate_ransac: bool = False,
     ):
         logger.info("Launching `Triangulate 3d Data` thread worker...")
 
@@ -132,6 +133,7 @@ class ThreadWorkerManager(QWidget):
             mediapipe_2d_data=mediapipe_2d_data,
             output_data_folder_path=output_data_folder_path,
             mediapipe_confidence_cutoff_threshold=mediapipe_confidence_cutoff_threshold,
+            use_triangulate_ransac=use_triangulate_ransac,
         )
 
         self._triangulate_3d_data_thread_worker.start()

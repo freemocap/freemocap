@@ -14,6 +14,7 @@ ANNOTATED_VIDEOS_FOLDER_NAME = "annotated_videos"
 OUTPUT_DATA_FOLDER_NAME = "output_data"
 MOST_RECENT_SESSION_ID_FILENAME = "most_recent_session_id.toml"
 CAMERA_CALIBRATION_FILE_NAME = "camera_calibration_data.toml"
+SKELETON_BODY_CSV_FILE_NAME = "mediapipe_body_3d_xyz.csv"
 
 
 def create_default_session_id(string_tag: str = None):
@@ -127,3 +128,10 @@ def get_session_calibration_toml_file_path(session_id: str) -> str:
         Path(get_session_folder_path(session_id)) / CAMERA_CALIBRATION_FILE_NAME
     )
     return str(calibration_file_path)
+
+
+def get_skeleton_body_csv_path(session_id: str) -> str:
+    skeleton_body_data_path = (
+        Path(get_output_data_folder_path(session_id)) / SKELETON_BODY_CSV_FILE_NAME
+    )
+    return str(skeleton_body_data_path)

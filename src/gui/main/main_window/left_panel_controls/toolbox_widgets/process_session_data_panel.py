@@ -48,6 +48,12 @@ class ProcessSessionDataPanel(QWidget):
         self._triangulate_3d_data_button.setEnabled(True)
         self._layout.addWidget(self._triangulate_3d_data_button)
 
+        self._use_triangulate_ransac_checkbox = QCheckBox(
+            "Use `anipose.triangulate_ransac() - EXPERIMENTAL"
+        )
+        self._use_triangulate_ransac_checkbox.setChecked(False)
+        self._layout.addWidget(self._use_triangulate_ransac_checkbox)
+
         self._mediapipe_confidence_cutoff_form_layout = (
             self._make_mediapipe_confidence_cutoff_layout()
         )
@@ -90,6 +96,10 @@ class ProcessSessionDataPanel(QWidget):
     @property
     def mediapipe_confidence_cutoff_threshold(self) -> float:
         return float(self._mediapipe_confidence_cutoff_line_edit_widget.text())
+
+    @property
+    def use_triangulate_ransac_checkbox(self):
+        return self._use_triangulate_ransac_checkbox
 
     @property
     def convert_npy_to_csv_checkbox(self):

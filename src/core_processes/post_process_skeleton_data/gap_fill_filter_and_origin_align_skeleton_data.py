@@ -560,8 +560,13 @@ def align_skeleton_with_origin_foot_spine_method(
         foot_translated_skeleton_data[good_frame, left_heel_index, :],
     )
 
+    # Original - align heel to point in negative Z
+    # y_aligned_skeleton_data = rotate_skeleton_to_vector(
+    #     heel_vector, -1 * x_vector, foot_translated_skeleton_data
+    # )
+    # JSM changed to align heel to point in positive Z so it works better in blender
     y_aligned_skeleton_data = rotate_skeleton_to_vector(
-        heel_vector, -1 * x_vector, foot_translated_skeleton_data
+        heel_vector, x_vector, foot_translated_skeleton_data
     )
 
     # Rotating the skeleton so that the spine is aligned with +z

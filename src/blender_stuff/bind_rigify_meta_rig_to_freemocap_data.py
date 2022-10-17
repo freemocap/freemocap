@@ -129,19 +129,25 @@ rig_constraint_dict_of_dicts = {
         "IK": {"target": "head_center", "chain_length": 2},
     },
     "face": {
-        "COPY_LOCATION": {"target": "head_center"},
+        "COPY_LOCATION": {"target": "armature", "subtarget": "spine.006"},
         "DAMPED_TRACK": {
-            "target": "mouth_left",
+            "target": "head_center",
+        },
+        "LOCKED_TRACK": {
+            "target": "nose",
             "track_axis": "TRACK_Z",
+            "lock_axis": "LOCK_Y",
             "influence": 1.0,
         },
-        "DAMPED_TRACK.001": {
-            "target": "mouth_left",
+        "LOCKED_TRACK.001": {
+            "target": "left_ear",
             "track_axis": "TRACK_Z",
-            "influence": 0.5,
+            "lock_axis": "LOCK_Z",
+            "influence": 1.0,
         },
     },
     "shoulder.R": {
+        "COPY_LOCATION": {"target": "neck_center"},
         "DAMPED_TRACK": {"target": "right_shoulder"},
     },
     "upper_arm.R": {
@@ -154,6 +160,7 @@ rig_constraint_dict_of_dicts = {
         "DAMPED_TRACK": {"target": "right_index"},
     },
     "shoulder.L": {
+        "COPY_LOCATION": {"target": "neck_center"},
         "DAMPED_TRACK": {"target": "left_shoulder"},
     },
     "upper_arm.L": {
@@ -166,6 +173,7 @@ rig_constraint_dict_of_dicts = {
         "DAMPED_TRACK": {"target": "left_index"},
     },
     "thigh.R": {
+        "COPY_LOCATION": {"target": "right_hip"},
         "DAMPED_TRACK": {"target": "right_knee"},
     },
     "shin.R": {
@@ -175,6 +183,7 @@ rig_constraint_dict_of_dicts = {
         "DAMPED_TRACK": {"target": "right_foot_index"},
     },
     "thigh.L": {
+        "COPY_LOCATION": {"target": "left_hip"},
         "DAMPED_TRACK": {"target": "left_knee"},
     },
     "shin.L": {
@@ -243,10 +252,17 @@ def apply_constraints_to_bone(bone_name: str, bone_constraint_dict: dict, armatu
 
         # generic constraint settings
         if "target" in constrain_parameters_dict:
-            constraint.target = bpy.data.objects[
-                constrain_parameters_dict["target"]
-            ]  # point constraint at relevant empty object
-            print(f"constraint.target: {constraint.target.name}")
+
+            if constrain_parameters_dict["target"] == "armature":
+                constraint.target = armature_rig
+                constraint.subtarget = constrain_parameters_dict["subtarget"]
+                print(f"constraint.target: {constraint.target.name}")
+                print(f"constraint.subtarget: {constraint.target.name}")
+            else:
+                constraint.target = bpy.data.objects[
+                    constrain_parameters_dict["target"]
+                ]  # point constraint at relevant empty object
+                print(f"constraint.target: {constraint.target.name}")
 
         if "influence" in constrain_parameters_dict:
             constraint.influence = constrain_parameters_dict["influence"]
@@ -626,8 +642,6 @@ print(
     f"Saved .blend file to: {blend_file_save_path}\n",
     "You can now open the `.blend` file in Blender and play the animation!\n",
     "Blender is a free-and-open-source software (FOSS) available - learn more here  https://blender.org\n",
-    "(freemocap isn't affiliated with Blender, but I wish we were cuz they're awesome!)\n",
 )
-
 print("____________________________________________________________________________")
 print("____________________________________________________________________________")

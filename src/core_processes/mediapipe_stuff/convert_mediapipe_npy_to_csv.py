@@ -363,3 +363,17 @@ def convert_mediapipe_npy_to_csv(
     )
 
     # %%
+
+
+if __name__ == "__main__":
+
+    mediapipe_3d_frame_trackedPoint_xyz = np.load(
+        r"C:\Users\jonma\freemocap_data\session_10-15-2022-09_50_10\output_data\post_processed_data\mediaPipeSkel_3d_origin_aligned.npy"
+    )
+    output_data_folder_path = (
+        r"C:\Users\jonma\freemocap_data\session_10-15-2022-09_50_10\output_data"
+    )
+
+    convert_mediapipe_npy_to_csv(
+        mediapipe_3d_frame_trackedPoint_xyz, output_data_folder_path
+    )

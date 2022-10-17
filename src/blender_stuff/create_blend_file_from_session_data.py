@@ -26,7 +26,7 @@ def create_blend_file_from_session_data(
     # )
 
     freemocap_blender_megascript_path = (
-        path_to_this_py_file / "create_blend_file_from_freemocap_data.py"
+        path_to_this_py_file / "bind_rigify_meta_rig_to_freemocap_data.py"
     )
 
     try:

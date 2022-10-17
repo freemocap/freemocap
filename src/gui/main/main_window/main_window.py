@@ -6,8 +6,9 @@ from typing import Union
 import pandas as pd
 from PyQt6 import QtGui
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu, QLabel
+from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu
 
+from src.blender_stuff.export_to_blender import export_to_blender
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.home_dir import (
     get_calibration_videos_folder_path,
@@ -19,6 +20,7 @@ from src.config.home_dir import (
     get_freemocap_data_folder_path,
     get_annotated_videos_folder_path,
     get_skeleton_body_csv_path,
+    get_blender_file_path,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
@@ -34,15 +36,14 @@ from src.core_processes.mediapipe_stuff.load_mediapipe2d_data import (
 from src.core_processes.mediapipe_stuff.load_mediapipe3d_data import (
     load_raw_mediapipe3d_data,
     load_post_processed_mediapipe3d_data,
+    load_skeleton_reprojection_error_data,
 )
 from src.core_processes.post_process_skeleton_data.estimate_skeleton_segment_lengths import (
     mediapipe_skeleton_segment_definitions,
     estimate_skeleton_segment_lengths,
     save_skeleton_segment_lengths_to_json,
 )
-from src.export_stuff.blender_stuff.export_to_blender import (
-    export_to_blender,
-)
+
 from src.gui.main.app import get_qt_app
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
@@ -453,7 +454,7 @@ class MainWindow(QMainWindow):
 
         self._thread_worker_manager.start_convert_npy_to_to_csv_signal.connect(
             lambda: self._setup_and_launch_convert_npy_to_csv_thread_worker(
-                auto_process_next_stage=True
+                auto_process_next_stage=False
             )
         )
 
@@ -751,6 +752,9 @@ class MainWindow(QMainWindow):
         output_data_folder_path = Path(get_output_data_folder_path(self._session_id))
 
         skel3d_frame_marker_xyz = load_raw_mediapipe3d_data(output_data_folder_path)
+        skeleton_reprojection_error_fr_mar = load_skeleton_reprojection_error_data(
+            output_data_folder_path
+        )
 
         data_save_path = output_data_folder_path / "post_processed_data"
         data_save_path.mkdir(exist_ok=True)
@@ -761,6 +765,7 @@ class MainWindow(QMainWindow):
 
         self._thread_worker_manager.launch_post_process_3d_data_thread_worker(
             skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
             data_save_path=data_save_path,
             sampling_rate=sampling_rate,
             cut_off=cut_off,
@@ -812,10 +817,14 @@ class MainWindow(QMainWindow):
         if (
             self._control_panel.record_motion_capture_videos_panel.open_in_blender_automatically_checkbox.isChecked()
         ):
-            self._open_blender_file(blender_file_path)
+            if blender_file_path:
+                self._open_blender_file(blender_file_path)
 
     def _open_blender_file(self, blender_file_path: Union[str, Path]):
         logger.info(f"Opening {str(blender_file_path)}")
+
+        if blender_file_path is False:
+            blender_file_path = get_blender_file_path(self._session_id)
 
         if not Path(blender_file_path).exists():
             logger.error(f"ERROR - {str(blender_file_path)} does not exist!")

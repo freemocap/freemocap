@@ -22,6 +22,7 @@ class PostProcess3dDataThreadWorker(QThread):
     def __init__(
         self,
         skel3d_frame_marker_xyz: np.ndarray,
+        skeleton_reprojection_error_fr_mar: np.ndarray,
         data_save_path: Union[str, Path],
         sampling_rate: int,
         cut_off: float,
@@ -30,6 +31,7 @@ class PostProcess3dDataThreadWorker(QThread):
     ):
         super().__init__()
         self.skel3d_frame_marker_xyz = skel3d_frame_marker_xyz
+        self.skeleton_reprojection_error_fr_mar = skeleton_reprojection_error_fr_mar
         self.data_save_path = data_save_path
         self.sample_rate = sampling_rate
         self.cut_off = cut_off
@@ -39,6 +41,7 @@ class PostProcess3dDataThreadWorker(QThread):
     def run(self):
         gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
             self.skel3d_frame_marker_xyz,
+            skeleton_reprojection_error_fr_mar=self.skeleton_reprojection_error_fr_mar,
             data_arrays_path=self.data_save_path,
             sampling_rate=self.sample_rate,
             cut_off=self.cut_off,

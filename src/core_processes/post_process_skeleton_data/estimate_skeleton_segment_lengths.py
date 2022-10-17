@@ -52,11 +52,11 @@ def estimate_skeleton_segment_lengths(
 
     skeleton_segment_lengths_dict = {}
     for segment_name, segment_definition_dict in skeleton_segment_definitions.items():
-        # print(
-        #     f"Estimating length of segment '{segment_name}' "
-        #     f"based on proximal joint: '{segment_definition_dict['proximal']}' and "
-        #     f"distal joint:'{segment_definition_dict['distal']}'"
-        # )
+        print(
+            f"Estimating length of segment '{segment_name}' "
+            f"based on proximal joint: '{segment_definition_dict['proximal']}' and "
+            f"distal joint:'{segment_definition_dict['distal']}'"
+        )
         proximal_joint_name = segment_definition_dict["proximal"]
         distal_joint_name = segment_definition_dict["distal"]
 
@@ -67,6 +67,11 @@ def estimate_skeleton_segment_lengths(
         distal_x = skeleton_data_dictionary[f"{distal_joint_name}_x"]
         distal_y = skeleton_data_dictionary[f"{distal_joint_name}_y"]
         distal_z = skeleton_data_dictionary[f"{distal_joint_name}_z"]
+
+        logger.debug(f"proximal_x nans: {np.isnan(proximal_x).sum()}")
+        logger.debug(f"len proximal_x: {len(proximal_x)}")
+        logger.debug(f"distal_x nans: {np.isnan(distal_x).sum()}")
+        logger.debug(f"len distal_x: {len(distal_x)}")
 
         # good ol pythag <3
         segment_length_per_frame = np.sqrt(
@@ -159,15 +164,8 @@ if __name__ == "__main__":
     )
     skeleton_dataframe = pd.read_csv(path_to_skeleton_body_csv)
 
-    estimate_skeleton_segment_lengths(
+    skeleton_segment_lengths = estimate_skeleton_segment_lengths(
         skeleton_dataframe, mediapipe_skeleton_segment_definitions
     )
 
-    skeleton_data_dictionary_in = (
-        create_skeleton_dictionary_from_skeleton_body_data_frame(skeleton_dataframe)
-    )
-
-    skeleton_segment_lengths = estimate_skeleton_segment_lengths(
-        skeleton_data_dictionary_in, mediapipe_skeleton_segment_definitions
-    )
     print(skeleton_segment_lengths)

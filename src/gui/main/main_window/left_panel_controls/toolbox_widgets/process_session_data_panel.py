@@ -1,7 +1,5 @@
 import logging
 
-import numpy as np
-from PyQt6 import QtCore
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -13,11 +11,11 @@ from PyQt6.QtWidgets import (
     QLabel,
 )
 
+from src.blender_stuff.get_best_guess_of_blender_path import (
+    get_best_guess_of_blender_path,
+)
 from src.core_processes.mediapipe_stuff.mediapipe_default_settings import (
     default_mediapipe_confidence_threshold,
-)
-from src.export_stuff.blender_stuff.get_best_guess_of_blender_path import (
-    get_best_guess_of_blender_path,
 )
 
 from src.gui.main.tool_tips.tool_tips_strings import (

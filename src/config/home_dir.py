@@ -12,6 +12,7 @@ SYNCHRONIZED_VIDEOS_FOLDER_NAME = "synchronized_videos"
 CALIBRATION_VIDEOS_FOLDER_NAME = "calibration_videos"
 ANNOTATED_VIDEOS_FOLDER_NAME = "annotated_videos"
 OUTPUT_DATA_FOLDER_NAME = "output_data"
+DIAGNOSTIC_PLOTS_FOLDER_NAME = "diagnostic_plots"
 MOST_RECENT_SESSION_ID_FILENAME = "most_recent_session_id.toml"
 CAMERA_CALIBRATION_FILE_NAME = "camera_calibration_data.toml"
 SKELETON_BODY_CSV_FILE_NAME = "mediapipe_body_3d_xyz.csv"
@@ -135,3 +136,9 @@ def get_skeleton_body_csv_path(session_id: str) -> str:
         Path(get_output_data_folder_path(session_id)) / SKELETON_BODY_CSV_FILE_NAME
     )
     return str(skeleton_body_data_path)
+
+
+def get_blender_file_path(session_id: str) -> str:
+    blend_file_name = session_id + ".blend"
+    blender_file_path = Path(get_output_data_folder_path(session_id)) / blend_file_name
+    return str(blender_file_path)

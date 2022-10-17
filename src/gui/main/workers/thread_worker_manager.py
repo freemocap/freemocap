@@ -147,6 +147,7 @@ class ThreadWorkerManager(QWidget):
     def launch_post_process_3d_data_thread_worker(
         self,
         skel3d_frame_marker_xyz: np.ndarray,
+        skeleton_reprojection_error_fr_mar: np.ndarray,
         data_save_path: Union[str, Path],
         sampling_rate: int,
         cut_off: float,
@@ -157,6 +158,7 @@ class ThreadWorkerManager(QWidget):
         logger.info("Launching `Post Process 3d Data` thread worker...")
         self._post_process_3d_data_thread_worker = PostProcess3dDataThreadWorker(
             skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
             data_save_path=data_save_path,
             sampling_rate=sampling_rate,
             cut_off=cut_off,

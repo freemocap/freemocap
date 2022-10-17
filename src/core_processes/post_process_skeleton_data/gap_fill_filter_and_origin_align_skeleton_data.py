@@ -27,6 +27,8 @@ def find_good_clean_frame(skeleton_3d_fr_mar_xyz, skeleton_reprojection_error_fr
     marker_velocity_per_frame = np.nanmedian(
         np.abs(np.diff(skeleton_3d_fr_mar_xyz, axis=1)), axis=1
     )
+    marker_velocity_per_frame = np.nanmean(np.abs(marker_velocity_per_frame), axis=1)
+
     print(f"nans_per_frame.shape: {nans_per_frame.shape}")
     print(f"reprojection_error_per_frame.shape: {reprojection_error_per_frame.shape}")
     print(f"marker_velocity_per_frame.shape: {marker_velocity_per_frame.shape}")
@@ -50,19 +52,21 @@ def find_good_clean_frame(skeleton_3d_fr_mar_xyz, skeleton_reprojection_error_fr
         f"marker_velocity_per_frame_normalized (mean, [standard_deviation] : {np.nanmean(marker_velocity_per_frame_normalized):.3f} [{np.nanstd(marker_velocity_per_frame_normalized):.3f}]"
     )
 
-    frame_cleanliness_score = (
+    frame_cleanliness_score_where_low_scores_are_good = (
         nans_per_frame_normalized
         + reprojection_error_per_frame_normalized
         + marker_velocity_per_frame_normalized
     )
 
-    good_clean_frame_number = np.nanargmin(frame_cleanliness_score)
+    good_clean_frame_number = np.nanargmin(
+        frame_cleanliness_score_where_low_scores_are_good
+    )
     print(f"----estimated good_clean_frame_number: {good_clean_frame_number}----")
     return good_clean_frame_number
 
 
 # %%
-def interpolate_freemocap_data(freemocap_marker_data: np.ndarray) -> np.ndarray:
+def fill_gaps_in_freemocap_data(freemocap_marker_data: np.ndarray) -> np.ndarray:
     """Takes in a 3d skeleton numpy array from freemocap and interpolates missing NaN values"""
     num_frames = freemocap_marker_data.shape[0]
     num_markers = freemocap_marker_data.shape[1]
@@ -102,19 +106,21 @@ def butterworth_lowpass_zerolag_filter(data, cutoff, sampling_rate, order):
     return y
 
 
-def filter_skeleton(skeleton_3d_data, cutoff, sampling_rate, order):
+def butterworth_filter_skeleton(skeleton_3d_data, cutoff, sampling_rate, order):
     """Take in a 3d skeleton numpy array and run a low pass butterworth filter on each marker in the data"""
     num_frames = skeleton_3d_data.shape[0]
     num_markers = skeleton_3d_data.shape[1]
-    filtered_data = np.empty((num_frames, num_markers, 3))
+    butterworth_filtered_data = np.empty((num_frames, num_markers, 3))
 
     for marker in range(num_markers):
         for x in range(3):
-            filtered_data[:, marker, x] = butterworth_lowpass_zerolag_filter(
+            butterworth_filtered_data[
+                :, marker, x
+            ] = butterworth_lowpass_zerolag_filter(
                 skeleton_3d_data[:, marker, x], cutoff, sampling_rate, order
             )
 
-    return filtered_data
+    return butterworth_filtered_data
 
 
 # %%
@@ -167,10 +173,10 @@ def find_best_velocity_guess(
 
     print(
         f"sum nan right heel: {np.sum(np.isnan(skeleton_data_velocity_x_right_heel))}, "
-        f"sum nan right toe: {np.sum(np.isnan(skeleton_data_velocity_x_right_toe))}, "
-        f"sum nan left heel: {np.sum(np.isnan(skeleton_data_velocity_x_left_heel))}, "
-        f"sum nan left toe: {np.sum(np.isnan(skeleton_data_velocity_x_left_toe))}, "
-        f"num frames: {len(skeleton_data_velocity_x_right_heel)}"
+        f"\nsum nan right toe: {np.sum(np.isnan(skeleton_data_velocity_x_right_toe))}, "
+        f"\nsum nan left heel: {np.sum(np.isnan(skeleton_data_velocity_x_left_heel))}, "
+        f"\nsum nan left toe: {np.sum(np.isnan(skeleton_data_velocity_x_left_toe))}, "
+        f"\nnum frames: {len(skeleton_data_velocity_x_right_heel)}"
     )
 
     # get a list of the frames where the velocity for that marker is within the velocity limit
@@ -426,8 +432,8 @@ def rotate_skeleton_frame(this_frame_aligned_skeleton_data, rotation_matrix):
 
 
 def rotate_skeleton_to_vector(
-    reference_vector: np.ndarray,
-    vector_to_rotate_to: np.ndarray,
+    reference_vector_on_the_skeleton: np.ndarray,
+    world_vector_to_align_skeleton_vector_to: np.ndarray,
     original_skeleton_np_array: np.ndarray,
 ) -> np.ndarray:
     """
@@ -444,9 +450,9 @@ def rotate_skeleton_to_vector(
     """
 
     num_frames = original_skeleton_np_array.shape[0]
-    reference_unit_vector = calculate_unit_vector(reference_vector)
+    reference_unit_vector = calculate_unit_vector(reference_vector_on_the_skeleton)
     rotation_matrix = calculate_rotation_matrix(
-        reference_unit_vector, vector_to_rotate_to
+        reference_unit_vector, world_vector_to_align_skeleton_vector_to
     )
 
     rotated_skeleton_data_array = np.zeros(original_skeleton_np_array.shape)
@@ -459,9 +465,50 @@ def rotate_skeleton_to_vector(
 
 
 # %%
+def align_skeleton_with_origin_mean_blob_method(
+    skeleton_3d_frame_landmark_xyz: np.ndarray,
+) -> np.ndarray:
+    """get stats of skeleton postions and align with origin and point upwards based on that"""
+    skeleton_3d_frame_landmark_xyz_og = skeleton_3d_frame_landmark_xyz.copy()
+
+    # get the mean of the skeleton
+    skel_median_x = np.nanmedian(skeleton_3d_frame_landmark_xyz[:, :, 0])
+    skel_median_y = np.nanmedian(skeleton_3d_frame_landmark_xyz[:, :, 1])
+    skel_median_z = np.nanmedian(skeleton_3d_frame_landmark_xyz[:, :, 2])
+
+    # translate the skeleton to the origin
+    skeleton_3d_frame_landmark_xyz[:, :, 0] = (
+        skeleton_3d_frame_landmark_xyz[:, :, 0] - skel_median_x
+    )
+    skeleton_3d_frame_landmark_xyz[:, :, 1] = (
+        skeleton_3d_frame_landmark_xyz[:, :, 1] - skel_median_y
+    )
+    skeleton_3d_frame_landmark_xyz[:, :, 2] = (
+        skeleton_3d_frame_landmark_xyz[:, :, 2] - skel_median_z
+    )
+
+    skeleton_3d_frame_landmark_xyz_translated = skeleton_3d_frame_landmark_xyz.copy()
+
+    # pull out head markers to define 'up'
+    # (mediapipe - frames 0-10 are the head)
+    head_median_x = np.nanmedian(skeleton_3d_frame_landmark_xyz[:10, :, 0])
+    head_median_y = np.nanmedian(skeleton_3d_frame_landmark_xyz[:10, :, 1])
+    head_median_z = np.nanmedian(skeleton_3d_frame_landmark_xyz[:10, :, 2])
+
+    skeleton_up_vector = np.array([head_median_x, head_median_y, head_median_z])
+    world_up_vector = np.array([0, 0, 1])
+
+    # rotate the skeleton to point upwards
+    skeleton_3d_frame_landmark_xyz = rotate_skeleton_to_vector(
+        reference_vector_on_the_skeleton=skeleton_up_vector,
+        world_vector_to_align_skeleton_vector_to=world_up_vector,
+        original_skeleton_np_array=skeleton_3d_frame_landmark_xyz,
+    )
+
+    return skeleton_3d_frame_landmark_xyz
 
 
-def align_skeleton_with_origin(
+def align_skeleton_with_origin_foot_spine_method(
     skeleton_data: np.ndarray, skeleton_indices: list, good_frame: int
 ) -> tuple:
     """
@@ -857,10 +904,11 @@ def reformat_segment_COM(segment_COM_frame_dict, num_frame_range, num_segments):
 def calculate_total_body_COM(
     segment_conn_len_perc_dataframe, segment_COM_frame_dict, num_frame_range
 ):
+    logger.info("Calculating Total Body Center of Mass")
     totalBodyCOM_frame_XYZ = np.empty([int(len(num_frame_range)), 3])
 
     for frame in track(
-        num_frame_range, description="Calculating Total Body Center of Mass"
+        num_frame_range, description="Calculating Total Body Center of Mass..."
     ):
 
         this_frame_total_body_percentages = []
@@ -942,6 +990,7 @@ def run(
 # %%
 def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     skel3d_frame_marker_xyz: np.ndarray,
+    skeleton_reprojection_error_fr_mar: np.ndarray,
     data_arrays_path: [str, Path],
     # Filter the data, set the filtering options here
     sampling_rate: Union[float, int],
@@ -949,39 +998,48 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     order: Union[float, int],
     reference_frame_number: Union[float, int] = None,
 ):
-    # Interpolate the data
-    freemocap_interpolated_data = interpolate_freemocap_data(skel3d_frame_marker_xyz)
 
-    # Filter the data
-    freemocap_filtered_marker_data = filter_skeleton(
+    data_arrays_path = Path(data_arrays_path)
+
+    logger.info("Gap-filling data...")
+    # Interpolate the data
+    freemocap_interpolated_data = fill_gaps_in_freemocap_data(skel3d_frame_marker_xyz)
+
+    logger.info(
+        f"Filtering data at with a {order}th order, zero-lag, low-pass Butterworth filter with a cut-off frequency of {cut_off} Hz..."
+    )
+    freemocap_filtered_marker_data = butterworth_filter_skeleton(
         freemocap_interpolated_data, cut_off, sampling_rate, order
     )
     np.save(
-        data_arrays_path / "mediaPipeSkel_3d_filtered", freemocap_filtered_marker_data
+        str(data_arrays_path / "mediaPipeSkel_3d_filtered"),
+        freemocap_filtered_marker_data,
     )
 
-    # add the good frame finder
+    # # Align the data
+    # if reference_frame_number is None:
+    #     reference_frame_number = find_good_clean_frame(
+    #         skeleton_3d_fr_mar_xyz=freemocap_filtered_marker_data,
+    #         skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
+    #     )
+    #
+    # freemocap_alignment_marker_data_tuple = (
+    #     align_skeleton_with_origin_foot_spine_method(
+    #         freemocap_filtered_marker_data, mediapipe_indices, reference_frame_number
+    #     )
+    # )
+    # origin_aligned_freemocap_marker_data = freemocap_alignment_marker_data_tuple[0]
 
-    # Align the data
-    if reference_frame_number is None:
-        reference_frame_number = 0
-        # print("Finding good frame to align data with origin ")
-        # reference_frame_number = find_good_frame(
-        #     freemocap_filtered_marker_data, mediapipe_indices, 0.3
-        # )
-
-    freemocap_alignment_marker_data_tuple = align_skeleton_with_origin(
-        freemocap_filtered_marker_data, mediapipe_indices, reference_frame_number
+    origin_aligned_freemocap_marker_data = align_skeleton_with_origin_mean_blob_method(
+        freemocap_filtered_marker_data
     )
-    origin_aligned_freemocap_marker_data = freemocap_alignment_marker_data_tuple[0]
     logger.info("Saving Origin Aligned Data")
     np.save(
-        data_arrays_path / "mediaPipeSkel_3d_origin_aligned",
+        str(data_arrays_path / "mediaPipeSkel_3d_origin_aligned"),
         origin_aligned_freemocap_marker_data,
     )
 
     # Calculate segment and total body COM
-    print("Calculating COM")
     anthropometric_info_dataframe = build_anthropometric_dataframe(
         segments, joint_connections, segment_COM_lengths, segment_COM_percentages
     )
@@ -1001,11 +1059,38 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     )
 
     np.save(
-        data_arrays_path / "segmentedCOM_frame_joint_XYZ.npy",
+        str(data_arrays_path / "segmentedCOM_frame_joint_XYZ.npy"),
         segment_COM_frame_imgPoint_XYZ,
     )
-    np.save(data_arrays_path / "totalBodyCOM_frame_XYZ.npy", totalBodyCOM_frame_XYZ)
-    open_file = open(data_arrays_path / "mediapipe_skeleton_segments_dict.pkl", "wb")
+    np.save(
+        str(data_arrays_path / "totalBodyCOM_frame_XYZ.npy"), totalBodyCOM_frame_XYZ
+    )
+    open_file = open(
+        str(data_arrays_path / "mediapipe_skeleton_segments_dict.pkl"), "wb"
+    )
     pickle.dump(skelcoordinates_frame_segment_joint_XYZ, open_file)
     open_file.close()
-    # Save filtered data here
+
+    logger.info("Done with gap filling, filtering, aligning, and COM calculation")
+
+
+if __name__ == "__main__":
+    mediapipe_3d_frame_trackedPoint_xyz = np.load(
+        r"C:\Users\jonma\freemocap_data\session_10-15-2022-09_50_10\output_data\raw_data\mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+    )
+    skeleton_reprojection_error_fr_mar = np.load(
+        r"C:\Users\jonma\freemocap_data\session_10-15-2022-09_50_10\output_data\raw_data\mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+    )
+    output_data_folder_path = (
+        r"C:\Users\jonma\freemocap_data\session_10-15-2022-09_50_10\output_data"
+    )
+    gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
+        mediapipe_3d_frame_trackedPoint_xyz,
+        skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
+        data_arrays_path=output_data_folder_path,
+        sampling_rate=30,
+        cut_off=7,
+        order=4,
+        reference_frame_number=None,
+    )
+    print("Done :D  ")

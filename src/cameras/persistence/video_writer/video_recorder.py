@@ -1,5 +1,4 @@
 import logging
-import os
 import traceback
 from pathlib import Path
 from typing import List, Union
@@ -9,9 +8,6 @@ import numpy as np
 import pandas as pd
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
-from src.cameras.create_timestamp_diagnostic_plots import (
-    create_timestamp_diagnostic_plots,
-)
 
 logger = logging.getLogger(__name__)
 

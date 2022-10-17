@@ -356,9 +356,12 @@ class Camera:
         )
         return out
 
-    def reprojection_error(self, p3d, p2d):
-        proj = self.project(p3d).reshape(p2d.shape)
-        return p2d - proj
+    def single_camera_reprojection_error(self, p3d, p2d):
+        projecting_3d_points_onto_2d_image_plane_og = self.project(p3d)
+        projecting_3d_points_onto_2d_image_plane = (
+            projecting_3d_points_onto_2d_image_plane_og.reshape(p2d.shape)
+        )
+        return p2d - projecting_3d_points_onto_2d_image_plane
 
     def copy(self):
         return Camera(
@@ -687,7 +690,7 @@ class CameraGroup:
         errors = np.empty((n_cams, n_points, 2))
 
         for cnum, cam in enumerate(self.cameras):
-            errors[cnum] = cam.reprojection_error(p3ds, p2ds[cnum])
+            errors[cnum] = cam.single_camera_reprojection_error(p3ds, p2ds[cnum])
 
         if mean:
             errors_norm = np.linalg.norm(errors, axis=2)

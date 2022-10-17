@@ -45,7 +45,7 @@ def create_blend_file_from_session_data(
         + " --python "
         + str(freemocap_blender_megascript_path)
         + " -- "
-        + session_folder_path
+        + str(session_folder_path)
         + " "
         + str(good_clean_frame_number)
     )

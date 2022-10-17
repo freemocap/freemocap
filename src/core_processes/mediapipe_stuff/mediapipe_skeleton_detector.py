@@ -9,16 +9,11 @@ import mediapipe as mp
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from src.config.home_dir import (
-    get_session_folder_path,
-    get_synchronized_videos_folder_path,
-    get_output_data_folder_path,
-)
+
 from src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
 )
 
-from src.gui.main.app_state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +165,7 @@ class MediaPipeSkeletonDetector:
         path_to_folder_of_videos_to_process: Union[Path, str],
         output_data_folder_path: Union[str, Path],
         save_annotated_videos: bool = True,
-    ):
+    ) -> np.ndarray:
 
         path_to_folder_of_videos_to_process = Path(path_to_folder_of_videos_to_process)
 
@@ -290,7 +285,7 @@ class MediaPipeSkeletonDetector:
             data2d_numCams_numFrames_numTrackedPts_XY=data2d_numCams_numFrames_numTrackedPts_XY,
             output_data_folder_path=Path(output_data_folder_path),
         )
-        return str(mediapipe_data_2d_npy_path)
+        return data2d_numCams_numFrames_numTrackedPts_XY
 
     def _save_mediapipe2d_data_to_npy(
         self,

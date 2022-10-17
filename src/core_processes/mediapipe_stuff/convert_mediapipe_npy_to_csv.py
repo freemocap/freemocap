@@ -3,8 +3,8 @@ import logging
 from pathlib import Path
 from typing import Union
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from mediapipe.python.solutions import holistic as mp_holistic
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,6 @@ def convert_mediapipe_npy_to_csv(
     mediapipe_3d_frame_trackedPoint_xyz: np.ndarray,
     output_data_folder_path: Union[str, Path],
 ):
-
     logger.info(
         f"Converting npy data with shape: {mediapipe_3d_frame_trackedPoint_xyz.shape} into `csv` and smaller `npy` files"
     )
@@ -366,7 +365,6 @@ def convert_mediapipe_npy_to_csv(
 
 
 if __name__ == "__main__":
-
     mediapipe_3d_frame_trackedPoint_xyz = np.load(
         r"C:\Users\jonma\freemocap_data\session_10-15-2022-09_50_10\output_data\post_processed_data\mediaPipeSkel_3d_origin_aligned.npy"
     )

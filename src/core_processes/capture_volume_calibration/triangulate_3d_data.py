@@ -148,6 +148,11 @@ def triangulate_3d_data(
         data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_error_data3d_numFrames_numTrackedPoints,
         output_data_folder_path=output_data_folder_path,
     )
+    # TODO - don't output multiple variables, make this a dataclass/BAG pattern or something
+    return (
+        spatial_data3d_numFrames_numTrackedPoints_XYZ,
+        reprojection_error_data3d_numFrames_numTrackedPoints,
+    )
 
 
 def save_mediapipe_3d_data_to_npy(

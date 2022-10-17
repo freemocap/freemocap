@@ -68,10 +68,10 @@ def estimate_skeleton_segment_lengths(
         distal_y = skeleton_data_dictionary[f"{distal_joint_name}_y"]
         distal_z = skeleton_data_dictionary[f"{distal_joint_name}_z"]
 
-        logger.debug(f"proximal_x nans: {np.isnan(proximal_x).sum()}")
-        logger.debug(f"len proximal_x: {len(proximal_x)}")
-        logger.debug(f"distal_x nans: {np.isnan(distal_x).sum()}")
-        logger.debug(f"len distal_x: {len(distal_x)}")
+        # logger.debug(f"proximal_x nans: {np.isnan(proximal_x).sum()}")
+        # logger.debug(f"len proximal_x: {len(proximal_x)}")
+        # logger.debug(f"distal_x nans: {np.isnan(distal_x).sum()}")
+        # logger.debug(f"len distal_x: {len(distal_x)}")
 
         # good ol pythag <3
         segment_length_per_frame = np.sqrt(

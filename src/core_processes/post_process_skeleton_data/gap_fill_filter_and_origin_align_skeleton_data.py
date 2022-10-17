@@ -12,7 +12,9 @@ from scipy import signal
 logger = logging.getLogger(__name__)
 
 
-def find_good_clean_frame(skeleton_3d_fr_mar_xyz, skeleton_reprojection_error_fr_mar):
+def find_good_clean_frame_reprojection_error_method(
+    skeleton_3d_fr_mar_xyz, skeleton_reprojection_error_fr_mar
+):
     """
     Find the frame with the fewest nans, scaled by reprojection error (i.e. hopefully a frame where all tracked points are visible and well tracked)
     """
@@ -240,7 +242,7 @@ def find_best_velocity_guess(
 # %%
 
 
-def find_good_frame(
+def find_good_frame_recursive_guess_method(
     skeleton_data, skeleton_indices: list, initial_velocity_guess: float, debug=False
 ):
     """
@@ -587,7 +589,7 @@ def align_skeleton_with_origin_foot_spine_method(
 
 
 # %%
-mediapipe_indices = [
+mediapipe_landmark_names = [
     "nose",
     "left_eye_inner",
     "left_eye",
@@ -988,6 +990,51 @@ def run(
 
 
 # %%
+def are_there_feet_in_this_mediapipe_skeleton_data(
+    skeleton3d_frame_landmark_xyz, mediapipe_landmark_names
+):
+    number_of_frames = skeleton3d_frame_landmark_xyz.shape[0]
+
+    number_nan_left_heel = np.sum(
+        np.isnan(
+            skeleton3d_frame_landmark_xyz[
+                :, mediapipe_landmark_names.index("left_heel"), 0
+            ]
+        )
+    )
+    number_nan_right_heel = np.sum(
+        np.isnan(
+            skeleton3d_frame_landmark_xyz[
+                :, mediapipe_landmark_names.index("right_heel"), 0
+            ]
+        )
+    )
+    number_nan_left_toe = np.sum(
+        np.isnan(
+            skeleton3d_frame_landmark_xyz[
+                :, mediapipe_landmark_names.index("left_foot_index"), 0
+            ]
+        )
+    )
+    number_nan_right_toe = np.sum(
+        np.isnan(
+            skeleton3d_frame_landmark_xyz[
+                :, mediapipe_landmark_names.index("right_foot_index"), 0
+            ]
+        )
+    )
+
+    no_left_heel = number_nan_left_heel == number_of_frames
+    no_right_heel = number_nan_right_heel == number_of_frames
+    no_left_toe = number_nan_left_toe == number_of_frames
+    no_right_toe = number_nan_right_toe == number_of_frames
+
+    if no_left_heel and no_right_heel and no_left_toe and no_right_toe:
+        return False
+    else:
+        return True
+
+
 def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     skel3d_frame_marker_xyz: np.ndarray,
     skeleton_reprojection_error_fr_mar: np.ndarray,
@@ -1016,23 +1063,36 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
         freemocap_filtered_marker_data,
     )
 
-    # # Align the data
-    # if reference_frame_number is None:
-    #     reference_frame_number = find_good_clean_frame(
+    logger.info("Aligning data to the origin...")
+
+    #     reference_frame_number = find_good_clean_frame_reprojection_error_method(
     #         skeleton_3d_fr_mar_xyz=freemocap_filtered_marker_data,
     #         skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
     #     )
-    #
-    # freemocap_alignment_marker_data_tuple = (
-    #     align_skeleton_with_origin_foot_spine_method(
-    #         freemocap_filtered_marker_data, mediapipe_indices, reference_frame_number
-    #     )
-    # )
-    # origin_aligned_freemocap_marker_data = freemocap_alignment_marker_data_tuple[0]
-
-    origin_aligned_freemocap_marker_data = align_skeleton_with_origin_mean_blob_method(
-        freemocap_filtered_marker_data
+    has_feet = are_there_feet_in_this_mediapipe_skeleton_data(
+        freemocap_filtered_marker_data, mediapipe_landmark_names
     )
+    use_blob_method = False
+    if has_feet:
+        reference_frame_number = find_good_frame_recursive_guess_method(
+            freemocap_filtered_marker_data, mediapipe_landmark_names, 0.3
+        )
+
+        logger.info("Using the foot/spine method of alignment...")
+        freemocap_alignment_marker_data_tuple = (
+            align_skeleton_with_origin_foot_spine_method(
+                freemocap_filtered_marker_data,
+                mediapipe_landmark_names,
+                reference_frame_number,
+            )
+        )
+        origin_aligned_freemocap_marker_data = freemocap_alignment_marker_data_tuple[0]
+    else:  # no feet
+        logger.info("Using the skelly blob method of alignment...")
+        origin_aligned_freemocap_marker_data = (
+            align_skeleton_with_origin_mean_blob_method(freemocap_filtered_marker_data)
+        )
+
     logger.info("Saving Origin Aligned Data")
     np.save(
         str(data_arrays_path / "mediaPipeSkel_3d_origin_aligned"),
@@ -1046,7 +1106,7 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     skelcoordinates_frame_segment_joint_XYZ = build_mediapipe_skeleton(
         origin_aligned_freemocap_marker_data,
         anthropometric_info_dataframe,
-        mediapipe_indices,
+        mediapipe_landmark_names,
     )
     (
         segment_COM_frame_dict,

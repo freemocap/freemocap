@@ -30,7 +30,9 @@ except:
         "we appear to be running from the Blender Scripting tab! Manually enter your `session_path` at line 23"
     )
     # TODO - This should point to some kinda online-hosted demo session data or something
-    session_path = Path(r"[path_to_session_file]")
+    session_path = Path(
+        r"D:\Dropbox\FreeMoCapProject\teddy_animation\FreeMocap_Data\sesh_2022-10-01_13_38_04_paul_dance_2"
+    )
     good_clean_frame_number = (
         0  # pick a frame where subject is in a good pose (e.g. T- or A-pose
     )
@@ -194,6 +196,85 @@ rig_constraint_dict_of_dicts = {
     },
 }
 
+# connects the dots what for to make the stick figure friend
+stick_figure_mesh_edges_list_of_lists = [
+    ["head_center", "nose"],
+    ["nose", "left_eye_inner"],
+    ["left_eye_inner", "left_eye"],
+    ["left_eye", "left_eye_outer"],
+    ["left_eye_outer", "left_ear"],
+    ["nose", "right_eye_inner"],
+    ["right_eye_inner", "right_eye"],
+    ["right_eye", "right_eye_outer"],
+    ["right_eye_outer", "right_ear"],
+    ["nose", "mouth_right"],
+    ["mouth_right", "mouth_left"],
+    ["nose", "mouth_left"],
+    ["left_elbow", "left_wrist"],
+    ["left_shoulder", "left_elbow"],
+    ["neck_center", "left_shoulder"],
+    ["right_elbow", "right_wrist"],
+    ["right_shoulder", "right_elbow"],
+    ["neck_center", "right_shoulder"],
+    ["left_hip", "left_knee"],
+    ["left_knee", "left_ankle"],
+    ["left_heel", "left_ankle"],
+    ["left_ankle", "left_foot_index"],
+    ["left_foot_index", "left_heel"],
+    ["right_hip", "right_knee"],
+    ["right_knee", "right_ankle"],
+    ["right_heel", "right_ankle"],
+    ["right_ankle", "right_foot_index"],
+    ["right_foot_index", "right_heel"],
+    ["hips_center", "left_hip"],
+    ["hips_center", "right_hip"],
+    ["hips_center", "neck_center"],
+    ["neck_center", "head_center"],
+    ["head_center", "nose"],
+    # right hand
+    ["right_wrist", "right_hand_index_finger_mcp"],
+    ["right_wrist", "right_hand_middle_finger_mcp"],
+    ["right_wrist", "right_hand_ring_finger_mcp"],
+    ["right_wrist", "right_hand_pinky_finger_mcp"],
+    ["right_wrist", "right_hand_thumb_cmc"],
+    ["right_hand_thumb_cmc", "right_hand_thumb_mcp"],
+    ["right_hand_thumb_mcp", "right_hand_thumb_ip"],
+    ["right_hand_thumb_ip", "right_hand_thumb_tip"],
+    ["right_hand_index_finger_mcp", "right_hand_index_finger_pip"],
+    ["right_hand_index_finger_pip", "right_hand_index_finger_dip"],
+    ["right_hand_index_finger_dip", "right_hand_index_finger_tip"],
+    ["right_hand_middle_finger_mcp", "right_hand_middle_finger_pip"],
+    ["right_hand_middle_finger_pip", "right_hand_middle_finger_dip"],
+    ["right_hand_middle_finger_dip", "right_hand_middle_finger_tip"],
+    ["right_hand_ring_finger_mcp", "right_hand_ring_finger_pip"],
+    ["right_hand_ring_finger_pip", "right_hand_ring_finger_dip"],
+    ["right_hand_ring_finger_dip", "right_hand_ring_finger_tip"],
+    ["right_hand_pinky_finger_mcp", "right_hand_pinky_finger_pip"],
+    ["right_hand_pinky_finger_pip", "right_hand_pinky_finger_dip"],
+    ["right_hand_pinky_finger_dip", "right_hand_pinky_finger_tip"],
+    # left hand
+    ["left_wrist", "left_hand_thumb_cmc"],
+    ["left_hand_thumb_cmc", "left_hand_thumb_mcp"],
+    ["left_hand_thumb_mcp", "left_hand_thumb_ip"],
+    ["left_hand_thumb_ip", "left_hand_thumb_tip"],
+    ["left_wrist", "left_hand_index_finger_mcp"],
+    ["left_wrist", "left_hand_middle_finger_mcp"],
+    ["left_wrist", "left_hand_ring_finger_mcp"],
+    ["left_wrist", "left_hand_pinky_finger_mcp"],
+    ["left_hand_index_finger_mcp", "left_hand_index_finger_pip"],
+    ["left_hand_index_finger_pip", "left_hand_index_finger_dip"],
+    ["left_hand_index_finger_dip", "left_hand_index_finger_tip"],
+    ["left_hand_middle_finger_mcp", "left_hand_middle_finger_pip"],
+    ["left_hand_middle_finger_pip", "left_hand_middle_finger_dip"],
+    ["left_hand_middle_finger_dip", "left_hand_middle_finger_tip"],
+    ["left_hand_ring_finger_mcp", "left_hand_ring_finger_pip"],
+    ["left_hand_ring_finger_pip", "left_hand_ring_finger_dip"],
+    ["left_hand_ring_finger_dip", "left_hand_ring_finger_tip"],
+    ["left_hand_pinky_finger_mcp", "left_hand_pinky_finger_pip"],
+    ["left_hand_pinky_finger_pip", "left_hand_pinky_finger_dip"],
+    ["left_hand_pinky_finger_dip", "left_hand_pinky_finger_tip"],
+]
+
 
 #################################################
 ## FUNCTIONS - We'll define some functions here and use them later
@@ -339,6 +420,135 @@ def create_virtual_marker(
     return virtual_marker_xyz
 
 
+def put_sphere_meshes_on_empties(
+    empty_names_list: list,
+    parent_object: bpy.types.Object,
+    sphere_scale: float = 0.02,
+):
+    """
+    put uv sphere meshes on the empties in `empty_names_list` with a scale of `sphere_scale`
+    """
+
+    for empty_name in empty_names_list:
+        bpy.ops.mesh.primitive_uv_sphere_add(
+            segments=8, ring_count=8, scale=(sphere_scale, sphere_scale, sphere_scale)
+        )
+        sphere = bpy.context.active_object
+        sphere.name = f"{empty_name}_sphere"
+        sphere.parent = parent_object
+
+        constraint = sphere.constraints.new(type="COPY_LOCATION")
+        constraint.target = bpy.data.objects[empty_name]
+
+
+def make_stick_figure_mesh(
+    skel3d_frame_landmark_xyz: np.ndarray,
+    stick_figure_mesh_edges: list,
+    mediapipe_landmark_names: list,
+    good_clean_frame_number: int,
+):
+    """
+    Create a stick figure mesh from a skeleton 3d data set
+    `skel3d_frame_landmark_xyz`: skeleton 3d data set with shape [frame, landmark, xyz]
+    `stick_figure_mesh_edge`: list of edges that make up the stick figure mesh
+    `good_clean_frame_number`: the frame number to use for the stick figure mesh
+    """
+
+    # create a mesh
+    mesh = bpy.data.meshes.new("stick_figure_mesh")
+
+    # create a new object with the mesh
+    stick_figure_mesh = bpy.data.objects.new("stick_figure_mesh", mesh)
+
+    # get a reference to the scene
+    scene = bpy.context.scene
+
+    # link the object to the scene so it'll appear in the scene
+    scene.collection.objects.link(stick_figure_mesh)
+
+    # select the object
+    stick_figure_mesh.select_set(True)
+
+    # create the mesh from a list of verts/edges
+    stick_figure_mesh_indicies = []
+    for edge in stick_figure_mesh_edges:
+        try:
+            stick_figure_mesh_indicies.append(
+                [
+                    mediapipe_landmark_names.index(edge[0]),
+                    mediapipe_landmark_names.index(edge[1]),
+                ]
+            )
+        except Exception as e:
+            print(e)
+
+    mesh.from_pydata(
+        skel3d_frame_landmark_xyz[good_clean_frame_number, :, :],
+        stick_figure_mesh_indicies,
+        [],
+    )
+
+    # update mesh with new data
+    mesh.update(calc_edges=True)
+
+    return stick_figure_mesh
+
+
+def find_good_clean_frame_reprojection_error_method(
+    skeleton_3d_fr_mar_xyz: np.ndarray, skeleton_reprojection_error_fr_mar: np.ndarray
+):
+    """
+    Find the frame with the fewest nans, scaled by reprojection error (i.e. hopefully a frame where all tracked points are visible and well tracked)
+    """
+    print(
+        "estimating good clean frame as the one where there few `nans`, reprojection error is low, and velocity is low..."
+    )
+
+    nans_per_frame = np.sum(np.isnan(skeleton_3d_fr_mar_xyz[:, :, 0]), axis=1)
+    reprojection_error_per_frame = np.nanmedian(
+        skeleton_reprojection_error_fr_mar, axis=1
+    )
+    marker_velocity_per_frame = np.nanmedian(
+        np.abs(np.diff(skeleton_3d_fr_mar_xyz, axis=1)), axis=1
+    )
+    marker_velocity_per_frame = np.nanmean(np.abs(marker_velocity_per_frame), axis=1)
+
+    print(f"nans_per_frame.shape: {nans_per_frame.shape}")
+    print(f"reprojection_error_per_frame.shape: {reprojection_error_per_frame.shape}")
+    print(f"marker_velocity_per_frame.shape: {marker_velocity_per_frame.shape}")
+
+    # normalize errors by relevant thing
+    nans_per_frame_normalized = nans_per_frame / skeleton_3d_fr_mar_xyz.shape[1]
+    reprojection_error_per_frame_normalized = (
+        reprojection_error_per_frame / np.nanmedian(reprojection_error_per_frame)
+    )
+    marker_velocity_per_frame_normalized = marker_velocity_per_frame / np.nanmedian(
+        marker_velocity_per_frame
+    )
+
+    print(
+        f"nans_per_frame_normalized (mean, [standard_deviation] : {np.nanmean(nans_per_frame_normalized):.3f} [{np.nanstd(nans_per_frame_normalized):.3f}]"
+    )
+    print(
+        f"reprojection_error_per_frame_normalized (mean, [standard_deviation] : {np.nanmean(reprojection_error_per_frame_normalized):.3f} [{np.nanstd(reprojection_error_per_frame_normalized):.3f}]"
+    )
+    print(
+        f"marker_velocity_per_frame_normalized (mean, [standard_deviation] : {np.nanmean(marker_velocity_per_frame_normalized):.3f} [{np.nanstd(marker_velocity_per_frame_normalized):.3f}]"
+    )
+
+    frame_cleanliness_score_where_low_scores_are_good = (
+        nans_per_frame_normalized
+        + reprojection_error_per_frame_normalized
+        + marker_velocity_per_frame_normalized
+    )
+
+    good_clean_frame_number = np.nanargmin(
+        frame_cleanliness_score_where_low_scores_are_good
+    )
+    print(f"----estimated good_clean_frame_number: {good_clean_frame_number}----")
+    return good_clean_frame_number
+
+
 #######################################################################
 ##% Activate necessary addons
 addon_utils.enable("io_import_images_as_planes")
@@ -392,11 +602,14 @@ else:
     path_to_reprojection_error_npy = (
         path_to_data_arrays_folder / "mediaPipeSkel_reprojErr.npy"
     )
+
+    print(f"Loading mediapipe data from {path_to_body_npy}")
+
     mediapipe_skel_fr_mar_xyz = np.load(str(path_to_body_npy))
     mediapipe_reprojection_error_fr_mar = np.load(str(path_to_reprojection_error_npy))
 
     mediapipe_skel_fr_mar_xyz = mediapipe_skel_fr_mar_xyz[
-        :33, :, :
+        :, :33, :
     ]  # remove the hand and face markers
     mediapipe_reprojection_error_fr_mar = mediapipe_reprojection_error_fr_mar[
         :, :33
@@ -452,15 +665,22 @@ bpy.ops.object.empty_add(type="ARROWS")
 freemocap_origin_axes = bpy.context.active_object
 freemocap_origin_axes.name = "freemocap_origin_axes"  # will translate to put skelly on ground symmetric-ish about origin
 
-
 ##############################
 # %% Set start and end frames
 
 start_frame = 1
 end_frame = number_of_frames
 
+if good_clean_frame_number == 0 or good_clean_frame_number is None:
+    # estimate a good clean frame (ideally the T or A pose, but that's hard to pick out automatically)
+    good_clean_frame_number = find_good_clean_frame_reprojection_error_method(
+        skeleton_3d_fr_mar_xyz=mediapipe_skel_fr_mar_xyz,
+        skeleton_reprojection_error_fr_mar=mediapipe_reprojection_error_fr_mar,
+    )
+
 bpy.context.scene.frame_start = start_frame
 bpy.context.scene.frame_end = end_frame
+bpy.context.scene.frame_current = good_clean_frame_number
 
 ############################
 ### Load body data as empty markers
@@ -494,6 +714,7 @@ for (
         f"with weights: {virtual_marker_dict['marker_weights']}"
     )
 
+    mediapipe_body_trajectory_names.append(virtual_marker_name)
     virtual_marker_xyz = create_virtual_marker(
         trajectory_3d_frame_marker_xyz=mediapipe_skel_fr_mar_xyz,
         all_trajectory_names=mediapipe_body_trajectory_names,
@@ -566,10 +787,31 @@ except Exception as e:
     print("Something went wrong applying constraints to armarture bones")
 
 print("____________________________________________________________________________")
-print(
-    "Done constraining armature bones to follow keyframed empties! Let's load some videos (as planes) now!"
-)
+print("Done constraining armature bones to follow keyframed empties!")
 print("____________________________________________________________________________")
+
+####################
+## Create simple stick figure mesh
+
+print("____________________________________________________________________________")
+print("Creating simple stick figure mesh")
+print("____________________________________________________________________________")
+try:
+    bpy.ops.object.mode_set(mode="OBJECT")
+except:
+    pass
+put_sphere_meshes_on_empties(
+    empty_names_list=mediapipe_body_trajectory_names,
+    parent_object=freemocap_origin_axes,
+    sphere_scale=0.02,
+)
+
+stick_figure_mesh = make_stick_figure_mesh(
+    skel3d_frame_landmark_xyz=mediapipe_skel_fr_mar_xyz,
+    stick_figure_mesh_edges=stick_figure_mesh_edges_list_of_lists,
+    mediapipe_landmark_names=mediapipe_body_trajectory_names,
+    good_clean_frame_number=good_clean_frame_number,
+)
 
 #####################
 ## Load nSynched Videos
@@ -641,7 +883,6 @@ print(
     "Done creating Blender scene!\n",
     f"Saved .blend file to: {blend_file_save_path}\n",
     "You can now open the `.blend` file in Blender and play the animation!\n",
-    "Blender is a free-and-open-source software (FOSS) available - learn more here  https://blender.org\n",
 )
 print("____________________________________________________________________________")
 print("____________________________________________________________________________")

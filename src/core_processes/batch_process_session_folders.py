@@ -39,6 +39,7 @@ def process_session_folder(
 
     print("Detecting 2d skeletons...")
     # 2d skeleton detection
+    # TODO - this doesn't need to be a class - make it a function
     mediapipe_skeleton_detector = MediaPipeSkeletonDetector()
     mediapipe_2d_data = mediapipe_skeleton_detector.process_folder_full_of_videos(
         synchronized_videos_folder, output_data_folder

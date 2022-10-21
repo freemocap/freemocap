@@ -1,21 +1,38 @@
 <p align="center">
     <img src="https://raw.githubusercontent.com/freemocap/freemocap/main/assets/logo/freemocap-logo-black-border.svg" height="64" alt="Project Logo">
 </p>
+
 <h3 align="center">freemocap</h3>
 <p align="center">📝 The FreeMoCap Project: A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture system and platform for decentralized scientific research, education, and training</p>
+
+
 <p align="center">
-    <a href="https://github.com/freemocap/freemocap/releases/latest">
-        <img src="https://img.shields.io/github/release/freemocap/freemocap.svg" alt="Latest Release">
-    </a>
-    <a href="https://github.com/freemocap/freemocap/blob/main/LICENSE">
-        <img src="https://img.shields.io/badge/license-AGPL-blue.svg" alt="MIT License">
-    </a>
-    <a href="https://github.com/freemocap/freemocap/issues">
-        <img src="https://img.shields.io/badge/contributions-welcome-ff69b4.svg" alt="Contributions Welcome">
-    </a>
-  <a href="https://github.com/psf/black">
+
+<a href="https://doi.org/10.5281/zenodo.7233714">
+    <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7233714.svg" alt=DOI-via-Zenodo.org>
+  </a>
+
+<a href="https://github.com/psf/black">
     <img alt="https://img.shields.io/badge/code%20style-black-000000.svg" src="https://img.shields.io/badge/code%20style-black-000000.svg">
   </a>
+  
+<a href="https://github.com/freemocap/freemocap/releases/latest">
+        <img src="https://img.shields.io/github/release/freemocap/freemocap.svg" alt="Latest Release">
+    </a>
+
+<a href="https://github.com/freemocap/freemocap/blob/main/LICENSE">
+        <img src="https://img.shields.io/badge/license-AGPL-blue.svg" alt="AGPLv3">
+    </a>
+
+<a href="https://github.com/freemocap/freemocap/issues">
+        <img src="https://img.shields.io/badge/contributions-welcome-ff69b4.svg" alt="Contributions Welcome">
+    </a>
+
+<a href="https://github.com/psf/black">
+    <img alt="https://img.shields.io/badge/code%20style-black-000000.svg" src="https://img.shields.io/badge/code%20style-black-000000.svg">
+  </a>
+  
+  
 </p>
 
 

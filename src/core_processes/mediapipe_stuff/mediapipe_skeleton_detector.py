@@ -6,6 +6,7 @@ from typing import List, Dict, Union, Any
 import cv2
 import numpy as np
 import mediapipe as mp
+from tqdm import tqdm
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
@@ -13,7 +14,6 @@ from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -190,18 +190,24 @@ class MediaPipeSkeletonDetector:
             this_video_annotated_images_list = []
 
             success, image = this_video_capture_object.read()
-            if not success or image is None:
-                logger.error(
-                    f"Failed to load an image from: {str(this_synchronized_video_file_path)}"
-                )
-                raise Exception
 
-            frame_number = 0
-            while success and image is not None:
+            number_of_frames = int(
+                this_video_capture_object.get(cv2.CAP_PROP_FRAME_COUNT)
+            )
 
-                frame_number += 1
-                if frame_number % 5 == 0:
-                    print(f"frame {frame_number}")
+            for frame_number in tqdm(
+                range(number_of_frames),
+                desc=f"mediapiping video: {this_synchronized_video_file_path.name}",
+                total=number_of_frames,
+                colour="magenta",
+                unit="frames",
+                dynamic_ncols=True,
+            ):
+                if not success or image is None:
+                    logger.error(
+                        f"Failed to load an image from: {str(this_synchronized_video_file_path)}"
+                    )
+                    raise Exception
 
                 mediapipe2d_data_payload = self.detect_skeleton_in_image(
                     raw_image=image

@@ -32,6 +32,10 @@
     <img alt="https://img.shields.io/badge/code%20style-black-000000.svg" src="https://img.shields.io/badge/code%20style-black-000000.svg">
   </a>
   
+<a href="https://discord.gg/SgdnzbHDTG"> 
+    <img alt="Discord Community Server" src="https://dcbadge.vercel.app/api/server/SgdnzbHDTG?style=flat">
+  </a>
+
   
 </p>
 

@@ -10,9 +10,13 @@ from tqdm import tqdm
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
+from src.config.home_dir import MEDIAPIPE_2D_NPY_FILE_NAME
 
 from src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
+)
+from src.core_processes.session_processing_parameter_models import (
+    MediaPipe2DParametersModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -74,11 +78,10 @@ class Mediapipe2dDataPayload:
 
 
 class MediaPipeSkeletonDetector:
-    def __init__(self, session_id: str = None):
-
-        self.model_complexity = 2  # can be 0,1, or 2 - higher numbers  are more accurate but heavier computationally
-        self.min_detection_confidence = 0.5
-        self.min_tracking_confidence = 0.5
+    def __init__(
+        self,
+        parameter_model=MediaPipe2DParametersModel(),
+    ):
 
         self._mediapipe_payload_list = []
 
@@ -97,9 +100,9 @@ class MediaPipeSkeletonDetector:
         )
 
         self._holistic_tracker = self._mp_holistic.Holistic(
-            model_complexity=self.model_complexity,
-            min_detection_confidence=self.min_detection_confidence,
-            min_tracking_confidence=self.min_tracking_confidence,
+            model_complexity=parameter_model.model_complexity,
+            min_detection_confidence=parameter_model.min_detection_confidence,
+            min_tracking_confidence=parameter_model.min_tracking_confidence,
         )
         self._mediapipe_tracked_point_names_dict = mediapipe_tracked_point_names_dict
 
@@ -299,8 +302,7 @@ class MediaPipeSkeletonDetector:
         output_data_folder_path: Union[str, Path],
     ):
         mediapipe_2dData_save_path = (
-            Path(output_data_folder_path)
-            / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
+            Path(output_data_folder_path) / MEDIAPIPE_2D_NPY_FILE_NAME
         )
         logger.info(f"saving: {mediapipe_2dData_save_path}")
         np.save(

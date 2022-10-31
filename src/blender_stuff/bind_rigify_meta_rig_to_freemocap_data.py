@@ -20,12 +20,16 @@ try:
     argv = argv[argv.index("--") + 1 :]
 
     session_path = Path(argv[0])
+    print(f"session_path: {session_path}")
 
     if len(argv) > 1:
         good_clean_frame_number = int(argv[1])
     else:
         good_clean_frame_number = 0
-except:
+
+    print(f" user specified `good clean frame number`: {good_clean_frame_number}")
+except Exception as e:
+    print(e)
     print(
         "we appear to be running from the Blender Scripting tab! Manually enter your `session_path` at line 23"
     )

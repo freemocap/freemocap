@@ -3,7 +3,7 @@ from PyQt6.QtCore import QThread, Qt, pyqtSignal
 from PyQt6.QtGui import QImage
 
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
-from src.config.webcam_config import WebcamConfig
+from src.cameras.webcam_config import WebcamConfig
 
 
 class CamFrameWorker(QThread):

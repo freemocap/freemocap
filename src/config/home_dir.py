@@ -6,6 +6,7 @@ import toml
 
 logger = logging.getLogger(__name__)
 
+# directory names
 BASE_FOLDER_NAME = "freemocap_data"
 LOG_FILE_FOLDER_NAME = "logs"
 SYNCHRONIZED_VIDEOS_FOLDER_NAME = "synchronized_videos"
@@ -13,8 +14,20 @@ CALIBRATION_VIDEOS_FOLDER_NAME = "calibration_videos"
 ANNOTATED_VIDEOS_FOLDER_NAME = "annotated_videos"
 OUTPUT_DATA_FOLDER_NAME = "output_data"
 DIAGNOSTIC_PLOTS_FOLDER_NAME = "diagnostic_plots"
+
+# file names
 MOST_RECENT_SESSION_ID_FILENAME = "most_recent_session_id.toml"
 CAMERA_CALIBRATION_FILE_NAME = "camera_calibration_data.toml"
+MEDIAPIPE_2D_NPY_FILE_NAME = (
+    "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
+)
+MEDIAPIPE_3D_NPY_FILE_NAME = (
+    "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+)
+MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME = (
+    "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+)
+
 SKELETON_BODY_CSV_FILE_NAME = "mediapipe_body_3d_xyz.csv"
 
 

@@ -1077,7 +1077,6 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     has_feet = are_there_feet_in_this_mediapipe_skeleton_data(
         freemocap_filtered_marker_data, mediapipe_landmark_names
     )
-    use_blob_method = False
     if has_feet:
         reference_frame_number = find_good_frame_recursive_guess_method(
             freemocap_filtered_marker_data, mediapipe_landmark_names, 0.3

@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Union, Any
+from typing import List, Union, Any
 
 import cv2
 import numpy as np
@@ -15,7 +15,7 @@ from src.config.home_dir import MEDIAPIPE_2D_NPY_FILE_NAME
 from src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
 )
-from src.core_processes.session_processing_parameter_models import (
+from src.core_processes.batch_processing.session_processing_parameter_models import (
     MediaPipe2DParametersModel,
 )
 

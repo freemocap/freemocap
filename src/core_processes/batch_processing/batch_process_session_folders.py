@@ -1,6 +1,10 @@
 from pathlib import Path
 from typing import Union, Any, Dict
 
+from src.core_processes.batch_processing.process_session_folder import (
+    process_session_folder,
+)
+
 
 def batch_process_session_folders(
     path_to_folder_of_session_folders: Union[str, Path],
@@ -18,7 +22,7 @@ def batch_process_session_folders(
     path_to_camera_calibration_toml : Union[str, Path]
         Path to camera calibration toml file.
     path_to_blender_executable : Union[str, Path]
-        Path to Blender executable.
+        Path to a Blender executable.
     processing_dictionary : Dict[str, Dict[str, Any]]
         Dictionary of processing steps to perform on each session folder.
 

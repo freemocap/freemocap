@@ -304,6 +304,7 @@ class MediaPipeSkeletonDetector:
         mediapipe_2dData_save_path = (
             Path(output_data_folder_path) / MEDIAPIPE_2D_NPY_FILE_NAME
         )
+        mediapipe_2dData_save_path.parent.mkdir(exist_ok=True, parents=True)
         logger.info(f"saving: {mediapipe_2dData_save_path}")
         np.save(
             str(mediapipe_2dData_save_path), data2d_numCams_numFrames_numTrackedPts_XY

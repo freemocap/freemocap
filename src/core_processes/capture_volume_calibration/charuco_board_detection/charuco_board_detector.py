@@ -171,6 +171,6 @@ class CharucoBoardDetector:
 
 if __name__ == "__main__":
     pass
-    # ## Jon, Run me to easily start a charuco board detect run
+    # ## Jon, Run me to easily start a charuco board detect calculate_center_of_mass
     # print('starting icis_conference_main')
     # BoardDetection().process()

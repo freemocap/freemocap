@@ -792,7 +792,7 @@ class MainWindow(QMainWindow):
 
     def _export_to_blender(self):
         logger.debug(
-            "Open Session in Blender button clicked (this will freeze the GUI while it is running, sorry! I tried to run it in a thread instead of a 'subprocess' but I got some kind of permission error when it tried to save the `.blend` file, so.... here we are. Frozen in the GUI.  How are you? "
+            "Open Session in Blender button clicked (this will freeze the GUI while it is running, sorry! I tried to calculate_center_of_mass it in a thread instead of a 'subprocess' but I got some kind of permission error when it tried to save the `.blend` file, so.... here we are. Frozen in the GUI.  How are you? "
         )
         # self._thread_worker_manager.launch_export_to_blender_thread_worker(
         #     get_session_folder_path(self._session_id)

@@ -5,14 +5,16 @@ import logging
 
 import numpy as np
 
+from src.config.home_dir import RAW_DATA_FOLDER_NAME, MEDIAPIPE_3D_NPY_FILE_NAME
+
 logger = logging.getLogger(__name__)
 
 
 def load_raw_mediapipe3d_data(output_data_folder_path: Union[str, Path]):
     mediapipe3d_xyz_file_path = (
         Path(output_data_folder_path)
-        / "raw_data"
-        / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+        / RAW_DATA_FOLDER_NAME
+        / MEDIAPIPE_3D_NPY_FILE_NAME
     )
     logger.info(f"loading: {mediapipe3d_xyz_file_path}")
     mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ = np.load(

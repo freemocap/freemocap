@@ -11,6 +11,7 @@ from src.config.home_dir import (
     MEDIAPIPE_2D_NPY_FILE_NAME,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     MEDIAPIPE_3D_NPY_FILE_NAME,
+    RAW_DATA_FOLDER_NAME,
 )
 from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
@@ -72,12 +73,12 @@ def process_session_folder(
 
         mediapipe_2d_data = mediapipe_skeleton_detector.process_folder_full_of_videos(
             s.path_to_folder_of_synchronized_videos,
-            s.path_to_output_data_folder,
+            s.path_to_output_data_folder / RAW_DATA_FOLDER_NAME,
         )
 
         assert test_mediapipe_2d_data(
             s.path_to_folder_of_synchronized_videos,
-            s.path_to_output_data_folder,
+            s.path_to_output_data_folder / RAW_DATA_FOLDER_NAME,
             mediapipe_2d_data,
         )
 
@@ -100,20 +101,21 @@ def process_session_folder(
             )
 
         (
-            skel3d_frame_marker_xyz,
+            raw_skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar,
         ) = triangulate_3d_data(
-            anipose_calibration_object=anipose_calibration_object,
+            anipose_calibration_object=s.anipose_calibration_object,
             mediapipe_2d_data=mediapipe_2d_data,
-            output_data_folder_path=Path(s.path_to_output_data_folder) / "raw_data",
+            output_data_folder_path=Path(s.path_to_output_data_folder)
+            / RAW_DATA_FOLDER_NAME,
             mediapipe_confidence_cutoff_threshold=s.anipose_triangulate_3d_parameters.confidence_threshold_cutoff,
             use_triangulate_ransac=s.anipose_triangulate_3d_parameters.use_triangulate_ransac_method,
         )
 
         assert test_mediapipe_3d_data(
             s.path_to_folder_of_synchronized_videos,
-            Path(s.path_to_output_data_folder) / "raw_data",
-            skel3d_frame_marker_xyz,
+            Path(s.path_to_output_data_folder) / RAW_DATA_FOLDER_NAME,
+            raw_skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar,
         )
 
@@ -124,39 +126,42 @@ def process_session_folder(
 
         if s.start_processing_at_stage > 1:
             try:
-                skel3d_frame_marker_xyz = np.load(
+                raw_skel3d_frame_marker_xyz = np.load(
                     str(
                         Path(s.path_to_output_data_folder)
-                        / "raw_data"
+                        / RAW_DATA_FOLDER_NAME
                         / MEDIAPIPE_3D_NPY_FILE_NAME
                     )
                 )
                 skeleton_reprojection_error_fr_mar = np.load(
                     str(
                         Path(s.path_to_output_data_folder)
-                        / "raw_data"
+                        / RAW_DATA_FOLDER_NAME
                         / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
                     )
                 )
-            except FileNotFoundError:
-                skel3d_frame_marker_xyz = np.load(
-                    str(Path(s.path_to_output_data_folder) / "mediaPipeData_3d.npy")
+            except:
+                raise FileNotFoundError(
+                    f"Could not find 3d data at {s.path_to_output_data_folder}"
                 )
-                skeleton_reprojection_error_fr_mar = np.load(
-                    str(
-                        Path(s.path_to_output_data_folder)
-                        / "mediaPipeSkel_reprojErr.npy"
-                    )
-                )
+                # raw_skel3d_frame_marker_xyz = np.load(
+                #     str(Path(s.path_to_output_data_folder) / "mediaPipeData_3d.npy")
+                # )
+                # skeleton_reprojection_error_fr_mar = np.load(
+                #     str(
+                #         Path(s.path_to_output_data_folder)
+                #         / "mediaPipeSkel_reprojErr.npy"
+                #     )
+                # )
             assert test_mediapipe_3d_data(
                 s.path_to_folder_of_synchronized_videos,
-                Path(s.path_to_output_data_folder) / "raw_data",
-                skel3d_frame_marker_xyz,
+                Path(s.path_to_output_data_folder) / RAW_DATA_FOLDER_NAME,
+                raw_skel3d_frame_marker_xyz,
                 skeleton_reprojection_error_fr_mar,
             )
 
-        gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
-            skel3d_frame_marker_xyz,
+        skel3d_frame_marker_xyz = gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
+            skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
             data_arrays_path=s.path_to_output_data_folder,
             sampling_rate=s.post_processing_parameters.framerate,
@@ -195,7 +200,7 @@ def process_session_folder(
         logger.info("Starting Blender output sub-process...")
         create_blend_file_from_session_data(
             session_folder_path=Path(s.path_to_folder_of_synchronized_videos).parent,
-            blender_exe_path=path_to_blender_executable,
+            blender_exe_path=s.path_to_blender_executable,
         )
 
 
@@ -246,7 +251,7 @@ if __name__ == "__main__":
         False
     )
 
-    session_processing_parameter_model.start_processing_at_stage = 3
+    session_processing_parameter_model.start_processing_at_stage = 2
 
     pprint(session_processing_parameter_model.dict(), expand_all=True)
 

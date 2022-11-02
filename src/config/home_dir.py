@@ -13,6 +13,9 @@ SYNCHRONIZED_VIDEOS_FOLDER_NAME = "synchronized_videos"
 CALIBRATION_VIDEOS_FOLDER_NAME = "calibration_videos"
 ANNOTATED_VIDEOS_FOLDER_NAME = "annotated_videos"
 OUTPUT_DATA_FOLDER_NAME = "output_data"
+RAW_DATA_FOLDER_NAME = "raw_data"
+CENTER_OF_MASS_FOLDER_NAME = "center_of_mass"
+PARTIALLY_PROCESSED_DATA_FOLDER_NAME = "partially_processed_data"
 DIAGNOSTIC_PLOTS_FOLDER_NAME = "diagnostic_plots"
 
 # file names
@@ -29,6 +32,10 @@ MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME = (
 )
 
 SKELETON_BODY_CSV_FILE_NAME = "mediapipe_body_3d_xyz.csv"
+
+SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
+
+TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
 
 
 def create_default_session_id(string_tag: str = None):

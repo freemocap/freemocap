@@ -154,3 +154,5 @@ freemocap/fmc_calibration/previous_calibration.toml
 freemocap/fmc_calibration/
 
 .DS_Store
+
+desktop.ini

@@ -13,7 +13,7 @@ from src.config.home_dir import (
 
 def test_mediapipe_2d_data(
     synchronized_videos_folder: Union[str, Path],
-    output_data_folder: Union[str, Path],
+    path_to_folder_where_data_is_saved: Union[str, Path],
     mediapipe_2d_data: np.ndarray,
 ):
 
@@ -26,7 +26,9 @@ def test_mediapipe_2d_data(
     TODO - check number of tracked points vs 'expected' number of tracked points
     """
 
-    mediapipe_2d_data_file_path = output_data_folder / MEDIAPIPE_2D_NPY_FILE_NAME
+    mediapipe_2d_data_file_path = (
+        path_to_folder_where_data_is_saved / MEDIAPIPE_2D_NPY_FILE_NAME
+    )
     assert mediapipe_2d_data_file_path.exists()
 
     saved_mediapipe_2d_data = np.load(mediapipe_2d_data_file_path)
@@ -52,7 +54,7 @@ def test_mediapipe_2d_data(
 
 def test_mediapipe_3d_data(
     synchronized_videos_folder: Union[str, Path],
-    output_data_folder: Union[str, Path],
+    path_to_folder_where_data_is_saved: Union[str, Path],
     skel3d_frame_marker_xyz: np.ndarray,
     skeleton_reprojection_error_fr_mar: np.ndarray,
 ):
@@ -66,15 +68,17 @@ def test_mediapipe_3d_data(
     """
 
     mediapipe_3d_spatial_data_file_path = (
-        output_data_folder / MEDIAPIPE_3D_NPY_FILE_NAME
+        path_to_folder_where_data_is_saved / MEDIAPIPE_3D_NPY_FILE_NAME
     )
-    assert mediapipe_3d_spatial_data_file_path.exists()
+    assert (
+        mediapipe_3d_spatial_data_file_path.exists()
+    ), f"3d skeleton data file does not exist at {mediapipe_3d_spatial_data_file_path}"
 
     saved_spatial_data = np.load(mediapipe_3d_spatial_data_file_path)
     assert np.array_equal(saved_spatial_data, skel3d_frame_marker_xyz, equal_nan=True)
 
     mediapipe_reprojection_error_file_path = (
-        output_data_folder / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
+        path_to_folder_where_data_is_saved / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
     )
     assert mediapipe_reprojection_error_file_path.exists()
 

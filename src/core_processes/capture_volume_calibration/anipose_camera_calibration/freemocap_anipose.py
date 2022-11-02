@@ -1318,7 +1318,9 @@ class CameraGroup:
 
         c = np.isfinite(p3ds[:, :, 0])
         if np.sum(c) < 20:
-            print("warning: not enough 3D points to run optimization")
+            print(
+                "warning: not enough 3D points to calculate_center_of_mass optimization"
+            )
             return p3ds
 
         return self.optim_points(points, p3ds, **kwargs)

@@ -4,6 +4,10 @@ from typing import Union
 import numpy as np
 import logging
 
+from src.config.home_dir import (
+    MEDIAPIPE_3D_NPY_FILE_NAME,
+    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +150,7 @@ def triangulate_3d_data(
     save_mediapipe_3d_data_to_npy(
         data3d_numFrames_numTrackedPoints_XYZ=spatial_data3d_numFrames_numTrackedPoints_XYZ,
         data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_error_data3d_numFrames_numTrackedPoints,
-        output_data_folder_path=output_data_folder_path,
+        path_to_folder_where_data_will_be_saved=output_data_folder_path,
     )
     # TODO - don't output multiple variables, make this a dataclass/BAG pattern or something
     return (
@@ -158,13 +162,14 @@ def triangulate_3d_data(
 def save_mediapipe_3d_data_to_npy(
     data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
     data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
-    output_data_folder_path: Union[str, Path],
+    path_to_folder_where_data_will_be_saved: Union[str, Path],
 ):
-    raw_data_folder_path = Path(output_data_folder_path) / "raw_data"
-    raw_data_folder_path.mkdir(parents=True, exist_ok=True)  # save spatial XYZ data
+
+    path_to_folder_where_data_will_be_saved.mkdir(
+        parents=True, exist_ok=True
+    )  # save spatial XYZ data
     mediapipe_3dData_save_path = (
-        raw_data_folder_path
-        / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+        path_to_folder_where_data_will_be_saved / MEDIAPIPE_3D_NPY_FILE_NAME
     )
 
     logger.info(f"saving: {mediapipe_3dData_save_path}")
@@ -172,8 +177,8 @@ def save_mediapipe_3d_data_to_npy(
 
     # save reprojection error
     mediapipe_reprojection_error_save_path = (
-        raw_data_folder_path
-        / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+        path_to_folder_where_data_will_be_saved
+        / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
     )
 
     logger.info(f"saving: {mediapipe_reprojection_error_save_path}")

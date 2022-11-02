@@ -36,13 +36,17 @@ except:
 print(str(session_path))
 session_path = Path(session_path)
 
-if Path(session_path / "output_data").exists():  # freemocap version > v0.0.54
+if Path(
+    session_path / "output_data" / "partially_processed_data"
+).exists():  # freemocap version > v0.0.54
     path_to_data_arrays_folder = session_path / "output_data"
+
     path_to_mediapipe_npy = (
         path_to_data_arrays_folder
-        / "raw_data"
-        / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+        / "partially_processed_data"
+        / "mediaPipeSkel_3d_origin_aligned.npy"
     )
+
     path_to_mediapipe_3d_reproj = (
         path_to_data_arrays_folder
         / "raw_data"
@@ -53,9 +57,7 @@ else:
     path_to_data_arrays_folder = (
         session_path / "DataArrays"
     )  # freemocap version <= v0.0.54
-    path_to_mediapipe_npy = (
-        path_to_data_arrays_folder / "mediaPipeSkel_3d_smoothed.npy.npy"
-    )
+    path_to_mediapipe_npy = path_to_data_arrays_folder / "mediaPipeSkel_3d_smoothed.npy"
 
     path_to_mediapipe_3d_reproj = (
         path_to_data_arrays_folder / "mediaPipeSkel_reprojErr.npy"

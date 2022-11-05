@@ -39,7 +39,7 @@ TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
 
 
 def create_default_session_id(string_tag: str = None):
-    session_id = "session_" + time.strftime("%m-%d-%Y-%H_%M_%S")
+    session_id = "session_" + time.strftime("%Y-%m-%d-%H_%M_%S")
 
     if string_tag is not None:
         session_id = session_id + "_" + string_tag
@@ -144,6 +144,14 @@ def get_output_data_folder_path(session_id: str, create_folder: bool = True):
     return str(output_data_folder_path)
 
 
+def get_raw_data_folder_path(session_id: str, create_folder: bool = True):
+    output_data_folder_path = (
+        Path(get_session_folder_path(session_id)) / OUTPUT_DATA_FOLDER_NAME
+    )
+    raw_data_folder_path = output_data_folder_path / RAW_DATA_FOLDER_NAME
+    if create_folder:
+        raw_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
+    return str(raw_data_folder_path)
 def get_session_calibration_toml_file_path(session_id: str) -> str:
     calibration_file_path = (
         Path(get_session_folder_path(session_id)) / CAMERA_CALIBRATION_FILE_NAME

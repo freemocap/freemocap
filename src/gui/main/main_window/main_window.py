@@ -20,7 +20,7 @@ from src.config.home_dir import (
     get_freemocap_data_folder_path,
     get_annotated_videos_folder_path,
     get_skeleton_body_csv_path,
-    get_blender_file_path,
+    get_blender_file_path, get_raw_data_folder_path,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
@@ -691,10 +691,10 @@ class MainWindow(QMainWindow):
         synchronized_videos_folder_path = get_synchronized_videos_folder_path(
             self._session_id
         )
-        output_data_folder_path = get_output_data_folder_path(self._session_id)
+        raw_data_folder_path = get_raw_data_folder_path(self._session_id)
         self._thread_worker_manager.launch_detect_2d_skeletons_thread_worker(
             synchronized_videos_folder_path=synchronized_videos_folder_path,
-            output_data_folder_path=output_data_folder_path,
+            output_data_folder_path=raw_data_folder_path,
             auto_process_next_stage=auto_process_next_stage,
         )
 
@@ -734,13 +734,13 @@ class MainWindow(QMainWindow):
                 get_session_calibration_toml_file_path(self._session_id)
             )
 
-        output_data_folder_path = get_output_data_folder_path(self._session_id)
-        mediapipe_2d_data = load_mediapipe2d_data(output_data_folder_path)
+        raw_data_folder_path = get_raw_data_folder_path(self._session_id)
+        mediapipe_2d_data = load_mediapipe2d_data(raw_data_folder_path)
 
         self._thread_worker_manager.launch_triangulate_3d_data_thread_worker(
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=mediapipe_2d_data,
-            output_data_folder_path=output_data_folder_path,
+            output_data_folder_path=raw_data_folder_path,
             mediapipe_confidence_cutoff_threshold=self._control_panel.process_session_data_panel.mediapipe_confidence_cutoff_threshold,
             auto_process_next_stage=auto_process_next_stage,
             use_triangulate_ransac=self._control_panel.process_session_data_panel.use_triangulate_ransac_checkbox.isChecked(),

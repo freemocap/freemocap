@@ -78,11 +78,10 @@ class ThreadWorkerManager(QWidget):
         logger.info("Launching `Save Videos` thread worker...")
 
         if calibration_videos:
-            video_type = 'calibration'
+            self._session_progress_dictionary["save_calibrate_videos"] = 'launched'
         else:
-            video_type = 'mocap'
+            self._session_progress_dictionary["save_mocap_videos"] = 'launched'
 
-        self._session_progress_dictionary["save_videos"][video_type] = 'launched'
 
         self._save_to_video_thread_worker = SaveToVideoThreadWorker(
             dictionary_of_video_recorders=dictionary_of_video_recorders,

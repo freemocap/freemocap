@@ -164,7 +164,9 @@ def save_mediapipe_3d_data_to_npy(
     data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
     path_to_folder_where_data_will_be_saved: Union[str, Path],
 ):
-    path_to_folder_where_data_will_be_saved = Path(path_to_folder_where_data_will_be_saved)
+    path_to_folder_where_data_will_be_saved = Path(
+        path_to_folder_where_data_will_be_saved
+    )
     Path(path_to_folder_where_data_will_be_saved).mkdir(
         parents=True, exist_ok=True
     )  # save spatial XYZ data

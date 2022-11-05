@@ -1,7 +1,5 @@
 import logging
 
-import numpy as np
-from PyQt6 import QtCore
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -13,11 +11,11 @@ from PyQt6.QtWidgets import (
     QLabel,
 )
 
+from src.blender_stuff.get_best_guess_of_blender_path import (
+    get_best_guess_of_blender_path,
+)
 from src.core_processes.mediapipe_stuff.mediapipe_default_settings import (
     default_mediapipe_confidence_threshold,
-)
-from src.export_stuff.blender_stuff.get_best_guess_of_blender_path import (
-    get_best_guess_of_blender_path,
 )
 
 from src.gui.main.tool_tips.tool_tips_strings import (
@@ -48,10 +46,25 @@ class ProcessSessionDataPanel(QWidget):
         self._triangulate_3d_data_button.setEnabled(True)
         self._layout.addWidget(self._triangulate_3d_data_button)
 
+        self._use_triangulate_ransac_checkbox = QCheckBox(
+            "Use `anipose.triangulate_ransac() - EXPERIMENTAL"
+        )
+        self._use_triangulate_ransac_checkbox.setChecked(False)
+        self._layout.addWidget(self._use_triangulate_ransac_checkbox)
+
         self._mediapipe_confidence_cutoff_form_layout = (
             self._make_mediapipe_confidence_cutoff_layout()
         )
         self._layout.addLayout(self._mediapipe_confidence_cutoff_form_layout)
+
+        self._gap_fill_filter_origin_align_button = QPushButton(
+            "Gap Fill, Butterworth Filter, and Origin Align Skeleton data (experimental)"
+        )
+        self._layout.addWidget(self._gap_fill_filter_origin_align_button)
+
+        self._visualize_freemocap_session_button = QPushButton(
+            "Visualize Freemocap Session"
+        )
 
         self._convert_npy_to_csv_checkbox = QCheckBox(
             "Convert 3D npy data to csv (experimental)"
@@ -83,12 +96,20 @@ class ProcessSessionDataPanel(QWidget):
         return float(self._mediapipe_confidence_cutoff_line_edit_widget.text())
 
     @property
+    def use_triangulate_ransac_checkbox(self):
+        return self._use_triangulate_ransac_checkbox
+
+    @property
     def convert_npy_to_csv_checkbox(self):
         return self._convert_npy_to_csv_checkbox
 
     @property
     def triangulate_3d_data_button(self):
         return self._triangulate_3d_data_button
+
+    @property
+    def gap_fill_filter_origin_align_button(self):
+        return self._gap_fill_filter_origin_align_button
 
     @property
     def open_in_blender_button(self):

@@ -25,7 +25,7 @@ try:
     from qtconsole import inprocess
 except:
     print(
-        "The example in `jupyter_console_example.py` requires `qtconsole` to run. Install with `pip install qtconsole` or equivalent."
+        "The example in `jupyter_console_example.py` requires `qtconsole` to calculate_center_of_mass. Install with `pip install qtconsole` or equivalent."
     )
 
 

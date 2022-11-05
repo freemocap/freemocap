@@ -39,22 +39,24 @@ def load_most_recent_anipose_calibration_toml(
     return freemocap_anipose.CameraGroup.load(str(session_calibration_file_path))
 
 
-def load_anipose_calibration_toml_from_user_selection(
-    user_selected_toml_path: Union[str, Path],
+def load_anipose_calibration_toml_from_path(
+    camera_calibration_data_toml_path: Union[str, Path],
     save_copy_of_calibration_to_this_path: Union[str, Path] = None,
 ):
-    logger.info(f"loading camera calibration file from:{str(user_selected_toml_path)}")
+    logger.info(
+        f"loading camera calibration file from:{str(camera_calibration_data_toml_path)}"
+    )
     try:
         anipose_calibration_object = freemocap_anipose.CameraGroup.load(
-            str(user_selected_toml_path)
+            str(camera_calibration_data_toml_path)
         )
 
         if save_copy_of_calibration_to_this_path is not None:
             logger.info(
-                f"Saving copy of {user_selected_toml_path} to {save_copy_of_calibration_to_this_path}"
+                f"Saving copy of {camera_calibration_data_toml_path} to {save_copy_of_calibration_to_this_path}"
             )
             shutil.copy(
-                str(user_selected_toml_path),
+                str(camera_calibration_data_toml_path),
                 str(
                     Path(save_copy_of_calibration_to_this_path)
                     / CAMERA_CALIBRATION_FILE_NAME
@@ -63,7 +65,7 @@ def load_anipose_calibration_toml_from_user_selection(
         return anipose_calibration_object
     except Exception as e:
         logger.error(
-            f"Failed to load anipose calibration info from {str(user_selected_toml_path)}"
+            f"Failed to load anipose calibration info from {str(camera_calibration_data_toml_path)}"
         )
         raise e
         return None

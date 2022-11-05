@@ -6,7 +6,7 @@ import traceback
 import cv2
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
-from src.config.webcam_config import WebcamConfig
+from src.cameras.webcam_config import WebcamConfig
 
 from src.core_processes.show_cam_window import show_cam_window
 from src.core_processes.utils.image_fps_writer import write_fps_to_image

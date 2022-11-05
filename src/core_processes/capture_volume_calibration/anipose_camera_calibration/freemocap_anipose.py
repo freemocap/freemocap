@@ -1,3 +1,6 @@
+# Most of this was copied (with permission) from the original `aniposelib` package (https://github.com/lambdaloop/aniposelib), and we're adapting it to our needs here. M
+# ore info on Anipoise: https://anipose.readthedocs.io/en/latest/
+
 import logging
 
 import cv2
@@ -353,9 +356,12 @@ class Camera:
         )
         return out
 
-    def reprojection_error(self, p3d, p2d):
-        proj = self.project(p3d).reshape(p2d.shape)
-        return p2d - proj
+    def single_camera_reprojection_error(self, p3d, p2d):
+        projecting_3d_points_onto_2d_image_plane_og = self.project(p3d)
+        projecting_3d_points_onto_2d_image_plane = (
+            projecting_3d_points_onto_2d_image_plane_og.reshape(p2d.shape)
+        )
+        return p2d - projecting_3d_points_onto_2d_image_plane
 
     def copy(self):
         return Camera(
@@ -684,7 +690,7 @@ class CameraGroup:
         errors = np.empty((n_cams, n_points, 2))
 
         for cnum, cam in enumerate(self.cameras):
-            errors[cnum] = cam.reprojection_error(p3ds, p2ds[cnum])
+            errors[cnum] = cam.single_camera_reprojection_error(p3ds, p2ds[cnum])
 
         if mean:
             errors_norm = np.linalg.norm(errors, axis=2)
@@ -1312,7 +1318,9 @@ class CameraGroup:
 
         c = np.isfinite(p3ds[:, :, 0])
         if np.sum(c) < 20:
-            print("warning: not enough 3D points to run optimization")
+            print(
+                "warning: not enough 3D points to calculate_center_of_mass optimization"
+            )
             return p3ds
 
         return self.optim_points(points, p3ds, **kwargs)

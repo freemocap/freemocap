@@ -8,7 +8,7 @@ mediapipe_face_connections = [
     connection for connection in mp_holistic.FACEMESH_TESSELATION
 ]
 
-mediapipe_pose_landmark_names = [
+mediapipe_body_landmark_names = [
     landmark.name.lower() for landmark in mp_holistic.PoseLandmark
 ]
 

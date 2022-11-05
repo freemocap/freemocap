@@ -6,14 +6,13 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QPushButton,
-    QTextEdit,
     QLabel,
     QHBoxLayout,
 )
 from pyqtgraph.parametertree import ParameterTree, Parameter
 
 from src.cameras.detection.models import FoundCamerasResponse
-from src.config.webcam_config import WebcamConfig
+from src.cameras.webcam_config import WebcamConfig
 from src.gui.main.qt_utils.clear_layout import clear_layout
 
 import logging

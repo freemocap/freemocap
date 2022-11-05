@@ -3,9 +3,9 @@ import enum
 from PyQt6 import QtGui
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QWidget, QLabel, QFrame, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QLabel, QFrame, QVBoxLayout
 
-from src.config.webcam_config import WebcamConfig
+from src.cameras.webcam_config import WebcamConfig
 from src.gui.main.workers.cam_charuco_frame_thread_worker import (
     CamCharucoFrameThreadWorker,
 )

@@ -35,27 +35,51 @@ except:
 
 print(str(session_path))
 session_path = Path(session_path)
-path_to_mediapipe_npy = (
-    session_path
-    / "output_data"
-    / "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
-)
-path_to_mediapipe_3d_reproj = (
-    session_path
-    / "output_data"
-    / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
-)
 
+if Path(
+    session_path / "output_data" / "partially_processed_data"
+).exists():  # freemocap version > v0.0.54
+    path_to_data_arrays_folder = session_path / "output_data"
+
+    path_to_mediapipe_npy = (
+        path_to_data_arrays_folder
+        / "partially_processed_data"
+        / "mediaPipeSkel_3d_origin_aligned.npy"
+    )
+
+    path_to_mediapipe_3d_reproj = (
+        path_to_data_arrays_folder
+        / "raw_data"
+        / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+    )
+
+else:
+    path_to_data_arrays_folder = (
+        session_path / "DataArrays"
+    )  # freemocap version <= v0.0.54
+    path_to_mediapipe_npy = path_to_data_arrays_folder / "mediaPipeSkel_3d_smoothed.npy"
+
+    path_to_mediapipe_3d_reproj = (
+        path_to_data_arrays_folder / "mediaPipeSkel_reprojErr.npy"
+    )
+
+    print(f"Loading mediapipe data from {path_to_mediapipe_npy}")
 #######################################################################
 # %% load mediapipe data
 # %%
 print("loading data")
 # %%
+print(f"Loading mediapipe data from {path_to_mediapipe_npy}")
 mediapipe_skel_fr_mar_dim = np.load(str(path_to_mediapipe_npy))
+print("mediapipe_skel_fr_mar_dim.shape", mediapipe_skel_fr_mar_dim.shape)
 mediapipe_skel_fr_mar_dim = mediapipe_skel_fr_mar_dim / 1000  # convert to meters
 
-mediapipe_reproj_fr_mar = np.load(str(path_to_mediapipe_3d_reproj))
-mediapipe_reproj_fr_mar = mediapipe_reproj_fr_mar / 1000  # convert to meters
+print(f"Loading mediapipe reprojection error data from {path_to_mediapipe_3d_reproj}")
+mediapipe_reprojection_error_fr_mar = np.load(str(path_to_mediapipe_3d_reproj))
+print(
+    f"mediapipe_reprojection_error_fr_mar.shape = {mediapipe_reprojection_error_fr_mar.shape}"
+)
+
 
 body_marker_range = np.arange(0, 33)
 right_hand_marker_range = np.arange(33, 33 + 21)
@@ -104,7 +128,7 @@ if good_clean_frame_number == 0:
             np.sum(np.isnan(mediapipe_skel_fr_mar_dim[this_frame, :, 0]))
         )
         frame_mean_reproj_error.append(
-            np.nanmean(mediapipe_reproj_fr_mar[this_frame, :])
+            np.nanmean(mediapipe_reprojection_error_fr_mar[this_frame, :])
         )
 
     nan_times_vis = np.array(frame_nan_counts) * np.array(frame_mean_reproj_error)

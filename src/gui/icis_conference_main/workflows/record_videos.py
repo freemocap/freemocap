@@ -13,7 +13,7 @@ from src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
 )
 from src.gui.icis_conference_main.state.app_state import APP_STATE
 from src.gui.icis_conference_main.workflows.single_camera import SingleCamera
-from src.export_stuff.blender_stuff.export_to_blender import (
+from src.blender_stuff import (
     export_to_blender,
 )
 from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (

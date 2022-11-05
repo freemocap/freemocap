@@ -1,23 +1,15 @@
-from typing import List, Dict, Callable
+from typing import Dict
 
 import cv2
-import numpy as np
-from PyQt6 import QtCore, QtGui
+from PyQt6 import QtGui
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget,
-    QGridLayout,
     QVBoxLayout,
-    QLabel,
-    QDockWidget,
-    QPushButton,
     QHBoxLayout,
 )
 
-from src.cameras.detection.models import FoundCamerasResponse
-from src.cameras.save_synchronized_videos import save_synchronized_videos
-from src.config.webcam_config import WebcamConfig
-from src.gui.main.app_state.app_state import APP_STATE
+from src.cameras.webcam_config import WebcamConfig
 from src.gui.main.custom_widgets.single_camera_widget import SingleCameraWidget
 from src.gui.main.qt_utils.clear_layout import clear_layout
 

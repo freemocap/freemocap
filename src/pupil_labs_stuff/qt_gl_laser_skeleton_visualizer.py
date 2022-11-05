@@ -35,7 +35,7 @@ class QtGlLaserSkeletonVisualizer:
 
         if session_data is not None:
             self.session_data = session_data
-            self.mediapipe_fr_mar_xyz = session_data.mediapipe_skel_fr_mar_dim
+            self.mediapipe_fr_mar_xyz = session_data.mediapipe_skel_fr_mar_xyz
         elif mediapipe_skel_fr_mar_xyz is not None:
             self.mediapipe_fr_mar_xyz = mediapipe_skel_fr_mar_xyz
         else:

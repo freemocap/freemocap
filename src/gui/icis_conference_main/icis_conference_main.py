@@ -22,7 +22,9 @@ if __name__ == "__main__":
     app = get_qt_app()
     timer = QTimer()
     timer.start(500)
-    timer.timeout.connect(lambda: None)  # Let the interpreter run each 500 ms.
+    timer.timeout.connect(
+        lambda: None
+    )  # Let the interpreter calculate_center_of_mass each 500 ms.
     win = ICISConferenceMainWindow()
     # win = SlopMainWindow()
     win.show()

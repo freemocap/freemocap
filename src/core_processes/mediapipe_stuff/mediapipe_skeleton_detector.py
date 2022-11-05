@@ -1,24 +1,23 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Union, Any
+from typing import List, Union, Any
 
 import cv2
 import numpy as np
 import mediapipe as mp
+from tqdm import tqdm
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from src.config.home_dir import (
-    get_session_folder_path,
-    get_synchronized_videos_folder_path,
-    get_output_data_folder_path,
-)
+from src.config.home_dir import MEDIAPIPE_2D_NPY_FILE_NAME
+
 from src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
 )
-
-from src.gui.main.app_state.app_state import APP_STATE
+from src.core_processes.batch_processing.session_processing_parameter_models import (
+    MediaPipe2DParametersModel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -79,11 +78,10 @@ class Mediapipe2dDataPayload:
 
 
 class MediaPipeSkeletonDetector:
-    def __init__(self, session_id: str = None):
-
-        self.model_complexity = 2  # can be 0,1, or 2 - higher numbers  are more accurate but heavier computationally
-        self.min_detection_confidence = 0.5
-        self.min_tracking_confidence = 0.5
+    def __init__(
+        self,
+        parameter_model=MediaPipe2DParametersModel(),
+    ):
 
         self._mediapipe_payload_list = []
 
@@ -102,9 +100,9 @@ class MediaPipeSkeletonDetector:
         )
 
         self._holistic_tracker = self._mp_holistic.Holistic(
-            model_complexity=self.model_complexity,
-            min_detection_confidence=self.min_detection_confidence,
-            min_tracking_confidence=self.min_tracking_confidence,
+            model_complexity=parameter_model.model_complexity,
+            min_detection_confidence=parameter_model.min_detection_confidence,
+            min_tracking_confidence=parameter_model.min_tracking_confidence,
         )
         self._mediapipe_tracked_point_names_dict = mediapipe_tracked_point_names_dict
 
@@ -170,7 +168,7 @@ class MediaPipeSkeletonDetector:
         path_to_folder_of_videos_to_process: Union[Path, str],
         output_data_folder_path: Union[str, Path],
         save_annotated_videos: bool = True,
-    ):
+    ) -> np.ndarray:
 
         path_to_folder_of_videos_to_process = Path(path_to_folder_of_videos_to_process)
 
@@ -195,18 +193,24 @@ class MediaPipeSkeletonDetector:
             this_video_annotated_images_list = []
 
             success, image = this_video_capture_object.read()
-            if not success or image is None:
-                logger.error(
-                    f"Failed to load an image from: {str(this_synchronized_video_file_path)}"
-                )
-                raise Exception
 
-            frame_number = 0
-            while success and image is not None:
+            number_of_frames = int(
+                this_video_capture_object.get(cv2.CAP_PROP_FRAME_COUNT)
+            )
 
-                frame_number += 1
-                if frame_number % 5 == 0:
-                    print(f"frame {frame_number}")
+            for frame_number in tqdm(
+                range(number_of_frames),
+                desc=f"mediapiping video: {this_synchronized_video_file_path.name}",
+                total=number_of_frames,
+                colour="magenta",
+                unit="frames",
+                dynamic_ncols=True,
+            ):
+                if not success or image is None:
+                    logger.error(
+                        f"Failed to load an image from: {str(this_synchronized_video_file_path)}"
+                    )
+                    raise Exception
 
                 mediapipe2d_data_payload = self.detect_skeleton_in_image(
                     raw_image=image
@@ -290,7 +294,7 @@ class MediaPipeSkeletonDetector:
             data2d_numCams_numFrames_numTrackedPts_XY=data2d_numCams_numFrames_numTrackedPts_XY,
             output_data_folder_path=Path(output_data_folder_path),
         )
-        return str(mediapipe_data_2d_npy_path)
+        return data2d_numCams_numFrames_numTrackedPts_XY
 
     def _save_mediapipe2d_data_to_npy(
         self,
@@ -298,9 +302,9 @@ class MediaPipeSkeletonDetector:
         output_data_folder_path: Union[str, Path],
     ):
         mediapipe_2dData_save_path = (
-            Path(output_data_folder_path)
-            / "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
+            Path(output_data_folder_path) / MEDIAPIPE_2D_NPY_FILE_NAME
         )
+        mediapipe_2dData_save_path.parent.mkdir(exist_ok=True, parents=True)
         logger.info(f"saving: {mediapipe_2dData_save_path}")
         np.save(
             str(mediapipe_2dData_save_path), data2d_numCams_numFrames_numTrackedPts_XY

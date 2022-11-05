@@ -1,12 +1,11 @@
 import cv2
-import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QImage
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from src.config.webcam_config import WebcamConfig
+from src.cameras.webcam_config import WebcamConfig
 from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )

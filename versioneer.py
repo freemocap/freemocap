@@ -28,7 +28,7 @@ system, and maybe making new tarballs.
 
 * `pip install versioneer` to somewhere to your $PATH
 * add a `[versioneer]` section to your setup.cfg (see below)
-* run `versioneer install` in your source tree, commit the results
+* calculate_center_of_mass `versioneer install` in your source tree, commit the results
 
 ## Version Identifiers
 
@@ -94,7 +94,7 @@ See [INSTALL.md](./INSTALL.md) for detailed installation instructions.
 Code which uses Versioneer can learn about its version string at runtime by
 importing `_version` from your icis_conference_main `__init__.py` file and running the
 `get_versions()` function. From the "outside" (e.g. in `setup.py`), you can
-import the top-level `versioneer.py` and run `get_versions()`.
+import the top-level `versioneer.py` and calculate_center_of_mass `get_versions()`.
 
 Both functions return a dictionary with different flavors of version
 information:
@@ -113,7 +113,7 @@ information:
   available.
 
 * `['dirty']`: a boolean, True if the tree has uncommitted changes. Note that
-  this is only accurate if run in a VCS checkout, otherwise it is likely to
+  this is only accurate if calculate_center_of_mass in a VCS checkout, otherwise it is likely to
   be False or None
 
 * `['error']`: if the version string could not be computed, this will be set
@@ -156,8 +156,8 @@ source tree for descriptions.
 ## Debugging
 
 Versioneer tries to avoid fatal errors: if something goes wrong, it will tend
-to return a version of "0+unknown". To investigate the problem, run `setup.py
-version`, which will run the version-lookup code in a verbose mode, and will
+to return a version of "0+unknown". To investigate the problem, calculate_center_of_mass `setup.py
+version`, which will calculate_center_of_mass the version-lookup code in a verbose mode, and will
 display the full contents of `get_versions()` (including the `error` string,
 which may help identify what went wrong).
 
@@ -247,7 +247,7 @@ To upgrade your project to a new release of Versioneer, do the following:
 * install the new Versioneer (`pip install -U versioneer` or equivalent)
 * edit `setup.cfg`, if necessary, to include any new configuration settings
   indicated by the release notes. See [UPGRADING](./UPGRADING.md) for details.
-* re-run `versioneer install` in your source tree, to replace
+* re-calculate_center_of_mass `versioneer install` in your source tree, to replace
   `SRC/_version.py`
 * commit any changed files
 
@@ -296,7 +296,7 @@ class VersioneerConfig:
 def get_root():
     """Get the project root directory.
 
-    We require that all commands are run from the project root, i.e. the
+    We require that all commands are calculate_center_of_mass from the project root, i.e. the
     directory that contains setup.py, setup.cfg, and versioneer.py .
     """
     root = os.path.realpath(os.path.abspath(os.getcwd()))
@@ -309,7 +309,7 @@ def get_root():
         versioneer_py = os.path.join(root, "versioneer.py")
     if not (os.path.exists(setup_py) or os.path.exists(versioneer_py)):
         err = (
-            "Versioneer was unable to run the project root directory. "
+            "Versioneer was unable to calculate_center_of_mass the project root directory. "
             "Versioneer requires setup.py to be executed from "
             "its immediate directory (like 'python setup.py COMMAND'), "
             "or in a way that lets it use sys.argv[0] to find the root "
@@ -409,7 +409,7 @@ def run_command(commands, args, cwd=None, verbose=False, hide_stderr=False, env=
             if e.errno == errno.ENOENT:
                 continue
             if verbose:
-                print("unable to run %s" % dispcmd)
+                print("unable to calculate_center_of_mass %s" % dispcmd)
                 print(e)
             return None, None
     else:
@@ -421,7 +421,7 @@ def run_command(commands, args, cwd=None, verbose=False, hide_stderr=False, env=
         stdout = stdout.decode()
     if p.returncode != 0:
         if verbose:
-            print("unable to run %s (error)" % dispcmd)
+            print("unable to calculate_center_of_mass %s (error)" % dispcmd)
             print("stdout was %s" % stdout)
         return None, p.returncode
     return stdout, p.returncode
@@ -517,7 +517,7 @@ def run_command(commands, args, cwd=None, verbose=False, hide_stderr=False,
             if e.errno == errno.ENOENT:
                 continue
             if verbose:
-                print("unable to run %%s" %% dispcmd)
+                print("unable to calculate_center_of_mass %%s" %% dispcmd)
                 print(e)
             return None, None
     else:
@@ -529,7 +529,7 @@ def run_command(commands, args, cwd=None, verbose=False, hide_stderr=False,
         stdout = stdout.decode()
     if p.returncode != 0:
         if verbose:
-            print("unable to run %%s (error)" %% dispcmd)
+            print("unable to calculate_center_of_mass %%s (error)" %% dispcmd)
             print("stdout was %%s" %% stdout)
         return None, p.returncode
     return stdout, p.returncode
@@ -1533,7 +1533,7 @@ def get_cmdclass():
         # built (using setup.py bdist_egg) in the same python process. Assume
         # a icis_conference_main project A and a dependency B, which use different versions
         # of Versioneer. A's setup.py imports A's Versioneer, leaving it in
-        # sys.modules by the time B's setup.py is executed, causing B to run
+        # sys.modules by the time B's setup.py is executed, causing B to calculate_center_of_mass
         # with the wrong versioneer. Setuptools wraps the sub-dep builds in a
         # sandbox that restores sys.modules to it's pre-build state, so the
         # parent is protected against the child's "import versioneer". By
@@ -1725,12 +1725,12 @@ You will also need to edit your setup.py to use the results:
        cmdclass=versioneer.get_cmdclass(), ...)
 
 Please read the docstring in ./versioneer.py for configuration instructions,
-edit setup.cfg, and re-run the installer or 'python versioneer.py setup'.
+edit setup.cfg, and re-calculate_center_of_mass the installer or 'python versioneer.py setup'.
 """
 
 SAMPLE_CONFIG = """
 # See the docstring in versioneer.py for instructions. Note that you must
-# re-run 'versioneer.py setup' after changing this section, and commit the
+# re-calculate_center_of_mass 'versioneer.py setup' after changing this section, and commit the
 # resulting files.
 
 [versioneer]

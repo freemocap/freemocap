@@ -3,17 +3,15 @@ import logging
 import platform
 import time
 import traceback
-from typing import List, Union
 
 import cv2
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.viewer.cv_cam_viewer import CvCamViewer
-from src.config.webcam_config import WebcamConfig
+from src.cameras.webcam_config import WebcamConfig
 from src.cameras.capture.opencv_camera.camera_stream_thread_handler import (
     VideoCaptureThread,
 )
-from src.core_processes.timestamp_manager.timestamp_manager import TimestampLogger
 
 logger = logging.getLogger(__name__)
 

@@ -3,10 +3,12 @@ import shutil
 from pathlib import Path
 from typing import Union
 
+import pandas as pd
 from PyQt6 import QtGui
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu, QLabel
+from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu
 
+from src.blender_stuff.export_to_blender import export_to_blender
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.home_dir import (
     get_calibration_videos_folder_path,
@@ -17,6 +19,9 @@ from src.config.home_dir import (
     get_most_recent_session_id,
     get_freemocap_data_folder_path,
     get_annotated_videos_folder_path,
+    get_skeleton_body_csv_path,
+    get_blender_file_path, get_raw_data_folder_path, PARTIALLY_PROCESSED_DATA_FOLDER_NAME,
+    MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
@@ -24,17 +29,22 @@ from src.core_processes.capture_volume_calibration.charuco_board_detection.datac
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_most_recent_anipose_calibration_toml,
     load_calibration_from_session_id,
-    load_anipose_calibration_toml_from_user_selection,
+    load_anipose_calibration_toml_from_path,
 )
 from src.core_processes.mediapipe_stuff.load_mediapipe2d_data import (
     load_mediapipe2d_data,
 )
 from src.core_processes.mediapipe_stuff.load_mediapipe3d_data import (
-    load_mediapipe3d_data,
+    load_raw_mediapipe3d_data,
+    load_post_processed_mediapipe3d_data,
+    load_skeleton_reprojection_error_data,
 )
-from src.export_stuff.blender_stuff.export_to_blender import (
-    export_to_blender,
+from src.core_processes.post_process_skeleton_data.estimate_skeleton_segment_lengths import (
+    mediapipe_skeleton_segment_definitions,
+    estimate_skeleton_segment_lengths,
+    save_skeleton_segment_lengths_to_json,
 )
+
 from src.gui.main.app import get_qt_app
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
@@ -62,6 +72,7 @@ logger = logging.getLogger(__name__)
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        self._pipedream_ping_dictionary = {"gui_window": "launched"}
         logger.info("Creating main window")
 
         super().__init__()
@@ -90,7 +101,7 @@ class MainWindow(QMainWindow):
 
         self._main_layout.addWidget(self._right_side_panel.frame)
 
-        self._thread_worker_manager = ThreadWorkerManager()
+        self._thread_worker_manager = ThreadWorkerManager(session_progress_dictionary = self._pipedream_ping_dictionary )
 
         # actions, signals and slots, o my
         self._create_actions()
@@ -386,6 +397,10 @@ class MainWindow(QMainWindow):
             self._setup_and_launch_triangulate_3d_thread_worker
         )
 
+        self._control_panel.process_session_data_panel.gap_fill_filter_origin_align_button.clicked.connect(
+            self._setup_and_launch_gap_fill_filter_origin_align_thread_worker
+        )
+
         self._control_panel.process_session_data_panel.open_in_blender_button.clicked.connect(
             self._export_to_blender
         )
@@ -430,6 +445,18 @@ class MainWindow(QMainWindow):
         self._thread_worker_manager.start_3d_processing_signal.connect(
             lambda: self._setup_and_launch_triangulate_3d_thread_worker(
                 auto_process_next_stage=True
+            )
+        )
+
+        self._thread_worker_manager.start_post_processing_signal.connect(
+            lambda: self._setup_and_launch_gap_fill_filter_origin_align_thread_worker(
+                auto_process_next_stage=True
+            )
+        )
+
+        self._thread_worker_manager.start_convert_npy_to_to_csv_signal.connect(
+            lambda: self._setup_and_launch_convert_npy_to_csv_thread_worker(
+                auto_process_next_stage=False
             )
         )
 
@@ -489,10 +516,7 @@ class MainWindow(QMainWindow):
 
     def _start_session(self, session_id: str, new_session: bool = False):
 
-        if (
-            self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked()
-        ):
-            send_pipedream_ping("session_started")
+
 
         self._session_id = session_id
         self._control_panel.enable_toolbox_panels()
@@ -666,10 +690,10 @@ class MainWindow(QMainWindow):
         synchronized_videos_folder_path = get_synchronized_videos_folder_path(
             self._session_id
         )
-        output_data_folder_path = get_output_data_folder_path(self._session_id)
+        raw_data_folder_path = get_raw_data_folder_path(self._session_id)
         self._thread_worker_manager.launch_detect_2d_skeletons_thread_worker(
             synchronized_videos_folder_path=synchronized_videos_folder_path,
-            output_data_folder_path=output_data_folder_path,
+            output_data_folder_path=raw_data_folder_path,
             auto_process_next_stage=auto_process_next_stage,
         )
 
@@ -679,13 +703,22 @@ class MainWindow(QMainWindow):
         if (
             self._control_panel.calibrate_capture_volume_panel.use_previous_calibration_box_is_checked
         ):
+
             anipose_calibration_object = load_most_recent_anipose_calibration_toml(
                 get_session_folder_path(self._session_id)
             )
+
+            calibration_toml_filename = f"camera_calibration_data.toml"
+            camera_calibration_toml_path = (
+                Path(get_session_folder_path(self._session_id))
+                / calibration_toml_filename
+            )
+            anipose_calibration_object.dump(camera_calibration_toml_path)
+
         elif (
             self._control_panel.calibrate_capture_volume_panel.load_camera_calibration_checkbox_is_checked
         ):
-            anipose_calibration_object = load_anipose_calibration_toml_from_user_selection(
+            anipose_calibration_object = load_anipose_calibration_toml_from_path(
                 self._control_panel.calibrate_capture_volume_panel.user_selected_calibration_toml_path,
                 get_session_folder_path(self._session_id),
             )
@@ -700,25 +733,86 @@ class MainWindow(QMainWindow):
                 get_session_calibration_toml_file_path(self._session_id)
             )
 
-        output_data_folder_path = get_output_data_folder_path(self._session_id)
-        mediapipe_2d_data = load_mediapipe2d_data(output_data_folder_path)
+        raw_data_folder_path = get_raw_data_folder_path(self._session_id)
+        mediapipe_2d_data = load_mediapipe2d_data(raw_data_folder_path)
 
         self._thread_worker_manager.launch_triangulate_3d_data_thread_worker(
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=mediapipe_2d_data,
-            output_data_folder_path=output_data_folder_path,
+            output_data_folder_path=raw_data_folder_path,
             mediapipe_confidence_cutoff_threshold=self._control_panel.process_session_data_panel.mediapipe_confidence_cutoff_threshold,
-            save_data_as_csv=self._control_panel.process_session_data_panel.convert_npy_to_csv_checkbox.isChecked(),
+            auto_process_next_stage=auto_process_next_stage,
+            use_triangulate_ransac=self._control_panel.process_session_data_panel.use_triangulate_ransac_checkbox.isChecked(),
+        )
+
+    def _setup_and_launch_gap_fill_filter_origin_align_thread_worker(
+        self, auto_process_next_stage: bool = False
+    ):
+        output_data_folder_path = Path(get_output_data_folder_path(self._session_id))
+
+        skel3d_frame_marker_xyz = load_raw_mediapipe3d_data(output_data_folder_path)
+        skeleton_reprojection_error_fr_mar = load_skeleton_reprojection_error_data(
+            output_data_folder_path
+        )
+
+        data_save_path = output_data_folder_path / PARTIALLY_PROCESSED_DATA_FOLDER_NAME
+        data_save_path.mkdir(exist_ok=True)
+        sampling_rate = 30
+        cut_off = 7
+        order = 4
+        reference_frame_number = None
+
+        self._thread_worker_manager.launch_post_process_3d_data_thread_worker(
+            skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
+            data_save_path=data_save_path,
+            sampling_rate=sampling_rate,
+            cut_off=cut_off,
+            order=order,
+            reference_frame_number=reference_frame_number,
+            auto_process_next_stage=auto_process_next_stage,
+        )
+
+    def _setup_and_launch_convert_npy_to_csv_thread_worker(
+        self, auto_process_next_stage: bool = False
+    ):
+        logger.info("Launching convert npy to csv thread worker")
+
+        output_data_folder_path = Path(get_output_data_folder_path(self._session_id))
+        mediapipe3d_xyz_file_path = (
+                Path(output_data_folder_path)
+                / PARTIALLY_PROCESSED_DATA_FOLDER_NAME
+                / MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
+        )
+        skel3d_frame_marker_xyz = load_post_processed_mediapipe3d_data(
+            mediapipe3d_xyz_file_path
+        )
+
+        self._thread_worker_manager.launch_convert_npy_to_csv_thread_worker(
+            skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            output_data_folder_path=output_data_folder_path,
             auto_process_next_stage=auto_process_next_stage,
         )
 
     def _export_to_blender(self):
         logger.debug(
-            "Open Session in Blender button clicked (this will freeze the GUI while it is running, sorry! I tried to run it in a thread instead of a 'subprocess' but I got some kind of permission error when it tried to save the `.blend` file, so.... here we are. Frozen in the GUI.  How are you? "
+            "Open Session in Blender button clicked (this will freeze the GUI while it is running, sorry! I tried to calculate_center_of_mass it in a thread instead of a 'subprocess' but I got some kind of permission error when it tried to save the `.blend` file, so.... here we are. Frozen in the GUI.  How are you? "
         )
         # self._thread_worker_manager.launch_export_to_blender_thread_worker(
         #     get_session_folder_path(self._session_id)
         # )
+        path_to_skeleton_body_csv = get_skeleton_body_csv_path(self._session_id)
+        skeleton_dataframe = pd.read_csv(path_to_skeleton_body_csv)
+
+        skeleton_segment_lengths_dict = estimate_skeleton_segment_lengths(
+            skeleton_dataframe=skeleton_dataframe,
+            skeleton_segment_definitions=mediapipe_skeleton_segment_definitions,
+        )
+
+        save_skeleton_segment_lengths_to_json(
+            get_output_data_folder_path(self._session_id), skeleton_segment_lengths_dict
+        )
+
         blender_file_path = export_to_blender(
             session_folder_path=get_session_folder_path(self._session_id),
             blender_exe_path=self._control_panel.process_session_data_panel.blender_exe_path_str,
@@ -727,10 +821,19 @@ class MainWindow(QMainWindow):
         if (
             self._control_panel.record_motion_capture_videos_panel.open_in_blender_automatically_checkbox.isChecked()
         ):
-            self._open_blender_file(blender_file_path)
+            if blender_file_path:
+                self._open_blender_file(blender_file_path)
 
     def _open_blender_file(self, blender_file_path: Union[str, Path]):
         logger.info(f"Opening {str(blender_file_path)}")
+
+        if blender_file_path is False:
+            blender_file_path = get_blender_file_path(self._session_id)
+
+        if not Path(blender_file_path).exists():
+            logger.error(f"ERROR - {str(blender_file_path)} does not exist!")
+            return
+
         os.startfile(str(blender_file_path))
 
     def _visualize_motion_capture_data(self):
@@ -738,8 +841,11 @@ class MainWindow(QMainWindow):
             "`self._control_panel.visualize_motion_capture_data.load_session_data_button` was pressed "
         )
 
-        skeleton_3d_npy = load_mediapipe3d_data(
-            get_output_data_folder_path(self._session_id)
+        skeleton_3d_npy = load_post_processed_mediapipe3d_data(
+            Path(get_output_data_folder_path(self._session_id)) /
+            PARTIALLY_PROCESSED_DATA_FOLDER_NAME /
+            MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
+
         )
 
         video_path_iterator = Path(
@@ -767,6 +873,17 @@ class MainWindow(QMainWindow):
         get_qt_app().exit(EXIT_CODE_REBOOT)
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+
+        if (
+            self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked()
+        ):
+            pipedream_ping_dict = self._thread_worker_manager.session_progress_dictionary
+            if Path(get_blender_file_path(self._session_id)).exists():
+                pipedream_ping_dict['blender_file_created'] = True
+            else:
+                pipedream_ping_dict['blender_file_created'] = False
+            send_pipedream_ping(pipedream_ping_dict)
+
         logger.info("Close Event detected for main window... ")
         self._middle_viewing_panel.camera_stream_grid_view.close_camera_widgets()
 

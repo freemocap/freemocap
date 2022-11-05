@@ -33,7 +33,9 @@ if __name__ == "__main__":
     app.setStyleSheet(qt_app_css_style_sheet)
     timer = QTimer()
     timer.start(500)
-    timer.timeout.connect(lambda: None)  # Let the interpreter run each 500 ms.
+    timer.timeout.connect(
+        lambda: None
+    )  # Let the interpreter calculate_center_of_mass each 500 ms.
 
     while True:
         # rebootable GUI method based on this - https://stackoverflow.com/a/56563926/14662833

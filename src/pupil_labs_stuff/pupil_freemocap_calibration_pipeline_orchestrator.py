@@ -65,11 +65,11 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
             f"self.raw_session_data.freemocap_timestamps.shape: {self.raw_session_data.timestamps.shape}"
         )
 
-        self.raw_session_data.mediapipe_skel_fr_mar_dim = (
+        self.raw_session_data.mediapipe_skel_fr_mar_xyz = (
             self.session_data_loader.load_mediapipe_data()
         )
         logger.info(
-            f"self.raw_session_data.mediapipe_skel_fr_mar_dim.shape: {self.raw_session_data.mediapipe_skel_fr_mar_dim.shape}"
+            f"self.raw_session_data.mediapipe_skel_fr_mar_dim.shape: {self.raw_session_data.mediapipe_skel_fr_mar_xyz.shape}"
         )
 
         ####
@@ -102,7 +102,7 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
         # Calculate Head Rotation matrix for each frame (gaze data will be rotated by head_rot, then calibrated_offset_rot)
         ####
         rotation_matrix_calculator = RotationMatrixCalculator(
-            synchronized_session_data.mediapipe_skel_fr_mar_dim
+            synchronized_session_data.mediapipe_skel_fr_mar_xyz
         )
 
         synchronized_session_data.head_rotation_data = (
@@ -131,13 +131,13 @@ class PupilFreemocapCalibrationPipelineOrchestrator:
         # Perform Vestibular-Ocular-Reflex based calibration (see methods from (Matthis et al, 2018 and 2022) for deetos)
         ####
         vor_calibrator = VorCalibrator(
-            synchronized_session_data.mediapipe_skel_fr_mar_dim.copy(),
+            synchronized_session_data.mediapipe_skel_fr_mar_xyz.copy(),
             vor_start_frame=self.vor_frame_start,
             vor_end_frame=self.vor_frame_end,
             debug=False,
         )
         right_index_fingertip_idx = 41  # pretty sure this is right?
-        fixation_point_fr_xyz = synchronized_session_data.mediapipe_skel_fr_mar_dim[
+        fixation_point_fr_xyz = synchronized_session_data.mediapipe_skel_fr_mar_xyz[
             self.vor_frame_start : self.vor_frame_end, right_index_fingertip_idx, :
         ]
         # right eye

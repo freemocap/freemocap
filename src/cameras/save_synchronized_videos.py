@@ -4,11 +4,11 @@ from typing import List, Union, Dict
 import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
-from src.cameras.create_timestamp_diagnostic_plots import (
+from src.config.home_dir import DIAGNOSTIC_PLOTS_FOLDER_NAME
+from src.diagnostic_plot_makers.create_timestamp_diagnostic_plots import (
     create_timestamp_diagnostic_plots,
 )
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from src.gui.icis_conference_main.state.app_state import APP_STATE
 
 import logging
 
@@ -103,10 +103,13 @@ def save_synchronized_videos(
             / f"Camera_{str(camera_id).zfill(3)}.mp4",
         )
 
+    diagnostic_plot_folder = Path(folder_to_save_videos) / DIAGNOSTIC_PLOTS_FOLDER_NAME
+    diagnostic_plot_folder.mkdir(parents=True, exist_ok=True)
+    path_to_save_plots = diagnostic_plot_folder / "timestamp_diagnostic_plots.png"
     create_timestamp_diagnostic_plots(
         each_cam_raw_frame_list,
         each_cam_synchronized_frame_list,
-        Path(folder_to_save_videos) / f"timestamp_synchronization_diagnostic_plots.png",
+        path_to_save_plots,
     )
 
 

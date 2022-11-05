@@ -139,7 +139,7 @@ class PupilFreemocapSynchronizer:
 
         synchronized_session_data = FreemocapSessionDataClass(
             timestamps=self.synchronized_timestamps,
-            mediapipe_skel_fr_mar_dim=self.raw_session_data.mediapipe_skel_fr_mar_dim[
+            mediapipe_skel_fr_mar_dim=self.raw_session_data.mediapipe_skel_fr_mar_xyz[
                 freemocap_start_frame:freemocap_end_frame, :, :
             ],
             right_eye_pupil_labs_data=synchronized_right_eye_data,

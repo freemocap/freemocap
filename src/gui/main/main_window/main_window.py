@@ -20,7 +20,8 @@ from src.config.home_dir import (
     get_freemocap_data_folder_path,
     get_annotated_videos_folder_path,
     get_skeleton_body_csv_path,
-    get_blender_file_path, get_raw_data_folder_path,
+    get_blender_file_path, get_raw_data_folder_path, PARTIALLY_PROCESSED_DATA_FOLDER_NAME,
+    MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
@@ -71,6 +72,7 @@ logger = logging.getLogger(__name__)
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        self._pipedream_ping_dictionary = {"gui_window": "launched"}
         logger.info("Creating main window")
 
         super().__init__()
@@ -99,7 +101,7 @@ class MainWindow(QMainWindow):
 
         self._main_layout.addWidget(self._right_side_panel.frame)
 
-        self._thread_worker_manager = ThreadWorkerManager()
+        self._thread_worker_manager = ThreadWorkerManager(session_progress_dictionary = self._pipedream_ping_dictionary )
 
         # actions, signals and slots, o my
         self._create_actions()
@@ -514,10 +516,7 @@ class MainWindow(QMainWindow):
 
     def _start_session(self, session_id: str, new_session: bool = False):
 
-        if (
-            self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked()
-        ):
-            send_pipedream_ping("session_started")
+
 
         self._session_id = session_id
         self._control_panel.enable_toolbox_panels()
@@ -756,7 +755,7 @@ class MainWindow(QMainWindow):
             output_data_folder_path
         )
 
-        data_save_path = output_data_folder_path / "post_processed_data"
+        data_save_path = output_data_folder_path / PARTIALLY_PROCESSED_DATA_FOLDER_NAME
         data_save_path.mkdir(exist_ok=True)
         sampling_rate = 30
         cut_off = 7
@@ -780,8 +779,13 @@ class MainWindow(QMainWindow):
         logger.info("Launching convert npy to csv thread worker")
 
         output_data_folder_path = Path(get_output_data_folder_path(self._session_id))
+        mediapipe3d_xyz_file_path = (
+                Path(output_data_folder_path)
+                / PARTIALLY_PROCESSED_DATA_FOLDER_NAME
+                / MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
+        )
         skel3d_frame_marker_xyz = load_post_processed_mediapipe3d_data(
-            output_data_folder_path
+            mediapipe3d_xyz_file_path
         )
 
         self._thread_worker_manager.launch_convert_npy_to_csv_thread_worker(
@@ -838,7 +842,10 @@ class MainWindow(QMainWindow):
         )
 
         skeleton_3d_npy = load_post_processed_mediapipe3d_data(
-            get_output_data_folder_path(self._session_id)
+            Path(get_output_data_folder_path(self._session_id)) /
+            PARTIALLY_PROCESSED_DATA_FOLDER_NAME /
+            MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
+
         )
 
         video_path_iterator = Path(
@@ -866,6 +873,11 @@ class MainWindow(QMainWindow):
         get_qt_app().exit(EXIT_CODE_REBOOT)
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        if (
+            self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked()
+        ):
+            send_pipedream_ping(self._thread_worker_manager.session_progress_dictionary)
+
         logger.info("Close Event detected for main window... ")
         self._middle_viewing_panel.camera_stream_grid_view.close_camera_widgets()
 

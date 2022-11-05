@@ -14,7 +14,6 @@ from src.config.home_dir import (
     CENTER_OF_MASS_FOLDER_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-    PARTIALLY_PROCESSED_DATA_FOLDER_NAME,
 )
 
 logger = logging.getLogger(__name__)
@@ -1142,14 +1141,14 @@ def are_there_feet_in_this_mediapipe_skeleton_data(
 def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     skel3d_frame_marker_xyz: np.ndarray,
     skeleton_reprojection_error_fr_mar: np.ndarray,
-    data_arrays_path: [str, Path],
+    path_to_folder_where_we_will_save_this_data: [str, Path],
     # Filter the data, set the filtering options here
     sampling_rate: Union[float, int],
     cut_off: Union[float, int],
     order: Union[float, int],
     reference_frame_number: Union[float, int] = None,
 ):
-    data_arrays_path = Path(data_arrays_path)
+    path_to_folder_where_we_will_save_this_data = Path(path_to_folder_where_we_will_save_this_data)
 
     logger.info("Gap-filling data...")
     # Interpolate the data
@@ -1162,44 +1161,52 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
         freemocap_interpolated_data, cut_off, sampling_rate, order
     )
 
-    logger.info("Aligning data to the origin...")
+    # pin skeleton to origin (set to mean positin of skeletonin this recording)
+    zeroed_skeleton_data = butterworth_filtered_skeleton_data.copy()
+    zeroed_skeleton_data[:,:,0] -= np.nanmean(zeroed_skeleton_data[:,:,0])
+    zeroed_skeleton_data[:,:,1] -= np.nanmean(zeroed_skeleton_data[:,:,1])
+    zeroed_skeleton_data[:,:,2] -= np.nanmean(zeroed_skeleton_data[:,:,2])
+
+    # TODO - align skeleton so feet are at Z-plane and head is facing up
+    origin_aligned_freemocap_marker_data = zeroed_skeleton_data.copy()
+    # logger.info("Aligning data to the origin...")
 
     #     reference_frame_number = find_good_clean_frame_reprojection_error_method(
     #         skeleton_3d_fr_mar_xyz=freemocap_filtered_marker_data,
     #         skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
     #     )
-    has_feet = are_there_feet_in_this_mediapipe_skeleton_data(
-        butterworth_filtered_skeleton_data, mediapipe_landmark_names
-    )
-    if has_feet:
-        reference_frame_number = find_good_frame_recursive_guess_method(
-            butterworth_filtered_skeleton_data, mediapipe_landmark_names, 0.3
-        )
 
-        logger.info("Using the foot/spine method of alignment...")
-        origin_aligned_freemocap_marker_data = (
-            align_skeleton_with_origin_foot_spine_method(
-                butterworth_filtered_skeleton_data,
-                mediapipe_landmark_names,
-                reference_frame_number,
-            )
-        )
-    else:  # no feet
-        logger.info("Using the skelly blob method of alignment...")
-        origin_aligned_freemocap_marker_data = (
-            align_skeleton_with_origin_mean_blob_method(
-                butterworth_filtered_skeleton_data
-            )
-        )
+    # has_feet = are_there_feet_in_this_mediapipe_skeleton_data(
+    #     butterworth_filtered_skeleton_data, mediapipe_landmark_names
+    # )
+    # if has_feet:
+    #     reference_frame_number = find_good_frame_recursive_guess_method(
+    #         butterworth_filtered_skeleton_data, mediapipe_landmark_names, 0.3
+    #     )
+    #
+    #     logger.info("Using the foot/spine method of alignment...")
+    #     origin_aligned_freemocap_marker_data = (
+    #         align_skeleton_with_origin_foot_spine_method(
+    #             butterworth_filtered_skeleton_data,
+    #             mediapipe_landmark_names,
+    #             reference_frame_number,
+    #         )
+    #     )
+    # else:  # no feet
+    #     logger.info("Using the skelly blob method of alignment...")
+    #     origin_aligned_freemocap_marker_data = (
+    #         align_skeleton_with_origin_mean_blob_method(
+    #             butterworth_filtered_skeleton_data
+    #         )
+    #     )
 
     logger.info("Saving Origin Aligned Data")
-    Path(data_arrays_path / PARTIALLY_PROCESSED_DATA_FOLDER_NAME).mkdir(
+    Path(path_to_folder_where_we_will_save_this_data).mkdir(
         parents=True, exist_ok=True
     )
     np.save(
         str(
-            data_arrays_path
-            / PARTIALLY_PROCESSED_DATA_FOLDER_NAME
+            path_to_folder_where_we_will_save_this_data
             / "mediaPipeSkel_3d_origin_aligned"
         ),
         origin_aligned_freemocap_marker_data,
@@ -1223,12 +1230,12 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
         skelcoordinates_frame_segment_joint_XYZ,
         anthropometric_info_dataframe,
     )
-    Path(data_arrays_path / CENTER_OF_MASS_FOLDER_NAME).mkdir(
+    Path(path_to_folder_where_we_will_save_this_data / CENTER_OF_MASS_FOLDER_NAME).mkdir(
         parents=True, exist_ok=True
     )
     np.save(
         str(
-            data_arrays_path
+            path_to_folder_where_we_will_save_this_data
             / CENTER_OF_MASS_FOLDER_NAME
             / SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME
         ),
@@ -1236,7 +1243,7 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     )
     np.save(
         str(
-            data_arrays_path
+            path_to_folder_where_we_will_save_this_data
             / CENTER_OF_MASS_FOLDER_NAME
             / TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME
         ),
@@ -1260,7 +1267,7 @@ if __name__ == "__main__":
     gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
         mediapipe_3d_frame_trackedPoint_xyz,
         skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
-        data_arrays_path=output_data_folder_path,
+        path_to_folder_where_we_will_save_this_data=output_data_folder_path,
         sampling_rate=30,
         cut_off=7,
         order=4,

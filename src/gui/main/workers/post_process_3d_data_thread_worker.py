@@ -4,8 +4,6 @@ from typing import Union
 import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from src.cameras.detection.cam_singleton import get_or_create_cams
-from src.cameras.detection.models import FoundCamerasResponse
 
 import logging
 
@@ -42,7 +40,7 @@ class PostProcess3dDataThreadWorker(QThread):
         gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
             self.skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar=self.skeleton_reprojection_error_fr_mar,
-            data_arrays_path=self.data_save_path,
+            path_to_folder_where_we_will_save_this_data=self.data_save_path,
             sampling_rate=self.sample_rate,
             cut_off=self.cut_off,
             order=self.order,

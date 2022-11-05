@@ -155,7 +155,7 @@ def process_session_folder(
         skel3d_frame_marker_xyz = gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
             skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
-            data_arrays_path=s.path_to_output_data_folder,
+            path_to_folder_where_we_will_save_this_data=s.path_to_output_data_folder,
             sampling_rate=s.post_processing_parameters.framerate,
             cut_off=s.post_processing_parameters.butterworth_filter_parameters.cutoff_frequency,
             order=s.post_processing_parameters.butterworth_filter_parameters.order,

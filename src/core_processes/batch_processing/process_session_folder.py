@@ -144,15 +144,7 @@ def process_session_folder(
                 raise FileNotFoundError(
                     f"Could not find 3d data at {s.path_to_output_data_folder}"
                 )
-                # raw_skel3d_frame_marker_xyz = np.load(
-                #     str(Path(s.path_to_output_data_folder) / "mediaPipeData_3d.npy")
-                # )
-                # skeleton_reprojection_error_fr_mar = np.load(
-                #     str(
-                #         Path(s.path_to_output_data_folder)
-                #         / "mediaPipeSkel_reprojErr.npy"
-                #     )
-                # )
+
             assert test_mediapipe_3d_data(
                 s.path_to_folder_of_synchronized_videos,
                 Path(s.path_to_output_data_folder) / RAW_DATA_FOLDER_NAME,
@@ -209,11 +201,11 @@ if __name__ == "__main__":
     from rich.pretty import pprint
 
     session_folder_path = Path(
-        r"H:\My Drive\Biol2299_Fall2022\partially_processed\FreeMocap_Data\sesh_2022-09-28_15_52_24_bbbbbb"
+        r"H:\My Drive\Biol2299_Fall2022\com_vs_bos_posture_data\sesh_2022-09-28_15_52_24_bbbbbb"
     )
 
     path_to_camera_calibration_toml = Path(
-        r"H:\My Drive\Biol2299_Fall2022\partially_processed\FreeMocap_Data\sesh_2022-09-28_15_39_31_calibration\sesh_2022-09-28_15_39_31_calibration.toml"
+        r"H:\My Drive\Biol2299_Fall2022\calibration_recordings\sesh_2022-09-28_15_39_31_calibration\sesh_2022-09-28_15_39_31_calibration.toml"
     )
 
     path_to_blender_executable = Path(
@@ -228,7 +220,7 @@ if __name__ == "__main__":
         session_folder_path / "synchronized_videos"
     ).exists():  # freemocap version > v0.0.54 (aka `alpha`)
         synchronized_videos_folder = Path(session_folder_path) / "synchronized_videos"
-    if Path(
+    elif Path(
         session_folder_path / "SyncedVideos"
     ).exists():  # freemocap version <= v0.0.54 (aka `pre-alpha`)
         synchronized_videos_folder = Path(session_folder_path) / "SyncedVideos"

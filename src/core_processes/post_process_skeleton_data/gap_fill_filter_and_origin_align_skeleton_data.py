@@ -505,8 +505,8 @@ def calculate_skeleton_rotation_matrix(
 
 def rotate_align_skeleton(
     positive_x_reference_vector_on_the_skeleton: np.ndarray,
-    positive_z_reference_vector_on_the_skeleton: np.ndarray,
     positive_y_reference_vector_on_the_skeleton: np.ndarray,
+    positive_z_reference_vector_on_the_skeleton: np.ndarray,
     world_up_vector: str,
     original_skeleton_np_array: np.ndarray,
 ) -> np.ndarray:
@@ -697,8 +697,8 @@ def align_skeleton_with_origin_foot_spine_method(
 
     origin_aligned_skeleton_data = rotate_align_skeleton(
         positive_x_reference_vector_on_the_skeleton=right_heel_vector,
-        positive_z_reference_vector_on_the_skeleton=midpoint_between_hips_xyz,
         positive_y_reference_vector_on_the_skeleton=midpoint_between_toes_xyz,
+        positive_z_reference_vector_on_the_skeleton=midpoint_between_hips_xyz,
         world_up_vector="z",
         original_skeleton_np_array=skeleton_data_zeroed,
     )

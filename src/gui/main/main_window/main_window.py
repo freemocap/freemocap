@@ -873,10 +873,16 @@ class MainWindow(QMainWindow):
         get_qt_app().exit(EXIT_CODE_REBOOT)
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+
         if (
             self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked()
         ):
-            send_pipedream_ping(self._thread_worker_manager.session_progress_dictionary)
+            pipedream_ping_dict = self._thread_worker_manager.session_progress_dictionary
+            if Path(get_blender_file_path(self._session_id)).exists():
+                pipedream_ping_dict['blender_file_created'] = True
+            else:
+                pipedream_ping_dict['blender_file_created'] = False
+            send_pipedream_ping(pipedream_ping_dict)
 
         logger.info("Close Event detected for main window... ")
         self._middle_viewing_panel.camera_stream_grid_view.close_camera_widgets()

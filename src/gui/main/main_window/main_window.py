@@ -20,7 +20,8 @@ from src.config.home_dir import (
     get_freemocap_data_folder_path,
     get_annotated_videos_folder_path,
     get_skeleton_body_csv_path,
-    get_blender_file_path, get_raw_data_folder_path,
+    get_blender_file_path,
+    get_raw_data_folder_path,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,

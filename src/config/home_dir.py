@@ -152,6 +152,8 @@ def get_raw_data_folder_path(session_id: str, create_folder: bool = True):
     if create_folder:
         raw_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
     return str(raw_data_folder_path)
+
+
 def get_session_calibration_toml_file_path(session_id: str) -> str:
     calibration_file_path = (
         Path(get_session_folder_path(session_id)) / CAMERA_CALIBRATION_FILE_NAME

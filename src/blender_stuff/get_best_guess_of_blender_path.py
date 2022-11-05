@@ -41,5 +41,7 @@ def get_best_guess_of_blender_path():
             return None
 
     else:
-        logger.info(f"Non-Windows machine detected - TODO - Test how this works on Mac/Linux")
+        logger.info(
+            f"Non-Windows machine detected - TODO - Test how this works on Mac/Linux"
+        )
         return None

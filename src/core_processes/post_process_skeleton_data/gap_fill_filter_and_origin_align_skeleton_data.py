@@ -2,7 +2,6 @@
 import logging
 import sys
 from pathlib import Path
-import pickle
 from typing import Union
 
 import numpy as np
@@ -15,6 +14,8 @@ from src.config.home_dir import (
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
 )
+
+from src.core_processes.post_process_skeleton_data.post_processing_functions import rotate_skeleton
 
 logger = logging.getLogger(__name__)
 
@@ -1161,37 +1162,25 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
         freemocap_interpolated_data, cut_off, sampling_rate, order
     )
 
-    # pin skeleton to origin (set to mean positin of skeletonin this recording)
+    # pin skeleton to origin (set to mean position of skeleton in this recording)
     zeroed_skeleton_data = butterworth_filtered_skeleton_data.copy()
-    zeroed_skeleton_data[:,:,0] -= np.nanmean(zeroed_skeleton_data[:,:,0])
-    zeroed_skeleton_data[:,:,1] -= np.nanmean(zeroed_skeleton_data[:,:,1])
-    zeroed_skeleton_data[:,:,2] -= np.nanmean(zeroed_skeleton_data[:,:,2])
+    has_feet = are_there_feet_in_this_mediapipe_skeleton_data(
+        butterworth_filtered_skeleton_data, mediapipe_landmark_names
+    )
+    if has_feet:
+        reference_frame_number = find_good_frame_recursive_guess_method(
+            butterworth_filtered_skeleton_data, mediapipe_landmark_names, 0.3
+        )
 
-    # TODO - align skeleton so feet are at Z-plane and head is facing up
-    origin_aligned_freemocap_marker_data = zeroed_skeleton_data.copy()
-    # logger.info("Aligning data to the origin...")
+        logger.info("Using the foot/spine method of alignment...")
 
-    #     reference_frame_number = find_good_clean_frame_reprojection_error_method(
-    #         skeleton_3d_fr_mar_xyz=freemocap_filtered_marker_data,
-    #         skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
-    #     )
-
-    # has_feet = are_there_feet_in_this_mediapipe_skeleton_data(
-    #     butterworth_filtered_skeleton_data, mediapipe_landmark_names
-    # )
-    # if has_feet:
-    #     reference_frame_number = find_good_frame_recursive_guess_method(
-    #         butterworth_filtered_skeleton_data, mediapipe_landmark_names, 0.3
-    #     )
-    #
-    #     logger.info("Using the foot/spine method of alignment...")
-    #     origin_aligned_freemocap_marker_data = (
-    #         align_skeleton_with_origin_foot_spine_method(
-    #             butterworth_filtered_skeleton_data,
-    #             mediapipe_landmark_names,
-    #             reference_frame_number,
-    #         )
-    #     )
+        origin_aligned_freemocap_marker_data = (
+            rotate_skeleton.align_skeleton_with_origin(
+            butterworth_filtered_skeleton_data,
+            mediapipe_landmark_names,
+            reference_frame_number
+            )[0]
+        )
     # else:  # no feet
     #     logger.info("Using the skelly blob method of alignment...")
     #     origin_aligned_freemocap_marker_data = (
@@ -1200,6 +1189,43 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     #         )
     #     )
 
+    # zeroed_skeleton_data[:,:,0] -= np.nanmean(zeroed_skeleton_data[:,:,0])
+    # zeroed_skeleton_data[:,:,1] -= np.nanmean(zeroed_skeleton_data[:,:,1])
+    # zeroed_skeleton_data[:,:,2] -= np.nanmean(zeroed_skeleton_data[:,:,2])
+
+    # # TODO - align skeleton so feet are at Z-plane and head is facing up
+    # origin_aligned_freemocap_marker_data = zeroed_skeleton_data.copy()
+    # # logger.info("Aligning data to the origin...")
+    #
+    # #     reference_frame_number = find_good_clean_frame_reprojection_error_method(
+    # #         skeleton_3d_fr_mar_xyz=freemocap_filtered_marker_data,
+    # #         skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
+    # #     )
+    #
+    # # has_feet = are_there_feet_in_this_mediapipe_skeleton_data(
+    # #     butterworth_filtered_skeleton_data, mediapipe_landmark_names
+    # # )
+    # # if has_feet:
+    # #     reference_frame_number = find_good_frame_recursive_guess_method(
+    # #         butterworth_filtered_skeleton_data, mediapipe_landmark_names, 0.3
+    # #     )
+    # #
+    # #     logger.info("Using the foot/spine method of alignment...")
+    # #     origin_aligned_freemocap_marker_data = (
+    # #         align_skeleton_with_origin_foot_spine_method(
+    # #             butterworth_filtered_skeleton_data,
+    # #             mediapipe_landmark_names,
+    # #             reference_frame_number,
+    # #         )
+    # #     )
+    # # else:  # no feet
+    # #     logger.info("Using the skelly blob method of alignment...")
+    # #     origin_aligned_freemocap_marker_data = (
+    # #         align_skeleton_with_origin_mean_blob_method(
+    # #             butterworth_filtered_skeleton_data
+    # #         )
+    # #     )
+    #
     logger.info("Saving Origin Aligned Data")
     Path(path_to_folder_where_we_will_save_this_data).mkdir(
         parents=True, exist_ok=True
@@ -1207,7 +1233,7 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     np.save(
         str(
             path_to_folder_where_we_will_save_this_data
-            / "mediaPipeSkel_3d_origin_aligned"
+            / "mediaPipeSkel_3d_origin_aligned.npy"
         ),
         origin_aligned_freemocap_marker_data,
     )

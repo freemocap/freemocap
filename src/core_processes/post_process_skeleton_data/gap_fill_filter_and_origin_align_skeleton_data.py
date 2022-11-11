@@ -1148,7 +1148,9 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     order: Union[float, int],
     reference_frame_number: Union[float, int] = None,
 ):
-    path_to_folder_where_we_will_save_this_data = Path(path_to_folder_where_we_will_save_this_data)
+    path_to_folder_where_we_will_save_this_data = Path(
+        path_to_folder_where_we_will_save_this_data
+    )
 
     logger.info("Gap-filling data...")
     # Interpolate the data
@@ -1163,9 +1165,9 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
 
     # pin skeleton to origin (set to mean positin of skeletonin this recording)
     zeroed_skeleton_data = butterworth_filtered_skeleton_data.copy()
-    zeroed_skeleton_data[:,:,0] -= np.nanmean(zeroed_skeleton_data[:,:,0])
-    zeroed_skeleton_data[:,:,1] -= np.nanmean(zeroed_skeleton_data[:,:,1])
-    zeroed_skeleton_data[:,:,2] -= np.nanmean(zeroed_skeleton_data[:,:,2])
+    zeroed_skeleton_data[:, :, 0] -= np.nanmean(zeroed_skeleton_data[:, :, 0])
+    zeroed_skeleton_data[:, :, 1] -= np.nanmean(zeroed_skeleton_data[:, :, 1])
+    zeroed_skeleton_data[:, :, 2] -= np.nanmean(zeroed_skeleton_data[:, :, 2])
 
     # TODO - align skeleton so feet are at Z-plane and head is facing up
     origin_aligned_freemocap_marker_data = zeroed_skeleton_data.copy()
@@ -1201,9 +1203,7 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     #     )
 
     logger.info("Saving Origin Aligned Data")
-    Path(path_to_folder_where_we_will_save_this_data).mkdir(
-        parents=True, exist_ok=True
-    )
+    Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)
     np.save(
         str(
             path_to_folder_where_we_will_save_this_data
@@ -1230,9 +1230,9 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
         skelcoordinates_frame_segment_joint_XYZ,
         anthropometric_info_dataframe,
     )
-    Path(path_to_folder_where_we_will_save_this_data / CENTER_OF_MASS_FOLDER_NAME).mkdir(
-        parents=True, exist_ok=True
-    )
+    Path(
+        path_to_folder_where_we_will_save_this_data / CENTER_OF_MASS_FOLDER_NAME
+    ).mkdir(parents=True, exist_ok=True)
     np.save(
         str(
             path_to_folder_where_we_will_save_this_data

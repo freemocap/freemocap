@@ -29,6 +29,7 @@ class VideoPlayerWidget(QWidget):
         self.setLayout(layout)
 
     def update_image(self, image: np.ndarray):
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         q_image = QImage(
             image.data,
             image.shape[1],

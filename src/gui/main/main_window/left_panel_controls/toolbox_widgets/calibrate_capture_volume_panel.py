@@ -68,17 +68,17 @@ class CalibrateCaptureVolumePanel(QWidget):
 
         self._load_calibration_toml_dialog_button.hide()
         self._user_selected_camera_calibration_toml_path_label.hide()
-
-        self._calibrate_from_synchronized_videos_radio_button = QRadioButton(
-            "Calibrate from Synchronized Videos"
-        )
-        self._layout.addWidget(self._calibrate_from_synchronized_videos_radio_button)
-        self._calibrate_from_synchronized_videos_radio_button.toggled.connect(
-            self._handle_calibrate_from_synchronized_videos_radio_button_toggled
-        )
-        self._calibrate_from_videos_TODO_label = QLabel("TODO - This, lol")
-        self._layout.addWidget(self._calibrate_from_videos_TODO_label)
-        self._calibrate_from_videos_TODO_label.hide()
+        #
+        # self._calibrate_from_synchronized_videos_radio_button = QRadioButton(
+        #     "Calibrate from Synchronized Videos"
+        # )
+        # self._layout.addWidget(self._calibrate_from_synchronized_videos_radio_button)
+        # self._calibrate_from_synchronized_videos_radio_button.toggled.connect(
+        #     self._handle_calibrate_from_synchronized_videos_radio_button_toggled
+        # )
+        # self._calibrate_from_videos_button = QPushButton("Calibrate from `synchronized_videos/`")
+        # self._layout.addWidget(self._calibrate_from_videos_button)
+        # self._calibrate_from_videos_button.hide()
 
         self._record_calibration_videos_radio_button = QRadioButton(
             "Record New Calibration Videos"
@@ -110,7 +110,7 @@ class CalibrateCaptureVolumePanel(QWidget):
         self._calibrate_capture_volume_from_videos_button = QPushButton(
             "Calibrate Capture Volume From Videos"
         )
-        self._calibrate_capture_volume_from_videos_button.setEnabled(False)
+        self._calibrate_capture_volume_from_videos_button.setEnabled(True)
         self._layout.addWidget(
             self._calibrate_capture_volume_from_videos_button,
         )
@@ -207,27 +207,18 @@ class CalibrateCaptureVolumePanel(QWidget):
     def _handle_use_previous_calibration_radio_button_toggled(self):
 
         self._hide_load_camera_calibration_stuff()
-        self._hide_calibrate_from_videos_stuff()
         self._hide_record_new_calibration_videos_stuff()
         self._enable_disable_calibration_parameters_stuff(False)
 
     def _handle_load_camera_calibration_radio_button_toggled(self):
         self._load_calibration_toml_dialog_button.show()
         self._user_selected_camera_calibration_toml_path_label.show()
-        self._hide_calibrate_from_videos_stuff()
         self._hide_record_new_calibration_videos_stuff()
         self._enable_disable_calibration_parameters_stuff(False)
-
-    def _handle_calibrate_from_synchronized_videos_radio_button_toggled(self):
-        self._calibrate_from_videos_TODO_label.show()
-        self._hide_load_camera_calibration_stuff()
-        self._hide_record_new_calibration_videos_stuff()
-        self._enable_disable_calibration_parameters_stuff(True)
 
     def _handle_record_calibration_videos_radio_button_toggled(self):
         self._show_record_new_calibration_videos_stuff()
         self._hide_load_camera_calibration_stuff()
-        self._hide_calibrate_from_videos_stuff()
         self._enable_disable_calibration_parameters_stuff(True)
 
     def _open_load_camera_calibration_toml_dialog(self):
@@ -265,6 +256,3 @@ class CalibrateCaptureVolumePanel(QWidget):
     def _enable_disable_calibration_parameters_stuff(self, bool_in: bool):
         self._charuco_combo_box.setEnabled(bool_in)
         self._charuco_square_size_line_edit_widget.setEnabled(bool_in)
-
-    def _hide_calibrate_from_videos_stuff(self):
-        self._calibrate_from_videos_TODO_label.hide()

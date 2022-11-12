@@ -653,6 +653,20 @@ class MainWindow(QMainWindow):
         calibration_videos_folder_path = get_calibration_videos_folder_path(
             self._session_id
         )
+        if (
+            not Path(calibration_videos_folder_path).exists()
+            or len(list(Path(calibration_videos_folder_path).glob("*.mp4"))) == 0
+        ):
+            logger.info(
+                f"Calibration videos folder does not exist (or its empty): {calibration_videos_folder_path}, copying vidoes from `synchronized_videos` to `calibration_videos` and trying with that"
+            )
+            Path(calibration_videos_folder_path).mkdir(parents=True, exist_ok=True)
+            shutil.copytree(
+                get_synchronized_videos_folder_path(self._session_id),
+                calibration_videos_folder_path,
+                dirs_exist_ok=True,
+            )
+
         charuco_board_definition = self._get_user_specified_charuco_definition()
         logger.info(
             f"Launching Anipose calibration thread worker with the following parameters: {charuco_board_definition.__dict__}"

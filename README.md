@@ -145,6 +145,28 @@ python src/gui/main/main.py
 
 8. Hopefully a GUI popped up! There are no docs on usage yet, so just click and see what you can figure out :joy:
 
+## Current limitations
+
+At the moment, the `alpha GUI`'s method for connecting to the cameras is very innefficient and will experience framerate drops with more than ~3 cameras (even with a powerful PC). We're working on a fix, and should have it handled soon! In the mean time, you can still use the GUI to process videos recorded with other methods (workflow described in the next section!)
+__
+# Create 3D skeleton animations from externally recorded (and synchronized) videos :sparkles: 
+
+You can use `alpha GUI` to process videos that were recorded and synchronized from any source!
+
+Simply synchronize your videos in whatever way you wish, convert them to `.mp4` format, and place them all in a single folder. 
+
+Then, *import* that folder via the `Import Videos` button in the GUI and follow the standard processing steps
+
+For details, see this guide - https://freemocap.readthedocs.io/en/latest/How_to_Guides/how_to_process_previously_recorded_videos/
+___
+
+## Documentation and Knowledge Base
+
+Documentation for this software is currently pretty thin... but we're woking on it!
+
+Here's a YouTube video that covers a lot of relevant material (check the `chapters` for specific topics) - https://youtu.be/GxKmyKdnTy0
+
+Our documentation lives here (for now) - https://freemocap.readthedocs.io
 
 ___
 

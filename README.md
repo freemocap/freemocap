@@ -157,7 +157,7 @@ Simply synchronize your videos in whatever way you wish, convert them to `.mp4` 
 
 Then, *import* that folder via the `Import Videos` button in the GUI and follow the standard processing steps
 
-For details, see this guide - https://freemocap.readthedocs.io/en/latest/How_to_Guides/how_to_process_previously_recorded_videos/
+For details, see this guide - https://freemocap.readthedocs.io/en/latest/how_to_guides/how_to_process_previously_recorded_videos/
 ___
 
 ## Documentation and Knowledge Base

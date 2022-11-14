@@ -65,6 +65,16 @@ class VisualizeMotionCaptureDataPanel(QWidget):
         self._generate_blend_file_button.setEnabled(True)
         self._layout.addWidget(self._generate_blend_file_button)
 
+        blender_output_warning_label = QLabel(
+            "NOTE:\n "
+            + "- In Blender, press `Z` and select `Material Preview` to see the videos in the 3D viewport.\n"
+            + "- Due to some slop in the way we make the `.blend` file, it will be difficult to retarget a mesh to the resulting armature rig. We're working to improve this output!\n"
+            + "- The skeleton will be oriented based on the orientation of `Camera0`, we're working on a method to auto-align with the groundplane."
+        )
+        blender_output_warning_label.setWordWrap(True)
+
+        self._layout.addWidget(blender_output_warning_label)
+
         self._should_pause_playback_bool = False
 
         self._should_pause_playback_bool = False
@@ -138,4 +148,3 @@ class VisualizeMotionCaptureDataPanel(QWidget):
         self._blender_exe_path_str = self._blender_exe_path_str[0]
         logger.info(f"User selected Blender path:{self._blender_exe_path_str}")
         self._current_blender_path_label.setText(self._blender_exe_path_str)
-

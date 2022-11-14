@@ -24,11 +24,7 @@ class MotionCapturePanel(QWidget):
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
-        self._layout.addWidget(
-            QLabel(
-                "NOTE - For faster processing, shut down your cameras when you're done recording!"
-            )
-        )
+
         self._layout.addStretch()
         self._layout.addWidget(
             PanelSectionTitle("Record Synchronized Videos"), alignment=Qt.AlignCenter

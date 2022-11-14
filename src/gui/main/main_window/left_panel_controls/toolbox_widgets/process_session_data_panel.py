@@ -11,14 +11,12 @@ from PyQt6.QtWidgets import (
     QLabel,
 )
 
-from src.blender_stuff.get_best_guess_of_blender_path import (
-    get_best_guess_of_blender_path,
-)
+
 from src.core_processes.mediapipe_stuff.mediapipe_default_settings import (
     default_mediapipe_confidence_threshold,
 )
 
-from src.gui.main.tool_tips.tool_tips_strings import (
+from src.gui.main.tool_tips_and_warning_labels.tool_tips_strings import (
     mediapipe_confidence_cutoff_tool_tip_str,
 )
 
@@ -33,6 +31,12 @@ class ProcessSessionDataPanel(QWidget):
         self.setLayout(self._layout)
 
         self._layout.addStretch()
+
+        camera_warning_qlabel = QLabel(
+            "NOTE - For faster processing, shut down your cameras when you're done recording (i.e. press `Stop Cameras` in the 'Cameras' tab)"
+        )
+        camera_warning_qlabel.setWordWrap(True)
+        self._layout.addWidget(camera_warning_qlabel)
 
         self._process_all_button = QPushButton("Process All Steps Below")
         self._process_all_button.setEnabled(True)

@@ -13,9 +13,7 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup_c
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.motion_capture_panel import (
     MotionCapturePanel,
 )
-from src.gui.main.main_window.left_panel_controls.toolbox_widgets.visualize_motion_capture_data import (
-    VisualizeMotionCaptureDataPanel,
-)
+
 
 import logging
 

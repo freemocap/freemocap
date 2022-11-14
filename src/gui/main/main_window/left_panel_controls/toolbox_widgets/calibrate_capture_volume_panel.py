@@ -34,11 +34,6 @@ class CalibrateCaptureVolumePanel(QWidget):
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
-        self._layout.addWidget(
-            QLabel(
-                "NOTE - For faster processing, shut down your cameras when you're done recording!"
-            )
-        )
 
         self._layout.addStretch()
 
@@ -115,6 +110,13 @@ class CalibrateCaptureVolumePanel(QWidget):
         self._layout.addWidget(self._process_automatically_checkbox)
 
         self._layout.addWidget(QLabel("___"), alignment=Qt.AlignCenter)
+
+        camera_warning_qlabel = QLabel(
+            "NOTE - For faster processing, shut down your cameras when you're done recording (i.e. press `Stop Cameras` in the 'Cameras' tab)"
+        )
+        camera_warning_qlabel.setWordWrap(True)
+        self._layout.addWidget(camera_warning_qlabel)
+
         self._layout.addWidget(
             QLabel("Calibrate Capture Volume"), alignment=Qt.AlignCenter
         )

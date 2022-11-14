@@ -67,6 +67,8 @@ class VisualizeMotionCaptureDataPanel(QWidget):
 
         self._should_pause_playback_bool = False
 
+        self._should_pause_playback_bool = False
+
     @property
     def load_session_data_button(self):
         return self._load_session_data_button
@@ -136,3 +138,4 @@ class VisualizeMotionCaptureDataPanel(QWidget):
         self._blender_exe_path_str = self._blender_exe_path_str[0]
         logger.info(f"User selected Blender path:{self._blender_exe_path_str}")
         self._current_blender_path_label.setText(self._blender_exe_path_str)
+

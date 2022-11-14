@@ -46,6 +46,7 @@ class ThreadWorkerManager(QWidget):
     start_3d_processing_signal = pyqtSignal()
     start_post_processing_signal = pyqtSignal()
     start_convert_npy_to_to_csv_signal = pyqtSignal()
+    start_session_data_visualization_signal = pyqtSignal()
     start_blender_processing_signal = pyqtSignal()
     blender_file_created_signal = pyqtSignal(str)
 
@@ -182,10 +183,11 @@ class ThreadWorkerManager(QWidget):
         )
         self._post_process_3d_data_thread_worker.start()
 
-        logger.info("Emitting `convert_to_csv_signal`")
-        self._post_process_3d_data_thread_worker.finished.connect(
-            self.start_convert_npy_to_to_csv_signal.emit
-        )
+        if auto_process_next_stage:
+            logger.info("Emitting `convert_to_csv_signal`")
+            self._post_process_3d_data_thread_worker.finished.connect(
+                self.start_convert_npy_to_to_csv_signal.emit
+            )
 
     def launch_convert_npy_to_csv_thread_worker(
         self,
@@ -202,7 +204,11 @@ class ThreadWorkerManager(QWidget):
         self._convert_npy_to_csv_thread_worker.start()
 
         if auto_process_next_stage:
-            logger.info("Emitting `start_export_to_blender_signal`")
+            logger.info("Emitting `start_session_data_visualization_signal`")
+            self._convert_npy_to_csv_thread_worker.finished.connect(
+                self.start_session_data_visualization_signal.emit
+            )
+            logger.info("Emitting `start_blender_processing_signal`")
             self._convert_npy_to_csv_thread_worker.finished.connect(
                 self.start_blender_processing_signal.emit
             )

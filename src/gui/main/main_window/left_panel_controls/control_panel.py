@@ -10,8 +10,8 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.calibrate_capt
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup_control_panel import (
     CameraSetupControlPanel,
 )
-from src.gui.main.main_window.left_panel_controls.toolbox_widgets.record_motion_capture_videos_panel import (
-    RecordMotionCatpureVideosPanel,
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.motion_capture_panel import (
+    MotionCapturePanel,
 )
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.visualize_motion_capture_data import (
     VisualizeMotionCaptureDataPanel,
@@ -20,6 +20,12 @@ from src.gui.main.main_window.left_panel_controls.toolbox_widgets.visualize_moti
 import logging
 
 logger = logging.getLogger(__name__)
+
+panel_title_strings = {
+    "cameras": "1 - Camera Setup and Control",
+    "calibration": "2 - Capture Volume Calibration",
+    "mocap": "3 - Record/Process/Visualize Motion Capture Data",
+}
 
 
 class ControlPanel:
@@ -45,25 +51,23 @@ class ControlPanel:
 
     @property
     def camera_setup_control_panel(self):
-        return self._dictionary_of_toolbox_panels["1 - Camera Setup and Control"]
+        return self._dictionary_of_toolbox_panels[panel_title_strings["cameras"]]
 
     @property
     def calibrate_capture_volume_panel(self):
-        return self._dictionary_of_toolbox_panels["2 - Calibrate Capture Volume"]
+        return self._dictionary_of_toolbox_panels[panel_title_strings["calibration"]]
 
     @property
-    def record_motion_capture_videos_panel(self):
-        return self._dictionary_of_toolbox_panels[
-            "3 - Record and Process Motion Capture Videos"
-        ]
+    def motion_capture_panel(self):
+        return self._dictionary_of_toolbox_panels[panel_title_strings["mocap"]]
 
     @property
     def process_session_data_panel(self):
-        return self.record_motion_capture_videos_panel.process_session_data_panel
+        return self.motion_capture_panel.process_session_data_panel
 
     @property
-    def visualize_motion_capture_data_panel(self):
-        return self._dictionary_of_toolbox_panels["4 - Visualize Motion Capture Data"]
+    def visualize_session_data_panel(self):
+        return self.motion_capture_panel.visualize_session_data_panel
 
     @property
     def toolbox_widget(self):
@@ -85,17 +89,15 @@ class ControlPanel:
         dictionary_of_toolbox_panels = {}
         # self._create_or_load_new_session_panel = WelcomeCreateOrLoadNewSessionPanel()
         dictionary_of_toolbox_panels[
-            "1 - Camera Setup and Control"
+            panel_title_strings["cameras"]
         ] = CameraSetupControlPanel()
         dictionary_of_toolbox_panels[
-            "2 - Calibrate Capture Volume"
+            panel_title_strings["calibration"]
         ] = CalibrateCaptureVolumePanel()
         dictionary_of_toolbox_panels[
-            "3 - Record and Process Motion Capture Videos"
-        ] = RecordMotionCatpureVideosPanel()
-        dictionary_of_toolbox_panels[
-            "4 - Visualize Motion Capture Data"
-        ] = VisualizeMotionCaptureDataPanel()
+            panel_title_strings["mocap"]
+        ] = MotionCapturePanel()
+
         # self._process_session_data_panel = ProcessSessionDataPanel()
         return dictionary_of_toolbox_panels
 

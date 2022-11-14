@@ -34,15 +34,23 @@ class ProcessSessionDataPanel(QWidget):
 
         self._layout.addStretch()
 
-        self._process_all_button = QPushButton("Process All")
+        self._process_all_button = QPushButton("Process All Steps Below")
         self._process_all_button.setEnabled(True)
         self._layout.addWidget(self._process_all_button)
 
-        self._detect_2d_skeletons_button = QPushButton("Detect 2d Skeletons in Videos")
+        self._open_in_blender_automatically_checkbox = QCheckBox(
+            "Open in Blender automatically"
+        )
+        self._open_in_blender_automatically_checkbox.setChecked(True)
+        self._layout.addWidget(self._open_in_blender_automatically_checkbox)
+
+        self._detect_2d_skeletons_button = QPushButton(
+            "(a) - Detect 2d Skeletons in Videos"
+        )
         self._detect_2d_skeletons_button.setEnabled(True)
         self._layout.addWidget(self._detect_2d_skeletons_button)
 
-        self._triangulate_3d_data_button = QPushButton("Triangulate 3d Data")
+        self._triangulate_3d_data_button = QPushButton("(b) - Triangulate 3d Data")
         self._triangulate_3d_data_button.setEnabled(True)
         self._layout.addWidget(self._triangulate_3d_data_button)
 
@@ -58,34 +66,27 @@ class ProcessSessionDataPanel(QWidget):
         self._layout.addLayout(self._mediapipe_confidence_cutoff_form_layout)
 
         self._gap_fill_filter_origin_align_button = QPushButton(
-            "Gap Fill, Butterworth Filter, and Origin Align Skeleton data (experimental)"
+            "(c) - Post-process data"
+        )
+        self._gap_fill_filter_origin_align_button.setToolTip(
+            "Gap Fill, Butterworth Filter, and Origin Align Skeletons"
         )
         self._layout.addWidget(self._gap_fill_filter_origin_align_button)
 
-        self._visualize_freemocap_session_button = QPushButton(
-            "Visualize Freemocap Session"
+        self._convert_npy_to_csv_button = QPushButton(
+            "(d) - Convert 3D npy data to csv"
         )
-
-        self._convert_npy_to_csv_checkbox = QCheckBox(
-            "Convert 3D npy data to csv (experimental)"
-        )
-        self._convert_npy_to_csv_checkbox.setChecked(True)
-        self._layout.addWidget(self._convert_npy_to_csv_checkbox)
-
-        self._blender_path_form_layout = self._make_blender_path_layout()
-        self._layout.addLayout(self._blender_path_form_layout)
-
-        self._open_in_blender_button = QPushButton(
-            "Export to Blender (Freezes GUI, sorry!)"
-        )
-        self._open_in_blender_button.setEnabled(True)
-        self._layout.addWidget(self._open_in_blender_button)
+        self._layout.addWidget(self._convert_npy_to_csv_button)
 
         self._layout.addStretch()
 
     @property
     def process_all_button(self):
         return self._process_all_button
+
+    @property
+    def open_in_blender_automatically_checkbox(self):
+        return self._open_in_blender_automatically_checkbox
 
     @property
     def detect_2d_skeletons_button(self):
@@ -100,8 +101,8 @@ class ProcessSessionDataPanel(QWidget):
         return self._use_triangulate_ransac_checkbox
 
     @property
-    def convert_npy_to_csv_checkbox(self):
-        return self._convert_npy_to_csv_checkbox
+    def convert_npy_to_csv_button(self):
+        return self._convert_npy_to_csv_button
 
     @property
     def triangulate_3d_data_button(self):
@@ -110,11 +111,6 @@ class ProcessSessionDataPanel(QWidget):
     @property
     def gap_fill_filter_origin_align_button(self):
         return self._gap_fill_filter_origin_align_button
-
-    @property
-    def open_in_blender_button(self):
-
-        return self._open_in_blender_button
 
     @property
     def blender_exe_path_str(self):
@@ -139,33 +135,3 @@ class ProcessSessionDataPanel(QWidget):
         q_line_edit_widget.setToolTip(mediapipe_confidence_cutoff_tool_tip_str)
 
         return q_line_edit_widget
-
-    def _make_blender_path_layout(self):
-
-        blender_path_layout = QVBoxLayout()
-
-        self._open_blender_path_file_dialog_button = QPushButton(
-            "Locate Blender Executable"
-        )
-        blender_path_layout.addWidget(self._open_blender_path_file_dialog_button)
-        self._open_blender_path_file_dialog_button.clicked.connect(
-            self._open_blender_path_file_dialog
-        )
-        self._open_blender_path_file_dialog_button.setToolTip(
-            "This is the path executable that we will send the `blender export` subprocess command"
-        )
-
-        self._blender_exe_path_str = get_best_guess_of_blender_path()
-        self._current_blender_path_label = QLabel(self._blender_exe_path_str)
-        # if self._blender_exe_path is None:
-        #     self._open_blender_path_file_dialog()
-        blender_path_layout.addWidget(self._current_blender_path_label)
-
-        return blender_path_layout
-
-    def _open_blender_path_file_dialog(self):
-        # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
-        self._blender_exe_path_str = QFileDialog.getOpenFileName()
-        self._blender_exe_path_str = self._blender_exe_path_str[0]
-        logger.info(f"User selected Blender path:{self._blender_exe_path_str}")
-        self._current_blender_path_label.setText(self._blender_exe_path_str)

@@ -4,26 +4,34 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QCheckBox,
-    QFrame,
-    QSpacerItem,
     QLabel,
 )
 
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.process_session_data_panel import (
     ProcessSessionDataPanel,
 )
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.visualize_motion_capture_data import (
+    VisualizeMotionCaptureDataPanel,
+)
+from src.gui.main.style_stuff.styled_widgets.panel_section_title import (
+    PanelSectionTitle,
+)
 
 
-class RecordMotionCatpureVideosPanel(QWidget):
+class MotionCapturePanel(QWidget):
     def __init__(self):
         super().__init__()
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
-
+        self._layout.addWidget(
+            QLabel(
+                "NOTE - For faster processing, shut down your cameras when you're done recording!"
+            )
+        )
         self._layout.addStretch()
         self._layout.addWidget(
-            QLabel("Record Synchronized Videos"), alignment=Qt.AlignCenter
+            PanelSectionTitle("Record Synchronized Videos"), alignment=Qt.AlignCenter
         )
         self._start_recording_button = QPushButton("Begin Recording")
         self._layout.addWidget(self._start_recording_button)
@@ -38,18 +46,28 @@ class RecordMotionCatpureVideosPanel(QWidget):
         self._process_automatically_checkbox.setChecked(True)
         self._layout.addWidget(self._process_automatically_checkbox)
 
-        self._open_in_blender_automatically_checkbox = QCheckBox(
-            "Open in Blender automatically"
-        )
-        self._open_in_blender_automatically_checkbox.setChecked(True)
-        self._layout.addWidget(self._open_in_blender_automatically_checkbox)
+        self._layout.addWidget(QLabel("___"), alignment=Qt.AlignCenter)
 
-        self._layout.insertSpacing(-1, 10)
-        self._layout.addWidget(QLabel("______"), alignment=Qt.AlignCenter)
-        self._layout.addWidget(QLabel("Process Videos"), alignment=Qt.AlignCenter)
+        process_videos_section_title = PanelSectionTitle("Process Videos")
+        self._layout.addWidget(process_videos_section_title, alignment=Qt.AlignCenter)
+        process_videos_section_title.setToolTip(
+            "TODO: \n"
+            + "- Convert this mess of buttons into a 'Parameter Tree' like the one in the 'Camera Setup' panel (see `src/core_processes/batch_processes/process_session_folder.py`)\n\n"
+            + "- Add method to check what's in the `session_folder` and only enable the appropriate buttons"
+        )
+
         self._process_session_data_panel = ProcessSessionDataPanel()
 
         self._layout.addWidget(self._process_session_data_panel)
+
+        self._layout.addWidget(QLabel("___"), alignment=Qt.AlignCenter)
+
+        self._layout.addWidget(
+            PanelSectionTitle("Visualize Data"), alignment=Qt.AlignCenter
+        )
+        self._visualize_motion_capture_data_panel = VisualizeMotionCaptureDataPanel()
+
+        self._layout.addWidget(self._visualize_motion_capture_data_panel)
         self._layout.addStretch()
 
     @property
@@ -57,8 +75,8 @@ class RecordMotionCatpureVideosPanel(QWidget):
         return self._process_session_data_panel
 
     @property
-    def open_in_blender_automatically_checkbox(self):
-        return self._open_in_blender_automatically_checkbox
+    def visualize_session_data_panel(self):
+        return self._visualize_motion_capture_data_panel
 
     @property
     def process_recording_automatically_checkbox(self):

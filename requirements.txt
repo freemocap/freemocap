@@ -20,7 +20,6 @@ pyopengl==3.1.6
 mediapipe==0.8.11
 setuptools==58.0.4
 aniposelib==0.4.3
-rich==12.3.0
 protobuf==3.19.0
 pytest==7.1.2
 taskipy==1.10.2

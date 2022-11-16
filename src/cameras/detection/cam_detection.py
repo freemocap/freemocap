@@ -22,7 +22,9 @@ class DetectPossibleCameras:
             cap = cv2.VideoCapture(cam_id, cv2_backend)
             success, image = cap.read()
             time0 = time.perf_counter()
-
+            logger.debug(
+                f"Trying to read from camera {cam_id} using `cv2_backend`: {cv2_backend}: success={success}, image.__class__ ={image.__class__}"
+            )
             if success:
                 if image is not None:
                     try:

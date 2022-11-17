@@ -31,6 +31,18 @@ MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME = (
     "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
 )
 
+PRE_ALPHA_MEDIAPIPE_2D_FILE_NAME = (
+    "mediaPipeData_2d.npy"
+)
+
+PRE_ALPHA_MEDIAPIPE_3D_FILE_NAME = (
+    "mediaPipeSkel_3d.npy"
+)
+
+PRE_ALPHA_MEDIAPIPE_REPROJECTION_ERROR_FILE_NAME = (
+    "mediaPipeSkel_reprojErr.npy"
+)
+
 SKELETON_BODY_CSV_FILE_NAME = "mediapipe_body_3d_xyz.csv"
 
 SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"

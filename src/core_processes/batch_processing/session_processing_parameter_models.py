@@ -13,7 +13,7 @@ class MediaPipe2DParametersModel(BaseModel):
 
 class AniposeTriangulate3DParametersModel(BaseModel):
     confidence_threshold_cutoff: float = 0.7
-    use_triangulate_ransac_method: bool = True
+    use_triangulate_ransac_method_bool: bool = True
 
 
 class ButterworthFilterParametersModel(BaseModel):

@@ -53,6 +53,23 @@ if Path(
         / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
     )
 
+elif Path(
+    session_path/'output_data'
+).exists():
+    path_to_data_arrays_folder = session_path / "output_data"
+
+    path_to_mediapipe_npy = (
+        path_to_data_arrays_folder
+        / "mediaPipeSkel_3d_origin_aligned.npy"
+    )
+
+    path_to_mediapipe_3d_reproj = (
+        path_to_data_arrays_folder
+        / "raw_data"
+        / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+    )
+
+
 else:
     path_to_data_arrays_folder = (
         session_path / "DataArrays"

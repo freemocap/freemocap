@@ -46,6 +46,7 @@ class ThreadWorkerManager(QWidget):
     start_3d_processing_signal = pyqtSignal()
     start_post_processing_signal = pyqtSignal()
     start_convert_npy_to_to_csv_signal = pyqtSignal()
+    start_session_data_visualization_signal = pyqtSignal()
     start_blender_processing_signal = pyqtSignal()
     blender_file_created_signal = pyqtSignal(str)
 
@@ -60,14 +61,13 @@ class ThreadWorkerManager(QWidget):
     def launch_detect_cameras_worker(self):
         logger.info("Launching `Camera Detection` thread worker")
 
-        self._session_progress_dictionary["camera_detection"] = 'launched'
+        self._session_progress_dictionary["camera_detection"] = "launched"
 
         self._camera_detection_thread_worker = CameraDetectionThreadWorker()
         self._camera_detection_thread_worker.finished.connect(
             self.camera_detection_finished.emit
         )
         self._camera_detection_thread_worker.start()
-
 
     def launch_save_videos_thread_worker(
         self,
@@ -78,10 +78,9 @@ class ThreadWorkerManager(QWidget):
         logger.info("Launching `Save Videos` thread worker...")
 
         if calibration_videos:
-            self._session_progress_dictionary["save_calibrate_videos"] = 'launched'
+            self._session_progress_dictionary["save_calibrate_videos"] = "launched"
         else:
-            self._session_progress_dictionary["save_mocap_videos"] = 'launched'
-
+            self._session_progress_dictionary["save_mocap_videos"] = "launched"
 
         self._save_to_video_thread_worker = SaveToVideoThreadWorker(
             dictionary_of_video_recorders=dictionary_of_video_recorders,
@@ -92,8 +91,6 @@ class ThreadWorkerManager(QWidget):
             lambda: self.videos_saved_signal.emit(calibration_videos)
         )
 
-
-
     def launch_anipose_calibration_thread_worker(
         self,
         charuco_board_definition: CharucoBoardDefinition,
@@ -103,7 +100,7 @@ class ThreadWorkerManager(QWidget):
         jupyter_console_print_function_callable: Callable,
     ):
         logger.info("Launching `Anipose (Charuco Board) Calibration` thread worker")
-        self._session_progress_dictionary["anipose_calibration"] = 'launched'
+        self._session_progress_dictionary["anipose_calibration"] = "launched"
         self._anipose_calibration_worker = AniposeCalibrationThreadWorker(
             charuco_board_definition=charuco_board_definition,
             calibration_videos_folder_path=calibration_videos_folder_path,
@@ -122,7 +119,7 @@ class ThreadWorkerManager(QWidget):
         auto_process_next_stage: bool = True,
     ):
         logger.info("Launching `Detect Mediapipe 2d Skeleton` thread worker...")
-        self._session_progress_dictionary["medipipe"] = 'launched'
+        self._session_progress_dictionary["medipipe"] = "launched"
         self._mediapipe_2d_detection_thread_worker = Mediapipe2dDetectionThreadWorker(
             path_to_folder_of_videos_to_process=synchronized_videos_folder_path,
             output_data_folder_path=output_data_folder_path,
@@ -145,7 +142,7 @@ class ThreadWorkerManager(QWidget):
         use_triangulate_ransac: bool = False,
     ):
         logger.info("Launching `Triangulate 3d Data` thread worker...")
-        self._session_progress_dictionary["triangulate"] = 'launched'
+        self._session_progress_dictionary["triangulate"] = "launched"
         self._triangulate_3d_data_thread_worker = Triangulate3dDataThreadWorker(
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=mediapipe_2d_data,
@@ -174,7 +171,7 @@ class ThreadWorkerManager(QWidget):
         auto_process_next_stage: bool = False,
     ):
         logger.info("Launching `Post Process 3d Data` thread worker...")
-        self._session_progress_dictionary["post_process"] = 'launched'
+        self._session_progress_dictionary["post_process"] = "launched"
         self._post_process_3d_data_thread_worker = PostProcess3dDataThreadWorker(
             skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
@@ -186,10 +183,11 @@ class ThreadWorkerManager(QWidget):
         )
         self._post_process_3d_data_thread_worker.start()
 
-        logger.info("Emitting `convert_to_csv_signal`")
-        self._post_process_3d_data_thread_worker.finished.connect(
-            self.start_convert_npy_to_to_csv_signal.emit
-        )
+        if auto_process_next_stage:
+            logger.info("Emitting `convert_to_csv_signal`")
+            self._post_process_3d_data_thread_worker.finished.connect(
+                self.start_convert_npy_to_to_csv_signal.emit
+            )
 
     def launch_convert_npy_to_csv_thread_worker(
         self,
@@ -198,7 +196,7 @@ class ThreadWorkerManager(QWidget):
         auto_process_next_stage: bool = False,
     ):
         logger.info("Launching `Convert Npy to Csv` thread worker...")
-        self._session_progress_dictionary["convert_to_csv"] = 'launched'
+        self._session_progress_dictionary["convert_to_csv"] = "launched"
         self._convert_npy_to_csv_thread_worker = ConvertNpyToCsvThreadWorker(
             skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
             output_data_folder_path=output_data_folder_path,
@@ -206,7 +204,11 @@ class ThreadWorkerManager(QWidget):
         self._convert_npy_to_csv_thread_worker.start()
 
         if auto_process_next_stage:
-            logger.info("Emitting `start_export_to_blender_signal`")
+            logger.info("Emitting `start_session_data_visualization_signal`")
+            self._convert_npy_to_csv_thread_worker.finished.connect(
+                self.start_session_data_visualization_signal.emit
+            )
+            logger.info("Emitting `start_blender_processing_signal`")
             self._convert_npy_to_csv_thread_worker.finished.connect(
                 self.start_blender_processing_signal.emit
             )
@@ -222,7 +224,7 @@ class ThreadWorkerManager(QWidget):
         logger.info(
             f"Launching `session_playback_thread_worker` with frames_per_second set to {frames_per_second} "
         )
-        self._session_progress_dictionary["launch_session_playback"] = 'launched'
+        self._session_progress_dictionary["launch_session_playback"] = "launched"
         self._session_playback_viewer_thread_worker = SessionPlaybackThreadWorker(
             frames_per_second=frames_per_second,
             list_of_video_paths=list_of_video_paths,

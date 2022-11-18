@@ -61,6 +61,15 @@ class CameraSetupControlPanel(QWidget):
         helper_qlabel_widget.setWordWrap(True)
         self._layout.addWidget(helper_qlabel_widget)
 
+        camera_warning_label = QLabel(
+            "NOTE -\nThe current version of the GUI is inefficient and will start dropping frames with ~3+ cameras. This will be fixed in a future version.\n\n"
+            "In the meantime, to use more cameras, record them with the `pre-alpha` version of FreeMoCap and import the `[freemocap_data]/[session_id]/SyncedVideos` folder files into the GUI with the `Import Videos` functionality."
+        )
+        camera_warning_label.setWordWrap(True)
+        camera_warning_label.setStyleSheet("color: #770000")
+        self._layout.addWidget(camera_warning_label)
+        self._layout.addWidget(QLabel())
+
         self._redetect_cameras_button = QPushButton("Detect Cameras")
         self._redetect_cameras_button.setEnabled(True)
         self._layout.addWidget(self._redetect_cameras_button)

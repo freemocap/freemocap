@@ -35,14 +35,6 @@ class SessionPlaybackThreadWorker(QThread):
 
         self._should_continue = True
 
-    @property
-    def should_continue(self):
-        return self._should_continue
-
-    @should_continue.setter
-    def should_continue(self, set: bool):
-        self._should_continue = set
-
     def _create_video_capture_dictionary(self):
         video_capture_object_dict = {}
         for video_path in self._list_of_video_paths:

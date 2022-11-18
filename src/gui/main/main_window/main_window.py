@@ -20,7 +20,9 @@ from src.config.home_dir import (
     get_freemocap_data_folder_path,
     get_annotated_videos_folder_path,
     get_skeleton_body_csv_path,
-    get_blender_file_path, get_raw_data_folder_path, PARTIALLY_PROCESSED_DATA_FOLDER_NAME,
+    get_blender_file_path,
+    get_raw_data_folder_path,
+    PARTIALLY_PROCESSED_DATA_FOLDER_NAME,
     MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
@@ -101,7 +103,9 @@ class MainWindow(QMainWindow):
 
         self._main_layout.addWidget(self._right_side_panel.frame)
 
-        self._thread_worker_manager = ThreadWorkerManager(session_progress_dictionary = self._pipedream_ping_dictionary )
+        self._thread_worker_manager = ThreadWorkerManager(
+            session_progress_dictionary=self._pipedream_ping_dictionary
+        )
 
         # actions, signals and slots, o my
         self._create_actions()
@@ -204,15 +208,10 @@ class MainWindow(QMainWindow):
         )
         self._show_calibrate_capture_volume_panel_action.setShortcut("Ctrl+2")
 
-        self._show_record_motion_capture_videos_panel_action = QAction(
-            "&3 - Show Record Motion Capture Videos Panel", parent=self
+        self._show_motion_capture_videos_panel_action = QAction(
+            "&3 - Show Motion Capture Videos Panel", parent=self
         )
-        self._show_record_motion_capture_videos_panel_action.setShortcut("Ctrl+3")
-
-        self._show_visualize_session_panel_action = QAction(
-            "&4 - Show Visualize Session Panel", parent=self
-        )
-        self._show_visualize_session_panel_action.setShortcut("Ctrl+4")
+        self._show_motion_capture_videos_panel_action.setShortcut("Ctrl+3")
 
         # Support
         self._donate_action = QAction("&Donate", parent=self)
@@ -244,8 +243,7 @@ class MainWindow(QMainWindow):
         menu_bar.addMenu(navigation_menu)
         navigation_menu.addAction(self._show_camera_control_panel_action)
         navigation_menu.addAction(self._show_calibrate_capture_volume_panel_action)
-        navigation_menu.addAction(self._show_record_motion_capture_videos_panel_action)
-        navigation_menu.addAction(self._show_visualize_session_panel_action)
+        navigation_menu.addAction(self._show_motion_capture_videos_panel_action)
 
         # help menu
         help_menu = QMenu("&Help", parent=menu_bar)
@@ -300,14 +298,9 @@ class MainWindow(QMainWindow):
                 self._control_panel.calibrate_capture_volume_panel
             )
         )
-        self._show_record_motion_capture_videos_panel_action.triggered.connect(
+        self._show_motion_capture_videos_panel_action.triggered.connect(
             lambda: self._control_panel.toolbox_widget.setCurrentWidget(
-                self._control_panel.record_motion_capture_videos_panel
-            )
-        )
-        self._show_visualize_session_panel_action.triggered.connect(
-            lambda: self._control_panel.toolbox_widget.setCurrentWidget(
-                self._control_panel.visualize_motion_capture_data_panel
+                self._control_panel.motion_capture_panel
             )
         )
 
@@ -376,19 +369,23 @@ class MainWindow(QMainWindow):
         )
 
         # RecordVideos panel
-        self._control_panel.record_motion_capture_videos_panel.start_recording_button.clicked.connect(
+        self._control_panel.motion_capture_panel.start_recording_button.clicked.connect(
             lambda: self._start_recording_videos(
-                panel=self._control_panel.record_motion_capture_videos_panel,
+                panel=self._control_panel.motion_capture_panel,
             )
         )
 
-        self._control_panel.record_motion_capture_videos_panel.stop_recording_button.clicked.connect(
+        self._control_panel.motion_capture_panel.stop_recording_button.clicked.connect(
             lambda: self._stop_recording_videos(
-                panel=self._control_panel.record_motion_capture_videos_panel
+                panel=self._control_panel.motion_capture_panel
             )
         )
 
         # (record videos) ProcessVideos panel
+        self._control_panel.process_session_data_panel.process_all_button.clicked.connect(
+            self._fully_process_mocap_videos
+        )
+
         self._control_panel.process_session_data_panel.detect_2d_skeletons_button.clicked.connect(
             self._setup_and_launch_mediapipe_2d_detection_thread_worker
         )
@@ -401,15 +398,21 @@ class MainWindow(QMainWindow):
             self._setup_and_launch_gap_fill_filter_origin_align_thread_worker
         )
 
-        self._control_panel.process_session_data_panel.open_in_blender_button.clicked.connect(
-            self._export_to_blender
+        self._control_panel.process_session_data_panel.convert_npy_to_csv_button.clicked.connect(
+            self._setup_and_launch_convert_npy_to_csv_thread_worker
         )
 
         # Visualize Mocap Data panel
-        self._control_panel.visualize_motion_capture_data_panel.load_session_data_button.clicked.connect(
+        self._control_panel.visualize_session_data_panel.load_session_data_button.clicked.connect(
             self._visualize_motion_capture_data
         )
+        self._control_panel.visualize_session_data_panel.generate_blend_file_button.clicked.connect(
+            self._generate_blend_file
+        )
 
+        self._control_panel.visualize_session_data_panel.generate_blend_file_button.clicked.connect(
+            self._open_blender_file
+        )
         # (right side) File viewer panel
         self._right_side_panel.file_system_view_widget.show_current_session_folder_button.clicked.connect(
             lambda: self._set_session_folder_as_root_for_file_viewer(self._session_id)
@@ -438,10 +441,6 @@ class MainWindow(QMainWindow):
             self._handle_videos_saved_signal
         )
 
-        self._control_panel.process_session_data_panel.process_all_button.clicked.connect(
-            self._fully_process_mocap_videos
-        )
-
         self._thread_worker_manager.start_3d_processing_signal.connect(
             lambda: self._setup_and_launch_triangulate_3d_thread_worker(
                 auto_process_next_stage=True
@@ -456,16 +455,16 @@ class MainWindow(QMainWindow):
 
         self._thread_worker_manager.start_convert_npy_to_to_csv_signal.connect(
             lambda: self._setup_and_launch_convert_npy_to_csv_thread_worker(
-                auto_process_next_stage=False
+                auto_process_next_stage=True
             )
         )
 
         self._thread_worker_manager.start_blender_processing_signal.connect(
-            self._export_to_blender
+            self._generate_blend_file
         )
 
-        self._control_panel.process_session_data_panel.open_in_blender_button.clicked.connect(
-            self._open_blender_file
+        self._thread_worker_manager.start_session_data_visualization_signal.connect(
+            self._visualize_motion_capture_data
         )
 
     def _set_session_folder_as_root_for_file_viewer(self, session_id: str):
@@ -515,8 +514,6 @@ class MainWindow(QMainWindow):
         self._start_session(self._session_id)
 
     def _start_session(self, session_id: str, new_session: bool = False):
-
-
 
         self._session_id = session_id
         self._control_panel.enable_toolbox_panels()
@@ -643,7 +640,7 @@ class MainWindow(QMainWindow):
                 self._setup_and_launch_anipose_calibration_thread_worker()
         else:  # mocap videos
             if (
-                self._control_panel.record_motion_capture_videos_panel.process_recording_automatically_checkbox.isChecked()
+                self._control_panel.motion_capture_panel.process_recording_automatically_checkbox.isChecked()
             ):
                 self._fully_process_mocap_videos()
 
@@ -651,6 +648,20 @@ class MainWindow(QMainWindow):
         calibration_videos_folder_path = get_calibration_videos_folder_path(
             self._session_id
         )
+        if (
+            not Path(calibration_videos_folder_path).exists()
+            or len(list(Path(calibration_videos_folder_path).glob("*.mp4"))) == 0
+        ):
+            logger.info(
+                f"Calibration videos folder does not exist (or its empty): {calibration_videos_folder_path}, copying vidoes from `synchronized_videos` to `calibration_videos` and trying with that"
+            )
+            Path(calibration_videos_folder_path).mkdir(parents=True, exist_ok=True)
+            shutil.copytree(
+                get_synchronized_videos_folder_path(self._session_id),
+                calibration_videos_folder_path,
+                dirs_exist_ok=True,
+            )
+
         charuco_board_definition = self._get_user_specified_charuco_definition()
         logger.info(
             f"Launching Anipose calibration thread worker with the following parameters: {charuco_board_definition.__dict__}"
@@ -780,9 +791,9 @@ class MainWindow(QMainWindow):
 
         output_data_folder_path = Path(get_output_data_folder_path(self._session_id))
         mediapipe3d_xyz_file_path = (
-                Path(output_data_folder_path)
-                / PARTIALLY_PROCESSED_DATA_FOLDER_NAME
-                / MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
+            Path(output_data_folder_path)
+            / PARTIALLY_PROCESSED_DATA_FOLDER_NAME
+            / MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
         )
         skel3d_frame_marker_xyz = load_post_processed_mediapipe3d_data(
             mediapipe3d_xyz_file_path
@@ -794,9 +805,9 @@ class MainWindow(QMainWindow):
             auto_process_next_stage=auto_process_next_stage,
         )
 
-    def _export_to_blender(self):
+    def _generate_blend_file(self):
         logger.debug(
-            "Open Session in Blender button clicked (this will freeze the GUI while it is running, sorry! I tried to calculate_center_of_mass it in a thread instead of a 'subprocess' but I got some kind of permission error when it tried to save the `.blend` file, so.... here we are. Frozen in the GUI.  How are you? "
+            "Generating `.blend` file (this will freeze the GUI while it is running, sorry! I tried to calculate_center_of_mass it in a thread instead of a 'subprocess' but I got some kind of permission error when it tried to save the `.blend` file, so.... here we are. Frozen in the GUI.  How are you? "
         )
         # self._thread_worker_manager.launch_export_to_blender_thread_worker(
         #     get_session_folder_path(self._session_id)
@@ -815,11 +826,11 @@ class MainWindow(QMainWindow):
 
         blender_file_path = export_to_blender(
             session_folder_path=get_session_folder_path(self._session_id),
-            blender_exe_path=self._control_panel.process_session_data_panel.blender_exe_path_str,
+            blender_exe_path=self._control_panel.visualize_session_data_panel.blender_exe_path_str,
         )
 
         if (
-            self._control_panel.record_motion_capture_videos_panel.open_in_blender_automatically_checkbox.isChecked()
+            self._control_panel.process_session_data_panel.open_in_blender_automatically_checkbox.isChecked()
         ):
             if blender_file_path:
                 self._open_blender_file(blender_file_path)
@@ -837,15 +848,12 @@ class MainWindow(QMainWindow):
         os.startfile(str(blender_file_path))
 
     def _visualize_motion_capture_data(self):
-        logger.info(
-            "`self._control_panel.visualize_motion_capture_data.load_session_data_button` was pressed "
-        )
+        logger.info("Loading data for visualization...")
 
         skeleton_3d_npy = load_post_processed_mediapipe3d_data(
-            Path(get_output_data_folder_path(self._session_id)) /
-            PARTIALLY_PROCESSED_DATA_FOLDER_NAME /
-            MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
-
+            Path(get_output_data_folder_path(self._session_id))
+            / PARTIALLY_PROCESSED_DATA_FOLDER_NAME
+            / MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
         )
 
         video_path_iterator = Path(
@@ -877,11 +885,13 @@ class MainWindow(QMainWindow):
         if (
             self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked()
         ):
-            pipedream_ping_dict = self._thread_worker_manager.session_progress_dictionary
+            pipedream_ping_dict = (
+                self._thread_worker_manager.session_progress_dictionary
+            )
             if Path(get_blender_file_path(self._session_id)).exists():
-                pipedream_ping_dict['blender_file_created'] = True
+                pipedream_ping_dict["blender_file_created"] = True
             else:
-                pipedream_ping_dict['blender_file_created'] = False
+                pipedream_ping_dict["blender_file_created"] = False
             send_pipedream_ping(pipedream_ping_dict)
 
         logger.info("Close Event detected for main window... ")

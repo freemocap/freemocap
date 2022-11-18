@@ -1,18 +1,14 @@
 import logging
 import multiprocessing
 import platform
-import threading
 import time
 import traceback
-from multiprocessing import Process, Queue
-from typing import Union
+from multiprocessing import Process
 
 import cv2
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
-from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
-from src.cameras.detection.cam_singleton import get_or_create_cams
-from src.config.webcam_config import WebcamConfig
+from src.cameras.webcam_config import WebcamConfig
 
 logger = logging.getLogger(__name__)
 

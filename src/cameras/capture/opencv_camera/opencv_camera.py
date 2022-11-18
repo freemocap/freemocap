@@ -3,50 +3,38 @@ import logging
 import platform
 import time
 import traceback
-from typing import List, Union
 
 import cv2
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
-from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.cameras.viewer.cv_cam_viewer import CvCamViewer
-from src.config.webcam_config import WebcamConfig
+from src.cameras.webcam_config import WebcamConfig
 from src.cameras.capture.opencv_camera.camera_stream_thread_handler import (
     VideoCaptureThread,
 )
-from src.core_processor.timestamp_manager.timestamp_manager import TimestampLogger
 
 logger = logging.getLogger(__name__)
 
 
 class OpenCVCamera:
     """
-    Performant implementation of video capture against webcams
+    Performant implementation of video start against webcams
     """
 
     def __init__(
         self,
         config: WebcamConfig,
-        session_id: str = None,
         session_start_time_perf_counter_ns: int = 0,
         calibration_video_bool: bool = False,
     ):
         self._config = config
         self._name = f"Camera_{self._config.webcam_id}"
         self._opencv_video_capture_object: cv2.VideoCapture = None
-        self._video_recorder: VideoRecorder = None
         self._running_thread: VideoCaptureThread = None
         self._new_frame_ready = False
         self._number_of_frames_recorded = 0
         self._calibration_video_bool = calibration_video_bool
-        self._session_id = session_id
         self._session_start_time_perf_counter_ns = session_start_time_perf_counter_ns
-
-    @property
-    def session_id(self):
-        if self._session_id is None:
-            return False
-        return self._session_id
 
     @property
     def new_frame_ready(self):
@@ -98,49 +86,66 @@ class OpenCVCamera:
         except Exception as e:
             raise e
 
-    def record_frames(self, save_frames_bool: bool):
-        self._running_thread.is_recording_frames = save_frames_bool
+    @property
+    def is_open(self):
+        return self._opencv_video_capture_object.isOpened()
 
     def connect(self):
+        logger.info(f"Connecting to Camera: {self._config.webcam_id}...")
+
         if platform.system() == "Windows":
+            logger.info(f"Windows machine detected - using backend `cv2.CAP_DSHOW`")
             cap_backend = cv2.CAP_DSHOW
         else:
+            logger.info(f"Non-Windows machine detected - using backend `cv2.CAP_ANY`")
             cap_backend = cv2.CAP_ANY
+
+        try:
+            self.release()
+        except:
+            pass
 
         self._opencv_video_capture_object = cv2.VideoCapture(
             int(self._config.webcam_id), cap_backend
         )
-        self._apply_configuration()
-        success, image = self._opencv_video_capture_object.read()
+
+        try:
+            success, image = self._opencv_video_capture_object.read()
+        except Exception as e:
+            logger.error(
+                f"Problem when trying to read frame from Camera: {self._config.webcam_id}"
+            )
+            traceback.print_exc()
+            raise e
 
         if not success or image is None:
             logger.error(
-                "Could not connect to a camera at port# {}".format(
-                    self._config.webcam_id
-                )
+                f"Failed to read frame from camera at port# {self._config.webcam_id}: "
+                f"returned value: {success}, "
+                f"returned image: {image}"
             )
             raise Exception
 
-        logger.debug(f"Camera found at port number {self._config.webcam_id}")
+        self._apply_configuration()
 
-        if self.session_id is False:
-            logger.info(
-                f"No `session_id` specified for {self._name}, video_recorder will not be created (because we won't know where to save the videos)"
-            )
-            self._video_recorder = None
-        else:
-            image_height = image.shape[0]
-            image_width = image.shape[1]
-
-            self._video_recorder = VideoRecorder(
-                self._name,
-                image_width=image_width,
-                image_height=image_height,
-                session_id=self.session_id,
-                calibration_video_bool=self._calibration_video_bool,
-            )
-
+        logger.info(f"Successfully connected to Camera: {self._config.webcam_id}!")
         return success
+
+    def release(self):
+        if self._opencv_video_capture_object is not None:
+            logger.debug(
+                f"Releasing `opencv_video_capture_object` for Camera: {self._config.webcam_id}"
+            )
+            self._opencv_video_capture_object.release()
+
+        if self._running_thread.is_capturing_frames:
+            logger.debug(
+                f"Stopping frame capture thread for Camera: {self._config.webcam_id}"
+            )
+            self._running_thread.stop()
+
+    def record_frames(self, save_frames_bool: bool):
+        self._running_thread.is_recording_frames = save_frames_bool
 
     def start_frame_capture_thread(self):
         if self.is_capturing_frames:
@@ -148,13 +153,12 @@ class OpenCVCamera:
                 f"Already capturing frames for webcam_id: {self.webcam_id_as_str}"
             )
             return
-        logger.info(
-            f"Beginning frame capture thread for webcam: {self.webcam_id_as_str}"
-        )
+        logger.info(f"Beginning frame start thread for webcam: {self.webcam_id_as_str}")
         self._running_thread = self._create_thread()
         self._running_thread.start()
 
     def _create_thread(self):
+        logger.debug(f"Creating thread for webcam: {self.webcam_id_as_str}")
         return VideoCaptureThread(
             webcam_id=self.webcam_id_as_str,
             get_next_frame=self.get_next_frame,
@@ -162,19 +166,45 @@ class OpenCVCamera:
 
     def _apply_configuration(self):
         # set camera stream parameters
-        self._opencv_video_capture_object.set(
-            cv2.CAP_PROP_EXPOSURE, self._config.exposure
+        logger.info(
+            f"Applying configuration to Camera {self._config.webcam_id}:"
+            f"Exposure: {self._config.exposure}, "
+            f"Resolution width: {self._config.resolution_width}, "
+            f"Resolution height: {self._config.resolution_height}, "
+            f"Fourcc: {self._config.fourcc}"
         )
-        self._opencv_video_capture_object.set(
-            cv2.CAP_PROP_FRAME_WIDTH, self._config.resolution_width
-        )
-        self._opencv_video_capture_object.set(
-            cv2.CAP_PROP_FRAME_HEIGHT, self._config.resolution_height
-        )
+        try:
+            if not self._opencv_video_capture_object.isOpened():
+                logger.error(
+                    f"Failed to apply configuration to Camera {self._config.webcam_id} - camera is not open"
+                )
+                return
+        except Exception as e:
+            logger.error(
+                f"Failed when trying to check if Camera {self._config.webcam_id} is open"
+            )
+            return
 
-        self._opencv_video_capture_object.set(
-            cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*self._config.fourcc)
-        )
+        try:
+            self._opencv_video_capture_object.set(
+                cv2.CAP_PROP_EXPOSURE, self._config.exposure
+            )
+            self._opencv_video_capture_object.set(
+                cv2.CAP_PROP_FRAME_WIDTH, self._config.resolution_width
+            )
+            self._opencv_video_capture_object.set(
+                cv2.CAP_PROP_FRAME_HEIGHT, self._config.resolution_height
+            )
+
+            self._opencv_video_capture_object.set(
+                cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*self._config.fourcc)
+            )
+        except Exception as e:
+            logger.error(
+                f"Problem applying configuration for camera: {self._config.webcam_id}"
+            )
+            traceback.print_exc()
+            raise e
 
     def get_next_frame(self):
 

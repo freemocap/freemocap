@@ -6,12 +6,42 @@ import toml
 
 logger = logging.getLogger(__name__)
 
+# directory names
 BASE_FOLDER_NAME = "freemocap_data"
+LOG_FILE_FOLDER_NAME = "logs"
+SYNCHRONIZED_VIDEOS_FOLDER_NAME = "synchronized_videos"
+CALIBRATION_VIDEOS_FOLDER_NAME = "calibration_videos"
+ANNOTATED_VIDEOS_FOLDER_NAME = "annotated_videos"
+OUTPUT_DATA_FOLDER_NAME = "output_data"
+RAW_DATA_FOLDER_NAME = "raw_data"
+CENTER_OF_MASS_FOLDER_NAME = "center_of_mass"
+PARTIALLY_PROCESSED_DATA_FOLDER_NAME = "partially_processed_data"
+DIAGNOSTIC_PLOTS_FOLDER_NAME = "diagnostic_plots"
+
+# file names
 MOST_RECENT_SESSION_ID_FILENAME = "most_recent_session_id.toml"
+CAMERA_CALIBRATION_FILE_NAME = "camera_calibration_data.toml"
+MEDIAPIPE_2D_NPY_FILE_NAME = (
+    "mediapipe_2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
+)
+MEDIAPIPE_3D_NPY_FILE_NAME = (
+    "mediapipe_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+)
+MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME = (
+    "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+)
+
+SKELETON_BODY_CSV_FILE_NAME = "mediapipe_body_3d_xyz.csv"
+
+SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
+
+TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
+
+MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME = "mediaPipeSkel_3d_origin_aligned.npy"
 
 
-def create_session_id(string_tag: str = None):
-    session_id = "session_" + time.strftime("%m-%d-%Y-%H_%M_%S")
+def create_default_session_id(string_tag: str = None):
+    session_id = "session_" + time.strftime("%Y-%m-%d-%H_%M_%S")
 
     if string_tag is not None:
         session_id = session_id + "_" + string_tag
@@ -19,12 +49,24 @@ def create_session_id(string_tag: str = None):
     return session_id
 
 
+def get_log_file_path():
+    log_folder_path = Path(get_freemocap_data_folder_path()) / LOG_FILE_FOLDER_NAME
+    log_folder_path.mkdir(exist_ok=True, parents=True)
+    log_file_path = log_folder_path / create_log_file_name()
+    return log_file_path
+
+
+def create_log_file_name():
+    return "log_" + time.strftime("%m-%d-%Y-%H_%M_%S") + ".log"
+
+
 def save_most_recent_session_id_to_a_toml_in_the_freemocap_data_folder(session_id: str):
     session_id_dict = {}
     session_id_dict["session_id"] = session_id
 
-    output_file_name = MOST_RECENT_SESSION_ID_FILENAME
-    output_file_path = Path(get_freemocap_data_folder_path()) / output_file_name
+    output_file_path = (
+        Path(get_freemocap_data_folder_path()) / MOST_RECENT_SESSION_ID_FILENAME
+    )
     with open(str(output_file_path), "w") as toml_file:
         toml.dump(session_id_dict, toml_file)
 
@@ -43,7 +85,10 @@ def os_independent_home_dir():
 
 def get_freemocap_data_folder_path(create_folder: bool = True):
     freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FOLDER_NAME)
-    freemocap_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
+
+    if create_folder:
+        freemocap_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
+
     return str(freemocap_data_folder_path)
 
 
@@ -62,7 +107,7 @@ def create_session_folder(session_id: str):
 
 def get_synchronized_videos_folder_path(session_id: str, create_folder: bool = True):
     synchronized_videos_path = (
-        Path(get_session_folder_path(session_id)) / "synchronized_videos"
+        Path(get_session_folder_path(session_id)) / SYNCHRONIZED_VIDEOS_FOLDER_NAME
     )
     if create_folder:
         synchronized_videos_path.mkdir(exist_ok=create_folder, parents=True)
@@ -74,36 +119,58 @@ def get_synchronized_videos_folder_path(session_id: str, create_folder: bool = T
 
 def get_calibration_videos_folder_path(session_id: str, create_folder: bool = True):
     calibration_videos_path = (
-        Path(get_session_folder_path(session_id)) / "calibration_videos"
+        Path(get_session_folder_path(session_id)) / CALIBRATION_VIDEOS_FOLDER_NAME
     )
     if create_folder:
         calibration_videos_path.mkdir(exist_ok=create_folder, parents=True)
+        # this now counts as a "proper" session, so save it to the toml
+        save_most_recent_session_id_to_a_toml_in_the_freemocap_data_folder(session_id)
     return str(calibration_videos_path)
 
 
-def get_mediapipe_annotated_videos_folder_path(
-    session_id: str, create_folder: bool = True
-):
-    mediapipe_annotated_videos_path = (
-        Path(get_session_folder_path(session_id)) / "mediapipe_annotated_videos"
+def get_annotated_videos_folder_path(session_id: str, create_folder: bool = False):
+    annotated_videos_path = (
+        Path(get_session_folder_path(session_id)) / ANNOTATED_VIDEOS_FOLDER_NAME
     )
     if create_folder:
-        mediapipe_annotated_videos_path.mkdir(exist_ok=create_folder, parents=True)
-    return str(mediapipe_annotated_videos_path)
+        annotated_videos_path.mkdir(exist_ok=create_folder, parents=True)
+    return str(annotated_videos_path)
 
 
-def get_session_output_data_folder_path(session_id: str, create_folder: bool = True):
+def get_output_data_folder_path(session_id: str, create_folder: bool = True):
     output_data_folder_path = (
-        Path(get_session_folder_path(session_id)) / "output_data_files"
+        Path(get_session_folder_path(session_id)) / OUTPUT_DATA_FOLDER_NAME
     )
     if create_folder:
         output_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
     return str(output_data_folder_path)
 
 
-def get_session_calibration_file_path(session_id: str) -> str:
-    calibration_file_name = f"{session_id}_camera_calibration.toml"
+def get_raw_data_folder_path(session_id: str, create_folder: bool = True):
+    output_data_folder_path = (
+        Path(get_session_folder_path(session_id)) / OUTPUT_DATA_FOLDER_NAME
+    )
+    raw_data_folder_path = output_data_folder_path / RAW_DATA_FOLDER_NAME
+    if create_folder:
+        raw_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
+    return str(raw_data_folder_path)
+
+
+def get_session_calibration_toml_file_path(session_id: str) -> str:
     calibration_file_path = (
-        Path(get_session_folder_path(session_id)) / calibration_file_name
+        Path(get_session_folder_path(session_id)) / CAMERA_CALIBRATION_FILE_NAME
     )
     return str(calibration_file_path)
+
+
+def get_skeleton_body_csv_path(session_id: str) -> str:
+    skeleton_body_data_path = (
+        Path(get_output_data_folder_path(session_id)) / SKELETON_BODY_CSV_FILE_NAME
+    )
+    return str(skeleton_body_data_path)
+
+
+def get_blender_file_path(session_id: str) -> str:
+    blend_file_name = session_id + ".blend"
+    blender_file_path = Path(get_output_data_folder_path(session_id)) / blend_file_name
+    return str(blender_file_path)

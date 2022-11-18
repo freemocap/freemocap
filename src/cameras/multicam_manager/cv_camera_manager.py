@@ -4,17 +4,15 @@ import traceback
 from contextlib import contextmanager
 from typing import ContextManager, Dict, List, Optional, Union
 
-import numpy as np
 from pydantic import BaseModel
 
 from src.api.services.user_config import UserConfigService
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.cameras.detection.cam_singleton import get_or_create_cams
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from src.config.webcam_config import WebcamConfig
-from src.core_processor.timestamp_manager.timestamp_manager import (
+from src.cameras.webcam_config import WebcamConfig
+from src.core_processes.timestamp_manager.timestamp_manager import (
     TimestampManager,
-    TimestampLogger,
 )
 from src.pipelines.session_pipeline.data_classes.multi_frame_payload import (
     MultiFramePayload,
@@ -114,7 +112,7 @@ class OpenCVCameraManager:
     ) -> ContextManager[CamAndWriterResponse]:
         """
         Context manager for easy start up, usage, and cleanup of camera resources.
-        Can capture frames from a single webcam or all webcams detected.
+        Can start frames from a single webcam or all webcams detected.
         """
 
         cv_camera = self._create_single_opencv_cam(webcam_id)
@@ -125,7 +123,7 @@ class OpenCVCameraManager:
             yield CamAndWriterResponse(cv_camera=cv_camera)
             self._stop_frame_capture([cv_camera])
         except:
-            logger.error("Printing traceback from starting capture session by cam")
+            logger.error("Printing traceback from starting start session by cam")
             traceback.print_exc()
 
     @contextmanager
@@ -152,7 +150,7 @@ class OpenCVCameraManager:
 
             self._stop_frame_capture(open_cv_camera_objects)
         except:
-            logger.error("Printing traceback from starting capture session by cam")
+            logger.error("Printing traceback from starting start session by cam")
             traceback.print_exc()
 
     def _create_opencv_cameras(

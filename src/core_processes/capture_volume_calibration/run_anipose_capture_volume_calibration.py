@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Callable
+from typing import Callable, Union
 
 from src.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_camera_calibrator import (
     AniposeCameraCalibrator,

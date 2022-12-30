@@ -1,11 +1,10 @@
+import logging
 from pathlib import Path
 from typing import Union
-
 
 from src.blender_stuff.create_blend_file_from_session_data import (
     create_blend_file_from_session_data,
 )
-import logging
 
 logger = logging.getLogger(__name__)
 

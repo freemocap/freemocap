@@ -3,16 +3,16 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QPushButton,
     QCheckBox,
-    QFormLayout,
-    QLineEdit,
     QComboBox,
-    QLabel,
     QFileDialog,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
     QRadioButton,
+    QVBoxLayout,
+    QWidget,
 )
 
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, Dict
+from typing import Dict, Union
 
 from PyQt6.QtCore import QThread
 

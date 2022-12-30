@@ -1,6 +1,5 @@
 import logging
 import threading
-import time
 import traceback
 from typing import List
 

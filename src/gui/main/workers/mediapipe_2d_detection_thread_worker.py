@@ -1,10 +1,8 @@
-from pathlib import Path
-from typing import Union, List
-
-from PyQt6.QtCore import QThread, pyqtSignal
-
-
 import logging
+from pathlib import Path
+from typing import Union
+
+from PyQt6.QtCore import pyqtSignal, QThread
 
 from src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,

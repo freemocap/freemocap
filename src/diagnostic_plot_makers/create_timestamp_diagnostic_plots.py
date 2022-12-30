@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, Dict, List
+from typing import List, Union
 
 import numpy as np
 

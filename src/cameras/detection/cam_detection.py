@@ -3,7 +3,6 @@ import platform
 import time
 
 import cv2
-import numpy as np
 
 from src.cameras.detection.models import FoundCamerasResponse
 

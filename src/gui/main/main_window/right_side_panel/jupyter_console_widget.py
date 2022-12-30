@@ -1,11 +1,6 @@
-from typing import Dict
-
-import numpy as np
 from PyQt6.QtWidgets import QWidget
 from qtconsole.manager import QtKernelManager
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
-
-from src.gui.main.app import get_qt_app
 
 
 def make_jupyter_widget_with_kernel():

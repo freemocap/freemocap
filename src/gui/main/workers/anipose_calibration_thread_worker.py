@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import pyqtSignal, QThread
 
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,

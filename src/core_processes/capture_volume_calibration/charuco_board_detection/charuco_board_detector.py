@@ -5,6 +5,9 @@ import cv2
 import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_image_annotator import (
+    annotate_image_with_charuco_data,
+)
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
 )
@@ -13,10 +16,6 @@ from src.core_processes.capture_volume_calibration.charuco_board_detection.datac
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_view_data import (
     CharucoViewData,
-)
-
-from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_image_annotator import (
-    annotate_image_with_charuco_data,
 )
 
 logger = logging.getLogger(__name__)

@@ -1,18 +1,10 @@
-import enum
-from pathlib import Path
-from typing import Union
+import logging
 
 import cv2
 import numpy as np
 from PyQt6 import QtGui
-from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtWidgets import QHBoxLayout, QWidget, QLabel
-
-import logging
-
-
-from src.gui.main.app_state.app_state import APP_STATE
+from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 logger = logging.getLogger(__name__)
 

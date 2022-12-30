@@ -1,11 +1,10 @@
 import logging
 import signal
 import sys
+from pathlib import Path
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
-
-from pathlib import Path
 
 repo = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(repo))

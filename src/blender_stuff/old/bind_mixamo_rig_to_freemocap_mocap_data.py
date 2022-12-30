@@ -1,7 +1,8 @@
+import json
+from pathlib import Path
+
 import bpy
 import numpy as np
-from pathlib import Path
-import json
 
 #####################################################################
 ###%% clear the scene - Scorch the earth \o/

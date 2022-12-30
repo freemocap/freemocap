@@ -5,9 +5,9 @@ import cv2
 import numpy as np
 
 from src.config.home_dir import (
+    MEDIAPIPE_2D_NPY_FILE_NAME,
     MEDIAPIPE_3D_NPY_FILE_NAME,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
-    MEDIAPIPE_2D_NPY_FILE_NAME,
 )
 
 

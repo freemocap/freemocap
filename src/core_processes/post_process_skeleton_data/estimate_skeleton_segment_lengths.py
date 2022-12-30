@@ -1,11 +1,10 @@
+import json
 import logging
 from pathlib import Path
 from typing import Union
 
 import numpy as np
 import pandas as pd
-import json
-
 from rich import print
 
 logger = logging.getLogger(__name__)

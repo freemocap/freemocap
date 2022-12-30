@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import BaseModel
 
 from src.config.home_dir import os_independent_home_dir

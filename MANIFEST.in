@@ -1,7 +1,4 @@
-include AUTHORS.rst
-include CONTRIBUTING.rst
 include LICENSE
-include README.rst
 include requirements.txt
 
 recursive-exclude * __pycache__
@@ -13,7 +10,6 @@ include versioneer.py
 include freemocap/_version.py
 
 include freemocap/logo/*
-include freemocap/freemocap/build_data.npy
 # If including data files in the package, add them like:
 # include path/to/data_file
 

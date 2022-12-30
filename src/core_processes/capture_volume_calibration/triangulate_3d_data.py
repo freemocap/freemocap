@@ -1,8 +1,8 @@
+import logging
 from pathlib import Path
 from typing import Union
 
 import numpy as np
-import logging
 
 from src.config.home_dir import (
     MEDIAPIPE_3D_NPY_FILE_NAME,

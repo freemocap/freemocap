@@ -1,5 +1,5 @@
 import cv2
-from PyQt6.QtCore import QThread, Qt, pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt, QThread
 from PyQt6.QtGui import QImage
 
 from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera

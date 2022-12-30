@@ -3,9 +3,6 @@ import logging
 import cv2
 import numpy as np
 
-from src.core_processes.timestamp_manager.timestamp_manager import TimestampManager
-from src.core_processes.utils.image_fps_writer import write_fps_to_image
-
 logger = logging.getLogger(__name__)
 
 

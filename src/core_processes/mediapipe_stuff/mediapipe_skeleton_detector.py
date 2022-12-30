@@ -1,22 +1,21 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Union, Any
+from typing import Any, List, Union
 
 import cv2
-import numpy as np
 import mediapipe as mp
+import numpy as np
 from tqdm import tqdm
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.home_dir import MEDIAPIPE_2D_NPY_FILE_NAME
-
-from src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
-    mediapipe_tracked_point_names_dict,
-)
 from src.core_processes.batch_processing.session_processing_parameter_models import (
     MediaPipe2DParametersModel,
+)
+from src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
+    mediapipe_tracked_point_names_dict,
 )
 
 logger = logging.getLogger(__name__)

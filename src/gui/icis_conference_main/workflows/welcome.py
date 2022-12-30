@@ -4,9 +4,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QVBoxLayout,
     QWidget,
-    QGridLayout,
-    QSpacerItem,
-    QCheckBox,
 )
 
 from src.gui.icis_conference_main.qt_utils.set_font_size import set_font_size

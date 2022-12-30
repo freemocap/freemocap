@@ -2,7 +2,6 @@
 import logging
 import sys
 from pathlib import Path
-import pickle
 from typing import Union
 
 import numpy as np

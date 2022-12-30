@@ -1,16 +1,15 @@
+import logging
 from pathlib import Path
-from typing import List, Union, Dict
+from typing import Dict, List, Union
 
 import numpy as np
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.config.home_dir import DIAGNOSTIC_PLOTS_FOLDER_NAME
 from src.diagnostic_plot_makers.create_timestamp_diagnostic_plots import (
     create_timestamp_diagnostic_plots,
 )
-from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-
-import logging
 
 logger = logging.getLogger(__name__)
 

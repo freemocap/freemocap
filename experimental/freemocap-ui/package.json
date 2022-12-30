@@ -64,7 +64,7 @@
   },
   "scripts": {
     "start:https": "HTTPS=true SSL_CRT_FILE=./localhost.pem SSL_KEY_FILE=./localhost-key.pem react-scripts start",
-    "certs": "./scripts/cert.sh",
+    "certs": "scripts/cert.sh",
     "start": "react-app-rewired start",
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",

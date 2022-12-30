@@ -1,16 +1,12 @@
 # adapted from - https://gist.github.com/markjay4k/da2f55e28514be7160a7c5fbf95bd243
 import logging
-from pathlib import Path
-from typing import Union, List
 
-from PyQt6.QtWidgets import QDialog, QVBoxLayout
-from pyqtgraph.Qt import QtCore, QtGui
-import pyqtgraph.opengl as gl
-import pyqtgraph as pg
 import numpy as np
-import sys
+import pyqtgraph as pg
+import pyqtgraph.opengl as gl
 from mediapipe.python.solutions import holistic as mp_holistic
-
+from PyQt6.QtWidgets import QDialog, QVBoxLayout
+from pyqtgraph.Qt import QtCore
 from src.gui.refactored_gui.state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)

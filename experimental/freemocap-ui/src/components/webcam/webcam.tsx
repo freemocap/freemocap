@@ -1,5 +1,4 @@
-
-import { default as Webcam } from 'react-webcam';
+import {default as Webcam} from 'react-webcam';
 
 export const SomeWebcam = () => {
   return <Webcam />

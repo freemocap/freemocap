@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -6,62 +7,57 @@ from typing import Union
 import pandas as pd
 from PyQt6 import QtGui
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QMainWindow, QSplitter, QFileDialog, QMenuBar, QMenu
+from PyQt6.QtWidgets import QFileDialog, QMainWindow, QMenu, QMenuBar, QSplitter
 
 from src.blender_stuff.export_to_blender import export_to_blender
 from src.cameras.detection.models import FoundCamerasResponse
 from src.config.home_dir import (
-    get_calibration_videos_folder_path,
-    get_synchronized_videos_folder_path,
-    get_session_folder_path,
-    get_session_calibration_toml_file_path,
-    get_output_data_folder_path,
-    get_most_recent_session_id,
-    get_freemocap_data_folder_path,
     get_annotated_videos_folder_path,
-    get_skeleton_body_csv_path,
     get_blender_file_path,
+    get_calibration_videos_folder_path,
+    get_freemocap_data_folder_path,
+    get_most_recent_session_id,
+    get_output_data_folder_path,
     get_raw_data_folder_path,
-    PARTIALLY_PROCESSED_DATA_FOLDER_NAME,
+    get_session_calibration_toml_file_path,
+    get_session_folder_path,
+    get_skeleton_body_csv_path,
+    get_synchronized_videos_folder_path,
     MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME,
+    PARTIALLY_PROCESSED_DATA_FOLDER_NAME,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
 )
 from src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
-    load_most_recent_anipose_calibration_toml,
-    load_calibration_from_session_id,
     load_anipose_calibration_toml_from_path,
+    load_calibration_from_session_id,
+    load_most_recent_anipose_calibration_toml,
 )
 from src.core_processes.mediapipe_stuff.load_mediapipe2d_data import (
     load_mediapipe2d_data,
 )
 from src.core_processes.mediapipe_stuff.load_mediapipe3d_data import (
-    load_raw_mediapipe3d_data,
     load_post_processed_mediapipe3d_data,
+    load_raw_mediapipe3d_data,
     load_skeleton_reprojection_error_data,
 )
 from src.core_processes.post_process_skeleton_data.estimate_skeleton_segment_lengths import (
-    mediapipe_skeleton_segment_definitions,
     estimate_skeleton_segment_lengths,
+    mediapipe_skeleton_segment_definitions,
     save_skeleton_segment_lengths_to_json,
 )
-
 from src.gui.main.app import get_qt_app
 from src.gui.main.app_state.app_state import APP_STATE
 from src.gui.main.main_window.left_panel_controls.control_panel import ControlPanel
-from src.gui.main.main_window.right_side_panel.right_side_panel import (
-    RightSidePanel,
-)
 from src.gui.main.main_window.middle_panel_viewers.session_playback_view.middle_viewing_panel import (
     MiddleViewingPanel,
 )
-
-import logging
-
+from src.gui.main.main_window.right_side_panel.right_side_panel import (
+    RightSidePanel,
+)
 from src.gui.main.workers.thread_worker_manager import ThreadWorkerManager
 from src.log.config import LOG_FILE_PATH
-
 from src.sending_anonymous_user_info_to_places.send_pipedream_ping import (
     send_pipedream_ping,
 )

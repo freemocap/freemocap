@@ -1,5 +1,7 @@
+import logging
+
 import cv2
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import pyqtSignal, QThread
 from PyQt6.QtGui import QImage
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
@@ -9,9 +11,6 @@ from src.cameras.webcam_config import WebcamConfig
 from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
-
-import logging
-
 from src.gui.main.app_state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)

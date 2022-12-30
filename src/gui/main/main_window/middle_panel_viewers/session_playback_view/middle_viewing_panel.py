@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import numpy as np
@@ -7,18 +8,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.main.main_window.middle_panel_viewers.welcome_view.welcome_create_or_load_new_session_panel import (
-    WelcomeCreateOrLoadNewSessionPanel,
-)
-
 from src.gui.main.main_window.middle_panel_viewers.camera_stream_grid_view import (
     CameraStreamGridView,
 )
 from src.gui.main.main_window.middle_panel_viewers.session_playback_view.session_playback_view import (
     SessionPlaybackView,
 )
-
-import logging
+from src.gui.main.main_window.middle_panel_viewers.welcome_view.welcome_create_or_load_new_session_panel import (
+    WelcomeCreateOrLoadNewSessionPanel,
+)
 
 logger = logging.getLogger(__name__)
 

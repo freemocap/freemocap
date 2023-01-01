@@ -15,7 +15,7 @@
 <a href="https://github.com/psf/black">
     <img alt="https://img.shields.io/badge/code%20style-black-000000.svg" src="https://img.shields.io/badge/code%20style-black-000000.svg">
   </a>
-  
+
 <a href="https://github.com/freemocap/freemocap/releases/latest">
         <img src="https://img.shields.io/github/release/freemocap/freemocap.svg" alt="Latest Release">
     </a>
@@ -31,12 +31,12 @@
 <a href="https://github.com/psf/black">
     <img alt="https://img.shields.io/badge/code%20style-black-000000.svg" src="https://img.shields.io/badge/code%20style-black-000000.svg">
   </a>
-  
-<a href="https://discord.gg/SgdnzbHDTG"> 
+
+<a href="https://discord.gg/SgdnzbHDTG">
     <img alt="Discord Community Server" src="https://dcbadge.vercel.app/api/server/SgdnzbHDTG?style=flat">
   </a>
 
-  
+
 </p>
 
 
@@ -47,21 +47,21 @@ ___
 # How to use the `pre-alpha` code
 
 
-We're in the process of switching over to the `alpha` phase of this project (`v0.1.0` and on) , which use full refactor code written with help from a professional experienced software architect. 
+We're in the process of switching over to the `alpha` phase of this project (`v0.1.0` and on) , which use full refactor code written with help from a professional experienced software architect.
 
 Until the new code stabilizes, you may have more luck using the `pre-alpha` code (e.g. `v0.0.54`)
 
 ---
-## INSTALLATION 
+## INSTALLATION
 
 Note: This will install the latest/last version from the `pre-alpha` phase of this project, frozen at release tag `v0.0.54` [here](https://github.com/freemocap/freemocap/releases/tag/v0.0.54)
 
 Open an Anaconda-enabled command prompt or powershell window and enter the following commands:
 
 1) Create a Python3.7 Anaconda environment
-```bash 
+```bash
 conda create -n freemocap-env python=3.7
-``` 
+```
 
 2) Activate that newly created environment
 ```bash
@@ -85,28 +85,28 @@ import freemocap
 freemocap.RunMe()
 ```
 
-But COOL KIDS will install Blender ([blender.org](https://blender.org) and generate an awesome `.blend` file animation by setting `useBlender=True`: 
+But COOL KIDS will install Blender ([blender.org](https://blender.org) and generate an awesome `.blend` file animation by setting `useBlender=True`:
 
 ```python
 import freemocap
 freemocap.RunMe(useBlender=True)
 ```
 
-:point_right: **For additional, more detailed instructions (including methods to re-process recorded sessions), [refer to the `OLD_README.md` document](https://github.com/freemocap/freemocap/blob/main/OLD_README.md))** :point_left: 
+:point_right: **For additional, more detailed instructions (including methods to re-process recorded sessions), [refer to the `OLD_README.md` document](https://github.com/freemocap/freemocap/blob/main/OLD_README.md))** :point_left:
 
 ___
 
 #  HOW TO RUN THE `alpha` GUI
 
 NOTES
-- no promises here, friends. Work in progress lol :joy:    
+- no promises here, friends. Work in progress lol :joy:
 - Personally, I run the gui through PyCharm, but its easier to write instructions on how to run from an anaconda prompt
- 
+
 ## Pre-requisites:
 1. Install Anaconda
     - https://anaconda.org
-2. Install git 
-     - https://git-scm.com/book/en/v2/Getting-Started-Installing-Git (just use the defaults)  
+2. Install git
+     - https://git-scm.com/book/en/v2/Getting-Started-Installing-Git (just use the defaults)
 3. (OPTIONAL) Install Blender - https://blender.org
 
 ## Installation instructions
@@ -140,7 +140,7 @@ pip install -r requirements.txt
 7. Run the GUI by running the `src/gui/main/main.py` file by entering this command into the terminal:
 
 ```bash
-python src/gui/main/main.py
+python old_src/gui/main/main.py
 ```
 
 8. Hopefully a GUI popped up! There are no docs on usage yet, so just click and see what you can figure out :joy:
@@ -149,11 +149,11 @@ python src/gui/main/main.py
 
 At the moment, the `alpha GUI`'s method for connecting to the cameras is very innefficient and will experience framerate drops with more than ~3 cameras (even with a powerful PC). We're working on a fix, and should have it handled soon! In the mean time, you can still use the GUI to process videos recorded with other methods (workflow described in the next section!)
 __
-# Create 3D skeleton animations from externally recorded (and synchronized) videos :sparkles: 
+# Create 3D skeleton animations from externally recorded (and synchronized) videos :sparkles:
 
 You can use `alpha GUI` to process videos that were recorded and synchronized from any source!
 
-Simply synchronize your videos in whatever way you wish, convert them to `.mp4` format, and place them all in a single folder. 
+Simply synchronize your videos in whatever way you wish, convert them to `.mp4` format, and place them all in a single folder.
 
 Then, *import* that folder via the `Import Videos` button in the GUI and follow the standard processing steps
 

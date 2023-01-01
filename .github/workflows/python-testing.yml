@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [ icis_conference_main ]
     paths:
-      - src
+      - old_src
 
 jobs:
   build:

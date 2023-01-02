@@ -21,6 +21,7 @@ from freemocap.qt_gui.main_window.control_panel_dock_widget import (
 )
 from freemocap.qt_gui.style_sheet.css_file_watcher import CSSFileWatcher
 from freemocap.qt_gui.style_sheet.set_css_style_sheet import apply_css_style_sheet
+from freemocap.qt_gui.widgets.CalibrationControlPanel import CalibrationControlPanel
 from freemocap.qt_gui.widgets.welcome_tab_widget import (
     WelcomeCreateOrLoadNewSessionPanel,
 )
@@ -111,10 +112,11 @@ class QtGUIMainWindow(QMainWindow):
         self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(
             self._camera_view_widget
         )
+        self._calibration_control_panel = CalibrationControlPanel()
 
         left_side_control_panel_dock_widget = ControlPanelDockWidget(
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
-            capture_volume_calibration_widget=QLabel("Capture Volume Calibration"),
+            capture_volume_calibration_widget=self._calibration_control_panel,
             process_data_widget=QLabel("Process Data"),
             visualize_data_widget=QLabel("Visualize Data"),
             parent=self,
@@ -130,6 +132,9 @@ class QtGUIMainWindow(QMainWindow):
         directory_view_dock_widget.setWidget(self._qt_directory_view_widget)
 
         return directory_view_dock_widget
+
+    def launch_capture_volume_calibration_wizard(self):
+        logger.info("Launching capture volume calibration wizard")
 
     def closeEvent(self, a0) -> None:
         try:

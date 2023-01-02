@@ -9,12 +9,14 @@ from PyQt6.QtWidgets import (
 )
 from skellycam import SkellyCamParameterTreeWidget
 
+from freemocap.qt_gui.widgets.CalibrationControlPanel import CalibrationControlPanel
+
 
 class ControlPanelDockWidget(QDockWidget):
     def __init__(
         self,
         camera_configuration_parameter_tree_widget: SkellyCamParameterTreeWidget,
-        capture_volume_calibration_widget: QWidget,
+        capture_volume_calibration_widget: CalibrationControlPanel,
         process_data_widget: QWidget,
         visualize_data_widget: QWidget,
         parent=None,

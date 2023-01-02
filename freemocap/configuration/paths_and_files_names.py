@@ -1,10 +1,16 @@
 import logging
 from pathlib import Path
 
+import freemocap
+
 logger = logging.getLogger(__name__)
 
 # directory names
 BASE_FREEMOCAP_DATA_FOLDER_NAME = "freemocap_data"
+PATH_TO_FREEMOCAP_LOGO_SVG = str(
+    Path(freemocap.__file__).parent.parent
+    / "assets/logo/freemocap-logo-black-border.svg"
+)
 
 
 def os_independent_home_dir():

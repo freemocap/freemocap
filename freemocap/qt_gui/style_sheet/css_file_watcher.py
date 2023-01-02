@@ -21,7 +21,9 @@ class CSSFileWatcher(QtCore.QFileSystemWatcher):
 
         try:
             with open(path, "r") as css_file:
+                logger.info(f"Reading CSS file from: {path}")
                 css_string = css_file.read()
+                logger.info(f"Setting stylesheet for {self.parent}")
                 self.parent.setStyleSheet(css_string)
         except Exception as e:
             logger.error(f"Error setting stylesheet: {e}")

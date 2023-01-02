@@ -6,10 +6,10 @@ from pathlib import Path
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 
-from freemocap.default_paths_and_filenames.paths_and_files_names import (
+from freemocap.configuration.paths_and_files_names import (
     get_freemocap_data_folder_path,
 )
-from freemocap.qt_gui.qt_gui_main_window import QtGUIMainWindow
+from freemocap.qt_gui.main_window.qt_gui_main_window import QtGUIMainWindow
 from freemocap.qt_gui.utilities.get_qt_app import get_qt_app
 
 repo = Path(__file__).parent.parent.parent.parent

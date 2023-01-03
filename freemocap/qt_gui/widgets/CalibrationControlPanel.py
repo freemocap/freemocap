@@ -13,11 +13,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from freemocap.configuration.paths_and_files_names import get_most_recent_recording_path
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
+    default_charuco_square_size_mm,
+)
 from freemocap.qt_gui.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
-)
-from old_src.core_processes.capture_volume_calibration.charuco_board_detection.default_charuco_square_size import (
-    default_charuco_square_size_mm,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,8 @@ class CalibrationControlPanel(QWidget):
         self._radio_button_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self._layout.addLayout(self._radio_button_layout)
         self._layout.addStretch()
+
+        self._anipose_calibration_frame_worker = None
 
     def _create_radio_button_layout(self):
         radio_button_layout = QVBoxLayout()
@@ -184,10 +187,31 @@ class CalibrationControlPanel(QWidget):
         return charuco_square_size_form_layout
 
     def _calibrate_from_previous_recording(self):
-        print("Calibrating from previous recording")
+        logger.info("Calibrating from previous recording")
+
+        previous_recording_path = get_most_recent_recording_path()
+
+        if previous_recording_path is None:
+            logger.info(
+                "No previous recording found, so cannot calibrate from previous recording"
+            )
+            return
+
+        logger.info(f"Previous recording path: {previous_recording_path}")
+
+        self._calibrate_from_last_recording_button.setEnabled(False)
+
+        charuco_square_size = float(self._charuco_square_size_line_edit.text())
 
         self._anipose_calibration_frame_worker = AniposeCalibrationThreadWorker(
-            charuco_square_size_mm=float(self._charuco_square_size_line_edit.text())
+            calibration_videos_folder_path=previous_recording_path,
+            charuco_square_size=charuco_square_size,
+        )
+
+        self._anipose_calibration_frame_worker.start()
+
+        self._anipose_calibration_frame_worker.finished.connect(
+            lambda: self._calibrate_from_last_recording_button.setEnabled(True)
         )
 
 

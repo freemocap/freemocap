@@ -5,13 +5,14 @@ from typing import Callable, Union
 import numpy as np
 from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
 
-from old_src.config.home_dir import (
-    get_freemocap_data_folder_path,
+from freemocap.configuration.paths_and_files_names import (
+    get_calibrations_folder_path,
+    get_last_successful_calibration_toml_path,
 )
-from old_src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
-from old_src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
 )
 
@@ -25,19 +26,17 @@ class AniposeCameraCalibrator:
         charuco_square_size: Union[int, float],
         calibration_videos_folder_path: Union[str, Path],
         progress_callback: Callable[[str], None] = None,
-        session_id: str = None,
     ):
 
         self._charuco_board_object = charuco_board_object
         self._progress_callback = progress_callback
-        self._session_id = session_id
 
         if charuco_square_size == 1:
             logger.warning(
                 "Charuco square size is not set, so units of 3d reconstructed data will be in units of `however_long_the_black_edge_of_the_charuco_square_was`. Please input `charuco_square_size` in millimeters (or your preferred unity of length)"
             )
         self._charuco_square_size = charuco_square_size
-        self._calibration_videos_folder_path = calibration_videos_folder_path
+        self._calibration_videos_folder_path = Path(calibration_videos_folder_path)
         self._session_folder_path = Path(self._calibration_videos_folder_path).parent
         self._get_video_paths()
         self._initialize_anipose_objects()
@@ -67,9 +66,8 @@ class AniposeCameraCalibrator:
         self._anipose_camera_group_object.metadata["charuco_board_object"] = str(
             self._charuco_board_object
         )
-
-        self._anipose_camera_group_object.metadata["charuco_board_object"] = str(
-            self._session_id
+        self._anipose_camera_group_object.metadata["path_to_recorded_videos"] = str(
+            self._calibration_videos_folder_path
         )
 
         self._anipose_charuco_board = AniposeCharucoBoard(
@@ -105,9 +103,11 @@ class AniposeCameraCalibrator:
             # self._anipose_camera_group_object = self.rotate_cameras_so_camera_zero_aligns_with_XYZ(self._anipose_camera_group_object)
 
         # save calibration info to files
-        calibration_toml_filename = f"camera_calibration_data.toml"
+        calibration_toml_filename = (
+            f"{self._calibration_videos_folder_path.stem}_camera_calibration.toml"
+        )
         camera_calibration_toml_path = (
-            self._session_folder_path / calibration_toml_filename
+            Path(get_calibrations_folder_path()) / calibration_toml_filename
         )
 
         self._anipose_camera_group_object.dump(camera_calibration_toml_path)
@@ -115,29 +115,16 @@ class AniposeCameraCalibrator:
             f"anipose camera calibration data saved to {str(camera_calibration_toml_path)}"
         )
 
-        last_successful_calibration_path = Path(
-            get_freemocap_data_folder_path(), "last_successful_calibration.toml"
+        last_successful_calibration_toml_path = (
+            get_last_successful_calibration_toml_path()
         )
-        self._anipose_camera_group_object.dump(last_successful_calibration_path)
+        self._anipose_camera_group_object.dump(last_successful_calibration_toml_path)
 
         logger.info(
-            f"anipose camera calibration data also saved to {str(last_successful_calibration_path)}"
+            f"anipose camera calibration data also saved to {last_successful_calibration_toml_path}"
         )
 
         return self._anipose_camera_group_object
-        # # convert charuco data into a format that can be 3d reconstructed (effectively providing dummy data for the rest of the 3d reconstruction pipeline)
-        # self.charuco_nCams_nFrames_nImgPts_XY = np.empty(
-        #     [self.multi_cam.num_cams, self.multi_cam.num_frames, num_charuco_tracked_points, 2])
-        # self.charuco_nCams_nFrames_nImgPts_XY[:] = np.nan
-        #
-        # for this_charuco_frame_data, this_charuco_frame_num in zip(charuco_frame_data, charuco_frame_numbers):
-        #     for this_cam_num in range(self.multi_cam.num_cams):
-        #         try:
-        #             self.charuco_nCams_nFrames_nImgPts_XY[this_cam_num, this_charuco_frame_num, :, :] = np.squeeze(
-        #                 this_charuco_frame_data[this_cam_num]["filled"])
-        #         except:
-        #             # print("failed frame:", frame)
-        #             continue
 
     def pin_camera_zero_to_origin(self, _anipose_camera_group_object):
         original_translation_vectors = _anipose_camera_group_object.get_translations()

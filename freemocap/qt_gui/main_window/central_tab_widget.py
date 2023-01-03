@@ -1,5 +1,5 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QLabel, QTabWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from skellycam import SkellyCamControllerWidget, SkellyCamViewerWidget
 
 from freemocap.qt_gui.widgets.welcome_tab_widget import (

@@ -5,8 +5,7 @@ from typing import Union
 import toml
 
 from freemocap.configuration.paths_and_files_names import (
-    get_logs_info_and_settings_folder_path,
-    MOST_RECENT_RECORDING_TOML_FILENAME,
+    get_most_recent_recording_toml_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -16,10 +15,7 @@ def save_most_recent_recording_path_as_toml(
     most_recent_recording_path: Union[str, Path]
 ):
     """Save the most recent recording path to a toml file"""
-    output_file_path = (
-        Path(get_logs_info_and_settings_folder_path())
-        / MOST_RECENT_RECORDING_TOML_FILENAME
-    )
+    output_file_path = get_most_recent_recording_toml_path()
 
     logger.info(
         f"Saving most recent recording path {str(most_recent_recording_path)} to toml file: {str(output_file_path)}"

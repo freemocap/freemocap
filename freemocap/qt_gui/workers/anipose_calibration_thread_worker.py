@@ -4,6 +4,7 @@ from typing import Union
 
 from PyQt6.QtCore import pyqtSignal, QThread
 
+from freemocap.configuration.paths_and_files_names import get_calibrations_folder_path
 from old_src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
 )
@@ -20,16 +21,16 @@ class AniposeCalibrationThreadWorker(QThread):
 
     def __init__(
         self,
-        charuco_board_definition: CharucoBoardDefinition,
-        calibration_videos_folder_path: Union[str, Path],
         charuco_square_size_mm: Union[int, float],
-        session_id: str,
+        charuco_board_definition: CharucoBoardDefinition = CharucoBoardDefinition(),
+        calibration_videos_folder_path: Union[
+            str, Path
+        ] = get_calibrations_folder_path(),
     ):
         super().__init__()
         self._charuco_board_definition = charuco_board_definition
         self._charuco_square_size_mm = charuco_square_size_mm
         self._calibration_videos_folder_path = calibration_videos_folder_path
-        self._session_id = session_id
 
     def _emit_in_progress_data(self, message: str):
         self.in_progress.emit(message)

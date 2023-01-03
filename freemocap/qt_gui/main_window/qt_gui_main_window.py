@@ -14,6 +14,8 @@ from skellycam.qt_gui.widgets.qt_directory_view_widget import QtDirectoryViewWid
 
 from freemocap.configuration.paths_and_files_names import (
     get_css_stylesheet_path,
+    get_freemocap_data_folder_path,
+    get_motion_capture_session_folder_path,
 )
 from freemocap.qt_gui.main_window.central_tab_widget import CentralTabWidget
 from freemocap.qt_gui.main_window.control_panel_dock_widget import (
@@ -21,6 +23,9 @@ from freemocap.qt_gui.main_window.control_panel_dock_widget import (
 )
 from freemocap.qt_gui.style_sheet.css_file_watcher import CSSFileWatcher
 from freemocap.qt_gui.style_sheet.set_css_style_sheet import apply_css_style_sheet
+from freemocap.qt_gui.utilities.save_most_recent_recording_path_as_toml import (
+    save_most_recent_recording_path_as_toml,
+)
 from freemocap.qt_gui.widgets.CalibrationControlPanel import CalibrationControlPanel
 from freemocap.qt_gui.widgets.welcome_tab_widget import (
     WelcomeCreateOrLoadNewSessionPanel,
@@ -38,7 +43,10 @@ class QtGUIMainWindow(QMainWindow):
 
         self._css_file_watcher = self._set_up_stylesheet()
 
-        self._freemocap_data_folder = freemocap_data_folder
+        if freemocap_data_folder is None:
+            self._freemocap_data_folder = get_freemocap_data_folder_path()
+        else:
+            self._freemocap_data_folder = freemocap_data_folder
 
         self.setWindowTitle("freemocap \U0001F480 \U00002728")
 
@@ -63,6 +71,10 @@ class QtGUIMainWindow(QMainWindow):
             self._handle_quick_start_button_clicked
         )
 
+        self._camera_view_widget.videos_saved_signal.connect(
+            save_most_recent_recording_path_as_toml
+        )
+
     def _handle_quick_start_button_clicked(self):
 
         self._central_tab_widget.set_welcome_tab_enabled(False)
@@ -84,13 +96,13 @@ class QtGUIMainWindow(QMainWindow):
 
         self._camera_view_widget = SkellyCamViewerWidget(
             parent=self,
-            session_folder_path=Path(self._freemocap_data_folder)
-            / "motion_capture_sessions",
+            session_folder_path=get_motion_capture_session_folder_path(),
         )
         self._camera_controller_widget = SkellyCamControllerWidget(
             camera_viewer_widget=self._camera_view_widget,
             parent=self,
         )
+
         self._welcome_to_freemocap_widget = WelcomeCreateOrLoadNewSessionPanel()
         self._visualize_data_widget = QLabel("Visualize Data")
 

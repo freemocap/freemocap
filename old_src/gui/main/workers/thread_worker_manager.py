@@ -11,7 +11,7 @@ from old_src.cameras.persistence.video_writer.video_recorder import VideoRecorde
 from old_src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
 )
-from old_src.gui.main.workers.anipose_calibration_thread_worker import (
+from freemocap.qt_gui.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
 from old_src.gui.main.workers.cam_detection_thread_worker import (

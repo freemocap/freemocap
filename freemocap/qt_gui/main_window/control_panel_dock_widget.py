@@ -56,5 +56,6 @@ class ControlPanelDockWidget(QDockWidget):
     def _create_section_title(self, title: str):
         label = QLabel(title)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignTop)
         label.setStyleSheet("font-size: 20px; font-weight: bold;")
         return label

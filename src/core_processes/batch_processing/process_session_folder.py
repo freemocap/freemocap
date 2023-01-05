@@ -68,7 +68,7 @@ def process_session_folder(
         logger.info("Detecting 2d skeletons...")
         # 2d skeleton detection
         mediapipe_skeleton_detector = MediaPipeSkeletonDetector(
-            parameter_model=s.mediapipe_2d_parameters,
+            parameter_model=s.mediapipe_parameters,
         )
 
         mediapipe_2d_data = mediapipe_skeleton_detector.process_folder_full_of_videos(

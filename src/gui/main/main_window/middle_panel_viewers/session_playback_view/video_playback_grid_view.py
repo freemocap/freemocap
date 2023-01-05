@@ -30,7 +30,7 @@ class VideoPlaybackGridView(QWidget):
         list_of_video_paths: List,
     ):
         clear_layout(self._layout)
-        logger.info("Creating video widgets...")
+        logger.info("Creating video sub_widgets...")
 
         for video_path in list_of_video_paths:
             video_name = Path(video_path).stem

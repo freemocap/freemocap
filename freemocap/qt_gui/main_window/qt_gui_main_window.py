@@ -23,11 +23,16 @@ from freemocap.qt_gui.main_window.control_panel_dock_widget import (
 )
 from freemocap.qt_gui.style_sheet.css_file_watcher import CSSFileWatcher
 from freemocap.qt_gui.style_sheet.set_css_style_sheet import apply_css_style_sheet
+from freemocap.qt_gui.sub_widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
+    ProcessMotionCaptureDataPanel,
+)
 from freemocap.qt_gui.utilities.save_most_recent_recording_path_as_toml import (
     save_most_recent_recording_path_as_toml,
 )
-from freemocap.qt_gui.widgets.CalibrationControlPanel import CalibrationControlPanel
-from freemocap.qt_gui.widgets.welcome_tab_widget import (
+from freemocap.qt_gui.sub_widgets.calibration_control_panel import (
+    CalibrationControlPanel,
+)
+from freemocap.qt_gui.sub_widgets.welcome_tab_widget import (
     WelcomeCreateOrLoadNewSessionPanel,
 )
 
@@ -125,11 +130,12 @@ class QtGUIMainWindow(QMainWindow):
             self._camera_view_widget
         )
         self._calibration_control_panel = CalibrationControlPanel()
+        self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel()
 
         left_side_control_panel_dock_widget = ControlPanelDockWidget(
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
-            capture_volume_calibration_widget=self._calibration_control_panel,
-            process_data_widget=QLabel("Process Data"),
+            calibration_control_panel=self._calibration_control_panel,
+            process_motion_capture_data_panel=self._process_motion_capture_data_panel,
             visualize_data_widget=QLabel("Visualize Data"),
             parent=self,
         )

@@ -14,11 +14,27 @@ MOTION_CAPTURE_SESSIONS_FOLDER_NAME = "motion_capture_sessions"
 CALIBRATIONS_FOLDER_NAME = "calibrations"
 LOGS_INFO_AND_SETTINGS_FOLDER_NAME = "logs_info_and_settings"
 LOG_FILE_FOLDER_NAME = "logs"
+RAW_DATA_FOLDER_NAME = "raw_data"
+CENTER_OF_MASS_FOLDER_NAME = "center_of_mass"
 
 # file names
 MOST_RECENT_RECORDING_TOML_FILENAME = "most_recent_recording.toml"
 LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME = "last_successful_calibration.toml"
+MEDIAPIPE_2D_NPY_FILE_NAME = (
+    "mediapipe2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
+)
+MEDIAPIPE_3D_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME = (
+    "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+)
+MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME = "mediapipe_body_3d_xyz.csv"
 
+SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
+
+TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
+
+
+# logo
 PATH_TO_FREEMOCAP_LOGO_SVG = str(
     Path(freemocap.__file__).parent.parent
     / "assets/logo/freemocap-logo-black-border.svg"

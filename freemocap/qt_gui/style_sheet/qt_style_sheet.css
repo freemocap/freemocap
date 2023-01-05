@@ -40,15 +40,17 @@ QTreeView {
     alternate-background-color: #a3b1ed;
     color: #222222;
     font-weight: bold;
+
+
 }
 
 QTreeView::item:has-children {
-    background-color: '#05100f';
+    background-color: '#49587d';
     color: #ffffff;
 }
 
 QTreeView::item:selected {
-    background-color: #18294a;
+    background-color: #394781;
 }
 
 QTreeView::item:selected:active {
@@ -58,3 +60,6 @@ QTreeView::item:selected:active {
 QTreeView::item:hover {
     background-color: #378e90;
 }
+
+
+

@@ -4,10 +4,11 @@ from typing import Union
 
 import numpy as np
 
-from old_src.config.home_dir import (
+from freemocap.configuration.paths_and_files_names import (
     MEDIAPIPE_3D_NPY_FILE_NAME,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -191,10 +192,10 @@ def save_mediapipe_3d_data_to_npy(
 
 
 if __name__ == "__main__":
-    import argparse
-    from old_src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
+    from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
         load_anipose_calibration_toml_from_path,
     )
+    import argparse
 
     parser = argparse.ArgumentParser()
     parser.add_argument(

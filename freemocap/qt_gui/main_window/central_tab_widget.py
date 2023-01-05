@@ -2,7 +2,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from skellycam import SkellyCamControllerWidget, SkellyCamViewerWidget
 
-from freemocap.qt_gui.widgets.welcome_tab_widget import (
+from freemocap.qt_gui.sub_widgets.welcome_tab_widget import (
     WelcomeCreateOrLoadNewSessionPanel,
 )
 

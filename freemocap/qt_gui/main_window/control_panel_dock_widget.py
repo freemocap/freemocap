@@ -8,15 +8,20 @@ from PyQt6.QtWidgets import (
 )
 from skellycam import SkellyCamParameterTreeWidget
 
-from freemocap.qt_gui.widgets.CalibrationControlPanel import CalibrationControlPanel
+from freemocap.qt_gui.sub_widgets.calibration_control_panel import (
+    CalibrationControlPanel,
+)
+from freemocap.qt_gui.sub_widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
+    ProcessMotionCaptureDataPanel,
+)
 
 
 class ControlPanelDockWidget(QDockWidget):
     def __init__(
         self,
         camera_configuration_parameter_tree_widget: SkellyCamParameterTreeWidget,
-        capture_volume_calibration_widget: CalibrationControlPanel,
-        process_data_widget: QWidget,
+        calibration_control_panel: CalibrationControlPanel,
+        process_motion_capture_data_panel: ProcessMotionCaptureDataPanel,
         visualize_data_widget: QWidget,
         parent=None,
     ):
@@ -32,12 +37,13 @@ class ControlPanelDockWidget(QDockWidget):
         )
 
         self._add_widget_to_splitter(
-            widget=capture_volume_calibration_widget,
+            widget=calibration_control_panel,
             title_str="Capture Volume Calibration",
         )
 
         self._add_widget_to_splitter(
-            widget=process_data_widget, title_str="Process Motion Capture Data"
+            widget=process_motion_capture_data_panel,
+            title_str="Process Motion Capture Data",
         )
 
         self._add_widget_to_splitter(

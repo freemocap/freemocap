@@ -35,7 +35,7 @@ class CameraStreamGridView(QWidget):
         dictionary_of_webcam_configs=Dict[str, WebcamConfig],
         pop_out_camera_windows: bool = False,
     ):
-        logger.info("Creating camera widgets...")
+        logger.info("Creating camera sub_widgets...")
 
         if hasattr(self, "_dictionary_of_camera_widgets"):
             self.close_camera_widgets()

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Union
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QDockWidget, QLabel, QMainWindow
+from PyQt6.QtWidgets import QDockWidget, QLabel, QMainWindow, QPushButton
 from skellycam import (
     SkellyCamControllerWidget,
     SkellyCamParameterTreeWidget,
@@ -16,9 +16,13 @@ from freemocap.configuration.paths_and_files_names import (
     create_new_session_folder,
     get_css_stylesheet_path,
     get_freemocap_data_folder_path,
+    get_most_recent_recording_path,
 )
 from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
     SessionProcessingParameterModel,
+)
+from freemocap.core_processes.visualization.blender_stuff.export_to_blender import (
+    export_to_blender,
 )
 from freemocap.qt_gui.main_window.central_tab_widget import CentralTabWidget
 from freemocap.qt_gui.main_window.control_panel_dock_widget import (
@@ -150,11 +154,18 @@ class QtGUIMainWindow(QMainWindow):
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
             calibration_control_panel=self._calibration_control_panel,
             process_motion_capture_data_panel=self._process_motion_capture_data_panel,
-            visualize_data_widget=QLabel("Visualize Data"),
+            visualize_data_widget=self._create_visualization_control_panel(),
             parent=self,
         )
 
         return left_side_control_panel_dock_widget
+
+    def _create_visualization_control_panel(self):
+        self._export_to_blender_button = QPushButton("Export to Blender")
+        self._export_to_blender_button.clicked.connect(
+            lambda: export_to_blender(get_most_recent_recording_path())
+        )
+        return self._export_to_blender_button
 
     def _create_directory_view_dock_widget(self):
         directory_view_dock_widget = QDockWidget("Directory View", self)

@@ -14,6 +14,8 @@ MOTION_CAPTURE_SESSIONS_FOLDER_NAME = "motion_capture_sessions"
 CALIBRATIONS_FOLDER_NAME = "calibrations"
 LOGS_INFO_AND_SETTINGS_FOLDER_NAME = "logs_info_and_settings"
 LOG_FILE_FOLDER_NAME = "logs"
+OUTPUT_DATA_FOLDER_NAME = "output_data"
+SYNCHRONIZED_VIDEOS_FOLDER_NAME = "synchronized_videos"
 RAW_DATA_FOLDER_NAME = "raw_data"
 CENTER_OF_MASS_FOLDER_NAME = "center_of_mass"
 
@@ -82,6 +84,28 @@ def get_calibrations_folder_path(create_folder: bool = True):
     return str(calibration_folder_path)
 
 
+def default_session_name(string_tag: str = None):
+
+    if string_tag is not None:
+        string_tag = f"_{string_tag}"
+    else:
+        string_tag = ""
+
+    session_name = time.strftime("session_%Y-%m-%d_%H_%M_%S" + string_tag)
+    logger.debug(f"Creating default session name: {session_name}")
+
+    return session_name
+
+
+def create_new_session_folder():
+    session_folder_path = (
+        Path(get_motion_capture_session_folder_path()) / default_session_name()
+    )
+
+    session_folder_path.mkdir(exist_ok=False, parents=True)
+    return str(session_folder_path)
+
+
 def get_motion_capture_session_folder_path(create_folder: bool = True):
     motion_capture_session_folder_path = (
         Path(get_freemocap_data_folder_path()) / MOTION_CAPTURE_SESSIONS_FOLDER_NAME
@@ -117,9 +141,29 @@ def get_most_recent_recording_toml_path():
     )
 
 
-def get_most_recent_recording_path() -> str:
-    session_id_dict = toml.load(str(get_most_recent_recording_toml_path()))
-    return session_id_dict["most_recent_recording_path"]
+def get_most_recent_recording_path(subfolder_str: str = None):
+
+    if not Path(get_most_recent_recording_toml_path()).exists():
+        logger.warning("`most_recent_recording.toml` does not exist. Returning None.")
+        return None
+
+    most_recent_recording_dict = toml.load(str(get_most_recent_recording_toml_path()))
+    most_recent_recording_path = most_recent_recording_dict[
+        "most_recent_recording_path"
+    ]
+
+    if subfolder_str is not None:
+
+        try:
+            # check if folder is specified in toml file, otherwise return default
+            sub_folder_path = most_recent_recording_dict[subfolder_str]
+        except KeyError:
+            sub_folder_path = Path(most_recent_recording_path) / subfolder_str
+        return str(sub_folder_path)
+
+    else:
+
+        return str(most_recent_recording_path)
 
 
 def get_last_successful_calibration_toml_path():

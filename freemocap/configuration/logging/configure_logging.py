@@ -41,6 +41,7 @@ def get_logging_handlers():
 
 
 def configure_logging():
+
     handlers = get_logging_handlers()
     logging.getLogger("").handlers.extend(handlers)
     logging.root.setLevel(logging.DEBUG)

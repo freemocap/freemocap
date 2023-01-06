@@ -3,11 +3,10 @@ import shutil
 from pathlib import Path
 from typing import Union
 
-from old_src.config.home_dir import (
-    CAMERA_CALIBRATION_FILE_NAME,
-    get_freemocap_data_folder_path,
+from freemocap.configuration.paths_and_files_names import (
+    get_last_successful_calibration_toml_path,
 )
-from old_src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
 
@@ -17,11 +16,9 @@ logger = logging.getLogger(__name__)
 def load_most_recent_anipose_calibration_toml(
     save_copy_of_calibration_to_this_path: Union[str, Path] = None
 ):
-    session_calibration_file_path = Path(
-        get_freemocap_data_folder_path(), "last_successful_calibration.toml"
-    )
+    most_recent_calibration_toml_path = get_last_successful_calibration_toml_path()
     logger.info(
-        f"loading `most recent calibration from:{str(session_calibration_file_path)}"
+        f"loading `most recent calibration from:{str(most_recent_calibration_toml_path)}"
     )
     if save_copy_of_calibration_to_this_path is not None:
         logger.info(
@@ -29,14 +26,14 @@ def load_most_recent_anipose_calibration_toml(
         )
 
         shutil.copy(
-            str(session_calibration_file_path),
+            str(most_recent_calibration_toml_path),
             str(
                 Path(save_copy_of_calibration_to_this_path)
-                / CAMERA_CALIBRATION_FILE_NAME
+                / Path(most_recent_calibration_toml_path).name
             ),
         )
 
-    return freemocap_anipose.CameraGroup.load(str(session_calibration_file_path))
+    return freemocap_anipose.CameraGroup.load(str(most_recent_calibration_toml_path))
 
 
 def load_anipose_calibration_toml_from_path(
@@ -59,7 +56,7 @@ def load_anipose_calibration_toml_from_path(
                 str(camera_calibration_data_toml_path),
                 str(
                     Path(save_copy_of_calibration_to_this_path)
-                    / CAMERA_CALIBRATION_FILE_NAME
+                    / Path(camera_calibration_data_toml_path).name
                 ),
             )
         return anipose_calibration_object
@@ -68,7 +65,6 @@ def load_anipose_calibration_toml_from_path(
             f"Failed to load anipose calibration info from {str(camera_calibration_data_toml_path)}"
         )
         raise e
-        return None
 
 
 def load_calibration_from_session_id(

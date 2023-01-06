@@ -80,7 +80,7 @@ class AniposeCameraCalibrator:
         )
 
     def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False):
-        # anipose needs this to be a list of lists  (which is annoying but whatevs)
+
         video_paths_list_of_list_of_strings = [
             [str(this_path)] for this_path in self._list_of_video_paths
         ]
@@ -103,9 +103,7 @@ class AniposeCameraCalibrator:
             # self._anipose_camera_group_object = self.rotate_cameras_so_camera_zero_aligns_with_XYZ(self._anipose_camera_group_object)
 
         # save calibration info to files
-        calibration_toml_filename = (
-            f"{self._calibration_videos_folder_path.stem}_camera_calibration.toml"
-        )
+        calibration_toml_filename = f"{self._calibration_videos_folder_path.parent.stem}_camera_calibration.toml"
         camera_calibration_toml_path = (
             Path(get_calibrations_folder_path()) / calibration_toml_filename
         )

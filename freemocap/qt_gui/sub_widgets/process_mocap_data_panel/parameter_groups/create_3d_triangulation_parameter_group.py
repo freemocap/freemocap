@@ -1,8 +1,7 @@
 from pyqtgraph.parametertree import Parameter
 
-from freemocap.core_processes.process_motion_capture_videos.session_processing_parameter_models import (
+from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
     AniposeTriangulate3DParametersModel,
-    MediapipeParametersModel,
 )
 
 

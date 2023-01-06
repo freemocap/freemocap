@@ -20,6 +20,14 @@ mediapipe_tracked_point_names_dict = {
     "body": mediapipe_body_landmark_names,
     "right_hand": [f"right_hand_{name}" for name in mediapipe_hand_landmark_names],
     "left_hand": [f"left_hand_{name}" for name in mediapipe_hand_landmark_names],
+    "face": [
+        "right_eye",
+        "left_eye",
+        "nose_tip",
+        "mouth_center",
+        "right_ear_tragion",
+        "left_ear_tragion",
+    ],
 }
 
 if __name__ == "__main__":

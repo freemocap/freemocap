@@ -14,7 +14,7 @@ from freemocap.configuration.paths_and_files_names import MEDIAPIPE_2D_NPY_FILE_
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_tracked_point_names_dict,
 )
-from freemocap.core_processes.process_motion_capture_videos.session_processing_parameter_models import (
+from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
     MediapipeParametersModel,
 )
 
@@ -120,7 +120,7 @@ class MediaPipeSkeletonDetector:
         self.number_of_right_hand_tracked_points = len(self.right_hand_names_list)
         self.number_of_left_hand_tracked_points = len(self.left_hand_names_list)
         self.number_of_face_tracked_points = (
-            mp.python.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
+            mp.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
         )
 
         self.number_of_tracked_points_total = (
@@ -355,10 +355,6 @@ class MediaPipeSkeletonDetector:
         image_width: Union[int, float],
         image_height: Union[int, float],
     ) -> Mediapipe2dNumpyArrays:
-
-        # apparently `mediapipe_results.pose_landmarks.landmark` returns something iterable ¯\_(ツ)_/¯
-        mediapipe_pose_landmark_iterator = mp.python.solutions.pose.PoseLandmark
-        mediapipe_hand_landmark_iterator = mp.python.solutions.hands.HandLandmark
 
         number_of_frames = len(mediapipe_results_list)
         number_of_spatial_dimensions = 2  # this will be 2d XY pixel data

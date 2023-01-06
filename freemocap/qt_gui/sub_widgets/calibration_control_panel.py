@@ -13,7 +13,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from freemocap.configuration.paths_and_files_names import get_most_recent_recording_path
+from freemocap.configuration.paths_and_files_names import (
+    get_most_recent_recording_path,
+    SYNCHRONIZED_VIDEOS_FOLDER_NAME,
+)
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
     default_charuco_square_size_mm,
 )
@@ -204,7 +207,9 @@ class CalibrationControlPanel(QWidget):
         charuco_square_size = float(self._charuco_square_size_line_edit.text())
 
         self._anipose_calibration_frame_worker = AniposeCalibrationThreadWorker(
-            calibration_videos_folder_path=previous_recording_path,
+            calibration_videos_folder_path=str(
+                Path(previous_recording_path) / SYNCHRONIZED_VIDEOS_FOLDER_NAME
+            ),
             charuco_square_size=charuco_square_size,
         )
 

@@ -2,9 +2,14 @@ import logging
 from pathlib import Path
 from typing import List, Union
 
+from PyQt6.QtCore import pyqtSignal, QFileSystemWatcher
 from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
+
+from freemocap.core_processes.session_processing_parameter_models.session_recording_info.recording_info_model import (
+    RecordingInfoModel,
+)
 
 from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
     SessionInfoModel,
@@ -13,7 +18,18 @@ from freemocap.core_processes.session_processing_parameter_models.session_proces
 logger = logging.getLogger(__name__)
 
 
+class ActiveSessionInfoWidget(QFileSystemWatcher):
+    directory_changed_signal = pyqtSignal(str)
+
+    def __init__(self, session_path: Union[str, Path], parent=None):
+        super().__init__(parent=parent)
+        self.addPath(session_path)
+        self.directoryChanged.connect(self.directory_changed_signal.emit)
+
+
 class ActiveSessionWidget(QWidget):
+    new_active_recording_selected_signal = pyqtSignal(str)
+
     def __init__(
         self,
         session_info_model: SessionInfoModel = SessionInfoModel(),
@@ -29,31 +45,31 @@ class ActiveSessionWidget(QWidget):
         self._parameter_tree_widget = ParameterTree(parent=self, showHeader=False)
         self._layout.addWidget(self._parameter_tree_widget)
 
-        self._parameter_tree_widget.setParameters(
-            self._create_parameter_tree(self._session_info_model)
-        )
+        self._setup_parameter_tree(self._session_info_model)
 
         self._parameter_tree_widget.doubleClicked.connect(
             self._handle_double_click_event
         )
 
-    def set_session_info(self, session_info_model: SessionInfoModel):
-        self._session_info_model = session_info_model
-        self._create_parameter_tree(self._session_info_model)
+        self._active_session_directory_watcher = (
+            self._create_active_session_directory_watcher(
+                self._session_info_model.session_folder_path
+            )
+        )
+
+    def _setup_parameter_tree(self, session_info_model: SessionInfoModel):
+        self._parameter_tree_widget.clear()
+        self._parameter_tree_widget.setParameters(
+            self._create_parameter_tree(session_info_model)
+        )
 
     def _create_parameter_tree(self, session_info_model: SessionInfoModel):
-        available_recordings = self._get_available_recordings(session_info_model)
+        available_recordings = self._get_available_recordings()
 
         active_session_parameter = Parameter.create(
-            name="Active Session",
+            name="Session Name: " + Path(session_info_model.session_folder_path).name,
             type="group",
             children=[
-                dict(
-                    name="Session Name",
-                    type="str",
-                    value=session_info_model.session_name,
-                    readonly=True,
-                ),
                 dict(
                     name="Path",
                     type="str",
@@ -66,20 +82,30 @@ class ActiveSessionWidget(QWidget):
 
         return active_session_parameter
 
-    def _get_available_recordings(
-        self, session_info_model: SessionInfoModel
-    ) -> List[Union[str, Path]]:
-        return [
-            str(recording)
-            for recording in Path(session_info_model.session_folder_path).iterdir()
+    def _get_available_recordings(self) -> List[Union[str, Path]]:
+        available_recordings = [
+            recording
+            for recording in Path(
+                self._session_info_model.session_folder_path
+            ).iterdir()
             if recording.is_dir()
         ]
+        if (
+            len(available_recordings) > 0
+            and self._session_info_model.recording_info_model is None
+        ):
+            self._session_info_model.set_recording_info(
+                recording_folder_path=available_recordings[-1]
+            )
+        return available_recordings
 
     def _create_recording_parameter_group(
         self, available_recordings: List[Union[str, Path]]
     ):
         self._recording_parameters_list = [
-            self._create_recording_status_parameter_tree(recording_path)
+            self._create_recording_status_parameter_tree(
+                RecordingInfoModel(recording_path)
+            )
             for recording_path in available_recordings
         ]
         return Parameter.create(
@@ -89,16 +115,24 @@ class ActiveSessionWidget(QWidget):
             children=self._recording_parameters_list,
         )
 
-    def _create_recording_status_parameter_tree(self, recording_path: Union[str, Path]):
-        return Parameter.create(
-            name=f"Recording Name: {Path(recording_path).name}",
+    def _create_recording_status_parameter_tree(
+        self, recording_info_model: RecordingInfoModel
+    ):
+        parameter_group = Parameter.create(
+            name=f"Recording Name: {recording_info_model.name}",
             type="group",
             readonly=True,
             children=[
                 dict(
                     name="Path",
                     type="str",
-                    value=recording_path,
+                    value=recording_info_model.path,
+                    readonly=True,
+                ),
+                dict(
+                    name="Calibration TOML",
+                    type="str",
+                    value=recording_info_model.calibration_toml_file_path,
                     readonly=True,
                 ),
                 dict(
@@ -107,48 +141,35 @@ class ActiveSessionWidget(QWidget):
                     readonly=True,
                     children=[
                         dict(
-                            name="Calibration TOML",
-                            type="str",
-                            value=RecordingFolderStatus(
-                                recording_path
-                            ).calibration_toml_exists,
-                        ),
-                        dict(
                             name="Synchronized Videos Recorded",
                             type="str",
-                            value=RecordingFolderStatus(
-                                recording_path
-                            ).synchronized_videos_exist_bool,
+                            value=recording_info_model.synchronized_videos_exist,
                             readonly=True,
                         ),
                         dict(
-                            name="2D Tracking Completed",
+                            name="2D data exists?",
                             type="str",
-                            value=RecordingFolderStatus(
-                                recording_path
-                            ).data2d_exists_bool,
+                            value=recording_info_model.data2d_exists,
                             readonly=True,
                         ),
                         dict(
-                            name="3D Reconstruction Completed",
+                            name="3D data exists?",
                             type="str",
-                            value=RecordingFolderStatus(
-                                recording_path
-                            ).data3d_exists_bool,
+                            value=recording_info_model.data3d_exists,
                             readonly=True,
                         ),
                         dict(
-                            name="Post Processing Completed",
+                            name="Center-of-Mass data exists?",
                             type="str",
-                            value=RecordingFolderStatus(
-                                recording_path
-                            ).post_processed_data_exists_bool,
+                            value=recording_info_model.center_of_mass_data_exists,
                             readonly=True,
                         ),
                     ],
                 ),
             ],
         )
+
+        return parameter_group
 
     def _handle_double_click_event(self, a0: QMouseEvent) -> None:
         paremeter_item = self._parameter_tree_widget.itemFromIndex(
@@ -157,23 +178,34 @@ class ActiveSessionWidget(QWidget):
         logger.info(
             f"Double clicked on Parameter Item named: {paremeter_item.param.name()}"
         )
-        parent = paremeter_item.parent()
+        parent = paremeter_item()
         while parent is not None:
             if "Recording Name:" in parent.param.name():
                 logger.info(f"Found Recording Name: {parent.param.name()}")
-                self._set_active_recording(parent.param.child("Path").value())
+                self.set_active_recording(parent.param.child("Path").value())
                 break
             else:
                 parent = parent.parent()
         print("done")
 
-    def _set_active_recording(self, recording_folder_path: Union[str, Path]):
+    def set_active_recording(self, recording_folder_path: Union[str, Path]):
         self._clear_active_recording_name()
         for recording_parameter in self._recording_parameters_list:
             if recording_parameter.child("Path").value() == recording_folder_path:
                 recording_parameter.setName(
                     f"Recording Name: {Path(recording_folder_path).name} (Active)"
                 )
+                self._session_info_model.set_recording_info(
+                    recording_folder_path=recording_folder_path,
+                    calibration_toml_path=recording_parameter.child(
+                        "Calibration TOML"
+                    ).value(),
+                )
+
+                self.new_active_recording_selected_signal.emit(
+                    str(recording_folder_path)
+                )
+                return
 
         logger.info(f"Setting active recording to {recording_folder_path}")
         self._session_info_model.recording_folder_path = str(recording_folder_path)
@@ -184,36 +216,27 @@ class ActiveSessionWidget(QWidget):
                 f"Recording Name: {Path(recording_parameter.child('Path').value()).name}"
             )
 
+    def _create_active_session_directory_watcher(
+        self, session_folder_path: Union[str, Path]
+    ):
+        active_session_directory_watcher = QFileSystemWatcher()
+        active_session_directory_watcher.addPath(session_folder_path)
+        active_session_directory_watcher.directoryChanged.connect(
+            self._handle_directory_changed
+        )
+        return active_session_directory_watcher
 
-class RecordingFolderStatus:
-    def __init__(self, recording_path: Union[str, Path]):
-        self.recording_path = recording_path
-        self.calibration_toml_exists = self._check_calibration_toml_exists()
-        self.synchronized_videos_exist_bool = self._check_synchronized_videos_exist()
-        self.data2d_exists_bool = self._check_data2d_exists()
-        self.data3d_exists_bool = self._check_data3d_exists()
-        self.post_processed_data_exists_bool = self._check_post_processed_data_exists()
-
-    def _check_synchronized_videos_exist(self) -> bool:
-        return False
-
-    def _check_data2d_exists(self) -> bool:
-        return False
-
-    def _check_data3d_exists(self) -> bool:
-        return False
-
-    def _check_post_processed_data_exists(self) -> bool:
-        return False
-
-    def _check_calibration_toml_exists(self):
-        return False
+    def _handle_directory_changed(self, path: str):
+        logger.info(f"Directory changed: {path} - Updating Parameter Tree")
+        self._setup_parameter_tree(self._session_info_model)
 
 
 if __name__ == "__main__":
     import sys
 
     app = QApplication(sys.argv)
-    active_session_widget = ActiveSessionWidget()
+    active_session_widget = ActiveSessionWidget(
+        session_info_model=SessionInfoModel(use_most_recent=True)
+    )
     active_session_widget.show()
     sys.exit(app.exec())

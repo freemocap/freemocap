@@ -50,7 +50,6 @@ logger = logging.getLogger(__name__)
 class QtGUIMainWindow(QMainWindow):
     def __init__(
         self,
-        session_path: Union[str, Path] = None,
         session_process_parameter_model: SessionProcessingParameterModel = SessionProcessingParameterModel(),
         freemocap_data_folder: Union[str, Path] = None,
         parent=None,
@@ -79,14 +78,18 @@ class QtGUIMainWindow(QMainWindow):
             Qt.DockWidgetArea.LeftDockWidgetArea, self._control_panel_dock_widget
         )
 
+        active_session_dock_widget = QDockWidget("Active Session", self)
+        self._active_session_widget = ActiveSessionWidget(
+            self._session_process_parameter_model.session_info_model, parent=self
+        )
+        active_session_dock_widget.setWidget(self._active_session_widget)
+        self.addDockWidget(
+            Qt.DockWidgetArea.RightDockWidgetArea, active_session_dock_widget
+        )
+
         self._directory_view_dock_widget = self._create_directory_view_dock_widget()
         self.addDockWidget(
             Qt.DockWidgetArea.RightDockWidgetArea, self._directory_view_dock_widget
-        )
-
-        self._active_session_dock_widget = self._create_active_session_dock_widget()
-        self.addDockWidget(
-            Qt.DockWidgetArea.RightDockWidgetArea, self._active_session_dock_widget
         )
 
         self._connect_signals_to_slots()
@@ -98,6 +101,12 @@ class QtGUIMainWindow(QMainWindow):
 
         self._camera_view_widget.videos_saved_signal.connect(
             save_most_recent_recording_path_as_toml
+        )
+
+        self._active_session_widget.new_active_recording_selected_signal.connect(
+            lambda incoming_string: print(
+                f"New active recording selected: {incoming_string}"
+            )
         )
 
     def _handle_quick_start_button_clicked(self):
@@ -186,14 +195,6 @@ class QtGUIMainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Error while closing the viewer widget: {e}")
         super().closeEvent(a0)
-
-    def _create_active_session_dock_widget(self) -> QDockWidget:
-        active_session_dock_widget = QDockWidget("Active Session", self)
-        self._active_session_widget = ActiveSessionWidget(
-            self._session_process_parameter_model.session_info_model, parent=self
-        )
-        active_session_dock_widget.setWidget(self._active_session_widget)
-        return active_session_dock_widget
 
 
 def remove_empty_directories(root_dir: Union[str, Path]):

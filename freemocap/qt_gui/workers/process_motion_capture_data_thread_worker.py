@@ -30,7 +30,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
 
     def run(self):
         logger.info(
-            f"Beginning processing of motion capture data with parameters: {json.dumps(self._session_processing_parameters.dict(), indent=4)}"
+            f"Beginning processing of motion capture data with parameters: {self._session_processing_parameters.__dict__}"
         )
 
         try:

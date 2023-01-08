@@ -1,16 +1,8 @@
 import logging
-from pathlib import Path
-from typing import Union
 
 from pydantic import BaseModel
 
-from freemocap.configuration.paths_and_files_names import (
-    get_last_successful_calibration_toml_path,
-    get_most_recent_recording_path,
-    OUTPUT_DATA_FOLDER_NAME,
-    SYNCHRONIZED_VIDEOS_FOLDER_NAME,
-)
-from freemocap.core_processes.session_processing_parameter_models.session_info_model import (
+from freemocap.core_processes.session_processing_parameter_models.session_recording_info.session_info_model import (
     SessionInfoModel,
 )
 
@@ -41,7 +33,7 @@ class PostProcessingParametersModel(BaseModel):
 
 
 class SessionProcessingParameterModel(BaseModel):
-    session_info_model: SessionInfoModel = SessionInfoModel()
+    session_info_model: SessionInfoModel = SessionInfoModel(use_most_recent=True)
     mediapipe_parameters_model: MediapipeParametersModel = MediapipeParametersModel()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = (
         AniposeTriangulate3DParametersModel()

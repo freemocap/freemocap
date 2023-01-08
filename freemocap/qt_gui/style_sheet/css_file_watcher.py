@@ -3,12 +3,12 @@ from pathlib import Path
 from typing import Union
 
 from PyQt6 import QtCore
-from PyQt6.QtCore import pyqtSlot
+from PyQt6.QtCore import pyqtSlot, QFileSystemWatcher
 
 logger = logging.getLogger(__name__)
 
 
-class CSSFileWatcher(QtCore.QFileSystemWatcher):
+class CSSFileWatcher(QFileSystemWatcher):
     def __init__(self, path_to_css_file: Union[str, Path], parent=None):
         super().__init__(parent)
         self.addPath(str(path_to_css_file))

@@ -47,11 +47,13 @@ class ControlPanelDockWidget(QDockWidget):
         )
 
         self._add_widget_to_splitter(
-            widget=visualize_data_widget, title_str="Visualize Motion Capture Data"
+            widget=visualize_data_widget,
+            title_str="Visualize Motion Capture Data",
+            add_stretch=True,
         )
 
     def _add_widget_to_splitter(
-        self, widget: QWidget, title_str: str, add_stretch: bool = True
+        self, widget: QWidget, title_str: str, add_stretch: bool = False
     ):
         dummy_widget = QWidget()
         layout = QVBoxLayout()

@@ -102,7 +102,7 @@ def create_new_session_folder():
         Path(get_motion_capture_session_folder_path()) / default_session_name()
     )
 
-    session_folder_path.mkdir(exist_ok=False, parents=True)
+    session_folder_path.mkdir(exist_ok=True, parents=True)
     return str(session_folder_path)
 
 

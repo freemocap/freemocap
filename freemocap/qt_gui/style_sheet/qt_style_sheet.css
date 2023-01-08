@@ -40,9 +40,8 @@ QTreeView {
     alternate-background-color: #a3b1ed;
     color: #222222;
     font-weight: bold;
-
-
 }
+
 
 QTreeView::item:has-children {
     background-color: '#49587d';
@@ -60,6 +59,5 @@ QTreeView::item:selected:active {
 QTreeView::item:hover {
     background-color: #378e90;
 }
-
 
 

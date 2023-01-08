@@ -8,10 +8,10 @@ from PyQt6.QtWidgets import (
 )
 from skellycam import SkellyCamParameterTreeWidget
 
-from freemocap.qt_gui.sub_widgets.calibration_control_panel import (
+from freemocap.qt_gui.widgets.calibration_control_panel import (
     CalibrationControlPanel,
 )
-from freemocap.qt_gui.sub_widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
+from freemocap.qt_gui.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
 
@@ -50,12 +50,17 @@ class ControlPanelDockWidget(QDockWidget):
             widget=visualize_data_widget, title_str="Visualize Motion Capture Data"
         )
 
-    def _add_widget_to_splitter(self, widget: QWidget, title_str: str):
+    def _add_widget_to_splitter(
+        self, widget: QWidget, title_str: str, add_stretch: bool = True
+    ):
         dummy_widget = QWidget()
         layout = QVBoxLayout()
         dummy_widget.setLayout(layout)
         layout.addWidget(self._create_section_title(title=title_str))
         layout.addWidget(widget)
+        if add_stretch:
+            layout.addStretch()
+
         self._splitter.addWidget(dummy_widget)
 
     def _create_section_title(self, title: str):

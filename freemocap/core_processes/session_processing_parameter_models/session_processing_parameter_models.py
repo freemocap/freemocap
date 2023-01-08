@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Union
 
@@ -9,9 +10,11 @@ from freemocap.configuration.paths_and_files_names import (
     OUTPUT_DATA_FOLDER_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
 )
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
-    load_anipose_calibration_toml_from_path,
+from freemocap.core_processes.session_processing_parameter_models.session_info_model import (
+    SessionInfoModel,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class MediapipeParametersModel(BaseModel):
@@ -37,26 +40,13 @@ class PostProcessingParametersModel(BaseModel):
     butterworth_filter_parameters = ButterworthFilterParametersModel()
 
 
-class SessionInfoModel(BaseModel):
-    path_to_session_folder: Union[Path, str] = get_most_recent_recording_path()
-    path_to_output_data_folder: Union[Path, str] = get_most_recent_recording_path(
-        OUTPUT_DATA_FOLDER_NAME
-    )
-    path_to_folder_of_synchronized_videos: Union[
-        Path, str
-    ] = get_most_recent_recording_path(SYNCHRONIZED_VIDEOS_FOLDER_NAME)
-    path_to_calibration_toml_file: Union[
-        Path, str
-    ] = get_last_successful_calibration_toml_path()
-
-
 class SessionProcessingParameterModel(BaseModel):
-    session_info: SessionInfoModel = SessionInfoModel()
-    mediapipe_parameters: MediapipeParametersModel = MediapipeParametersModel()
-    anipose_triangulate_3d_parameters: AniposeTriangulate3DParametersModel = (
+    session_info_model: SessionInfoModel = SessionInfoModel()
+    mediapipe_parameters_model: MediapipeParametersModel = MediapipeParametersModel()
+    anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = (
         AniposeTriangulate3DParametersModel()
     )
-    post_processing_parameters: PostProcessingParametersModel = (
+    post_processing_parameters_model: PostProcessingParametersModel = (
         PostProcessingParametersModel()
     )
 

@@ -1,7 +1,7 @@
 """
 This example show how to create a Rich Jupyter Widget, and places it in a MainWindow alongside a PlotWidget.
 
-The sub_widgets are implemented as `Docks` so they may be moved around within the Main Window
+The widgets are implemented as `Docks` so they may be moved around within the Main Window
 
 The `__main__` function shows an example that inputs the commands to plot simple `sine` and cosine` waves, equivalent to creating such plots by entering the commands manually in the console
 

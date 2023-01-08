@@ -41,7 +41,10 @@ def get_logging_handlers():
 
 
 def configure_logging():
-
+    print(f"Setting up freemocap logging  {__file__}")
     handlers = get_logging_handlers()
-    logging.getLogger("").handlers.extend(handlers)
+    for handler in handlers:
+        if not handler in logging.getLogger("").handlers:
+            logging.getLogger("").handlers.append(handler)
+
     logging.root.setLevel(logging.DEBUG)

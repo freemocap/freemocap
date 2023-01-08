@@ -73,7 +73,7 @@ def batch_process_session_folders(
             path_to_blender_executable=path_to_blender_executable,
         )
 
-        session_processing_parameter_model.anipose_triangulate_3d_parameters.use_triangulate_ransac_method = (
+        session_processing_parameter_model.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method = (
             False
         )
 

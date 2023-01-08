@@ -30,17 +30,18 @@ from freemocap.qt_gui.main_window.control_panel_dock_widget import (
 )
 from freemocap.qt_gui.style_sheet.css_file_watcher import CSSFileWatcher
 from freemocap.qt_gui.style_sheet.set_css_style_sheet import apply_css_style_sheet
-from freemocap.qt_gui.sub_widgets.calibration_control_panel import (
-    CalibrationControlPanel,
-)
-from freemocap.qt_gui.sub_widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
-    ProcessMotionCaptureDataPanel,
-)
-from freemocap.qt_gui.sub_widgets.welcome_tab_widget import (
-    WelcomeCreateOrLoadNewSessionPanel,
-)
 from freemocap.qt_gui.utilities.save_most_recent_recording_path_as_toml import (
     save_most_recent_recording_path_as_toml,
+)
+from freemocap.qt_gui.widgets.active_session_info_widget import ActiveSessionWidget
+from freemocap.qt_gui.widgets.calibration_control_panel import (
+    CalibrationControlPanel,
+)
+from freemocap.qt_gui.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
+    ProcessMotionCaptureDataPanel,
+)
+from freemocap.qt_gui.widgets.welcome_tab_widget import (
+    WelcomeCreateOrLoadNewSessionPanel,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,11 +61,6 @@ class QtGUIMainWindow(QMainWindow):
         self.setGeometry(100, 100, 1600, 900)
 
         self._css_file_watcher = self._set_up_stylesheet()
-
-        if session_path is None:
-            self._session_path = Path(create_new_session_folder())
-        else:
-            self._session_path = Path(session_path)
 
         self._session_process_parameter_model = session_process_parameter_model
 
@@ -86,6 +82,11 @@ class QtGUIMainWindow(QMainWindow):
         self._directory_view_dock_widget = self._create_directory_view_dock_widget()
         self.addDockWidget(
             Qt.DockWidgetArea.RightDockWidgetArea, self._directory_view_dock_widget
+        )
+
+        self._active_session_dock_widget = self._create_active_session_dock_widget()
+        self.addDockWidget(
+            Qt.DockWidgetArea.RightDockWidgetArea, self._active_session_dock_widget
         )
 
         self._connect_signals_to_slots()
@@ -117,7 +118,8 @@ class QtGUIMainWindow(QMainWindow):
 
     def _create_center_tab_widget(self):
         self._camera_view_widget = SkellyCamViewerWidget(
-            parent=self, session_folder_path=self._session_path
+            parent=self,
+            session_folder_path=self._session_process_parameter_model.session_info_model.session_folder_path,
         )
         self._camera_controller_widget = SkellyCamControllerWidget(
             camera_viewer_widget=self._camera_view_widget,
@@ -150,7 +152,7 @@ class QtGUIMainWindow(QMainWindow):
             session_processing_parameters=self._session_process_parameter_model
         )
 
-        left_side_control_panel_dock_widget = ControlPanelDockWidget(
+        control_panel_dock_widget = ControlPanelDockWidget(
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
             calibration_control_panel=self._calibration_control_panel,
             process_motion_capture_data_panel=self._process_motion_capture_data_panel,
@@ -158,7 +160,7 @@ class QtGUIMainWindow(QMainWindow):
             parent=self,
         )
 
-        return left_side_control_panel_dock_widget
+        return control_panel_dock_widget
 
     def _create_visualization_control_panel(self):
         self._export_to_blender_button = QPushButton("Export to Blender")
@@ -184,6 +186,14 @@ class QtGUIMainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Error while closing the viewer widget: {e}")
         super().closeEvent(a0)
+
+    def _create_active_session_dock_widget(self) -> QDockWidget:
+        active_session_dock_widget = QDockWidget("Active Session", self)
+        self._active_session_widget = ActiveSessionWidget(
+            self._session_process_parameter_model.session_info_model, parent=self
+        )
+        active_session_dock_widget.setWidget(self._active_session_widget)
+        return active_session_dock_widget
 
 
 def remove_empty_directories(root_dir: Union[str, Path]):

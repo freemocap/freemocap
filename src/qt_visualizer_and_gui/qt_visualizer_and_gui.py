@@ -5,13 +5,12 @@ import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 from mediapipe.python.solutions import holistic as mp_holistic
-from pyqtgraph.dockarea.Dock import Dock
-from pyqtgraph.dockarea.DockArea import DockArea
-from pyqtgraph.Qt import QtWidgets
-
 from old_src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import (
     Data3dMultiFramePayload,
 )
+from pyqtgraph.dockarea.Dock import Dock
+from pyqtgraph.dockarea.DockArea import DockArea
+from pyqtgraph.Qt import QtWidgets
 
 logger = logging.getLogger(__name__)
 

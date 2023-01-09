@@ -1,20 +1,17 @@
 from pathlib import Path
 from typing import Union
 
-import cv2
 import numpy as np
 
-from freemocap.configuration.paths_and_files_names import (
-    MEDIAPIPE_3D_NPY_FILE_NAME,
-    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
+from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import (
+    get_number_of_frames_of_videos_in_a_folder,
 )
 
 
 def test_mediapipe_3d_data_shape(
     synchronized_videos_folder: Union[str, Path],
-    path_to_folder_where_data_is_saved: Union[str, Path],
-    skel3d_frame_marker_xyz: np.ndarray,
-    skeleton_reprojection_error_fr_mar: np.ndarray,
+    mediapipe_3d_data_npy_path: Union[str, Path],
+    medipipe_reprojection_error_data_npy_path: Union[str, Path],
 ):
     """
     test that the `mediapipe 3d detection` process worked correctly by checking:
@@ -25,38 +22,36 @@ def test_mediapipe_3d_data_shape(
     TODO - check number of tracked points vs 'expected' number of tracked points
     """
 
-    mediapipe_3d_spatial_data_file_path = (
-        path_to_folder_where_data_is_saved / MEDIAPIPE_3D_NPY_FILE_NAME
+    assert Path(
+        mediapipe_3d_data_npy_path
+    ).is_file(), f"3d skeleton data file does not exist at {mediapipe_3d_data_npy_path}"
+
+    skel3d_frame_marker_xyz = np.load(mediapipe_3d_data_npy_path)
+
+    assert Path(
+        medipipe_reprojection_error_data_npy_path
+    ).is_file(), f"3d skeleton reprojection error data file does not exist at {medipipe_reprojection_error_data_npy_path}"
+    skeleton_reprojection_error_fr_mar = np.load(
+        medipipe_reprojection_error_data_npy_path
     )
+
+    frame_count = get_number_of_frames_of_videos_in_a_folder(synchronized_videos_folder)
     assert (
-        mediapipe_3d_spatial_data_file_path.exists()
-    ), f"3d skeleton data file does not exist at {mediapipe_3d_spatial_data_file_path}"
+        len(set(frame_count)) == 1
+    ), f"Videos in {synchronized_videos_folder} have different frame counts: {frame_count}"
 
-    saved_spatial_data = np.load(mediapipe_3d_spatial_data_file_path)
-    assert np.array_equal(saved_spatial_data, skel3d_frame_marker_xyz, equal_nan=True)
+    number_of_frames = set(frame_count)[0]
 
-    mediapipe_reprojection_error_file_path = (
-        path_to_folder_where_data_is_saved / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
-    )
-    assert mediapipe_reprojection_error_file_path.exists()
-
-    saved_reprojection_error = np.load(mediapipe_reprojection_error_file_path)
-    assert np.array_equal(
-        saved_reprojection_error, skeleton_reprojection_error_fr_mar, equal_nan=True
-    )
-
-    list_of_video_paths = list(Path(synchronized_videos_folder).glob("*.mp4"))
-
-    video_0_cv2_capture_object = cv2.VideoCapture(str(list_of_video_paths[0]))
-
-    number_of_frames_in_video_0 = int(
-        video_0_cv2_capture_object.get(cv2.CAP_PROP_FRAME_COUNT)
-    )
-    assert skel3d_frame_marker_xyz.shape[0] == number_of_frames_in_video_0
-    assert skeleton_reprojection_error_fr_mar.shape[0] == number_of_frames_in_video_0
+    assert skel3d_frame_marker_xyz.shape[0] == number_of_frames
+    assert skeleton_reprojection_error_fr_mar.shape[0] == number_of_frames
 
     # TODO - check number of tracked points vs 'expected' number of tracked points
 
-    assert skel3d_frame_marker_xyz.shape[2] == 3
+    assert (
+        skel3d_frame_marker_xyz.shape[2] == 3
+    ), f"3d skeleton data file does not have 3 dimensions for X,Y,Z at {mediapipe_3d_data_npy_path}"
+    assert (
+        skeleton_reprojection_error_fr_mar.shape[2] == 1
+    ), f"3d skeleton reprojection error data file does not have 1 dimension for reprojection error at {medipipe_reprojection_error_data_npy_path}"
 
     return True

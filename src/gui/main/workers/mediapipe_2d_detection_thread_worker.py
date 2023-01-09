@@ -2,11 +2,10 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtCore import pyqtSignal, QThread
-
 from old_src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
+from PyQt6.QtCore import pyqtSignal, QThread
 
 logger = logging.getLogger(__name__)
 

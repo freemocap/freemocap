@@ -4,7 +4,6 @@ import traceback
 from queue import Queue
 
 import orjson
-
 from old_src.api.services.board_detect_service import BoardDetectService
 
 

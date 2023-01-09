@@ -3,19 +3,19 @@ from typing import Dict, List
 
 import cv2
 import numpy as np
-
 from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
 from old_src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
-)
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
-    CharucoBoardDefinition,
 )
 from old_src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_frame_payload import (
     CharucoFramePayload,
 )
 from old_src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_view_data import (
     CharucoViewData,
+)
+
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
+    CharucoBoardDefinition,
 )
 
 logger = logging.getLogger(__name__)

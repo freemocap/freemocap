@@ -5,9 +5,9 @@ import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 from mediapipe.python.solutions import holistic as mp_holistic
+from old_src.gui.refactored_gui.state.app_state import APP_STATE
 from PyQt6.QtWidgets import QDialog, QVBoxLayout
 from pyqtgraph.Qt import QtCore
-from old_src.gui.refactored_gui.state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)
 

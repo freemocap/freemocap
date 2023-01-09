@@ -1,7 +1,6 @@
+from old_src.gui.main.qt_utils.set_font_size import set_font_size
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QLabel
-
-from old_src.gui.main.qt_utils.set_font_size import set_font_size
 
 
 class PanelSectionTitle(QLabel):

@@ -2,13 +2,12 @@ import cv2
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
-from pyqtgraph.dockarea.Dock import Dock
-from pyqtgraph.dockarea.DockArea import DockArea
-from pyqtgraph.Qt import QtWidgets
-
 from old_src.core_processes.capture_volume_calibration.calibration_dataclasses import (
     CameraCalibrationData,
 )
+from pyqtgraph.dockarea.Dock import Dock
+from pyqtgraph.dockarea.DockArea import DockArea
+from pyqtgraph.Qt import QtWidgets
 
 
 class CalibrationDiagnosticsVisualizer:

@@ -1,3 +1,9 @@
+from old_src.cameras.save_synchronized_videos import save_synchronized_videos
+from old_src.gui.icis_conference_main.state.app_state import APP_STATE
+from old_src.gui.icis_conference_main.workflows.single_camera import SingleCamera
+from old_src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
+    CalibrationPipelineOrchestrator,
+)
 from PyQt6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -5,13 +11,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
-)
-
-from old_src.cameras.save_synchronized_videos import save_synchronized_videos
-from old_src.gui.icis_conference_main.state.app_state import APP_STATE
-from old_src.gui.icis_conference_main.workflows.single_camera import SingleCamera
-from old_src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
-    CalibrationPipelineOrchestrator,
 )
 
 

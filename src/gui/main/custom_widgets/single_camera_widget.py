@@ -1,16 +1,15 @@
 import enum
 import logging
 
-from PyQt6 import QtGui
-from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
-
 from old_src.cameras.webcam_config import WebcamConfig
 from old_src.gui.main.workers.cam_charuco_frame_thread_worker import (
     CamCharucoFrameThreadWorker,
 )
 from old_src.gui.main.workers.cam_frame_worker import CamFrameWorker
+from PyQt6 import QtGui
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
 
 logger = logging.getLogger(__name__)
 

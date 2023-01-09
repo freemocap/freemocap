@@ -2,8 +2,6 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from rich.pretty import pprint
-
 from old_src.core_processes.batch_processing.process_session_folder import (
     process_session_folder,
 )
@@ -13,6 +11,7 @@ from old_src.core_processes.batch_processing.session_processing_parameter_models
 from old_src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
+from rich.pretty import pprint
 
 logger = logging.getLogger(__name__)
 

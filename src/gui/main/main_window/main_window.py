@@ -5,10 +5,6 @@ from pathlib import Path
 from typing import Union
 
 import pandas as pd
-from PyQt6 import QtGui
-from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QFileDialog, QMainWindow, QMenu, QMenuBar, QSplitter
-
 from old_src.blender_stuff.export_to_blender import export_to_blender
 from old_src.cameras.detection.models import FoundCamerasResponse
 from old_src.config.home_dir import (
@@ -25,9 +21,6 @@ from old_src.config.home_dir import (
     get_synchronized_videos_folder_path,
     MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME,
     PARTIALLY_PROCESSED_DATA_FOLDER_NAME,
-)
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
-    CharucoBoardDefinition,
 )
 from old_src.core_processes.capture_volume_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
@@ -60,6 +53,13 @@ from old_src.gui.main.workers.thread_worker_manager import ThreadWorkerManager
 from old_src.log.config import LOG_FILE_PATH
 from old_src.sending_anonymous_user_info_to_places.send_pipedream_ping import (
     send_pipedream_ping,
+)
+from PyQt6 import QtGui
+from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import QFileDialog, QMainWindow, QMenu, QMenuBar, QSplitter
+
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
+    CharucoBoardDefinition,
 )
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833

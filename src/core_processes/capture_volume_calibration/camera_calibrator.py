@@ -1,7 +1,6 @@
 import logging
 
 import cv2
-
 from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
 from old_src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from old_src.core_processes.capture_volume_calibration.calibration_dataclasses import (

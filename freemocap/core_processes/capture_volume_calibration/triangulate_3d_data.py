@@ -9,7 +9,6 @@ from freemocap.configuration.paths_and_files_names import (
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
 )
 
-
 logger = logging.getLogger(__name__)
 
 

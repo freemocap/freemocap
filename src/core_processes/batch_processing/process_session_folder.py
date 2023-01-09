@@ -3,7 +3,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 from old_src.blender_stuff.create_blend_file_from_session_data import (
     create_blend_file_from_session_data,
 )

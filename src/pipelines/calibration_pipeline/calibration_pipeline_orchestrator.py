@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Callable, Union
 
 import cv2
-
 from old_src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from old_src.config.home_dir import (
     create_default_session_id,

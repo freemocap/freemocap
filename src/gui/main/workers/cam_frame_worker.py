@@ -1,9 +1,8 @@
 import cv2
-from PyQt6.QtCore import pyqtSignal, Qt, QThread
-from PyQt6.QtGui import QImage
-
 from old_src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from old_src.cameras.webcam_config import WebcamConfig
+from PyQt6.QtCore import pyqtSignal, Qt, QThread
+from PyQt6.QtGui import QImage
 
 
 class CamFrameWorker(QThread):

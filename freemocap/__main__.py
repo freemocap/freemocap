@@ -2,8 +2,6 @@
 import sys
 from pathlib import Path
 
-from freemocap.configuration.logging.configure_logging import configure_logging
-
 try:
     from freemocap.qt_gui.qt_gui_main import qt_gui_main
 except Exception as e:

@@ -1,7 +1,5 @@
 import cv2
 import numpy as np
-from rich import print
-
 from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
 from old_src.core_processes.capture_volume_calibration.calibration_dataclasses import (
     LensDistortionCalibrationData,
@@ -18,6 +16,7 @@ from old_src.core_processes.capture_volume_calibration.charuco_board_detection i
 from old_src.core_processes.capture_volume_calibration.charuco_board_detection import (
     CharucoViewData,
 )
+from rich import print
 
 
 class LensDistortionCalibrator:

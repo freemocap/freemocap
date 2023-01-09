@@ -1,6 +1,12 @@
 import logging
 from pathlib import Path
 
+from old_src.core_processes.capture_volume_calibration.charuco_board_detection.default_charuco_square_size import (
+    default_charuco_square_size_mm,
+)
+from old_src.gui.main.style_stuff.styled_widgets.panel_section_title import (
+    PanelSectionTitle,
+)
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -17,12 +23,6 @@ from PyQt6.QtWidgets import (
 
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
-)
-from old_src.core_processes.capture_volume_calibration.charuco_board_detection.default_charuco_square_size import (
-    default_charuco_square_size_mm,
-)
-from old_src.gui.main.style_stuff.styled_widgets.panel_section_title import (
-    PanelSectionTitle,
 )
 
 logger = logging.getLogger(__name__)

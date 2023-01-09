@@ -3,11 +3,10 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-from PyQt6.QtCore import pyqtSignal, QThread
-
 from old_src.core_processes.capture_volume_calibration.triangulate_3d_data import (
     triangulate_3d_data,
 )
+from PyQt6.QtCore import pyqtSignal, QThread
 
 logger = logging.getLogger(__name__)
 

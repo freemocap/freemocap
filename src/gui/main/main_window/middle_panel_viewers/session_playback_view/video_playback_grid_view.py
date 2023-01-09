@@ -2,10 +2,9 @@ import logging
 from pathlib import Path
 from typing import List
 
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
-
 from old_src.gui.main.custom_widgets.video_player_widget import VideoPlayerWidget
 from old_src.gui.main.qt_utils.clear_layout import clear_layout
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 logger = logging.getLogger(__name__)
 

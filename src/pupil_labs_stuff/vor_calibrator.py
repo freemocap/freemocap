@@ -1,19 +1,18 @@
 import logging
-from typing import Union, List
+from typing import List
 
 import keyboard
-import numpy as np
-from scipy import optimize
-from matplotlib import pyplot as plt
 import matplotlib
-from scipy.spatial.transform import Rotation
-
+import numpy as np
 from jon_scratch.pupil_calibration_pipeline.data_classes.pupil_dataclass_and_handler import (
     PupilLabsDataClass,
 )
 from jon_scratch.pupil_calibration_pipeline.data_classes.rotation_data_class import (
     RotationDataClass,
 )
+from matplotlib import pyplot as plt
+from scipy import optimize
+from scipy.spatial.transform import Rotation
 
 matplotlib.use("qt5agg")
 logger = logging.getLogger(__name__)

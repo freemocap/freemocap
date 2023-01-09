@@ -1,10 +1,10 @@
-import logging
 import time
 from pathlib import Path
 
 import toml
 
 import freemocap
+import logging
 
 logger = logging.getLogger(__name__)
 

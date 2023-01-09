@@ -1,7 +1,3 @@
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QMainWindow, QMenuBar, QVBoxLayout, QWidget
-
 from old_src.gui.icis_conference_main.icis_conference_app import get_qt_app
 from old_src.gui.icis_conference_main.qt_utils.clear_layout import clearLayout
 from old_src.gui.icis_conference_main.qt_widgets.jupyter_console_widget import (
@@ -17,6 +13,9 @@ from old_src.gui.icis_conference_main.workflows.new_recording_session import (
 from old_src.gui.icis_conference_main.workflows.record_videos import RecordVideos
 from old_src.gui.icis_conference_main.workflows.show_cams_charuco import ShowCamsCharuco
 from old_src.gui.icis_conference_main.workflows.welcome import Welcome
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import QMainWindow, QMenuBar, QVBoxLayout, QWidget
 
 
 class ICISConferenceMainWindow(QMainWindow):

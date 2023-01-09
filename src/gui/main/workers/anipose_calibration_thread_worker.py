@@ -2,14 +2,13 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtCore import pyqtSignal, QThread
-
-from freemocap.configuration.paths_and_files_names import get_calibrations_folder_path
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
-    CharucoBoardDefinition,
-)
 from old_src.core_processes.capture_volume_calibration.run_anipose_capture_volume_calibration import (
     run_anipose_capture_volume_calibration,
+)
+from PyQt6.QtCore import pyqtSignal, QThread
+
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
+    CharucoBoardDefinition,
 )
 
 logger = logging.getLogger(__name__)

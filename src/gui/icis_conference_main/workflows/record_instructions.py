@@ -1,6 +1,5 @@
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
-
 from old_src.gui.icis_conference_main.shared_widgets.primary_button import PrimaryButton
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 
 class RecordInstructions(QWidget):

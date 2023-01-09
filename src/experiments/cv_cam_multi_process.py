@@ -6,7 +6,6 @@ import traceback
 from multiprocessing import Process
 
 import cv2
-
 from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
 from old_src.cameras.webcam_config import WebcamConfig
 

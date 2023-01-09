@@ -2,7 +2,6 @@ from typing import List
 
 import cv2
 import numpy as np
-
 from old_src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_view_data import (
     CharucoViewData,
 )

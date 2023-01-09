@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-
 from old_src.config.home_dir import MEDIAPIPE_3D_NPY_FILE_NAME, RAW_DATA_FOLDER_NAME
 
 logger = logging.getLogger(__name__)

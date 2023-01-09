@@ -2,10 +2,9 @@ import logging
 from pathlib import Path
 from typing import Dict, Union
 
-from PyQt6.QtCore import QThread
-
 from old_src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from old_src.cameras.save_synchronized_videos import save_synchronized_videos
+from PyQt6.QtCore import QThread
 
 logger = logging.getLogger(__name__)
 

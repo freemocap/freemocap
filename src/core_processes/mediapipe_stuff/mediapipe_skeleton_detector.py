@@ -6,8 +6,6 @@ from typing import Any, List, Union
 import cv2
 import mediapipe as mp
 import numpy as np
-from tqdm import tqdm
-
 from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
 from old_src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from old_src.config.home_dir import MEDIAPIPE_2D_NPY_FILE_NAME
@@ -17,6 +15,7 @@ from old_src.core_processes.batch_processing.session_processing_parameter_models
 from old_src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
 )
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 

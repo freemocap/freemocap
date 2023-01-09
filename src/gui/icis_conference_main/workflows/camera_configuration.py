@@ -1,8 +1,5 @@
 import time
 
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
-
 from old_src.gui.icis_conference_main.shared_widgets.page_title import PageTitle
 from old_src.gui.icis_conference_main.shared_widgets.primary_button import (
     active_primary_button_style_sheet,
@@ -14,6 +11,8 @@ from old_src.gui.icis_conference_main.workers.cam_frame_worker import CamFrameWo
 from old_src.gui.icis_conference_main.workflows.available_cameras_list import (
     AvailableCamerasList,
 )
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 
 class CameraConfiguration(QWidget):

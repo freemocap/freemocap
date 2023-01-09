@@ -7,12 +7,11 @@ from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-from freemocap.core_processes.session_processing_parameter_models.session_recording_info.recording_info_model import (
-    RecordingInfoModel,
-)
-
 from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
     SessionInfoModel,
+)
+from freemocap.core_processes.session_processing_parameter_models.session_recording_info.recording_info_model import (
+    RecordingInfoModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,7 +78,10 @@ class ActiveSessionWidget(QWidget):
                 self._create_recording_parameter_group(available_recordings),
             ],
         )
-
+        if self._session_info_model.recording_info_model is not None:
+            self.set_active_recording(
+                self._session_info_model.recording_info_model.path
+            )
         return active_session_parameter
 
     def _get_available_recordings(self) -> List[Union[str, Path]]:
@@ -143,25 +145,25 @@ class ActiveSessionWidget(QWidget):
                         dict(
                             name="Synchronized Videos Recorded",
                             type="str",
-                            value=recording_info_model.synchronized_videos_exist,
+                            value=recording_info_model.synchronized_videos_status_check,
                             readonly=True,
                         ),
                         dict(
                             name="2D data exists?",
                             type="str",
-                            value=recording_info_model.data2d_exists,
+                            value=recording_info_model.data2d_status_check,
                             readonly=True,
                         ),
                         dict(
                             name="3D data exists?",
                             type="str",
-                            value=recording_info_model.data3d_exists,
+                            value=recording_info_model.data3d_status_check,
                             readonly=True,
                         ),
                         dict(
                             name="Center-of-Mass data exists?",
                             type="str",
-                            value=recording_info_model.center_of_mass_data_exists,
+                            value=recording_info_model.center_of_mass_data_status_check,
                             readonly=True,
                         ),
                     ],
@@ -178,7 +180,7 @@ class ActiveSessionWidget(QWidget):
         logger.info(
             f"Double clicked on Parameter Item named: {paremeter_item.param.name()}"
         )
-        parent = paremeter_item()
+        parent = paremeter_item
         while parent is not None:
             if "Recording Name:" in parent.param.name():
                 logger.info(f"Found Recording Name: {parent.param.name()}")

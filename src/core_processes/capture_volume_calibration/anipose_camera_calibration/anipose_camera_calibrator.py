@@ -4,7 +4,6 @@ from typing import Callable, Union
 
 import numpy as np
 from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
-
 from old_src.config.home_dir import (
     get_freemocap_data_folder_path,
 )

@@ -3,7 +3,6 @@ import traceback
 from typing import Dict
 
 import cv2
-
 from old_src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from old_src.cameras.webcam_config import WebcamConfig
 from old_src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (

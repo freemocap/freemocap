@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import List, Union
 
 import numpy as np
-
 from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
 
 logger = logging.getLogger(__name__)

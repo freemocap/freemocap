@@ -13,7 +13,6 @@ from skellycam import (
 from skellycam.qt_gui.widgets.qt_directory_view_widget import QtDirectoryViewWidget
 
 from freemocap.configuration.paths_and_files_names import (
-    create_new_session_folder,
     get_css_stylesheet_path,
     get_freemocap_data_folder_path,
     get_most_recent_recording_path,

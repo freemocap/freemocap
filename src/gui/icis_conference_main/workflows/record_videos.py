@@ -1,12 +1,3 @@
-from PyQt6.QtWidgets import (
-    QCheckBox,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
-
 from old_src.blender_stuff import (
     export_to_blender,
 )
@@ -22,6 +13,14 @@ from old_src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator im
 from old_src.pipelines.session_pipeline.session_pipeline_orchestrator import (
     load_mediapipe2d_data,
     SessionPipelineOrchestrator,
+)
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
 
 

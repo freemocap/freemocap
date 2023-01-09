@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Dict, List, Union
 
 import numpy as np
-
 from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
 from old_src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from old_src.config.home_dir import DIAGNOSTIC_PLOTS_FOLDER_NAME

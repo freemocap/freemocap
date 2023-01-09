@@ -1,9 +1,8 @@
 import logging
 from pathlib import Path
 
-from pydantic import BaseModel
-
 from old_src.config.home_dir import get_session_folder_path
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 

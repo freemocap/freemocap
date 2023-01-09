@@ -3,14 +3,8 @@ from pathlib import Path
 from typing import Callable, Dict, List, Union
 
 import numpy as np
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QWidget
-
 from old_src.cameras.detection.models import FoundCamerasResponse
 from old_src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
-    CharucoBoardDefinition,
-)
 from old_src.gui.main.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
@@ -32,6 +26,12 @@ from old_src.gui.main.workers.session_playback_thread_worker import (
 )
 from old_src.gui.main.workers.triangulate_3d_data_thread_worker import (
     Triangulate3dDataThreadWorker,
+)
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QWidget
+
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
+    CharucoBoardDefinition,
 )
 
 logger = logging.getLogger(__name__)

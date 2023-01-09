@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-
 from old_src.core_processes.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_body_landmark_names,
 )

@@ -1,6 +1,3 @@
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QCheckBox, QLabel, QPushButton, QVBoxLayout, QWidget
-
 from old_src.gui.main.main_window.left_panel_controls.toolbox_widgets.process_session_data_panel import (
     ProcessSessionDataPanel,
 )
@@ -10,6 +7,8 @@ from old_src.gui.main.main_window.left_panel_controls.toolbox_widgets.visualize_
 from old_src.gui.main.style_stuff.styled_widgets.panel_section_title import (
     PanelSectionTitle,
 )
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QCheckBox, QLabel, QPushButton, QVBoxLayout, QWidget
 
 
 class MotionCapturePanel(QWidget):

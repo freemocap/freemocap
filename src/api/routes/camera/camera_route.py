@@ -2,11 +2,10 @@ import logging
 
 import cv2
 from fastapi import APIRouter
-from pydantic import BaseModel
-
 from old_src.api.services.user_config import UserConfigService, WebcamConfigModel
 from old_src.cameras.detection.cam_singleton import get_or_create_cams
 from old_src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
+from pydantic import BaseModel
 
 camera_router = APIRouter()
 

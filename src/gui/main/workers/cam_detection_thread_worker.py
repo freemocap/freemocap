@@ -1,9 +1,8 @@
 import logging
 
-from PyQt6.QtCore import pyqtSignal, QThread
-
 from old_src.cameras.detection.cam_singleton import get_or_create_cams
 from old_src.cameras.detection.models import FoundCamerasResponse
+from PyQt6.QtCore import pyqtSignal, QThread
 
 logger = logging.getLogger(__name__)
 

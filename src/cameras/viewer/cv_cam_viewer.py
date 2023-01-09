@@ -3,7 +3,6 @@ from multiprocessing import Process
 from typing import Union
 
 import cv2
-
 from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
 
 

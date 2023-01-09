@@ -1,3 +1,7 @@
+from old_src.config.home_dir import create_default_session_id
+from old_src.gui.icis_conference_main.shared_widgets.page_title import PageTitle
+from old_src.gui.icis_conference_main.shared_widgets.primary_button import PrimaryButton
+from old_src.gui.icis_conference_main.state.app_state import APP_STATE
 from PyQt6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -6,11 +10,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-from old_src.config.home_dir import create_default_session_id
-from old_src.gui.icis_conference_main.shared_widgets.page_title import PageTitle
-from old_src.gui.icis_conference_main.shared_widgets.primary_button import PrimaryButton
-from old_src.gui.icis_conference_main.state.app_state import APP_STATE
 
 
 class NewRecordingSession(QWidget):

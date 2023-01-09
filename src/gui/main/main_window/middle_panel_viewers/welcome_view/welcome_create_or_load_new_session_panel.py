@@ -1,5 +1,11 @@
 import logging
 
+from old_src.config.home_dir import create_default_session_id
+from old_src.gui.main.qt_utils.hide_all_in_layout import hide_all_in_layout
+from old_src.gui.main.style_stuff.css_style_sheet import (
+    recommended_next_button_style_sheet,
+)
+from old_src.gui.main.style_stuff.styled_widgets.page_title import PageTitle
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -10,13 +16,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-from old_src.config.home_dir import create_default_session_id
-from old_src.gui.main.qt_utils.hide_all_in_layout import hide_all_in_layout
-from old_src.gui.main.style_stuff.css_style_sheet import (
-    recommended_next_button_style_sheet,
-)
-from old_src.gui.main.style_stuff.styled_widgets.page_title import PageTitle
 
 logger = logging.getLogger(__name__)
 

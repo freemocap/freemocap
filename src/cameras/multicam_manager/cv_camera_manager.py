@@ -4,8 +4,6 @@ import traceback
 from contextlib import contextmanager
 from typing import ContextManager, Dict, List, Optional, Union
 
-from pydantic import BaseModel
-
 from old_src.api.services.user_config import UserConfigService
 from old_src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from old_src.cameras.detection.cam_singleton import get_or_create_cams
@@ -17,6 +15,7 @@ from old_src.core_processes.timestamp_manager.timestamp_manager import (
 from old_src.pipelines.session_pipeline.data_classes.multi_frame_payload import (
     MultiFramePayload,
 )
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 

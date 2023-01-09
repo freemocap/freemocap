@@ -1,5 +1,11 @@
 import logging
 
+from old_src.core_processes.mediapipe_stuff.mediapipe_default_settings import (
+    default_mediapipe_confidence_threshold,
+)
+from old_src.gui.main.tool_tips_and_warning_labels.tool_tips_strings import (
+    mediapipe_confidence_cutoff_tool_tip_str,
+)
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFormLayout,
@@ -8,13 +14,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
-)
-
-from old_src.core_processes.mediapipe_stuff.mediapipe_default_settings import (
-    default_mediapipe_confidence_threshold,
-)
-from old_src.gui.main.tool_tips_and_warning_labels.tool_tips_strings import (
-    mediapipe_confidence_cutoff_tool_tip_str,
 )
 
 logger = logging.getLogger(__name__)

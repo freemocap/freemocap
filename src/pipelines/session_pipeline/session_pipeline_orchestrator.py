@@ -6,7 +6,6 @@ from typing import Dict, Union
 
 import cv2
 import numpy as np
-
 from old_src.config.data_paths import freemocap_data_path
 from old_src.config.home_dir import (
     create_default_session_id,

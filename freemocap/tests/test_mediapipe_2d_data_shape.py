@@ -1,20 +1,16 @@
 from pathlib import Path
 from typing import Union
 
-import cv2
 import numpy as np
 
-from freemocap.configuration.paths_and_files_names import (
-    MEDIAPIPE_2D_NPY_FILE_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME,
-    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
+from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import (
+    get_number_of_frames_of_videos_in_a_folder,
 )
 
 
 def test_mediapipe_2d_data_shape(
     synchronized_videos_folder: Union[str, Path],
-    path_to_folder_where_data_is_saved: Union[str, Path],
-    mediapipe_2d_data: np.ndarray,
+    mediapipe_2d_data_file_path: Union[str, Path],
 ):
 
     """
@@ -26,24 +22,24 @@ def test_mediapipe_2d_data_shape(
     TODO - check number of tracked points vs 'expected' number of tracked points
     """
 
-    mediapipe_2d_data_file_path = (
-        path_to_folder_where_data_is_saved / MEDIAPIPE_2D_NPY_FILE_NAME
-    )
-    assert mediapipe_2d_data_file_path.exists()
+    assert Path(
+        mediapipe_2d_data_file_path
+    ).is_file(), f"{mediapipe_2d_data_file_path} is not a file"
 
-    saved_mediapipe_2d_data = np.load(mediapipe_2d_data_file_path)
-    assert np.array_equal(saved_mediapipe_2d_data, mediapipe_2d_data, equal_nan=True)
+    mediapipe_2d_data = np.load(mediapipe_2d_data_file_path)
 
     list_of_video_paths = list(Path(synchronized_videos_folder).glob("*.mp4"))
     number_of_videos = len(list_of_video_paths)
     assert mediapipe_2d_data.shape[0] == number_of_videos
 
-    video_0_cv2_capture_object = cv2.VideoCapture(str(list_of_video_paths[0]))
+    frame_count = get_number_of_frames_of_videos_in_a_folder(synchronized_videos_folder)
 
-    number_of_frames_in_video_0 = int(
-        video_0_cv2_capture_object.get(cv2.CAP_PROP_FRAME_COUNT)
-    )
-    assert mediapipe_2d_data.shape[1] == number_of_frames_in_video_0
+    assert (
+        len(set(frame_count)) == 1
+    ), f"Videos in {synchronized_videos_folder} have different frame counts: {frame_count}"
+    assert (
+        mediapipe_2d_data.shape[1] == frame_count[0]
+    ), f"Number of frames in {mediapipe_2d_data_file_path} does not match number of frames of videos in {synchronized_videos_folder}"
 
     # TODO - check number of tracked points vs 'expected' number of tracked points
 

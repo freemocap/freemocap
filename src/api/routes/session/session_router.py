@@ -6,8 +6,6 @@ from fastapi import APIRouter
 from jon_scratch.pupil_calibration_pipeline.qt_gl_laser_skeleton_visualizer import (
     QtGlLaserSkeletonVisualizer,
 )
-from pydantic import BaseModel
-
 from old_src.cameras.launch_camera_frame_loop import launch_camera_frame_loop
 from old_src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from old_src.config.home_dir import (
@@ -27,6 +25,7 @@ from old_src.pipelines.session_pipeline.session_pipeline_orchestrator import (
     load_mediapipe3d_skeleton_data,
     SessionPipelineOrchestrator,
 )
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 

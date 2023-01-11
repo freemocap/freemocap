@@ -11,13 +11,7 @@ LOG_FILE_PATH = None
 
 
 def get_logging_handlers():
-    """
-    Initialize logging defaults for Project.
-    :param logfile_path: logfile used to the logfile
-    :type logfile_path: string
-    This function does:
-    - Assign INFO and DEBUG level to logger file handler and console handler
-    """
+
     dictConfig(DEFAULT_LOGGING)
 
     default_formatter = logging.Formatter(
@@ -31,9 +25,8 @@ def get_logging_handlers():
     console_handler.setFormatter(default_formatter)
 
     # Setup File handler (from https://stackoverflow.com/a/24507130/14662833 )
-    global LOG_FILE_PATH
-    LOG_FILE_PATH = get_log_file_path()
-    file_handler = logging.FileHandler(LOG_FILE_PATH)
+
+    file_handler = logging.FileHandler(get_log_file_path())
     file_handler.setFormatter(default_formatter)
     file_handler.setLevel(logging.DEBUG)
 
@@ -42,9 +35,14 @@ def get_logging_handlers():
 
 def configure_logging():
     print(f"Setting up freemocap logging  {__file__}")
-    handlers = get_logging_handlers()
-    for handler in handlers:
-        if not handler in logging.getLogger("").handlers:
-            logging.getLogger("").handlers.append(handler)
 
-    logging.root.setLevel(logging.DEBUG)
+    if len(logging.getLogger().handlers) == 0:
+        handlers = get_logging_handlers()
+        for handler in handlers:
+            if not handler in logging.getLogger("").handlers:
+                logging.getLogger("").handlers.append(handler)
+
+        logging.root.setLevel(logging.DEBUG)
+    else:
+        logger = logging.getLogger(__name__)
+        logger.info("Logging already configured")

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # directory names
 BASE_FREEMOCAP_DATA_FOLDER_NAME = "freemocap_data"
-MOTION_CAPTURE_SESSIONS_FOLDER_NAME = "motion_capture_sessions"
+RECORDING_SESSIONS_FOLDER_NAME = "recording_sessions"
 CALIBRATIONS_FOLDER_NAME = "calibrations"
 LOGS_INFO_AND_SETTINGS_FOLDER_NAME = "logs_info_and_settings"
 LOG_FILE_FOLDER_NAME = "logs"
@@ -99,22 +99,22 @@ def default_session_name(string_tag: str = None):
 
 def create_new_session_folder():
     session_folder_path = (
-        Path(get_motion_capture_session_folder_path()) / default_session_name()
+        Path(get_recording_session_folder_path()) / default_session_name()
     )
 
     session_folder_path.mkdir(exist_ok=True, parents=True)
     return str(session_folder_path)
 
 
-def get_motion_capture_session_folder_path(create_folder: bool = True):
-    motion_capture_session_folder_path = (
-        Path(get_freemocap_data_folder_path()) / MOTION_CAPTURE_SESSIONS_FOLDER_NAME
+def get_recording_session_folder_path(create_folder: bool = True):
+    recording_session_folder_path = (
+        Path(get_freemocap_data_folder_path()) / RECORDING_SESSIONS_FOLDER_NAME
     )
 
     if create_folder:
-        motion_capture_session_folder_path.mkdir(exist_ok=create_folder, parents=True)
+        recording_session_folder_path.mkdir(exist_ok=create_folder, parents=True)
 
-    return str(motion_capture_session_folder_path)
+    return str(recording_session_folder_path)
 
 
 def get_logs_info_and_settings_folder_path(create_folder: bool = True):

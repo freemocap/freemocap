@@ -33,7 +33,7 @@ class PostProcessingParametersModel(BaseModel):
 
 
 class SessionProcessingParameterModel(BaseModel):
-    session_info_model: SessionInfoModel = SessionInfoModel(use_most_recent=True)
+    session_info_model: SessionInfoModel
     mediapipe_parameters_model: MediapipeParametersModel = MediapipeParametersModel()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = (
         AniposeTriangulate3DParametersModel()

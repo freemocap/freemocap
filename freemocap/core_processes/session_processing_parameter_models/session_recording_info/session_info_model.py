@@ -13,32 +13,21 @@ from freemocap.core_processes.session_processing_parameter_models.session_record
 class SessionInfoModel:
     def __init__(
         self,
-        use_most_recent: bool = False,
-        session_folder_path: Union[str, Path] = None,
+        session_folder_path: Union[str, Path],
         recording_folder_path: Union[str, Path] = None,
         calibration_toml_path: Union[str, Path] = None,
     ):
+        self._session_folder_path = Path(session_folder_path)
 
-        if session_folder_path is None:
-            if use_most_recent:
-                self._session_folder_path = Path(
-                    get_most_recent_recording_path()
-                ).parent
-                recording_folder_path = get_most_recent_recording_path()
-            else:
-                self._session_folder_path = Path(create_new_session_folder())
-                self._recording_folder_path = None
+        self._session_name: str = Path(self._session_folder_path).stem
 
-            self._session_name: str = Path(self._session_folder_path).stem
-
-            if recording_folder_path is not None:
-                self._recording_info_model = RecordingInfoModel(
-                    recording_folder_path=recording_folder_path,
-                    calibration_toml_path=calibration_toml_path,
-                )
-
-            else:
-                self._recording_info_model = self.get_latest_internal_recording_info()
+        if recording_folder_path is not None:
+            self._active_recording_info = RecordingInfoModel(
+                recording_folder_path=recording_folder_path,
+                calibration_toml_path=calibration_toml_path,
+            )
+        else:
+            self._active_recording_info = self.get_latest_internal_recording_info()
 
     @property
     def session_name(self):
@@ -49,8 +38,8 @@ class SessionInfoModel:
         return str(self._session_folder_path)
 
     @property
-    def recording_info_model(self) -> RecordingInfoModel:
-        return self._recording_info_model
+    def active_recording_info(self) -> RecordingInfoModel:
+        return self._active_recording_info
 
     def set_recording_info(
         self,
@@ -58,9 +47,9 @@ class SessionInfoModel:
         calibration_toml_path: Union[Path, str] = None,
     ):
         if isinstance(recording_folder_path, RecordingInfoModel):
-            self._recording_info_model = recording_folder_path
+            self._active_recording_info = recording_folder_path
         else:
-            self._recording_info_model = RecordingInfoModel(
+            self._active_recording_info = RecordingInfoModel(
                 recording_folder_path=recording_folder_path,
                 calibration_toml_path=calibration_toml_path,
             )

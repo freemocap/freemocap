@@ -17,7 +17,9 @@ from freemocap.configuration.paths_and_files_names import (
 )
 from freemocap.tests.test_mediapipe_2d_data_shape import test_mediapipe_2d_data_shape
 from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
-from freemocap.tests.test_synchronized_videos import test_synchronized_videos
+from freemocap.tests.test_synchronized_video_frame_counts import (
+    test_synchronized_video_frame_counts,
+)
 from freemocap.tests.test_total_body_center_of_mass_data_shape import (
     test_total_body_center_of_mass_data_shape,
 )
@@ -135,7 +137,7 @@ class RecordingFolderStatusChecker:
 
     def check_synchronized_videos_status(self) -> bool:
         try:
-            test_synchronized_videos(
+            test_synchronized_video_frame_counts(
                 self.recording_info_model.synchronized_videos_folder_path
             )
             return True

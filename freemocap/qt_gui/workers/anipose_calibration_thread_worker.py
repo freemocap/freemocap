@@ -25,6 +25,9 @@ class AniposeCalibrationThreadWorker(QThread):
         charuco_board_definition: CharucoBoardDefinition = CharucoBoardDefinition(),
     ):
         super().__init__()
+        logger.info(
+            f"Initializing Anipose Calibration Thread Worker for videos in path {calibration_videos_folder_path}"
+        )
         self._charuco_board_definition = charuco_board_definition
         self._charuco_square_size = charuco_square_size
         self._calibration_videos_folder_path = calibration_videos_folder_path
@@ -53,11 +56,10 @@ class AniposeCalibrationThreadWorker(QThread):
                 pin_camera_0_to_origin=True,
                 progress_callback=self._emit_in_progress_data,
             )
-        except:
+            logger.info("Anipose calibration complete")
+        except Exception as e:
             logger.error("something failed in the anipose calibration")
-            raise Exception
-
-        logger.info("Anipose calibration complete")
+            logger.error(e)
 
         self.finished.emit()
         self._work_done = True

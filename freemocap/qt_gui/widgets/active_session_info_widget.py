@@ -17,26 +17,17 @@ from freemocap.core_processes.session_processing_parameter_models.session_record
 logger = logging.getLogger(__name__)
 
 
-class ActiveSessionInfoWidget(QFileSystemWatcher):
-    directory_changed_signal = pyqtSignal(str)
-
-    def __init__(self, session_path: Union[str, Path], parent=None):
-        super().__init__(parent=parent)
-        self.addPath(session_path)
-        self.directoryChanged.connect(self.directory_changed_signal.emit)
-
-
 class ActiveSessionWidget(QWidget):
     new_active_recording_selected_signal = pyqtSignal(str)
 
     def __init__(
         self,
-        session_info_model: SessionInfoModel = SessionInfoModel(),
+        active_session_info: SessionInfoModel,
         parent: QWidget = None,
     ):
         super().__init__(parent=parent)
 
-        self._session_info_model = session_info_model
+        self._active_session_info = active_session_info
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
@@ -44,7 +35,7 @@ class ActiveSessionWidget(QWidget):
         self._parameter_tree_widget = ParameterTree(parent=self, showHeader=False)
         self._layout.addWidget(self._parameter_tree_widget)
 
-        self._setup_parameter_tree(self._session_info_model)
+        self._setup_parameter_tree(self._active_session_info)
 
         self._parameter_tree_widget.doubleClicked.connect(
             self._handle_double_click_event
@@ -52,9 +43,19 @@ class ActiveSessionWidget(QWidget):
 
         self._active_session_directory_watcher = (
             self._create_active_session_directory_watcher(
-                self._session_info_model.session_folder_path
+                self._active_session_info.session_folder_path
             )
         )
+
+    @property
+    def active_recording_info(self):
+        return self._active_session_info.active_recording_info
+
+    def get_active_recording_info(self):
+        # this is redundant to the `active_recording_info` property,
+        # but it will be more intuitive to send this down as a callable
+        # rather than relying on 'pass-by-reference' magic lol
+        return self._active_session_info.active_recording_info
 
     def _setup_parameter_tree(self, session_info_model: SessionInfoModel):
         self._parameter_tree_widget.clear()
@@ -78,38 +79,55 @@ class ActiveSessionWidget(QWidget):
                 self._create_recording_parameter_group(available_recordings),
             ],
         )
-        if self._session_info_model.recording_info_model is not None:
-            self.set_active_recording(
-                self._session_info_model.recording_info_model.path
-            )
+
         return active_session_parameter
 
     def _get_available_recordings(self) -> List[Union[str, Path]]:
-        available_recordings = [
-            recording
-            for recording in Path(
-                self._session_info_model.session_folder_path
-            ).iterdir()
-            if recording.is_dir()
-        ]
-        if (
-            len(available_recordings) > 0
-            and self._session_info_model.recording_info_model is None
-        ):
-            self._session_info_model.set_recording_info(
-                recording_folder_path=available_recordings[-1]
-            )
-        return available_recordings
+        try:
+            available_recordings = [
+                recording
+                for recording in Path(
+                    self._active_session_info.session_folder_path
+                ).iterdir()
+                if recording.is_dir()
+            ]
+            if (
+                len(available_recordings) > 0
+                and self._active_session_info.active_recording_info is None
+            ):
+                self._active_session_info.set_recording_info(
+                    recording_folder_path=available_recordings[-1]
+                )
+            return available_recordings
+        except Exception as e:
+            logger.error(e)
+            return []
 
     def _create_recording_parameter_group(
         self, available_recordings: List[Union[str, Path]]
     ):
-        self._recording_parameters_list = [
-            self._create_recording_status_parameter_tree(
-                RecordingInfoModel(recording_path)
+        if len(available_recordings) == 0:
+            self._recording_parameters_list = Parameter.create(
+                name="No Recordings Found - Either select one in the `File View` window or Record/Import new videos to continue \U0001F4AB",
+                type="group",
+                readonly=True,
             )
-            for recording_path in available_recordings
-        ]
+        else:
+            self._recording_parameters_list = [
+                self._create_recording_status_parameter_tree(
+                    RecordingInfoModel(recording_path)
+                )
+                for recording_path in available_recordings
+            ]
+
+        if self._active_session_info.active_recording_info is not None:
+            self.set_active_recording(
+                self._active_session_info.active_recording_info.path
+            )
+        else:
+            if len(available_recordings) > 0:
+                self.set_active_recording(available_recordings[-1])
+
         return Parameter.create(
             name="Available Recordings",
             type="group",
@@ -197,7 +215,7 @@ class ActiveSessionWidget(QWidget):
                 recording_parameter.setName(
                     f"Recording Name: {Path(recording_folder_path).name} (Active)"
                 )
-                self._session_info_model.set_recording_info(
+                self._active_session_info.set_recording_info(
                     recording_folder_path=recording_folder_path,
                     calibration_toml_path=recording_parameter.child(
                         "Calibration TOML"
@@ -210,7 +228,7 @@ class ActiveSessionWidget(QWidget):
                 return
 
         logger.info(f"Setting active recording to {recording_folder_path}")
-        self._session_info_model.recording_folder_path = str(recording_folder_path)
+        self._active_session_info.recording_folder_path = str(recording_folder_path)
 
     def _clear_active_recording_name(self):
         for recording_parameter in self._recording_parameters_list:
@@ -230,15 +248,18 @@ class ActiveSessionWidget(QWidget):
 
     def _handle_directory_changed(self, path: str):
         logger.info(f"Directory changed: {path} - Updating Parameter Tree")
-        self._setup_parameter_tree(self._session_info_model)
+        self._setup_parameter_tree(self._active_session_info)
 
 
 if __name__ == "__main__":
     import sys
+    from freemocap.configuration.paths_and_files_names import create_new_session_folder
 
     app = QApplication(sys.argv)
     active_session_widget = ActiveSessionWidget(
-        session_info_model=SessionInfoModel(use_most_recent=True)
+        active_session_info=SessionInfoModel(
+            session_folder_path=create_new_session_folder()
+        )
     )
     active_session_widget.show()
     sys.exit(app.exec())

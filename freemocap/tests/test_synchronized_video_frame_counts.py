@@ -6,7 +6,7 @@ from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import
 )
 
 
-def test_synchronized_videos(video_folder_path: Union[Path, str]):
+def test_synchronized_video_frame_counts(video_folder_path: Union[Path, str]):
     """
     Test if all the videos in this folder have precisely the same number of frames
     """

@@ -32,14 +32,9 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
             f"Beginning processing of motion capture data with parameters: {self._session_processing_parameters.__dict__}"
         )
 
-        try:
-            process_session_folder(
-                session_processing_parameter_model=self._session_processing_parameters,
-            )
-
-        except Exception as e:
-            logger.error(f"something failed when processing session folder: {e}")
-            raise e
+        process_session_folder(
+            session_processing_parameter_model=self._session_processing_parameters,
+        )
 
         logger.info("Finished processing session folder!")
 

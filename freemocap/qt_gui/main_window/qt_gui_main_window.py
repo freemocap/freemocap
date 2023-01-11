@@ -10,15 +10,19 @@ from skellycam import (
     SkellyCamParameterTreeWidget,
     SkellyCamViewerWidget,
 )
-from skellycam.qt_gui.widgets.qt_directory_view_widget import QtDirectoryViewWidget
 
 from freemocap.configuration.paths_and_files_names import (
+    create_new_session_folder,
     get_css_stylesheet_path,
     get_freemocap_data_folder_path,
     get_most_recent_recording_path,
+    RECORDING_SESSIONS_FOLDER_NAME,
 )
 from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
     SessionProcessingParameterModel,
+)
+from freemocap.core_processes.session_processing_parameter_models.session_recording_info.session_info_model import (
+    SessionInfoModel,
 )
 from freemocap.core_processes.visualization.blender_stuff.export_to_blender import (
     export_to_blender,
@@ -36,6 +40,7 @@ from freemocap.qt_gui.widgets.active_session_info_widget import ActiveSessionWid
 from freemocap.qt_gui.widgets.calibration_control_panel import (
     CalibrationControlPanel,
 )
+from freemocap.qt_gui.widgets.directory_view_widget import DirectoryViewWidget
 from freemocap.qt_gui.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
@@ -49,7 +54,7 @@ logger = logging.getLogger(__name__)
 class QtGUIMainWindow(QMainWindow):
     def __init__(
         self,
-        session_process_parameter_model: SessionProcessingParameterModel = SessionProcessingParameterModel(),
+        session_process_parameter_model: SessionProcessingParameterModel = None,
         freemocap_data_folder: Union[str, Path] = None,
         parent=None,
     ):
@@ -60,7 +65,19 @@ class QtGUIMainWindow(QMainWindow):
 
         self._css_file_watcher = self._set_up_stylesheet()
 
-        self._session_process_parameter_model = session_process_parameter_model
+        if session_process_parameter_model is None:
+            self._active_session_info = SessionInfoModel(
+                session_folder_path=create_new_session_folder()
+            )
+
+            self._session_process_parameter_model = SessionProcessingParameterModel(
+                session_info_model=self._active_session_info,
+            )
+        else:
+            self._session_process_parameter_model = session_process_parameter_model
+            self._active_session_info = (
+                self._session_process_parameter_model.session_info_model
+            )
 
         if freemocap_data_folder is None:
             self._freemocap_data_folder = get_freemocap_data_folder_path()
@@ -72,18 +89,19 @@ class QtGUIMainWindow(QMainWindow):
         self._central_tab_widget = self._create_center_tab_widget()
         self.setCentralWidget(self._central_tab_widget)
 
-        self._control_panel_dock_widget = self._create_control_panel_dock_widget()
-        self.addDockWidget(
-            Qt.DockWidgetArea.LeftDockWidgetArea, self._control_panel_dock_widget
-        )
-
         active_session_dock_widget = QDockWidget("Active Session", self)
         self._active_session_widget = ActiveSessionWidget(
-            self._session_process_parameter_model.session_info_model, parent=self
+            self._active_session_info, parent=self
         )
+
         active_session_dock_widget.setWidget(self._active_session_widget)
         self.addDockWidget(
             Qt.DockWidgetArea.RightDockWidgetArea, active_session_dock_widget
+        )
+
+        self._control_panel_dock_widget = self._create_control_panel_dock_widget()
+        self.addDockWidget(
+            Qt.DockWidgetArea.LeftDockWidgetArea, self._control_panel_dock_widget
         )
 
         self._directory_view_dock_widget = self._create_directory_view_dock_widget()
@@ -98,13 +116,18 @@ class QtGUIMainWindow(QMainWindow):
             self._handle_quick_start_button_clicked
         )
 
-        self._camera_view_widget.videos_saved_signal.connect(
+        self._camera_view_widget.new_recording_video_folder_created_signal.connect(
             save_most_recent_recording_path_as_toml
         )
 
         self._active_session_widget.new_active_recording_selected_signal.connect(
-            lambda incoming_string: print(
-                f"New active recording selected: {incoming_string}"
+            lambda active_recording_folder_path: self._calibration_control_panel.set_active_recording_folder_path(
+                active_recording_folder_path
+            )
+        )
+        self._active_session_widget.new_active_recording_selected_signal.connect(
+            lambda active_recording_folder_path: self._directory_view_widget.expand_directory_to_path(
+                active_recording_folder_path
             )
         )
 
@@ -155,7 +178,9 @@ class QtGUIMainWindow(QMainWindow):
         self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(
             self._camera_view_widget
         )
-        self._calibration_control_panel = CalibrationControlPanel()
+        self._calibration_control_panel = CalibrationControlPanel(
+            get_active_recording_info_callable=self._active_session_widget.get_active_recording_info,
+        )
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             session_processing_parameters=self._session_process_parameter_model
         )
@@ -179,10 +204,22 @@ class QtGUIMainWindow(QMainWindow):
 
     def _create_directory_view_dock_widget(self):
         directory_view_dock_widget = QDockWidget("Directory View", self)
-        self._qt_directory_view_widget = QtDirectoryViewWidget(
+        self._directory_view_widget = DirectoryViewWidget(
             folder_path=self._freemocap_data_folder
         )
-        directory_view_dock_widget.setWidget(self._qt_directory_view_widget)
+        self._directory_view_widget.expand_directory_to_path(
+            Path(self._freemocap_data_folder) / RECORDING_SESSIONS_FOLDER_NAME
+        )
+
+        self._directory_view_widget.expand_directory_to_path(
+            self._active_session_info.session_folder_path
+        )
+
+        self._directory_view_widget.set_path_as_index(
+            self._active_session_info.session_folder_path
+        )
+
+        directory_view_dock_widget.setWidget(self._directory_view_widget)
 
         return directory_view_dock_widget
 

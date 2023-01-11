@@ -33,7 +33,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
     ):
         super().__init__(parent=parent)
 
-        self._session_processing_parameters = session_processing_parameters
+        self._session_processing_parameter_model = session_processing_parameters
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
@@ -51,7 +51,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         self._add_parameters_to_parameter_tree_widget(
             self._parameter_tree_widget,
-            session_processing_parameter_model=self._session_processing_parameters,
+            session_processing_parameter_model=self._session_processing_parameter_model,
         )
 
     def _add_parameters_to_parameter_tree_widget(
@@ -70,7 +70,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _convert_session_processing_parameter_model_to_parameter_group(
         self,
-        parameters: SessionProcessingParameterModel = SessionProcessingParameterModel(),
+        session_processing_parameter_model: SessionProcessingParameterModel,
     ):
 
         return Parameter.create(
@@ -83,7 +83,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     children=[
                         self._create_new_skip_this_step_parameter(),
                         create_mediapipe_parameter_group(
-                            parameters.mediapipe_parameters_model
+                            session_processing_parameter_model.mediapipe_parameters_model
                         ),
                     ],
                     tip="Methods for tracking 2d points in images (e.g. mediapipe, deeplabcut(TODO), openpose(TODO), etc ...)",
@@ -94,7 +94,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     children=[
                         self._create_new_skip_this_step_parameter(),
                         create_3d_triangulation_prarameter_group(
-                            parameters.anipose_triangulate_3d_parameters_model
+                            session_processing_parameter_model.anipose_triangulate_3d_parameters_model
                         ),
                     ],
                     tip="Methods for triangulating 3d points from 2d points (using epipolar geometry and the 'camera_calibration' data).",
@@ -105,7 +105,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     children=[
                         self._create_new_skip_this_step_parameter(),
                         create_post_processing_parameter_group(
-                            parameters.post_processing_parameters_model
+                            session_processing_parameter_model.post_processing_parameters_model
                         ),
                     ],
                     tip="Methods for cleaning up the data (e.g. filtering/smoothing, gap filling, etc ...)"
@@ -117,12 +117,12 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def _extract_session_parameter_model_from_parameter_tree(
         self,
     ) -> SessionProcessingParameterModel:
-        session_parameter_model = SessionProcessingParameterModel()
+        session_processing_parameter_model = self._session_processing_parameter_model
 
         logger.debug(
             "TODO - extract the parameter values from the parameter tree and populate the session_parameter_model. Just using defaults for now."
         )
-        return session_parameter_model
+        return session_processing_parameter_model
 
     def _create_new_skip_this_step_parameter(self):
         parameter = Parameter.create(

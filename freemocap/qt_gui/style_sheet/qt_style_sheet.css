@@ -1,12 +1,17 @@
-QMainWindow {
-    background-color: #5a6283;
+*{ font-family: "Dosis", sans-serif;
+    font-size: 16px;
+    color: #333333;
 }
+
+QMainWindow {
+    background-color: #41a6a1;
+}
+
 
 
 QPushButton {
     font-size: 24px;
     font-weight: bold;
-    font-family: "Dosis", sans-serif;
     border-radius: 4px;
     border: 2px solid #29394a;
     background-color: #29394a;
@@ -25,22 +30,29 @@ QPushButton:disabled {
 }
 
 QPushButton:hover {
-    background-color: #29696a;
     border: 3px solid #ff40aa;
 }
 
-QParameterTreeWidget {
-    background-color: #ff0000;
-    color: #ffffff;
 
+QLabel {
+
+    /*font-family: "Roboto", sans-serif;*/
+    /*font-weight: bold;*/
+    font-size: 14px;
+    color: #333333;
 }
+
+
 
 QTreeView {
     background-color: #7983b1;
     alternate-background-color: #a3b1ed;
     color: #222222;
     font-weight: bold;
-}
+    font-family: "Roboto", sans-serif;
+    font-size: 12px;
+    font-min-size: medium;
+    }
 
 
 QTreeView::item:has-children {
@@ -49,11 +61,11 @@ QTreeView::item:has-children {
 }
 
 QTreeView::item:selected {
-    background-color: #394781;
+    background-color: #0932c2;
 }
 
 QTreeView::item:selected:active {
-    background-color: rgb(92, 53, 102);
+    background-color: #6c00e0;
 }
 
 QTreeView::item:hover {

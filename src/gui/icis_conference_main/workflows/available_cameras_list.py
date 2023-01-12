@@ -1,13 +1,12 @@
 from functools import partial
 
-from old_src.cameras.detection.models import FoundCamerasResponse
-from old_src.gui.icis_conference_main.qt_utils.clear_layout import clearLayout
-from old_src.gui.icis_conference_main.workers.cam_detection_thread import (
-    CamDetectionWorker,
-)
-from old_src.gui.icis_conference_main.workflows.available_camera import AvailableCamera
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+
+from src.cameras.detection.models import FoundCamerasResponse
+from src.gui.icis_conference_main.qt_utils.clear_layout import clearLayout
+from src.gui.icis_conference_main.workers.cam_detection_thread import CamDetectionWorker
+from src.gui.icis_conference_main.workflows.available_camera import AvailableCamera
 
 
 class AvailableCamerasList(QWidget):

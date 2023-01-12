@@ -5,12 +5,13 @@ import time
 import traceback
 
 import cv2
-from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
-from old_src.cameras.capture.opencv_camera.camera_stream_thread_handler import (
+
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.cameras.viewer.cv_cam_viewer import CvCamViewer
+from src.cameras.webcam_config import WebcamConfig
+from src.cameras.capture.opencv_camera.camera_stream_thread_handler import (
     VideoCaptureThread,
 )
-from old_src.cameras.viewer.cv_cam_viewer import CvCamViewer
-from old_src.cameras.webcam_config import WebcamConfig
 
 logger = logging.getLogger(__name__)
 

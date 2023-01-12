@@ -2,11 +2,12 @@ import logging
 from typing import List
 
 import numpy as np
-from old_src.gui.main.main_window.middle_panel_viewers.session_playback_view.video_playback_grid_view import (
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
+
+from src.gui.main.main_window.middle_panel_viewers.session_playback_view.video_playback_grid_view import (
     VideoPlaybackGridView,
 )
-from old_src.gui.main.visualize_session.gl_3d_view_port import Gl3dViewPort
-from PyQt6.QtWidgets import QVBoxLayout, QWidget
+from src.gui.main.visualize_session.gl_3d_view_port import Gl3dViewPort
 
 logger = logging.getLogger(__name__)
 

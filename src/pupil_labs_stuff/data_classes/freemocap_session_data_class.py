@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from typing import List
 
 import numpy as np
+
 from jon_scratch.pupil_calibration_pipeline.data_classes.pupil_dataclass_and_handler import (
     PupilLabsDataClass,
 )

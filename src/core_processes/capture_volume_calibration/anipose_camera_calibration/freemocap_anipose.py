@@ -1,28 +1,30 @@
 # Most of this was copied (with permission) from the original `aniposelib` package (https://github.com/lambdaloop/aniposelib), and we're adapting it to our needs here. M
 # ore info on Anipoise: https://anipose.readthedocs.io/en/latest/
 
-import itertools
 import logging
-import time
-from collections import defaultdict
-from copy import copy
 
 import cv2
 import numpy as np
+from copy import copy
+from scipy.sparse import lil_matrix, dok_matrix
+from scipy import optimize
+from scipy import signal
+from numba import jit
+from collections import defaultdict, Counter
 import toml
+import itertools
+from tqdm import trange
+from rich import print
+import time
+
+
 from aniposelib.boards import (
+    merge_rows,
     extract_points,
     extract_rtvecs,
     get_video_params,
-    merge_rows,
 )
-from aniposelib.utils import get_connections, get_initial_extrinsics, get_rtvec, make_M
-from numba import jit
-from rich import print
-from scipy import optimize
-from scipy import signal
-from scipy.sparse import dok_matrix
-from tqdm import trange
+from aniposelib.utils import get_initial_extrinsics, make_M, get_rtvec, get_connections
 
 numba_logger = logging.getLogger("numba")
 numba_logger.setLevel(logging.INFO)

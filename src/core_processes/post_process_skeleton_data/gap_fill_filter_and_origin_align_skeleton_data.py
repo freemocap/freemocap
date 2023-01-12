@@ -2,17 +2,19 @@
 import logging
 import sys
 from pathlib import Path
+import pickle
 from typing import Union
 
 import numpy as np
 import pandas as pd
-from old_src.config.home_dir import (
+from rich.progress import track
+from scipy import signal
+
+from src.config.home_dir import (
     CENTER_OF_MASS_FOLDER_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
 )
-from rich.progress import track
-from scipy import signal
 
 logger = logging.getLogger(__name__)
 

@@ -1,16 +1,18 @@
-import logging
-
 import cv2
-from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
-from old_src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
-from old_src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from old_src.cameras.webcam_config import WebcamConfig
-from old_src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
+from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtGui import QImage
+
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
+from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
+from src.cameras.webcam_config import WebcamConfig
+from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
-from old_src.gui.main.app_state.app_state import APP_STATE
-from PyQt6.QtCore import pyqtSignal, QThread
-from PyQt6.QtGui import QImage
+
+import logging
+
+from src.gui.main.app_state.app_state import APP_STATE
 
 logger = logging.getLogger(__name__)
 
@@ -102,8 +104,8 @@ class CamCharucoFrameThreadWorker(QThread):
                 )
                 # TODO - Figure out why this is needed lol
                 q_image = q_image.scaledToHeight(
-                    APP_STATE.main_window_height
-                    / 1  # np.min([3,len(APP_STATE.available_cameras)])
+                    int(APP_STATE.main_window_height)
+                    # /np.min([3,len(APP_STATE.available_cameras)])
                 )
 
                 self.image_updated_signal.emit(q_image)

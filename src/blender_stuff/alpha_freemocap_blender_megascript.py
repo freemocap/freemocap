@@ -1,9 +1,8 @@
-import sys
-from pathlib import Path
-
-import addon_utils
 import bpy
+import addon_utils
 import numpy as np
+from pathlib import Path
+import sys
 
 print(" - Starting (alpha) blender megascript - ")
 

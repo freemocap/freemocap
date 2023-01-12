@@ -1,14 +1,15 @@
 import logging
 
-import matplotlib
 import numpy as np
+from matplotlib import pyplot as plt
+import matplotlib
+
 from jon_scratch.pupil_calibration_pipeline.data_classes.freemocap_session_data_class import (
     FreemocapSessionDataClass,
 )
 from jon_scratch.pupil_calibration_pipeline.data_classes.pupil_dataclass_and_handler import (
     PupilLabsDataClass,
 )
-from matplotlib import pyplot as plt
 
 matplotlib.use("qt5agg")
 logger = logging.getLogger(__name__)

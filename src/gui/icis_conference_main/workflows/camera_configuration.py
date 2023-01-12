@@ -1,18 +1,19 @@
 import time
 
-from old_src.gui.icis_conference_main.shared_widgets.page_title import PageTitle
-from old_src.gui.icis_conference_main.shared_widgets.primary_button import (
-    active_primary_button_style_sheet,
-    not_active_primary_button_style_sheet,
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+
+from src.gui.icis_conference_main.shared_widgets.page_title import PageTitle
+from src.gui.icis_conference_main.shared_widgets.primary_button import (
     PrimaryButton,
+    not_active_primary_button_style_sheet,
+    active_primary_button_style_sheet,
 )
-from old_src.gui.icis_conference_main.state.app_state import APP_STATE
-from old_src.gui.icis_conference_main.workers.cam_frame_worker import CamFrameWorker
-from old_src.gui.icis_conference_main.workflows.available_cameras_list import (
+from src.gui.icis_conference_main.state.app_state import APP_STATE
+from src.gui.icis_conference_main.workers.cam_frame_worker import CamFrameWorker
+from src.gui.icis_conference_main.workflows.available_cameras_list import (
     AvailableCamerasList,
 )
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 
 class CameraConfiguration(QWidget):

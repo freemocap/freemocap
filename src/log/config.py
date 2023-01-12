@@ -3,7 +3,7 @@ import logging.handlers
 import sys
 from logging.config import dictConfig
 
-from freemocap.configuration.paths_and_files_names import get_log_file_path
+from src.config.home_dir import get_log_file_path
 
 DEFAULT_LOGGING = {"version": 1, "disable_existing_loggers": False}
 

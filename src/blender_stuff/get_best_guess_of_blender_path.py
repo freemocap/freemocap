@@ -3,7 +3,7 @@ import platform
 from pathlib import Path
 from typing import Union
 
-from old_src.config.home_dir import os_independent_home_dir
+from src.config.home_dir import os_independent_home_dir
 
 logger = logging.getLogger(__name__)
 

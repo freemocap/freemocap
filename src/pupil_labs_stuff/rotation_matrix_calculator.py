@@ -1,10 +1,12 @@
 import logging
 from typing import List
 
-import keyboard
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
+
+import matplotlib.pyplot as plt
+import matplotlib
+import keyboard
+
 from jon_scratch.pupil_calibration_pipeline.data_classes.rotation_data_class import (
     RotationDataClass,
 )

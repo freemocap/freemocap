@@ -1,8 +1,8 @@
 import uvicorn
 from fastapi import FastAPI
 
-from old_src.api.middleware.cors import cors
-from old_src.api.routes import enabled_routers
+from src.api.middleware.cors import cors
+from src.api.routes import enabled_routers
 
 
 def create_app(*args, **kwargs):

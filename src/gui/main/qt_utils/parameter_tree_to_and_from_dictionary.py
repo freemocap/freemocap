@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Dict, Any
 
 from pyqtgraph.parametertree import Parameter
 

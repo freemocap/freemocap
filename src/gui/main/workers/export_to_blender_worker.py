@@ -1,9 +1,11 @@
-import logging
 from pathlib import Path
 from typing import Union
 
-from old_src.blender_stuff import export_to_blender
-from PyQt6.QtCore import pyqtSignal, QThread
+from PyQt6.QtCore import QThread, pyqtSignal
+
+import logging
+
+from src.blender_stuff import export_to_blender
 
 logger = logging.getLogger(__name__)
 

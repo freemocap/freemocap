@@ -3,39 +3,40 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from old_src.blender_stuff.create_blend_file_from_session_data import (
+
+from src.blender_stuff.create_blend_file_from_session_data import (
     create_blend_file_from_session_data,
 )
-from old_src.config.home_dir import (
+from src.config.home_dir import (
     MEDIAPIPE_2D_NPY_FILE_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
+    MEDIAPIPE_3D_NPY_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
 )
-from old_src.core_processes.batch_processing.session_processing_parameter_models import (
-    SessionProcessingParameterModel,
-)
-from old_src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
+from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
-from old_src.core_processes.capture_volume_calibration.triangulate_3d_data import (
+from src.core_processes.capture_volume_calibration.triangulate_3d_data import (
     triangulate_3d_data,
 )
-from old_src.core_processes.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
+from src.core_processes.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
     convert_mediapipe_npy_to_csv,
 )
-from old_src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
+from src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
-from old_src.core_processes.post_process_skeleton_data.estimate_skeleton_segment_lengths import (
+from src.core_processes.post_process_skeleton_data.estimate_skeleton_segment_lengths import (
     estimate_skeleton_segment_lengths,
     mediapipe_skeleton_segment_definitions,
     save_skeleton_segment_lengths_to_json,
 )
-from old_src.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import (
+from src.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import (
     gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass,
 )
-from old_src.tests.test_mediapipe_data import (
+from src.core_processes.batch_processing.session_processing_parameter_models import (
+    SessionProcessingParameterModel,
+)
+from src.tests.test_mediapipe_data import (
     test_mediapipe_2d_data,
     test_mediapipe_3d_data,
 )
@@ -59,7 +60,7 @@ def process_session_folder(
     s = session_processing_parameter_model  # make it smol
 
     if s.start_processing_at_stage <= 0:
-        if not Path(s.synchronized_videos_folder_path).exists():
+        if not Path(s.path_to_folder_of_synchronized_videos).exists():
             raise FileNotFoundError(
                 f"Could not find synchronized_videos folder at {synchronized_videos_folder}"
             )
@@ -67,17 +68,17 @@ def process_session_folder(
         logger.info("Detecting 2d skeletons...")
         # 2d skeleton detection
         mediapipe_skeleton_detector = MediaPipeSkeletonDetector(
-            parameter_model=s.mediapipe_parameters_model,
+            parameter_model=s.mediapipe_2d_parameters,
         )
 
         mediapipe_2d_data = mediapipe_skeleton_detector.process_folder_full_of_videos(
-            s.synchronized_videos_folder_path,
-            s.output_data_folder_path / RAW_DATA_FOLDER_NAME,
+            s.path_to_folder_of_synchronized_videos,
+            s.path_to_output_data_folder / RAW_DATA_FOLDER_NAME,
         )
 
         assert test_mediapipe_2d_data(
-            s.synchronized_videos_folder_path,
-            s.output_data_folder_path / RAW_DATA_FOLDER_NAME,
+            s.path_to_folder_of_synchronized_videos,
+            s.path_to_output_data_folder / RAW_DATA_FOLDER_NAME,
             mediapipe_2d_data,
         )
 
@@ -87,15 +88,15 @@ def process_session_folder(
         if s.start_processing_at_stage > 0:
             try:
                 mediapipe_2d_data = np.load(
-                    s.output_data_folder_path / MEDIAPIPE_2D_NPY_FILE_NAME
+                    s.path_to_output_data_folder / MEDIAPIPE_2D_NPY_FILE_NAME
                 )
             except FileNotFoundError:
                 mediapipe_2d_data = np.load(
-                    s.output_data_folder_path / "mediaPipeData_2d.npy"
+                    s.path_to_output_data_folder / "mediaPipeData_2d.npy"
                 )
             assert test_mediapipe_2d_data(
-                s.synchronized_videos_folder_path,
-                s.output_data_folder_path,
+                s.path_to_folder_of_synchronized_videos,
+                s.path_to_output_data_folder,
                 mediapipe_2d_data,
             )
 
@@ -105,15 +106,15 @@ def process_session_folder(
         ) = triangulate_3d_data(
             anipose_calibration_object=s.anipose_calibration_object,
             mediapipe_2d_data=mediapipe_2d_data,
-            output_data_folder_path=Path(s.output_data_folder_path)
+            output_data_folder_path=Path(s.path_to_output_data_folder)
             / RAW_DATA_FOLDER_NAME,
-            mediapipe_confidence_cutoff_threshold=s.anipose_triangulate_3d_parameters_model.confidence_threshold_cutoff,
-            use_triangulate_ransac=s.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
+            mediapipe_confidence_cutoff_threshold=s.anipose_triangulate_3d_parameters.confidence_threshold_cutoff,
+            use_triangulate_ransac=s.anipose_triangulate_3d_parameters.use_triangulate_ransac_method,
         )
 
         assert test_mediapipe_3d_data(
-            s.synchronized_videos_folder_path,
-            Path(s.output_data_folder_path) / RAW_DATA_FOLDER_NAME,
+            s.path_to_folder_of_synchronized_videos,
+            Path(s.path_to_output_data_folder) / RAW_DATA_FOLDER_NAME,
             raw_skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar,
         )
@@ -127,26 +128,26 @@ def process_session_folder(
             try:
                 raw_skel3d_frame_marker_xyz = np.load(
                     str(
-                        Path(s.output_data_folder_path)
+                        Path(s.path_to_output_data_folder)
                         / RAW_DATA_FOLDER_NAME
                         / MEDIAPIPE_3D_NPY_FILE_NAME
                     )
                 )
                 skeleton_reprojection_error_fr_mar = np.load(
                     str(
-                        Path(s.output_data_folder_path)
+                        Path(s.path_to_output_data_folder)
                         / RAW_DATA_FOLDER_NAME
                         / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
                     )
                 )
             except:
                 raise FileNotFoundError(
-                    f"Could not find 3d data at {s.output_data_folder_path}"
+                    f"Could not find 3d data at {s.path_to_output_data_folder}"
                 )
 
             assert test_mediapipe_3d_data(
-                s.synchronized_videos_folder_path,
-                Path(s.output_data_folder_path) / RAW_DATA_FOLDER_NAME,
+                s.path_to_folder_of_synchronized_videos,
+                Path(s.path_to_output_data_folder) / RAW_DATA_FOLDER_NAME,
                 raw_skel3d_frame_marker_xyz,
                 skeleton_reprojection_error_fr_mar,
             )
@@ -154,10 +155,10 @@ def process_session_folder(
         skel3d_frame_marker_xyz = gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
             skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
-            path_to_folder_where_we_will_save_this_data=s.output_data_folder_path,
-            sampling_rate=s.post_processing_parameters_model.framerate,
-            cut_off=s.post_processing_parameters_model.butterworth_filter_parameters.cutoff_frequency,
-            order=s.post_processing_parameters_model.butterworth_filter_parameters.order,
+            path_to_folder_where_we_will_save_this_data=s.path_to_output_data_folder,
+            sampling_rate=s.post_processing_parameters.framerate,
+            cut_off=s.post_processing_parameters.butterworth_filter_parameters.cutoff_frequency,
+            order=s.post_processing_parameters.butterworth_filter_parameters.order,
             reference_frame_number=None,
         )
 
@@ -167,14 +168,14 @@ def process_session_folder(
         # break up big NPY and save out csv's
         convert_mediapipe_npy_to_csv(
             mediapipe_3d_frame_trackedPoint_xyz=skel3d_frame_marker_xyz,
-            output_data_folder_path=s.output_data_folder_path,
+            output_data_folder_path=s.path_to_output_data_folder,
         )
 
     if s.start_processing_at_stage <= 3:
         logger.info("Creating Blender animation from motion capture data...")
         # export to Blender
         path_to_skeleton_body_csv = (
-            s.output_data_folder_path / "mediapipe_body_3d_xyz.csv"
+            s.path_to_output_data_folder / "mediapipe_body_3d_xyz.csv"
         )
         skeleton_dataframe = pd.read_csv(path_to_skeleton_body_csv)
 
@@ -185,12 +186,12 @@ def process_session_folder(
         )
 
         save_skeleton_segment_lengths_to_json(
-            s.output_data_folder_path, skeleton_segment_lengths_dict
+            s.path_to_output_data_folder, skeleton_segment_lengths_dict
         )
 
         logger.info("Starting Blender output sub-process...")
         create_blend_file_from_session_data(
-            session_folder_path=Path(s.synchronized_videos_folder_path).parent,
+            session_folder_path=Path(s.path_to_folder_of_synchronized_videos).parent,
             blender_exe_path=s.path_to_blender_executable,
         )
 
@@ -238,7 +239,7 @@ if __name__ == "__main__":
         path_to_blender_executable=path_to_blender_executable,
     )
 
-    session_processing_parameter_model.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method = (
+    session_processing_parameter_model.anipose_triangulate_3d_parameters.use_triangulate_ransac_method = (
         False
     )
 

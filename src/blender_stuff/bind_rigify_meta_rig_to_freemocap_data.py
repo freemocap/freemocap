@@ -1,11 +1,13 @@
-import json
-import sys
-from pathlib import Path
 from typing import List
 
-import addon_utils
 import bpy
+import addon_utils
+
 import numpy as np
+from pathlib import Path
+import json
+
+import sys
 
 print("Running script to create Blender file from freemocap session data: " + __file__)
 ###############################################################

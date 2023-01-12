@@ -1,5 +1,8 @@
-from old_src.config.home_dir import os_independent_home_dir
+from typing import List
+
 from pydantic import BaseModel
+
+from src.config.home_dir import os_independent_home_dir
 
 
 class WebcamConfig(BaseModel):

@@ -1,31 +1,33 @@
 import logging
 import traceback
+from pathlib import Path
 from typing import Optional, Union
 
 from fastapi import APIRouter
+from pydantic import BaseModel
+
 from jon_scratch.pupil_calibration_pipeline.qt_gl_laser_skeleton_visualizer import (
     QtGlLaserSkeletonVisualizer,
 )
-from old_src.cameras.launch_camera_frame_loop import launch_camera_frame_loop
-from old_src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
-from old_src.config.home_dir import (
+from src.cameras.launch_camera_frame_loop import launch_camera_frame_loop
+from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
+from src.config.home_dir import (
     create_default_session_id,
-    create_session_folder,
-    get_most_recent_session_id,
     get_session_folder_path,
+    get_most_recent_session_id,
+    create_session_folder,
 )
-from old_src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
+from src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
-from old_src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
+from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
     CalibrationPipelineOrchestrator,
 )
-from old_src.pipelines.session_pipeline.session_pipeline_orchestrator import (
-    load_mediapipe2d_data,
-    load_mediapipe3d_skeleton_data,
+from src.pipelines.session_pipeline.session_pipeline_orchestrator import (
     SessionPipelineOrchestrator,
+    load_mediapipe3d_skeleton_data,
+    load_mediapipe2d_data,
 )
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 

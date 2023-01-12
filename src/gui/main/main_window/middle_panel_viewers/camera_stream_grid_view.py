@@ -1,13 +1,19 @@
-import logging
 from typing import Dict
 
 import cv2
-from old_src.cameras.webcam_config import WebcamConfig
-from old_src.gui.main.custom_widgets.single_camera_widget import SingleCameraWidget
-from old_src.gui.main.qt_utils.clear_layout import clear_layout
 from PyQt6 import QtGui
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+)
+
+from src.cameras.webcam_config import WebcamConfig
+from src.gui.main.custom_widgets.single_camera_widget import SingleCameraWidget
+from src.gui.main.qt_utils.clear_layout import clear_layout
+
+import logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,12 +1,13 @@
 import enum
 
-from old_src.gui.icis_conference_main.workers.cam_charuco_frame_worker import (
-    CamCharucoFrameWorker,
-)
-from old_src.gui.icis_conference_main.workers.cam_frame_worker import CamFrameWorker
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
+
+from src.gui.icis_conference_main.workers.cam_charuco_frame_worker import (
+    CamCharucoFrameWorker,
+)
+from src.gui.icis_conference_main.workers.cam_frame_worker import CamFrameWorker
 
 
 class WorkerType(enum.Enum):

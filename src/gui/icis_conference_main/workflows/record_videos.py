@@ -1,19 +1,3 @@
-from old_src.blender_stuff import (
-    export_to_blender,
-)
-from old_src.cameras.save_synchronized_videos import save_synchronized_videos
-from old_src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
-    MediaPipeSkeletonDetector,
-)
-from old_src.gui.icis_conference_main.state.app_state import APP_STATE
-from old_src.gui.icis_conference_main.workflows.single_camera import SingleCamera
-from old_src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
-    CalibrationPipelineOrchestrator,
-)
-from old_src.pipelines.session_pipeline.session_pipeline_orchestrator import (
-    load_mediapipe2d_data,
-    SessionPipelineOrchestrator,
-)
 from PyQt6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -21,6 +5,23 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
+)
+
+from src.cameras.save_synchronized_videos import save_synchronized_videos
+from src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
+    MediaPipeSkeletonDetector,
+)
+from src.gui.icis_conference_main.state.app_state import APP_STATE
+from src.gui.icis_conference_main.workflows.single_camera import SingleCamera
+from src.blender_stuff import (
+    export_to_blender,
+)
+from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
+    CalibrationPipelineOrchestrator,
+)
+from src.pipelines.session_pipeline.session_pipeline_orchestrator import (
+    SessionPipelineOrchestrator,
+    load_mediapipe2d_data,
 )
 
 

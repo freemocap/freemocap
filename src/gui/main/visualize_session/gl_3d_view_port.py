@@ -4,10 +4,15 @@ from typing import Union
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
-from old_src.core_processes.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
+from pyqtgraph.dockarea.Dock import Dock
+
+from src.core_processes.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_body_connections,
 )
-from PyQt6.QtWidgets import QVBoxLayout, QWidget
+from src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import (
+    Data3dMultiFramePayload,
+)
 
 logger = logging.getLogger(__name__)
 

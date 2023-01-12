@@ -1,18 +1,26 @@
 import logging
-from typing import List
+from typing import Union, List
 
 import keyboard
-import matplotlib
 import numpy as np
+from scipy import optimize
+from matplotlib import pyplot as plt
+import matplotlib
+from scipy.spatial.transform import Rotation
+
+from jon_scratch.pupil_calibration_pipeline.data_classes.freemocap_session_data_class import (
+    FreemocapSessionDataClass,
+)
 from jon_scratch.pupil_calibration_pipeline.data_classes.pupil_dataclass_and_handler import (
     PupilLabsDataClass,
 )
 from jon_scratch.pupil_calibration_pipeline.data_classes.rotation_data_class import (
     RotationDataClass,
 )
-from matplotlib import pyplot as plt
-from scipy import optimize
-from scipy.spatial.transform import Rotation
+from jon_scratch.pupil_calibration_pipeline.spherical_coordiate_converters.cart2sph_and_sph2cart import (
+    cart2sph,
+    sph2cart,
+)
 
 matplotlib.use("qt5agg")
 logger = logging.getLogger(__name__)

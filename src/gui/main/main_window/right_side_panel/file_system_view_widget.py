@@ -1,12 +1,17 @@
-import logging
 import os
+import sys
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFileSystemModel
-from PyQt6.QtWidgets import QMenu, QPushButton, QTreeView, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QWidget, QTreeView, QVBoxLayout, QMenu, QPushButton
 from qtpy import QtGui
+
+from src.config.home_dir import get_freemocap_data_folder_path, get_session_folder_path
+from src.gui.main.app_state.app_state import APP_STATE
+
+import logging
 
 logger = logging.getLogger(__name__)
 

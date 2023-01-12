@@ -1,12 +1,17 @@
-import logging
 from pathlib import Path
 from typing import Union
 
 import numpy as np
-from old_src.core_processes.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
+from PyQt6.QtCore import QThread, pyqtSignal
+
+from src.cameras.detection.cam_singleton import get_or_create_cams
+from src.cameras.detection.models import FoundCamerasResponse
+
+import logging
+
+from src.core_processes.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
     convert_mediapipe_npy_to_csv,
 )
-from PyQt6.QtCore import pyqtSignal, QThread
 
 logger = logging.getLogger(__name__)
 

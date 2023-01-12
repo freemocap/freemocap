@@ -1,10 +1,12 @@
 import logging
 import time
+from datetime import datetime
 
 import cv2
 import numpy as np
 from fastapi import APIRouter, WebSocket
-from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
+
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
 
 logger = logging.getLogger(__name__)
 

@@ -1,19 +1,20 @@
 import logging
 
 import cv2
-from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
-from old_src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
-from old_src.core_processes.capture_volume_calibration.calibration_dataclasses import (
+
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
+from src.core_processes.capture_volume_calibration.calibration_dataclasses import (
     CameraCalibrationData,
 )
-from old_src.core_processes.capture_volume_calibration.charuco_board_detection import (
-    CharucoViewData,
-)
-from old_src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
-from old_src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_image_annotator import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
+)
+from src.core_processes.capture_volume_calibration.charuco_board_detection import (
+    CharucoViewData,
 )
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from old_src.config.data_paths import create_home_data_directory
+from src.config.data_paths import create_home_data_directory
 
 startup_router = APIRouter()
 

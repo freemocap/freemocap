@@ -1,6 +1,8 @@
-from typing import Dict, List, NamedTuple, Union
+from typing import NamedTuple, Union, Dict, List
 
-from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
+import numpy as np
+
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
 
 
 class MultiFramePayload(NamedTuple):

@@ -3,10 +3,11 @@ from typing import Union
 
 import cv2
 import numpy as np
-from old_src.config.home_dir import (
-    MEDIAPIPE_2D_NPY_FILE_NAME,
+
+from src.config.home_dir import (
     MEDIAPIPE_3D_NPY_FILE_NAME,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
+    MEDIAPIPE_2D_NPY_FILE_NAME,
 )
 
 

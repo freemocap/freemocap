@@ -1,13 +1,15 @@
 from pathlib import Path
 from typing import Union
 
-from old_src.gui.main.main_window.right_side_panel.file_system_view_widget import (
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QTabWidget, QPushButton
+
+from src.gui.main.app import get_qt_app
+from src.gui.main.main_window.right_side_panel.file_system_view_widget import (
     FileSystemViewWidget,
 )
-from old_src.gui.main.main_window.right_side_panel.jupyter_console_widget import (
+from src.gui.main.main_window.right_side_panel.jupyter_console_widget import (
     JupyterConsoleWidget,
 )
-from PyQt6.QtWidgets import QFrame, QTabWidget, QVBoxLayout
 
 
 class RightSidePanel(QTabWidget):

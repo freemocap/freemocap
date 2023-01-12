@@ -1,19 +1,20 @@
 import logging
 import signal
 import sys
-from pathlib import Path
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
+
+from pathlib import Path
 
 repo = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(repo))
 
 
-from old_src.gui.main.style_stuff.css_style_sheet import qt_app_css_style_sheet
+from src.gui.main.style_stuff.css_style_sheet import qt_app_css_style_sheet
 
-from old_src.gui.main.app import get_qt_app
-from old_src.gui.main.main_window.main_window import MainWindow, EXIT_CODE_REBOOT
+from src.gui.main.app import get_qt_app
+from src.gui.main.main_window.main_window import MainWindow, EXIT_CODE_REBOOT
 
 logger = logging.getLogger(__name__)
 

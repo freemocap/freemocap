@@ -1,17 +1,17 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Union, Any, Dict
+from rich.pretty import pprint
 
-from old_src.core_processes.batch_processing.process_session_folder import (
+from src.core_processes.batch_processing.process_session_folder import (
     process_session_folder,
 )
-from old_src.core_processes.batch_processing.session_processing_parameter_models import (
+from src.core_processes.batch_processing.session_processing_parameter_models import (
     SessionProcessingParameterModel,
 )
-from old_src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
+from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
-from rich.pretty import pprint
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def batch_process_session_folders(
             path_to_blender_executable=path_to_blender_executable,
         )
 
-        session_processing_parameter_model.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method = (
+        session_processing_parameter_model.anipose_triangulate_3d_parameters.use_triangulate_ransac_method = (
             False
         )
 

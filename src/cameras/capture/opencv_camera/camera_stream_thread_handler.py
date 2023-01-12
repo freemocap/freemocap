@@ -1,10 +1,12 @@
 import logging
 import threading
+import time
 import traceback
 from typing import List
 
 import numpy as np
-from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
+
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
 
 logger = logging.getLogger(__name__)
 

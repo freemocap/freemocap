@@ -1,8 +1,8 @@
 import asyncio
 
-from old_src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
-from old_src.cameras.detection.cam_singleton import get_or_create_cams
-from old_src.cameras.webcam_config import WebcamConfig
+from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
+from src.cameras.detection.cam_singleton import get_or_create_cams
+from src.cameras.webcam_config import WebcamConfig
 
 
 async def imshow_testing():

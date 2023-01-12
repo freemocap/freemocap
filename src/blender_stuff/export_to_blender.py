@@ -1,10 +1,11 @@
-import logging
 from pathlib import Path
 from typing import Union
 
-from old_src.blender_stuff.create_blend_file_from_session_data import (
+
+from src.blender_stuff.create_blend_file_from_session_data import (
     create_blend_file_from_session_data,
 )
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,6 @@ def export_to_blender(
 
 
 if __name__ == "__main__":
-    from old_src.config.home_dir import get_most_recent_session_id
+    from src.config.home_dir import get_most_recent_session_id
 
     export_to_blender(get_most_recent_session_id())

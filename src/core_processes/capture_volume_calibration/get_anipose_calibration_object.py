@@ -3,11 +3,11 @@ import shutil
 from pathlib import Path
 from typing import Union
 
-from old_src.config.home_dir import (
-    CAMERA_CALIBRATION_FILE_NAME,
+from src.config.home_dir import (
     get_freemocap_data_folder_path,
+    CAMERA_CALIBRATION_FILE_NAME,
 )
-from old_src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
+from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
 

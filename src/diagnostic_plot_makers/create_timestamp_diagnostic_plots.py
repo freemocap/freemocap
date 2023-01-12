@@ -1,9 +1,10 @@
 import logging
 from pathlib import Path
-from typing import List, Union
+from typing import Union, Dict, List
 
 import numpy as np
-from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
+
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
 
 logger = logging.getLogger(__name__)
 

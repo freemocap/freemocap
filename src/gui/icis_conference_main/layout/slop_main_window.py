@@ -1,28 +1,35 @@
-from old_src.gui.icis_conference_main.icis_conference_app import get_qt_app
-from old_src.gui.icis_conference_main.qt_utils.clear_layout import clearLayout
-from old_src.gui.icis_conference_main.qt_widgets.jupyter_console_widget import (
-    JupyterConsoleWidget,
-)
-from old_src.gui.icis_conference_main.state.app_state import APP_STATE
-from old_src.gui.icis_conference_main.workflows.camera_configuration import (
-    CameraConfiguration,
-)
-from old_src.gui.icis_conference_main.workflows.new_recording_session import (
-    NewRecordingSession,
-)
-from old_src.gui.icis_conference_main.workflows.record_videos import RecordVideos
-from old_src.gui.icis_conference_main.workflows.show_cams_charuco import ShowCamsCharuco
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
-    QFrame,
-    QHBoxLayout,
     QMainWindow,
     QMenuBar,
-    QSplitter,
-    QVBoxLayout,
     QWidget,
+    QHBoxLayout,
+    QGridLayout,
+    QVBoxLayout,
+    QLabel,
+    QFrame,
+    QSplitter,
 )
+
+from src.gui.icis_conference_main.icis_conference_app import get_qt_app
+from src.gui.icis_conference_main.qt_utils.clear_layout import clearLayout
+from src.gui.icis_conference_main.qt_widgets.jupyter_console_widget import (
+    JupyterConsoleWidget,
+)
+from src.gui.icis_conference_main.state.app_state import APP_STATE
+from src.gui.icis_conference_main.workflows.calibration_instructions import (
+    CalibrationInstructions,
+)
+from src.gui.icis_conference_main.workflows.camera_configuration import (
+    CameraConfiguration,
+)
+from src.gui.icis_conference_main.workflows.new_recording_session import (
+    NewRecordingSession,
+)
+from src.gui.icis_conference_main.workflows.record_videos import RecordVideos
+from src.gui.icis_conference_main.workflows.show_cams_charuco import ShowCamsCharuco
+from src.gui.icis_conference_main.workflows.welcome import Welcome
 
 
 class SlopMainWindow(QMainWindow):
@@ -102,7 +109,7 @@ class SlopMainWindow(QMainWindow):
         file_menu.addAction(exit_action)
 
     def _create_exit_action(self):
-        # old_src/freemocap_qt_gui/conference/assets/new_recording_session.png
+        # src/freemocap_qt_gui/conference/assets/new_recording_session.png
         action = QAction("&Quit", self)
         action.setShortcut("Ctrl+Q")
         action.setStatusTip("Exit application")

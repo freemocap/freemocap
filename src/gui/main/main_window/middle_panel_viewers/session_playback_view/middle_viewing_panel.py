@@ -1,21 +1,24 @@
-import logging
 from typing import List
 
 import numpy as np
-from old_src.gui.main.main_window.middle_panel_viewers.camera_stream_grid_view import (
-    CameraStreamGridView,
-)
-from old_src.gui.main.main_window.middle_panel_viewers.session_playback_view.session_playback_view import (
-    SessionPlaybackView,
-)
-from old_src.gui.main.main_window.middle_panel_viewers.welcome_view.welcome_create_or_load_new_session_panel import (
-    WelcomeCreateOrLoadNewSessionPanel,
-)
 from PyQt6.QtWidgets import (
     QFrame,
     QVBoxLayout,
     QWidget,
 )
+
+from src.gui.main.main_window.middle_panel_viewers.welcome_view.welcome_create_or_load_new_session_panel import (
+    WelcomeCreateOrLoadNewSessionPanel,
+)
+
+from src.gui.main.main_window.middle_panel_viewers.camera_stream_grid_view import (
+    CameraStreamGridView,
+)
+from src.gui.main.main_window.middle_panel_viewers.session_playback_view.session_playback_view import (
+    SessionPlaybackView,
+)
+
+import logging
 
 logger = logging.getLogger(__name__)
 

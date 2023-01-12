@@ -1,6 +1,5 @@
-import time
-
 import cv2
+import time
 
 NUMBER_OF_USB_PORTS_TO_CHECK = 20
 NUMBER_OF_FRAMES_TO_GRAB = 10

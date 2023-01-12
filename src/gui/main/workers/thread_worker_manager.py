@@ -1,37 +1,38 @@
-import logging
 from pathlib import Path
-from typing import Callable, Dict, List, Union
+from typing import Dict, Union, Callable, List
 
 import numpy as np
-from old_src.cameras.detection.models import FoundCamerasResponse
-from old_src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from old_src.gui.main.workers.anipose_calibration_thread_worker import (
-    AniposeCalibrationThreadWorker,
-)
-from old_src.gui.main.workers.cam_detection_thread_worker import (
-    CameraDetectionThreadWorker,
-)
-from old_src.gui.main.workers.convert_npy_to_csv_thread_worker import (
-    ConvertNpyToCsvThreadWorker,
-)
-from old_src.gui.main.workers.mediapipe_2d_detection_thread_worker import (
-    Mediapipe2dDetectionThreadWorker,
-)
-from old_src.gui.main.workers.post_process_3d_data_thread_worker import (
-    PostProcess3dDataThreadWorker,
-)
-from old_src.gui.main.workers.save_to_video_thread_worker import SaveToVideoThreadWorker
-from old_src.gui.main.workers.session_playback_thread_worker import (
-    SessionPlaybackThreadWorker,
-)
-from old_src.gui.main.workers.triangulate_3d_data_thread_worker import (
-    Triangulate3dDataThreadWorker,
-)
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
-
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
+from src.cameras.detection.models import FoundCamerasResponse
+from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
+)
+
+from src.gui.main.workers.anipose_calibration_thread_worker import (
+    AniposeCalibrationThreadWorker,
+)
+from src.gui.main.workers.cam_detection_thread_worker import CameraDetectionThreadWorker
+
+import logging
+
+from src.gui.main.workers.convert_npy_to_csv_thread_worker import (
+    ConvertNpyToCsvThreadWorker,
+)
+from src.gui.main.workers.export_to_blender_worker import ExportToBlenderThreadWorker
+from src.gui.main.workers.mediapipe_2d_detection_thread_worker import (
+    Mediapipe2dDetectionThreadWorker,
+)
+from src.gui.main.workers.post_process_3d_data_thread_worker import (
+    PostProcess3dDataThreadWorker,
+)
+from src.gui.main.workers.save_to_video_thread_worker import SaveToVideoThreadWorker
+from src.gui.main.workers.session_playback_thread_worker import (
+    SessionPlaybackThreadWorker,
+)
+from src.gui.main.workers.triangulate_3d_data_thread_worker import (
+    Triangulate3dDataThreadWorker,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,7 +104,7 @@ class ThreadWorkerManager(QWidget):
         self._anipose_calibration_worker = AniposeCalibrationThreadWorker(
             charuco_board_definition=charuco_board_definition,
             calibration_videos_folder_path=calibration_videos_folder_path,
-            charuco_square_size=charuco_square_size_mm,
+            charuco_square_size_mm=charuco_square_size_mm,
             session_id=session_id,
         )
         self._anipose_calibration_worker.start()

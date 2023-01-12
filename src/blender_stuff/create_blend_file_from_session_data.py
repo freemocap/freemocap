@@ -1,12 +1,15 @@
-import logging
 import subprocess
 from pathlib import Path
 from typing import Union
+
+from src.config.home_dir import get_session_folder_path
 
 # blender_exe_path = (
 #     r"C:\Users\jonma\Blender Foundation\stable\blender-3.1.0-windows-x64\blender.exe"
 # )
 # blender_exe_path = r"C:\Users\jonma\Blender Foundation\Blender 3.1\blender.exe"
+
+import logging
 
 logger = logging.getLogger(__name__)
 

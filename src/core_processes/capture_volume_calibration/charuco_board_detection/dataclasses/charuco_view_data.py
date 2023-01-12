@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
 )
 

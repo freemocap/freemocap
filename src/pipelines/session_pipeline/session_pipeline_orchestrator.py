@@ -6,32 +6,33 @@ from typing import Dict, Union
 
 import cv2
 import numpy as np
-from old_src.config.data_paths import freemocap_data_path
-from old_src.config.home_dir import (
-    create_default_session_id,
+
+from src.config.data_paths import freemocap_data_path
+from src.config.home_dir import (
     create_session_folder,
+    create_default_session_id,
     get_most_recent_session_id,
     get_output_data_folder_path,
 )
-from old_src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
-    CharucoBoardDetector,
-)
-from old_src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
-    Mediapipe2dDataPayload,
+from src.core_processes.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
+    Mediapipe2dDataPayload,
 )
-from old_src.core_processes.show_cam_window import show_cam_window
-from old_src.core_processes.utils.image_fps_writer import write_fps_to_image
-from old_src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
+from src.core_processes.show_cam_window import show_cam_window
+from src.core_processes.utils.image_fps_writer import write_fps_to_image
+from src.pipelines.calibration_pipeline.calibration_pipeline_orchestrator import (
     CalibrationPipelineOrchestrator,
 )
-from old_src.pipelines.session_pipeline.data_classes.data3d_full_session_data import (
+from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
+    CharucoBoardDetector,
+)
+from src.pipelines.session_pipeline.data_classes.data3d_full_session_data import (
     Data3dFullSessionPayload,
 )
-from old_src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import (
+from src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import (
     Data3dMultiFramePayload,
 )
-from old_src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
+from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
 
 logger = logging.getLogger(__name__)
 

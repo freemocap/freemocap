@@ -1,21 +1,23 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Union
+from typing import List, Union, Any
 
 import cv2
-import mediapipe as mp
 import numpy as np
-from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
-from old_src.cameras.persistence.video_writer.video_recorder import VideoRecorder
-from old_src.config.home_dir import MEDIAPIPE_2D_NPY_FILE_NAME
-from old_src.core_processes.batch_processing.session_processing_parameter_models import (
-    MediaPipe2DParametersModel,
-)
-from old_src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
+import mediapipe as mp
+from tqdm import tqdm
+
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
+from src.config.home_dir import MEDIAPIPE_2D_NPY_FILE_NAME
+
+from src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict import (
     mediapipe_tracked_point_names_dict,
 )
-from tqdm import tqdm
+from src.core_processes.batch_processing.session_processing_parameter_models import (
+    MediaPipe2DParametersModel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +121,7 @@ class MediaPipeSkeletonDetector:
         self.number_of_right_hand_tracked_points = len(self.right_hand_names_list)
         self.number_of_left_hand_tracked_points = len(self.left_hand_names_list)
         self.number_of_face_tracked_points = (
-            mp.python.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
+            mp.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
         )
 
         self.number_of_tracked_points_total = (
@@ -354,10 +356,6 @@ class MediaPipeSkeletonDetector:
         image_width: Union[int, float],
         image_height: Union[int, float],
     ) -> Mediapipe2dNumpyArrays:
-
-        # apparently `mediapipe_results.pose_landmarks.landmark` returns something iterable ¯\_(ツ)_/¯
-        mediapipe_pose_landmark_iterator = mp.python.solutions.pose.PoseLandmark
-        mediapipe_hand_landmark_iterator = mp.python.solutions.hands.HandLandmark
 
         number_of_frames = len(mediapipe_results_list)
         number_of_spatial_dimensions = 2  # this will be 2d XY pixel data

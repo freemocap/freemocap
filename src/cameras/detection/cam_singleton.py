@@ -1,5 +1,5 @@
-from old_src.cameras.detection.cam_detection import DetectPossibleCameras
-from old_src.cameras.detection.models import FoundCamerasResponse
+from src.cameras.detection.cam_detection import DetectPossibleCameras
+from src.cameras.detection.models import FoundCamerasResponse
 
 # No consumer should call this "private" variable
 

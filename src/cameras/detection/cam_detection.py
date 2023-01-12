@@ -3,7 +3,9 @@ import platform
 import time
 
 import cv2
-from old_src.cameras.detection.models import FoundCamerasResponse
+import numpy as np
+
+from src.cameras.detection.models import FoundCamerasResponse
 
 CAM_CHECK_NUM = 20  # please give me a reason to increase this number ;D
 

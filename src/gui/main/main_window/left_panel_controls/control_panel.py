@@ -1,15 +1,21 @@
-import logging
+from PyQt6.QtWidgets import (
+    QFrame,
+    QVBoxLayout,
+    QToolBox,
+)
 
-from old_src.gui.main.main_window.left_panel_controls.toolbox_widgets.calibrate_capture_volume_panel import (
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.calibrate_capture_volume_panel import (
     CalibrateCaptureVolumePanel,
 )
-from old_src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup_control_panel import (
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.camera_setup_control_panel import (
     CameraSetupControlPanel,
 )
-from old_src.gui.main.main_window.left_panel_controls.toolbox_widgets.motion_capture_panel import (
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.motion_capture_panel import (
     MotionCapturePanel,
 )
-from PyQt6.QtWidgets import QFrame, QToolBox, QVBoxLayout
+
+
+import logging
 
 logger = logging.getLogger(__name__)
 

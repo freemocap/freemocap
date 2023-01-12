@@ -1,4 +1,8 @@
-from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QPushButton,
+)
 
 
 class SelectWorkflowScreen(QWidget):

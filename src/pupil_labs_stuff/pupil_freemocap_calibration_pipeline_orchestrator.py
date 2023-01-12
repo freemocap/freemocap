@@ -2,19 +2,19 @@ import copy
 import logging
 from pathlib import Path
 from typing import Union
-
 import numpy as np
+from rich import inspect
 from jon_scratch.pupil_calibration_pipeline.data_classes.freemocap_session_data_class import (
     FreemocapSessionDataClass,
+)
+from jon_scratch.pupil_calibration_pipeline.rotation_matrix_calculator import (
+    RotationMatrixCalculator,
 )
 from jon_scratch.pupil_calibration_pipeline.pupil_freemocap_synchronizer import (
     PupilFreemocapSynchronizer,
 )
 from jon_scratch.pupil_calibration_pipeline.qt_gl_laser_skeleton_visualizer import (
     QtGlLaserSkeletonVisualizer,
-)
-from jon_scratch.pupil_calibration_pipeline.rotation_matrix_calculator import (
-    RotationMatrixCalculator,
 )
 from jon_scratch.pupil_calibration_pipeline.session_data_loader import SessionDataLoader
 from jon_scratch.pupil_calibration_pipeline.vor_calibrator import VorCalibrator

@@ -5,8 +5,9 @@ from pathlib import Path
 from unittest import TestCase
 
 import numpy as np
-from old_src.cameras.capture.dataclasses.frame_payload import FramePayload
-from old_src.cameras.persistence.video_writer.video_recorder import VideoRecorder
+
+from src.cameras.capture.dataclasses.frame_payload import FramePayload
+from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 
 
 class VideoWriterTestCase(TestCase):

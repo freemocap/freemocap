@@ -1,14 +1,21 @@
-from old_src.gui.main.main_window.left_panel_controls.toolbox_widgets.process_session_data_panel import (
+from PyQt6.QtCore import QLine, Qt
+from PyQt6.QtWidgets import (
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+    QCheckBox,
+    QLabel,
+)
+
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.process_session_data_panel import (
     ProcessSessionDataPanel,
 )
-from old_src.gui.main.main_window.left_panel_controls.toolbox_widgets.visualize_motion_capture_data import (
+from src.gui.main.main_window.left_panel_controls.toolbox_widgets.visualize_motion_capture_data import (
     VisualizeMotionCaptureDataPanel,
 )
-from old_src.gui.main.style_stuff.styled_widgets.panel_section_title import (
+from src.gui.main.style_stuff.styled_widgets.panel_section_title import (
     PanelSectionTitle,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QCheckBox, QLabel, QPushButton, QVBoxLayout, QWidget
 
 
 class MotionCapturePanel(QWidget):
@@ -41,7 +48,7 @@ class MotionCapturePanel(QWidget):
         self._layout.addWidget(process_videos_section_title, alignment=Qt.AlignCenter)
         process_videos_section_title.setToolTip(
             "TODO: \n"
-            + "- Convert this mess of buttons into a 'Parameter Tree' like the one in the 'Camera Setup' panel (see `old_src/core_processes/batch_processes/process_session_folder.py`)\n\n"
+            + "- Convert this mess of buttons into a 'Parameter Tree' like the one in the 'Camera Setup' panel (see `src/core_processes/batch_processes/process_session_folder.py`)\n\n"
             + "- Add method to check what's in the `session_folder` and only enable the appropriate buttons"
         )
 

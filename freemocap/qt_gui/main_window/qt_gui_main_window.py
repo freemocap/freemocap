@@ -116,7 +116,7 @@ class QtGUIMainWindow(QMainWindow):
             self._handle_quick_start_button_clicked
         )
 
-        self._camera_view_widget.new_recording_video_folder_created_signal.connect(
+        self._skellycam_view_widget.new_recording_video_folder_created_signal.connect(
             save_most_recent_recording_path_as_toml
         )
 
@@ -131,12 +131,16 @@ class QtGUIMainWindow(QMainWindow):
             )
         )
 
+        self._skellycam_view_widget.new_recording_video_folder_created_signal.connect(
+            self._directory_view_widget.expand_directory_to_path
+        )
+
     def _handle_quick_start_button_clicked(self):
         self._central_tab_widget.set_welcome_tab_enabled(False)
         self._central_tab_widget.set_camera_view_tab_enabled(True)
         self._central_tab_widget.setCurrentIndex(1)
 
-        self._camera_view_widget.connect_to_cameras()
+        self._skellycam_view_widget.detect_available_cameras()
 
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
@@ -148,12 +152,12 @@ class QtGUIMainWindow(QMainWindow):
         return css_file_watcher
 
     def _create_center_tab_widget(self):
-        self._camera_view_widget = SkellyCamViewerWidget(
+        self._skellycam_view_widget = SkellyCamViewerWidget(
             parent=self,
             session_folder_path=self._session_process_parameter_model.session_info_model.session_folder_path,
         )
         self._camera_controller_widget = SkellyCamControllerWidget(
-            camera_viewer_widget=self._camera_view_widget,
+            camera_viewer_widget=self._skellycam_view_widget,
             parent=self,
         )
 
@@ -162,7 +166,7 @@ class QtGUIMainWindow(QMainWindow):
 
         center_tab_widget = CentralTabWidget(
             parent=self,
-            camera_view_widget=self._camera_view_widget,
+            camera_view_widget=self._skellycam_view_widget,
             camera_controller_widget=self._camera_controller_widget,
             welcome_to_freemocap_widget=self._welcome_to_freemocap_widget,
             visualize_data_widget=self._visualize_data_widget,
@@ -176,7 +180,7 @@ class QtGUIMainWindow(QMainWindow):
 
     def _create_control_panel_dock_widget(self):
         self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(
-            self._camera_view_widget
+            self._skellycam_view_widget
         )
         self._calibration_control_panel = CalibrationControlPanel(
             get_active_recording_info_callable=self._active_session_widget.get_active_recording_info,
@@ -227,7 +231,7 @@ class QtGUIMainWindow(QMainWindow):
         remove_empty_directories(get_freemocap_data_folder_path())
 
         try:
-            self._camera_view_widget.close()
+            self._skellycam_view_widget.close()
         except Exception as e:
             logger.error(f"Error while closing the viewer widget: {e}")
         super().closeEvent(a0)

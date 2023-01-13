@@ -9,11 +9,11 @@ build-backend = "flit_core.buildapi"
 name = "freemocap"
 readme = "README.md"
 authors = [
-    {name = "Skelly FreeMoCap", email = "info@freemocap.org"},
-    {name = "Endurance Idehen"},
-    {name = "Aaron Cherian"},
-    {name = "Jonathan Samir Matthis"},
-    ]
+    { name = "Skelly FreeMoCap", email = "info@freemocap.org" },
+    { name = "Endurance Idehen" },
+    { name = "Aaron Cherian" },
+    { name = "Jonathan Samir Matthis" },
+]
 license = { file = "LICENSE" }
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -43,7 +43,7 @@ classifiers = [
     "Topic :: System :: Hardware",
     "Topic :: System :: Hardware :: Universal Serial Bus (USB)",
     "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Video (UVC)",
-    ]
+]
 keywords = [
     "camera",
     "stream",
@@ -68,15 +68,18 @@ keywords = [
 
 #dynamic = ["dependencies"]
 dependencies = [
-"skellycam",
-"mediapipe",
+    "skellycam",
+    "mediapipe",
+    "opencv-contrib-python<4.7",
+    "toml",
+    "aniposelib",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.8, <3.11"
 
 dynamic = ["version", "description"]
 
 [project.optional-dependencies]
-dev = ["black", "bumpver", "isort", "pip-tools", "pytest"]
+dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "flit"]
 
 [project.urls]
 Homepage = "https://freemocap.org"
@@ -86,10 +89,10 @@ Github = "https://github.com/freemocap/skellycam"
 [tool.bumpver]
 current_version = "v2023.01.1000"
 version_pattern = "vYYYY.0M.BUILD[-TAG]"
-commit_message  = "Bump version {old_version} -> {new_version}"
-commit          = true
-tag             = true
-push            = true
+commit_message = "Bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = true
 
 [tool.bumpver.file_patterns]
 #"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']

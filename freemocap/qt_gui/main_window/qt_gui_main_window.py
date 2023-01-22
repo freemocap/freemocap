@@ -41,6 +41,7 @@ from freemocap.qt_gui.widgets.calibration_control_panel import (
     CalibrationControlPanel,
 )
 from freemocap.qt_gui.widgets.directory_view_widget import DirectoryViewWidget
+from freemocap.qt_gui.widgets.jupyter_console_widget import JupyterConsoleWidget
 from freemocap.qt_gui.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
@@ -108,6 +109,13 @@ class QtGUIMainWindow(QMainWindow):
         self.addDockWidget(
             Qt.DockWidgetArea.RightDockWidgetArea, self._directory_view_dock_widget
         )
+
+        self._jupyter_console_widget = JupyterConsoleWidget(parent=self)
+        jupyter_console_dock_widget = QDockWidget("Jupyter IPython Console", self)
+        self.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea, jupyter_console_dock_widget
+        )
+        jupyter_console_dock_widget.setWidget(self._jupyter_console_widget)
 
         self._connect_signals_to_slots()
 

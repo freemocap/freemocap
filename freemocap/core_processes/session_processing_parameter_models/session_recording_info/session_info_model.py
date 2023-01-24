@@ -1,10 +1,6 @@
 from pathlib import Path
 from typing import Union
 
-from freemocap.configuration.paths_and_files_names import (
-    create_new_session_folder,
-    get_most_recent_recording_path,
-)
 from freemocap.core_processes.session_processing_parameter_models.session_recording_info.recording_info_model import (
     RecordingInfoModel,
 )

@@ -7,14 +7,14 @@ from src.cameras.capture.opencv_camera.opencv_camera import OpenCVCamera
 from src.core_processes.capture_volume_calibration.calibration_dataclasses import (
     CameraCalibrationData,
 )
+from src.core_processes.capture_volume_calibration.charuco_board_detection import (
+    CharucoViewData,
+)
 from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_image_annotator import (
     annotate_image_with_charuco_data,
-)
-from src.core_processes.capture_volume_calibration.charuco_board_detection import (
-    CharucoViewData,
 )
 
 logger = logging.getLogger(__name__)

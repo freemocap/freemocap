@@ -43,8 +43,6 @@ from freemocap.qt_gui.widgets.calibration_control_panel import (
     CalibrationControlPanel,
 )
 from freemocap.qt_gui.widgets.directory_view_widget import DirectoryViewWidget
-from freemocap.qt_gui.widgets.jupyter_console_widget import JupyterConsoleWidget
-from freemocap.qt_gui.widgets.log_view_widget import LogViewWidget
 from freemocap.qt_gui.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )

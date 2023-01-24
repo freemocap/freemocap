@@ -1,7 +1,5 @@
 import logging
-from typing import Dict
 
-import numpy as np
 from PyQt6.QtWidgets import QVBoxLayout, QWidget
 from qtconsole.manager import QtKernelManager
 from qtconsole.rich_jupyter_widget import RichJupyterWidget

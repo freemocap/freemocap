@@ -1,11 +1,10 @@
+import logging
 from pathlib import Path
 from typing import Union
 
-import logging
-
 import numpy as np
 
-from src.config.home_dir import RAW_DATA_FOLDER_NAME, MEDIAPIPE_3D_NPY_FILE_NAME
+from src.config.home_dir import MEDIAPIPE_3D_NPY_FILE_NAME, RAW_DATA_FOLDER_NAME
 
 logger = logging.getLogger(__name__)
 

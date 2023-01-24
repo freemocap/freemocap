@@ -1,29 +1,29 @@
-import time
 import logging
+import time
 import traceback
 from pathlib import Path
-from typing import Union, Callable
+from typing import Callable, Union
 
 import cv2
 
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.config.home_dir import (
     create_default_session_id,
-    get_session_folder_path,
     get_freemocap_data_folder_path,
     get_session_calibration_toml_file_path,
-)
-from src.core_processes.show_cam_window import show_cam_window
-from src.core_processes.utils.image_fps_writer import write_fps_to_image
-from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
-    freemocap_anipose,
+    get_session_folder_path,
 )
 from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     AniposeCameraCalibrator,
 )
+from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
+    freemocap_anipose,
+)
 from src.core_processes.capture_volume_calibration.charuco_board_detection.charuco_board_detector import (
     CharucoBoardDetector,
 )
+from src.core_processes.show_cam_window import show_cam_window
+from src.core_processes.utils.image_fps_writer import write_fps_to_image
 from src.qt_visualizer_and_gui.qt_visualizer_and_gui import QTVisualizerAndGui
 
 logger = logging.getLogger(__name__)

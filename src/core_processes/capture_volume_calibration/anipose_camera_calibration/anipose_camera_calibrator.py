@@ -1,8 +1,9 @@
 import logging
 from pathlib import Path
-from typing import Union, Callable
+from typing import Callable, Union
 
 import numpy as np
+from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
 
 from src.config.home_dir import (
     get_freemocap_data_folder_path,
@@ -10,8 +11,6 @@ from src.config.home_dir import (
 from src.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
-from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
-
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
 )

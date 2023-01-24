@@ -9,7 +9,6 @@ from src.gui.icis_conference_main.icis_conference_app import get_qt_app
 from src.gui.icis_conference_main.layout.ICIS_conference_main_window import (
     ICISConferenceMainWindow,
 )
-from src.gui.icis_conference_main.layout.slop_main_window import SlopMainWindow
 
 
 def sigint_handler(*args):

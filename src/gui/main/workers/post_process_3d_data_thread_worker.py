@@ -1,11 +1,9 @@
+import logging
 from pathlib import Path
 from typing import Union
 
 import numpy as np
-from PyQt6.QtCore import QThread, pyqtSignal
-
-
-import logging
+from PyQt6.QtCore import pyqtSignal, QThread
 
 from src.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import (
     gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass,

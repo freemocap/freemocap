@@ -1,21 +1,18 @@
 import logging
 
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QPushButton,
     QCheckBox,
     QFormLayout,
-    QLineEdit,
-    QFileDialog,
     QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-
 
 from src.core_processes.mediapipe_stuff.mediapipe_default_settings import (
     default_mediapipe_confidence_threshold,
 )
-
 from src.gui.main.tool_tips_and_warning_labels.tool_tips_strings import (
     mediapipe_confidence_cutoff_tool_tip_str,
 )

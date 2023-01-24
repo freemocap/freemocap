@@ -1,11 +1,10 @@
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
     QVBoxLayout,
     QWidget,
-    QCheckBox,
 )
 
 from src.config.home_dir import create_default_session_id

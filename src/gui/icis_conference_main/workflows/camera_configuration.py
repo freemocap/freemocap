@@ -1,13 +1,13 @@
 import time
 
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from src.gui.icis_conference_main.shared_widgets.page_title import PageTitle
 from src.gui.icis_conference_main.shared_widgets.primary_button import (
-    PrimaryButton,
-    not_active_primary_button_style_sheet,
     active_primary_button_style_sheet,
+    not_active_primary_button_style_sheet,
+    PrimaryButton,
 )
 from src.gui.icis_conference_main.state.app_state import APP_STATE
 from src.gui.icis_conference_main.workers.cam_frame_worker import CamFrameWorker

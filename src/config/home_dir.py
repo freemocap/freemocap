@@ -171,6 +171,9 @@ def get_skeleton_body_csv_path(session_id: str) -> str:
 
 
 def get_blender_file_path(session_id: str) -> str:
+    if session_id is None:
+        return
+
     blend_file_name = session_id + ".blend"
     blender_file_path = Path(get_output_data_folder_path(session_id)) / blend_file_name
     return str(blender_file_path)

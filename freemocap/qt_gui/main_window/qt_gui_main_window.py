@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Union
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QDockWidget, QLabel, QMainWindow, QPushButton
 from skellycam import (
     SkellyCamControllerWidget,
@@ -16,6 +17,7 @@ from freemocap.configuration.paths_and_files_names import (
     get_css_stylesheet_path,
     get_freemocap_data_folder_path,
     get_most_recent_recording_path,
+    PATH_TO_FREEMOCAP_LOGO_SVG,
     RECORDING_SESSIONS_FOLDER_NAME,
 )
 from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
@@ -42,6 +44,7 @@ from freemocap.qt_gui.widgets.calibration_control_panel import (
 )
 from freemocap.qt_gui.widgets.directory_view_widget import DirectoryViewWidget
 from freemocap.qt_gui.widgets.jupyter_console_widget import JupyterConsoleWidget
+from freemocap.qt_gui.widgets.log_view_widget import LogViewWidget
 from freemocap.qt_gui.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
@@ -63,7 +66,7 @@ class QtGUIMainWindow(QMainWindow):
         logger.info("Initializing QtGUIMainWindow")
         super().__init__(parent=parent)
         self.setGeometry(100, 100, 1600, 900)
-
+        self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
         self._css_file_watcher = self._set_up_stylesheet()
 
         if session_process_parameter_model is None:
@@ -110,12 +113,19 @@ class QtGUIMainWindow(QMainWindow):
             Qt.DockWidgetArea.RightDockWidgetArea, self._directory_view_dock_widget
         )
 
-        self._jupyter_console_widget = JupyterConsoleWidget(parent=self)
-        jupyter_console_dock_widget = QDockWidget("Jupyter IPython Console", self)
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea, jupyter_console_dock_widget
-        )
-        jupyter_console_dock_widget.setWidget(self._jupyter_console_widget)
+        # self._jupyter_console_widget = JupyterConsoleWidget(parent=self)
+        # jupyter_console_dock_widget = QDockWidget("Jupyter IPython Console", self)
+        # self.addDockWidget(
+        #     Qt.DockWidgetArea.BottomDockWidgetArea, jupyter_console_dock_widget
+        # )
+        # jupyter_console_dock_widget.setWidget(self._jupyter_console_widget)
+
+        # self._log_view_widget = LogViewWidget(parent=self)
+        # log_view_dock_widget = QDockWidget("Log View", self)
+        # self.addDockWidget(
+        #     Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget
+        # )
+        # log_view_dock_widget.setWidget(self._log_view_widget)
 
         self._connect_signals_to_slots()
 
@@ -124,7 +134,7 @@ class QtGUIMainWindow(QMainWindow):
             self._handle_quick_start_button_clicked
         )
 
-        self._skellycam_view_widget.new_recording_video_folder_created_signal.connect(
+        self._skellycam_view_widget.videos_saved_to_this_folder_signal.connect(
             save_most_recent_recording_path_as_toml
         )
 
@@ -139,7 +149,7 @@ class QtGUIMainWindow(QMainWindow):
             )
         )
 
-        self._skellycam_view_widget.new_recording_video_folder_created_signal.connect(
+        self._skellycam_view_widget.videos_saved_to_this_folder_signal.connect(
             self._directory_view_widget.expand_directory_to_path
         )
 

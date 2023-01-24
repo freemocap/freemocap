@@ -46,9 +46,9 @@ class DirectoryViewWidget(QWidget):
         self, directory_path: Union[str, Path], collapse_other_directories: bool = True
     ):
         if collapse_other_directories:
-            logger.info("Collapsing other directories")
+            logger.debug("Collapsing other directories")
             self._tree_view_widget.collapseAll()
-        logger.info(f"Expanding directory at  path: {str(directory_path)}")
+        logger.debug(f"Expanding directory at  path: {str(directory_path)}")
         og_index = self._file_system_model.index(str(directory_path))
         self._tree_view_widget.expand(og_index)
 

@@ -2,12 +2,12 @@ import logging
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QPushButton,
-    QLabel,
     QFileDialog,
     QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
 
 from src.blender_stuff.get_best_guess_of_blender_path import (
@@ -16,7 +16,6 @@ from src.blender_stuff.get_best_guess_of_blender_path import (
 from src.gui.main.style_stuff.styled_widgets.panel_section_title import (
     PanelSectionTitle,
 )
-
 
 logger = logging.getLogger(__name__)
 

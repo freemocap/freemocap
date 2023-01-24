@@ -1,22 +1,14 @@
+import logging
 from typing import Dict
 
 import cv2
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import (
-    QVBoxLayout,
-    QWidget,
-    QPushButton,
-    QLabel,
-    QHBoxLayout,
-)
-from pyqtgraph.parametertree import ParameterTree, Parameter
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from src.cameras.detection.models import FoundCamerasResponse
 from src.cameras.webcam_config import WebcamConfig
 from src.gui.main.qt_utils.clear_layout import clear_layout
-
-import logging
-
 from src.gui.workflow_helper_blurbs.camera_setup_control_panel_help_blurb import (
     camera_setup_control_panel_help_blurb_str,
 )

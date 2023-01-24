@@ -2,17 +2,16 @@ import logging
 
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QCheckBox,
+    QFormLayout,
     QLabel,
     QLineEdit,
-    QFormLayout,
     QPushButton,
-    QCheckBox,
+    QVBoxLayout,
+    QWidget,
 )
 
 from src.config.home_dir import create_default_session_id
-from src.gui.main.qt_utils.clear_layout import clear_layout
 from src.gui.main.qt_utils.hide_all_in_layout import hide_all_in_layout
 from src.gui.main.style_stuff.css_style_sheet import recommended_next_button_style_sheet
 from src.gui.main.style_stuff.styled_widgets.page_title import PageTitle

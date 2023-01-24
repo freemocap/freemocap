@@ -1,11 +1,5 @@
-from PyQt6.QtCore import QLine, Qt
-from PyQt6.QtWidgets import (
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-    QCheckBox,
-    QLabel,
-)
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QCheckBox, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from src.gui.main.main_window.left_panel_controls.toolbox_widgets.process_session_data_panel import (
     ProcessSessionDataPanel,

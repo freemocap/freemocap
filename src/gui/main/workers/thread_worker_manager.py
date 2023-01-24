@@ -1,26 +1,23 @@
+import logging
 from pathlib import Path
-from typing import Dict, Union, Callable, List
+from typing import Callable, Dict, List, Union
 
 import numpy as np
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
+
 from src.cameras.detection.models import FoundCamerasResponse
 from src.cameras.persistence.video_writer.video_recorder import VideoRecorder
 from src.core_processes.capture_volume_calibration.charuco_board_detection.dataclasses.charuco_board_definition import (
     CharucoBoardDefinition,
 )
-
 from src.gui.main.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
 from src.gui.main.workers.cam_detection_thread_worker import CameraDetectionThreadWorker
-
-import logging
-
 from src.gui.main.workers.convert_npy_to_csv_thread_worker import (
     ConvertNpyToCsvThreadWorker,
 )
-from src.gui.main.workers.export_to_blender_worker import ExportToBlenderThreadWorker
 from src.gui.main.workers.mediapipe_2d_detection_thread_worker import (
     Mediapipe2dDetectionThreadWorker,
 )

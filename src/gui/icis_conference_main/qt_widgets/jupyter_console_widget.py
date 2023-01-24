@@ -17,9 +17,9 @@ https://github.com/jupyter/qtconsole/blob/b4e08f763ef1334d3560d8dac1d7f909585954
 
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtWidgets
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
+from pyqtgraph.Qt import QtWidgets
 
 try:
     from qtconsole import inprocess

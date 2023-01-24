@@ -1,14 +1,4 @@
-from pathlib import Path
-from typing import Union
 from unittest import TestCase
-
-import cv2
-
-from src.config.home_dir import (
-    SYNCHRONIZED_VIDEOS_FOLDER_NAME,
-    OUTPUT_DATA_FOLDER_NAME,
-    MEDIAPIPE_2D_NPY_FILE_NAME,
-)
 
 
 class SessionFolderTestCase(TestCase):

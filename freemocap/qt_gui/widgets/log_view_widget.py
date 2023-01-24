@@ -2,7 +2,6 @@ import logging
 
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit
-from PyQt6.uic.properties import QtWidgets
 
 from freemocap.configuration.logging.configure_logging import default_logging_formatter
 

@@ -1,7 +1,4 @@
 import bpy
-import numpy as np
-from mathutils import Vector
-from pathlib import Path
 
 try:
     import pandas as pd

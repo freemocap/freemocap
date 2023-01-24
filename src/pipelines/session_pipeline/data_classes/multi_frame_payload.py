@@ -1,6 +1,4 @@
-from typing import NamedTuple, Union, Dict, List
-
-import numpy as np
+from typing import Dict, List, NamedTuple, Union
 
 from src.cameras.capture.dataclasses.frame_payload import FramePayload
 

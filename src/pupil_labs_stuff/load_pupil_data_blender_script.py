@@ -1,7 +1,8 @@
-import bpy
-import numpy as np
 import sys
 from pathlib import Path
+
+import bpy
+import numpy as np
 
 print("loading gaze data as empties")
 

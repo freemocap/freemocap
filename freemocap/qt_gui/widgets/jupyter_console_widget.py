@@ -73,11 +73,16 @@ class JupyterConsoleWidget(QWidget):
         self._jupyter_widget.kernel_manager.shutdown_kernel()
 
     def _connect_to_logging(self):
-        logger.info("Connecting Jupyter Console Widget to Logging")
-        logging.getLogger("").handlers.append(logging.StreamHandler(self))
+        return
+        # logger.info("Connecting Jupyter Console Widget to Logging")
+        # logging.getLogger("").handlers.append(logging.StreamHandler(self))
 
 
 if __name__ == "__main__":
+    from freemocap.configuration.logging.configure_logging import configure_logging
+
+    configure_logging()
+    logger.info("Hello world!")
 
     from PyQt6.QtWidgets import QApplication
 
@@ -86,4 +91,11 @@ if __name__ == "__main__":
     jupyter_widget = JupyterConsoleWidget()
     jupyter_widget.show()
 
+    h = logging.StreamHandler(jupyter_widget)
+    logging.getLogger("").handlers.append(h)
+    logger.info("Hello world worldddd!")
+    logger.info("Hello world worlddd WWWWWEEEEEEE!")
+
+    logger.info("gfsdgdfg!")
+    logger.info("gfsdgdfsdfsdfsg!")
     app.exec()

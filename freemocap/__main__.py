@@ -2,6 +2,7 @@
 import sys
 from pathlib import Path
 
+
 try:
     from freemocap.qt_gui.qt_gui_main import qt_gui_main
 except Exception as e:
@@ -18,5 +19,14 @@ def main():
 if __name__ == "__main__":
 
     print(f"Running `freemocap.__main__` from - {__file__}")
+
+    # set up so you can change the taskbar icon - https://stackoverflow.com/a/74531530/14662833
+    import ctypes
+    import freemocap
+
+    myappid = (
+        f"{freemocap.__package_name__}_{freemocap.__version__}"  # arbitrary string
+    )
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     main()

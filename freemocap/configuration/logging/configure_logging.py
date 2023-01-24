@@ -9,25 +9,25 @@ DEFAULT_LOGGING = {"version": 1, "disable_existing_loggers": False}
 
 LOG_FILE_PATH = None
 
+default_logging_formatter = logging.Formatter(
+    "[%(asctime)s.%(msecs)04d] [%(levelname)8s] [%(name)s] [%(funcName)s():%(lineno)s] [PID:%(process)d "
+    "TID:%(thread)d] %(message)s",
+    "%Y-%m-%d %H:%M:%S",
+)
+
 
 def get_logging_handlers():
 
     dictConfig(DEFAULT_LOGGING)
 
-    default_formatter = logging.Formatter(
-        "[%(asctime)s.%(msecs)04d] [%(levelname)8s] [%(name)s] [%(funcName)s():%(lineno)s] [PID:%(process)d "
-        "TID:%(thread)d] %(message)s",
-        "%Y-%m-%d %H:%M:%S",
-    )
-
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.DEBUG)
-    console_handler.setFormatter(default_formatter)
+    console_handler.setFormatter(default_logging_formatter)
 
     # Setup File handler (from https://stackoverflow.com/a/24507130/14662833 )
 
     file_handler = logging.FileHandler(get_log_file_path())
-    file_handler.setFormatter(default_formatter)
+    file_handler.setFormatter(default_logging_formatter)
     file_handler.setLevel(logging.DEBUG)
 
     return [console_handler, file_handler]

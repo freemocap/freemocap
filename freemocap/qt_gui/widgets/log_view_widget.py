@@ -1,9 +1,33 @@
 import logging
+import multiprocessing
+import threading
+from logging.handlers import QueueHandler, QueueListener
+from queue import Queue
 
 from PyQt6 import QtCore
+from PyQt6.QtCore import QThread
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit
 
 from freemocap.configuration.logging.configure_logging import default_logging_formatter
+
+logger = logging.getLogger(__name__)
+
+
+class LoggingQueueListener(QThread):
+    log_message_signal = QtCore.pyqtSignal(str)
+
+    def __init__(self, logging_queue: Queue, exit_event: threading.Event, parent=None):
+        super().__init__(parent)
+        self._logging_queue = logging_queue
+        self._exit_event = exit_event
+
+    def run(self):
+        logger.info("Starting LoggingQueueListener thread")
+        while not self._exit_event.is_set():
+            record = self._logging_queue.get()
+            if record is None:
+                break
+            self.log_message_signal.emit(record.message)
 
 
 class LogViewWidget(QPlainTextEdit):
@@ -11,33 +35,30 @@ class LogViewWidget(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
-        self._process = QtCore.QProcess()
-        self._process.readyReadStandardOutput.connect(self.handle_stdout)
-        self._process.readyReadStandardError.connect(self.handle_stderr)
 
-        widget_handler = logging.StreamHandler(self)
-        widget_handler.setLevel(logging.INFO)
-        widget_handler.setFormatter(default_logging_formatter)
-        logging.getLogger("").handlers.append(widget_handler)
+        self._logging_queue = multiprocessing.Queue(-1)
+        self._queue_handler = QueueHandler(self._logging_queue)
+        self._queue_handler.setFormatter(default_logging_formatter)
+        logging.getLogger("").handlers.append(self._queue_handler)
 
-    def start_log(self, program, arguments=None):
-        if arguments is None:
-            arguments = []
-        self._process.start(program, arguments)
+        self._exit_event = threading.Event()
+        self._logging_queue_listener = LoggingQueueListener(
+            logging_queue=self._logging_queue, exit_event=self._exit_event
+        )
+        self._logging_queue_listener.log_message_signal.connect(self.add_log)
 
-    def write(self, message):
-        self.add_log(message)
+        self._logging_queue_listener.start()
 
     def add_log(self, message):
         self.appendPlainText(message.rstrip())
 
-    def handle_stdout(self):
-        message = self._process.readAllStandardOutput().data().decode()
-        self.add_log(message)
-
-    def handle_stderr(self):
-        message = self._process.readAllStandardError().data().decode()
-        self.add_log(message)
+    def closeEvent(self, event):
+        logger.info("Closing LogViewWidget")
+        self._exit_event.set()
+        self._logging_queue_listener.exit()
+        self._logging_queue_listener.wait()
+        logging.getLogger("").handlers.remove(self._queue_handler)
+        super().closeEvent(event)
 
 
 if __name__ == "__main__":
@@ -45,8 +66,5 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     log_view_widget = LogViewWidget()
-    log_view_widget.start_log(
-        "python", ["-c", "import time; print('hello'); time.sleep(1); print('world')"]
-    )
     log_view_widget.show()
     sys.exit(app.exec())

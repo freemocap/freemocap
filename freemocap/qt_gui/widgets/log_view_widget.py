@@ -25,7 +25,8 @@ class LoggingQueueListener(QThread):
         logger.info("Starting LoggingQueueListener thread")
         while not self._exit_event.is_set():
             record = self._logging_queue.get()
-
+            if record is None:
+                break
             self.log_message_signal.emit(record.message)
 
 

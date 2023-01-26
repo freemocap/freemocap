@@ -9,15 +9,14 @@ DEFAULT_LOGGING = {"version": 1, "disable_existing_loggers": False}
 
 LOG_FILE_PATH = None
 
+format_string = "[%(asctime)s.%(msecs)04d] [%(levelname)8s] [%(name)s] [%(funcName)s():%(lineno)s] [PID:%(process)d TID:%(thread)d] %(message)s"
+
 default_logging_formatter = logging.Formatter(
-    "[%(asctime)s.%(msecs)04d] [%(levelname)8s] [%(name)s] [%(funcName)s():%(lineno)s] [PID:%(process)d "
-    "TID:%(thread)d] %(message)s",
-    "%Y-%m-%d %H:%M:%S",
+    fmt=format_string, datefmt="%Y-%m-%d %H:%M:%S"
 )
 
 
 def get_logging_handlers():
-
     dictConfig(DEFAULT_LOGGING)
 
     console_handler = logging.StreamHandler(sys.stdout)

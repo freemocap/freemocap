@@ -43,6 +43,7 @@ from freemocap.qt_gui.widgets.calibration_control_panel import (
     CalibrationControlPanel,
 )
 from freemocap.qt_gui.widgets.directory_view_widget import DirectoryViewWidget
+from freemocap.qt_gui.widgets.log_view_widget import LogViewWidget
 from freemocap.qt_gui.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
@@ -118,12 +119,10 @@ class QtGUIMainWindow(QMainWindow):
         # )
         # jupyter_console_dock_widget.setWidget(self._jupyter_console_widget)
 
-        # self._log_view_widget = LogViewWidget(parent=self)
-        # log_view_dock_widget = QDockWidget("Log View", self)
-        # self.addDockWidget(
-        #     Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget
-        # )
-        # log_view_dock_widget.setWidget(self._log_view_widget)
+        self._log_view_widget = LogViewWidget(parent=self)
+        log_view_dock_widget = QDockWidget("Log View", self)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
+        log_view_dock_widget.setWidget(self._log_view_widget)
 
         self._connect_signals_to_slots()
 

@@ -28,15 +28,14 @@ class WelcomeCreateOrLoadNewSessionPanel(QWidget):
         self._layout.addWidget(self._welcome_to_freemocap_title_widget)
 
         self._quick_start_button = QPushButton("Quick Start")
+        self._quick_start_button.setStyleSheet("font-size: 24px;")
         self._layout.addWidget(self._quick_start_button)
 
         send_pings_label = QLabel(
             "(being able to show that people are using this thing will help us get funding for this project :D )"
         )
         send_pings_label.setWordWrap(True)
-        self._send_pings_checkbox = QCheckBox(
-            "Send ping to devs to let us know when you make a new session"
-        )
+        self._send_pings_checkbox = QCheckBox("Send ping to devs to let us know when you make a new session")
         self._send_pings_checkbox.setChecked(True)
         self._layout.addWidget(self._send_pings_checkbox)
         self._layout.addWidget(send_pings_label)

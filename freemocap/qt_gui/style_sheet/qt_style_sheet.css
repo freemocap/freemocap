@@ -1,22 +1,28 @@
-*{ font-family: "Dosis", sans-serif;
+* {
+    font-family: "Dosis", sans-serif;
     font-size: 16px;
     color: #333333;
 }
 
 QMainWindow {
-    background-color: #41a6a1;
+    background-color: #458a87;
+}
+
+QTabWidget:pane {
+    border: 1px solid #010505;
+    background-color: #e8fffd;
+
 }
 
 
-
 QPushButton {
-    font-size: 24px;
+    /*font-size: 24px;*/
+
     font-weight: bold;
     border-radius: 4px;
     border: 2px solid #29394a;
     background-color: #29394a;
     color: #dddddd;
-    border-width: 2px;
 }
 
 QPushButton:focus {
@@ -24,9 +30,9 @@ QPushButton:focus {
 }
 
 QPushButton:disabled {
-    border: 2px solid #444444;
-    background-color: #414C58;
-    color: #aaaaaa;
+    border: 2px solid #a0a2af;
+    background-color: #a0a2af;
+    color: #2d736f;
 }
 
 QPushButton:hover {
@@ -42,6 +48,26 @@ QLabel {
     color: #333333;
 }
 
+QLabel:disabled {
+    color: #33594d;
+}
+
+QLineEdit {
+    border: 1px solid #496482;
+    border-radius: 4px;
+    padding: 0 8px;
+    color: #222222;
+}
+
+QLineEdit:disabled {
+    color: #3c3d48;
+    background-color: #687e90;
+}
+
+QRadioButton:checked {
+    color: #ffd700;
+
+}
 
 
 QTreeView {
@@ -51,7 +77,7 @@ QTreeView {
     font-weight: bold;
     font-family: "Roboto", sans-serif;
     font-size: 12px;
-    }
+}
 
 
 QTreeView::item:has-children {
@@ -78,4 +104,4 @@ LogViewWidget {
     font-family: "Roboto", sans-serif;
     font-size: 12px;
     padding: 8px;
-    }
+}

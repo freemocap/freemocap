@@ -12,6 +12,8 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QVBoxLayout,
     QWidget,
+    QScrollArea,
+    QHBoxLayout,
 )
 
 from freemocap.configuration.paths_and_files_names import (
@@ -48,48 +50,50 @@ class CalibrationControlPanel(QWidget):
     def active_recording_info(self):
         return self._get_active_recording_info()
 
-    def set_active_recording_folder_path(self, path: Union[str, Path]):
+    def set_active_recording_folder_path_label(self, path: Union[str, Path]):
         logger.debug(f"Setting active recording folder path to {path}")
         self._active_recording_path_label.setText(str(path))
 
     def _create_radio_button_layout(self):
-        radio_button_layout = QVBoxLayout()
+        radio_button_form_layout = QFormLayout()
 
-        self._add_use_most_recent_calibration_radio_button(radio_button_layout)
+        self._add_use_most_recent_calibration_radio_button(radio_button_form_layout)
 
-        self._add_load_calibration_from_file_radio_button(radio_button_layout)
+        self._add_load_calibration_from_file_radio_button(radio_button_form_layout)
 
-        self._add_calibrate_from_active_recording_radio_button(radio_button_layout)
+        self._add_calibrate_from_active_recording_radio_button(radio_button_form_layout)
 
-        return radio_button_layout
+        return radio_button_form_layout
 
-    def _add_use_most_recent_calibration_radio_button(self, radio_button_layout: QVBoxLayout):
+    def _add_use_most_recent_calibration_radio_button(self, radio_button_layout: QFormLayout):
+
         self._use_most_recent_calibration_radio_button = QRadioButton("Use most recent calibration")
         self._use_most_recent_calibration_radio_button.setChecked(True)
         self._use_most_recent_calibration_radio_button.toggled.connect(self._handle_use_most_recent_calibration_toggled)
+
         radio_button_layout.addWidget(self._use_most_recent_calibration_radio_button)
+        self._use_most_recent_calibration_radio_button.setToolTip(get_last_successful_calibration_toml_path())
+        self._use_most_recent_calibration_radio_button.setToolTip(get_last_successful_calibration_toml_path())
 
-        self._most_recent_calibration_path = QLabel(get_last_successful_calibration_toml_path())
-        radio_button_layout.addWidget(self._most_recent_calibration_path)
-
-    def _add_load_calibration_from_file_radio_button(self, radio_button_layout: QVBoxLayout):
+    def _add_load_calibration_from_file_radio_button(self, radio_button_form_layout: QFormLayout):
         self._load_calibration_from_file_radio_button = QRadioButton("Load calibration from file")
         self._load_calibration_from_file_radio_button.toggled.connect(self._handle_load_calibration_from_file_toggled)
-        radio_button_layout.addWidget(self._load_calibration_from_file_radio_button)
+        radio_button_form_layout.addWidget(self._load_calibration_from_file_radio_button)
 
-        self._user_selected_calibration_toml_path = QLabel("--No Calibration Path Selected--")
-        radio_button_layout.addWidget(self._user_selected_calibration_toml_path)
-        self._user_selected_calibration_toml_path.setEnabled(False)
+        self._user_selected_calibration_toml_path_label = QLabel("--No Calibration Path Selected--")
+        self._user_selected_calibration_toml_path_label.setWordWrap(True)
+        radio_button_form_layout.addWidget(self._user_selected_calibration_toml_path_label)
+        self._user_selected_calibration_toml_path_label.setEnabled(False)
 
         self._load_calibration_toml_dialog_button = QPushButton("Load Camera Calibration TOML...")
-        self._load_calibration_toml_dialog_button.setStyleSheet("font-size: 16px")
+        # self._load_calibration_toml_dialog_button.setStyleSheet("font-size: 10pt;")
         self._load_calibration_toml_dialog_button.clicked.connect(self._open_load_camera_calibration_toml_dialog)
-        radio_button_layout.addWidget(self._load_calibration_toml_dialog_button)
+        radio_button_form_layout.addWidget(self._load_calibration_toml_dialog_button)
         self._load_calibration_toml_dialog_button.setEnabled(False)
 
-    def _add_calibrate_from_active_recording_radio_button(self, radio_button_layout: QVBoxLayout):
+    def _add_calibrate_from_active_recording_radio_button(self, radio_button_form_layout: QFormLayout):
         self._calibrate_from_active_recording_radio_button = QRadioButton("Calibrate from active recording")
-        radio_button_layout.addWidget(self._calibrate_from_active_recording_radio_button)
+        radio_button_form_layout.addWidget(self._calibrate_from_active_recording_radio_button)
 
         self._calibrate_from_active_recording_radio_button.toggled.connect(
             self._handle_calibrate_from_active_recording_toggled
@@ -101,36 +105,36 @@ class CalibrationControlPanel(QWidget):
             active_path_str = f"{Path(self.active_recording_info.path).parent.name} / {str(Path(self.active_recording_info.path).name)}"
 
         self._active_recording_path_label = QLabel(active_path_str)
-
-        # self._active_recording_path_label.setStyleSheet("font-size: 16px")
         self._active_recording_path_label.setWordWrap(True)
+
         self._active_recording_path_label.setEnabled(False)
-        radio_button_layout.addWidget(self._active_recording_path_label)
+        radio_button_form_layout.addWidget(self._active_recording_path_label)
 
         self._calibrate_from_active_recording_button = QPushButton("Calibrate from active recording")
+        # self._calibrate_from_active_recording_button.setStyleSheet("font-size: 10pt;")
 
-        self._calibrate_from_active_recording_button.setStyleSheet("font-size: 16px")
         self._calibrate_from_active_recording_button.clicked.connect(self._calibrate_from_active_recording)
-        radio_button_layout.addWidget(self._calibrate_from_active_recording_button)
+        radio_button_form_layout.addWidget(self._calibrate_from_active_recording_button)
         self._calibrate_from_active_recording_button.setEnabled(False)
 
         self._charuco_square_size_form_layout = self._create_charuco_square_size_form_layout()
-        radio_button_layout.addLayout(self._charuco_square_size_form_layout)
+        radio_button_form_layout.addRow(self._charuco_square_size_form_layout)
         self._set_charuco_square_size_form_layout_visibility(False)
 
     def _handle_use_most_recent_calibration_toggled(self, checked):
-        if checked:
-            self._most_recent_calibration_path.setEnabled(True)
-        else:
-            self._most_recent_calibration_path.setEnabled(False)
+        pass
+        # if checked:
+        #     self._most_recent_calibration_path_label.show()
+        # else:
+        #     self._most_recent_calibration_path_label.hide()
 
     def _handle_load_calibration_from_file_toggled(self, checked):
         if checked:
             self._load_calibration_toml_dialog_button.setEnabled(True)
-            self._user_selected_calibration_toml_path.setEnabled(True)
+            self._user_selected_calibration_toml_path_label.setEnabled(True)
         else:
             self._load_calibration_toml_dialog_button.setEnabled(False)
-            self._user_selected_calibration_toml_path.setEnabled(False)
+            self._user_selected_calibration_toml_path_label.setEnabled(False)
 
     def _handle_calibrate_from_active_recording_toggled(self, checked):
         if checked:
@@ -162,7 +166,7 @@ class CalibrationControlPanel(QWidget):
         )
         self.calibration_toml_path_str = calibration_toml_path_selection[0]
         logger.info(f"User selected camera calibration toml path:{self.calibration_toml_path_str}")
-        self._user_selected_calibration_toml_path.setText(self.calibration_toml_path_str)
+        self._user_selected_calibration_toml_path_label.setText(self.calibration_toml_path_str)
 
     def _create_charuco_square_size_form_layout(self):
         charuco_square_size_form_layout = QFormLayout()

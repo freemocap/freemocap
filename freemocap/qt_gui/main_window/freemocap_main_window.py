@@ -249,7 +249,7 @@ class FreemocapMainWindow(QMainWindow):
     def _update_active_record_path_in_gui_subpanels(self, active_recording_info: RecordingInfoModel):
         logger.info(f"Updating GUI panel 'active recording' whatnots to: {active_recording_info.path}")
 
-        self._calibration_control_panel.set_active_recording_folder_path(active_recording_info.path)
+        self._calibration_control_panel.set_active_recording_folder_path_label(active_recording_info.path)
 
         if Path(active_recording_info.synchronized_videos_folder_path).exists():
             self._directory_view_widget.expand_directory_to_path(active_recording_info.synchronized_videos_folder_path)

@@ -72,10 +72,10 @@ QTreeView::item:hover {
 }
 
 LogViewWidget {
-    background-color: #111111;
-    alternate-background-color: #a3b1ed;
-    color: #00aa00;
-    font-weight: bold;
+    background-color: #0b2424;
+    color: #1ed760;
+    /*font-weight: bold;*/
     font-family: "Roboto", sans-serif;
     font-size: 12px;
+    padding: 8px;
     }

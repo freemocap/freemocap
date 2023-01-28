@@ -107,6 +107,9 @@ skellycam = "freemocap.__main__:main"
 [tool.setuptools]
 py-modules = ["freemocap"]
 
+[tool.black]
+line-length = 120
+
 [tool.taskipy.tasks]
 setup = "pre-commit install"
 #test = "python -m unittest freemocap/tests/**/test_*"

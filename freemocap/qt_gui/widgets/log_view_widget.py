@@ -12,6 +12,12 @@ from freemocap.configuration.logging.configure_logging import default_logging_fo
 
 logger = logging.getLogger(__name__)
 
+log_view_logging_format_string = (
+    "[%(asctime)s.%(msecs)04d] [%(levelname)4s] [%(name)s:%(funcName)s():%(lineno)s] :::::: %(message)s"
+)
+
+log_view_logging_formatter = logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S")
+
 
 class LoggingQueueListener(QThread):
     log_message_signal = QtCore.pyqtSignal(str)
@@ -23,11 +29,14 @@ class LoggingQueueListener(QThread):
 
     def run(self):
         logger.info("Starting LoggingQueueListener thread")
-        while not self._exit_event.is_set():
-            record = self._logging_queue.get()
-            if record is None:
-                break
-            self.log_message_signal.emit(record.message)
+        try:
+            while not self._exit_event.is_set():
+                record = self._logging_queue.get()
+                if record is None:
+                    break
+                self.log_message_signal.emit(record.message)
+        except Exception as e:
+            logger.exception(f"Exception in LoggingQueueListener thread: {e}")
 
 
 class LogViewWidget(QPlainTextEdit):
@@ -38,7 +47,7 @@ class LogViewWidget(QPlainTextEdit):
 
         self._logging_queue = multiprocessing.Queue(-1)
         self._queue_handler = QueueHandler(self._logging_queue)
-        self._queue_handler.setFormatter(default_logging_formatter)
+        self._queue_handler.setFormatter(log_view_logging_formatter)
         logging.getLogger("").handlers.append(self._queue_handler)
 
         self._exit_event = threading.Event()

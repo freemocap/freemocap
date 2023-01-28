@@ -1,4 +1,5 @@
 import logging
+from typing import Callable
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget
@@ -6,6 +7,9 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
     SessionProcessingParameterModel,
+)
+from freemocap.core_processes.session_processing_parameter_models.session_recording_info.session_info_model import (
+    SessionInfoModel,
 )
 from freemocap.qt_gui.widgets.process_mocap_data_panel.parameter_groups.create_3d_triangulation_parameter_group import (
     create_3d_triangulation_prarameter_group,
@@ -29,11 +33,14 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def __init__(
         self,
         session_processing_parameters: SessionProcessingParameterModel,
+        get_active_session_info: Callable,
         parent=None,
     ):
         super().__init__(parent=parent)
 
+        self._get_active_session_info = get_active_session_info
         self._session_processing_parameter_model = session_processing_parameters
+        self._session_processing_parameter_model.session_info_model = self._get_active_session_info()
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
@@ -41,9 +48,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._process_motion_capture_data = QPushButton(
             "Process Motion Capture Videos",
         )
-        self._process_motion_capture_data.clicked.connect(
-            self._launch_process_motion_capture_data_process
-        )
+        self._process_motion_capture_data.clicked.connect(self._launch_process_motion_capture_data_process)
         self._layout.addWidget(self._process_motion_capture_data)
 
         self._parameter_tree_widget = ParameterTree(parent=self, showHeader=False)
@@ -59,10 +64,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
         parameter_tree_widget: ParameterTree,
         session_processing_parameter_model: SessionProcessingParameterModel,
     ):
-        parameter_group = (
-            self._convert_session_processing_parameter_model_to_parameter_group(
-                session_processing_parameter_model
-            )
+        parameter_group = self._convert_session_processing_parameter_model_to_parameter_group(
+            session_processing_parameter_model
         )
         parameter_tree_widget.setParameters(parameter_group, showTop=False)
 
@@ -82,9 +85,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     type="group",
                     children=[
                         self._create_new_skip_this_step_parameter(),
-                        create_mediapipe_parameter_group(
-                            session_processing_parameter_model.mediapipe_parameters_model
-                        ),
+                        create_mediapipe_parameter_group(session_processing_parameter_model.mediapipe_parameters_model),
                     ],
                     tip="Methods for tracking 2d points in images (e.g. mediapipe, deeplabcut(TODO), openpose(TODO), etc ...)",
                 ),
@@ -129,17 +130,14 @@ class ProcessMotionCaptureDataPanel(QWidget):
             name="Skip this step?",
             type="bool",
             value=False,
-            tip="If you have already run this step, you can skip it."
-            "re-running it will overwrite the existing data.",
+            tip="If you have already run this step, you can skip it." "re-running it will overwrite the existing data.",
         )
         parameter.sigValueChanged.connect(self.disable_this_parameter_group)
 
         return parameter
 
     def disable_this_parameter_group(self, parameter, changes):
-        logger.debug(
-            f"TODO - disable parameter group when 'skip this step?' is checked"
-        )
+        logger.debug(f"TODO - disable parameter group when 'skip this step?' is checked")
         pass
         # skip_this_step_bool = parameter.value()
         # parameter_group = parameter.parent()
@@ -150,13 +148,9 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _launch_process_motion_capture_data_process(self):
         logger.debug("Launching process motion capture data process")
-        session_parameter_model = (
-            self._extract_session_parameter_model_from_parameter_tree()
-        )
-
-        self._process_motion_capture_data_thread_worker = (
-            ProcessMotionCaptureDataThreadWorker(session_parameter_model)
-        )
+        session_parameter_model = self._extract_session_parameter_model_from_parameter_tree()
+        session_parameter_model.session_info_model = self._get_active_session_info()
+        self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(session_parameter_model)
         self._process_motion_capture_data_thread_worker.start()
 
 

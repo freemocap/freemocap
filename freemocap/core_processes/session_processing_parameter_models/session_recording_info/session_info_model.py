@@ -37,6 +37,10 @@ class SessionInfoModel:
     def active_recording_info(self) -> RecordingInfoModel:
         return self._active_recording_info
 
+    @property
+    def active_recording_folder_path(self) -> str:
+        return self._active_recording_info.path
+
     def set_recording_info(
         self,
         recording_folder_path: Union[RecordingInfoModel, Union[Path, str]],
@@ -51,11 +55,7 @@ class SessionInfoModel:
             )
 
     def get_latest_internal_recording_info(self):
-        recording_folders = [
-            folder_path
-            for folder_path in self._session_folder_path.iterdir()
-            if folder_path.is_dir()
-        ]
+        recording_folders = [folder_path for folder_path in self._session_folder_path.iterdir() if folder_path.is_dir()]
         if len(recording_folders) > 0:
             latest_recording_folder = sorted(recording_folders)[-1]
             return RecordingInfoModel(recording_folder_path=latest_recording_folder)

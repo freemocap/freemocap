@@ -24,7 +24,7 @@ def test_total_body_center_of_mass_data_shape(
         len(set(frame_count)) == 1
     ), f"Videos in {synchronized_videos_folder} have different frame counts: {frame_count}"
 
-    number_of_frames = set(frame_count)[0]
+    number_of_frames = frame_count[0]
 
     assert (
         total_body_center_of_mass_fr_xyz.shape[0] == number_of_frames

@@ -14,6 +14,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from freemocap.configuration.paths_and_files_names import (
+    get_last_successful_calibration_toml_path,
+    get_calibrations_folder_path,
+)
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
     default_charuco_square_size_mm,
 )
@@ -65,7 +69,7 @@ class CalibrationControlPanel(QWidget):
         self._use_most_recent_calibration_radio_button.toggled.connect(self._handle_use_most_recent_calibration_toggled)
         radio_button_layout.addWidget(self._use_most_recent_calibration_radio_button)
 
-        self._most_recent_calibration_path = QLabel("--Most recent calibration path--")
+        self._most_recent_calibration_path = QLabel(get_last_successful_calibration_toml_path())
         radio_button_layout.addWidget(self._most_recent_calibration_path)
 
     def _add_load_calibration_from_file_radio_button(self, radio_button_layout: QVBoxLayout):
@@ -73,15 +77,15 @@ class CalibrationControlPanel(QWidget):
         self._load_calibration_from_file_radio_button.toggled.connect(self._handle_load_calibration_from_file_toggled)
         radio_button_layout.addWidget(self._load_calibration_from_file_radio_button)
 
-        self._user_selected_calibration_toml_path = QLabel("--Calibration TOML path--")
+        self._user_selected_calibration_toml_path = QLabel("--No Calibration Path Selected--")
         radio_button_layout.addWidget(self._user_selected_calibration_toml_path)
-        self._user_selected_calibration_toml_path.hide()
+        self._user_selected_calibration_toml_path.setEnabled(False)
 
         self._load_calibration_toml_dialog_button = QPushButton("Load Camera Calibration TOML...")
         self._load_calibration_toml_dialog_button.setStyleSheet("font-size: 16px")
         self._load_calibration_toml_dialog_button.clicked.connect(self._open_load_camera_calibration_toml_dialog)
         radio_button_layout.addWidget(self._load_calibration_toml_dialog_button)
-        self._load_calibration_toml_dialog_button.hide()
+        self._load_calibration_toml_dialog_button.setEnabled(False)
 
     def _add_calibrate_from_active_recording_radio_button(self, radio_button_layout: QVBoxLayout):
         self._calibrate_from_active_recording_radio_button = QRadioButton("Calibrate from active recording")
@@ -100,7 +104,7 @@ class CalibrationControlPanel(QWidget):
 
         # self._active_recording_path_label.setStyleSheet("font-size: 16px")
         self._active_recording_path_label.setWordWrap(True)
-        self._active_recording_path_label.hide()
+        self._active_recording_path_label.setEnabled(False)
         radio_button_layout.addWidget(self._active_recording_path_label)
 
         self._calibrate_from_active_recording_button = QPushButton("Calibrate from active recording")
@@ -108,7 +112,7 @@ class CalibrationControlPanel(QWidget):
         self._calibrate_from_active_recording_button.setStyleSheet("font-size: 16px")
         self._calibrate_from_active_recording_button.clicked.connect(self._calibrate_from_active_recording)
         radio_button_layout.addWidget(self._calibrate_from_active_recording_button)
-        self._calibrate_from_active_recording_button.hide()
+        self._calibrate_from_active_recording_button.setEnabled(False)
 
         self._charuco_square_size_form_layout = self._create_charuco_square_size_form_layout()
         radio_button_layout.addLayout(self._charuco_square_size_form_layout)
@@ -116,44 +120,44 @@ class CalibrationControlPanel(QWidget):
 
     def _handle_use_most_recent_calibration_toggled(self, checked):
         if checked:
-            self._most_recent_calibration_path.show()
+            self._most_recent_calibration_path.setEnabled(True)
         else:
-            self._most_recent_calibration_path.hide()
+            self._most_recent_calibration_path.setEnabled(False)
 
     def _handle_load_calibration_from_file_toggled(self, checked):
         if checked:
-            self._load_calibration_toml_dialog_button.show()
-            self._user_selected_calibration_toml_path.show()
+            self._load_calibration_toml_dialog_button.setEnabled(True)
+            self._user_selected_calibration_toml_path.setEnabled(True)
         else:
-            self._load_calibration_toml_dialog_button.hide()
-            self._user_selected_calibration_toml_path.hide()
+            self._load_calibration_toml_dialog_button.setEnabled(False)
+            self._user_selected_calibration_toml_path.setEnabled(False)
 
     def _handle_calibrate_from_active_recording_toggled(self, checked):
         if checked:
-            self._active_recording_path_label.show()
-            self._calibrate_from_active_recording_button.show()
+            self._active_recording_path_label.setEnabled(True)
+            self._calibrate_from_active_recording_button.setEnabled(True)
             self._set_charuco_square_size_form_layout_visibility(True)
         else:
-            self._active_recording_path_label.hide()
-            self._calibrate_from_active_recording_button.hide()
+            self._active_recording_path_label.setEnabled(False)
+            self._calibrate_from_active_recording_button.setEnabled(False)
             self._set_charuco_square_size_form_layout_visibility(False)
 
     def _set_charuco_square_size_form_layout_visibility(self, visible):
         label_index = self._charuco_square_size_form_layout.indexOf(self._charuco_square_size_label)
         line_edit_index = self._charuco_square_size_form_layout.indexOf(self._charuco_square_size_line_edit)
         if visible:
-            self._charuco_square_size_form_layout.itemAt(label_index).widget().show()
-            self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().show()
+            self._charuco_square_size_form_layout.itemAt(label_index).widget().setEnabled(True)
+            self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setEnabled(True)
         else:
-            self._charuco_square_size_form_layout.itemAt(label_index).widget().hide()
-            self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().hide()
+            self._charuco_square_size_form_layout.itemAt(label_index).widget().setEnabled(False)
+            self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setEnabled(False)
 
     def _open_load_camera_calibration_toml_dialog(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
         calibration_toml_path_selection = QFileDialog.getOpenFileName(
             self,
-            "Select 'toml' containing camera calibration info (Note - this is the 'toml' file produced by the `anipose` calibration process)",
-            str(Path.home()),
+            "Select 'toml' containing camera calibration info",
+            str(get_calibrations_folder_path()),
             "Camera Calibration TOML (*.toml)",
         )
         self.calibration_toml_path_str = calibration_toml_path_selection[0]

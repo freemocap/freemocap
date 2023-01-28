@@ -12,17 +12,17 @@ logger = logging.getLogger(__name__)
 
 
 class DirectoryViewWidget(QWidget):
-    def __init__(self, folder_path: Union[str, Path] = None):
+    def __init__(self, top_level_folder_path: Union[str, Path]):
         logger.info("Creating QtDirectoryViewWidget")
         super().__init__()
         self._minimum_width = 300
         self.setMinimumWidth(self._minimum_width)
-        self._folder_path = folder_path
+        self._top_level_folder_path = top_level_folder_path
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
-        self._path_label = QLabel(str(self._folder_path))
+        self._path_label = QLabel(str(self._top_level_folder_path))
         self._layout.addWidget(self._path_label)
         self._file_system_model = QFileSystemModel()
         self._tree_view_widget = QTreeView()
@@ -38,12 +38,10 @@ class DirectoryViewWidget(QWidget):
         self._tree_view_widget.setAlternatingRowColors(True)
         self._tree_view_widget.resizeColumnToContents(1)
 
-        if self._folder_path is not None:
-            self.set_folder_as_root(self._folder_path)
+        if self._top_level_folder_path is not None:
+            self.set_folder_as_root(self._top_level_folder_path)
 
-    def expand_directory_to_path(
-        self, directory_path: Union[str, Path], collapse_other_directories: bool = True
-    ):
+    def expand_directory_to_path(self, directory_path: Union[str, Path], collapse_other_directories: bool = True):
         if collapse_other_directories:
             logger.debug("Collapsing other directories")
             self._tree_view_widget.collapseAll()
@@ -65,9 +63,7 @@ class DirectoryViewWidget(QWidget):
         logger.info(f"Setting root folder to {str(folder_path)}")
         self._tree_view_widget.setWindowTitle(str(folder_path))
         self._file_system_model.setRootPath(str(folder_path))
-        self._tree_view_widget.setRootIndex(
-            self._file_system_model.index(str(folder_path))
-        )
+        self._tree_view_widget.setRootIndex(self._file_system_model.index(str(folder_path)))
         self._tree_view_widget.setColumnWidth(0, int(self._minimum_width * 0.9))
 
     def _context_menu(self):
@@ -97,7 +93,7 @@ if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    directory_view_widget = DirectoryViewWidget(folder_path=Path.home())
+    directory_view_widget = DirectoryViewWidget(top_level_folder_path=Path.home())
 
     directory_view_widget.show()
 

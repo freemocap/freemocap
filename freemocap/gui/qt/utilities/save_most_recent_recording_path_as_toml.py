@@ -12,9 +12,7 @@ from freemocap.configuration.paths_and_files_names import (
 logger = logging.getLogger(__name__)
 
 
-def save_most_recent_recording_path_as_toml(
-    most_recent_recording_path: Union[str, Path]
-):
+def save_most_recent_recording_path_as_toml(most_recent_recording_path: Union[str, Path]):
     """Save the most recent recording path to a toml file"""
 
     if Path(most_recent_recording_path).stem == SYNCHRONIZED_VIDEOS_FOLDER_NAME:

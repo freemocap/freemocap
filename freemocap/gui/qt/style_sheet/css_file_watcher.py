@@ -31,9 +31,7 @@ class CSSFileWatcher(QFileSystemWatcher):
 
 if __name__ == "__main__":
     app = QtCore.QCoreApplication([])
-    qt_file_system_watcher = CSSFileWatcher(
-        path_to_css_file=Path(__file__).parent / "qt_style_sheet.css"
-    )
+    qt_file_system_watcher = CSSFileWatcher(path_to_css_file=Path(__file__).parent / "qt_style_sheet.css")
     print(f"watching directories - {qt_file_system_watcher.directories()})")
     print(f"watching files - {qt_file_system_watcher.files()})")
     app.exec()

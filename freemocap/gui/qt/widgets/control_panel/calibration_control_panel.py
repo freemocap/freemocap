@@ -21,7 +21,7 @@ from freemocap.configuration.paths_and_files_names import (
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
     default_charuco_square_size_mm,
 )
-from freemocap.qt_gui.workers.anipose_calibration_thread_worker import (
+from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
 

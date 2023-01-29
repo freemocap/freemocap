@@ -1,11 +1,12 @@
 import logging
 import multiprocessing
+import shutil
 from pathlib import Path
 from typing import Union
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QDockWidget, QLabel, QMainWindow, QPushButton
+from PyQt6.QtWidgets import QDockWidget, QLabel, QMainWindow, QPushButton, QFileDialog
 from skellycam import (
     SkellyCamControllerWidget,
     SkellyCamParameterTreeWidget,
@@ -20,22 +21,21 @@ from freemocap.configuration.paths_and_files_names import (
     RECORDING_SESSIONS_FOLDER_NAME,
     create_new_recording_folder_path,
     get_blender_file_path,
-)
-from freemocap.parameter_info_models.session_processing_parameter_models import (
-    SessionProcessingParameterModel,
-)
-from freemocap.parameter_info_models.recording_info_model import (
-    RecordingInfoModel,
+    get_recording_session_folder_path,
 )
 from freemocap.core_processes.visualization.blender_stuff.export_to_blender import (
     export_to_blender,
 )
-from freemocap.gui.qt.main_window.actions_and_menu_bar.menu_bar import (
+from freemocap.gui.qt.actions_and_menu_bar.menu_bar import (
     LOAD_MOST_RECENT_RECORDING_ACTION_NAME,
     MenuBar,
+    REBOOT_GUI_ACTION_NAME,
+    LOAD_EXISTING_RECORDING_ACTION_NAME,
+    IMPORT_VIDEOS_ACTION_NAME,
 )
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
 from freemocap.gui.qt.style_sheet.set_css_style_sheet import apply_css_style_sheet
+from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.gui.qt.utilities.save_most_recent_recording_path_as_toml import (
     save_most_recent_recording_path_as_toml,
 )
@@ -55,6 +55,15 @@ from freemocap.gui.qt.widgets.process_mocap_data_panel.process_motion_capture_da
 from freemocap.gui.qt.widgets.welcome_tab_widget import (
     WelcomeCreateOrLoadNewSessionPanel,
 )
+from freemocap.parameter_info_models.recording_info_model import (
+    RecordingInfoModel,
+)
+from freemocap.parameter_info_models.session_processing_parameter_models import (
+    SessionProcessingParameterModel,
+)
+
+# reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
+EXIT_CODE_REBOOT = -123456789
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +80,9 @@ class FreemocapMainWindow(QMainWindow):
         self.setGeometry(100, 100, 1600, 900)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
         self._css_file_watcher = self._set_up_stylesheet()
+
+        self._central_tab_widget = self._create_central_tab_widget()
+        self.setCentralWidget(self._central_tab_widget)
 
         self._menu_bar = MenuBar(parent=self)
         self.setMenuBar(self._menu_bar)
@@ -89,9 +101,6 @@ class FreemocapMainWindow(QMainWindow):
         self.setWindowTitle("freemocap \U0001F480 \U00002728")
 
         self._active_recording_info_widget = ActiveRecordingInfoWidget(self._active_recording_info, parent=self)
-
-        self._central_tab_widget = self._create_central_tab_widget()
-        self.setCentralWidget(self._central_tab_widget)
 
         self._active_recording_dock_widget = QDockWidget("Active Recording", self)
         self._active_recording_dock_widget.setWidget(self._active_recording_info_widget.active_recording_view_widget)
@@ -128,9 +137,28 @@ class FreemocapMainWindow(QMainWindow):
             self._handle_new_active_recording_selected
         )
 
+    def _connect_actions_to_slots(self):
         self._menu_bar.actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME].triggered.connect(
             self._handle_load_most_recent_session_action_triggered
         )
+        self._menu_bar.actions_dictionary[LOAD_EXISTING_RECORDING_ACTION_NAME].triggered.connect(
+            self._handle_load_session_action_triggered
+        )
+        self._menu_bar.actions_dictionary[IMPORT_VIDEOS_ACTION_NAME].triggered.connect(
+            self._handle_import_videos_action_triggered
+        )
+
+        self._menu_bar.actions_dictionary[REBOOT_GUI_ACTION_NAME].triggered.connect(
+            self._handle_create_reboot_gui_action_triggered
+        )
+
+    def _handle_create_reboot_gui_action_triggered(self):
+        logger.info("`Reboot GUI` QAction triggered")
+        self._reboot_gui()
+
+    def _reboot_gui(self):
+        logger.info("Rebooting GUI... ")
+        get_qt_app().exit(EXIT_CODE_REBOOT)
 
     def _handle_load_most_recent_session_action_triggered(self):
         logger.info("`Load Most Recent Recording` QAction triggered")
@@ -141,6 +169,49 @@ class FreemocapMainWindow(QMainWindow):
             return
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())
+
+    def _handle_load_session_action_triggered(self):
+        logger.info("`Load Existing Recording` QAction triggered")
+        self._open_load_existing_recording_dialog()
+
+    def _open_load_existing_recording_dialog(self):
+        # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
+        user_selected_directory = QFileDialog.getOpenFileName(
+            self,
+            "Select 'toml' containing camera calibration info",
+            str(get_recording_session_folder_path()),
+            "Camera Calibration TOML (*.toml)",
+        )
+        user_selected_directory = user_selected_directory[0]
+        logger.info(f"User selected recording path:{user_selected_directory}")
+
+        self._active_recording_info_widget.set_active_recording(recording_folder_path=user_selected_directory)
+
+    def _handle_import_videos_action_triggered(self):
+        logger.info("`Import Videos` QAction triggered")
+        self._open_import_videos_dialog()
+
+    def _open_import_videos_dialog(self):
+        # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
+        external_videos_path = QFileDialog.getExistingDirectory(
+            self,
+            "Select a folder containing synchronized videos (each video must have *exactly* the same number of frames)",
+            str(Path.home()),
+        )
+
+        self._active_recording_info_widget.set_active_recording(
+            recording_folder_path=create_new_recording_folder_path()
+        )
+
+        synchronized_videos_folder_path = (
+            self._active_recording_info_widget.active_recording_info.synchronized_videos_folder_path
+        )
+
+        logger.info(f"Copying videos from {external_videos_path} to {synchronized_videos_folder_path}")
+
+        for video_path in Path(external_videos_path).glob("*.mp4"):
+            logger.debug(f"Copying {video_path}...")
+            shutil.copy(video_path, synchronized_videos_folder_path)
 
     def _handle_videos_saved_to_this_folder_signal(self, folder_path: str):
         save_most_recent_recording_path_as_toml(most_recent_recording_path=folder_path)
@@ -236,15 +307,6 @@ class FreemocapMainWindow(QMainWindow):
 
         return directory_view_dock_widget
 
-    def closeEvent(self, a0) -> None:
-        remove_empty_directories(get_freemocap_data_folder_path())
-
-        try:
-            self._skellycam_view_widget.close()
-        except Exception as e:
-            logger.error(f"Error while closing the viewer widget: {e}")
-        super().closeEvent(a0)
-
     def _handle_new_active_recording_selected(self, recording_info_model: RecordingInfoModel):
         logger.info(f"New active recording selected: {recording_info_model.path}")
 
@@ -256,6 +318,15 @@ class FreemocapMainWindow(QMainWindow):
             self._directory_view_widget.expand_directory_to_path(recording_info_model.synchronized_videos_folder_path)
         else:
             self._directory_view_widget.expand_directory_to_path(recording_info_model.path)
+
+    def closeEvent(self, a0) -> None:
+        remove_empty_directories(get_freemocap_data_folder_path())
+
+        try:
+            self._skellycam_view_widget.close()
+        except Exception as e:
+            logger.error(f"Error while closing the viewer widget: {e}")
+        super().closeEvent(a0)
 
 
 def remove_empty_directories(root_dir: Union[str, Path]):

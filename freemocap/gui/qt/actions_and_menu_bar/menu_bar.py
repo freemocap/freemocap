@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import QMainWindow, QMenu, QMenuBar
 
 
 START_NEW_SESSION_ACTION_NAME = "Start New Session"
-LOAD_EXISTING_SESSION_ACTION_NAME = "Load Existing Session"
+LOAD_EXISTING_RECORDING_ACTION_NAME = "Load Existing Recording"
 LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording"
 IMPORT_VIDEOS_ACTION_NAME = "Import Videos"
 REBOOT_GUI_ACTION_NAME = "Reboot GUI"
@@ -15,6 +15,7 @@ EXIT_ACTION_NAME = "Exit"
 class MenuBar(QMenuBar):
     def __init__(self, parent: QMainWindow = None):
         super().__init__(parent=parent)
+
         self._actions_dictionary = self._create_actions_dictionary()
         self._add_actions()
 
@@ -24,24 +25,26 @@ class MenuBar(QMenuBar):
 
     def _create_actions_dictionary(self) -> Dict[str, QAction]:
         actions_dictionary = {}
-        actions_dictionary[START_NEW_SESSION_ACTION_NAME] = QAction(START_NEW_SESSION_ACTION_NAME, parent=self)
+        actions_dictionary[START_NEW_SESSION_ACTION_NAME] = QAction(START_NEW_SESSION_ACTION_NAME, parent=self.parent())
         actions_dictionary[START_NEW_SESSION_ACTION_NAME].setShortcut("Ctrl+N")
 
         actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME] = QAction(
-            LOAD_MOST_RECENT_RECORDING_ACTION_NAME, parent=self
+            LOAD_MOST_RECENT_RECORDING_ACTION_NAME, parent=self.parent()
         )
         actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME].setShortcut("Ctrl+D")
 
-        actions_dictionary[LOAD_EXISTING_SESSION_ACTION_NAME] = QAction(LOAD_EXISTING_SESSION_ACTION_NAME, parent=self)
-        actions_dictionary[LOAD_EXISTING_SESSION_ACTION_NAME].setShortcut("Ctrl+O")
+        actions_dictionary[LOAD_EXISTING_RECORDING_ACTION_NAME] = QAction(
+            LOAD_EXISTING_RECORDING_ACTION_NAME, parent=self.parent()
+        )
+        actions_dictionary[LOAD_EXISTING_RECORDING_ACTION_NAME].setShortcut("Ctrl+O")
 
-        actions_dictionary[IMPORT_VIDEOS_ACTION_NAME] = QAction(IMPORT_VIDEOS_ACTION_NAME, parent=self)
+        actions_dictionary[IMPORT_VIDEOS_ACTION_NAME] = QAction(IMPORT_VIDEOS_ACTION_NAME, parent=self.parent())
         actions_dictionary[IMPORT_VIDEOS_ACTION_NAME].setShortcut("Ctrl+I")
 
-        actions_dictionary[REBOOT_GUI_ACTION_NAME] = QAction("&Reboot GUI", parent=self)
+        actions_dictionary[REBOOT_GUI_ACTION_NAME] = QAction("&Reboot GUI", parent=self.parent())
         actions_dictionary[REBOOT_GUI_ACTION_NAME].setShortcut("Ctrl+R")
 
-        actions_dictionary[EXIT_ACTION_NAME] = QAction("&Exit", parent=self)
+        actions_dictionary[EXIT_ACTION_NAME] = QAction("&Exit", parent=self.parent())
         actions_dictionary[EXIT_ACTION_NAME].setShortcut("Ctrl+Q")
 
         #
@@ -62,7 +65,7 @@ class MenuBar(QMenuBar):
         # self._show_motion_capture_videos_panel_action.setShortcut("Ctrl+3")
         #
         # # Support
-        # self._donate_action = QAction("&Donate", parent=self
+        # self._donate_action = QAction("&Donate", parent=self)
         # self._send_usage_statistics_action = QAction(
         #     "Send &User Statistics", parent=self)
         # self._user_survey_action = QAction("&User Survey", parent=self)
@@ -75,16 +78,15 @@ class MenuBar(QMenuBar):
         """
 
         # file menu
-        file_menu = QMenu("&File", parent=self)
-        self.addMenu(file_menu)
+        file_menu = self.addMenu("&File")
 
         file_menu.addAction(self._actions_dictionary[START_NEW_SESSION_ACTION_NAME])
         file_menu.addAction(self._actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME])
-        file_menu.addAction(self._actions_dictionary[LOAD_EXISTING_SESSION_ACTION_NAME])
+        file_menu.addAction(self._actions_dictionary[LOAD_EXISTING_RECORDING_ACTION_NAME])
         file_menu.addAction(self._actions_dictionary[IMPORT_VIDEOS_ACTION_NAME])
         file_menu.addAction(self._actions_dictionary[REBOOT_GUI_ACTION_NAME])
         file_menu.addAction(self._actions_dictionary[EXIT_ACTION_NAME])
-
+        #
         # # navigation menu
         # navigation_menu = QMenu("Na&vigation", parent=self)
         # self.addMenu(navigation_menu)

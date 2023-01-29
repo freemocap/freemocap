@@ -2,18 +2,17 @@ import logging
 from typing import List
 
 import keyboard
-import numpy as np
-from scipy import optimize
-from matplotlib import pyplot as plt
 import matplotlib
-from scipy.spatial.transform import Rotation
-
+import numpy as np
 from jon_scratch.pupil_calibration_pipeline.data_classes.pupil_dataclass_and_handler import (
     PupilLabsDataClass,
 )
 from jon_scratch.pupil_calibration_pipeline.data_classes.rotation_data_class import (
     RotationDataClass,
 )
+from matplotlib import pyplot as plt
+from scipy import optimize
+from scipy.spatial.transform import Rotation
 
 matplotlib.use("qt5agg")
 logger = logging.getLogger(__name__)
@@ -37,9 +36,7 @@ class VorCalibrator:
         if vor_start_frame is not None:
             self.vor_start_frame = vor_start_frame
             if vor_end_frame is None:
-                raise ValueError(
-                    "Must specify vor_end_frame if vor_start_frame is specified"
-                )
+                raise ValueError("Must specify vor_end_frame if vor_start_frame is specified")
             self.vor_end_frame = vor_end_frame
 
     def calibrate(
@@ -51,9 +48,7 @@ class VorCalibrator:
     ) -> np.ndarray:
 
         if not fixation_point_fr_xyz.shape[1] == 3:
-            raise Exception(
-                "fixation_point_fr_xyz must be a numpy array with 3 columns"
-            )
+            raise Exception("fixation_point_fr_xyz must be a numpy array with 3 columns")
 
         eye_socket_origin_fr_xyz = eye_socket_rotation_data.local_origin_fr_xyz
         eye_socket_rotation_matricies = eye_socket_rotation_data.rotation_matricies
@@ -77,15 +72,9 @@ class VorCalibrator:
 
         use_dummy_gaze_data = False
         if use_dummy_gaze_data:
-            gaze_x = np.zeros(
-                pupil_labs_eye_data.pupil_center_normal_x.shape
-            ) * np.nanmedian(self.fixation_distance)
-            gaze_y = np.zeros(
-                pupil_labs_eye_data.pupil_center_normal_y.shape
-            ) * np.nanmedian(self.fixation_distance)
-            gaze_z = np.ones(
-                pupil_labs_eye_data.pupil_center_normal_z.shape
-            ) * np.nanmedian(self.fixation_distance)
+            gaze_x = np.zeros(pupil_labs_eye_data.pupil_center_normal_x.shape) * np.nanmedian(self.fixation_distance)
+            gaze_y = np.zeros(pupil_labs_eye_data.pupil_center_normal_y.shape) * np.nanmedian(self.fixation_distance)
+            gaze_z = np.ones(pupil_labs_eye_data.pupil_center_normal_z.shape) * np.nanmedian(self.fixation_distance)
 
         self.uncalibrated_gaze_vector_endpoint_fr_xyz = self.rotate_gaze_lasers(
             [0, 0, 0],
@@ -144,9 +133,7 @@ class VorCalibrator:
             initial_rotational_offset_guess,
             args=(
                 eye_socket_origin_fr_xyz[vor_frames, :],
-                eye_socket_rotation_matricies[
-                    self.vor_start_frame : self.vor_end_frame
-                ],
+                eye_socket_rotation_matricies[self.vor_start_frame : self.vor_end_frame],
                 head_rotation_matricies[self.vor_start_frame : self.vor_end_frame],
                 fixation_point_fr_xyz,
                 gaze_x[vor_frames],
@@ -181,18 +168,12 @@ class VorCalibrator:
             gaze_z,
         )
 
-        distance_between_gaze_endpoint_and_fixation_point_fr_xyz = (
-            self.get_distance_between_two_points(
-                gaze_laser_endpoint_during_vor_fr_xyz, fixation_point_fr_xyz
-            )
+        distance_between_gaze_endpoint_and_fixation_point_fr_xyz = self.get_distance_between_two_points(
+            gaze_laser_endpoint_during_vor_fr_xyz, fixation_point_fr_xyz
         )
-        distance_error = np.sqrt(
-            np.nanmean(distance_between_gaze_endpoint_and_fixation_point_fr_xyz**2)
-        )
+        distance_error = np.sqrt(np.nanmean(distance_between_gaze_endpoint_and_fixation_point_fr_xyz**2))
 
-        gaze_tip_velocity_fr_xyz = np.diff(
-            gaze_laser_endpoint_during_vor_fr_xyz, axis=0
-        )
+        gaze_tip_velocity_fr_xyz = np.diff(gaze_laser_endpoint_during_vor_fr_xyz, axis=0)
         mean_gaze_tip_velocity_per_frame = np.nanmean(gaze_tip_velocity_fr_xyz, axis=0)
         velocity_error = np.sqrt(np.nanmean(mean_gaze_tip_velocity_per_frame**2))
 
@@ -240,15 +221,9 @@ class VorCalibrator:
         )
 
         ax.plot(
-            self.uncalibrated_gaze_vector_endpoint_fr_xyz[
-                self.vor_start_frame : self.vor_end_frame, 0
-            ],
-            self.uncalibrated_gaze_vector_endpoint_fr_xyz[
-                self.vor_start_frame : self.vor_end_frame, 1
-            ],
-            self.uncalibrated_gaze_vector_endpoint_fr_xyz[
-                self.vor_start_frame : self.vor_end_frame, 2
-            ],
+            self.uncalibrated_gaze_vector_endpoint_fr_xyz[self.vor_start_frame : self.vor_end_frame, 0],
+            self.uncalibrated_gaze_vector_endpoint_fr_xyz[self.vor_start_frame : self.vor_end_frame, 1],
+            self.uncalibrated_gaze_vector_endpoint_fr_xyz[self.vor_start_frame : self.vor_end_frame, 2],
             "k-o",
             label="original gaze xyz",
         )
@@ -280,9 +255,7 @@ class VorCalibrator:
             self.debug = False
             plt.close(fig)
 
-    def get_distance_between_two_points(
-        self, local_origin_fr_xyz, fixation_point_fr_xyz
-    ):
+    def get_distance_between_two_points(self, local_origin_fr_xyz, fixation_point_fr_xyz):
         return np.linalg.norm(local_origin_fr_xyz - fixation_point_fr_xyz, axis=1)
 
     def create_unrotated_gaze_lasers_from_eye_rotation_matrixies(
@@ -294,23 +267,16 @@ class VorCalibrator:
         """
         Creates an unrotated gaze laser for each frame in the skeleton/gaze data. Returns a vector the same length as the calibration_distance, shooting our of the skeletons eye_sockets (as if they eyes were paralyzed).
         """
-        if (
-            not gaze_vector_start_point_fr_xyz.shape
-            == gaze_unit_vector_end_point_fr_xyz.shape
-        ):
+        if not gaze_vector_start_point_fr_xyz.shape == gaze_unit_vector_end_point_fr_xyz.shape:
             raise Exception(
                 "`gaze_vector_start_point_fr_xyz` and `gaze_unit_vector_end_point_fr_xyz` must have the same shape"
             )
 
         # scale gaze vector so it's the same norm/length as the calibration distance
-        gaze_unit_vector_end_point_fr_xyz = (
-            gaze_unit_vector_end_point_fr_xyz * calbration_distance
-        )
+        gaze_unit_vector_end_point_fr_xyz = gaze_unit_vector_end_point_fr_xyz * calbration_distance
 
         # move it from an zero-centered reference frame to the eye socket reference frame
-        gaze_vector_end_point_fr_xyz = (
-            gaze_unit_vector_end_point_fr_xyz + gaze_vector_start_point_fr_xyz
-        )
+        gaze_vector_end_point_fr_xyz = gaze_unit_vector_end_point_fr_xyz + gaze_vector_start_point_fr_xyz
 
         return gaze_vector_end_point_fr_xyz
 
@@ -358,14 +324,8 @@ class VorCalibrator:
 
         # 6 - translate gaze vector back to the eye socket (by adding eyeball center xyz)
         gaze_laser_fr_xyz = np.empty(gaze_fr_xyz.shape)
-        gaze_laser_fr_xyz[:, 0] = (
-            gaze_fr_xyz[:, 0] + gaze_vector_start_point_fr_xyz[:, 0]
-        )
-        gaze_laser_fr_xyz[:, 1] = (
-            gaze_fr_xyz[:, 1] + gaze_vector_start_point_fr_xyz[:, 1]
-        )
-        gaze_laser_fr_xyz[:, 2] = (
-            gaze_fr_xyz[:, 2] + gaze_vector_start_point_fr_xyz[:, 2]
-        )
+        gaze_laser_fr_xyz[:, 0] = gaze_fr_xyz[:, 0] + gaze_vector_start_point_fr_xyz[:, 0]
+        gaze_laser_fr_xyz[:, 1] = gaze_fr_xyz[:, 1] + gaze_vector_start_point_fr_xyz[:, 1]
+        gaze_laser_fr_xyz[:, 2] = gaze_fr_xyz[:, 2] + gaze_vector_start_point_fr_xyz[:, 2]
 
         return gaze_laser_fr_xyz

@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
+from pyqtgraph.Qt import QtWidgets
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
-from pyqtgraph.Qt import QtWidgets
 
 from src.core_processes.capture_volume_calibration.calibration_dataclasses import (
     CameraCalibrationData,
@@ -25,9 +25,7 @@ class CalibrationDiagnosticsVisualizer:
         self.dock_area = DockArea()
         self.main_window_widget.setCentralWidget(self.dock_area)
         self.main_window_widget.resize(1000, 500)
-        self.main_window_widget.setWindowTitle(
-            "Lens Distortion Calibration Diagnostics (pyqtgraph)"
-        )
+        self.main_window_widget.setWindowTitle("Lens Distortion Calibration Diagnostics (pyqtgraph)")
 
         # create widget/dock for image subplot (based on `GraphicsItems - ImageItem - video` example `python -m pyqtgraph.examples`)
         self.image_view_widget = pg.ImageView()
@@ -38,9 +36,7 @@ class CalibrationDiagnosticsVisualizer:
 
         # create widget/dock for reprojection error subplot
         self.reprojection_error_plot_widget = pg.PlotWidget(title="Reprojection Error")
-        self.reprojection_error_plot_widget.setLabel(
-            "left", "Reprojection Error", units="pixels"
-        )
+        self.reprojection_error_plot_widget.setLabel("left", "Reprojection Error", units="pixels")
         self.reprojection_error_plot_widget.setLabel("bottom", "Time", units="Frame#")
         self.reprojection_error_plot_widget.setYRange(0, 2)
         self.reprojection_error_plot_widget.addLegend()
@@ -49,10 +45,8 @@ class CalibrationDiagnosticsVisualizer:
             pen=(255, 0, 128),
             name="reprojection error- all",
         )
-        self.reprojection_error_current_best_line = (
-            self.reprojection_error_plot_widget.plot(
-                self.reprojection_error_current_best, name="current best"
-            )
+        self.reprojection_error_current_best_line = self.reprojection_error_plot_widget.plot(
+            self.reprojection_error_current_best, name="current best"
         )
 
         self.reprojection_error_dock = Dock("Reprojection Error")
@@ -60,15 +54,9 @@ class CalibrationDiagnosticsVisualizer:
         self.dock_area.addDock(self.reprojection_error_dock, position="right")
 
         # create widget/dock lens distortion remapping subplot
-        self.image_point_remapping_plot_widget = pg.PlotWidget(
-            title="Image Point Remapping"
-        )
-        self.image_point_remapping_plot_widget.setLabel(
-            "left", "Y-position", units="pixels"
-        )
-        self.image_point_remapping_plot_widget.setLabel(
-            "bottom", "X-position", units="pixels"
-        )
+        self.image_point_remapping_plot_widget = pg.PlotWidget(title="Image Point Remapping")
+        self.image_point_remapping_plot_widget.setLabel("left", "Y-position", units="pixels")
+        self.image_point_remapping_plot_widget.setLabel("bottom", "X-position", units="pixels")
         self.image_point_remapping_plot_widget.addLegend()
 
         self.image_point_original_dottos = self.image_point_remapping_plot_widget.plot(
@@ -90,9 +78,7 @@ class CalibrationDiagnosticsVisualizer:
             name="image points - remapped",
         )
         self.image_point_remapping_plot_dock = Dock("Image Point Remapping")
-        self.image_point_remapping_plot_dock.addWidget(
-            self.image_point_remapping_plot_widget
-        )
+        self.image_point_remapping_plot_dock.addWidget(self.image_point_remapping_plot_widget)
         self.dock_area.addDock(self.image_point_remapping_plot_dock)
 
         ###########
@@ -119,15 +105,11 @@ class CalibrationDiagnosticsVisualizer:
         self.opengl_3d_plot_widget.addItem(self.origin_y_axis_gl_lineplot_item)
         self.opengl_3d_plot_widget.addItem(self.origin_z_axis_gl_lineplot_item)
 
-        self.opengl_charuco_scatter_item = gl.GLScatterPlotItem(
-            pos=(0, 0, 0), color=(1, 0, 1), size=1, pxMode=False
-        )
+        self.opengl_charuco_scatter_item = gl.GLScatterPlotItem(pos=(0, 0, 0), color=(1, 0, 1), size=1, pxMode=False)
 
         self.opengl_3d_plot_dock = Dock("Image Point Remapping")
         self.opengl_3d_plot_dock.addWidget(self.opengl_3d_plot_widget)
-        self.dock_area.addDock(
-            self.opengl_3d_plot_dock, "right", self.image_point_remapping_plot_dock
-        )
+        self.dock_area.addDock(self.opengl_3d_plot_dock, "right", self.image_point_remapping_plot_dock)
 
         ###
         # create widget/dock for calibration text window
@@ -135,9 +117,7 @@ class CalibrationDiagnosticsVisualizer:
 
         self.calibration_text_dock = Dock("Calibration Data")
         self.calibration_text_dock.addWidget(self.calibration_text_widget)
-        self.dock_area.addDock(
-            self.calibration_text_dock, "above", self.image_point_remapping_plot_dock
-        )
+        self.dock_area.addDock(self.calibration_text_dock, "above", self.image_point_remapping_plot_dock)
 
         self._display_main_window()
 
@@ -147,30 +127,20 @@ class CalibrationDiagnosticsVisualizer:
 
     def update_image_subplot(self, new_image):
         self.image_view_widget.setImage(
-            cv2.cvtColor(
-                cv2.rotate(new_image, cv2.ROTATE_90_COUNTERCLOCKWISE), cv2.COLOR_BGR2RGB
-            )
+            cv2.cvtColor(cv2.rotate(new_image, cv2.ROTATE_90_COUNTERCLOCKWISE), cv2.COLOR_BGR2RGB)
         )
 
-    def update_reprojection_error_subplot(
-        self, reprojection_error_new, reprojection_error_current_best
-    ):
-        self.reprojection_error_all = np.append(
-            self.reprojection_error_all, reprojection_error_new
-        )
+    def update_reprojection_error_subplot(self, reprojection_error_new, reprojection_error_current_best):
+        self.reprojection_error_all = np.append(self.reprojection_error_all, reprojection_error_new)
         self.reprojection_error_current_best = np.append(
             self.reprojection_error_current_best, reprojection_error_current_best
         )
 
         self.reprojection_error_all_line.setData(self.reprojection_error_all)
-        self.reprojection_error_current_best_line.setData(
-            self.reprojection_error_current_best
-        )
+        self.reprojection_error_current_best_line.setData(self.reprojection_error_current_best)
 
     def update_calibration_text_overlay(self, calibration_data: CameraCalibrationData):
-        lens_distortion_as_str = [
-            f"{d[0]:.3f}" for d in calibration_data.lens_distortion_coefficients
-        ]
+        lens_distortion_as_str = [f"{d[0]:.3f}" for d in calibration_data.lens_distortion_coefficients]
         calibration_text = f"reprojection error:{calibration_data.reprojection_error:.3f} \n {lens_distortion_as_str} \n {str(calibration_data.camera_matrix)}"
         self.calibration_text_widget.setText(calibration_text)
 
@@ -181,13 +151,9 @@ class CalibrationDiagnosticsVisualizer:
         image_point_remapped_x,
         image_point_remapped_y,
     ):
-        self.image_point_original_dottos.setData(
-            x=image_point_original_x, y=image_point_original_y
-        )
+        self.image_point_original_dottos.setData(x=image_point_original_x, y=image_point_original_y)
 
-        self.image_point_remapped_dottos.setData(
-            x=image_point_remapped_x, y=image_point_remapped_y
-        )
+        self.image_point_remapped_dottos.setData(x=image_point_remapped_x, y=image_point_remapped_y)
 
     def update_3d_subplot(self, charuco_xyz: np.ndarray = None):
         if charuco_xyz is None:

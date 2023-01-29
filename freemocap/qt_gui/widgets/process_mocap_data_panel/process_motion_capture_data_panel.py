@@ -8,9 +8,6 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
     SessionProcessingParameterModel,
 )
-from freemocap.core_processes.session_processing_parameter_models.session_recording_info.session_info_model import (
-    SessionInfoModel,
-)
 from freemocap.qt_gui.widgets.process_mocap_data_panel.parameter_groups.create_3d_triangulation_parameter_group import (
     create_3d_triangulation_prarameter_group,
 )
@@ -33,14 +30,14 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def __init__(
         self,
         session_processing_parameters: SessionProcessingParameterModel,
-        get_active_session_info: Callable,
+        get_active_recording_info: Callable,
         parent=None,
     ):
         super().__init__(parent=parent)
 
-        self._get_active_session_info = get_active_session_info
+        self._get_active_recording_info = get_active_recording_info
         self._session_processing_parameter_model = session_processing_parameters
-        self._session_processing_parameter_model.session_info_model = self._get_active_session_info()
+        self._session_processing_parameter_model.recording_info_model = self._get_active_recording_info()
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
@@ -149,7 +146,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def _launch_process_motion_capture_data_process(self):
         logger.debug("Launching process motion capture data process")
         session_parameter_model = self._extract_session_parameter_model_from_parameter_tree()
-        session_parameter_model.session_info_model = self._get_active_session_info()
+        session_parameter_model.recording_info_model = self._get_active_recording_info()
         self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(session_parameter_model)
         self._process_motion_capture_data_thread_worker.start()
 

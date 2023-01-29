@@ -1,14 +1,12 @@
 import logging
 import multiprocessing
 import threading
-from logging.handlers import QueueHandler, QueueListener
+from logging.handlers import QueueHandler
 from queue import Queue
 
 from PyQt6 import QtCore
 from PyQt6.QtCore import QThread
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit
-
-from freemocap.configuration.logging.configure_logging import default_logging_formatter
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +29,11 @@ class LoggingQueueListener(QThread):
         logger.info("Starting LoggingQueueListener thread")
         try:
             while not self._exit_event.is_set():
-                record = self._logging_queue.get()
+                if self._logging_queue.empty():
+                    continue
+
+                record = self._logging_queue.get(block=True)
+
                 if record is None:
                     break
                 self.log_message_signal.emit(record.message)

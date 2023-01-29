@@ -38,7 +38,10 @@ class LoggingQueueListener(QThread):
                     break
                 self.log_message_signal.emit(record.message)
         except Exception as e:
-            logger.exception(f"Exception in LoggingQueueListener thread: {e}")
+            pass
+
+    def close(self):
+        self._exit_event.set()
 
 
 class LogViewWidget(QPlainTextEdit):
@@ -66,8 +69,7 @@ class LogViewWidget(QPlainTextEdit):
     def closeEvent(self, event):
         logger.info("Closing LogViewWidget")
         self._exit_event.set()
-        self._logging_queue_listener.exit()
-        self._logging_queue_listener.wait()
+        self._logging_queue_listener.close()
         logging.getLogger("").handlers.remove(self._queue_handler)
         super().closeEvent(event)
 

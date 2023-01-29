@@ -2,7 +2,7 @@ import logging
 
 from pydantic import BaseModel
 
-from freemocap.core_processes.session_processing_parameter_models.session_recording_info.recording_info_model import (
+from freemocap.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
 )
 

@@ -1,11 +1,12 @@
 import logging
+from pathlib import Path
 from typing import Callable
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
+from freemocap.parameter_info_models.session_processing_parameter_models import (
     SessionProcessingParameterModel,
 )
 from freemocap.gui.qt.widgets.process_mocap_data_panel.parameter_groups.create_3d_triangulation_parameter_group import (
@@ -45,7 +46,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._process_motion_capture_data = QPushButton(
             "Process Motion Capture Videos",
         )
-        self._process_motion_capture_data.clicked.connect(self._launch_process_motion_capture_data_process)
+        self._process_motion_capture_data.clicked.connect(self._launch_process_motion_capture_data_thread_worker)
         self._layout.addWidget(self._process_motion_capture_data)
 
         self._parameter_tree_widget = ParameterTree(parent=self, showHeader=False)
@@ -143,10 +144,18 @@ class ProcessMotionCaptureDataPanel(QWidget):
         #         logger.debug(f"Disabling {child.name()}")
         #         child.setOpts(enabled=not skip_this_step_bool)
 
-    def _launch_process_motion_capture_data_process(self):
+    def _launch_process_motion_capture_data_thread_worker(self):
         logger.debug("Launching process motion capture data process")
         session_parameter_model = self._extract_session_parameter_model_from_parameter_tree()
         session_parameter_model.recording_info_model = self._get_active_recording_info()
+
+        if session_parameter_model.recording_info_model is None:
+            logger.error("No active recording selected.")
+            return
+        if not Path(session_parameter_model.recording_info_model.path).exists():
+            logger.error(f"Recording path does not exist: {session_parameter_model.recording_info_model.path}.")
+            return
+
         self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(session_parameter_model)
         self._process_motion_capture_data_thread_worker.start()
 

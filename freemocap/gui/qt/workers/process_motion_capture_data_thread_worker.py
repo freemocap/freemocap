@@ -5,9 +5,7 @@ from PyQt6.QtCore import pyqtSignal, QThread
 from freemocap.core_processes.process_motion_capture_videos.process_session_folder import (
     process_session_folder,
 )
-from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
-    SessionProcessingParameterModel,
-)
+from freemocap.parameter_info_models.session_processing_parameter_models import SessionProcessingParameterModel
 
 logger = logging.getLogger(__name__)
 

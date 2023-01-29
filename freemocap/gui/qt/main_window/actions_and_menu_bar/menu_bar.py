@@ -3,9 +3,10 @@ from typing import Dict
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMainWindow, QMenu, QMenuBar
 
+
 START_NEW_SESSION_ACTION_NAME = "Start New Session"
 LOAD_EXISTING_SESSION_ACTION_NAME = "Load Existing Session"
-LOAD_MOST_RECENT_SESSION_ACTION_NAME = "Load Most Recent Session"
+LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording"
 IMPORT_VIDEOS_ACTION_NAME = "Import Videos"
 REBOOT_GUI_ACTION_NAME = "Reboot GUI"
 EXIT_ACTION_NAME = "Exit"
@@ -26,10 +27,10 @@ class MenuBar(QMenuBar):
         actions_dictionary[START_NEW_SESSION_ACTION_NAME] = QAction(START_NEW_SESSION_ACTION_NAME, parent=self)
         actions_dictionary[START_NEW_SESSION_ACTION_NAME].setShortcut("Ctrl+N")
 
-        actions_dictionary[LOAD_MOST_RECENT_SESSION_ACTION_NAME] = QAction(
-            LOAD_MOST_RECENT_SESSION_ACTION_NAME, parent=self
+        actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME] = QAction(
+            LOAD_MOST_RECENT_RECORDING_ACTION_NAME, parent=self
         )
-        actions_dictionary[LOAD_MOST_RECENT_SESSION_ACTION_NAME].setShortcut("Ctrl+D")
+        actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME].setShortcut("Ctrl+D")
 
         actions_dictionary[LOAD_EXISTING_SESSION_ACTION_NAME] = QAction(LOAD_EXISTING_SESSION_ACTION_NAME, parent=self)
         actions_dictionary[LOAD_EXISTING_SESSION_ACTION_NAME].setShortcut("Ctrl+O")
@@ -78,7 +79,7 @@ class MenuBar(QMenuBar):
         self.addMenu(file_menu)
 
         file_menu.addAction(self._actions_dictionary[START_NEW_SESSION_ACTION_NAME])
-        file_menu.addAction(self._actions_dictionary[LOAD_MOST_RECENT_SESSION_ACTION_NAME])
+        file_menu.addAction(self._actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME])
         file_menu.addAction(self._actions_dictionary[LOAD_EXISTING_SESSION_ACTION_NAME])
         file_menu.addAction(self._actions_dictionary[IMPORT_VIDEOS_ACTION_NAME])
         file_menu.addAction(self._actions_dictionary[REBOOT_GUI_ACTION_NAME])

@@ -160,7 +160,7 @@ def get_logs_info_and_settings_folder_path(create_folder: bool = True):
 
 
 def get_css_stylesheet_path():
-    return str(Path(__file__).parent.parent / "gui" / "style_sheet" / "qt_style_sheet.css")
+    return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.css")
 
 
 def get_most_recent_recording_toml_path():
@@ -169,7 +169,7 @@ def get_most_recent_recording_toml_path():
 
 def get_most_recent_recording_path(subfolder_str: str = None):
     if not Path(get_most_recent_recording_toml_path()).exists():
-        logger.warning("`most_recent_recording.toml` does not exist. Returning None.")
+        logger.error(f"{MOST_RECENT_RECORDING_TOML_FILENAME} not found at {get_most_recent_recording_toml_path()}!!")
         return None
 
     most_recent_recording_dict = toml.load(str(get_most_recent_recording_toml_path()))
@@ -190,3 +190,11 @@ def get_most_recent_recording_path(subfolder_str: str = None):
 
 def get_last_successful_calibration_toml_path():
     return str(Path(get_logs_info_and_settings_folder_path()) / LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME)
+
+
+def get_blender_file_name(recording_name: str):
+    return f"{recording_name}.blend"
+
+
+def get_blender_file_path(recording_folder_path: str):
+    return str(Path(recording_folder_path) / get_blender_file_name(recording_name=Path(recording_folder_path).name))

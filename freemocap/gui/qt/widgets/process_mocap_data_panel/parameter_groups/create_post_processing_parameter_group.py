@@ -17,8 +17,7 @@ def create_post_processing_parameter_group(
                 name="framerate",
                 type="float",
                 value=parameter_model.butterworth_filter_parameters.sampling_rate,
-                tip="Framerate of the recording "
-                "TODO - Calculate this from the recorded timestamps....",
+                tip="Framerate of the recording " "TODO - Calculate this from the recorded timestamps....",
             ),
             dict(
                 name="Cutoff Frequency",

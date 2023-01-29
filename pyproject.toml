@@ -84,7 +84,7 @@ dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "flit"]
 [project.urls]
 Homepage = "https://freemocap.org"
 Documentation = "https://freemocap.readthedocs.io/en/latest/"
-Github = "https://github.com/freemocap/skellycam"
+Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]
 current_version = "v2023.01.1000"

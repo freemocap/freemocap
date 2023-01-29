@@ -42,11 +42,7 @@ class AniposeCalibrationThreadWorker(QThread):
         self.in_progress.emit(message)
 
     def run(self):
-        logger.info(
-            "Beginning Anipose calibration with Charuco Square Size (mm): {}".format(
-                self._charuco_square_size
-            )
-        )
+        logger.info("Beginning Anipose calibration with Charuco Square Size (mm): {}".format(self._charuco_square_size))
 
         try:
             run_anipose_capture_volume_calibration(

@@ -8,10 +8,10 @@ from PyQt6.QtWidgets import (
 )
 from skellycam import SkellyCamParameterTreeWidget
 
-from freemocap.qt_gui.widgets.control_panel.calibration_control_panel import (
+from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import (
     CalibrationControlPanel,
 )
-from freemocap.qt_gui.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
+from freemocap.gui.qt.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
 

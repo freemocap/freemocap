@@ -160,7 +160,7 @@ def get_logs_info_and_settings_folder_path(create_folder: bool = True):
 
 
 def get_css_stylesheet_path():
-    return str(Path(__file__).parent.parent / "qt_gui" / "style_sheet" / "qt_style_sheet.css")
+    return str(Path(__file__).parent.parent / "gui" / "style_sheet" / "qt_style_sheet.css")
 
 
 def get_most_recent_recording_toml_path():

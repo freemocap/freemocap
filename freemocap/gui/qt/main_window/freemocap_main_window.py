@@ -28,29 +28,29 @@ from freemocap.core_processes.session_processing_parameter_models.session_record
 from freemocap.core_processes.visualization.blender_stuff.export_to_blender import (
     export_to_blender,
 )
-from freemocap.qt_gui.main_window.menu_bar import (
+from freemocap.gui.qt.main_window.menu_bar import (
     LOAD_MOST_RECENT_SESSION_ACTION_NAME,
     MenuBar,
 )
-from freemocap.qt_gui.style_sheet.css_file_watcher import CSSFileWatcher
-from freemocap.qt_gui.style_sheet.set_css_style_sheet import apply_css_style_sheet
-from freemocap.qt_gui.utilities.save_most_recent_recording_path_as_toml import (
+from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
+from freemocap.gui.qt.style_sheet.set_css_style_sheet import apply_css_style_sheet
+from freemocap.gui.qt.utilities.save_most_recent_recording_path_as_toml import (
     save_most_recent_recording_path_as_toml,
 )
-from freemocap.qt_gui.widgets.active_recording_widget import ActiveRecordingWidget
-from freemocap.qt_gui.widgets.central_tab_widget import CentralTabWidget
-from freemocap.qt_gui.widgets.control_panel.calibration_control_panel import (
+from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingWidget
+from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
+from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import (
     CalibrationControlPanel,
 )
-from freemocap.qt_gui.widgets.control_panel.control_panel_dock_widget import (
+from freemocap.gui.qt.widgets.control_panel.control_panel_dock_widget import (
     ControlPanelDockWidget,
 )
-from freemocap.qt_gui.widgets.directory_view_widget import DirectoryViewWidget
-from freemocap.qt_gui.widgets.log_view_widget import LogViewWidget
-from freemocap.qt_gui.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
+from freemocap.gui.qt.widgets.directory_view_widget import DirectoryViewWidget
+from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
+from freemocap.gui.qt.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
-from freemocap.qt_gui.widgets.welcome_tab_widget import (
+from freemocap.gui.qt.widgets.welcome_tab_widget import (
     WelcomeCreateOrLoadNewSessionPanel,
 )
 

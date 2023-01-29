@@ -9,8 +9,8 @@ from PyQt6.QtWidgets import QApplication
 from freemocap.configuration.paths_and_files_names import (
     get_freemocap_data_folder_path,
 )
-from freemocap.qt_gui.main_window.freemocap_main_window import FreemocapMainWindow
-from freemocap.qt_gui.utilities.get_qt_app import get_qt_app
+from freemocap.gui.qt.main_window.freemocap_main_window import FreemocapMainWindow
+from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 
 repo = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(repo))

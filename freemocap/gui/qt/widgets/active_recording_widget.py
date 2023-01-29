@@ -34,7 +34,9 @@ class ActiveRecordingInfoWidget(QWidget):
         self._active_recording_info = active_recording_info
         self._directory_watcher = self._create_directory_watcher()
 
-        self._active_recording_view_widget = ActiveRecordingTreeView(parent=self)
+        self._active_recording_view_widget = ActiveRecordingTreeView(
+            new_active_recording_selected_signal=self.new_active_recording_selected_signal, parent=self
+        )
         self._layout.addWidget(self._active_recording_view_widget)
 
     @property
@@ -68,8 +70,6 @@ class ActiveRecordingInfoWidget(QWidget):
 
         self._active_recording_view_widget.setup_parameter_tree(self._active_recording_info)
 
-        self.new_active_recording_selected_signal.emit(self._active_recording_info)
-
     def _update_file_watch_path(self, folder_to_watch: Union[str, Path]):
         logger.debug(f"Updating file watch path to: {folder_to_watch}")
 
@@ -91,8 +91,10 @@ class ActiveRecordingInfoWidget(QWidget):
 
 
 class ActiveRecordingTreeView(ParameterTree):
-    def __init__(self, parent=None):
+    def __init__(self, new_active_recording_selected_signal: pyqtSignal, parent=None):
         super().__init__(parent=parent, showHeader=False)
+
+        self._new_active_recording_selected_signal = new_active_recording_selected_signal
 
     def setup_parameter_tree(
         self,
@@ -103,20 +105,6 @@ class ActiveRecordingTreeView(ParameterTree):
         self.setParameters(
             self._create_recording_status_parameter_tree(recording_info_model=recording_info_model),
         )
-
-    def update_active_recording_name(self, active_recording_folder_path: Union[str, Path]):
-        self._clear_active_recording_name()
-        for recording_parameter in self._recording_parameter_trees_list:
-            if recording_parameter.child("Path").value() == active_recording_folder_path:
-                recording_parameter.setName(f"Recording Name: {Path(active_recording_folder_path).name} (Active)")
-                self._active_session_info.set_recording_info(
-                    recording_folder_path=active_recording_folder_path,
-                    calibration_toml_path=recording_parameter.child("Calibration TOML").value(),
-                )
-
-    def _clear_active_recording_name(self):
-        for recording_parameter in self._recording_parameter_trees_list:
-            recording_parameter.setName(f"Recording Name: {Path(recording_parameter.child('Path').value()).name}")
 
     def _create_parameter_tree(
         self,
@@ -169,6 +157,9 @@ class ActiveRecordingTreeView(ParameterTree):
         )
 
     def _create_recording_status_parameter_tree(self, recording_info_model: RecordingInfoModel):
+
+        self._new_active_recording_selected_signal.emit(recording_info_model)
+
         parameter_group = Parameter.create(
             name=f"Recording Name: {recording_info_model.name}",
             type="group",

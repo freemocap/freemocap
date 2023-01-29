@@ -2,8 +2,8 @@ import logging
 
 from pydantic import BaseModel
 
-from freemocap.core_processes.session_processing_parameter_models.session_recording_info.session_info_model import (
-    SessionInfoModel,
+from freemocap.core_processes.session_processing_parameter_models.session_recording_info.recording_info_model import (
+    RecordingInfoModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,14 +33,10 @@ class PostProcessingParametersModel(BaseModel):
 
 
 class SessionProcessingParameterModel(BaseModel):
-    session_info_model: SessionInfoModel
+    recording_info_model: RecordingInfoModel = None
     mediapipe_parameters_model: MediapipeParametersModel = MediapipeParametersModel()
-    anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = (
-        AniposeTriangulate3DParametersModel()
-    )
-    post_processing_parameters_model: PostProcessingParametersModel = (
-        PostProcessingParametersModel()
-    )
+    anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel()
+    post_processing_parameters_model: PostProcessingParametersModel = PostProcessingParametersModel()
 
     class Config:
         arbitrary_types_allowed = True

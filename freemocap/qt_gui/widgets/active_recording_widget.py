@@ -7,97 +7,89 @@ from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
-    SessionInfoModel,
+from freemocap.configuration.paths_and_files_names import (
+    create_new_recording_folder_path,
 )
+
 from freemocap.core_processes.session_processing_parameter_models.session_recording_info.recording_info_model import (
     RecordingInfoModel,
+)
+from freemocap.core_processes.session_processing_parameter_models.session_recording_info.session_info_model import (
+    SessionInfoModel,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class ActiveSessionWidget(QWidget):
-    new_active_recording_selected_signal = pyqtSignal(str)
+class ActiveRecordingWidget(QWidget):
+    new_active_recording_selected_signal = pyqtSignal(RecordingInfoModel)
 
     def __init__(
         self,
-        active_session_info: SessionInfoModel,
+        active_recording_info: RecordingInfoModel = None,
         parent: QWidget = None,
     ):
         super().__init__(parent=parent)
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
-        self._active_session_info = active_session_info
-        self._active_session_directory_watcher = self._create_active_session_directory_watcher()
+        self._active_recording_info = active_recording_info
+        self._directory_watcher = self._create_directory_watcher()
 
-        self._active_session_tree_view = ActiveSessionTreeView(parent=self)
-        self._layout.addWidget(self._active_session_tree_view)
-
-        self.set_active_session(session_folder_path=self._active_session_info.session_folder_path)
-
-    @property
-    def active_session_info(self):
-        return self._active_session_info
+        self._active_recording_view_widget = ActiveRecordingTreeView(parent=self)
+        self._layout.addWidget(self._active_recording_view_widget)
 
     @property
     def active_recording_info(self):
-        return self._active_session_info.active_recording_info
+        return self._active_recording_info
 
-    def get_active_session_info(self):
-        return self._active_session_info
+    @property
+    def active_recording_view_widget(self):
+        return self._active_recording_view_widget
+
+    def get_synchronized_videos_folder_path(self):
+        if self.active_recording_info is None:
+            self._active_recording_info = RecordingInfoModel(create_new_recording_folder_path())
+
+        return self._active_recording_info.synchronized_videos_folder_path
 
     def get_active_recording_info(self):
         # this is redundant to the `active_recording_info` property,
         # but it will be more intuitive to send this down as a callable
         # rather than relying on 'pass-by-reference' magic lol
-        return self._active_session_info.active_recording_info
-
-    def set_active_session(self, session_folder_path: Union[str, Path]):
-        if not self._active_session_info.session_folder_path == session_folder_path:
-            logger.info(f"Setting active session to {session_folder_path}")
-            self._active_session_info = SessionInfoModel(session_folder_path=session_folder_path)
-
-        self._active_session_tree_view.setup_parameter_tree(session_info_model=self._active_session_info)
-
-        self._update_file_watch_path(session_folder_path=self._active_session_info.session_folder_path)
+        return self._active_recording_info
 
     def set_active_recording(
         self,
         recording_folder_path: Union[str, Path],
     ):
-
         logger.info(f"Setting active recording to {recording_folder_path}")
-        self._active_session_info.set_recording_info(str(recording_folder_path))
+        self._active_recording_info = RecordingInfoModel(recording_folder_path=str(recording_folder_path))
 
-        assert str(self._active_session_info.active_recording_info.path) == str(
-            recording_folder_path
-        ), "Failed to set active recording info somehow?"
+        self._update_file_watch_path(folder_to_watch=recording_folder_path)
+        self.new_active_recording_selected_signal.emit(self._active_recording_info)
 
-        self.new_active_recording_selected_signal.emit(str(recording_folder_path))
+    def _create_directory_watcher(self):
 
-    def _create_active_session_directory_watcher(self):
+        directory_watcher = QFileSystemWatcher()
+        directory_watcher.directoryChanged.connect(self._handle_directory_changed)
+        return directory_watcher
 
-        active_session_directory_watcher = QFileSystemWatcher()
-        active_session_directory_watcher.directoryChanged.connect(self._handle_directory_changed)
-        return active_session_directory_watcher
+    def _update_file_watch_path(self, folder_to_watch: Union[str, Path]):
+        logger.debug(f"Updating file watch path to: {folder_to_watch}")
 
-    def _update_file_watch_path(self, session_folder_path: Union[str, Path]):
-        logger.debug(f"Updating file watch path to: {session_folder_path}")
+        if self._directory_watcher.directories():
+            logger.debug(f"Removing path from watch list: {self._directory_watcher.directories()}")
 
-        if self._active_session_directory_watcher.directories():
-            logger.debug(f"Removing path from watch list: {self._active_session_directory_watcher.directories()}")
-
-        self._active_session_directory_watcher.removePaths(self._active_session_directory_watcher.directories())
-        self._active_session_directory_watcher.addPath(session_folder_path)
+        self._directory_watcher.removePaths(self._directory_watcher.directories())
+        self._directory_watcher.addPath(folder_to_watch)
 
     def _handle_directory_changed(self, path: str):
         logger.info(f"Directory changed: {path} - Updating Parameter Tree")
-        self._active_session_tree_view.setup_parameter_tree(self._active_session_info)
+        self._active_recording_view_widget.setup_parameter_tree(self.active_recording_info)
 
 
-class ActiveSessionTreeView(ParameterTree):
+class ActiveRecordingTreeView(ParameterTree):
     def __init__(self, parent=None):
         super().__init__(parent=parent, showHeader=False)
 
@@ -105,17 +97,11 @@ class ActiveSessionTreeView(ParameterTree):
 
     def setup_parameter_tree(
         self,
-        session_info_model: SessionInfoModel,
+        recording_info_model: RecordingInfoModel,
     ):
         self.clear()
-
-        available_recordings = self._get_available_recordings(session_info_model=session_info_model)
-
         self.setParameters(
-            self._create_parameter_tree(
-                session_info_model=session_info_model,
-                available_recordings=available_recordings,
-            ),
+            self._create_recording_status_parameter_tree(recording_info_model=recording_info_model),
         )
 
     def update_active_recording_name(self, active_recording_folder_path: Union[str, Path]):
@@ -134,26 +120,20 @@ class ActiveSessionTreeView(ParameterTree):
 
     def _create_parameter_tree(
         self,
-        session_info_model: SessionInfoModel,
-        available_recordings: List[RecordingInfoModel],
+        recording_info_model: RecordingInfoModel,
     ) -> Parameter:
 
-        if len(available_recordings) > 0 and session_info_model.active_recording_info is None:
-            session_info_model.set_recording_info(recording_folder_path=available_recordings[-1])
-
         active_session_parameter = Parameter.create(
-            name="Session Name: " + Path(session_info_model.session_folder_path).name,
+            name="Recording Name: " + Path(recording_info_model.path).name,
             type="group",
             children=[
                 dict(
-                    name="Path",
+                    name="Parent Path",
                     type="str",
-                    value=session_info_model.session_folder_path,
+                    value=Path(recording_info_model.path).parent,
                     readonly=True,
                 ),
-                self._create_recording_parameter_group(
-                    available_recordings=available_recordings,
-                ),
+                self._create_recording_status_parameter_tree(recording_info_model=recording_info_model),
             ],
         )
 
@@ -257,11 +237,8 @@ class ActiveSessionTreeView(ParameterTree):
 
 if __name__ == "__main__":
     import sys
-    from freemocap.configuration.paths_and_files_names import create_new_session_folder
 
     app = QApplication(sys.argv)
-    active_session_widget = ActiveSessionWidget(
-        active_session_info=SessionInfoModel(session_folder_path=create_new_session_folder())
-    )
-    active_session_widget.show()
+    active_recording_widget = ActiveRecordingWidget()
+    active_recording_widget.show()
     sys.exit(app.exec())

@@ -4,8 +4,8 @@ import logging
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
-from mediapipe.python.solutions import holistic as mp_holistic
 from PyQt6.QtWidgets import QDialog, QVBoxLayout
+from mediapipe.python.solutions import holistic as mp_holistic
 from pyqtgraph.Qt import QtCore
 from src.gui.refactored_gui.state.app_state import APP_STATE
 
@@ -86,15 +86,9 @@ class VisualizeSkeleton(QDialog):
         self.gl_view_widget.addItem(grid_plane_z)
 
     def get_mediapipe_connections(self):
-        self.mediapipe_body_connections = [
-            this_connection for this_connection in mp_holistic.POSE_CONNECTIONS
-        ]
-        self.mediapipe_hand_connections = [
-            this_connection for this_connection in mp_holistic.HAND_CONNECTIONS
-        ]
-        self.mediapipe_face_connections = [
-            this_connection for this_connection in mp_holistic.FACEMESH_TESSELATION
-        ]
+        self.mediapipe_body_connections = [this_connection for this_connection in mp_holistic.POSE_CONNECTIONS]
+        self.mediapipe_hand_connections = [this_connection for this_connection in mp_holistic.HAND_CONNECTIONS]
+        self.mediapipe_face_connections = [this_connection for this_connection in mp_holistic.FACEMESH_TESSELATION]
 
     def initialize_skel_dottos(self):
         self.skeleton_scatter_item = gl.GLScatterPlotItem(
@@ -109,9 +103,7 @@ class VisualizeSkeleton(QDialog):
         self.skeleton_connections_list = []
         for this_connection in self.mediapipe_body_connections:
             this_skel_line = gl.GLLinePlotItem(
-                pos=self.mediapipe_fr_mar_xyz[
-                    self.current_frame_number, this_connection, :
-                ]
+                pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, this_connection, :]
             )
             self.skeleton_connections_list.append(this_skel_line)
             self.gl_view_widget.addItem(this_skel_line)
@@ -125,18 +117,12 @@ class VisualizeSkeleton(QDialog):
 
     def update_skeleton(self):
         # skel dottos
-        self.skeleton_scatter_item.setData(
-            pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, :, :]
-        )
+        self.skeleton_scatter_item.setData(pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, :, :])
 
         # skel lines
-        for this_skeleton_line_number, this_connection in enumerate(
-            self.mediapipe_body_connections
-        ):
+        for this_skeleton_line_number, this_connection in enumerate(self.mediapipe_body_connections):
             self.skeleton_connections_list[this_skeleton_line_number].setData(
-                pos=self.mediapipe_fr_mar_xyz[
-                    self.current_frame_number, this_connection, :
-                ]
+                pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, this_connection, :]
             )
 
     def update_frame_number(self):
@@ -157,9 +143,7 @@ class VisualizeSkeleton(QDialog):
         # self.start()
 
     def move_data_to_origin(self):
-        mean_position_xyz = np.nanmedian(
-            np.nanmedian(self.mediapipe_fr_mar_xyz, axis=0), axis=0
-        )
+        mean_position_xyz = np.nanmedian(np.nanmedian(self.mediapipe_fr_mar_xyz, axis=0), axis=0)
 
         self.mediapipe_fr_mar_xyz[:, :, 0] -= mean_position_xyz[0]
         self.mediapipe_fr_mar_xyz[:, :, 1] -= mean_position_xyz[1]

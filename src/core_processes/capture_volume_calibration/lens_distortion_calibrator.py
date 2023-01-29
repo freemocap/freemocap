@@ -10,13 +10,13 @@ from src.core_processes.capture_volume_calibration.calibration_diagnostics_visua
     CalibrationDiagnosticsVisualizer,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection import (
-    annotate_image_with_charuco_data,
-)
-from src.core_processes.capture_volume_calibration.charuco_board_detection import (
     BoardDetector,
 )
 from src.core_processes.capture_volume_calibration.charuco_board_detection import (
     CharucoViewData,
+)
+from src.core_processes.capture_volume_calibration.charuco_board_detection import (
+    annotate_image_with_charuco_data,
 )
 
 
@@ -32,19 +32,13 @@ class LensDistortionCalibrator:
         self._num_charuco_views = 0
         self._best_combo_of_charuco_views = []
         self._previous_best_calibrations = []
-        self.show_calibration_diagnostics_visualizer = (
-            show_calibration_diagnostics_visualizer
-        )
+        self.show_calibration_diagnostics_visualizer = show_calibration_diagnostics_visualizer
         if self.show_calibration_diagnostics_visualizer:
             self.calibration_diagnostics_visualizer = CalibrationDiagnosticsVisualizer()
 
     def process_incoming_frame(self, raw_frame_payload: FramePayload):
 
-        charuco_frame_payload = (
-            self._board_detector.detect_charuco_board_in_frame_payload(
-                raw_frame_payload
-            )
-        )
+        charuco_frame_payload = self._board_detector.detect_charuco_board_in_frame_payload(raw_frame_payload)
 
         charuco_view_data = charuco_frame_payload.charuco_view_data
 
@@ -58,9 +52,7 @@ class LensDistortionCalibrator:
             if self._num_charuco_views < 2:
                 return charuco_frame_payload.annotated_image
 
-            self.estimate_lens_distortion(
-                charuco_view_data
-            )  # this is where the magic happens
+            self.estimate_lens_distortion(charuco_view_data)  # this is where the magic happens
 
         if self._current_calibration is None:
             self._current_calibration = LensDistortionCalibrationData(
@@ -79,9 +71,7 @@ class LensDistortionCalibrator:
             )
 
         if self.show_calibration_diagnostics_visualizer:
-            self.calibration_diagnostics_visualizer.update_image_subplot(
-                undistorted_image_for_debug
-            )
+            self.calibration_diagnostics_visualizer.update_image_subplot(undistorted_image_for_debug)
 
         undistorted_image = cv2.undistort(
             raw_frame_payload.image,
@@ -107,13 +97,9 @@ class LensDistortionCalibrator:
         print("CAMERA CALIBRATION")
 
         if self._current_calibration is None:
-            current_best_reprojection_error = (
-                1e9  # put a big fake number on the first frame
-            )
+            current_best_reprojection_error = 1e9  # put a big fake number on the first frame
         else:
-            current_best_reprojection_error = (
-                self._current_calibration.reprojection_error
-            )
+            current_best_reprojection_error = self._current_calibration.reprojection_error
 
         image_width = new_charuco_view.image_width
         image_height = new_charuco_view.image_height
@@ -196,13 +182,9 @@ class LensDistortionCalibrator:
 
                     if self.is_this_calibration_valid(this_calibration):
                         self._current_calibration = this_calibration
-                        self._previous_best_calibrations.append(
-                            self._current_calibration
-                        )
+                        self._previous_best_calibrations.append(self._current_calibration)
 
-    def generate_combos_of_charuco_views(
-        self, new_charuco_view, num_combos_to_generate=10, num_views_per_combo=5
-    ):
+    def generate_combos_of_charuco_views(self, new_charuco_view, num_combos_to_generate=10, num_views_per_combo=5):
         """
         return -
         1x current best combo plus new view
@@ -217,9 +199,7 @@ class LensDistortionCalibrator:
 
         # add previous best view
         if self._best_combo_of_charuco_views:
-            list_of_combos_of_charuco_views.append(
-                self._best_combo_of_charuco_views.copy()
-            )
+            list_of_combos_of_charuco_views.append(self._best_combo_of_charuco_views.copy())
 
         # add previous best view + new view
         best_combo_plus_new = self._best_combo_of_charuco_views.copy()
@@ -237,10 +217,7 @@ class LensDistortionCalibrator:
                 replace=False,
             )
 
-            this_combo = [
-                self._all_charuco_views[cc]
-                for cc in this_random_sample_of_charuco_views
-            ]
+            this_combo = [self._all_charuco_views[cc] for cc in this_random_sample_of_charuco_views]
 
             if this_iter < np.ceil(num_views_per_combo / 2):
                 this_combo.append(new_charuco_view)
@@ -252,9 +229,7 @@ class LensDistortionCalibrator:
     def is_this_calibration_valid(self, this_calibration):
 
         is_valid = False
-        if not self.lens_distortion_is_monotonic(
-            this_calibration
-        ):  # not currently working - returns True every time
+        if not self.lens_distortion_is_monotonic(this_calibration):  # not currently working - returns True every time
             return False
 
         if self.check_if_too_many_invalid_pixels(this_calibration):
@@ -262,9 +237,7 @@ class LensDistortionCalibrator:
 
         return True
 
-    def lens_distortion_is_monotonic(
-        self, this_calibration, assume_wide_angle_lens=True
-    ) -> bool:
+    def lens_distortion_is_monotonic(self, this_calibration, assume_wide_angle_lens=True) -> bool:
         """
         check if the lens distortion coefficients are valid by checking it the resulting undistorted image is monotonically increasing along each diagonal (i.e. the image doesn't wrap around itself)
 
@@ -291,9 +264,7 @@ class LensDistortionCalibrator:
         # following naming conventions of open cv docs
         k1 = this_calibration.lens_distortion_coefficients[0]
         k2 = this_calibration.lens_distortion_coefficients[1]
-        p1 = this_calibration.lens_distortion_coefficients[
-            2
-        ]  # I think p1 and p2 are for tangential distortion...
+        p1 = this_calibration.lens_distortion_coefficients[2]  # I think p1 and p2 are for tangential distortion...
         p2 = this_calibration.lens_distortion_coefficients[
             3
         ]  # ...which I might want to check on later? Currently fixed at Zero
@@ -305,12 +276,8 @@ class LensDistortionCalibrator:
 
         original_points_xx, original_points_yy = np.meshgrid(original_x, original_y)
 
-        original_points_x = (
-            original_points_xx.flatten()
-        )  # transform 2D grid with 1D array
-        original_points_y = (
-            original_points_yy.flatten()
-        )  # transform 2D grid with 1D array
+        original_points_x = original_points_xx.flatten()  # transform 2D grid with 1D array
+        original_points_y = original_points_yy.flatten()  # transform 2D grid with 1D array
 
         original_points_xy = np.vstack((original_points_x, original_points_y))
 
@@ -321,12 +288,10 @@ class LensDistortionCalibrator:
         )
 
         distorted_points_x = (
-            np.squeeze(distorted_points_xy[:, :, 0]) * this_calibration.image_width
-            + this_calibration.image_width / 2
+            np.squeeze(distorted_points_xy[:, :, 0]) * this_calibration.image_width + this_calibration.image_width / 2
         )
         distorted_points_y = (
-            np.squeeze(distorted_points_xy[:, :, 1]) * this_calibration.image_height
-            + this_calibration.image_height / 2
+            np.squeeze(distorted_points_xy[:, :, 1]) * this_calibration.image_height + this_calibration.image_height / 2
         )
 
         if self.show_calibration_diagnostics_visualizer:
@@ -338,24 +303,15 @@ class LensDistortionCalibrator:
             )
         return True
 
-    def check_if_too_many_invalid_pixels(
-        self, this_calibration, how_many_is_too_many=0.1
-    ) -> bool:
+    def check_if_too_many_invalid_pixels(self, this_calibration, how_many_is_too_many=0.1) -> bool:
         """
         create new camera matrix that will show full undistored image with black pixels in spots with no data.
         return FALSE if black pixels are greater than `how_many_is_too_many` proportion of the full image
         """
 
-        dummy_image = (
-            np.ones(
-                (this_calibration.image_width, this_calibration.image_height), np.uint8
-            )
-            * 255
-        )
+        dummy_image = np.ones((this_calibration.image_width, this_calibration.image_height), np.uint8) * 255
 
-        undistorted_image = self.undistort_image_with_invalid_pixels_as_black(
-            dummy_image, this_calibration
-        )
+        undistorted_image = self.undistort_image_with_invalid_pixels_as_black(dummy_image, this_calibration)
 
         num_invalid_pixels = np.sum(undistorted_image == 0)
         proportion_invalid_pixels = num_invalid_pixels / dummy_image.size

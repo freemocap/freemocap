@@ -8,6 +8,8 @@ from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget
 from qtpy import QtGui
 
+from freemocap.configuration.paths_and_files_names import get_recording_session_folder_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +41,7 @@ class DirectoryViewWidget(QWidget):
         self._tree_view_widget.resizeColumnToContents(1)
 
         if self._top_level_folder_path is not None:
-            self.set_folder_as_root(self._top_level_folder_path)
+            self.set_folder_as_root(get_recording_session_folder_path())
 
     def expand_directory_to_path(self, directory_path: Union[str, Path], collapse_other_directories: bool = True):
         if collapse_other_directories:

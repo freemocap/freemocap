@@ -12,8 +12,6 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QVBoxLayout,
     QWidget,
-    QScrollArea,
-    QHBoxLayout,
 )
 
 from freemocap.configuration.paths_and_files_names import (

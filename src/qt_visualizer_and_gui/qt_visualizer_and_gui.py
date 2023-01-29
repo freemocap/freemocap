@@ -5,9 +5,9 @@ import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 from mediapipe.python.solutions import holistic as mp_holistic
+from pyqtgraph.Qt import QtWidgets
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
-from pyqtgraph.Qt import QtWidgets
 
 from src.pipelines.session_pipeline.data_classes.data_3d_single_frame_payload import (
     Data3dMultiFramePayload,
@@ -69,15 +69,11 @@ class QTVisualizerAndGui:
             return
 
         try:
-            camera_image_item_widget = self._dict_of_camera_image_item_widgets[
-                webcam_id
-            ]
+            camera_image_item_widget = self._dict_of_camera_image_item_widgets[webcam_id]
         except Exception as e:
             logger.warning(f"Could not find ViewBoxWidget for camera {webcam_id}")
             raise e
-        camera_image_item_widget.setImage(
-            cv2.cvtColor(image_to_display, cv2.COLOR_BGR2RGB)
-        )
+        camera_image_item_widget.setImage(cv2.cvtColor(image_to_display, cv2.COLOR_BGR2RGB))
 
     def _setup_main_window(self, window_width: int = 1000, window_height: int = 1000):
         """
@@ -130,14 +126,10 @@ class QTVisualizerAndGui:
         self._camera_graphics_layout_window = pg.GraphicsLayoutWidget()
         self._camera_views_dock = Dock("Camera Views")
         self._camera_views_dock.addWidget(self._camera_graphics_layout_window)
-        self._main_dock_area.addDock(
-            self._camera_views_dock, "right", self._control_panel_dock
-        )
+        self._main_dock_area.addDock(self._camera_views_dock, "right", self._control_panel_dock)
 
         for this_webcam_id in self._webcam_ids_list:
-            self._dict_of_camera_image_item_widgets[
-                this_webcam_id
-            ] = self._create_camera_view_widget()
+            self._dict_of_camera_image_item_widgets[this_webcam_id] = self._create_camera_view_widget()
 
     def _create_camera_view_widget(self):
         camera_view_box_widget = pg.ViewBox(invertY=True, lockAspect=True)
@@ -166,9 +158,7 @@ class QTVisualizerAndGui:
             self._start_record_button.setText("Recording! Click Again to stop")
         else:
             self._record_video_bool = False
-            self._start_record_button.setText(
-                "Click to record more, or click Close All to stop"
-            )
+            self._start_record_button.setText("Click to record more, or click Close All to stop")
 
     def _setup_3d_viewport(self):
         self.opengl_3d_plot_widget = gl.GLViewWidget()
@@ -206,9 +196,7 @@ class QTVisualizerAndGui:
 
         self.opengl_3d_plot_dock = Dock("3d View Port")
         self.opengl_3d_plot_dock.addWidget(self.opengl_3d_plot_widget)
-        self._main_dock_area.addDock(
-            self.opengl_3d_plot_dock, "bottom", self._camera_views_dock
-        )
+        self._main_dock_area.addDock(self.opengl_3d_plot_dock, "bottom", self._camera_views_dock)
 
     def create_grid_planes(self):
         grid_scale = 2e3
@@ -235,9 +223,7 @@ class QTVisualizerAndGui:
 
     def initialize_charuco_dottos(self, number_of_charuco_corners: int):
         dummy_charuco_points = np.zeros((number_of_charuco_corners, 3))
-        self._charuco_scatter_item = gl.GLScatterPlotItem(
-            pos=dummy_charuco_points, color=(1, 1, 0, 1), size=20
-        )
+        self._charuco_scatter_item = gl.GLScatterPlotItem(pos=dummy_charuco_points, color=(1, 1, 0, 1), size=20)
         self.opengl_3d_plot_widget.addItem(self._charuco_scatter_item)
 
     def update_charuco_3d_dottos(self, charuco_frame_payload: Data3dMultiFramePayload):
@@ -246,20 +232,12 @@ class QTVisualizerAndGui:
         #     self.opengl_3d_plot_widget.pan(mean_xyz[0], mean_xyz[1], mean_xyz[2])
         #     self._camera_set = True
 
-        self.opengl_charuco_scatter_item.setData(
-            pos=charuco_frame_payload.data3d_trackedPointNum_xyz
-        )
+        self.opengl_charuco_scatter_item.setData(pos=charuco_frame_payload.data3d_trackedPointNum_xyz)
 
     def get_mediapipe_connections(self):
-        self.mediapipe_body_connections = [
-            this_connection for this_connection in mp_holistic.POSE_CONNECTIONS
-        ]
-        self.mediapipe_hand_connections = [
-            this_connection for this_connection in mp_holistic.HAND_CONNECTIONS
-        ]
-        self.mediapipe_face_connections = [
-            this_connection for this_connection in mp_holistic.FACEMESH_TESSELATION
-        ]
+        self.mediapipe_body_connections = [this_connection for this_connection in mp_holistic.POSE_CONNECTIONS]
+        self.mediapipe_hand_connections = [this_connection for this_connection in mp_holistic.HAND_CONNECTIONS]
+        self.mediapipe_face_connections = [this_connection for this_connection in mp_holistic.FACEMESH_TESSELATION]
 
     def initialize_skel_dottos(self, mediapipe_trackedPoint_xyz: np.ndarray):
         self.skeleton_scatter_item = gl.GLScatterPlotItem(
@@ -270,16 +248,12 @@ class QTVisualizerAndGui:
     def initialize_skel_lines(self, mediapipe_trackedPoint_xyz: np.ndarray):
         self._skeleton_connections_list = []
         for this_connection in self.mediapipe_body_connections:
-            this_skel_line = gl.GLLinePlotItem(
-                pos=mediapipe_trackedPoint_xyz[this_connection, :]
-            )
+            this_skel_line = gl.GLLinePlotItem(pos=mediapipe_trackedPoint_xyz[this_connection, :])
             self._skeleton_connections_list.append(this_skel_line)
             self.opengl_3d_plot_widget.addItem(this_skel_line)
 
     def update_mediapipe3d_skeleton(self, mediapipe3d_multi_frame_payload):
-        mediapipe3d_trackedPoint_xyz = (
-            mediapipe3d_multi_frame_payload.data3d_trackedPointNum_xyz
-        )
+        mediapipe3d_trackedPoint_xyz = mediapipe3d_multi_frame_payload.data3d_trackedPointNum_xyz
         if not self._mediapipe_skeleton_initialized:
             self.get_mediapipe_connections()
             self.initialize_skel_dottos(mediapipe3d_trackedPoint_xyz)
@@ -290,9 +264,7 @@ class QTVisualizerAndGui:
         self.skeleton_scatter_item.setData(pos=mediapipe3d_trackedPoint_xyz)
 
         # skel lines
-        for this_skeleton_line_number, this_connection in enumerate(
-            self.mediapipe_body_connections
-        ):
+        for this_skeleton_line_number, this_connection in enumerate(self.mediapipe_body_connections):
             self._skeleton_connections_list[this_skeleton_line_number].setData(
                 pos=mediapipe3d_trackedPoint_xyz[this_connection, :]
             )

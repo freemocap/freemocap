@@ -3,25 +3,23 @@ from pathlib import Path
 from typing import List, Union
 
 from PyQt6.QtCore import pyqtSignal, QFileSystemWatcher
-from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.configuration.paths_and_files_names import (
-    create_new_recording_folder_path,
+    get_most_recent_recording_path,
 )
-
-from freemocap.core_processes.session_processing_parameter_models.session_recording_info.recording_info_model import (
+from freemocap.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
 )
-from freemocap.core_processes.session_processing_parameter_models.session_recording_info.session_info_model import (
+from freemocap.parameter_info_models.session_info_model import (
     SessionInfoModel,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class ActiveRecordingWidget(QWidget):
+class ActiveRecordingInfoWidget(QWidget):
     new_active_recording_selected_signal = pyqtSignal(RecordingInfoModel)
 
     def __init__(
@@ -47,16 +45,16 @@ class ActiveRecordingWidget(QWidget):
     def active_recording_view_widget(self):
         return self._active_recording_view_widget
 
-    def get_synchronized_videos_folder_path(self):
-        if self.active_recording_info is None:
-            self._active_recording_info = RecordingInfoModel(create_new_recording_folder_path())
-
-        return self._active_recording_info.synchronized_videos_folder_path
-
-    def get_active_recording_info(self):
+    def get_active_recording_info(self, return_path: bool = False):
         # this is redundant to the `active_recording_info` property,
         # but it will be more intuitive to send this down as a callable
         # rather than relying on 'pass-by-reference' magic lol
+        if self._active_recording_info is None:
+            self.set_active_recording(recording_folder_path=get_most_recent_recording_path())
+
+        if return_path:
+            return self._active_recording_info.path
+
         return self._active_recording_info
 
     def set_active_recording(
@@ -67,13 +65,10 @@ class ActiveRecordingWidget(QWidget):
         self._active_recording_info = RecordingInfoModel(recording_folder_path=str(recording_folder_path))
 
         self._update_file_watch_path(folder_to_watch=recording_folder_path)
+
+        self._active_recording_view_widget.setup_parameter_tree(self._active_recording_info)
+
         self.new_active_recording_selected_signal.emit(self._active_recording_info)
-
-    def _create_directory_watcher(self):
-
-        directory_watcher = QFileSystemWatcher()
-        directory_watcher.directoryChanged.connect(self._handle_directory_changed)
-        return directory_watcher
 
     def _update_file_watch_path(self, folder_to_watch: Union[str, Path]):
         logger.debug(f"Updating file watch path to: {folder_to_watch}")
@@ -84,6 +79,12 @@ class ActiveRecordingWidget(QWidget):
         self._directory_watcher.removePaths(self._directory_watcher.directories())
         self._directory_watcher.addPath(folder_to_watch)
 
+    def _create_directory_watcher(self):
+
+        directory_watcher = QFileSystemWatcher()
+        directory_watcher.directoryChanged.connect(self._handle_directory_changed)
+        return directory_watcher
+
     def _handle_directory_changed(self, path: str):
         logger.info(f"Directory changed: {path} - Updating Parameter Tree")
         self._active_recording_view_widget.setup_parameter_tree(self.active_recording_info)
@@ -93,12 +94,11 @@ class ActiveRecordingTreeView(ParameterTree):
     def __init__(self, parent=None):
         super().__init__(parent=parent, showHeader=False)
 
-        self.doubleClicked.connect(self._handle_double_click_event)
-
     def setup_parameter_tree(
         self,
         recording_info_model: RecordingInfoModel,
     ):
+        logger.debug(f"Setting up `ActiveRecordingTreeView` for recording: {recording_info_model.name}")
         self.clear()
         self.setParameters(
             self._create_recording_status_parameter_tree(recording_info_model=recording_info_model),
@@ -215,6 +215,12 @@ class ActiveRecordingTreeView(ParameterTree):
                             value=recording_info_model.center_of_mass_data_status_check,
                             readonly=True,
                         ),
+                        dict(
+                            name="Blender scene file exists?",
+                            type="str",
+                            value=recording_info_model.blender_file_status_check,
+                            readonly=True,
+                        ),
                     ],
                 ),
             ],
@@ -222,23 +228,11 @@ class ActiveRecordingTreeView(ParameterTree):
 
         return parameter_group
 
-    def _handle_double_click_event(self, a0: QMouseEvent) -> None:
-        parameter_item = self.itemFromIndex(self.currentIndex())[0]
-        logger.info(f"Double clicked on Parameter Item named: {parameter_item.param.name()}")
-        parent = parameter_item
-        while parent is not None:
-            if "Recording Name:" in parent.param.name():
-                logger.info(f"Found Recording Name: {parent.param.name()}")
-                self.parent().set_active_recording(parent.param.child("Path").value())
-                break
-            else:
-                parent = parent.parent()
-
 
 if __name__ == "__main__":
     import sys
 
     app = QApplication(sys.argv)
-    active_recording_widget = ActiveRecordingWidget()
+    active_recording_widget = ActiveRecordingInfoWidget()
     active_recording_widget.show()
     sys.exit(app.exec())

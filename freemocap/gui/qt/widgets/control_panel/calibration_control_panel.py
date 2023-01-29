@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class CalibrationControlPanel(QWidget):
     def __init__(self, get_active_recording_info_callable: Callable, parent=None):
         super().__init__(parent=parent)
-        self._get_active_recording_info = get_active_recording_info_callable
+        self._get_active_recording_info_callable = get_active_recording_info_callable
         self.parent = parent
 
         self._layout = QVBoxLayout()
@@ -43,14 +43,6 @@ class CalibrationControlPanel(QWidget):
         self._layout.addStretch()
 
         self._anipose_calibration_frame_worker = None
-
-    @property
-    def active_recording_info(self):
-        return self._get_active_recording_info()
-
-    def set_active_recording_folder_path_label(self, path: Union[str, Path]):
-        logger.debug(f"Setting active recording folder path to {path}")
-        self._active_recording_path_label.setText(str(path))
 
     def _create_radio_button_layout(self):
         radio_button_form_layout = QFormLayout()
@@ -97,27 +89,23 @@ class CalibrationControlPanel(QWidget):
             self._handle_calibrate_from_active_recording_toggled
         )
 
-        if self.active_recording_info is None:
-            active_path_str = f"- No active recording selected -"
-        else:
-            active_path_str = f"{Path(self.active_recording_info.path).parent.name} / {str(Path(self.active_recording_info.path).name)}"
-
-        self._active_recording_path_label = QLabel(active_path_str)
-        self._active_recording_path_label.setWordWrap(True)
-
-        self._active_recording_path_label.setEnabled(False)
-        radio_button_form_layout.addWidget(self._active_recording_path_label)
-
-        self._calibrate_from_active_recording_button = QPushButton("Calibrate from active recording")
-        # self._calibrate_from_active_recording_button.setStyleSheet("font-size: 10pt;")
-
+        self._calibrate_from_active_recording_button = QPushButton(".")
+        self.update_calibrate_from_active_recording_button_text()
+        self._calibrate_from_active_recording_button.setEnabled(False)
         self._calibrate_from_active_recording_button.clicked.connect(self._calibrate_from_active_recording)
         radio_button_form_layout.addWidget(self._calibrate_from_active_recording_button)
-        self._calibrate_from_active_recording_button.setEnabled(False)
 
         self._charuco_square_size_form_layout = self._create_charuco_square_size_form_layout()
         radio_button_form_layout.addRow(self._charuco_square_size_form_layout)
         self._set_charuco_square_size_form_layout_visibility(False)
+
+    def update_calibrate_from_active_recording_button_text(self):
+        if self._get_active_recording_info_callable() is None:
+            active_path_str = f"- No active recording selected -"
+        else:
+            active_path_str = f"Calibrate from Recording: {self._get_active_recording_info_callable().name}"
+
+        self._calibrate_from_active_recording_button.setText(active_path_str)
 
     def _handle_use_most_recent_calibration_toggled(self, checked):
         pass
@@ -135,12 +123,11 @@ class CalibrationControlPanel(QWidget):
             self._user_selected_calibration_toml_path_label.setEnabled(False)
 
     def _handle_calibrate_from_active_recording_toggled(self, checked):
+        self.update_calibrate_from_active_recording_button_text()
         if checked:
-            self._active_recording_path_label.setEnabled(True)
             self._calibrate_from_active_recording_button.setEnabled(True)
             self._set_charuco_square_size_form_layout_visibility(True)
         else:
-            self._active_recording_path_label.setEnabled(False)
             self._calibrate_from_active_recording_button.setEnabled(False)
             self._set_charuco_square_size_form_layout_visibility(False)
 
@@ -178,23 +165,25 @@ class CalibrationControlPanel(QWidget):
         return charuco_square_size_form_layout
 
     def _calibrate_from_active_recording(self):
-        logger.info(f"Calibrating from active recording: {self.active_recording_info}")
+        active_recording_info = self._get_active_recording_info_callable()
+        logger.info(f"Calibrating from active recording: {active_recording_info.name}")
 
-        if self.active_recording_info is None:
-            logger.info(f"Active recording is `None`. Cannot calibrate from active recording")
+        if not active_recording_info.synchronized_videos_status_check:
+            logger.error(
+                f"Cannot calibrate from {active_recording_info.name} -"
+                f" `active_recording_info.synchronized_videos_status_check` is "
+                f"{active_recording_info.synchronized_videos_status_check}"
+            )
+
             return
-
-        self._calibrate_from_active_recording_button.setEnabled(False)
-
-        charuco_square_size = float(self._charuco_square_size_line_edit.text())
-
         self._anipose_calibration_frame_worker = AniposeCalibrationThreadWorker(
-            calibration_videos_folder_path=self.active_recording_info.synchronized_videos_folder_path,
-            charuco_square_size=charuco_square_size,
+            calibration_videos_folder_path=active_recording_info.synchronized_videos_folder_path,
+            charuco_square_size=float(self._charuco_square_size_line_edit.text()),
         )
 
         self._anipose_calibration_frame_worker.start()
 
+        self._calibrate_from_active_recording_button.setEnabled(False)
         self._anipose_calibration_frame_worker.finished.connect(
             lambda: self._calibrate_from_active_recording_button.setEnabled(True)
         )

@@ -41,7 +41,7 @@ class DirectoryViewWidget(QWidget):
         self._tree_view_widget.resizeColumnToContents(1)
 
         if self._top_level_folder_path is not None:
-            self.set_folder_as_root(get_recording_session_folder_path())
+            self.set_folder_as_root(self._top_level_folder_path)
 
     def expand_directory_to_path(self, directory_path: Union[str, Path], collapse_other_directories: bool = True):
         if collapse_other_directories:
@@ -56,7 +56,7 @@ class DirectoryViewWidget(QWidget):
 
             parent_path = Path(parent_path).parent
             index = self._file_system_model.index(str(parent_path))
-            logger.info(f"Expanding parent directory at  path: {str(parent_path)}")
+            logger.debug(f"Expanding parent directory at  path: {str(parent_path)}")
             self._tree_view_widget.expand(index)
 
         self._tree_view_widget.scrollTo(og_index)

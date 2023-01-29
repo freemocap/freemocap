@@ -21,14 +21,13 @@ try:
     argv = argv[argv.index("--") + 1 :]
     session_path = argv[0]
 
-    if len(argv) > 1:
-        good_clean_frame_number = int(argv[1])
+    blend_file_save_path = argv[1]
+    if len(argv) > 2:
+        good_clean_frame_number = int(argv[2])
     else:
         good_clean_frame_number = 0
 except:
-    print(
-        "we appear to be running from the Blender Scripting tab! Manually enter your `session_path` at line 23"
-    )
+    print("we appear to be running from the Blender Scripting tab! Manually enter your `session_path` at line 23")
     session_path = Path(
         r"C:\Users\jonma\Dropbox\FreeMoCapProject\FreeMocap_Data\sesh_2022-05-07_17_15_05_pupil_wobble_juggle_0"
     )
@@ -38,16 +37,10 @@ print(f"Using session path - {str(session_path)}")
 session_path = Path(session_path)
 
 path_to_mediapipe_npy = (
-    session_path
-    / "output_data"
-    / "raw_data"
-    / "mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+    session_path / "output_data" / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
 )
 path_to_mediapipe_3d_reproj = (
-    session_path
-    / "output_data"
-    / "raw_data"
-    / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+    session_path / "output_data" / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
 )
 
 print(f"Loading mediapipe data from {path_to_mediapipe_npy}")
@@ -63,16 +56,12 @@ mediapipe_skel_fr_mar_dim = mediapipe_skel_fr_mar_dim / 1000  # convert to meter
 
 print(f"Loading mediapipe reprojection error data from {path_to_mediapipe_3d_reproj}")
 mediapipe_reprojection_error_fr_mar = np.load(str(path_to_mediapipe_3d_reproj))
-print(
-    f"mediapipe_reprojection_error_fr_mar.shape = {mediapipe_reprojection_error_fr_mar.shape}"
-)
+print(f"mediapipe_reprojection_error_fr_mar.shape = {mediapipe_reprojection_error_fr_mar.shape}")
 
 body_marker_range = np.arange(0, 33)
 right_hand_marker_range = np.arange(33, 33 + 21)
 left_hand_marker_range = np.arange(33 + 21, 33 + 21 + 21)
-face_marker_range = np.arange(
-    left_hand_marker_range[-1], mediapipe_skel_fr_mar_dim.shape[1]
-)
+face_marker_range = np.arange(left_hand_marker_range[-1], mediapipe_skel_fr_mar_dim.shape[1])
 
 body_skel_fr_mar_dim = mediapipe_skel_fr_mar_dim[
     :,
@@ -110,12 +99,8 @@ if good_clean_frame_number == 0:
     frame_mean_reproj_error = []
 
     for this_frame in range(mediapipe_skel_fr_mar_dim.shape[0]):
-        frame_nan_counts.append(
-            np.sum(np.isnan(mediapipe_skel_fr_mar_dim[this_frame, :, 0]))
-        )
-        frame_mean_reproj_error.append(
-            np.nanmean(mediapipe_reprojection_error_fr_mar[this_frame, :])
-        )
+        frame_nan_counts.append(np.sum(np.isnan(mediapipe_skel_fr_mar_dim[this_frame, :, 0])))
+        frame_mean_reproj_error.append(np.nanmean(mediapipe_reprojection_error_fr_mar[this_frame, :]))
 
     nan_times_vis = np.array(frame_nan_counts) * np.array(frame_mean_reproj_error)
     num_frames = len(frame_nan_counts)
@@ -237,15 +222,13 @@ try:
 
     bpy.ops.object.empty_add(type="ARROWS")
     freemocap_origin_axes = bpy.context.active_object
-    freemocap_origin_axes.name = "freemocap_origin_axes"  # will translate to put skelly on ground symmetric-ish about origin
+    freemocap_origin_axes.name = (
+        "freemocap_origin_axes"  # will translate to put skelly on ground symmetric-ish about origin
+    )
 
     #######################################################################
     # %% load empties
-    print(
-        "loading {} empties on {} frames".format(
-            len(mediapipe_tracked_point_names), number_of_frames
-        )
-    )
+    print("loading {} empties on {} frames".format(len(mediapipe_tracked_point_names), number_of_frames))
 
     empty_size = 0.01
 
@@ -283,10 +266,7 @@ try:
     #######################################################################
     print("creating virtual markers")
     print("head_center - midway between left and right ears")
-    hips_xyz = (
-        mediapipe_skel_fr_mar_dim[:, left_ear_index, :]
-        + mediapipe_skel_fr_mar_dim[:, right_ear_index, :]
-    ) / 2
+    hips_xyz = (mediapipe_skel_fr_mar_dim[:, left_ear_index, :] + mediapipe_skel_fr_mar_dim[:, right_ear_index, :]) / 2
     bpy.ops.object.empty_add(type="SPHERE")
     this_empty = bpy.context.active_object
     this_empty.name = "head_center"
@@ -306,8 +286,7 @@ try:
     left_shoulder_index = 11
     right_shoulder_index = 12
     neck_xyz = (
-        mediapipe_skel_fr_mar_dim[:, left_shoulder_index, :]
-        + mediapipe_skel_fr_mar_dim[:, right_shoulder_index, :]
+        mediapipe_skel_fr_mar_dim[:, left_shoulder_index, :] + mediapipe_skel_fr_mar_dim[:, right_shoulder_index, :]
     ) / 2
     bpy.ops.object.empty_add(type="PLAIN_AXES")
     this_empty = bpy.context.active_object
@@ -327,10 +306,7 @@ try:
     print("hip_center - midway between left and right hips")
     left_hip_index = 23
     right_hip_index = 24
-    hips_xyz = (
-        mediapipe_skel_fr_mar_dim[:, left_hip_index, :]
-        + mediapipe_skel_fr_mar_dim[:, right_hip_index, :]
-    ) / 2
+    hips_xyz = (mediapipe_skel_fr_mar_dim[:, left_hip_index, :] + mediapipe_skel_fr_mar_dim[:, right_hip_index, :]) / 2
     bpy.ops.object.empty_add(type="PLAIN_AXES")
     this_empty = bpy.context.active_object
     this_empty.name = "hip_center"
@@ -907,12 +883,8 @@ try:
                     print(
                         f"setting bone: {this_bone_name}: head: {bpy.data.objects[this_head_empty_name].location}, tail: {bpy.data.objects[this_tail_empty_name].location}"
                     )
-                    this_edit_bone.head = bpy.data.objects[
-                        this_head_empty_name
-                    ].location
-                    this_edit_bone.tail = bpy.data.objects[
-                        this_tail_empty_name
-                    ].location
+                    this_edit_bone.head = bpy.data.objects[this_head_empty_name].location
+                    this_edit_bone.tail = bpy.data.objects[this_tail_empty_name].location
                 else:  # remove bones with no tail (and/or head) until we figure out a better plan
                     print(f"removing bone: {this_bone_name}")
                     this_metarig.data.edit_bones.remove(this_edit_bone)
@@ -1179,9 +1151,7 @@ try:
                 this_constraint_name,
                 this_constraint_target_empty_name,
             ) in this_bone_dict.items():
-                print(
-                    f"constraint: {this_constraint_name} with target:{this_constraint_target_empty_name}"
-                )
+                print(f"constraint: {this_constraint_name} with target:{this_constraint_target_empty_name}")
                 print("grab bone")
                 this_bone = this_armature.pose.bones[this_bone_name]
                 print("apply bone")
@@ -1534,21 +1504,12 @@ try:
 
                 this_weight = this_weighted_point_dict[1]
                 these_weighted_points.append(
-                    mediapipe_skel_fr_mar_dim[
-                        :, mediapipe_tracked_point_names.index(this_point_name), :
-                    ]
-                    * this_weight
+                    mediapipe_skel_fr_mar_dim[:, mediapipe_tracked_point_names.index(this_point_name), :] * this_weight
                 )
             this_virtual_point_fr_xyz = np.sum(these_weighted_points, axis=0)
-            this_virtual_point_fr_mar_xyz = np.expand_dims(
-                this_virtual_point_fr_xyz, axis=1
-            )
-            mediapipe_skel_fr_mar_dim = np.append(
-                mediapipe_skel_fr_mar_dim, this_virtual_point_fr_mar_xyz, axis=1
-            )
-            virtual_point_index_dict[this_virtual_marker_name] = (
-                mediapipe_skel_fr_mar_dim.shape[1] - 1
-            )
+            this_virtual_point_fr_mar_xyz = np.expand_dims(this_virtual_point_fr_xyz, axis=1)
+            mediapipe_skel_fr_mar_dim = np.append(mediapipe_skel_fr_mar_dim, this_virtual_point_fr_mar_xyz, axis=1)
+            virtual_point_index_dict[this_virtual_marker_name] = mediapipe_skel_fr_mar_dim.shape[1] - 1
             print(
                 f"Virtual marker: {this_virtual_marker_name} created at marker index {mediapipe_skel_fr_mar_dim.shape[1] - 1}"
             )
@@ -1581,9 +1542,7 @@ try:
                     f"edge created for bone: ({this_bone_dict[0]} : {head_name}-{tail_name}), indicies({this_edge[0]},{this_edge[1]})"
                 )
             except:
-                print(
-                    f"edge FAILED for for bone:{this_bone_dict[0]} : {head_name}-{tail_name}"
-                )
+                print(f"edge FAILED for for bone:{this_bone_dict[0]} : {head_name}-{tail_name}")
                 pass
 
         print("edges created!")
@@ -1704,6 +1663,6 @@ except Exception as e:
 
 # save .blend file
 sessionID = session_path.stem
-blend_file_save_path = session_path / (sessionID + ".blend")
+
 print(f"Saving Blender output file to: {str(blend_file_save_path)}")
 bpy.ops.wm.save_as_mainfile(filepath=str(blend_file_save_path))

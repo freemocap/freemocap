@@ -18,18 +18,20 @@ from freemocap.configuration.paths_and_files_names import (
     get_most_recent_recording_path,
     PATH_TO_FREEMOCAP_LOGO_SVG,
     RECORDING_SESSIONS_FOLDER_NAME,
+    create_new_recording_folder_path,
+    get_blender_file_path,
 )
-from freemocap.core_processes.session_processing_parameter_models.session_processing_parameter_models import (
+from freemocap.parameter_info_models.session_processing_parameter_models import (
     SessionProcessingParameterModel,
 )
-from freemocap.core_processes.session_processing_parameter_models.session_recording_info.recording_info_model import (
+from freemocap.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
 )
 from freemocap.core_processes.visualization.blender_stuff.export_to_blender import (
     export_to_blender,
 )
-from freemocap.gui.qt.main_window.menu_bar import (
-    LOAD_MOST_RECENT_SESSION_ACTION_NAME,
+from freemocap.gui.qt.main_window.actions_and_menu_bar.menu_bar import (
+    LOAD_MOST_RECENT_RECORDING_ACTION_NAME,
     MenuBar,
 )
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
@@ -37,7 +39,7 @@ from freemocap.gui.qt.style_sheet.set_css_style_sheet import apply_css_style_she
 from freemocap.gui.qt.utilities.save_most_recent_recording_path_as_toml import (
     save_most_recent_recording_path_as_toml,
 )
-from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingWidget
+from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingInfoWidget
 from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import (
     CalibrationControlPanel,
@@ -70,7 +72,7 @@ class FreemocapMainWindow(QMainWindow):
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
         self._css_file_watcher = self._set_up_stylesheet()
 
-        self._menu_bar = MenuBar(self)
+        self._menu_bar = MenuBar(parent=self)
         self.setMenuBar(self._menu_bar)
 
         self._active_recording_info = None
@@ -86,13 +88,13 @@ class FreemocapMainWindow(QMainWindow):
 
         self.setWindowTitle("freemocap \U0001F480 \U00002728")
 
-        self._active_recording_widget = ActiveRecordingWidget(self._active_recording_info, parent=self)
+        self._active_recording_info_widget = ActiveRecordingInfoWidget(self._active_recording_info, parent=self)
 
-        self._central_tab_widget = self._create_center_tab_widget()
+        self._central_tab_widget = self._create_central_tab_widget()
         self.setCentralWidget(self._central_tab_widget)
 
         self._active_recording_dock_widget = QDockWidget("Active Recording", self)
-        self._active_recording_dock_widget.setWidget(self._active_recording_widget.active_recording_view_widget)
+        self._active_recording_dock_widget.setWidget(self._active_recording_info_widget.active_recording_view_widget)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._active_recording_dock_widget)
 
         self._control_panel_dock_widget = self._create_control_panel_dock_widget()
@@ -122,20 +124,28 @@ class FreemocapMainWindow(QMainWindow):
             self._handle_videos_saved_to_this_folder_signal
         )
 
-        self._active_recording_widget.new_active_recording_selected_signal.connect(
+        self._active_recording_info_widget.new_active_recording_selected_signal.connect(
             self._handle_new_active_recording_selected
         )
 
-        self._menu_bar.actions_dictionary[LOAD_MOST_RECENT_SESSION_ACTION_NAME].triggered.connect(
-            lambda: self._active_recording_widget.set_active_recording(
-                recording_folder_path=get_most_recent_recording_path()
-            )
+        self._menu_bar.actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME].triggered.connect(
+            self._handle_load_most_recent_session_action_triggered
         )
+
+    def _handle_load_most_recent_session_action_triggered(self):
+        logger.info("`Load Most Recent Recording` QAction triggered")
+        most_recent_recording_path = get_most_recent_recording_path()
+
+        if most_recent_recording_path is None:
+            logger.error(f"`get_most_recent_recording_path()` return `None`!")
+            return
+
+        self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())
 
     def _handle_videos_saved_to_this_folder_signal(self, folder_path: str):
         save_most_recent_recording_path_as_toml(most_recent_recording_path=folder_path)
         self._directory_view_widget.expand_directory_to_path(directory_path=folder_path)
-        self._active_recording_widget.set_active_recording(recording_folder_path=folder_path)
+        self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
     def _handle_quick_start_button_clicked(self):
         self._central_tab_widget.set_welcome_tab_enabled(False)
@@ -151,10 +161,17 @@ class FreemocapMainWindow(QMainWindow):
 
         return css_file_watcher
 
-    def _create_center_tab_widget(self):
+    def _create_new_synchronized_videos_folder(self) -> str:
+
+        new_recording_folder_path = create_new_recording_folder_path()
+        logger.info(f"Creating new recording folder at: {new_recording_folder_path}")
+        self._active_recording_info_widget.set_active_recording(recording_folder_path=new_recording_folder_path)
+
+        return self._active_recording_info_widget.active_recording_info.synchronized_videos_folder_path
+
+    def _create_central_tab_widget(self):
         self._skellycam_view_widget = SkellyCamViewerWidget(
-            parent=self,
-            get_new_synchronized_videos_folder_callable=self._active_recording_widget.get_synchronized_videos_folder_path,
+            parent=self, get_new_synchronized_videos_folder_callable=self._create_new_synchronized_videos_folder
         )
         self._camera_controller_widget = SkellyCamControllerWidget(
             camera_viewer_widget=self._skellycam_view_widget,
@@ -181,11 +198,11 @@ class FreemocapMainWindow(QMainWindow):
     def _create_control_panel_dock_widget(self):
         self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(self._skellycam_view_widget)
         self._calibration_control_panel = CalibrationControlPanel(
-            get_active_recording_info_callable=self._active_recording_widget.get_active_recording_info,
+            get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
         )
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             session_processing_parameters=self._session_process_parameter_model,
-            get_active_recording_info=self._active_recording_widget.get_active_recording_info,
+            get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
         )
 
         control_panel_dock_widget = ControlPanelDockWidget(
@@ -200,8 +217,12 @@ class FreemocapMainWindow(QMainWindow):
 
     def _create_visualization_control_panel(self):
         self._export_to_blender_button = QPushButton("Export to Blender")
-        self._export_to_blender_button.clicked.connect(lambda: export_to_blender(get_most_recent_recording_path()))
+        self._export_to_blender_button.clicked.connect(self._handle_export_to_blender_button_clicked)
         return self._export_to_blender_button
+
+    def _handle_export_to_blender_button_clicked(self):
+        recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
+        export_to_blender(recording_folder_path=recording_path, blender_file_path=get_blender_file_path(recording_path))
 
     def _create_directory_view_dock_widget(self):
         directory_view_dock_widget = QDockWidget("Directory View", self)
@@ -227,7 +248,7 @@ class FreemocapMainWindow(QMainWindow):
     def _handle_new_active_recording_selected(self, recording_info_model: RecordingInfoModel):
         logger.info(f"New active recording selected: {recording_info_model.path}")
 
-        self._calibration_control_panel.set_active_recording_folder_path_label(recording_info_model.path)
+        self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
 
         self._active_recording_dock_widget.setWindowTitle(f"Active Recording: {recording_info_model.name}")
 

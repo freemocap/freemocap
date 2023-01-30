@@ -64,28 +64,32 @@ class ActiveRecordingInfoWidget(QWidget):
         logger.info(f"Setting active recording to {recording_folder_path}")
         self._active_recording_info = RecordingInfoModel(recording_folder_path=str(recording_folder_path))
 
-        self._update_file_watch_path(folder_to_watch=recording_folder_path)
+        self._update_file_watch_path(folder_to_watch=self._active_recording_info.path)
 
         self._active_recording_view_widget.setup_parameter_tree(self._active_recording_info)
+
+    def update_parameter_tree(self):
+        self._active_recording_view_widget.setup_parameter_tree(self.active_recording_info)
 
     def _update_file_watch_path(self, folder_to_watch: Union[str, Path]):
         logger.debug(f"Updating file watch path to: {folder_to_watch}")
 
         if self._directory_watcher.directories():
             logger.debug(f"Removing path from watch list: {self._directory_watcher.directories()}")
+            self._directory_watcher.removePaths(self._directory_watcher.directories())
 
-        self._directory_watcher.removePaths(self._directory_watcher.directories())
         self._directory_watcher.addPath(folder_to_watch)
 
     def _create_directory_watcher(self):
 
         directory_watcher = QFileSystemWatcher()
+        directory_watcher.fileChanged.connect(self._handle_directory_changed)
         directory_watcher.directoryChanged.connect(self._handle_directory_changed)
         return directory_watcher
 
     def _handle_directory_changed(self, path: str):
         logger.info(f"Directory changed: {path} - Updating Parameter Tree")
-        self._active_recording_view_widget.setup_parameter_tree(self.active_recording_info)
+        self.update_parameter_tree()
 
 
 class ActiveRecordingTreeView(ParameterTree):

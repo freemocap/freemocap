@@ -32,9 +32,7 @@ mediapipe_skeleton_segment_definitions = {
 }
 
 
-def estimate_skeleton_segment_lengths(
-    skeleton_dataframe: pd.DataFrame, skeleton_segment_definitions: dict
-) -> dict:
+def estimate_skeleton_segment_lengths(skeleton_dataframe: pd.DataFrame, skeleton_segment_definitions: dict) -> dict:
     """Estimate the length of each skeleton segment.
 
     Args:
@@ -45,9 +43,7 @@ def estimate_skeleton_segment_lengths(
         dict: Dictionary containing the estimated length of each skeleton segment.
     """
     logger.debug("Estimating skeleton segment lengths (mm)...")
-    skeleton_data_dictionary = create_skeleton_dictionary_from_skeleton_body_data_frame(
-        skeleton_dataframe
-    )
+    skeleton_data_dictionary = create_skeleton_dictionary_from_skeleton_body_data_frame(skeleton_dataframe)
 
     skeleton_segment_lengths_dict = {}
     for segment_name, segment_definition_dict in skeleton_segment_definitions.items():
@@ -74,27 +70,17 @@ def estimate_skeleton_segment_lengths(
 
         # good ol pythag <3
         segment_length_per_frame = np.sqrt(
-            (proximal_x - distal_x) ** 2
-            + (proximal_y - distal_y) ** 2
-            + (proximal_z - distal_z) ** 2
+            (proximal_x - distal_x) ** 2 + (proximal_y - distal_y) ** 2 + (proximal_z - distal_z) ** 2
         )
         skeleton_segment_lengths_dict[segment_name] = {}
-        skeleton_segment_lengths_dict[segment_name]["median"] = np.nanmedian(
-            segment_length_per_frame
-        )
-        skeleton_segment_lengths_dict[segment_name]["mean"] = np.nanmean(
-            segment_length_per_frame
-        )
-        skeleton_segment_lengths_dict[segment_name]["standard_deviation"] = np.nanstd(
-            segment_length_per_frame
-        )
+        skeleton_segment_lengths_dict[segment_name]["median"] = np.nanmedian(segment_length_per_frame)
+        skeleton_segment_lengths_dict[segment_name]["mean"] = np.nanmean(segment_length_per_frame)
+        skeleton_segment_lengths_dict[segment_name]["standard_deviation"] = np.nanstd(segment_length_per_frame)
 
     return skeleton_segment_lengths_dict
 
 
-def create_virtual_markers(
-    skeleton_data_dictionary, virtual_marker_name: str, marker_name_list: list
-) -> dict:
+def create_virtual_markers(skeleton_data_dictionary, virtual_marker_name: str, marker_name_list: list) -> dict:
     # print(
     #     f"Creating virtual marker '{virtual_marker_name}' from markers: {marker_name_list}"
     # )
@@ -108,15 +94,9 @@ def create_virtual_markers(
         y.append(skeleton_data_dictionary[f"{marker_name}_y"])
         z.append(skeleton_data_dictionary[f"{marker_name}_z"])
 
-    skeleton_data_dictionary[f"{virtual_marker_name}_x"] = np.mean(
-        np.asarray(x), axis=0
-    )
-    skeleton_data_dictionary[f"{virtual_marker_name}_y"] = np.mean(
-        np.asarray(y), axis=0
-    )
-    skeleton_data_dictionary[f"{virtual_marker_name}_z"] = np.mean(
-        np.asarray(z), axis=0
-    )
+    skeleton_data_dictionary[f"{virtual_marker_name}_x"] = np.mean(np.asarray(x), axis=0)
+    skeleton_data_dictionary[f"{virtual_marker_name}_y"] = np.mean(np.asarray(y), axis=0)
+    skeleton_data_dictionary[f"{virtual_marker_name}_z"] = np.mean(np.asarray(z), axis=0)
 
     return skeleton_data_dictionary
 
@@ -145,9 +125,7 @@ def create_skeleton_dictionary_from_skeleton_body_data_frame(
     return skeleton_data_dictionary
 
 
-def save_skeleton_segment_lengths_to_json(
-    save_path: Union[Path, str], skeleton_segment_lengths_dict: dict
-):
+def save_skeleton_segment_lengths_to_json(save_path: Union[Path, str], skeleton_segment_lengths_dict: dict):
     logger.info("Saving skeleton segment lengths to JSON file...")
     json_file_path = Path(save_path) / "skeleton_segment_lengths.json"
 

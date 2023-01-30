@@ -35,6 +35,9 @@ class RecordingInfoModel:
         calibration_toml_path: Union[Path, str] = None,
     ):
 
+        if Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME:
+            recording_folder_path = Path(recording_folder_path).parent
+
         self._path = Path(recording_folder_path)
         self._name = self._path.name
 

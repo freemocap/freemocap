@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 
-import addon_utils
 import bpy
 import numpy as np
 
@@ -9,8 +8,8 @@ print(" - Starting (alpha) blender megascript - ")
 
 #######################################################################
 ##% Activate necessary addons
-addon_utils.enable("io_import_images_as_planes")
-addon_utils.enable("rigify")
+bpy.ops.preferences.addon_enable(module="io_import_images_as_planes")
+bpy.ops.preferences.addon_enable(module="rigify")
 
 #######################################################################
 

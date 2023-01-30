@@ -4,10 +4,10 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMainWindow, QMenu, QMenuBar
 
 
-START_NEW_SESSION_ACTION_NAME = "Start New Session"
-LOAD_EXISTING_RECORDING_ACTION_NAME = "Load Existing Recording"
-LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording"
-IMPORT_VIDEOS_ACTION_NAME = "Import Videos"
+CREATE_NEW_RECORDING_ACTION_NAME = "CREATE NEW RECORDING \U00002728"
+LOAD_EXISTING_RECORDING_ACTION_NAME = "Load Existing Recording \U0001F4AB"
+LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording..."
+IMPORT_VIDEOS_ACTION_NAME = "Import Videos..."
 REBOOT_GUI_ACTION_NAME = "Reboot GUI"
 EXIT_ACTION_NAME = "Exit"
 
@@ -25,8 +25,10 @@ class MenuBar(QMenuBar):
 
     def _create_actions_dictionary(self) -> Dict[str, QAction]:
         actions_dictionary = {}
-        actions_dictionary[START_NEW_SESSION_ACTION_NAME] = QAction(START_NEW_SESSION_ACTION_NAME, parent=self.parent())
-        actions_dictionary[START_NEW_SESSION_ACTION_NAME].setShortcut("Ctrl+N")
+        actions_dictionary[CREATE_NEW_RECORDING_ACTION_NAME] = QAction(
+            CREATE_NEW_RECORDING_ACTION_NAME, parent=self.parent()
+        )
+        actions_dictionary[CREATE_NEW_RECORDING_ACTION_NAME].setShortcut("Ctrl+N")
 
         actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME] = QAction(
             LOAD_MOST_RECENT_RECORDING_ACTION_NAME, parent=self.parent()
@@ -80,7 +82,7 @@ class MenuBar(QMenuBar):
         # file menu
         file_menu = self.addMenu("&File")
 
-        file_menu.addAction(self._actions_dictionary[START_NEW_SESSION_ACTION_NAME])
+        file_menu.addAction(self._actions_dictionary[CREATE_NEW_RECORDING_ACTION_NAME])
         file_menu.addAction(self._actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME])
         file_menu.addAction(self._actions_dictionary[LOAD_EXISTING_RECORDING_ACTION_NAME])
         file_menu.addAction(self._actions_dictionary[IMPORT_VIDEOS_ACTION_NAME])

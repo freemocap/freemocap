@@ -51,10 +51,8 @@ class ActiveRecordingInfoWidget(QWidget):
         # this is redundant to the `active_recording_info` property,
         # but it will be more intuitive to send this down as a callable
         # rather than relying on 'pass-by-reference' magic lol
-        if self._active_recording_info is None:
-            self.set_active_recording(recording_folder_path=get_most_recent_recording_path())
 
-        if return_path:
+        if return_path and self._active_recording_info is not None:
             return self._active_recording_info.path
 
         return self._active_recording_info

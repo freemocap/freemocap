@@ -70,7 +70,7 @@ keywords = [
 dependencies = [
     "skellycam",
     "mediapipe",
-    "opencv-contrib-python<4.7",
+    "opencv-contrib-python==4.6.0.66",
     "toml",
     "aniposelib",
 ]

@@ -14,15 +14,11 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QGroupBox,
     QVBoxLayout,
-    QFormLayout,
-    QLineEdit,
-    QHBoxLayout,
-    QCheckBox,
 )
 from skellycam import (
-    SkellyCamControllerWidget,
     SkellyCamParameterTreeWidget,
     SkellyCamViewerWidget,
+    SkellyCamControllerWidget,
 )
 
 from freemocap.configuration.paths_and_files_names import (
@@ -151,10 +147,11 @@ class FreemocapMainWindow(QMainWindow):
         return css_file_watcher
 
     def _get_recording_name_string_tag(self):
-        try:
-            return self._recording_string_tag_line_edit.text()
-        except:
-            return ""
+        pass
+        # try:
+        #     return self._recording_string_tag_line_edit.text()
+        # except:
+        #     return ""
 
     def _create_new_synchronized_videos_folder(self) -> str:
 
@@ -176,33 +173,33 @@ class FreemocapMainWindow(QMainWindow):
 
         self._controller_group_box = QGroupBox("Controller")
         self._controller_group_box.hide()
-
         controller_layout = QVBoxLayout()
         self._controller_group_box.setLayout(controller_layout)
+
         self._camera_controller_widget = SkellyCamControllerWidget(
             camera_viewer_widget=self._skellycam_view_widget,
             parent=self,
         )
         controller_layout.addWidget(self._camera_controller_widget)
 
-        options_layout = QHBoxLayout()
-        self._recording_name_label = QLabel("--")
-        options_layout.addWidget(self._recording_name_label)
-
-        # self._recording_string_tag_line_edit = QLineEdit()
-        # recording_string_tag_form_layout = QFormLayout()
-        # recording_string_tag_form_layout.addRow("Recording Name Tag (Optional):", self._recording_string_tag_line_edit)
-        # options_layout.addLayout(recording_string_tag_form_layout)
-
-        self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
-        self._auto_process_videos_checkbox.setChecked(True)
-        options_layout.addWidget(self._auto_process_videos_checkbox)
-
-        self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
-        self._auto_open_in_blender_checkbox.setChecked(True)
-        options_layout.addWidget(self._auto_open_in_blender_checkbox)
-
-        controller_layout.addLayout(options_layout)
+        # options_layout = QHBoxLayout()
+        # self._recording_name_label = QLabel("--")
+        # options_layout.addWidget(self._recording_name_label)
+        #
+        # # self._recording_string_tag_line_edit = QLineEdit()
+        # # recording_string_tag_form_layout = QFormLayout()
+        # # recording_string_tag_form_layout.addRow("Recording Name Tag (Optional):", self._recording_string_tag_line_edit)
+        # # options_layout.addLayout(recording_string_tag_form_layout)
+        #
+        # self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
+        # self._auto_process_videos_checkbox.setChecked(True)
+        # options_layout.addWidget(self._auto_process_videos_checkbox)
+        #
+        # self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
+        # self._auto_open_in_blender_checkbox.setChecked(True)
+        # options_layout.addWidget(self._auto_open_in_blender_checkbox)
+        #
+        # controller_layout.addLayout(options_layout)
 
         self._visualize_data_widget = QLabel("Visualize Data")
 
@@ -273,7 +270,7 @@ class FreemocapMainWindow(QMainWindow):
         else:
             self._directory_view_widget.expand_directory_to_path(recording_info_model.path)
 
-        self._recording_name_label.setText(f"Recording Name: {recording_info_model.name}")
+        # self._recording_name_label.setText(f"Recording Name: {recording_info_model.name}")
 
     def reboot_gui(self):
         logger.info("Rebooting GUI... ")

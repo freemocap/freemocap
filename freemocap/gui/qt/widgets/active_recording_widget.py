@@ -66,8 +66,6 @@ class ActiveRecordingInfoWidget(QWidget):
 
         self._update_file_watch_path(folder_to_watch=self._active_recording_info.path)
 
-        self.update_parameter_tree()
-
         logger.debug(
             f"Emitting `new_active_recording_selected_signal` for recording: {self._active_recording_info.name}"
         )

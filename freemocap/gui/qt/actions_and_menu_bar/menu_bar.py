@@ -1,80 +1,15 @@
-from typing import Dict
+from PyQt6.QtWidgets import QMainWindow, QMenuBar
 
-from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QMainWindow, QMenu, QMenuBar
-
-
-CREATE_NEW_RECORDING_ACTION_NAME = "CREATE NEW RECORDING \U00002728"
-LOAD_EXISTING_RECORDING_ACTION_NAME = "Load Existing Recording \U0001F4AB"
-LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording..."
-IMPORT_VIDEOS_ACTION_NAME = "Import Videos..."
-REBOOT_GUI_ACTION_NAME = "Reboot GUI"
-EXIT_ACTION_NAME = "Exit"
+from freemocap.gui.qt.actions_and_menu_bar.actions import Actions
 
 
 class MenuBar(QMenuBar):
-    def __init__(self, parent: QMainWindow = None):
+    def __init__(self, actions: Actions, parent: QMainWindow = None):
         super().__init__(parent=parent)
 
-        self._actions_dictionary = self._create_actions_dictionary()
-        self._add_actions()
+        self._add_actions_to_file_menu(actions)
 
-    @property
-    def actions_dictionary(self) -> Dict[str, QAction]:
-        return self._actions_dictionary
-
-    def _create_actions_dictionary(self) -> Dict[str, QAction]:
-        actions_dictionary = {}
-        actions_dictionary[CREATE_NEW_RECORDING_ACTION_NAME] = QAction(
-            CREATE_NEW_RECORDING_ACTION_NAME, parent=self.parent()
-        )
-        actions_dictionary[CREATE_NEW_RECORDING_ACTION_NAME].setShortcut("Ctrl+N")
-
-        actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME] = QAction(
-            LOAD_MOST_RECENT_RECORDING_ACTION_NAME, parent=self.parent()
-        )
-        actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME].setShortcut("Ctrl+D")
-
-        actions_dictionary[LOAD_EXISTING_RECORDING_ACTION_NAME] = QAction(
-            LOAD_EXISTING_RECORDING_ACTION_NAME, parent=self.parent()
-        )
-        actions_dictionary[LOAD_EXISTING_RECORDING_ACTION_NAME].setShortcut("Ctrl+O")
-
-        actions_dictionary[IMPORT_VIDEOS_ACTION_NAME] = QAction(IMPORT_VIDEOS_ACTION_NAME, parent=self.parent())
-        actions_dictionary[IMPORT_VIDEOS_ACTION_NAME].setShortcut("Ctrl+I")
-
-        actions_dictionary[REBOOT_GUI_ACTION_NAME] = QAction("&Reboot GUI", parent=self.parent())
-        actions_dictionary[REBOOT_GUI_ACTION_NAME].setShortcut("Ctrl+R")
-
-        actions_dictionary[EXIT_ACTION_NAME] = QAction("&Exit", parent=self.parent())
-        actions_dictionary[EXIT_ACTION_NAME].setShortcut("Ctrl+Q")
-
-        #
-        # # Help
-        # self._open_docs_action = QAction("Open  &Documentation", parent=self)
-        # self._about_us_action = QAction("&About Us", parent=self)
-        #
-        # # Navigation
-        # self._show_camera_control_panel_action = QAction(            "&1 - Show Camera Control Panel", parent=self)
-        # self._show_camera_control_panel_action.setShortcut("Ctrl+1")
-        #
-        # self._show_calibrate_capture_volume_panel_action = QAction(
-        #     "&2 - Show Calibrate Capture Volume Panel", parent=self)
-        # self._show_calibrate_capture_volume_panel_action.setShortcut("Ctrl+2")
-        #
-        # self._show_motion_capture_videos_panel_action = QAction(
-        #     "&3 - Show Motion Capture Videos Panel", parent=self)
-        # self._show_motion_capture_videos_panel_action.setShortcut("Ctrl+3")
-        #
-        # # Support
-        # self._donate_action = QAction("&Donate", parent=self)
-        # self._send_usage_statistics_action = QAction(
-        #     "Send &User Statistics", parent=self)
-        # self._user_survey_action = QAction("&User Survey", parent=self)
-
-        return actions_dictionary
-
-    def _add_actions(self):
+    def _add_actions_to_file_menu(self, actions: Actions):
         """
         based mostly on: https://realpython.com/python-menus-toolbars/
         """
@@ -82,12 +17,12 @@ class MenuBar(QMenuBar):
         # file menu
         file_menu = self.addMenu("&File")
 
-        file_menu.addAction(self._actions_dictionary[CREATE_NEW_RECORDING_ACTION_NAME])
-        file_menu.addAction(self._actions_dictionary[LOAD_MOST_RECENT_RECORDING_ACTION_NAME])
-        file_menu.addAction(self._actions_dictionary[LOAD_EXISTING_RECORDING_ACTION_NAME])
-        file_menu.addAction(self._actions_dictionary[IMPORT_VIDEOS_ACTION_NAME])
-        file_menu.addAction(self._actions_dictionary[REBOOT_GUI_ACTION_NAME])
-        file_menu.addAction(self._actions_dictionary[EXIT_ACTION_NAME])
+        file_menu.addAction(actions.create_new_recording_action)
+        file_menu.addAction(actions.load_most_recent_recording_action)
+        file_menu.addAction(actions.load_existing_recording_action)
+        file_menu.addAction(actions.import_videos_action)
+        file_menu.addAction(actions.reboot_gui_action)
+        file_menu.addAction(actions.exit_action)
         #
         # # navigation menu
         # navigation_menu = QMenu("Na&vigation", parent=self)

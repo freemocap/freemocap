@@ -45,30 +45,20 @@ class AniposeCameraCalibrator:
         self,
     ):
         self._list_of_video_paths = [
-            this_video_path
-            for this_video_path in Path(self._calibration_videos_folder_path).glob(
-                "*.mp4".lower()
-            )
+            this_video_path for this_video_path in Path(self._calibration_videos_folder_path).glob("*.mp4".lower())
         ]
 
     def _initialize_anipose_objects(self):
-        list_of_camera_names = [
-            this_video_path.stem for this_video_path in self._list_of_video_paths
-        ]
-        self._anipose_camera_group_object = freemocap_anipose.CameraGroup.from_names(
-            list_of_camera_names
-        )
+        list_of_camera_names = [this_video_path.stem for this_video_path in self._list_of_video_paths]
+        self._anipose_camera_group_object = freemocap_anipose.CameraGroup.from_names(list_of_camera_names)
 
         # add metadata
-        self._anipose_camera_group_object.metadata[
-            "charuco_square_size"
-        ] = self._charuco_square_size
-        self._anipose_camera_group_object.metadata["charuco_board_object"] = str(
-            self._charuco_board_object
-        )
+        self._anipose_camera_group_object.metadata["charuco_square_size"] = self._charuco_square_size
+        self._anipose_camera_group_object.metadata["charuco_board_object"] = str(self._charuco_board_object)
         self._anipose_camera_group_object.metadata["path_to_recorded_videos"] = str(
             self._calibration_videos_folder_path
         )
+        self._anipose_camera_group_object.metadata["date_time_calibrated"] = str(np.datetime64("now"))
 
         self._anipose_charuco_board = AniposeCharucoBoard(
             self._charuco_board_object.number_of_squares_width,
@@ -81,15 +71,9 @@ class AniposeCameraCalibrator:
 
     def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False):
 
-        video_paths_list_of_list_of_strings = [
-            [str(this_path)] for this_path in self._list_of_video_paths
-        ]
+        video_paths_list_of_list_of_strings = [[str(this_path)] for this_path in self._list_of_video_paths]
 
-        (
-            error,
-            charuco_frame_data,
-            charuco_frame_numbers,
-        ) = self._anipose_camera_group_object.calibrate_videos(
+        (error, charuco_frame_data, charuco_frame_numbers,) = self._anipose_camera_group_object.calibrate_videos(
             video_paths_list_of_list_of_strings, self._anipose_charuco_board
         )
         success_str = "Anipose Calibration Successful!"
@@ -97,30 +81,20 @@ class AniposeCameraCalibrator:
         self._progress_callback(success_str)
         if pin_camera_0_to_origin:
             # translate cameras so camera0 is on `0,0,0`
-            self._anipose_camera_group_object = self.pin_camera_zero_to_origin(
-                self._anipose_camera_group_object
-            )
+            self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
             # self._anipose_camera_group_object = self.rotate_cameras_so_camera_zero_aligns_with_XYZ(self._anipose_camera_group_object)
 
         # save calibration info to files
         calibration_toml_filename = f"{self._calibration_videos_folder_path.parent.stem}_camera_calibration.toml"
-        camera_calibration_toml_path = (
-            Path(get_calibrations_folder_path()) / calibration_toml_filename
-        )
+        camera_calibration_toml_path = Path(get_calibrations_folder_path()) / calibration_toml_filename
 
         self._anipose_camera_group_object.dump(camera_calibration_toml_path)
-        logger.info(
-            f"anipose camera calibration data saved to {str(camera_calibration_toml_path)}"
-        )
+        logger.info(f"anipose camera calibration data saved to {str(camera_calibration_toml_path)}")
 
-        last_successful_calibration_toml_path = (
-            get_last_successful_calibration_toml_path()
-        )
+        last_successful_calibration_toml_path = get_last_successful_calibration_toml_path()
         self._anipose_camera_group_object.dump(last_successful_calibration_toml_path)
 
-        logger.info(
-            f"anipose camera calibration data also saved to {last_successful_calibration_toml_path}"
-        )
+        logger.info(f"anipose camera calibration data also saved to {last_successful_calibration_toml_path}")
 
         return self._anipose_camera_group_object
 
@@ -130,20 +104,15 @@ class AniposeCameraCalibrator:
         altered_translation_vectors = np.zeros(original_translation_vectors.shape)
         for this_camera_number in range(original_translation_vectors.shape[0]):
             altered_translation_vectors[this_camera_number, :] = (
-                original_translation_vectors[this_camera_number, :]
-                - camera_0_translation
+                original_translation_vectors[this_camera_number, :] - camera_0_translation
             )
 
         _anipose_camera_group_object.set_translations(altered_translation_vectors)
         logger.info(f"original translation vectors:\n {original_translation_vectors}")
-        logger.info(
-            f"altered translation vectors:\n {_anipose_camera_group_object.get_translations()}"
-        )
+        logger.info(f"altered translation vectors:\n {_anipose_camera_group_object.get_translations()}")
         return _anipose_camera_group_object
 
-    def rotate_cameras_so_camera_zero_aligns_with_XYZ(
-        self, _anipose_camera_group_object
-    ):
+    def rotate_cameras_so_camera_zero_aligns_with_XYZ(self, _anipose_camera_group_object):
         logger.warning("this function does not work, dont use it lol ")
         pass
         # original_rotations_euler = _anipose_camera_group_object.get_rotations()

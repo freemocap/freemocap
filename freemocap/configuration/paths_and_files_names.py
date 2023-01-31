@@ -35,6 +35,11 @@ TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
 # logo
 PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent.parent / "assets/logo/freemocap-logo-black-border.svg")
 
+# emoji strings
+sparkles_emoji_string = "\U00002728"
+dizzy_circle_star_emoji_string = "\U0001F4AB"
+eyes_emoji_string = "\U0001F440"
+
 
 def os_independent_home_dir():
     return str(Path.home())
@@ -73,10 +78,6 @@ def get_calibrations_folder_path(create_folder: bool = True):
         calibration_folder_path.mkdir(exist_ok=create_folder, parents=True)
 
     return str(calibration_folder_path)
-
-
-def create_new_synchronized_videos_folder(string_tag: str = None):
-    return Path(create_new_recording_folder_path(string_tag=string_tag)) / SYNCHRONIZED_VIDEOS_FOLDER_NAME
 
 
 def create_new_recording_folder_path(string_tag: str = None):
@@ -190,6 +191,14 @@ def get_most_recent_recording_path(subfolder_str: str = None):
 
 def get_last_successful_calibration_toml_path():
     return str(Path(get_logs_info_and_settings_folder_path()) / LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME)
+
+
+def get_last_successful_calibration_name():
+    path = get_last_successful_calibration_toml_path()
+    if not Path(path).exists():
+        logger.error(f"{LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME} not found at {path}!!")
+        return None
+    toml_dict = toml.load(path)
 
 
 def get_blender_file_name(recording_name: str):

@@ -34,9 +34,8 @@ class ActiveRecordingInfoWidget(QWidget):
         self._active_recording_info = active_recording_info
         self._directory_watcher = self._create_directory_watcher()
 
-        self._active_recording_view_widget = ActiveRecordingTreeView(
-            new_active_recording_selected_signal=self.new_active_recording_selected_signal, parent=self
-        )
+        self._active_recording_view_widget = ActiveRecordingTreeView(parent=self)
+        self._active_recording_view_widget.doubleClicked.connect(self.update_parameter_tree)
         self._layout.addWidget(self._active_recording_view_widget)
 
     @property
@@ -62,13 +61,20 @@ class ActiveRecordingInfoWidget(QWidget):
         recording_folder_path: Union[str, Path],
     ):
         logger.info(f"Setting active recording to {recording_folder_path}")
+
         self._active_recording_info = RecordingInfoModel(recording_folder_path=str(recording_folder_path))
 
         self._update_file_watch_path(folder_to_watch=self._active_recording_info.path)
 
-        self._active_recording_view_widget.setup_parameter_tree(self._active_recording_info)
+        self.update_parameter_tree()
+
+        logger.debug(
+            f"Emitting `new_active_recording_selected_signal` for recording: {self._active_recording_info.name}"
+        )
+        self.new_active_recording_selected_signal.emit(self._active_recording_info)
 
     def update_parameter_tree(self):
+        logger.info("Updating Parameter Tree")
         self._active_recording_view_widget.setup_parameter_tree(self.active_recording_info)
 
     def _update_file_watch_path(self, folder_to_watch: Union[str, Path]):
@@ -93,75 +99,25 @@ class ActiveRecordingInfoWidget(QWidget):
 
 
 class ActiveRecordingTreeView(ParameterTree):
-    def __init__(self, new_active_recording_selected_signal: pyqtSignal, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent=parent, showHeader=False)
-
-        self._new_active_recording_selected_signal = new_active_recording_selected_signal
 
     def setup_parameter_tree(
         self,
         recording_info_model: RecordingInfoModel,
     ):
+        if recording_info_model is None:
+            logger.debug("No recording info model provided - clearing parameter tree")
+            self.clear()
+            return
+
         logger.debug(f"Setting up `ActiveRecordingTreeView` for recording: {recording_info_model.name}")
         self.clear()
         self.setParameters(
             self._create_recording_status_parameter_tree(recording_info_model=recording_info_model),
         )
 
-    def _create_parameter_tree(
-        self,
-        recording_info_model: RecordingInfoModel,
-    ) -> Parameter:
-
-        active_session_parameter = Parameter.create(
-            name="Recording Name: " + Path(recording_info_model.path).name,
-            type="group",
-            children=[
-                dict(
-                    name="Parent Path",
-                    type="str",
-                    value=Path(recording_info_model.path).parent,
-                    readonly=True,
-                ),
-                self._create_recording_status_parameter_tree(recording_info_model=recording_info_model),
-            ],
-        )
-
-        return active_session_parameter
-
-    def _get_available_recordings(self, session_info_model: SessionInfoModel) -> List[Union[str, Path]]:
-        try:
-            return [
-                recording for recording in Path(session_info_model.session_folder_path).iterdir() if recording.is_dir()
-            ]
-        except Exception as e:
-            logger.error(e)
-            return []
-
-    def _create_recording_parameter_group(self, available_recordings: List[Union[str, Path]]):
-
-        if len(available_recordings) == 0:
-            self._recording_parameter_trees_list = Parameter.create(
-                name="No Recordings Found - Either select one in the `File View` window or Record/Import new videos to continue \U0001F4AB",
-                type="group",
-                readonly=True,
-            )
-        else:
-            self._recording_parameter_trees_list = [
-                self._create_recording_status_parameter_tree(RecordingInfoModel(recording_path))
-                for recording_path in available_recordings
-            ]
-        return Parameter.create(
-            name="Available Recordings",
-            type="group",
-            collapsed=True,
-            children=self._recording_parameter_trees_list,
-        )
-
     def _create_recording_status_parameter_tree(self, recording_info_model: RecordingInfoModel):
-
-        self._new_active_recording_selected_signal.emit(recording_info_model)
-
         parameter_group = Parameter.create(
             name=f"Recording Name: {recording_info_model.name}",
             type="group",

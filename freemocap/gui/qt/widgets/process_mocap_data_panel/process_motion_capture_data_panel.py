@@ -6,8 +6,8 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-from freemocap.parameter_info_models.session_processing_parameter_models import (
-    SessionProcessingParameterModel,
+from freemocap.parameter_info_models.recording_processing_parameter_models import (
+    RecordingProcessingParameterModel,
 )
 from freemocap.gui.qt.widgets.process_mocap_data_panel.parameter_groups.create_3d_triangulation_parameter_group import (
     create_3d_triangulation_prarameter_group,
@@ -30,15 +30,15 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def __init__(
         self,
-        session_processing_parameters: SessionProcessingParameterModel,
+        recording_processing_parameters: RecordingProcessingParameterModel,
         get_active_recording_info: Callable,
         parent=None,
     ):
         super().__init__(parent=parent)
 
         self._get_active_recording_info = get_active_recording_info
-        self._session_processing_parameter_model = session_processing_parameters
-        self._session_processing_parameter_model.recording_info_model = self._get_active_recording_info()
+        self._recording_processing_parameter_model = recording_processing_parameters
+        self._recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
@@ -54,13 +54,13 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         self._add_parameters_to_parameter_tree_widget(
             self._parameter_tree_widget,
-            session_processing_parameter_model=self._session_processing_parameter_model,
+            session_processing_parameter_model=self._recording_processing_parameter_model,
         )
 
     def _add_parameters_to_parameter_tree_widget(
         self,
         parameter_tree_widget: ParameterTree,
-        session_processing_parameter_model: SessionProcessingParameterModel,
+        session_processing_parameter_model: RecordingProcessingParameterModel,
     ):
         parameter_group = self._convert_session_processing_parameter_model_to_parameter_group(
             session_processing_parameter_model
@@ -71,7 +71,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _convert_session_processing_parameter_model_to_parameter_group(
         self,
-        session_processing_parameter_model: SessionProcessingParameterModel,
+        session_processing_parameter_model: RecordingProcessingParameterModel,
     ):
 
         return Parameter.create(
@@ -115,8 +115,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _extract_session_parameter_model_from_parameter_tree(
         self,
-    ) -> SessionProcessingParameterModel:
-        session_processing_parameter_model = self._session_processing_parameter_model
+    ) -> RecordingProcessingParameterModel:
+        session_processing_parameter_model = self._recording_processing_parameter_model
 
         logger.debug(
             "TODO - extract the parameter values from the parameter tree and populate the session_parameter_model. Just using defaults for now."

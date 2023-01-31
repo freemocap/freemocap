@@ -201,7 +201,10 @@ class FreemocapMainWindow(QMainWindow):
         #
         # controller_layout.addLayout(options_layout)
 
-        self._visualize_data_widget = QLabel("Visualize Data")
+        self._visualize_data_widget = QLabel(
+            "And then this would be, like, a playback/session viewer thing showing the data from teh `active recording`, like `skelly_viewer`"
+        )
+        self._visualize_data_widget.setWordWrap(True)
 
         center_tab_widget = CentralTabWidget(
             parent=self,
@@ -212,8 +215,8 @@ class FreemocapMainWindow(QMainWindow):
         )
 
         center_tab_widget.set_welcome_tab_enabled(True)
-        center_tab_widget.set_camera_view_tab_enabled(False)
-        center_tab_widget.set_visualize_data_tab_enabled(False)
+        center_tab_widget.set_camera_view_tab_enabled(True)
+        center_tab_widget.set_visualize_data_tab_enabled(True)
 
         return center_tab_widget
 
@@ -270,6 +273,7 @@ class FreemocapMainWindow(QMainWindow):
         else:
             self._directory_view_widget.expand_directory_to_path(recording_info_model.path)
 
+        self._active_recording_info_widget.update_parameter_tree()
         # self._recording_name_label.setText(f"Recording Name: {recording_info_model.name}")
 
     def reboot_gui(self):
@@ -285,6 +289,7 @@ class FreemocapMainWindow(QMainWindow):
             return
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())
+        self._central_tab_widget.setCurrentIndex(2)
 
     def open_load_existing_recording_dialog(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s

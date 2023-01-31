@@ -14,7 +14,7 @@ from freemocap.configuration.paths_and_files_names import MEDIAPIPE_2D_NPY_FILE_
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_tracked_point_names_dict,
 )
-from freemocap.parameter_info_models.session_processing_parameter_models import MediapipeParametersModel
+from freemocap.parameter_info_models.recording_processing_parameter_models import MediapipeParametersModel
 
 logger = logging.getLogger(__name__)
 

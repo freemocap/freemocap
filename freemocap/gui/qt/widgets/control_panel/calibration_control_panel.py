@@ -57,7 +57,7 @@ class CalibrationControlPanel(QWidget):
 
     def _add_use_most_recent_calibration_radio_button(self, radio_button_layout: QFormLayout):
 
-        self._use_most_recent_calibration_radio_button = QRadioButton("Use most recent calibration")
+        self._use_most_recent_calibration_radio_button = QRadioButton(f"Use most recent calibration")
         self._use_most_recent_calibration_radio_button.setChecked(True)
         self._use_most_recent_calibration_radio_button.toggled.connect(self._handle_use_most_recent_calibration_toggled)
 
@@ -100,10 +100,14 @@ class CalibrationControlPanel(QWidget):
         self._set_charuco_square_size_form_layout_visibility(False)
 
     def update_calibrate_from_active_recording_button_text(self):
-        if self._get_active_recording_info_callable() is None:
+        active_recording_info = self._get_active_recording_info_callable()
+        if active_recording_info is None:
             active_path_str = f"- No active recording selected -"
         else:
-            active_path_str = f"Calibrate from Recording: {self._get_active_recording_info_callable().name}"
+            if not active_recording_info.synchronized_videos_status_check:
+                active_path_str = f"Recording: {active_recording_info.name} has no synchronized videos!"
+            else:
+                active_path_str = f"Calibrate from Recording: {self._get_active_recording_info_callable().name}"
 
         self._calibrate_from_active_recording_button.setText(active_path_str)
 
@@ -123,8 +127,10 @@ class CalibrationControlPanel(QWidget):
             self._user_selected_calibration_toml_path_label.setEnabled(False)
 
     def _handle_calibrate_from_active_recording_toggled(self, checked):
+        active_recording_info = self._get_active_recording_info_callable()
         self.update_calibrate_from_active_recording_button_text()
-        if checked:
+        if checked and active_recording_info is not None and active_recording_info.synchronized_videos_status_check:
+
             self._calibrate_from_active_recording_button.setEnabled(True)
             self._set_charuco_square_size_form_layout_visibility(True)
         else:
@@ -166,6 +172,10 @@ class CalibrationControlPanel(QWidget):
 
     def _calibrate_from_active_recording(self):
         active_recording_info = self._get_active_recording_info_callable()
+        if active_recording_info is None:
+            logger.error("Cannot calibrate from active recording - no active recording selected")
+            return
+
         logger.info(f"Calibrating from active recording: {active_recording_info.name}")
 
         if not active_recording_info.synchronized_videos_status_check:

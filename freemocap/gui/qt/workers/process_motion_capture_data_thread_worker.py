@@ -5,7 +5,7 @@ from PyQt6.QtCore import pyqtSignal, QThread
 from freemocap.core_processes.process_motion_capture_videos.process_session_folder import (
     process_session_folder,
 )
-from freemocap.parameter_info_models.session_processing_parameter_models import SessionProcessingParameterModel
+from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
     finished = pyqtSignal()
     in_progress = pyqtSignal(str)
 
-    def __init__(self, session_processing_parameters: SessionProcessingParameterModel):
+    def __init__(self, session_processing_parameters: RecordingProcessingParameterModel):
         super().__init__()
         self._session_processing_parameters = session_processing_parameters
 

@@ -32,7 +32,7 @@ class PostProcessingParametersModel(BaseModel):
     butterworth_filter_parameters = ButterworthFilterParametersModel()
 
 
-class SessionProcessingParameterModel(BaseModel):
+class RecordingProcessingParameterModel(BaseModel):
     recording_info_model: RecordingInfoModel = None
     mediapipe_parameters_model: MediapipeParametersModel = MediapipeParametersModel()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel()

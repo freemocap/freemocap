@@ -1,6 +1,6 @@
 from pyqtgraph.parametertree import Parameter
 
-from freemocap.parameter_info_models.session_processing_parameter_models import AniposeTriangulate3DParametersModel
+from freemocap.parameter_info_models.recording_processing_parameter_models import AniposeTriangulate3DParametersModel
 
 
 def create_3d_triangulation_prarameter_group(

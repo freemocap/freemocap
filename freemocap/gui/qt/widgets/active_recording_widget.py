@@ -1,19 +1,13 @@
 import logging
 from pathlib import Path
-from typing import List, Union
+from typing import Union
 
 from PyQt6.QtCore import pyqtSignal, QFileSystemWatcher
 from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-from freemocap.configuration.paths_and_files_names import (
-    get_most_recent_recording_path,
-)
 from freemocap.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
-)
-from freemocap.parameter_info_models.session_info_model import (
-    SessionInfoModel,
 )
 
 logger = logging.getLogger(__name__)

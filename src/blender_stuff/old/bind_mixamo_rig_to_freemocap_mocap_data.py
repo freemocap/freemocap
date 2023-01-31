@@ -3,6 +3,8 @@ import numpy as np
 from pathlib import Path
 import json
 
+from src.utils.get_video_files import get_video_files
+
 #####################################################################
 ###%% clear the scene - Scorch the earth \o/
 print("clearing scene")
@@ -63,14 +65,14 @@ try:
 
     world_origin = bpy.data.objects["world_origin"]
 
-    number_of_videos = len(list(vidFolderPath.glob("*.mp4")))
+    number_of_videos = len(get_video_files(vidFolderPath))
 
     vid_location_scale = 1
 
     for (
         vid_number,
         thisVidPath,
-    ) in enumerate(vidFolderPath.glob("*.mp4")):
+    ) in enumerate(get_video_files(vidFolderPath)):
         print(thisVidPath)
         # use 'images as planes' add on to load in the video files as planes
         bpy.ops.import_image.to_plane(

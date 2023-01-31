@@ -9,6 +9,8 @@ import json
 
 import sys
 
+from src.utils.get_video_files import get_video_files
+
 print("Running script to create Blender file from freemocap session data: " + __file__)
 ###############################################################
 ### parse arguments from command line
@@ -824,14 +826,14 @@ try:
 
     world_origin = bpy.data.objects["world_origin"]
 
-    number_of_videos = len(list(video_folder_path.glob("*.mp4")))
+    number_of_videos = len(get_video_files(video_folder_path))
 
     vid_location_scale = 1
 
     for (
         vid_number,
         thisVidPath,
-    ) in enumerate(video_folder_path.glob("*.mp4")):
+    ) in enumerate(get_video_files(video_folder_path)):
         print(thisVidPath)
         # use 'images as planes' add on to load in the video files as planes
         bpy.ops.import_image.to_plane(

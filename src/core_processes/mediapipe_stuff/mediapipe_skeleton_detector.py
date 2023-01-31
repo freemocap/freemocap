@@ -18,6 +18,7 @@ from src.core_processes.mediapipe_stuff.medaipipe_tracked_points_names_dict impo
 from src.core_processes.batch_processing.session_processing_parameter_models import (
     MediaPipe2DParametersModel,
 )
+from src.utils.get_video_files import get_video_files
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,7 @@ class MediaPipeSkeletonDetector:
 
         mediapipe2d_single_camera_npy_arrays_list = []
         for video_number, this_synchronized_video_file_path in enumerate(
-            path_to_folder_of_videos_to_process.glob("*.mp4")
+            get_video_files(path_to_folder_of_videos_to_process)
         ):
             logger.info(
                 f"Running `mediapipe` skeleton detection on  video: {str(this_synchronized_video_file_path)}"

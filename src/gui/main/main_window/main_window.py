@@ -66,6 +66,8 @@ from src.sending_anonymous_user_info_to_places.send_pipedream_ping import (
     send_pipedream_ping,
 )
 
+from src.utils.get_video_files import get_video_files
+
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 EXIT_CODE_REBOOT = -123456789
 
@@ -508,7 +510,7 @@ class MainWindow(QMainWindow):
             f"Copying videos from {external_videos_path} to {synchronized_videos_folder_path}"
         )
 
-        for video_path in Path(external_videos_path).glob("*.mp4"):
+        for video_path in get_video_files(Path(external_videos_path)):
             shutil.copy(video_path, synchronized_videos_folder_path)
 
         self._start_session(self._session_id)
@@ -650,7 +652,7 @@ class MainWindow(QMainWindow):
         )
         if (
             not Path(calibration_videos_folder_path).exists()
-            or len(list(Path(calibration_videos_folder_path).glob("*.mp4"))) == 0
+            or len(get_video_files(Path(calibration_videos_folder_path))) == 0
         ):
             logger.info(
                 f"Calibration videos folder does not exist (or its empty): {calibration_videos_folder_path}, copying vidoes from `synchronized_videos` to `calibration_videos` and trying with that"
@@ -856,10 +858,8 @@ class MainWindow(QMainWindow):
             / MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
         )
 
-        video_path_iterator = Path(
-            get_annotated_videos_folder_path(self._session_id)
-        ).glob("*.mp4".lower())
-        list_of_video_paths = [str(video_path) for video_path in video_path_iterator]
+        list_of_video_path_objects = get_video_files(get_annotated_videos_folder_path(self._session_id))
+        list_of_video_paths = [str(video_path) for video_path in list_of_video_path_objects]
 
         dictionary_of_video_image_update_callbacks = (
             self._middle_viewing_panel.dictionary_of_video_image_update_callbacks

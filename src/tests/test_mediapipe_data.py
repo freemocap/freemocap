@@ -9,7 +9,7 @@ from src.config.home_dir import (
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     MEDIAPIPE_2D_NPY_FILE_NAME,
 )
-
+from src.utils.get_video_files import get_video_files
 
 def test_mediapipe_2d_data(
     synchronized_videos_folder: Union[str, Path],
@@ -34,7 +34,7 @@ def test_mediapipe_2d_data(
     saved_mediapipe_2d_data = np.load(mediapipe_2d_data_file_path)
     assert np.array_equal(saved_mediapipe_2d_data, mediapipe_2d_data, equal_nan=True)
 
-    list_of_video_paths = list(synchronized_videos_folder.glob("*.mp4"))
+    list_of_video_paths = get_video_files(synchronized_videos_folder)
     number_of_videos = len(list_of_video_paths)
     assert mediapipe_2d_data.shape[0] == number_of_videos
 
@@ -87,7 +87,7 @@ def test_mediapipe_3d_data(
         saved_reprojection_error, skeleton_reprojection_error_fr_mar, equal_nan=True
     )
 
-    list_of_video_paths = list(synchronized_videos_folder.glob("*.mp4"))
+    list_of_video_paths = get_video_files(synchronized_videos_folder)
 
     video_0_cv2_capture_object = cv2.VideoCapture(str(list_of_video_paths[0]))
 

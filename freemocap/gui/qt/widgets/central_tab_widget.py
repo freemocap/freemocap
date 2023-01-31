@@ -1,5 +1,5 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget, QGroupBox
 from skellycam import SkellyCamControllerWidget, SkellyCamViewerWidget
 
 from freemocap.gui.qt.widgets.welcome_tab_widget import (
@@ -11,7 +11,7 @@ class CentralTabWidget(QTabWidget):
     def __init__(
         self,
         camera_view_widget: SkellyCamViewerWidget,
-        camera_controller_widget: SkellyCamControllerWidget,
+        camera_controller_layout: QWidget,
         welcome_to_freemocap_widget: WelcomeCreateOrLoadNewSessionPanel,
         visualize_data_widget,
         parent=None,
@@ -21,7 +21,7 @@ class CentralTabWidget(QTabWidget):
         self.parent = parent
 
         self._camera_view_widget = camera_view_widget
-        self._camera_controller_widget = camera_controller_widget
+        self._camera_controller_widget = camera_controller_layout
         self._welcome_to_freemocap_widget = welcome_to_freemocap_widget
         self._visualize_data_widget = visualize_data_widget
 

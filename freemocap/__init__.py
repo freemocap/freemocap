@@ -3,9 +3,7 @@
 __author__ = """Skelly FreeMoCap"""
 __email__ = "info@freemocap.org"
 __version__ = "v2023.01.1000"
-__description__ = (
-    "A free and open source markerless motion capture system for everyone 💀✨"
-)
+__description__ = "A free and open source markerless motion capture system for everyone 💀✨"
 
 
 __package_name__ = "freemocap"
@@ -23,3 +21,7 @@ sys.path.insert(0, str(base_package_path))  # add par
 from freemocap.configuration.logging.configure_logging import configure_logging
 
 configure_logging()
+import logging
+
+logger = logging.getLogger(__name__)
+logger.info(f"Initializing {__package_name__} package, version: {__version__}, from file: {__file__}")

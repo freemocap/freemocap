@@ -1,6 +1,6 @@
 from pyqtgraph.parametertree import Parameter
 
-from freemocap.parameter_info_models.session_processing_parameter_models import MediapipeParametersModel
+from freemocap.parameter_info_models.recording_processing_parameter_models import MediapipeParametersModel
 
 
 def create_mediapipe_parameter_group(

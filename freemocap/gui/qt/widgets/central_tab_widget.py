@@ -1,11 +1,9 @@
 import logging
 
-import skelly_viewer
-import skellycam
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget, QGroupBox
-from skelly_viewer import SkellyViewer
-from skellycam import SkellyCamControllerWidget, SkellyCamViewerWidget
+from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
+
+# from skelly_viewer import SkellyViewer
+from skellycam import SkellyCamWidget
 
 from freemocap.gui.qt.widgets.welcome_panel_widget import (
     WelcomeToFreemocapPanel,
@@ -17,10 +15,10 @@ logger = logging.getLogger(__name__)
 class CentralTabWidget(QTabWidget):
     def __init__(
         self,
-        skelly_cam_widget: SkellyCamViewerWidget,
+        skelly_cam_widget: SkellyCamWidget,
         camera_controller_widget: QWidget,
         welcome_to_freemocap_widget: WelcomeToFreemocapPanel,
-        skelly_viewer_widget: SkellyViewer,
+        skelly_viewer_widget: QWidget,
         parent=None,
     ):
         super().__init__(parent=parent)

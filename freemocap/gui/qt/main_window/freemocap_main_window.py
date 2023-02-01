@@ -13,11 +13,13 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QGroupBox,
     QVBoxLayout,
+    QLabel,
 )
-from skelly_viewer import SkellyViewer
+
+# from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
-    SkellyCamViewerWidget,
+    SkellyCamWidget,
     SkellyCamControllerWidget,
 )
 
@@ -164,7 +166,7 @@ class FreemocapMainWindow(QMainWindow):
 
         self._welcome_to_freemocap_widget = WelcomeToFreemocapPanel(actions=self._actions, parent=self)
 
-        self._skellycam_view_widget = SkellyCamViewerWidget(
+        self._skellycam_view_widget = SkellyCamWidget(
             parent=self, get_new_synchronized_videos_folder_callable=self._create_new_synchronized_videos_folder
         )
         self._skellycam_view_widget.videos_saved_to_this_folder_signal.connect(
@@ -201,7 +203,7 @@ class FreemocapMainWindow(QMainWindow):
         #
         # controller_layout.addLayout(options_layout)
 
-        self._skelly_viewer_widget = SkellyViewer()
+        self._skelly_viewer_widget = QLabel("Hello, just imagine this was `skelly_viewer` lol")  # SkellyViewer()
 
         center_tab_widget = CentralTabWidget(
             parent=self,

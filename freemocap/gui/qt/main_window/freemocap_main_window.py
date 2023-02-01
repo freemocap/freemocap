@@ -8,13 +8,13 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QDockWidget,
-    QLabel,
     QMainWindow,
     QPushButton,
     QFileDialog,
     QGroupBox,
     QVBoxLayout,
 )
+from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
     SkellyCamViewerWidget,
@@ -57,8 +57,8 @@ from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
-from freemocap.gui.qt.widgets.welcome_tab_widget import (
-    WelcomeCreateOrLoadNewSessionPanel,
+from freemocap.gui.qt.widgets.welcome_panel_widget import (
+    WelcomeToFreemocapPanel,
 )
 from freemocap.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
@@ -162,7 +162,7 @@ class FreemocapMainWindow(QMainWindow):
 
     def _create_central_tab_widget(self):
 
-        self._welcome_to_freemocap_widget = WelcomeCreateOrLoadNewSessionPanel(actions=self._actions, parent=self)
+        self._welcome_to_freemocap_widget = WelcomeToFreemocapPanel(actions=self._actions, parent=self)
 
         self._skellycam_view_widget = SkellyCamViewerWidget(
             parent=self, get_new_synchronized_videos_folder_callable=self._create_new_synchronized_videos_folder
@@ -201,17 +201,14 @@ class FreemocapMainWindow(QMainWindow):
         #
         # controller_layout.addLayout(options_layout)
 
-        self._visualize_data_widget = QLabel(
-            "And then this would be, like, a playback/session viewer thing showing the data from teh `active recording`, like `skelly_viewer`"
-        )
-        self._visualize_data_widget.setWordWrap(True)
+        self._skelly_viewer_widget = SkellyViewer()
 
         center_tab_widget = CentralTabWidget(
             parent=self,
-            camera_view_widget=self._skellycam_view_widget,
-            camera_controller_layout=self._controller_group_box,
+            skelly_cam_widget=self._skellycam_view_widget,
+            camera_controller_widget=self._controller_group_box,
             welcome_to_freemocap_widget=self._welcome_to_freemocap_widget,
-            visualize_data_widget=self._visualize_data_widget,
+            skelly_viewer_widget=self._skelly_viewer_widget,
         )
 
         center_tab_widget.set_welcome_tab_enabled(True)

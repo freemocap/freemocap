@@ -24,7 +24,7 @@ from freemocap.gui.qt.actions_and_menu_bar.actions import (
 logger = logging.getLogger(__name__)
 
 
-class WelcomeCreateOrLoadNewSessionPanel(QWidget):
+class WelcomeToFreemocapPanel(QWidget):
     def __init__(self, actions: Actions, parent: QWidget = None):
         super().__init__(parent=parent)
 

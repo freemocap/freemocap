@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from freemocap.configuration.paths_and_files_names import PATH_TO_FREEMOCAP_LOGO_SVG
+from freemocap.system.paths_and_files_names import PATH_TO_FREEMOCAP_LOGO_SVG
 from freemocap.gui.qt.actions_and_menu_bar.actions import (
     CREATE_NEW_RECORDING_ACTION_NAME,
     LOAD_MOST_RECENT_RECORDING_ACTION_NAME,

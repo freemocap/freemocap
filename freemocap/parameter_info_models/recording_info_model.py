@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from freemocap.configuration.paths_and_files_names import (
+from freemocap.system.paths_and_files_names import (
     CENTER_OF_MASS_FOLDER_NAME,
     MEDIAPIPE_2D_NPY_FILE_NAME,
     MEDIAPIPE_3D_NPY_FILE_NAME,
@@ -11,7 +11,7 @@ from freemocap.configuration.paths_and_files_names import (
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
     get_blender_file_path,
 )
-from freemocap.configuration.paths_and_files_names import (
+from freemocap.system.paths_and_files_names import (
     get_last_successful_calibration_toml_path,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,

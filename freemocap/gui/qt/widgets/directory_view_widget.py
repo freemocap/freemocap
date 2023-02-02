@@ -8,7 +8,8 @@ from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget
 from qtpy import QtGui
 
-from freemocap.configuration.paths_and_files_names import get_recording_session_folder_path
+from freemocap.system.paths_and_files_names import get_recording_session_folder_path
+from freemocap.system.start_file import open_file
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ class DirectoryViewWidget(QWidget):
         index = self._tree_view_widget.currentIndex()
         file_path = self._file_system_model.filePath(index)
         logger.info(f"Opening file from file_system_view_widget: {file_path}")
-        os.startfile(file_path)
+        open_file(file_path)
 
     def set_path_as_index(self, path: Union[str, Path]):
         logger.info(f"Setting current index to : {str(path)}")

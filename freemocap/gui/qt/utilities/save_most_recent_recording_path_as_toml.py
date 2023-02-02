@@ -4,7 +4,7 @@ from typing import Union
 
 import toml
 
-from freemocap.configuration.paths_and_files_names import (
+from freemocap.system.paths_and_files_names import (
     get_most_recent_recording_toml_path,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
 )

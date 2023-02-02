@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from freemocap.configuration.paths_and_files_names import (
+from freemocap.system.paths_and_files_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
 )

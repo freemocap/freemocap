@@ -7,7 +7,7 @@ from typing import Union
 #     r"C:\Users\jonma\Blender Foundation\stable\blender-3.1.0-windows-x64\blender.exe"
 # )
 # blender_exe_path = r"C:\Users\jonma\Blender Foundation\Blender 3.1\blender.exe"
-from freemocap.configuration.paths_and_files_names import get_blender_file_path
+from freemocap.system.paths_and_files_names import get_blender_file_path
 
 logger = logging.getLogger(__name__)
 

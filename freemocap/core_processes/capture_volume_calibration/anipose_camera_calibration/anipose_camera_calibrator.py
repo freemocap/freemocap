@@ -5,7 +5,7 @@ from typing import Callable, Union
 import numpy as np
 from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
 
-from freemocap.configuration.paths_and_files_names import (
+from freemocap.system.paths_and_files_names import (
     get_calibrations_folder_path,
     get_last_successful_calibration_toml_path,
 )

@@ -14,6 +14,8 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
     QLabel,
+    QCheckBox,
+    QHBoxLayout,
 )
 
 # from skelly_viewer import SkellyViewer
@@ -23,7 +25,7 @@ from skellycam import (
     SkellyCamControllerWidget,
 )
 
-from freemocap.configuration.paths_and_files_names import (
+from freemocap.system.paths_and_files_names import (
     get_css_stylesheet_path,
     get_freemocap_data_folder_path,
     get_most_recent_recording_path,
@@ -70,6 +72,8 @@ from freemocap.parameter_info_models.recording_processing_parameter_models impor
 )
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
+from freemocap.system.start_file import open_file
+
 EXIT_CODE_REBOOT = -123456789
 
 logger = logging.getLogger(__name__)
@@ -134,6 +138,16 @@ class FreemocapMainWindow(QMainWindow):
         self._directory_view_widget.expand_directory_to_path(directory_path=folder_path)
         self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
+        if self._auto_process_videos_checkbox.isChecked():
+            logger.info("'Auto process videos' checkbox is checked - triggering 'Process Motion Capture Data' button")
+            self._process_motion_capture_data_panel.process_motion_capture_data_button.click()
+
+    def _handle_processing_finished_signal(self):
+        logger.info("Processing finished")
+        if self._auto_process_videos_checkbox.isChecked():
+            logger.info("'Auto process videos' checkbox is checked - triggering 'Create Blender Scene'")
+            self._handle_export_to_blender_button_clicked()
+
     def handle_start_new_session_action(self):
         # self._central_tab_widget.set_welcome_tab_enabled(True)
         self._central_tab_widget.set_camera_view_tab_enabled(True)
@@ -184,24 +198,24 @@ class FreemocapMainWindow(QMainWindow):
         )
         controller_layout.addWidget(self._camera_controller_widget)
 
-        # options_layout = QHBoxLayout()
-        # self._recording_name_label = QLabel("--")
-        # options_layout.addWidget(self._recording_name_label)
-        #
-        # # self._recording_string_tag_line_edit = QLineEdit()
-        # # recording_string_tag_form_layout = QFormLayout()
-        # # recording_string_tag_form_layout.addRow("Recording Name Tag (Optional):", self._recording_string_tag_line_edit)
-        # # options_layout.addLayout(recording_string_tag_form_layout)
-        #
-        # self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
-        # self._auto_process_videos_checkbox.setChecked(True)
-        # options_layout.addWidget(self._auto_process_videos_checkbox)
-        #
-        # self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
-        # self._auto_open_in_blender_checkbox.setChecked(True)
-        # options_layout.addWidget(self._auto_open_in_blender_checkbox)
-        #
-        # controller_layout.addLayout(options_layout)
+        options_layout = QHBoxLayout()
+        self._recording_name_label = QLabel("--")
+        options_layout.addWidget(self._recording_name_label)
+
+        # self._recording_string_tag_line_edit = QLineEdit()
+        # recording_string_tag_form_layout = QFormLayout()
+        # recording_string_tag_form_layout.addRow("Recording Name Tag (Optional):", self._recording_string_tag_line_edit)
+        # options_layout.addLayout(recording_string_tag_form_layout)
+
+        self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
+        self._auto_process_videos_checkbox.setChecked(True)
+        options_layout.addWidget(self._auto_process_videos_checkbox)
+
+        self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
+        self._auto_open_in_blender_checkbox.setChecked(True)
+        options_layout.addWidget(self._auto_open_in_blender_checkbox)
+
+        controller_layout.addLayout(options_layout)
 
         self._skelly_viewer_widget = QLabel("Hello, just imagine this was `skelly_viewer` lol")  # SkellyViewer()
 
@@ -240,6 +254,9 @@ class FreemocapMainWindow(QMainWindow):
             recording_processing_parameters=RecordingProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
         )
+        self._process_motion_capture_data_panel.processing_finished_signal.connect(
+            self._handle_processing_finished_signal
+        )
 
         control_panel_dock_widget = ControlPanelDockWidget(
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
@@ -259,6 +276,8 @@ class FreemocapMainWindow(QMainWindow):
     def _handle_export_to_blender_button_clicked(self):
         recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
         export_to_blender(recording_folder_path=recording_path, blender_file_path=get_blender_file_path(recording_path))
+        if self._auto_open_in_blender_checkbox.isChecked():
+            open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
 
     def _handle_new_active_recording_selected(self, recording_info_model: RecordingInfoModel):
         logger.info(f"New active recording selected: {recording_info_model.path}")

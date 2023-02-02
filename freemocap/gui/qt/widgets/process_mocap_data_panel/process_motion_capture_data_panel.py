@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Callable
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessMotionCaptureDataPanel(QWidget):
-    begin_processing_signal = pyqtSignal(dict)
+    processing_finished_signal = pyqtSignal()
 
     def __init__(
         self,
@@ -43,11 +43,11 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
-        self._process_motion_capture_data = QPushButton(
+        self._process_motion_capture_data_button = QPushButton(
             "Process Motion Capture Videos",
         )
-        self._process_motion_capture_data.clicked.connect(self._launch_process_motion_capture_data_thread_worker)
-        self._layout.addWidget(self._process_motion_capture_data)
+        self._process_motion_capture_data_button.clicked.connect(self._launch_process_motion_capture_data_thread_worker)
+        self._layout.addWidget(self._process_motion_capture_data_button)
 
         self._parameter_tree_widget = ParameterTree(parent=self, showHeader=False)
         self._layout.addWidget(self._parameter_tree_widget)
@@ -56,6 +56,10 @@ class ProcessMotionCaptureDataPanel(QWidget):
             self._parameter_tree_widget,
             session_processing_parameter_model=self._recording_processing_parameter_model,
         )
+
+    @property
+    def process_motion_capture_data_button(self):
+        return self._process_motion_capture_data_button
 
     def _add_parameters_to_parameter_tree_widget(
         self,
@@ -158,6 +162,13 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(session_parameter_model)
         self._process_motion_capture_data_thread_worker.start()
+
+        self._process_motion_capture_data_thread_worker.finished.connect(self._handle_finished_signal)
+
+    @pyqtSlot()
+    def _handle_finished_signal(self):
+        logger.debug("Process motion capture data process finished.")
+        self.processing_finished_signal.emit()
 
 
 if __name__ == "__main__":

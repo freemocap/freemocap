@@ -6,7 +6,7 @@ from pathlib import Path
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 
-from freemocap.configuration.paths_and_files_names import (
+from freemocap.system.paths_and_files_names import (
     get_freemocap_data_folder_path,
 )
 from freemocap.gui.qt.main_window.freemocap_main_window import FreemocapMainWindow, EXIT_CODE_REBOOT

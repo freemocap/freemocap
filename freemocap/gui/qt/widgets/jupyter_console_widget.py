@@ -77,7 +77,7 @@ class JupyterConsoleWidget(QWidget):
 
 
 if __name__ == "__main__":
-    from freemocap.configuration.logging.configure_logging import configure_logging
+    from freemocap.system.logging.configure_logging import configure_logging
 
     configure_logging()
     logger.info("Hello world!")

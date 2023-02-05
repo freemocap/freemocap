@@ -11,17 +11,7 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QPushButton,
     QFileDialog,
-    QGroupBox,
-    QVBoxLayout,
     QLabel,
-    QCheckBox,
-    QHBoxLayout,
-    QLineEdit,
-    QFormLayout,
-    QGridLayout,
-    QRadioButton,
-    QSpacerItem,
-    QSizePolicy,
 )
 
 # from skelly_viewer import SkellyViewer
@@ -31,20 +21,6 @@ from skellycam import (
     SkellyCamControllerWidget,
 )
 
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
-    default_charuco_square_size_mm,
-)
-from freemocap.system.paths_and_files_names import (
-    get_css_stylesheet_path,
-    get_freemocap_data_folder_path,
-    get_most_recent_recording_path,
-    PATH_TO_FREEMOCAP_LOGO_SVG,
-    RECORDING_SESSIONS_FOLDER_NAME,
-    create_new_recording_folder_path,
-    get_blender_file_path,
-    get_recording_session_folder_path,
-    create_new_default_recording_name,
-)
 from freemocap.core_processes.visualization.blender_stuff.export_to_blender import (
     export_to_blender,
 )
@@ -59,6 +35,7 @@ from freemocap.gui.qt.utilities.save_most_recent_recording_path_as_toml import (
     save_most_recent_recording_path_as_toml,
 )
 from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingInfoWidget
+from freemocap.gui.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
 from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import (
     CalibrationControlPanel,
@@ -79,6 +56,15 @@ from freemocap.parameter_info_models.recording_info_model import (
 )
 from freemocap.parameter_info_models.recording_processing_parameter_models import (
     RecordingProcessingParameterModel,
+)
+from freemocap.system.paths_and_files_names import (
+    get_css_stylesheet_path,
+    get_freemocap_data_folder_path,
+    get_most_recent_recording_path,
+    PATH_TO_FREEMOCAP_LOGO_SVG,
+    RECORDING_SESSIONS_FOLDER_NAME,
+    get_blender_file_path,
+    get_recording_session_folder_path,
 )
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
@@ -148,18 +134,21 @@ class FreemocapMainWindow(QMainWindow):
         self._directory_view_widget.expand_directory_to_path(directory_path=folder_path)
         self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
-        if self._auto_process_videos_checkbox.isChecked() and self._mocap_videos_radio_button.isChecked():
+        if (
+            self._controller_group_box.auto_process_videos_checked
+            and self._controller_group_box.mocap_videos_radio_button_checked
+        ):
             logger.info("'Auto process videos' checkbox is checked - triggering 'Process Motion Capture Data' button")
             self._process_motion_capture_data_panel.process_motion_capture_data_button.click()
-        elif self._calibration_videos_radio_button.isChecked():
+        elif self._controller_group_box.calibration_videos_radio_button_checked:
             logger.info("Processing calibration videos")
             self._calibration_control_panel.calibrate_from_active_recording(
-                charuco_square_size_mm=float(self._charuco_square_size_line_edit.text())
+                charuco_square_size_mm=float(self._controller_group_box.charuco_square_size)
             )
 
     def _handle_processing_finished_signal(self):
         logger.info("Processing finished")
-        if self._auto_process_videos_checkbox.isChecked():
+        if self._controller_group_box.auto_process_videos_checked:
             logger.info("'Auto process videos' checkbox is checked - triggering 'Create Blender Scene'")
             self._handle_export_to_blender_button_clicked()
 
@@ -171,36 +160,18 @@ class FreemocapMainWindow(QMainWindow):
         self._skellycam_widget.detect_available_cameras()
 
     def update(self):
-        self._update_recording_name_string()
-
-    def _update_recording_name_string(self):
-        self._recording_path_label.setText(create_new_recording_folder_path(recording_name=self._get_recording_name()))
+        super().update()
+        if not self._skellycam_widget.is_recording:
+            self._controller_group_box.update_recording_name_string()
 
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
         css_file_watcher = CSSFileWatcher(path_to_css_file=get_css_stylesheet_path(), parent=self)
         return css_file_watcher
 
-    def _get_recording_name_string_tag(self):
-        try:
-            tag = self._recording_string_tag_line_edit.text()
-            tag = tag.replace("   ", " ")
-            tag = tag.replace("  ", " ")
-            tag = tag.replace(" ", "_")
-            return tag
-        except:
-            return ""
-
-    def _get_recording_name(self):
-        tag = self._get_recording_name_string_tag()
-        if tag == "":
-            return create_new_default_recording_name()
-        else:
-            return f"{create_new_default_recording_name()}_{self._get_recording_name_string_tag()}"
-
     def _create_new_synchronized_videos_folder(self) -> str:
-        new_recording_folder_path = create_new_recording_folder_path(recording_name=self._get_recording_name())
-        # logger.info(f"Creating new recording folder at: {new_recording_folder_path}")
+        new_recording_folder_path = self._controller_group_box.get_new_recording_path()
+        logger.info(f"Creating new recording folder at: {new_recording_folder_path}")
         self._active_recording_info_widget.set_active_recording(recording_folder_path=new_recording_folder_path)
         return self._active_recording_info_widget.active_recording_info.synchronized_videos_folder_path
 
@@ -215,81 +186,14 @@ class FreemocapMainWindow(QMainWindow):
             self._handle_videos_saved_to_this_folder_signal
         )
 
-        self._controller_group_box = QGroupBox("")
-
-        # self._controller_group_box.setFlat(True)
-        controller_layout = QVBoxLayout()
-        self._controller_group_box.setLayout(controller_layout)
-
-        # controller_layout.setContentsMargins(0, 0, 0, 0)
-        # controller_layout.setSpacing(0)
-        controller_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        self._camera_controller_widget = SkellyCamControllerWidget(
+        self._skellycam_controller_widget = SkellyCamControllerWidget(
             camera_viewer_widget=self._skellycam_widget,
             parent=self,
         )
-        controller_layout.addWidget(self._camera_controller_widget)
 
-        self._recording_name_controller_row_layout = QHBoxLayout()
-        controller_layout.addLayout(self._recording_name_controller_row_layout)
-
-        self._recording_string_tag_line_edit = QLineEdit(parent=self)
-        self._recording_string_tag_line_edit.setPlaceholderText("(Optional)")
-        # self._recording_string_tag_line_edit.setFixedWidth(300)
-        recording_string_tag_form_layout = QFormLayout(parent=self)
-        recording_string_tag_form_layout.addRow("Recording Name Tag", self._recording_string_tag_line_edit)
-        self._recording_name_controller_row_layout.addLayout(recording_string_tag_form_layout)
-
-        hbox = QHBoxLayout()
-        hbox.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        hbox.addWidget(QLabel("Videos will save to folder: "))
-        self._recording_path_label = QLabel(f"{create_new_recording_folder_path(self._get_recording_name())}")
-        self._recording_path_label.setStyleSheet("font-family: monospace;")
-        hbox.addWidget(self._recording_path_label)
-        # self._recording_path_label.setStyleSheet("font-family: monospace; font-size: 12px; font-weight: bold;")
-        controller_layout.addLayout(hbox)
-
-        recording_type_radio_button_layout = QVBoxLayout()
-        controller_layout.addLayout(recording_type_radio_button_layout)
-
-        record_motion_capture_videos_layout = QHBoxLayout()
-        record_motion_capture_videos_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-        self._mocap_videos_radio_button = QRadioButton("Record Motion Capture Videos")
-        record_motion_capture_videos_layout.addWidget(self._mocap_videos_radio_button)
-        self._mocap_videos_radio_button.setChecked(True)
-
-        record_motion_capture_videos_layout.addWidget(QLabel(" - "))
-
-        self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
-        self._auto_process_videos_checkbox.setChecked(True)
-        record_motion_capture_videos_layout.addWidget(self._auto_process_videos_checkbox)
-
-        self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
-        self._auto_open_in_blender_checkbox.setChecked(True)
-        record_motion_capture_videos_layout.addWidget(self._auto_open_in_blender_checkbox)
-        controller_layout.addLayout(record_motion_capture_videos_layout)
-
-        record_calibration_videos_layout = QHBoxLayout()
-        record_calibration_videos_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        record_calibration_videos_layout.setSizeConstraint(record_motion_capture_videos_layout.sizeConstraint())
-        self._calibration_videos_radio_button = QRadioButton("Record Calibration Videos")
-        record_calibration_videos_layout.addWidget(self._calibration_videos_radio_button)
-        record_calibration_videos_layout.addWidget(QLabel(" - "))
-
-        charuco_square_size_form_layout = QFormLayout(parent=self)
-        record_calibration_videos_layout.addLayout(charuco_square_size_form_layout)
-        self._charuco_square_size_line_edit = QLineEdit(parent=self)
-        self._charuco_square_size_line_edit.setFixedWidth(100)
-        self._charuco_square_size_label = QLabel("Charuco square size (mm)")
-        self._charuco_square_size_line_edit.setText(str(default_charuco_square_size_mm))
-        self._charuco_square_size_line_edit.setToolTip(
-            "The length of one of the edges of the black squares in the calibration board in mm"
+        self._controller_group_box = CameraControllerGroupBox(
+            skellycam_controller=self._skellycam_controller_widget, parent=self
         )
-        charuco_square_size_form_layout.addRow(self._charuco_square_size_label, self._charuco_square_size_line_edit)
-
-        controller_layout.addLayout(record_calibration_videos_layout)
 
         self._skelly_viewer_widget = QLabel("Hello, just imagine this was `skelly_viewer` lol")  # SkellyViewer()
 
@@ -350,7 +254,7 @@ class FreemocapMainWindow(QMainWindow):
     def _handle_export_to_blender_button_clicked(self):
         recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
         export_to_blender(recording_folder_path=recording_path, blender_file_path=get_blender_file_path(recording_path))
-        if self._auto_open_in_blender_checkbox.isChecked():
+        if self._controller_group_box.auto_open_in_blender_checked:
             open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
 
     def _handle_new_active_recording_selected(self, recording_info_model: RecordingInfoModel):

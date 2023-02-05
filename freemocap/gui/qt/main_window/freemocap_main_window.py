@@ -11,10 +11,9 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QPushButton,
     QFileDialog,
-    QLabel,
 )
 
-# from skelly_viewer import SkellyViewer
+from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
     SkellyCamWidget,
@@ -45,7 +44,7 @@ from freemocap.gui.qt.widgets.control_panel.control_panel_dock_widget import (
 )
 from freemocap.gui.qt.widgets.directory_view_widget import DirectoryViewWidget
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
-from freemocap.gui.qt.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
+from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
 from freemocap.gui.qt.widgets.welcome_panel_widget import (
@@ -195,7 +194,7 @@ class FreemocapMainWindow(QMainWindow):
             skellycam_controller=self._skellycam_controller_widget, parent=self
         )
 
-        self._skelly_viewer_widget = QLabel("Hello, just imagine this was `skelly_viewer` lol")  # SkellyViewer()
+        self._skelly_viewer_widget = SkellyViewer()
 
         center_tab_widget = CentralTabWidget(
             parent=self,
@@ -271,6 +270,32 @@ class FreemocapMainWindow(QMainWindow):
 
         self._active_recording_info_widget.update_parameter_tree()
         # self._recording_name_label.setText(f"Recording Name: {recording_info_model.name}")
+        self._update_skelly_viewer_widget()
+
+    def _update_skelly_viewer_widget(self):
+        active_recording_info = self._active_recording_info_widget.active_recording_info
+
+        if active_recording_info is None:
+            self._central_tab_widget.set_visualize_data_tab_enabled(False)
+            return
+
+        if active_recording_info.data3d_status_check:
+            self._skelly_viewer_widget.load_skeleton_data(
+                mediapipe_skeleton_npy_path=active_recording_info.mediapipe_3d_data_npy_file_path
+            )
+            self._central_tab_widget.set_visualize_data_tab_enabled(True)
+
+        if active_recording_info.data2d_status_check:
+            self._skelly_viewer_widget.generate_video_display(
+                video_folder_path=active_recording_info.annotated_videos_folder_path
+            )
+            self._central_tab_widget.set_visualize_data_tab_enabled(True)
+
+        elif active_recording_info.synchronized_videos_status_check:
+            self._skelly_viewer_widget.generate_video_display(
+                video_folder_path=active_recording_info.synchronized_videos_folder_path
+            )
+            self._central_tab_widget.set_visualize_data_tab_enabled(True)
 
     def reboot_gui(self):
         logger.info("Rebooting GUI... ")

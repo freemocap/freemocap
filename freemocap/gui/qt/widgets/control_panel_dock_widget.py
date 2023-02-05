@@ -11,7 +11,7 @@ from skellycam import SkellyCamParameterTreeWidget
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import (
     CalibrationControlPanel,
 )
-from freemocap.gui.qt.widgets.process_mocap_data_panel.process_motion_capture_data_panel import (
+from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
 

@@ -36,7 +36,7 @@ TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
 PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent.parent / "assets/logo/freemocap-logo-black-border.svg")
 
 # emoji strings
-sparkles_emoji_string = "\U00002728"
+SPARKLES_EMOJI = "\U00002728"
 dizzy_circle_star_emoji_string = "\U0001F4AB"
 eyes_emoji_string = "\U0001F440"
 
@@ -80,10 +80,10 @@ def get_calibrations_folder_path(create_folder: bool = True):
     return str(calibration_folder_path)
 
 
-def create_new_recording_folder_path(string_tag: str = None):
-    recording_folder_path = Path(create_new_session_folder()) / create_new_default_recording_name(string_tag)
+def create_new_recording_folder_path(recording_name: str):
 
-    recording_folder_path.mkdir(exist_ok=True, parents=True)
+    recording_folder_path = Path(create_new_session_folder()) / recording_name
+
     return str(recording_folder_path)
 
 
@@ -103,18 +103,10 @@ def get_iso6201_time_string(timespec: str = "milliseconds", make_filename_friend
     return iso6201_timestamp_w_gmt
 
 
-def create_new_default_recording_name(string_tag: str = None):
-    if string_tag is not None and not string_tag == "":
-        string_tag = f"_{string_tag}"
-    else:
-        string_tag = ""
-
+def create_new_default_recording_name():
     full_time = get_iso6201_time_string(timespec="seconds")
     just_hours_minutes_seconds = full_time.split("T")[1]
-    recording_name = just_hours_minutes_seconds + string_tag
-
-    logger.info(f"Generated new recording name: {recording_name}")
-
+    recording_name = "recording_" + just_hours_minutes_seconds
     return recording_name
 
 
@@ -138,7 +130,6 @@ def create_new_session_folder():
     if session_folder_path is None:
         session_folder_path = Path(get_recording_session_folder_path()) / default_session_name()
 
-        session_folder_path.mkdir(exist_ok=True, parents=True)
     return str(session_folder_path)
 
 

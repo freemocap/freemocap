@@ -18,14 +18,13 @@ class ActiveRecordingInfoWidget(QWidget):
 
     def __init__(
         self,
-        active_recording_info: RecordingInfoModel = None,
         parent: QWidget = None,
     ):
         super().__init__(parent=parent)
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
-        self._active_recording_info = active_recording_info
+        self._active_recording_info = None
         self._directory_watcher = self._create_directory_watcher()
 
         self._active_recording_view_widget = ActiveRecordingTreeView(parent=self)

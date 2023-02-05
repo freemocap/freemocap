@@ -9,12 +9,11 @@ from freemocap.system.paths_and_files_names import (
     OUTPUT_DATA_FOLDER_NAME,
     RAW_DATA_FOLDER_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-    get_blender_file_path,
-)
-from freemocap.system.paths_and_files_names import (
-    get_last_successful_calibration_toml_path,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
+    get_blender_file_path,
+    get_last_successful_calibration_toml_path,
+    ANNOTATED_VIDEOS_FOLDER_NAME,
 )
 from freemocap.tests.test_mediapipe_2d_data_shape import test_mediapipe_2d_data_shape
 from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
@@ -45,6 +44,8 @@ class RecordingInfoModel:
 
         self._synchronized_videos_folder_path: Union[Path, str] = Path(self._path) / SYNCHRONIZED_VIDEOS_FOLDER_NAME
 
+        self._annotated_videos_folder_path: Union[Path, str] = Path(self._path) / ANNOTATED_VIDEOS_FOLDER_NAME
+
         if calibration_toml_path is None:
             self._calibration_toml_file_path = get_last_successful_calibration_toml_path()
         else:
@@ -71,6 +72,10 @@ class RecordingInfoModel:
     @property
     def synchronized_videos_folder_path(self) -> str:
         return str(self._synchronized_videos_folder_path)
+
+    @property
+    def annotated_videos_folder_path(self) -> str:
+        return str(self._annotated_videos_folder_path)
 
     @property
     def mediapipe_2d_data_npy_file_path(self):

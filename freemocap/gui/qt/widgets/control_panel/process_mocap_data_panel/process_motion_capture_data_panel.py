@@ -9,13 +9,13 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 from freemocap.parameter_info_models.recording_processing_parameter_models import (
     RecordingProcessingParameterModel,
 )
-from freemocap.gui.qt.widgets.process_mocap_data_panel.parameter_groups.create_3d_triangulation_parameter_group import (
+from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_3d_triangulation_parameter_group import (
     create_3d_triangulation_prarameter_group,
 )
-from freemocap.gui.qt.widgets.process_mocap_data_panel.parameter_groups.create_mediapipe_parameter_group import (
+from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_mediapipe_parameter_group import (
     create_mediapipe_parameter_group,
 )
-from freemocap.gui.qt.widgets.process_mocap_data_panel.parameter_groups.create_post_processing_parameter_group import (
+from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_post_processing_parameter_group import (
     create_post_processing_parameter_group,
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (

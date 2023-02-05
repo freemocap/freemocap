@@ -40,6 +40,13 @@ QPushButton:hover {
     border: 3px solid #ff40aa;
 }
 
+WelcomeButton {
+    border: 2px solid #29394a;
+    background-color: #2a6060;
+    color: #dddddd;
+    font-size: 24px;
+
+}
 
 QLabel {
 
@@ -66,7 +73,7 @@ QLineEdit:disabled {
 }
 
 QRadioButton:checked {
-    color: #ffd700;
+    color: #7906e5;
 
 }
 

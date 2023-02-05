@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from freemocap.system.paths_and_files_names import PATH_TO_FREEMOCAP_LOGO_SVG
+from freemocap.system.paths_and_files_names import PATH_TO_FREEMOCAP_LOGO_SVG, SPARKLES_EMOJI
 from freemocap.gui.qt.actions_and_menu_bar.actions import (
     CREATE_NEW_RECORDING_ACTION_NAME,
     LOAD_MOST_RECENT_RECORDING_ACTION_NAME,
@@ -22,6 +22,13 @@ from freemocap.gui.qt.actions_and_menu_bar.actions import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class WelcomeButton(QPushButton):
+    def __init__(self, text: str, parent: QWidget = None):
+        super().__init__(text, parent=parent)
+        self.setFixedHeight(50)
+        self.setFixedWidth(400)
 
 
 class WelcomeToFreemocapPanel(QWidget):
@@ -36,38 +43,34 @@ class WelcomeToFreemocapPanel(QWidget):
         self._welcome_to_freemocap_title_widget = self._welcome_to_freemocap_title()
         self._layout.addWidget(self._welcome_to_freemocap_title_widget)
 
-        self._create_new_session_button = QPushButton(f"{CREATE_NEW_RECORDING_ACTION_NAME} (Ctrl+N)")
+        self._create_new_session_button = WelcomeButton(f"{CREATE_NEW_RECORDING_ACTION_NAME} (Ctrl+N) {SPARKLES_EMOJI}")
         self._create_new_session_button.clicked.connect(actions.create_new_recording_action.trigger)
-        self._layout.addWidget(self._create_new_session_button)
+        self._layout.addWidget(self._create_new_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self._load_most_recent_session_button = QPushButton(f"{LOAD_MOST_RECENT_RECORDING_ACTION_NAME} (Ctrl+D)")
+        self._load_most_recent_session_button = WelcomeButton(f"{LOAD_MOST_RECENT_RECORDING_ACTION_NAME} (Ctrl+D)")
         self._load_most_recent_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
-        self._layout.addWidget(self._load_most_recent_session_button)
+        self._layout.addWidget(self._load_most_recent_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self._load_existing_session_button = QPushButton(f"{LOAD_EXISTING_RECORDING_ACTION_NAME} (Ctrl+O)")
+        self._load_existing_session_button = WelcomeButton(f"{LOAD_EXISTING_RECORDING_ACTION_NAME} (Ctrl+O)")
         self._load_existing_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
-        self._layout.addWidget(self._load_existing_session_button)
+        self._layout.addWidget(self._load_existing_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self._import_videos_button = QPushButton(f"{IMPORT_VIDEOS_ACTION_NAME} (Ctrl+I)")
+        self._import_videos_button = WelcomeButton(f"{IMPORT_VIDEOS_ACTION_NAME} (Ctrl+I)")
         self._import_videos_button.clicked.connect(actions.import_videos_action.trigger)
-        self._layout.addWidget(self._import_videos_button)
+        self._layout.addWidget(self._import_videos_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self._reboot_gui_button = QPushButton(f"{REBOOT_GUI_ACTION_NAME} (Ctrl+R)")
+        self._reboot_gui_button = WelcomeButton(f"{REBOOT_GUI_ACTION_NAME} (Ctrl+R)")
         self._reboot_gui_button.clicked.connect(actions.reboot_gui_action.trigger)
-        self._layout.addWidget(self._reboot_gui_button)
+        self._layout.addWidget(self._reboot_gui_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self._exit_button = QPushButton(f"{EXIT_ACTION_NAME} (Ctrl+Q)")
+        self._exit_button = WelcomeButton(f"{EXIT_ACTION_NAME} (Ctrl+Q)")
         self._exit_button.clicked.connect(actions.exit_action.trigger)
-        self._layout.addWidget(self._exit_button)
+        self._layout.addWidget(self._exit_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        send_pings_label = QLabel(
-            "(being able to show that people are using this thing will help us get funding for this project :D )"
-        )
-        send_pings_label.setWordWrap(True)
-        self._send_pings_checkbox = QCheckBox("Send ping to devs to let us know when you make a new session")
+        send_pings_string = "Send ping to devs to let us know when you make a new session (being able to show that people are using this thing will help us get funding for this project :D )"
+        self._send_pings_checkbox = QCheckBox(send_pings_string)
         self._send_pings_checkbox.setChecked(True)
         self._layout.addWidget(self._send_pings_checkbox)
-        self._layout.addWidget(send_pings_label)
 
         self._layout.addStretch()
 

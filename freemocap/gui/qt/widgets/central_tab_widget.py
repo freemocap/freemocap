@@ -56,6 +56,7 @@ class CentralTabWidget(QTabWidget):
 
         # self._qt_multi_camera_viewer_widget.resize(1280, 720)
         self._camera_view_layout.addWidget(self._camera_controller_widget)
+
         self._camera_view_layout.addWidget(self._skelly_cam_widget)
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):

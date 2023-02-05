@@ -151,7 +151,7 @@ class RecordingFolderStatusChecker:
 
             return True
         except AssertionError as e:
-            logger.error(f"`test_mediapipe_2d_data_shape` failed with error: {e}")
+            logger.info(f"Failed`test_mediapipe_2d_data_shape` with message: {e}")
             return False
 
     def check_data3d_status(self) -> bool:
@@ -164,7 +164,7 @@ class RecordingFolderStatusChecker:
             )
             return True
         except AssertionError as e:
-            logger.error(f"`test_mediapipe_3d_data_shape` failed with error: {e}")
+            logger.info(f"Failed`test_mediapipe_3d_data_shape` with message: {e}")
             return False
 
     def check_center_of_mass_data_status(self) -> bool:
@@ -176,5 +176,5 @@ class RecordingFolderStatusChecker:
             )
             return True
         except AssertionError as e:
-            logger.error(f"`test_total_body_center_of_mass_data_shape` failed with error: {e}")
+            logger.info(f"Failed `test_total_body_center_of_mass_data_shape` with message: {e}")
             return False

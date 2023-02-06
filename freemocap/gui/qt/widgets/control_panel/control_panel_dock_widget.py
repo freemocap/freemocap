@@ -25,7 +25,7 @@ class ControlPanelDockWidget(QDockWidget):
         visualize_data_widget: QWidget,
         parent=None,
     ):
-        super().__init__(parent=parent)
+        super().__init__("Control", parent=parent)
 
         self._splitter = QSplitter()
         self._splitter.setOrientation(Qt.Orientation.Vertical)

@@ -29,11 +29,11 @@ def qt_gui_main():
     app = get_qt_app()
     timer = QTimer()
     timer.start(500)
-    freemocap_main_window = FreemocapMainWindow(freemocap_data_folder_path=get_freemocap_data_folder_path())
-    freemocap_main_window.show()
-    timer.timeout.connect(freemocap_main_window.update)
 
     while True:
+        freemocap_main_window = FreemocapMainWindow(freemocap_data_folder_path=get_freemocap_data_folder_path())
+        freemocap_main_window.show()
+        timer.timeout.connect(freemocap_main_window.update)
         error_code = app.exec()
         logger.info(f"`main` exited with error code: {error_code}")
         freemocap_main_window.close()

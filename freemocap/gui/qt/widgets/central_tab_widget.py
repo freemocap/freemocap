@@ -1,5 +1,6 @@
 import logging
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
 # from skelly_viewer import SkellyViewer
@@ -8,6 +9,7 @@ from skellycam import SkellyCamWidget
 from freemocap.gui.qt.widgets.welcome_panel_widget import (
     WelcomeToFreemocapPanel,
 )
+from freemocap.system.paths_and_files_names import skull_emoji_string, camera_with_flash_emoji_string, eyes_emoji_string
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,8 @@ class CentralTabWidget(QTabWidget):
     ):
         super().__init__(parent=parent)
         self.parent = parent
+
+        # self.setTabShape(QTabWidget.TabShape.Triangular)
 
         self._skelly_cam_widget = skelly_cam_widget
         self._camera_controller_widget = camera_controller_widget
@@ -50,8 +54,9 @@ class CentralTabWidget(QTabWidget):
         logger.info("Creating skellycam view tab")
         dummy_widget = QWidget()
         self._camera_view_layout = QVBoxLayout()
+        self._camera_view_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         dummy_widget.setLayout(self._camera_view_layout)
-        tab_widget.addTab(dummy_widget, "Skelly Cam")
+        tab_widget.addTab(dummy_widget, f"Skelly Cam {camera_with_flash_emoji_string}")
         # tab_widget.setToolTip(skellycam.__repo_url__)
 
         # self._qt_multi_camera_viewer_widget.resize(1280, 720)
@@ -61,5 +66,5 @@ class CentralTabWidget(QTabWidget):
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):
         logger.info("Creating visualization tab")
-        tab_widget.addTab(self._skelly_viewer_widget, "Skelly Viewer")
+        tab_widget.addTab(self._skelly_viewer_widget, f"Skelly Viewer {eyes_emoji_string}")
         # tab_widget.setToolTip(skelly_viewer.__repo_url__)

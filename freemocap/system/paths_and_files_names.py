@@ -37,9 +37,11 @@ TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
 PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent.parent / "assets/logo/freemocap-logo-black-border.svg")
 
 # emoji strings
-SPARKLES_EMOJI = "\U00002728"
+sparkles_emoji = "\U00002728"
 dizzy_circle_star_emoji_string = "\U0001F4AB"
 eyes_emoji_string = "\U0001F440"
+skull_emoji_string = "\U0001F480"
+camera_with_flash_emoji_string = "\U0001F4F8"
 
 
 def os_independent_home_dir():

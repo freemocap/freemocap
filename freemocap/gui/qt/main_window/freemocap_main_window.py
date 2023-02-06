@@ -93,6 +93,9 @@ class FreemocapMainWindow(QMainWindow):
         self._active_recording_info_widget.new_active_recording_selected_signal.connect(
             self._handle_new_active_recording_selected
         )
+        self._active_recording_dock_widget = QDockWidget("Active Recording", self)
+        self._active_recording_dock_widget.setWidget(self._active_recording_info_widget.active_recording_view_widget)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._active_recording_dock_widget)
 
         self._actions = Actions(freemocap_main_window=self)
         self._menu_bar = MenuBar(actions=self._actions, parent=self)
@@ -106,15 +109,11 @@ class FreemocapMainWindow(QMainWindow):
         self._central_tab_widget = self._create_central_tab_widget()
         self.setCentralWidget(self._central_tab_widget)
 
-        self._active_recording_dock_widget = QDockWidget("Active Recording", self)
-        self._active_recording_dock_widget.setWidget(self._active_recording_info_widget.active_recording_view_widget)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._active_recording_dock_widget)
-
         self._control_panel_dock_widget = self._create_control_panel_dock_widget()
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._control_panel_dock_widget)
 
         self._directory_view_dock_widget = self._create_directory_view_dock_widget()
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._directory_view_dock_widget)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._directory_view_dock_widget)
 
         # self._jupyter_console_widget = JupyterConsoleWidget(parent=self)
         # jupyter_console_dock_widget = QDockWidget("Jupyter IPython Console", self)

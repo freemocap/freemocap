@@ -4,15 +4,43 @@
     color: #333333;
 }
 
-
-QMainWindow {
-    background-color: #458a87;
+QGroupBox {
+    border: 1px solid #1c6266;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-weight: bold;
+}
+QGroupBox[calibration_videos_radio_button_checked=true] {
+    background-color: #9f795e;
 }
 
-QTabWidget:pane {
-    border: 1px solid #010505;
-    background-color: #e8fffd;
 
+
+
+QMainWindow {
+    background-color: #2b9ba1;
+}
+
+QTabWidget::pane {
+    border: 1px solid lightgray;
+    top: 1px;
+    background: cadetblue ;
+}
+
+QTabBar::tab {
+    background: lightseagreen;
+    border: 1px solid #2b9692;
+    padding: 5px;
+    color: #235957;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 5px;
+    min-width: 200px;
+}
+
+QTabBar::tab:selected {
+    background: seashell;
+    margin-bottom: -5px;
+    font-weight: bolder;
 }
 
 

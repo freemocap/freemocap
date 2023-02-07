@@ -61,6 +61,8 @@ class AniposeCalibrationThreadWorker(QThread):
             )
 
             while True:
+                asyncio.sleep(.001)
+                print('hello')
                 if self._kill_thread_event.is_set():
                     task.cancel()
                     logger.info("Anipose calibration thread -  cancelled")
@@ -68,14 +70,13 @@ class AniposeCalibrationThreadWorker(QThread):
                 else:
                     pass
 
-                if task.done():
-                    logger.info("Anipose calibration complete")
-                    logger.info("Closing Anipose calibration thread")
-                    break
 
         except Exception as e:
-            logger.error("something failed in the anipose calibration")
-            logger.error(e)
+            logger.exception("something went wrong in the anipose calibration")
+            logger.exception(e)
 
         self.finished.emit()
         self._work_done = True
+
+        logger.info("Anipose Calibration Complete")
+

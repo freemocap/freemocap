@@ -10,7 +10,7 @@ from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_b
 
 
 async def async_run_anipose_capture_volume_calibration(**kwargs):
-    return run_anipose_capture_volume_calibration(**kwargs)
+    run_anipose_capture_volume_calibration(**kwargs)
 
 
 def run_anipose_capture_volume_calibration(
@@ -27,4 +27,4 @@ def run_anipose_capture_volume_calibration(
         progress_callback=progress_callback,
     )
     progress_callback("Endurance is great wow wow wow")
-    return anipose_camera_calibrator.calibrate_camera_capture_volume(pin_camera_0_to_origin=pin_camera_0_to_origin)
+    anipose_camera_calibrator.calibrate_camera_capture_volume(pin_camera_0_to_origin=pin_camera_0_to_origin)

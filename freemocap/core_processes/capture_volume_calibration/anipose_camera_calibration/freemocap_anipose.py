@@ -721,12 +721,12 @@ class CameraGroup:
         error = self.average_error(p2ds, median=True)
 
         if verbose:
-            logger.info("error: ", error)
+            print("error: ", error)
 
         mus = np.exp(np.linspace(np.log(start_mu), np.log(end_mu), num=n_iters))
 
         if verbose:
-            logger.info("n_samples: {}".format(n_samp_iter))
+            print("n_samples: {}".format(n_samp_iter))
 
         for i in range(n_iters):
             p2ds, extra = resample_points(p2ds_full, extra_full, n_samp=n_samp_full)
@@ -754,9 +754,9 @@ class CameraGroup:
                 break
 
             if verbose:
-                logger.info(error_dict)
-                logger.info("error: {:.2f}, mu: {:.1f}, ratio: {:.3f}".format(error, mu, np.mean(good)))
-                logger.info(f"previous error scores: [magenta] {error_list}[/magenta]")
+                print(error_dict)
+                print("error: {:.2f}, mu: {:.1f}, ratio: {:.3f}".format(error, mu, np.mean(good)))
+                print(f"previous error scores: [magenta] {error_list}[/magenta]")
 
             self.bundle_adjust(
                 p2ds_samp,
@@ -773,7 +773,7 @@ class CameraGroup:
         errors_norm = self.reprojection_error(p3ds, p2ds, mean=True)
         error_dict = get_error_dict(errors_full)
         if verbose:
-            logger.info(error_dict)
+            print(error_dict)
 
         max_error = 0
         min_error = 0
@@ -800,10 +800,10 @@ class CameraGroup:
         errors_full = self.reprojection_error(p3ds, p2ds, mean=False)
         error_dict = get_error_dict(errors_full)
         if verbose:
-            logger.info(error_dict)
+            print(error_dict)
 
         if verbose:
-            logger.info("error: ", error)
+            print("error: ", error)
 
         return error
 
@@ -1117,7 +1117,7 @@ class CameraGroup:
         t2 = time.time()
 
         if verbose:
-            logger.info("optimization took {:.2f} seconds".format(t2 - t1))
+            print("optimization took {:.2f} seconds".format(t2 - t1))
 
         return p3ds_new2
 
@@ -1179,7 +1179,7 @@ class CameraGroup:
             constraints_weak=constraints_weak,
         )
 
-        logger.info("getting jacobian...")
+        print("getting jacobian...")
         jac = self._jac_sparsity_triangulation_possible(
             points,
             constraints=constraints,
@@ -1189,7 +1189,7 @@ class CameraGroup:
 
         beta = 5
 
-        logger.info("starting optimization...")
+        print("starting optimization...")
         opt2 = optimize.least_squares(
             self._error_fun_triangulation_possible,
             x0=x0,
@@ -1233,7 +1233,7 @@ class CameraGroup:
         t2 = time.time()
 
         if verbose:
-            logger.info("optimization took {:.2f} seconds".format(t2 - t1))
+            print("optimization took {:.2f} seconds".format(t2 - t1))
 
         return p3ds_new2, alphas_norm
 
@@ -1273,7 +1273,7 @@ class CameraGroup:
 
         c = np.isfinite(p3ds[:, :, 0])
         if np.sum(c) < 20:
-            logger.info("warning: not enough 3D points to calculate_center_of_mass optimization")
+            print("warning: not enough 3D points to calculate_center_of_mass optimization")
             return p3ds
 
         return self.optim_points(points, p3ds, **kwargs)
@@ -1630,7 +1630,7 @@ class CameraGroup:
         if init_extrinsics:
             rtvecs = extract_rtvecs(merged)
             if verbose:
-                logger.info(get_connections(rtvecs, self.get_names()))
+                print(get_connections(rtvecs, self.get_names()))
             rvecs, tvecs = get_initial_extrinsics(rtvecs)
             self.set_rotations(rvecs)
             self.set_translations(tvecs)
@@ -1646,10 +1646,10 @@ class CameraGroup:
             rows_cam = []
             for vnum, vidname in enumerate(cam_videos):
                 if verbose:
-                    logger.info(vidname)
+                    print(vidname)
                 rows = board.detect_video(vidname, prefix=vnum, progress=verbose)
                 if verbose:
-                    logger.info("{} boards detected".format(len(rows)))
+                    print("{} boards detected".format(len(rows)))
                 rows_cam.extend(rows)
             all_rows.append(rows_cam)
 

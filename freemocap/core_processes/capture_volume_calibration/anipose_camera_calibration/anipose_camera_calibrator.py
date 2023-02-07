@@ -37,7 +37,7 @@ class AniposeCameraCalibrator:
             )
         self._charuco_square_size = charuco_square_size
         self._calibration_videos_folder_path = Path(calibration_videos_folder_path)
-        self._session_folder_path = Path(self._calibration_videos_folder_path).parent
+        self._recording_folder_path = Path(self._calibration_videos_folder_path).parent
         self._get_video_paths()
         self._initialize_anipose_objects()
 
@@ -86,17 +86,22 @@ class AniposeCameraCalibrator:
 
         # save calibration info to files
         calibration_toml_filename = f"{self._calibration_videos_folder_path.parent.stem}_camera_calibration.toml"
-        camera_calibration_toml_path = Path(get_calibrations_folder_path()) / calibration_toml_filename
 
-        self._anipose_camera_group_object.dump(camera_calibration_toml_path)
-        logger.info(f"anipose camera calibration data saved to {str(camera_calibration_toml_path)}")
+        calibration_folder_toml_path = Path(get_calibrations_folder_path()) / calibration_toml_filename
+
+        self._anipose_camera_group_object.dump(calibration_folder_toml_path)
+        logger.info(f"anipose camera calibration data saved to Calibrations folder - {str(calibration_folder_toml_path)}")
+
+        recording_folder_toml_path = Path(self._recording_folder_path) / calibration_toml_filename
+
+        self._anipose_camera_group_object.dump(recording_folder_toml_path)
+        logger.info(f"anipose camera calibration data saved to Recording folder - {str(recording_folder_toml_path)}")
 
         last_successful_calibration_toml_path = get_last_successful_calibration_toml_path()
         self._anipose_camera_group_object.dump(last_successful_calibration_toml_path)
 
-        logger.info(f"anipose camera calibration data also saved to {last_successful_calibration_toml_path}")
+        logger.info(f"anipose camera calibration data also saved to 'Last Successful Calibration' - {last_successful_calibration_toml_path}")
 
-        return self._anipose_camera_group_object
 
     def pin_camera_zero_to_origin(self, _anipose_camera_group_object):
         original_translation_vectors = _anipose_camera_group_object.get_translations()

@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QMainWindow, QMenuBar
 
-from freemocap.gui.qt.actions_and_menu_bar.actions import Actions
+from freemocap.gui.qt.actions_and_menus.actions import Actions
 
 
 class MenuBar(QMenuBar):

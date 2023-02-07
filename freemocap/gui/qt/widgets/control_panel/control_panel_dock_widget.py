@@ -1,10 +1,9 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDockWidget,
-    QLabel,
-    QSplitter,
     QVBoxLayout,
     QWidget,
+    QToolBox,
 )
 from skellycam import SkellyCamParameterTreeWidget
 
@@ -17,55 +16,44 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_mot
 
 
 class ControlPanelDockWidget(QDockWidget):
+    def __init__(self, **kwargs):
+        super().__init__("Control", parent=kwargs.get("parent"))
+
+        self.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable)
+        self.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable)
+
+        self.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+
+        self._control_panel_widget = ControlPanelWidget(**kwargs)
+        self.setWidget(self._control_panel_widget)
+
+    @property
+    def tool_box(self):
+        return self._control_panel_widget.tool_box
+
+
+class ControlPanelWidget(QWidget):
     def __init__(
         self,
         camera_configuration_parameter_tree_widget: SkellyCamParameterTreeWidget,
-        calibration_control_panel: CalibrationControlPanel,
+        # calibration_control_panel: CalibrationControlPanel,
         process_motion_capture_data_panel: ProcessMotionCaptureDataPanel,
         visualize_data_widget: QWidget,
         parent=None,
     ):
-        super().__init__("Control", parent=parent)
+        super().__init__(parent=parent)
 
-        self._splitter = QSplitter()
-        self._splitter.setOrientation(Qt.Orientation.Vertical)
-        self.setWidget(self._splitter)
+        self._layout = QVBoxLayout()
+        self.setLayout(self._layout)
 
-        self._add_widget_to_splitter(
-            widget=camera_configuration_parameter_tree_widget,
-            title_str="Camera Configuration",
-        )
+        self._tool_box = QToolBox(parent=self)
+        self._layout.addWidget(self._tool_box)
 
-        self._add_widget_to_splitter(
-            widget=calibration_control_panel,
-            title_str="Capture Volume Calibration",
-        )
+        self._tool_box.addItem(camera_configuration_parameter_tree_widget, "Camera Configuration")
+        # self._tool_box.addItem(calibration_control_panel, "Capture Volume Calibration")
+        self._tool_box.addItem(process_motion_capture_data_panel, "Process Motion Capture Data")
+        self._tool_box.addItem(visualize_data_widget, "Visualize Motion Capture Data")
 
-        self._add_widget_to_splitter(
-            widget=process_motion_capture_data_panel,
-            title_str="Process Motion Capture Data",
-        )
-
-        self._add_widget_to_splitter(
-            widget=visualize_data_widget,
-            title_str="Visualize Motion Capture Data",
-            add_stretch=True,
-        )
-
-    def _add_widget_to_splitter(self, widget: QWidget, title_str: str, add_stretch: bool = False):
-        dummy_widget = QWidget()
-        layout = QVBoxLayout()
-        dummy_widget.setLayout(layout)
-        layout.addWidget(self._create_section_title(title=title_str))
-        layout.addWidget(widget)
-        if add_stretch:
-            layout.addStretch()
-
-        self._splitter.addWidget(dummy_widget)
-
-    def _create_section_title(self, title: str):
-        label = QLabel(title)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setAlignment(Qt.AlignmentFlag.AlignTop)
-        label.setStyleSheet("font-size: 20px; font-weight: bold;")
-        return label
+    @property
+    def tool_box(self):
+        return self._tool_box

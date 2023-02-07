@@ -20,7 +20,9 @@ class Actions:
             LOAD_MOST_RECENT_RECORDING_ACTION_NAME, parent=freemocap_main_window
         )
         self.load_most_recent_recording_action.setShortcut("Ctrl+D")
-        self.load_most_recent_recording_action.triggered.connect(freemocap_main_window.load_most_recent_recording)
+        self.load_most_recent_recording_action.triggered.connect(
+            freemocap_main_window.handle_load_most_recent_recording
+        )
 
         self.load_existing_recording_action = QAction(LOAD_EXISTING_RECORDING_ACTION_NAME, parent=freemocap_main_window)
         self.load_existing_recording_action.setShortcut("Ctrl+O")

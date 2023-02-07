@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 import shutil
 import threading
+from copy import copy
 from pathlib import Path
 from typing import Union
 
@@ -354,10 +355,10 @@ class FreemocapMainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Error killing running threads and processes: {e}")
 
-        try:
-            self._process_motion_capture_data_panel.kill_running_threads()
-        except Exception as e:
-            logger.error(f"Error killing running threads and processes: {e}")
+        self._kill_thread_event.set()
+        self._old_kill_event = copy(self._kill_thread_event)
+
+
 
     def handle_load_most_recent_recording(self):
         logger.info("`Load Most Recent Recording` QAction triggered")

@@ -57,7 +57,7 @@ class CalibrationControlPanel(QWidget):
 
         radio_button_form_layout.addRow(self._create_load_calibration_from_file_radio_button())
 
-        # radio_button_form_layout.addRow(self._add_calibrate_from_active_recording_radio_button())
+        radio_button_form_layout.addRow(self._add_calibrate_from_active_recording_radio_button())
 
         return radio_button_form_layout
 
@@ -99,7 +99,7 @@ class CalibrationControlPanel(QWidget):
         hbox = QHBoxLayout()
         vbox.addLayout(hbox)
 
-        self._calibrate_from_active_recording_radio_button = QRadioButton("Calibrate from active recording")
+        self._calibrate_from_active_recording_radio_button = QRadioButton("Calibrate from Active Recording")
         hbox.addWidget(self._calibrate_from_active_recording_radio_button)
 
         self._calibrate_from_active_recording_radio_button.toggled.connect(
@@ -191,7 +191,11 @@ class CalibrationControlPanel(QWidget):
         charuco_square_size_form_layout.addRow(self._charuco_square_size_label, self._charuco_square_size_line_edit)
         return charuco_square_size_form_layout
 
-    def calibrate_from_active_recording(self, charuco_square_size_mm: float):
+    def calibrate_from_active_recording(self, charuco_square_size_mm: float=None):
+
+        if not charuco_square_size_mm:
+            charuco_square_size_mm = float(self._charuco_square_size_line_edit.text())
+
         active_recording_info = self._get_active_recording_info_callable()
         if active_recording_info is None:
             logger.error("Cannot calibrate from active recording - no active recording selected")

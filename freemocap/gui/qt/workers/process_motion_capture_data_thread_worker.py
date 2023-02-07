@@ -38,3 +38,6 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
 
         self.finished.emit()
         self._work_done = True
+
+    def kill(self):
+        self.terminate()

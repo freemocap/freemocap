@@ -5,6 +5,7 @@ CREATE_NEW_RECORDING_ACTION_NAME = "Create New Recording "
 LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording..."
 LOAD_EXISTING_RECORDING_ACTION_NAME = "Load Existing Recording"
 IMPORT_VIDEOS_ACTION_NAME = "Import Videos..."
+KILL_THREADS_AND_PROCESSES_ACTION_NAME = "Kill Threads and Processes"
 REBOOT_GUI_ACTION_NAME = "Reboot GUI"
 EXIT_ACTION_NAME = "Exit"
 
@@ -32,9 +33,17 @@ class Actions:
         self.import_videos_action.setShortcut("Ctrl+I")
         self.import_videos_action.triggered.connect(freemocap_main_window.open_import_videos_dialog)
 
-        self.reboot_gui_action = QAction("&Reboot GUI", parent=freemocap_main_window)
+        self.reboot_gui_action = QAction(REBOOT_GUI_ACTION_NAME, parent=freemocap_main_window)
         self.reboot_gui_action.setShortcut("Ctrl+R")
         self.reboot_gui_action.triggered.connect(freemocap_main_window.reboot_gui)
+
+        self.kill_running_threads_and_processes_action = QAction(
+            KILL_THREADS_AND_PROCESSES_ACTION_NAME, parent=freemocap_main_window
+        )
+        self.kill_running_threads_and_processes_action.setShortcut("Ctrl+K")
+        self.kill_running_threads_and_processes_action.triggered.connect(
+            freemocap_main_window.kill_running_threads_and_processes
+        )
 
         self.exit_action = QAction("E&xit", parent=freemocap_main_window)
         self.exit_action.setShortcut("Ctrl+Q")

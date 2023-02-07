@@ -1,4 +1,5 @@
 import logging
+import threading
 from pathlib import Path
 from typing import Callable
 
@@ -33,10 +34,12 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self,
         recording_processing_parameters: RecordingProcessingParameterModel,
         get_active_recording_info: Callable,
+        kill_thread_event: threading.Event,
         parent=None,
     ):
         super().__init__(parent=parent)
 
+        self._kill_thread_event = kill_thread_event
         self._get_active_recording_info = get_active_recording_info
         self._recording_processing_parameter_model = recording_processing_parameters
         self._recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
@@ -48,7 +51,9 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._layout.addLayout(vbox)
 
         self._calibration_control_panel = CalibrationControlPanel(
-            get_active_recording_info_callable=self._get_active_recording_info, parent=self
+            get_active_recording_info_callable=self._get_active_recording_info,
+            kill_thread_event=self._kill_thread_event,
+            parent=self,
         )
         vbox.addWidget(self._calibration_control_panel)
 
@@ -66,12 +71,19 @@ class ProcessMotionCaptureDataPanel(QWidget):
             session_processing_parameter_model=self._recording_processing_parameter_model,
         )
 
+        self._process_motion_capture_data_thread_worker = None
+
     @property
     def process_motion_capture_data_button(self):
         return self._process_motion_capture_data_button
 
-    def calibrate_from_active_recording(self):
-        self._calibration_control_panel.calibrate_from_active_recording()
+    def calibrate_from_active_recording(self, charuco_square_size_mm: float):
+        self._calibration_control_panel.calibrate_from_active_recording(charuco_square_size_mm=charuco_square_size_mm)
+
+    def kill_running_threads(self):
+        self._calibration_control_panel.kill_running_threads()
+        if self._process_motion_capture_data_thread_worker is not None:
+            self._process_motion_capture_data_thread_worker.kill()
 
     def _add_parameters_to_parameter_tree_widget(
         self,

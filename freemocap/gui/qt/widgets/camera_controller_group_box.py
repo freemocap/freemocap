@@ -26,6 +26,8 @@ class CameraControllerGroupBox(QGroupBox):
     def __init__(self, skellycam_controller: SkellyCamControllerWidget, parent=None):
         super().__init__(parent=parent)
         self._skellycam_controller = skellycam_controller
+        skellycam_controller.start_recording_button.setObjectName("start_recording_button")
+        skellycam_controller.stop_recording_button.setObjectName("stop_recording_button")
 
         # self.setFlat(True)
         self._layout = QVBoxLayout()

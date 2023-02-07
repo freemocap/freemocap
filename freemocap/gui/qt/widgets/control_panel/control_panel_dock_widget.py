@@ -54,6 +54,13 @@ class ControlPanelWidget(QWidget):
         self._tool_box.addItem(process_motion_capture_data_panel, "Process Motion Capture Data")
         self._tool_box.addItem(visualize_data_widget, "Visualize Motion Capture Data")
 
+        self._tool_box.setProperty("disabled_appearance", True)
+        self.style().polish(self._tool_box)
+
     @property
     def tool_box(self):
         return self._tool_box
+
+    def set_up_tool_box_appearance(self):
+        self._tool_box.setProperty("disabled_appearance", False)
+        self.style().polish(self._tool_box)

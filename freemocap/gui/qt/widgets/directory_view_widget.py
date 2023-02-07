@@ -3,6 +3,7 @@ from copy import copy
 from pathlib import Path
 from typing import Union, Callable
 
+from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget, QPushButton
 from qtpy import QtGui
@@ -14,7 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class DirectoryViewWidget(QWidget):
+    new_active_recording_selected_signal = pyqtSignal(str)
+
     def __init__(self, top_level_folder_path: Union[str, Path], get_active_recording_info_callable: Callable):
+        self._root_folder = None
         logger.info("Creating QtDirectoryViewWidget")
         super().__init__()
         self._minimum_width = 300
@@ -26,23 +30,16 @@ class DirectoryViewWidget(QWidget):
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
-        self._show_freemocap_data_folder_button = QPushButton("Show FreeMoCap Data Folder")
-        self._show_freemocap_data_folder_button.clicked.connect(
-            lambda: self.set_folder_as_root(self._top_level_folder_path)
-        )
-        self._show_freemocap_data_folder_button.hide()
-        self._layout.addWidget(self._show_freemocap_data_folder_button)
-
-        self._path_label = QLabel(str(self._top_level_folder_path))
-        self._layout.addWidget(self._path_label)
         self._file_system_model = QFileSystemModel()
+
         self._tree_view_widget = QTreeView()
+        self._tree_view_widget.setHeaderHidden(True)
 
         self._layout.addWidget(self._tree_view_widget)
 
-        # self._tree_view_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._tree_view_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._tree_view_widget.customContextMenuRequested.connect(self._context_menu)
-        self._tree_view_widget.doubleClicked.connect(self.open_file)
+        self._tree_view_widget.doubleClicked.connect(self._open_file)
 
         self._tree_view_widget.setModel(self._file_system_model)
 
@@ -51,6 +48,16 @@ class DirectoryViewWidget(QWidget):
 
         if self._top_level_folder_path is not None:
             self.set_folder_as_root(self._top_level_folder_path)
+
+        self._show_freemocap_data_folder_button = QPushButton("Show FreeMoCap Data Folder")
+        self._show_freemocap_data_folder_button.clicked.connect(
+            lambda: self.set_folder_as_root(self._top_level_folder_path)
+        )
+
+        self._layout.addWidget(self._show_freemocap_data_folder_button)
+
+        self._path_label = QLabel(str(self._top_level_folder_path))
+        self._layout.addWidget(self._path_label)
 
     def expand_directory_to_path(self, directory_path: Union[str, Path], collapse_other_directories: bool = True):
         if collapse_other_directories:
@@ -71,6 +78,7 @@ class DirectoryViewWidget(QWidget):
 
     def set_folder_as_root(self, folder_path: Union[str, Path]):
         logger.info(f"Setting root folder to {str(folder_path)}")
+        self._root_folder = folder_path
         self._tree_view_widget.setWindowTitle(str(folder_path))
         self._file_system_model.setRootPath(str(folder_path))
         self._tree_view_widget.setRootIndex(self._file_system_model.index(str(folder_path)))
@@ -79,18 +87,33 @@ class DirectoryViewWidget(QWidget):
     def _context_menu(self):
         menu = QMenu()
         open = menu.addAction("Open file")
-        open.triggered.connect(self.open_file)
-        load_session = menu.addAction("Load session folder")
-        load_session.triggered.connect(self.load_session_folder)
+        open.triggered.connect(self._open_file)
+
+        set_as_active_recording = menu.addAction("Set as Active Recording folder")
+        set_as_active_recording.triggered.connect(self._set_recording_as_active)
+
+        go_to_parent_directory = menu.addAction("Go to parent directory")
+        go_to_parent_directory.triggered.connect(self._go_to_parent_directory)
 
         cursor = QtGui.QCursor()
-        menu.exec_(cursor.pos())
+        menu.exec(cursor.pos())
 
-    def open_file(self):
+    def _open_file(self):
         index = self._tree_view_widget.currentIndex()
         file_path = self._file_system_model.filePath(index)
         logger.info(f"Opening file from file_system_view_widget: {file_path}")
         open_file(file_path)
+
+    def _set_recording_as_active(self):
+        index = self._tree_view_widget.currentIndex()
+        file_path = Path(self._file_system_model.filePath(index))
+        logger.info(f"Setting {file_path} as 'Active Recording' folder")
+        self.new_active_recording_selected_signal.emit(str(file_path))
+
+    def _go_to_parent_directory(self):
+        logger.debug(f"Setting parent directory as root: {Path(self._root_folder).parent}")
+        self.set_folder_as_root(Path(self._root_folder).parent)
+        self.expand_directory_to_path(self._root_folder, collapse_other_directories=False)
 
     def set_path_as_index(self, path: Union[str, Path]):
         logger.info(f"Setting current index to : {str(path)}")
@@ -99,16 +122,18 @@ class DirectoryViewWidget(QWidget):
     def handle_new_active_recording_selected(self) -> None:
         current_recording_info = self._get_active_recording_info_callable()
         if current_recording_info is None:
-            self.set_folder_as_root(self._top_level_folder_path)
+            # self.set_folder_as_root(self._top_level_folder_path)
             self._show_freemocap_data_folder_button.hide()
             self.expand_directory_to_path(get_recording_session_folder_path())
             return
 
-        self.set_folder_as_root(current_recording_info.path)
-        self._show_freemocap_data_folder_button.show()
-        synchronized_videos_path = current_recording_info.synchronized_videos_folder_path
-        if synchronized_videos_path is not None:
-            self.expand_directory_to_path(synchronized_videos_path)
+        # self.set_folder_as_root(current_recording_info.path)
+        self._tree_view_widget.setCurrentIndex(self._file_system_model.index(str(current_recording_info.path)))
+
+        if current_recording_info.annotated_videos_folder_path is not None:
+            self.expand_directory_to_path(current_recording_info.annotated_videos_folder_path)
+        elif current_recording_info.synchronized_videos_folder_path is not None:
+            self.expand_directory_to_path(current_recording_info.synchronized_videos_folder_path)
         else:
             self.expand_directory_to_path(current_recording_info.path)
 

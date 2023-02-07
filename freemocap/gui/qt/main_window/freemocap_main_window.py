@@ -1,9 +1,11 @@
 import logging
 import multiprocessing
 import shutil
+import threading
 from pathlib import Path
 from typing import Union
 
+import psutil
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
@@ -20,7 +22,6 @@ from skellycam import (
     SkellyCamControllerWidget,
 )
 
-from experimental.tool_bar import ToolBar
 from freemocap.core_processes.visualization.blender_stuff.export_to_blender import (
     export_to_blender,
 )
@@ -35,9 +36,6 @@ from freemocap.gui.qt.utilities.save_most_recent_recording_path_as_toml import (
 from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingInfoWidget
 from freemocap.gui.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
 from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
-from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import (
-    CalibrationControlPanel,
-)
 from freemocap.gui.qt.widgets.control_panel.control_panel_dock_widget import (
     ControlPanelDockWidget,
 )
@@ -81,6 +79,7 @@ class FreemocapMainWindow(QMainWindow):
 
         logger.info("Initializing QtGUIMainWindow")
         super().__init__(parent=parent)
+
         self.setGeometry(100, 100, 1280, 720)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
         self.setWindowTitle("freemocap \U0001F480 \U00002728")
@@ -92,11 +91,17 @@ class FreemocapMainWindow(QMainWindow):
         else:
             self._freemocap_data_folder_path = freemocap_data_folder_path
 
+        self._kill_thread_event = threading.Event()
+
         self._active_recording_info_widget = ActiveRecordingInfoWidget(parent=self)
         self._active_recording_info_widget.new_active_recording_selected_signal.connect(
             self._handle_new_active_recording_selected
         )
-        self._directory_view_dock_widget = self._create_directory_view_dock_widget()
+        self._directory_view_widget = self._create_directory_view_widget()
+        self._directory_view_widget.expand_directory_to_path(get_recording_session_folder_path())
+        self._directory_view_widget.new_active_recording_selected_signal.connect(
+            self._active_recording_info_widget.set_active_recording
+        )
 
         self._actions = Actions(freemocap_main_window=self)
 
@@ -107,12 +112,12 @@ class FreemocapMainWindow(QMainWindow):
         self.setCentralWidget(self._central_tab_widget)
 
         self._control_panel_dock_widget = self._create_control_panel_dock_widget()
-        self._control_panel_dock_widget.setEnabled(False)
+        # self._control_panel_dock_widget.setEnabled(False)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._control_panel_dock_widget)
 
         self._info_dock_widget = self._create_info_dock_widget()
 
-        self._info_dock_widget.setEnabled(False)
+        # self._info_dock_widget.setEnabled(False)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._info_dock_widget)
 
         # self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._directory_view_dock_widget)
@@ -255,12 +260,13 @@ class FreemocapMainWindow(QMainWindow):
         tab_widget = QTabWidget(parent=self)
         info_dock_widget.setWidget(tab_widget)
 
+        tab_widget.addTab(self._directory_view_widget, "Directory View")
         tab_widget.addTab(self._active_recording_info_widget, "Active Recording Info")
-        tab_widget.addTab(self._directory_view_dock_widget, "Directory View")
 
         return info_dock_widget
 
     def _create_control_panel_dock_widget(self):
+
         self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(self._skellycam_widget)
 
         # self._calibration_control_panel = CalibrationControlPanel(
@@ -270,20 +276,19 @@ class FreemocapMainWindow(QMainWindow):
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             recording_processing_parameters=RecordingProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
+            kill_thread_event=self._kill_thread_event,
         )
         self._process_motion_capture_data_panel.processing_finished_signal.connect(
             self._handle_processing_finished_signal
         )
 
-        control_panel_dock_widget = ControlPanelDockWidget(
+        return ControlPanelDockWidget(
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
             # calibration_control_panel=self._calibration_control_panel,
             process_motion_capture_data_panel=self._process_motion_capture_data_panel,
             visualize_data_widget=self._create_visualization_control_panel(),
             parent=self,
         )
-
-        return control_panel_dock_widget
 
     def _create_visualization_control_panel(self):
         self._export_to_blender_button = QPushButton("Export to Blender")
@@ -341,6 +346,18 @@ class FreemocapMainWindow(QMainWindow):
     def reboot_gui(self):
         logger.info("Rebooting GUI... ")
         get_qt_app().exit(EXIT_CODE_REBOOT)
+
+    def kill_running_threads_and_processes(self):
+        logger.info("Killing running threads and processes... ")
+        try:
+            self._skellycam_widget.close()
+        except Exception as e:
+            logger.error(f"Error killing running threads and processes: {e}")
+
+        try:
+            self._process_motion_capture_data_panel.kill_running_threads()
+        except Exception as e:
+            logger.error(f"Error killing running threads and processes: {e}")
 
     def handle_load_most_recent_recording(self):
         logger.info("`Load Most Recent Recording` QAction triggered")

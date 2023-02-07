@@ -103,7 +103,7 @@ push = true
 #dependencies = {file = "requirements.txt"}
 
 [project.scripts]
-skellycam = "freemocap.__main__:main"
+freemocap = "freemocap.__main__:main"
 
 [tool.setuptools]
 py-modules = ["freemocap"]

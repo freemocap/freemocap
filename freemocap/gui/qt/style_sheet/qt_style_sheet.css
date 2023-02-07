@@ -10,10 +10,12 @@ QGroupBox {
     margin-top: 10px;
     font-weight: bold;
 }
+QGroupBox[calibration_videos_radio_button_checked=false] {
+    background-color: #06bbda;
+}
 QGroupBox[calibration_videos_radio_button_checked=true] {
     background-color: #9f795e;
 }
-
 
 
 
@@ -37,11 +39,35 @@ QTabBar::tab {
     min-width: 200px;
 }
 
-QTabBar::tab:selected {
+QTabBar::tab {
     background: seashell;
     margin-bottom: -5px;
     font-weight: bolder;
 }
+
+QDockWidget:disabled {
+    background-color: #2b9692;
+    color: #1ec2c2;
+}
+
+
+QToolBox::tab {
+    background: #2a595f;
+    border: 1px solid #2b9692;
+    padding: 2px;
+    border-bottom-right-radius: 20px;
+    border-top-right-radius: 5px;
+    color: #1ec2c2;
+}
+
+
+QToolBox::tab:selected {
+    background: #7906e5;
+    border-bottom-right-radius: 10px;
+    border-top-right-radius: 5px;
+    color: mintcream;
+}
+
 
 
 QPushButton {
@@ -104,7 +130,6 @@ QRadioButton:checked {
     color: #7906e5;
 
 }
-
 
 QTreeView {
     background-color: #7983b1;

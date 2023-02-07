@@ -53,7 +53,7 @@ class CalibrationControlPanel(QWidget):
 
         radio_button_form_layout.addRow(self._create_load_calibration_from_file_radio_button())
 
-        radio_button_form_layout.addRow(self._add_calibrate_from_active_recording_radio_button())
+        # radio_button_form_layout.addRow(self._add_calibrate_from_active_recording_radio_button())
 
         return radio_button_form_layout
 
@@ -210,7 +210,7 @@ class CalibrationControlPanel(QWidget):
 
         self._anipose_calibration_frame_worker.start()
 
-        self._calibrate_from_active_recording_button.setEnabled(False)
+        # self._calibrate_from_active_recording_button.setEnabled(False)
         self._anipose_calibration_frame_worker.finished.connect(
             lambda: self._calibrate_from_active_recording_button.setEnabled(True)
         )

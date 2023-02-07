@@ -1,11 +1,10 @@
 import logging
-import os
 from copy import copy
 from pathlib import Path
-from typing import Union
+from typing import Union, Callable
 
 from PyQt6.QtGui import QFileSystemModel
-from PyQt6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget, QPushButton
 from qtpy import QtGui
 
 from freemocap.system.paths_and_files_names import get_recording_session_folder_path
@@ -15,15 +14,24 @@ logger = logging.getLogger(__name__)
 
 
 class DirectoryViewWidget(QWidget):
-    def __init__(self, top_level_folder_path: Union[str, Path]):
+    def __init__(self, top_level_folder_path: Union[str, Path], get_active_recording_info_callable: Callable):
         logger.info("Creating QtDirectoryViewWidget")
         super().__init__()
         self._minimum_width = 300
         self.setMinimumWidth(self._minimum_width)
+
         self._top_level_folder_path = top_level_folder_path
+        self._get_active_recording_info_callable = get_active_recording_info_callable
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
+
+        self._show_freemocap_data_folder_button = QPushButton("Show FreeMoCap Data Folder")
+        self._show_freemocap_data_folder_button.clicked.connect(
+            lambda: self.set_folder_as_root(self._top_level_folder_path)
+        )
+        self._show_freemocap_data_folder_button.hide()
+        self._layout.addWidget(self._show_freemocap_data_folder_button)
 
         self._path_label = QLabel(str(self._top_level_folder_path))
         self._layout.addWidget(self._path_label)
@@ -54,7 +62,6 @@ class DirectoryViewWidget(QWidget):
 
         parent_path = copy(directory_path)
         while Path(self._file_system_model.rootPath()) in Path(parent_path).parents:
-
             parent_path = Path(parent_path).parent
             index = self._file_system_model.index(str(parent_path))
             logger.debug(f"Expanding parent directory at  path: {str(parent_path)}")
@@ -88,6 +95,22 @@ class DirectoryViewWidget(QWidget):
     def set_path_as_index(self, path: Union[str, Path]):
         logger.info(f"Setting current index to : {str(path)}")
         self._tree_view_widget.setCurrentIndex(self._file_system_model.index(str(path)))
+
+    def handle_new_active_recording_selected(self) -> None:
+        current_recording_info = self._get_active_recording_info_callable()
+        if current_recording_info is None:
+            self.set_folder_as_root(self._top_level_folder_path)
+            self._show_freemocap_data_folder_button.hide()
+            self.expand_directory_to_path(get_recording_session_folder_path())
+            return
+
+        self.set_folder_as_root(current_recording_info.path)
+        self._show_freemocap_data_folder_button.show()
+        synchronized_videos_path = current_recording_info.synchronized_videos_folder_path
+        if synchronized_videos_path is not None:
+            self.expand_directory_to_path(synchronized_videos_path)
+        else:
+            self.expand_directory_to_path(current_recording_info.path)
 
 
 if __name__ == "__main__":

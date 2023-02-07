@@ -3,12 +3,10 @@ from pathlib import Path
 from typing import Callable
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
-from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-from freemocap.parameter_info_models.recording_processing_parameter_models import (
-    RecordingProcessingParameterModel,
-)
+from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_3d_triangulation_parameter_group import (
     create_3d_triangulation_prarameter_group,
 )
@@ -20,6 +18,9 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
+)
+from freemocap.parameter_info_models.recording_processing_parameter_models import (
+    RecordingProcessingParameterModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,14 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
+        vbox = QVBoxLayout()
+        self._layout.addLayout(vbox)
+
+        self._calibration_control_panel = CalibrationControlPanel(
+            get_active_recording_info_callable=self._get_active_recording_info, parent=self
+        )
+        vbox.addWidget(self._calibration_control_panel)
+
         self._process_motion_capture_data_button = QPushButton(
             "Process Motion Capture Videos",
         )
@@ -60,6 +69,9 @@ class ProcessMotionCaptureDataPanel(QWidget):
     @property
     def process_motion_capture_data_button(self):
         return self._process_motion_capture_data_button
+
+    def calibrate_from_active_recording(self):
+        self._calibration_control_panel.calibrate_from_active_recording()
 
     def _add_parameters_to_parameter_tree_widget(
         self,

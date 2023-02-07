@@ -52,19 +52,22 @@ QDockWidget:disabled {
 
 
 QToolBox::tab {
+
     background: #2a595f;
-    border: 1px solid #2b9692;
-    padding: 2px;
+    border: 2px solid #7906e5;
+    padding: 1px;
     border-bottom-right-radius: 20px;
     border-top-right-radius: 5px;
+    margin-right: 90px;
     color: #1ec2c2;
 }
 
 
 QToolBox::tab:selected {
-    background: #7906e5;
-    border-bottom-right-radius: 10px;
+    background: #4b1d7e;
+    border-bottom-right-radius: 20px;
     border-top-right-radius: 5px;
+    margin-right: 70px;
     color: mintcream;
 }
 
@@ -81,7 +84,7 @@ QPushButton {
 }
 
 QPushButton:focus {
-    border: 2px solid #ff40aa;
+    border: 3px solid #ff0893;
 }
 
 QPushButton:disabled {
@@ -93,14 +96,56 @@ QPushButton:disabled {
 QPushButton:hover {
     border: 3px solid #ff40aa;
 }
+QPushButton#start_recording_button {
+    /*font-size: 24px;*/
+    background-color: #8f0404;
+    height: 50px;
+    width: 200px;
+    border-radius: 20px;
+}
+QPushButton#start_recording_button:disabled {
+    background-color: #8c5454;
+}
 
-WelcomeButton {
+QPushButton#stop_recording_button {
+    /*font-size: 24px;*/
+    height: 50px;
+    width: 200px;
+    border-radius: 20px;
+}
+QPushButton#stop_recording_button:enabled {
+    /*font-size: 24px;*/
+    height: 50px;
+    width: 200px;
+    border-radius: 20px;
+    border: 3px solid #ff4046;
+}
+
+
+WelcomeScreenButton {
     border: 2px solid #29394a;
-    background-color: #2a6060;
+    background-color: #213496;
     color: #dddddd;
     font-size: 24px;
 
 }
+
+WelcomeScreenButton[secondary_button = true] {
+
+    background-color: #12194b;
+    color: #cccccc;
+    font-size: 20px;
+
+}
+
+
+WelcomeScreenButton[recommended_next = true] {
+    background-color: #7b20b7;
+    color: #ffffff;
+}
+
+
+
 
 QLabel {
 

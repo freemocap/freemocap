@@ -21,6 +21,7 @@ class MenuBar(QMenuBar):
         file_menu.addAction(actions.load_most_recent_recording_action)
         file_menu.addAction(actions.load_existing_recording_action)
         file_menu.addAction(actions.import_videos_action)
+        file_menu.addAction(actions.kill_running_threads_and_processes_action)
         file_menu.addAction(actions.reboot_gui_action)
         file_menu.addAction(actions.exit_action)
         #

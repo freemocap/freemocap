@@ -1,4 +1,5 @@
 import logging
+import threading
 from pathlib import Path
 from typing import Callable, Union
 
@@ -31,8 +32,11 @@ logger = logging.getLogger(__name__)
 
 
 class CalibrationControlPanel(QWidget):
-    def __init__(self, get_active_recording_info_callable: Callable, parent=None):
+    def __init__(self, get_active_recording_info_callable: Callable, kill_thread_event: threading.Event, parent=None):
+
         super().__init__(parent=parent)
+        self._kill_thread_event = kill_thread_event
+
         self._get_active_recording_info_callable = get_active_recording_info_callable
         self.parent = parent
 
@@ -206,14 +210,15 @@ class CalibrationControlPanel(QWidget):
         self._anipose_calibration_frame_worker = AniposeCalibrationThreadWorker(
             calibration_videos_folder_path=active_recording_info.synchronized_videos_folder_path,
             charuco_square_size=float(charuco_square_size_mm),
+            kill_thread_event=self._kill_thread_event,
         )
 
         self._anipose_calibration_frame_worker.start()
 
         # self._calibrate_from_active_recording_button.setEnabled(False)
-        self._anipose_calibration_frame_worker.finished.connect(
-            lambda: self._calibrate_from_active_recording_button.setEnabled(True)
-        )
+        # self._anipose_calibration_frame_worker.finished.connect(
+        #     lambda: self._calibrate_from_active_recording_button.setEnabled(True)
+        # )
 
 
 if __name__ == "__main__":

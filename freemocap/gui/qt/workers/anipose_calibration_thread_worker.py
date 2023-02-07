@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import threading
 from pathlib import Path
 from typing import Union
 
@@ -22,12 +24,14 @@ class AniposeCalibrationThreadWorker(QThread):
         self,
         calibration_videos_folder_path: Union[str, Path],
         charuco_square_size: Union[int, float],
+        kill_thread_event: threading.Event,
         charuco_board_definition: CharucoBoardDefinition = CharucoBoardDefinition(),
     ):
         super().__init__()
         logger.info(
             f"Initializing Anipose Calibration Thread Worker for videos in path {calibration_videos_folder_path}"
         )
+        self._kill_thread_event = kill_thread_event
         self._charuco_board_definition = charuco_board_definition
         self._charuco_square_size = charuco_square_size
         self._calibration_videos_folder_path = calibration_videos_folder_path
@@ -45,14 +49,30 @@ class AniposeCalibrationThreadWorker(QThread):
         logger.info("Beginning Anipose calibration with Charuco Square Size (mm): {}".format(self._charuco_square_size))
 
         try:
-            run_anipose_capture_volume_calibration(
-                charuco_board_definition=self._charuco_board_definition,
-                charuco_square_size=self._charuco_square_size,
-                calibration_videos_folder_path=self._calibration_videos_folder_path,
-                pin_camera_0_to_origin=True,
-                progress_callback=self._emit_in_progress_data,
+
+            task = asyncio.create_task(
+                run_anipose_capture_volume_calibration(
+                    charuco_board_definition=self._charuco_board_definition,
+                    charuco_square_size=self._charuco_square_size,
+                    calibration_videos_folder_path=self._calibration_videos_folder_path,
+                    pin_camera_0_to_origin=True,
+                    progress_callback=self._emit_in_progress_data,
+                )
             )
-            logger.info("Anipose calibration complete")
+
+            while True:
+                if self._kill_thread_event.is_set():
+                    task.cancel()
+                    logger.info("Anipose calibration thread -  cancelled")
+                    break
+                else:
+                    pass
+
+                if task.done():
+                    logger.info("Anipose calibration complete")
+                    logger.info("Closing Anipose calibration thread")
+                    break
+
         except Exception as e:
             logger.error("something failed in the anipose calibration")
             logger.error(e)

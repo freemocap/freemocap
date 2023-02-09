@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import QApplication, QPlainTextEdit
 logger = logging.getLogger(__name__)
 
 log_view_logging_format_string = (
-    "[%(asctime)s.%(msecs)04d] [%(levelname)4s] [%(name)s:%(funcName)s():%(lineno)s] :::::: %(message)s"
+    "[%(asctime)s.%(msecs)04d] [%(levelname)4s] [%(name)s:%(funcName)s():%(lineno)s]\n :::::: %(message)s\n."
 )
 
 log_view_logging_formatter = logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S")

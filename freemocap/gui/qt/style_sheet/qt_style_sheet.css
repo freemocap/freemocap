@@ -127,8 +127,14 @@ WelcomeScreenButton {
     background-color: #213496;
     color: #dddddd;
     font-size: 24px;
+    border-radius: 20px;
+    padding: 10px;
+
 
 }
+
+
+
 
 WelcomeScreenButton[secondary_button = true] {
 
@@ -155,6 +161,8 @@ QLabel {
     color: #333333;
 }
 
+
+
 QLabel:disabled {
     color: #33594d;
 }
@@ -164,6 +172,7 @@ QLineEdit {
     border-radius: 4px;
     padding: 0 8px;
     color: #222222;
+
 }
 
 QLineEdit:disabled {

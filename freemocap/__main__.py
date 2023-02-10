@@ -24,7 +24,8 @@ if __name__ == "__main__":
     import ctypes
     import freemocap
 
-    myappid = f"{freemocap.__package_name__}_{freemocap.__version__}"  # arbitrary string
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    if sys.platform == "win32":
+        myappid = f"{freemocap.__package_name__}_{freemocap.__version__}"  # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     main()

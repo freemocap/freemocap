@@ -358,8 +358,6 @@ class FreemocapMainWindow(QMainWindow):
         self._kill_thread_event.set()
         self._old_kill_event = copy(self._kill_thread_event)
 
-
-
     def handle_load_most_recent_recording(self):
         logger.info("`Load Most Recent Recording` QAction triggered")
         most_recent_recording_path = get_most_recent_recording_path()
@@ -404,11 +402,13 @@ class FreemocapMainWindow(QMainWindow):
             return
 
         synchronized_videos_folder_path = self._create_new_synchronized_videos_folder()
+        Path(synchronized_videos_folder_path).mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Copying videos from {external_videos_path} to {synchronized_videos_folder_path}")
 
         for video_path in Path(external_videos_path).glob("*.mp4"):
             logger.debug(f"Copying {video_path}...")
+
             shutil.copy(video_path, synchronized_videos_folder_path)
 
     def closeEvent(self, a0) -> None:

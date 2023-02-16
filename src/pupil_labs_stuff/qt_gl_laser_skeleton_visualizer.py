@@ -6,15 +6,13 @@ from typing import Union
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
-from jon_scratch.pupil_calibration_pipeline.data_classes.freemocap_session_data_class import (
-    FreemocapSessionDataClass,
-)
-from jon_scratch.pupil_calibration_pipeline.data_classes.rotation_data_class import (
-    RotationDataClass,
-)
-from jon_scratch.pupil_calibration_pipeline.session_data_loader import SessionDataLoader
+
 from mediapipe.python.solutions import holistic as mp_holistic
 from pyqtgraph.Qt import QtCore
+
+from src.pupil_labs_stuff.data_classes.freemocap_session_data_class import FreemocapSessionDataClass
+from src.pupil_labs_stuff.data_classes.rotation_data_class import RotationDataClass
+from src.pupil_labs_stuff.session_data_loader import SessionDataLoader
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +35,7 @@ class QtGlLaserSkeletonVisualizer:
         elif mediapipe_skel_fr_mar_xyz is not None:
             self.mediapipe_fr_mar_xyz = mediapipe_skel_fr_mar_xyz
         else:
-            raise ValueError(
-                "Must provide either session data or mediapipe skeleton data"
-            )
+            raise ValueError("Must provide either session data or mediapipe skeleton data")
 
         if move_data_to_origin:
             self.move_data_to_origin()
@@ -99,15 +95,9 @@ class QtGlLaserSkeletonVisualizer:
         self.gl_view_widget.addItem(grid_plane_z)
 
     def get_mediapipe_connections(self):
-        self.mediapipe_body_connections = [
-            this_connection for this_connection in mp_holistic.POSE_CONNECTIONS
-        ]
-        self.mediapipe_hand_connections = [
-            this_connection for this_connection in mp_holistic.HAND_CONNECTIONS
-        ]
-        self.mediapipe_face_connections = [
-            this_connection for this_connection in mp_holistic.FACEMESH_TESSELATION
-        ]
+        self.mediapipe_body_connections = [this_connection for this_connection in mp_holistic.POSE_CONNECTIONS]
+        self.mediapipe_hand_connections = [this_connection for this_connection in mp_holistic.HAND_CONNECTIONS]
+        self.mediapipe_face_connections = [this_connection for this_connection in mp_holistic.FACEMESH_TESSELATION]
 
     def initialize_skel_dottos(self):
         self.skeleton_scatter_item = gl.GLScatterPlotItem(
@@ -122,24 +112,16 @@ class QtGlLaserSkeletonVisualizer:
         self.skeleton_connections_list = []
         for this_connection in self.mediapipe_body_connections:
             this_skel_line = gl.GLLinePlotItem(
-                pos=self.mediapipe_fr_mar_xyz[
-                    self.current_frame_number, this_connection, :
-                ]
+                pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, this_connection, :]
             )
             self.skeleton_connections_list.append(this_skel_line)
             self.gl_view_widget.addItem(this_skel_line)
 
     def initialize_gaze_lasers(self):
         # right eye
-        this_frame_right_gaze_origin = (
-            self.session_data.right_eye_socket_rotation_data.local_origin_fr_xyz[0, :]
-        )
-        this_frame_right_gaze_endpoint = (
-            self.session_data.right_gaze_vector_endpoint_fr_xyz[0, :]
-        )
-        this_frame_right_gaze_laser = np.array(
-            [this_frame_right_gaze_origin, this_frame_right_gaze_endpoint]
-        )
+        this_frame_right_gaze_origin = self.session_data.right_eye_socket_rotation_data.local_origin_fr_xyz[0, :]
+        this_frame_right_gaze_endpoint = self.session_data.right_gaze_vector_endpoint_fr_xyz[0, :]
+        this_frame_right_gaze_laser = np.array([this_frame_right_gaze_origin, this_frame_right_gaze_endpoint])
 
         self.right_gaze_vector_line_item = gl.GLLinePlotItem(
             pos=this_frame_right_gaze_laser, color=(1, 0, 1, 1), width=3
@@ -148,19 +130,11 @@ class QtGlLaserSkeletonVisualizer:
         self.gl_view_widget.addItem(self.right_gaze_vector_line_item)
 
         # left eye
-        this_frame_left_gaze_origin = (
-            self.session_data.left_eye_socket_rotation_data.local_origin_fr_xyz[0, :]
-        )
-        this_frame_left_gaze_endpoint = (
-            self.session_data.left_gaze_vector_endpoint_fr_xyz[0, :]
-        )
-        this_frame_left_gaze_laser = np.array(
-            [this_frame_left_gaze_origin, this_frame_left_gaze_endpoint]
-        )
+        this_frame_left_gaze_origin = self.session_data.left_eye_socket_rotation_data.local_origin_fr_xyz[0, :]
+        this_frame_left_gaze_endpoint = self.session_data.left_gaze_vector_endpoint_fr_xyz[0, :]
+        this_frame_left_gaze_laser = np.array([this_frame_left_gaze_origin, this_frame_left_gaze_endpoint])
 
-        self.left_gaze_vector_line_item = gl.GLLinePlotItem(
-            pos=this_frame_left_gaze_laser, color=(0, 1, 1, 1), width=3
-        )
+        self.left_gaze_vector_line_item = gl.GLLinePlotItem(pos=this_frame_left_gaze_laser, color=(0, 1, 1, 1), width=3)
 
         self.gl_view_widget.addItem(self.left_gaze_vector_line_item)
 
@@ -168,12 +142,8 @@ class QtGlLaserSkeletonVisualizer:
         self.tail_length = tail_length
         dummy_tail = np.empty((self.tail_length, 3))
         dummy_tail[:] = np.nan
-        self.right_gaze_laser_tail_line_item = gl.GLLinePlotItem(
-            pos=dummy_tail, color=(1, 0, 1, 0.5), width=2
-        )
-        self.left_gaze_laser_tail_line_item = gl.GLLinePlotItem(
-            pos=dummy_tail, color=(0, 1, 1, 0.5), width=2
-        )
+        self.right_gaze_laser_tail_line_item = gl.GLLinePlotItem(pos=dummy_tail, color=(1, 0, 1, 0.5), width=2)
+        self.left_gaze_laser_tail_line_item = gl.GLLinePlotItem(pos=dummy_tail, color=(0, 1, 1, 0.5), width=2)
 
         self.gl_view_widget.addItem(self.right_gaze_laser_tail_line_item)
         self.gl_view_widget.addItem(self.left_gaze_laser_tail_line_item)
@@ -182,35 +152,29 @@ class QtGlLaserSkeletonVisualizer:
         self.eye_axes_scale = 1e2 / 2
 
         # right eye
-        self.right_eye_socket_axes_x_vector_line_item = (
-            self.create_axis_vector_line_item(
-                0,
-                self.session_data.right_eye_socket_rotation_data,
-                dimension="x",
-                scale=self.eye_axes_scale,
-                color=(1, 0, 0, 1),
-                width=3,
-            )
+        self.right_eye_socket_axes_x_vector_line_item = self.create_axis_vector_line_item(
+            0,
+            self.session_data.right_eye_socket_rotation_data,
+            dimension="x",
+            scale=self.eye_axes_scale,
+            color=(1, 0, 0, 1),
+            width=3,
         )
-        self.right_eye_socket_axes_y_vector_line_item = (
-            self.create_axis_vector_line_item(
-                0,
-                self.session_data.right_eye_socket_rotation_data,
-                dimension="y",
-                scale=self.eye_axes_scale,
-                color=(0, 1, 0, 1),
-                width=3,
-            )
+        self.right_eye_socket_axes_y_vector_line_item = self.create_axis_vector_line_item(
+            0,
+            self.session_data.right_eye_socket_rotation_data,
+            dimension="y",
+            scale=self.eye_axes_scale,
+            color=(0, 1, 0, 1),
+            width=3,
         )
-        self.right_eye_socket_axes_z_vector_line_item = (
-            self.create_axis_vector_line_item(
-                0,
-                self.session_data.right_eye_socket_rotation_data,
-                dimension="z",
-                scale=self.eye_axes_scale,
-                color=(0, 0, 1, 1),
-                width=3,
-            )
+        self.right_eye_socket_axes_z_vector_line_item = self.create_axis_vector_line_item(
+            0,
+            self.session_data.right_eye_socket_rotation_data,
+            dimension="z",
+            scale=self.eye_axes_scale,
+            color=(0, 0, 1, 1),
+            width=3,
         )
 
         self.gl_view_widget.addItem(self.right_eye_socket_axes_x_vector_line_item)
@@ -218,35 +182,29 @@ class QtGlLaserSkeletonVisualizer:
         self.gl_view_widget.addItem(self.right_eye_socket_axes_z_vector_line_item)
 
         # left eye
-        self.left_eye_socket_axes_x_vector_line_item = (
-            self.create_axis_vector_line_item(
-                0,
-                self.session_data.left_eye_socket_rotation_data,
-                dimension="x",
-                scale=self.eye_axes_scale,
-                color=(1, 0, 0, 1),
-                width=3,
-            )
+        self.left_eye_socket_axes_x_vector_line_item = self.create_axis_vector_line_item(
+            0,
+            self.session_data.left_eye_socket_rotation_data,
+            dimension="x",
+            scale=self.eye_axes_scale,
+            color=(1, 0, 0, 1),
+            width=3,
         )
-        self.left_eye_socket_axes_y_vector_line_item = (
-            self.create_axis_vector_line_item(
-                0,
-                self.session_data.left_eye_socket_rotation_data,
-                dimension="y",
-                scale=self.eye_axes_scale,
-                color=(0, 1, 0, 1),
-                width=3,
-            )
+        self.left_eye_socket_axes_y_vector_line_item = self.create_axis_vector_line_item(
+            0,
+            self.session_data.left_eye_socket_rotation_data,
+            dimension="y",
+            scale=self.eye_axes_scale,
+            color=(0, 1, 0, 1),
+            width=3,
         )
-        self.left_eye_socket_axes_z_vector_line_item = (
-            self.create_axis_vector_line_item(
-                0,
-                self.session_data.left_eye_socket_rotation_data,
-                dimension="z",
-                scale=self.eye_axes_scale,
-                color=(0, 0, 1, 1),
-                width=3,
-            )
+        self.left_eye_socket_axes_z_vector_line_item = self.create_axis_vector_line_item(
+            0,
+            self.session_data.left_eye_socket_rotation_data,
+            dimension="z",
+            scale=self.eye_axes_scale,
+            color=(0, 0, 1, 1),
+            width=3,
         )
 
         self.gl_view_widget.addItem(self.left_eye_socket_axes_x_vector_line_item)
@@ -256,9 +214,7 @@ class QtGlLaserSkeletonVisualizer:
     def initialize_head_axes(self):
         self.head_axes_scale = 1e2
 
-        first_frame_head_center_xyz = (
-            self.session_data.head_rotation_data.local_origin_fr_xyz[0, :]
-        )
+        first_frame_head_center_xyz = self.session_data.head_rotation_data.local_origin_fr_xyz[0, :]
 
         self.head_axes_x_vector_line_item = self.create_axis_vector_line_item(
             0,
@@ -302,9 +258,7 @@ class QtGlLaserSkeletonVisualizer:
         this_frame_axis_vector_xyz = self.unit_vector_from_rotation_matrix(
             frame_number, rotation_data, dimension=dimension, scale=scale
         )
-        this_frame_axis_vector_line_item = gl.GLLinePlotItem(
-            pos=this_frame_axis_vector_xyz, color=color, width=width
-        )
+        this_frame_axis_vector_line_item = gl.GLLinePlotItem(pos=this_frame_axis_vector_xyz, color=color, width=width)
         self.gl_view_widget.addItem(this_frame_axis_vector_line_item)
         return this_frame_axis_vector_line_item
 
@@ -332,14 +286,12 @@ class QtGlLaserSkeletonVisualizer:
             raise ValueError("something weird about the `dimension` argument")
 
         this_rot_mat = rotation_data.rotation_matricies[frame_number]
-        this_axis_vector_endpoint_xyz = rotation_data.local_origin_fr_xyz[
-            frame_number, :
-        ] + (this_rot_mat[dimension, :] * scale)
+        this_axis_vector_endpoint_xyz = rotation_data.local_origin_fr_xyz[frame_number, :] + (
+            this_rot_mat[dimension, :] * scale
+        )
         this_axis_vector_origin_xyz = rotation_data.local_origin_fr_xyz[frame_number, :]
 
-        this_axis_vector_line_xyz = np.array(
-            [this_axis_vector_origin_xyz, this_axis_vector_endpoint_xyz]
-        )
+        this_axis_vector_line_xyz = np.array([this_axis_vector_origin_xyz, this_axis_vector_endpoint_xyz])
 
         return this_axis_vector_line_xyz
 
@@ -348,9 +300,7 @@ class QtGlLaserSkeletonVisualizer:
         if self.current_frame_number % 10 == 0:
             print(f"frame number: {self.current_frame_number}")
 
-        self.skeleton_scatter_item.setData(
-            pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, :, :]
-        )
+        self.skeleton_scatter_item.setData(pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, :, :])
         self.update_skeleton_lines()
         self.update_head_axis_lines()
         self.update_eye_axis_lines()
@@ -359,13 +309,9 @@ class QtGlLaserSkeletonVisualizer:
             self.update_gaze_laser_tails()
 
     def update_skeleton_lines(self):
-        for this_skeleton_line_number, this_connection in enumerate(
-            self.mediapipe_body_connections
-        ):
+        for this_skeleton_line_number, this_connection in enumerate(self.mediapipe_body_connections):
             self.skeleton_connections_list[this_skeleton_line_number].setData(
-                pos=self.mediapipe_fr_mar_xyz[
-                    self.current_frame_number, this_connection, :
-                ]
+                pos=self.mediapipe_fr_mar_xyz[self.current_frame_number, this_connection, :]
             )
 
     def update_head_axis_lines(self):
@@ -399,94 +345,66 @@ class QtGlLaserSkeletonVisualizer:
     def update_eye_axis_lines(self):
         # right right eye
         # X
-        this_frame_right_eye_socket_axis_x_vector_xyz = (
-            self.unit_vector_from_rotation_matrix(
-                self.current_frame_number,
-                self.session_data.right_eye_socket_rotation_data,
-                dimension="x",
-                scale=self.eye_axes_scale,
-            )
+        this_frame_right_eye_socket_axis_x_vector_xyz = self.unit_vector_from_rotation_matrix(
+            self.current_frame_number,
+            self.session_data.right_eye_socket_rotation_data,
+            dimension="x",
+            scale=self.eye_axes_scale,
         )
-        self.right_eye_socket_axes_x_vector_line_item.setData(
-            pos=this_frame_right_eye_socket_axis_x_vector_xyz
-        )
+        self.right_eye_socket_axes_x_vector_line_item.setData(pos=this_frame_right_eye_socket_axis_x_vector_xyz)
 
         # Y
-        this_frame_right_eye_socket_axis_y_vector_xyz = (
-            self.unit_vector_from_rotation_matrix(
-                self.current_frame_number,
-                self.session_data.right_eye_socket_rotation_data,
-                dimension="y",
-                scale=self.eye_axes_scale,
-            )
+        this_frame_right_eye_socket_axis_y_vector_xyz = self.unit_vector_from_rotation_matrix(
+            self.current_frame_number,
+            self.session_data.right_eye_socket_rotation_data,
+            dimension="y",
+            scale=self.eye_axes_scale,
         )
-        self.right_eye_socket_axes_y_vector_line_item.setData(
-            pos=this_frame_right_eye_socket_axis_y_vector_xyz
-        )
+        self.right_eye_socket_axes_y_vector_line_item.setData(pos=this_frame_right_eye_socket_axis_y_vector_xyz)
 
         # Z
-        this_frame_right_eye_socket_axis_z_vector_xyz = (
-            self.unit_vector_from_rotation_matrix(
-                self.current_frame_number,
-                self.session_data.right_eye_socket_rotation_data,
-                dimension="z",
-                scale=self.eye_axes_scale,
-            )
+        this_frame_right_eye_socket_axis_z_vector_xyz = self.unit_vector_from_rotation_matrix(
+            self.current_frame_number,
+            self.session_data.right_eye_socket_rotation_data,
+            dimension="z",
+            scale=self.eye_axes_scale,
         )
-        self.right_eye_socket_axes_z_vector_line_item.setData(
-            pos=this_frame_right_eye_socket_axis_z_vector_xyz
-        )
+        self.right_eye_socket_axes_z_vector_line_item.setData(pos=this_frame_right_eye_socket_axis_z_vector_xyz)
 
         # left eye
         # X
-        this_frame_left_eye_socket_axis_x_vector_xyz = (
-            self.unit_vector_from_rotation_matrix(
-                self.current_frame_number,
-                self.session_data.left_eye_socket_rotation_data,
-                dimension="x",
-                scale=self.eye_axes_scale,
-            )
+        this_frame_left_eye_socket_axis_x_vector_xyz = self.unit_vector_from_rotation_matrix(
+            self.current_frame_number,
+            self.session_data.left_eye_socket_rotation_data,
+            dimension="x",
+            scale=self.eye_axes_scale,
         )
-        self.left_eye_socket_axes_x_vector_line_item.setData(
-            pos=this_frame_left_eye_socket_axis_x_vector_xyz
-        )
+        self.left_eye_socket_axes_x_vector_line_item.setData(pos=this_frame_left_eye_socket_axis_x_vector_xyz)
 
         # Y
-        this_frame_left_eye_socket_axis_y_vector_xyz = (
-            self.unit_vector_from_rotation_matrix(
-                self.current_frame_number,
-                self.session_data.left_eye_socket_rotation_data,
-                dimension="y",
-                scale=self.eye_axes_scale,
-            )
+        this_frame_left_eye_socket_axis_y_vector_xyz = self.unit_vector_from_rotation_matrix(
+            self.current_frame_number,
+            self.session_data.left_eye_socket_rotation_data,
+            dimension="y",
+            scale=self.eye_axes_scale,
         )
-        self.left_eye_socket_axes_y_vector_line_item.setData(
-            pos=this_frame_left_eye_socket_axis_y_vector_xyz
-        )
+        self.left_eye_socket_axes_y_vector_line_item.setData(pos=this_frame_left_eye_socket_axis_y_vector_xyz)
 
         # Z
-        this_frame_left_eye_socket_axis_z_vector_xyz = (
-            self.unit_vector_from_rotation_matrix(
-                self.current_frame_number,
-                self.session_data.left_eye_socket_rotation_data,
-                dimension="z",
-                scale=self.eye_axes_scale,
-            )
+        this_frame_left_eye_socket_axis_z_vector_xyz = self.unit_vector_from_rotation_matrix(
+            self.current_frame_number,
+            self.session_data.left_eye_socket_rotation_data,
+            dimension="z",
+            scale=self.eye_axes_scale,
         )
-        self.left_eye_socket_axes_z_vector_line_item.setData(
-            pos=this_frame_left_eye_socket_axis_z_vector_xyz
-        )
+        self.left_eye_socket_axes_z_vector_line_item.setData(pos=this_frame_left_eye_socket_axis_z_vector_xyz)
 
     def update_gaze_lasers(self):
         # right eye
         this_right_gaze_laser_line = np.array(
             [
-                self.session_data.right_eye_socket_rotation_data.local_origin_fr_xyz[
-                    self.current_frame_number, :
-                ],
-                self.session_data.right_gaze_vector_endpoint_fr_xyz[
-                    self.current_frame_number, :
-                ],
+                self.session_data.right_eye_socket_rotation_data.local_origin_fr_xyz[self.current_frame_number, :],
+                self.session_data.right_gaze_vector_endpoint_fr_xyz[self.current_frame_number, :],
             ]
         )
         self.right_gaze_vector_line_item.setData(pos=this_right_gaze_laser_line)
@@ -494,12 +412,8 @@ class QtGlLaserSkeletonVisualizer:
         # left eye
         this_left_gaze_laser_line = np.array(
             [
-                self.session_data.left_eye_socket_rotation_data.local_origin_fr_xyz[
-                    self.current_frame_number, :
-                ],
-                self.session_data.left_gaze_vector_endpoint_fr_xyz[
-                    self.current_frame_number, :
-                ],
+                self.session_data.left_eye_socket_rotation_data.local_origin_fr_xyz[self.current_frame_number, :],
+                self.session_data.left_gaze_vector_endpoint_fr_xyz[self.current_frame_number, :],
             ]
         )
 
@@ -510,13 +424,10 @@ class QtGlLaserSkeletonVisualizer:
             return
 
         # right eye
-        this_right_gaze_laser_tail = (
-            self.session_data.right_gaze_vector_endpoint_fr_xyz[
-                self.current_frame_number
-                - self.tail_length : self.current_frame_number,
-                :,
-            ]
-        )
+        this_right_gaze_laser_tail = self.session_data.right_gaze_vector_endpoint_fr_xyz[
+            self.current_frame_number - self.tail_length : self.current_frame_number,
+            :,
+        ]
         self.right_gaze_laser_tail_line_item.setData(pos=this_right_gaze_laser_tail)
 
         # left eye
@@ -543,44 +454,24 @@ class QtGlLaserSkeletonVisualizer:
         self.start()
 
     def move_data_to_origin(self):
-        mean_position_xyz = np.nanmedian(
-            np.nanmedian(self.mediapipe_fr_mar_xyz, axis=0), axis=0
-        )
+        mean_position_xyz = np.nanmedian(np.nanmedian(self.mediapipe_fr_mar_xyz, axis=0), axis=0)
 
         self.mediapipe_fr_mar_xyz[:, :, 0] -= mean_position_xyz[0]
         self.mediapipe_fr_mar_xyz[:, :, 1] -= mean_position_xyz[1]
         self.mediapipe_fr_mar_xyz[:, :, 2] -= mean_position_xyz[2]
 
-        self.session_data.head_rotation_data.local_origin_fr_xyz[
-            :, 0
-        ] -= mean_position_xyz[0]
-        self.session_data.head_rotation_data.local_origin_fr_xyz[
-            :, 1
-        ] -= mean_position_xyz[1]
-        self.session_data.head_rotation_data.local_origin_fr_xyz[
-            :, 2
-        ] -= mean_position_xyz[2]
+        self.session_data.head_rotation_data.local_origin_fr_xyz[:, 0] -= mean_position_xyz[0]
+        self.session_data.head_rotation_data.local_origin_fr_xyz[:, 1] -= mean_position_xyz[1]
+        self.session_data.head_rotation_data.local_origin_fr_xyz[:, 2] -= mean_position_xyz[2]
 
         if self.session_data.right_gaze_vector_endpoint_fr_xyz is not None:
-            self.session_data.right_gaze_vector_endpoint_fr_xyz[
-                :, 0
-            ] -= mean_position_xyz[0]
-            self.session_data.right_gaze_vector_endpoint_fr_xyz[
-                :, 1
-            ] -= mean_position_xyz[1]
-            self.session_data.right_gaze_vector_endpoint_fr_xyz[
-                :, 2
-            ] -= mean_position_xyz[2]
+            self.session_data.right_gaze_vector_endpoint_fr_xyz[:, 0] -= mean_position_xyz[0]
+            self.session_data.right_gaze_vector_endpoint_fr_xyz[:, 1] -= mean_position_xyz[1]
+            self.session_data.right_gaze_vector_endpoint_fr_xyz[:, 2] -= mean_position_xyz[2]
 
-            self.session_data.left_gaze_vector_endpoint_fr_xyz[
-                :, 0
-            ] -= mean_position_xyz[0]
-            self.session_data.left_gaze_vector_endpoint_fr_xyz[
-                :, 1
-            ] -= mean_position_xyz[1]
-            self.session_data.left_gaze_vector_endpoint_fr_xyz[
-                :, 2
-            ] -= mean_position_xyz[2]
+            self.session_data.left_gaze_vector_endpoint_fr_xyz[:, 0] -= mean_position_xyz[0]
+            self.session_data.left_gaze_vector_endpoint_fr_xyz[:, 1] -= mean_position_xyz[1]
+            self.session_data.left_gaze_vector_endpoint_fr_xyz[:, 2] -= mean_position_xyz[2]
 
 
 if __name__ == "__main__":
@@ -590,9 +481,7 @@ if __name__ == "__main__":
     session_path = data_path / session_id
 
     session_data_loader = SessionDataLoader(session_path)
-    mediapipe_skel_fr_mar_xyz_in = session_data_loader.load_mediapipe_data(
-        move_to_origin=True
-    )
+    mediapipe_skel_fr_mar_xyz_in = session_data_loader.load_mediapipe_data(move_to_origin=True)
     print(f"mediapipe_skel_fr_mar_xyz.shape: {mediapipe_skel_fr_mar_xyz_in.shape}")
     qt_gl_laser_skeleton = QtGlLaserSkeletonVisualizer(
         mediapipe_skel_fr_mar_xyz=mediapipe_skel_fr_mar_xyz_in,

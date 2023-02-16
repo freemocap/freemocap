@@ -10,7 +10,7 @@ from src.pupil_labs_stuff.data_classes.rotation_data_class import RotationDataCl
 class FreemocapSessionDataClass:
     session_id: str = None
     timestamps: np.ndarray = None
-    mediapipe_skel_fr_mar_dim: np.ndarray = None
+    mediapipe_skel_fr_mar_xyz: np.ndarray = None
     right_eye_pupil_labs_data: PupilLabsDataClass = None
     left_eye_pupil_labs_data: PupilLabsDataClass = None
     head_rotation_data: RotationDataClass = None

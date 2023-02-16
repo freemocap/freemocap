@@ -5,9 +5,8 @@ import keyboard
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from jon_scratch.pupil_calibration_pipeline.data_classes.rotation_data_class import (
-    RotationDataClass,
-)
+
+from src.pupil_labs_stuff.data_classes.rotation_data_class import RotationDataClass
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -33,9 +32,7 @@ class RotationMatrixCalculator:
     def __init__(self, mediapipe_skeleton_fr_mar_xyz):
         self.mediapipe_skeleton_fr_mar_xyz = mediapipe_skeleton_fr_mar_xyz
 
-    def calculate_head_rotation_matricies(
-        self, normalize_length_by_x: bool = False, debug: bool = False
-    ):
+    def calculate_head_rotation_matricies(self, normalize_length_by_x: bool = False, debug: bool = False):
         """
         # Calculate head rotation matricies
 
@@ -146,15 +143,9 @@ class RotationMatrixCalculator:
         if (
             center_point_fr_xyz is not None
         ):  # if center point is specified, then use it to zero out the x,y,z directions vectors
-            zero_x_direction_xyz = pin_point_new_origin(
-                x_direction_fr_xyz, center_point_fr_xyz
-            )
-            zero_y_direction_xyz = pin_point_new_origin(
-                y_direction_fr_xyz, center_point_fr_xyz
-            )
-            zero_z_direction_xyz = pin_point_new_origin(
-                z_direction_fr_xyz, center_point_fr_xyz
-            )
+            zero_x_direction_xyz = pin_point_new_origin(x_direction_fr_xyz, center_point_fr_xyz)
+            zero_y_direction_xyz = pin_point_new_origin(y_direction_fr_xyz, center_point_fr_xyz)
+            zero_z_direction_xyz = pin_point_new_origin(z_direction_fr_xyz, center_point_fr_xyz)
         else:
             zero_x_direction_xyz = x_direction_fr_xyz
             zero_y_direction_xyz = y_direction_fr_xyz
@@ -193,15 +184,11 @@ class RotationMatrixCalculator:
         # create 3x3 cosine rotation matricies by stacking X_hat, Y_hat, and Z_hat
         rotation_matricies = []
         frame_number = -1
-        for this_x_hat_xyz, this_y_hat_xyz, this_z_hat_xyz in zip(
-            x_hat_xyz, y_hat_xyz, z_hat_xyz
-        ):
+        for this_x_hat_xyz, this_y_hat_xyz, this_z_hat_xyz in zip(x_hat_xyz, y_hat_xyz, z_hat_xyz):
             frame_number += 1
             if frame_number > 1000:
                 f = 9
-            this_rotation_matrix = np.squeeze(
-                np.dstack((this_x_hat_xyz, this_y_hat_xyz, this_z_hat_xyz))
-            )
+            this_rotation_matrix = np.squeeze(np.dstack((this_x_hat_xyz, this_y_hat_xyz, this_z_hat_xyz)))
 
             assert this_rotation_matrix.shape == (3, 3)
 
@@ -210,10 +197,7 @@ class RotationMatrixCalculator:
 
             rotation_matricies.append(this_rotation_matrix)
 
-        rotation_matricies = [
-            np.transpose(this_rotation_martix)
-            for this_rotation_martix in rotation_matricies
-        ]
+        rotation_matricies = [np.transpose(this_rotation_martix) for this_rotation_martix in rotation_matricies]
 
         return RotationDataClass(
             rotation_matricies=rotation_matricies,
@@ -227,35 +211,21 @@ class RotationMatrixCalculator:
         rotation_matricies = rotation_data.rotation_matricies
         local_origin_fr_xyz = rotation_data.local_origin_fr_xyz
 
-        x_hat_xyz = np.asarray(
-            [this_rot_mat[0, :] for this_rot_mat in rotation_matricies]
-        )
-        y_hat_xyz = np.asarray(
-            [this_rot_mat[1, :] for this_rot_mat in rotation_matricies]
-        )
-        z_hat_xyz = np.asarray(
-            [this_rot_mat[2, :] for this_rot_mat in rotation_matricies]
-        )
+        x_hat_xyz = np.asarray([this_rot_mat[0, :] for this_rot_mat in rotation_matricies])
+        y_hat_xyz = np.asarray([this_rot_mat[1, :] for this_rot_mat in rotation_matricies])
+        z_hat_xyz = np.asarray([this_rot_mat[2, :] for this_rot_mat in rotation_matricies])
 
         test_point_xyz_og = np.array((1, 1, 1))
         test_point_xyz_rot = np.empty(z_hat_xyz.shape)
-        logger.warning(
-            "We shouldnt have to transpose the rotation matix here, need to fix this upstream"
-        )
+        logger.warning("We shouldnt have to transpose the rotation matix here, need to fix this upstream")
 
         for frame_number in range(len(rotation_matricies)):
             # see https://peps.python.org/pep-0465/ for explanation of the `@` operator (which is a "matrix multiplication" operator)
-            test_point_xyz_rot[frame_number, :] = (
-                np.transpose(rotation_matricies[frame_number]) @ test_point_xyz_og
-            )
+            test_point_xyz_rot[frame_number, :] = np.transpose(rotation_matricies[frame_number]) @ test_point_xyz_og
 
-        z_mediapipe_skeleton_fr_mar_xyz = np.empty(
-            self.mediapipe_skeleton_fr_mar_xyz.shape
-        )
+        z_mediapipe_skeleton_fr_mar_xyz = np.empty(self.mediapipe_skeleton_fr_mar_xyz.shape)
         for this_marker_number in range(self.mediapipe_skeleton_fr_mar_xyz.shape[1]):
-            z_mediapipe_skeleton_fr_mar_xyz[
-                :, this_marker_number, :
-            ] = pin_point_new_origin(
+            z_mediapipe_skeleton_fr_mar_xyz[:, this_marker_number, :] = pin_point_new_origin(
                 self.mediapipe_skeleton_fr_mar_xyz[:, this_marker_number, :],
                 local_origin_fr_xyz,
             )

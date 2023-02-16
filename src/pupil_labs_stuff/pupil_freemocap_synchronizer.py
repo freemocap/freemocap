@@ -2,13 +2,11 @@ import logging
 
 import matplotlib
 import numpy as np
-from jon_scratch.pupil_calibration_pipeline.data_classes.freemocap_session_data_class import (
-    FreemocapSessionDataClass,
-)
-from jon_scratch.pupil_calibration_pipeline.data_classes.pupil_dataclass_and_handler import (
-    PupilLabsDataClass,
-)
+
 from matplotlib import pyplot as plt
+
+from src.pupil_labs_stuff.data_classes.freemocap_session_data_class import FreemocapSessionDataClass
+from src.pupil_labs_stuff.data_classes.pupil_dataclass_and_handler import PupilLabsDataClass
 
 matplotlib.use("qt5agg")
 logger = logging.getLogger(__name__)
@@ -34,14 +32,10 @@ class PupilFreemocapSynchronizer:
         """
         # find start and end frames shared by all datastreams
         freemocap_timestamps = self.raw_session_data.timestamps
-        right_eye_timestamps = (
-            self.raw_session_data.right_eye_pupil_labs_data.timestamps
-        )
+        right_eye_timestamps = self.raw_session_data.right_eye_pupil_labs_data.timestamps
         left_eye_timestamps = self.raw_session_data.left_eye_pupil_labs_data.timestamps
 
-        start_time_unix = np.max(
-            (freemocap_timestamps[0], right_eye_timestamps[0], left_eye_timestamps[0])
-        )
+        start_time_unix = np.max((freemocap_timestamps[0], right_eye_timestamps[0], left_eye_timestamps[0]))
         end_time_unix = np.min(
             (
                 freemocap_timestamps[-1],
@@ -52,9 +46,7 @@ class PupilFreemocapSynchronizer:
 
         # freemocap
         if any(freemocap_timestamps >= start_time_unix):
-            freemocap_start_frame = np.where(freemocap_timestamps >= start_time_unix)[
-                0
-            ][0]
+            freemocap_start_frame = np.where(freemocap_timestamps >= start_time_unix)[0][0]
         else:
             freemocap_start_frame = 0
 
@@ -65,9 +57,7 @@ class PupilFreemocapSynchronizer:
 
         # right eye
         if any(right_eye_timestamps >= start_time_unix):
-            right_eye_start_frame = np.where(right_eye_timestamps >= start_time_unix)[
-                0
-            ][0]
+            right_eye_start_frame = np.where(right_eye_timestamps >= start_time_unix)[0][0]
         else:
             right_eye_start_frame = 0
 
@@ -78,9 +68,7 @@ class PupilFreemocapSynchronizer:
 
         # left eye
         if any(left_eye_timestamps >= start_time_unix):
-            left_eye_start_frame = np.where(left_eye_timestamps >= start_time_unix)[0][
-                0
-            ]
+            left_eye_start_frame = np.where(left_eye_timestamps >= start_time_unix)[0][0]
         else:
             left_eye_start_frame = 0
 
@@ -95,9 +83,7 @@ class PupilFreemocapSynchronizer:
         self.left_eye_end_frame = left_eye_end_frame
 
         # rebase time onto freemocap's framerate (b/c it's slower than pupil) <- sloppy, assumes mocap slower than eye tracker, which is untrue for, say, GoPros
-        self.synchronized_timestamps = self.raw_session_data.timestamps[
-            freemocap_start_frame:freemocap_end_frame
-        ]
+        self.synchronized_timestamps = self.raw_session_data.timestamps[freemocap_start_frame:freemocap_end_frame]
 
         logger.warning(
             "SLOPPY ASSUMPTION: assuming freemocap framerate is always slower than eye tracker (true for webcams, not true for GoPros)"
@@ -107,9 +93,7 @@ class PupilFreemocapSynchronizer:
         self.resample_eye_data()
         # self.normalize_eye_data()
 
-        self.synchronized_timestamps = (
-            self.synchronized_timestamps - self.synchronized_timestamps[0]
-        )
+        self.synchronized_timestamps = self.synchronized_timestamps - self.synchronized_timestamps[0]
 
         assert self.synchronized_timestamps.shape[0] == self.right_eye_theta.shape[0]
         assert self.synchronized_timestamps.shape[0] == self.left_eye_theta.shape[0]
@@ -147,11 +131,9 @@ class PupilFreemocapSynchronizer:
         return synchronized_session_data
 
     def clip_eye_data(self):
-        self.right_eye_timestamps_clipped = (
-            self.raw_session_data.right_eye_pupil_labs_data.timestamps[
-                self.right_eye_start_frame : self.right_eye_end_frame
-            ]
-        )
+        self.right_eye_timestamps_clipped = self.raw_session_data.right_eye_pupil_labs_data.timestamps[
+            self.right_eye_start_frame : self.right_eye_end_frame
+        ]
 
         self.right_eye_pupil_center_normal_x_clipped = (
             self.raw_session_data.right_eye_pupil_labs_data.pupil_center_normal_x[
@@ -171,23 +153,17 @@ class PupilFreemocapSynchronizer:
             ]
         )
 
-        self.right_eye_theta_clipped = (
-            self.raw_session_data.right_eye_pupil_labs_data.theta[
-                self.right_eye_start_frame : self.right_eye_end_frame
-            ]
-        )
+        self.right_eye_theta_clipped = self.raw_session_data.right_eye_pupil_labs_data.theta[
+            self.right_eye_start_frame : self.right_eye_end_frame
+        ]
 
-        self.right_eye_phi_clipped = (
-            self.raw_session_data.right_eye_pupil_labs_data.phi[
-                self.right_eye_start_frame : self.right_eye_end_frame
-            ]
-        )
+        self.right_eye_phi_clipped = self.raw_session_data.right_eye_pupil_labs_data.phi[
+            self.right_eye_start_frame : self.right_eye_end_frame
+        ]
 
-        self.left_eye_timestamps_clipped = (
-            self.raw_session_data.left_eye_pupil_labs_data.timestamps[
-                self.left_eye_start_frame : self.left_eye_end_frame
-            ]
-        )
+        self.left_eye_timestamps_clipped = self.raw_session_data.left_eye_pupil_labs_data.timestamps[
+            self.left_eye_start_frame : self.left_eye_end_frame
+        ]
 
         self.left_eye_pupil_center_normal_x_clipped = (
             self.raw_session_data.left_eye_pupil_labs_data.pupil_center_normal_x[
@@ -207,11 +183,9 @@ class PupilFreemocapSynchronizer:
             ]
         )
 
-        self.left_eye_theta_clipped = (
-            self.raw_session_data.left_eye_pupil_labs_data.theta[
-                self.left_eye_start_frame : self.left_eye_end_frame
-            ]
-        )
+        self.left_eye_theta_clipped = self.raw_session_data.left_eye_pupil_labs_data.theta[
+            self.left_eye_start_frame : self.left_eye_end_frame
+        ]
 
         self.left_eye_phi_clipped = self.raw_session_data.left_eye_pupil_labs_data.phi[
             self.left_eye_start_frame : self.left_eye_end_frame
@@ -237,12 +211,8 @@ class PupilFreemocapSynchronizer:
             right_eye_timestamps,
             self.right_eye_pupil_center_normal_z_clipped,
         )
-        self.right_eye_theta = np.interp(
-            freemocap_timestamps, right_eye_timestamps, self.right_eye_theta_clipped
-        )
-        self.right_eye_phi = np.interp(
-            freemocap_timestamps, right_eye_timestamps, self.right_eye_phi_clipped
-        )
+        self.right_eye_theta = np.interp(freemocap_timestamps, right_eye_timestamps, self.right_eye_theta_clipped)
+        self.right_eye_phi = np.interp(freemocap_timestamps, right_eye_timestamps, self.right_eye_phi_clipped)
 
         self.left_eye_pupil_center_normal_x = np.interp(
             freemocap_timestamps,
@@ -259,38 +229,28 @@ class PupilFreemocapSynchronizer:
             left_eye_timestamps,
             self.left_eye_pupil_center_normal_z_clipped,
         )
-        self.left_eye_theta = np.interp(
-            freemocap_timestamps, left_eye_timestamps, self.left_eye_theta_clipped
-        )
-        self.left_eye_phi = np.interp(
-            freemocap_timestamps, left_eye_timestamps, self.left_eye_phi_clipped
-        )
+        self.left_eye_theta = np.interp(freemocap_timestamps, left_eye_timestamps, self.left_eye_theta_clipped)
+        self.left_eye_phi = np.interp(freemocap_timestamps, left_eye_timestamps, self.left_eye_phi_clipped)
 
     def normalize_eye_data(self):
-        self.right_eye_pupil_center_normal_x = (
+        self.right_eye_pupil_center_normal_x = self.right_eye_pupil_center_normal_x / np.linalg.norm(
             self.right_eye_pupil_center_normal_x
-            / np.linalg.norm(self.right_eye_pupil_center_normal_x)
         )
-        self.right_eye_pupil_center_normal_y = (
+        self.right_eye_pupil_center_normal_y = self.right_eye_pupil_center_normal_y / np.linalg.norm(
             self.right_eye_pupil_center_normal_y
-            / np.linalg.norm(self.right_eye_pupil_center_normal_y)
         )
-        self.right_eye_pupil_center_normal_z = (
+        self.right_eye_pupil_center_normal_z = self.right_eye_pupil_center_normal_z / np.linalg.norm(
             self.right_eye_pupil_center_normal_z
-            / np.linalg.norm(self.right_eye_pupil_center_normal_z)
         )
 
-        self.left_eye_pupil_center_normal_x = (
+        self.left_eye_pupil_center_normal_x = self.left_eye_pupil_center_normal_x / np.linalg.norm(
             self.left_eye_pupil_center_normal_x
-            / np.linalg.norm(self.left_eye_pupil_center_normal_x)
         )
-        self.left_eye_pupil_center_normal_y = (
+        self.left_eye_pupil_center_normal_y = self.left_eye_pupil_center_normal_y / np.linalg.norm(
             self.left_eye_pupil_center_normal_y
-            / np.linalg.norm(self.left_eye_pupil_center_normal_y)
         )
-        self.left_eye_pupil_center_normal_z = (
+        self.left_eye_pupil_center_normal_z = self.left_eye_pupil_center_normal_z / np.linalg.norm(
             self.left_eye_pupil_center_normal_z
-            / np.linalg.norm(self.left_eye_pupil_center_normal_z)
         )
 
     def show_debug_plots(self, vor_frame_start, vor_frame_end):

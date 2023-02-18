@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from freemocap.system.paths_and_files_names import PATH_TO_FREEMOCAP_LOGO_SVG, sparkles_emoji
+from freemocap.system.paths_and_files_names import PATH_TO_FREEMOCAP_LOGO_SVG, SPARKLES_EMOJI_STRING
 from freemocap.gui.qt.actions_and_menus.actions import (
     CREATE_NEW_RECORDING_ACTION_NAME,
     LOAD_MOST_RECENT_RECORDING_ACTION_NAME,
@@ -48,7 +48,7 @@ class WelcomeToFreemocapPanel(QWidget):
         self._layout.addWidget(self._welcome_to_freemocap_title_widget)
 
         self._create_new_session_button = WelcomeScreenButton(
-            f"{CREATE_NEW_RECORDING_ACTION_NAME} (Ctrl+N) {sparkles_emoji}"
+            f"{CREATE_NEW_RECORDING_ACTION_NAME} (Ctrl+N) {SPARKLES_EMOJI_STRING}"
         )
         self._create_new_session_button.clicked.connect(actions.create_new_recording_action.trigger)
         self._layout.addWidget(self._create_new_session_button, alignment=Qt.AlignmentFlag.AlignCenter)

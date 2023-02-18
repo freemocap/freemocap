@@ -9,6 +9,7 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 from freemocap.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
 )
+from freemocap.system.paths_and_files_names import get_most_recent_recording_path
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,10 @@ class ActiveRecordingInfoWidget(QWidget):
         # but it will be more intuitive to send this down as a callable
         # rather than relying on 'pass-by-reference' magic lol
 
-        if return_path and self._active_recording_info is not None:
+        if self._active_recording_info is None:
+            self.set_active_recording(get_most_recent_recording_path())
+
+        if return_path:
             return self._active_recording_info.path
 
         return self._active_recording_info

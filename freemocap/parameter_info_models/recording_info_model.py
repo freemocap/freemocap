@@ -5,7 +5,7 @@ from typing import Union
 from freemocap.system.paths_and_files_names import (
     CENTER_OF_MASS_FOLDER_NAME,
     MEDIAPIPE_2D_NPY_FILE_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME,
+    RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
     OUTPUT_DATA_FOLDER_NAME,
     RAW_DATA_FOLDER_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
@@ -14,6 +14,7 @@ from freemocap.system.paths_and_files_names import (
     get_blender_file_path,
     get_last_successful_calibration_toml_path,
     ANNOTATED_VIDEOS_FOLDER_NAME,
+    MEDIAPIPE_3D_NPY_FILE_NAME,
 )
 from freemocap.tests.test_mediapipe_2d_data_shape import test_mediapipe_2d_data_shape
 from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
@@ -83,7 +84,11 @@ class RecordingInfoModel:
 
     @property
     def mediapipe_3d_data_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / MEDIAPIPE_3D_NPY_FILE_NAME)
+        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / MEDIAPIPE_3D_NPY_FILE_NAME)
+
+    @property
+    def raw_mediapipe_3d_data_npy_file_path(self):
+        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / RAW_MEDIAPIPE_3D_NPY_FILE_NAME)
 
     @property
     def mediapipe_reprojection_error_data_npy_file_path(self):

@@ -6,13 +6,11 @@ from copy import copy
 from pathlib import Path
 from typing import Union
 
-import psutil
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QDockWidget,
     QMainWindow,
-    QPushButton,
     QFileDialog,
     QTabWidget,
 )
@@ -38,11 +36,12 @@ from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingInfo
 from freemocap.gui.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
 from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
 from freemocap.gui.qt.widgets.control_panel.control_panel_dock_widget import (
-    ControlPanelDockWidget,
+    ControlPanelWidget,
 )
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
+from freemocap.gui.qt.widgets.control_panel.visualization_control_panel import VisualizationControlPanel
 from freemocap.gui.qt.widgets.directory_view_widget import DirectoryViewWidget
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.welcome_panel_widget import (
@@ -61,6 +60,9 @@ from freemocap.system.paths_and_files_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
     get_blender_file_path,
     get_recording_session_folder_path,
+    DIRECTORY_EMOJI_STRING,
+    GEAR_EMOJI_STRING,
+    COOL_EMOJI_STRING,
 )
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
@@ -112,14 +114,18 @@ class FreemocapMainWindow(QMainWindow):
         self._central_tab_widget = self._create_central_tab_widget()
         self.setCentralWidget(self._central_tab_widget)
 
-        self._control_panel_dock_widget = self._create_control_panel_dock_widget()
-        # self._control_panel_dock_widget.setEnabled(False)
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._control_panel_dock_widget)
+        self._tools_dock_widget = self._create_tools_dock_widget()
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._tools_dock_widget)
+        self._tools_dock_tab_widget = QTabWidget(self)
+        self._tools_dock_widget.setWidget(self._tools_dock_tab_widget)
 
-        self._info_dock_widget = self._create_info_dock_widget()
+        self._control_panel_dock_widget = self._create_control_panel_widget()
+        self._tools_dock_tab_widget.addTab(self._control_panel_dock_widget, f"Control Panel{GEAR_EMOJI_STRING}")
 
-        # self._info_dock_widget.setEnabled(False)
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._info_dock_widget)
+        self._tools_dock_tab_widget.addTab(self._directory_view_widget, f"Directory View{DIRECTORY_EMOJI_STRING}")
+        self._tools_dock_tab_widget.addTab(
+            self._active_recording_info_widget, f"Active Recording Info{COOL_EMOJI_STRING}"
+        )
 
         # self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._directory_view_dock_widget)
 
@@ -134,6 +140,14 @@ class FreemocapMainWindow(QMainWindow):
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
         log_view_dock_widget.setWidget(self._log_view_widget)
+
+    def _create_tools_dock_widget(self):
+        tools_dock_widget = QDockWidget("Tools and Info", self)
+        tools_dock_widget.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        tools_dock_widget.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetFloatable
+        )
+        return tools_dock_widget
 
     def _handle_videos_saved_to_this_folder_signal(self, folder_path: str):
         save_most_recent_recording_path_as_toml(most_recent_recording_path=folder_path)
@@ -164,11 +178,6 @@ class FreemocapMainWindow(QMainWindow):
         self._central_tab_widget.setCurrentIndex(1)
         self._controller_group_box.show()
         self._skellycam_widget.detect_available_cameras()
-        self._show_dock_widgets()
-
-    def _show_dock_widgets(self):
-        self._control_panel_dock_widget.setEnabled(True)
-        self._info_dock_widget.setEnabled(True)
 
     def update(self):
         super().update()
@@ -251,22 +260,8 @@ class FreemocapMainWindow(QMainWindow):
     #                    visualize_data_widget=self._create_visualization_control_panel(),
     #                    directory_view_widget=self._create_directory_view_widget(),
     #                    parent=self)
-    def _create_info_dock_widget(self):
-        info_dock_widget = QDockWidget("Recording Info", self)
-        info_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable)
-        info_dock_widget.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable)
-        info_dock_widget.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
-        info_dock_widget.geometry().setHeight(200)
 
-        tab_widget = QTabWidget(parent=self)
-        info_dock_widget.setWidget(tab_widget)
-
-        tab_widget.addTab(self._directory_view_widget, "Directory View")
-        tab_widget.addTab(self._active_recording_info_widget, "Active Recording Info")
-
-        return info_dock_widget
-
-    def _create_control_panel_dock_widget(self):
+    def _create_control_panel_widget(self):
 
         self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(self._skellycam_widget)
 
@@ -283,23 +278,33 @@ class FreemocapMainWindow(QMainWindow):
             self._handle_processing_finished_signal
         )
 
-        return ControlPanelDockWidget(
+        self._visualization_control_panel = VisualizationControlPanel(parent=self)
+        self._visualization_control_panel.export_to_blender_button.clicked.connect(
+            self._handle_export_to_blender_button_clicked
+        )
+
+        return ControlPanelWidget(
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
             # calibration_control_panel=self._calibration_control_panel,
             process_motion_capture_data_panel=self._process_motion_capture_data_panel,
-            visualize_data_widget=self._create_visualization_control_panel(),
+            visualize_data_widget=self._visualization_control_panel,
             parent=self,
         )
 
-    def _create_visualization_control_panel(self):
-        self._export_to_blender_button = QPushButton("Export to Blender")
-        self._export_to_blender_button.clicked.connect(self._handle_export_to_blender_button_clicked)
-        return self._export_to_blender_button
-
     def _handle_export_to_blender_button_clicked(self):
         recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
-        export_to_blender(recording_folder_path=recording_path, blender_file_path=get_blender_file_path(recording_path))
-        if self._controller_group_box.auto_open_in_blender_checked:
+
+        self._visualization_control_panel.get_user_selected_method_string()
+        export_to_blender(
+            recording_folder_path=recording_path,
+            blender_file_path=get_blender_file_path(recording_path),
+            method=self._visualization_control_panel.get_user_selected_method_string(),
+        )
+
+        if (
+            self._controller_group_box.auto_open_in_blender_checked
+            or self._visualization_control_panel.open_in_blender_automatically_box_is_checked
+        ):
             open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
 
     def _handle_new_active_recording_selected(self, recording_info_model: RecordingInfoModel):
@@ -307,8 +312,7 @@ class FreemocapMainWindow(QMainWindow):
 
         # self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
 
-        self._info_dock_widget.setWindowTitle(f"Active Recording: {recording_info_model.name}")
-
+        self._directory_view_widget.set_folder_as_root(Path(recording_info_model.path).parent)
         if Path(recording_info_model.synchronized_videos_folder_path).exists():
             self._directory_view_widget.expand_directory_to_path(recording_info_model.synchronized_videos_folder_path)
         else:
@@ -316,7 +320,7 @@ class FreemocapMainWindow(QMainWindow):
 
         self._active_recording_info_widget.update_parameter_tree()
         # self._recording_name_label.setText(f"Recording Name: {recording_info_model.name}")
-        self._update_skelly_viewer_widget()
+        # self._update_skelly_viewer_widget()
         self._directory_view_widget.handle_new_active_recording_selected()
 
     def _update_skelly_viewer_widget(self):
@@ -368,8 +372,7 @@ class FreemocapMainWindow(QMainWindow):
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())
         self._central_tab_widget.setCurrentIndex(2)
-        self._control_panel_dock_widget.tool_box.setCurrentWidget(self._process_motion_capture_data_panel)
-        self._show_dock_widgets()
+        self._control_panel_dock_widget.tab_widget.setCurrentWidget(self._process_motion_capture_data_panel)
 
     def open_load_existing_recording_dialog(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s

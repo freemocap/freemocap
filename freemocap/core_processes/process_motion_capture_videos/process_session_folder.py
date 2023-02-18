@@ -89,7 +89,7 @@ def process_session_folder(
 
     assert test_mediapipe_3d_data_shape(
         synchronized_videos_folder=s.recording_info_model.synchronized_videos_folder_path,
-        mediapipe_3d_data_npy_path=s.recording_info_model.mediapipe_3d_data_npy_file_path,
+        mediapipe_3d_data_npy_path=s.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
         medipipe_reprojection_error_data_npy_path=s.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
     )
 
@@ -103,6 +103,11 @@ def process_session_folder(
         cut_off=s.post_processing_parameters_model.butterworth_filter_parameters.cutoff_frequency,
         order=s.post_processing_parameters_model.butterworth_filter_parameters.order,
         reference_frame_number=None,
+    )
+    assert test_mediapipe_3d_data_shape(
+        synchronized_videos_folder=s.recording_info_model.synchronized_videos_folder_path,
+        mediapipe_3d_data_npy_path=s.recording_info_model.mediapipe_3d_data_npy_file_path,
+        medipipe_reprojection_error_data_npy_path=s.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
     )
 
     logger.info("Breaking up big `npy` into smaller bits and converting to `csv`...")

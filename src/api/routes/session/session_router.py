@@ -182,7 +182,7 @@ def visualize_session_offline(session_id_model: SessionIdModel = None):
 
 
 if __name__ == "__main__":
-    # # create_blend_file_from_session_data_megascript_take1
+    # # call_blender_subprocess_megascript_take2
     # session_id_in = create_default_session_id('session_router_as_main')
     # session_id_model = SessionIdModel(session_id=session_id_in)
     #

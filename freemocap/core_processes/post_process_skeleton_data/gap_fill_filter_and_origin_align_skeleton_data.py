@@ -1091,7 +1091,7 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     logger.info("Saving Origin Aligned Data")
     Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)
     np.save(
-        str(path_to_folder_where_we_will_save_this_data / "mediaPipeSkel_3d_origin_aligned"),
+        str(path_to_folder_where_we_will_save_this_data / "mediaPipeSkel_3d_body_hands_face.npy"),
         origin_aligned_freemocap_marker_data,
     )
 

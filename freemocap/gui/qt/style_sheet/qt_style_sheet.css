@@ -1,6 +1,6 @@
 * {
     font-family: "Dosis", sans-serif;
-    font-size: 16px;
+    /*font-size: 12px;*/
     color: #333333;
 }
 
@@ -36,13 +36,14 @@ QTabBar::tab {
     color: #235957;
     border-top-left-radius: 20px;
     border-top-right-radius: 5px;
-    min-width: 200px;
+    /*min-width: 200px;*/
 }
 
 QTabBar::tab {
     background: seashell;
     margin-bottom: -5px;
     font-weight: bolder;
+    font-size: 14px;
 }
 
 QDockWidget:disabled {
@@ -51,7 +52,7 @@ QDockWidget:disabled {
 }
 
 
-QToolBox::tab {
+QTabBar::tab [control_panel_tabs=true] {
 
     background: #2a595f;
     border: 2px solid #7906e5;
@@ -63,7 +64,7 @@ QToolBox::tab {
 }
 
 
-QToolBox::tab:selected {
+QTabBar[control_panel_tabs=true]::tab:selected {
     background: #4b1d7e;
     border-bottom-right-radius: 20px;
     border-top-right-radius: 5px;

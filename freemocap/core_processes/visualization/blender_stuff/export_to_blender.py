@@ -2,9 +2,10 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from freemocap.core_processes.visualization.blender_stuff.create_blend_file_from_session_data import (
-    create_blend_file_from_session_data_megascript_take1,
-    create_blend_file_from_session_data_cgtinker,
+from freemocap.core_processes.visualization.blender_stuff.call_blender_subprocess_methods import (
+    call_blender_subprocess_megascript_take2,
+    call_blender_subprocess_cgtinker,
+    call_blender_subprocess_alpha_megascript,
 )
 from freemocap.core_processes.visualization.blender_stuff.get_best_guess_of_blender_path import (
     get_best_guess_of_blender_path,
@@ -17,7 +18,7 @@ def export_to_blender(
     recording_folder_path: Union[str, Path],
     blender_file_path: Union[str, Path],
     blender_exe_path: Union[str, Path] = get_best_guess_of_blender_path(),
-    method: str = "cgtinker",
+    method: str = "megascript_take2",
 ):
 
     logger.info(
@@ -25,25 +26,25 @@ def export_to_blender(
     )
 
     if method == "megascript_take2":
-        create_blend_file_from_session_data_megascript_take2(
+        call_blender_subprocess_megascript_take2(
             recording_folder_path=recording_folder_path,
             blender_file_path=blender_file_path,
             blender_exe_path=blender_exe_path,
         )
-    elif method == "megascript_take1":
-        create_blend_file_from_session_data_megascript_take1(
+    elif method == "alpha_megascript":
+        call_blender_subprocess_alpha_megascript(
             recording_folder_path=recording_folder_path,
             blender_file_path=blender_file_path,
             blender_exe_path=blender_exe_path,
         )
     elif method == "cgtinker":
-        create_blend_file_from_session_data_cgtinker(
+        call_blender_subprocess_cgtinker(
             recording_folder_path=recording_folder_path,
             blender_file_path=blender_file_path,
             blender_exe_path=blender_exe_path,
         )
 
-    return str(blender_file_path)
+    logger.info(f"blender subprocess finished")
 
 
 if __name__ == "__main__":

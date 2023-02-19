@@ -99,9 +99,7 @@ class MainWindow(QMainWindow):
 
         self._main_layout.addWidget(self._right_side_panel.frame)
 
-        self._thread_worker_manager = ThreadWorkerManager(
-            session_progress_dictionary=self._pipedream_ping_dictionary
-        )
+        self._thread_worker_manager = ThreadWorkerManager(session_progress_dictionary=self._pipedream_ping_dictionary)
 
         # actions, signals and slots, o my
         self._create_actions()
@@ -151,9 +149,7 @@ class MainWindow(QMainWindow):
         return panel
 
     def _create_right_side_panel(self):
-        panel = RightSidePanel(
-            freemocap_data_folder_path=get_freemocap_data_folder_path()
-        )
+        panel = RightSidePanel(freemocap_data_folder_path=get_freemocap_data_folder_path())
 
         width = self._main_window_width * 0.1
         height = self._main_window_height
@@ -170,17 +166,13 @@ class MainWindow(QMainWindow):
         self._new_session_action = QAction("&Start New Session", parent=self)
         self._new_session_action.setShortcut("Ctrl+N")
 
-        self._load_most_recent_session_action = QAction(
-            "Load &Most Recent Session", parent=self
-        )
+        self._load_most_recent_session_action = QAction("Load &Most Recent Session", parent=self)
         self._load_most_recent_session_action.setShortcut("Ctrl+D")
 
         self._load_session_action = QAction("&Load Session...", parent=self)
         self._load_session_action.setShortcut("Ctrl+O")
 
-        self._import_videos_action = QAction(
-            "Import Synchronized &Videos...", parent=self
-        )
+        self._import_videos_action = QAction("Import Synchronized &Videos...", parent=self)
         self._import_videos_action.setShortcut("Ctrl+I")
 
         self._reboot_gui_action = QAction("&Reboot GUI", parent=self)
@@ -194,9 +186,7 @@ class MainWindow(QMainWindow):
         self._about_us_action = QAction("&About Us", parent=self)
 
         # Navigation
-        self._show_camera_control_panel_action = QAction(
-            "&1 - Show Camera Control Panel", parent=self
-        )
+        self._show_camera_control_panel_action = QAction("&1 - Show Camera Control Panel", parent=self)
         self._show_camera_control_panel_action.setShortcut("Ctrl+1")
 
         self._show_calibrate_capture_volume_panel_action = QAction(
@@ -204,16 +194,12 @@ class MainWindow(QMainWindow):
         )
         self._show_calibrate_capture_volume_panel_action.setShortcut("Ctrl+2")
 
-        self._show_motion_capture_videos_panel_action = QAction(
-            "&3 - Show Motion Capture Videos Panel", parent=self
-        )
+        self._show_motion_capture_videos_panel_action = QAction("&3 - Show Motion Capture Videos Panel", parent=self)
         self._show_motion_capture_videos_panel_action.setShortcut("Ctrl+3")
 
         # Support
         self._donate_action = QAction("&Donate", parent=self)
-        self._send_usage_statistics_action = QAction(
-            "Send &User Statistics", parent=self
-        )
+        self._send_usage_statistics_action = QAction("Send &User Statistics", parent=self)
         self._user_survey_action = QAction("&User Survey", parent=self)
 
     def _create_menu_bar(self):
@@ -250,9 +236,7 @@ class MainWindow(QMainWindow):
         help_menu.addAction(self._about_us_action)
 
         # support menu
-        support_menu = QMenu(
-            "\U00002665 &Support the FreeMoCap Project", parent=menu_bar
-        )
+        support_menu = QMenu("\U00002665 &Support the FreeMoCap Project", parent=menu_bar)
         support_menu.setEnabled(False)
         menu_bar.addMenu(support_menu)
 
@@ -285,9 +269,7 @@ class MainWindow(QMainWindow):
         # Navigation Menu
 
         self._show_camera_control_panel_action.triggered.connect(
-            lambda: self._control_panel.toolbox_widget.setCurrentWidget(
-                self._control_panel.camera_setup_control_panel
-            )
+            lambda: self._control_panel.toolbox_widget.setCurrentWidget(self._control_panel.camera_setup_control_panel)
         )
         self._show_calibrate_capture_volume_panel_action.triggered.connect(
             lambda: self._control_panel.toolbox_widget.setCurrentWidget(
@@ -295,9 +277,7 @@ class MainWindow(QMainWindow):
             )
         )
         self._show_motion_capture_videos_panel_action.triggered.connect(
-            lambda: self._control_panel.toolbox_widget.setCurrentWidget(
-                self._control_panel.motion_capture_panel
-            )
+            lambda: self._control_panel.toolbox_widget.setCurrentWidget(self._control_panel.motion_capture_panel)
         )
 
         # self._open_docs_action.triggered.connect()
@@ -334,9 +314,7 @@ class MainWindow(QMainWindow):
             self._apply_settings_and_launch_camera_threads
         )
 
-        self._control_panel.camera_setup_control_panel.redetect_cameras_button.clicked.connect(
-            self._redetect_cameras
-        )
+        self._control_panel.camera_setup_control_panel.redetect_cameras_button.clicked.connect(self._redetect_cameras)
 
         self._control_panel.camera_setup_control_panel.pop_out_cameras_button.clicked.connect(
             self._handle_pop_out_cameras_button_pressed
@@ -348,9 +326,7 @@ class MainWindow(QMainWindow):
 
         # Calibration panel
         self._control_panel.calibrate_capture_volume_panel.start_recording_button.clicked.connect(
-            lambda: self._start_recording_videos(
-                panel=self._control_panel.calibrate_capture_volume_panel
-            )
+            lambda: self._start_recording_videos(panel=self._control_panel.calibrate_capture_volume_panel)
         )
 
         self._control_panel.calibrate_capture_volume_panel.stop_recording_button.clicked.connect(
@@ -372,9 +348,7 @@ class MainWindow(QMainWindow):
         )
 
         self._control_panel.motion_capture_panel.stop_recording_button.clicked.connect(
-            lambda: self._stop_recording_videos(
-                panel=self._control_panel.motion_capture_panel
-            )
+            lambda: self._stop_recording_videos(panel=self._control_panel.motion_capture_panel)
         )
 
         # (record videos) ProcessVideos panel
@@ -417,13 +391,9 @@ class MainWindow(QMainWindow):
     def _connect_signals_to_stuff(self):
         logger.info("Connecting signals to stuff")
 
-        self._right_side_panel.file_system_view_widget.load_session_folder_signal.connect(
-            self._start_session
-        )
+        self._right_side_panel.file_system_view_widget.load_session_folder_signal.connect(self._start_session)
 
-        self._thread_worker_manager.camera_detection_finished.connect(
-            self._handle_found_cameras_response
-        )
+        self._thread_worker_manager.camera_detection_finished.connect(self._handle_found_cameras_response)
 
         # self._control_panel.camera_setup_control_panel.camera_parameters_updated_signal.connect(
         #     self._apply_settings_and_launch_camera_threads
@@ -433,35 +403,23 @@ class MainWindow(QMainWindow):
             self._middle_viewing_panel.show_camera_streams
         )
 
-        self._thread_worker_manager.videos_saved_signal.connect(
-            self._handle_videos_saved_signal
-        )
+        self._thread_worker_manager.videos_saved_signal.connect(self._handle_videos_saved_signal)
 
         self._thread_worker_manager.start_3d_processing_signal.connect(
-            lambda: self._setup_and_launch_triangulate_3d_thread_worker(
-                auto_process_next_stage=True
-            )
+            lambda: self._setup_and_launch_triangulate_3d_thread_worker(auto_process_next_stage=True)
         )
 
         self._thread_worker_manager.start_post_processing_signal.connect(
-            lambda: self._setup_and_launch_gap_fill_filter_origin_align_thread_worker(
-                auto_process_next_stage=True
-            )
+            lambda: self._setup_and_launch_gap_fill_filter_origin_align_thread_worker(auto_process_next_stage=True)
         )
 
         self._thread_worker_manager.start_convert_npy_to_to_csv_signal.connect(
-            lambda: self._setup_and_launch_convert_npy_to_csv_thread_worker(
-                auto_process_next_stage=True
-            )
+            lambda: self._setup_and_launch_convert_npy_to_csv_thread_worker(auto_process_next_stage=True)
         )
 
-        self._thread_worker_manager.start_blender_processing_signal.connect(
-            self._generate_blend_file
-        )
+        self._thread_worker_manager.start_blender_processing_signal.connect(self._generate_blend_file)
 
-        self._thread_worker_manager.start_session_data_visualization_signal.connect(
-            self._visualize_motion_capture_data
-        )
+        self._thread_worker_manager.start_session_data_visualization_signal.connect(self._visualize_motion_capture_data)
 
     def _set_session_folder_as_root_for_file_viewer(self, session_id: str):
         session_path = get_session_folder_path(session_id, create_folder=True)
@@ -475,13 +433,9 @@ class MainWindow(QMainWindow):
             get_freemocap_data_folder_path(),
         )
 
-        self._session_id = str(
-            Path(user_selected_path).relative_to(get_freemocap_data_folder_path())
-        )
+        self._session_id = str(Path(user_selected_path).relative_to(get_freemocap_data_folder_path()))
 
-        logger.info(
-            f"User selected session path:{user_selected_path}, `session_id` set to  {self._session_id}"
-        )
+        logger.info(f"User selected session path:{user_selected_path}, `session_id` set to  {self._session_id}")
 
         self._start_session(self._session_id)
 
@@ -492,17 +446,11 @@ class MainWindow(QMainWindow):
             "Select a folder containig synchronized videos (each video must have *exactly* the same number of frames)",
             str(Path.home()),
         )
-        self._session_id = (
-            self._middle_viewing_panel.welcome_create_or_load_session_panel.session_id_input_string
-        )
+        self._session_id = self._middle_viewing_panel.welcome_create_or_load_session_panel.session_id_input_string
 
-        synchronized_videos_folder_path = get_synchronized_videos_folder_path(
-            self._session_id, create_folder=True
-        )
+        synchronized_videos_folder_path = get_synchronized_videos_folder_path(self._session_id, create_folder=True)
 
-        logger.info(
-            f"Copying videos from {external_videos_path} to {synchronized_videos_folder_path}"
-        )
+        logger.info(f"Copying videos from {external_videos_path} to {synchronized_videos_folder_path}")
 
         for video_path in Path(external_videos_path).glob("*.mp4"):
             shutil.copy(video_path, synchronized_videos_folder_path)
@@ -514,13 +462,9 @@ class MainWindow(QMainWindow):
         self._session_id = session_id
         self._control_panel.enable_toolbox_panels()
         self._set_session_folder_as_root_for_file_viewer(self._session_id)
-        self._right_side_panel.file_system_view_widget.show_current_session_folder_button.setEnabled(
-            True
-        )
+        self._right_side_panel.file_system_view_widget.show_current_session_folder_button.setEnabled(True)
 
-        text = (
-            self._right_side_panel.file_system_view_widget.show_current_session_folder_button.text()
-        )
+        text = self._right_side_panel.file_system_view_widget.show_current_session_folder_button.text()
         self._right_side_panel.file_system_view_widget.show_current_session_folder_button.setText(
             text + ", session_id: " + self._session_id
         )
@@ -541,13 +485,9 @@ class MainWindow(QMainWindow):
         ):
             self._auto_launch_camera_streams = True
 
-    def _handle_found_cameras_response(
-        self, found_cameras_response: FoundCamerasResponse
-    ):
+    def _handle_found_cameras_response(self, found_cameras_response: FoundCamerasResponse):
         APP_STATE.available_cameras = found_cameras_response.cameras_found_list
-        self._control_panel.camera_setup_control_panel.handle_found_cameras_response(
-            found_cameras_response
-        )
+        self._control_panel.camera_setup_control_panel.handle_found_cameras_response(found_cameras_response)
 
         if self._auto_launch_camera_streams:
             self._auto_launch_camera_streams = False
@@ -561,14 +501,10 @@ class MainWindow(QMainWindow):
             raise e
         self._thread_worker_manager.launch_detect_cameras_worker()
 
-    def _apply_settings_and_launch_camera_threads(
-        self, pop_out_camera_windows: bool = False
-    ):
+    def _apply_settings_and_launch_camera_threads(self, pop_out_camera_windows: bool = False):
         logger.info("Applying settings and launching camera threads")
 
-        self._control_panel.camera_setup_control_panel.pop_out_cameras_button.setEnabled(
-            True
-        )
+        self._control_panel.camera_setup_control_panel.pop_out_cameras_button.setEnabled(True)
 
         try:
             self._middle_viewing_panel.camera_stream_grid_view.close_camera_widgets()
@@ -582,12 +518,8 @@ class MainWindow(QMainWindow):
 
         self._cameras_are_popped_out = pop_out_camera_windows
 
-        self._control_panel.camera_setup_control_panel.pop_out_cameras_button.setEnabled(
-            not pop_out_camera_windows
-        )
-        self._control_panel.camera_setup_control_panel.dock_cameras_button.setEnabled(
-            pop_out_camera_windows
-        )
+        self._control_panel.camera_setup_control_panel.pop_out_cameras_button.setEnabled(not pop_out_camera_windows)
+        self._control_panel.camera_setup_control_panel.dock_cameras_button.setEnabled(pop_out_camera_windows)
 
         self._middle_viewing_panel.camera_stream_grid_view.create_and_start_camera_widgets(
             dictionary_of_webcam_configs=dictionary_of_webcam_configs,
@@ -609,16 +541,12 @@ class MainWindow(QMainWindow):
         panel.change_button_states_on_record_stop()
         self._middle_viewing_panel.camera_stream_grid_view.stop_recording_videos()
 
-        dictionary_of_video_recorders = (
-            self._middle_viewing_panel.camera_stream_grid_view.gather_video_recorders()
-        )
+        dictionary_of_video_recorders = self._middle_viewing_panel.camera_stream_grid_view.gather_video_recorders()
 
         if calibration_videos:
             folder_to_save_videos = get_calibration_videos_folder_path(self._session_id)
         else:
-            folder_to_save_videos = get_synchronized_videos_folder_path(
-                self._session_id
-            )
+            folder_to_save_videos = get_synchronized_videos_folder_path(self._session_id)
 
         self._thread_worker_manager.launch_save_videos_thread_worker(
             folder_to_save_videos=folder_to_save_videos,
@@ -630,20 +558,14 @@ class MainWindow(QMainWindow):
         self._middle_viewing_panel.camera_stream_grid_view.reset_video_recorders()
 
         if calibration_videos:
-            if (
-                self._control_panel.calibrate_capture_volume_panel.process_recording_automatically_checkbox.isChecked()
-            ):
+            if self._control_panel.calibrate_capture_volume_panel.process_recording_automatically_checkbox.isChecked():
                 self._setup_and_launch_anipose_calibration_thread_worker()
         else:  # mocap videos
-            if (
-                self._control_panel.motion_capture_panel.process_recording_automatically_checkbox.isChecked()
-            ):
+            if self._control_panel.motion_capture_panel.process_recording_automatically_checkbox.isChecked():
                 self._fully_process_mocap_videos()
 
     def _setup_and_launch_anipose_calibration_thread_worker(self):
-        calibration_videos_folder_path = get_calibration_videos_folder_path(
-            self._session_id
-        )
+        calibration_videos_folder_path = get_calibration_videos_folder_path(self._session_id)
         if (
             not Path(calibration_videos_folder_path).exists()
             or len(list(Path(calibration_videos_folder_path).glob("*.mp4"))) == 0
@@ -672,9 +594,7 @@ class MainWindow(QMainWindow):
 
     def _get_user_specified_charuco_definition(self):
         charuco_board_definition = CharucoBoardDefinition()
-        user_charuco_selection = (
-            self._control_panel.calibrate_capture_volume_panel.charuco_combo_box_selection
-        )
+        user_charuco_selection = self._control_panel.calibrate_capture_volume_panel.charuco_combo_box_selection
 
         if user_charuco_selection == "Default (3x5 squares)":
             charuco_board_definition.number_of_squares_width = 5
@@ -687,16 +607,10 @@ class MainWindow(QMainWindow):
 
     def _fully_process_mocap_videos(self):
         self._auto_process_next_stage = True
-        self._setup_and_launch_mediapipe_2d_detection_thread_worker(
-            auto_process_next_stage=True
-        )
+        self._setup_and_launch_mediapipe_2d_detection_thread_worker(auto_process_next_stage=True)
 
-    def _setup_and_launch_mediapipe_2d_detection_thread_worker(
-        self, auto_process_next_stage: bool = False
-    ):
-        synchronized_videos_folder_path = get_synchronized_videos_folder_path(
-            self._session_id
-        )
+    def _setup_and_launch_mediapipe_2d_detection_thread_worker(self, auto_process_next_stage: bool = False):
+        synchronized_videos_folder_path = get_synchronized_videos_folder_path(self._session_id)
         raw_data_folder_path = get_raw_data_folder_path(self._session_id)
         self._thread_worker_manager.launch_detect_2d_skeletons_thread_worker(
             synchronized_videos_folder_path=synchronized_videos_folder_path,
@@ -704,27 +618,18 @@ class MainWindow(QMainWindow):
             auto_process_next_stage=auto_process_next_stage,
         )
 
-    def _setup_and_launch_triangulate_3d_thread_worker(
-        self, auto_process_next_stage: bool = False
-    ):
-        if (
-            self._control_panel.calibrate_capture_volume_panel.use_previous_calibration_box_is_checked
-        ):
+    def _setup_and_launch_triangulate_3d_thread_worker(self, auto_process_next_stage: bool = False):
+        if self._control_panel.calibrate_capture_volume_panel.use_previous_calibration_box_is_checked:
 
             anipose_calibration_object = load_most_recent_anipose_calibration_toml(
                 get_session_folder_path(self._session_id)
             )
 
             calibration_toml_filename = f"camera_calibration_data.toml"
-            camera_calibration_toml_path = (
-                Path(get_session_folder_path(self._session_id))
-                / calibration_toml_filename
-            )
+            camera_calibration_toml_path = Path(get_session_folder_path(self._session_id)) / calibration_toml_filename
             anipose_calibration_object.dump(camera_calibration_toml_path)
 
-        elif (
-            self._control_panel.calibrate_capture_volume_panel.load_camera_calibration_checkbox_is_checked
-        ):
+        elif self._control_panel.calibrate_capture_volume_panel.load_camera_calibration_checkbox_is_checked:
             anipose_calibration_object = load_anipose_calibration_toml_from_path(
                 self._control_panel.calibrate_capture_volume_panel.user_selected_calibration_toml_path,
                 get_session_folder_path(self._session_id),
@@ -752,15 +657,11 @@ class MainWindow(QMainWindow):
             use_triangulate_ransac=self._control_panel.process_session_data_panel.use_triangulate_ransac_checkbox.isChecked(),
         )
 
-    def _setup_and_launch_gap_fill_filter_origin_align_thread_worker(
-        self, auto_process_next_stage: bool = False
-    ):
+    def _setup_and_launch_gap_fill_filter_origin_align_thread_worker(self, auto_process_next_stage: bool = False):
         output_data_folder_path = Path(get_output_data_folder_path(self._session_id))
 
         skel3d_frame_marker_xyz = load_raw_mediapipe3d_data(output_data_folder_path)
-        skeleton_reprojection_error_fr_mar = load_skeleton_reprojection_error_data(
-            output_data_folder_path
-        )
+        skeleton_reprojection_error_fr_mar = load_skeleton_reprojection_error_data(output_data_folder_path)
 
         data_save_path = output_data_folder_path / PARTIALLY_PROCESSED_DATA_FOLDER_NAME
         data_save_path.mkdir(exist_ok=True)
@@ -780,9 +681,7 @@ class MainWindow(QMainWindow):
             auto_process_next_stage=auto_process_next_stage,
         )
 
-    def _setup_and_launch_convert_npy_to_csv_thread_worker(
-        self, auto_process_next_stage: bool = False
-    ):
+    def _setup_and_launch_convert_npy_to_csv_thread_worker(self, auto_process_next_stage: bool = False):
         logger.info("Launching convert npy to csv thread worker")
 
         output_data_folder_path = Path(get_output_data_folder_path(self._session_id))
@@ -791,9 +690,7 @@ class MainWindow(QMainWindow):
             / PARTIALLY_PROCESSED_DATA_FOLDER_NAME
             / MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
         )
-        skel3d_frame_marker_xyz = load_post_processed_mediapipe3d_data(
-            mediapipe3d_xyz_file_path
-        )
+        skel3d_frame_marker_xyz = load_post_processed_mediapipe3d_data(mediapipe3d_xyz_file_path)
 
         self._thread_worker_manager.launch_convert_npy_to_csv_thread_worker(
             skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
@@ -825,9 +722,7 @@ class MainWindow(QMainWindow):
             blender_exe_path=self._control_panel.visualize_session_data_panel.blender_exe_path_str,
         )
 
-        if (
-            self._control_panel.process_session_data_panel.open_in_blender_automatically_checkbox.isChecked()
-        ):
+        if self._control_panel.process_session_data_panel.open_in_blender_automatically_checkbox.isChecked():
             if blender_file_path:
                 self._open_blender_file(blender_file_path)
 
@@ -844,7 +739,7 @@ class MainWindow(QMainWindow):
         os.startfile(str(blender_file_path))
 
     def _visualize_motion_capture_data(self):
-        logger.info("Loading data for visualization...")
+        logger.info("Loading data for export_data...")
 
         skeleton_3d_npy = load_post_processed_mediapipe3d_data(
             Path(get_output_data_folder_path(self._session_id))
@@ -852,9 +747,7 @@ class MainWindow(QMainWindow):
             / MEDIAPIPE_3D_ORIGIN_ALIGNED_NPY_FILE_NAME
         )
 
-        video_path_iterator = Path(
-            get_annotated_videos_folder_path(self._session_id)
-        ).glob("*.mp4".lower())
+        video_path_iterator = Path(get_annotated_videos_folder_path(self._session_id)).glob("*.mp4".lower())
         list_of_video_paths = [str(video_path) for video_path in video_path_iterator]
 
         dictionary_of_video_image_update_callbacks = (
@@ -878,12 +771,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
 
-        if (
-            self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked()
-        ):
-            pipedream_ping_dict = (
-                self._thread_worker_manager.session_progress_dictionary
-            )
+        if self._middle_viewing_panel.welcome_create_or_load_session_panel.send_pings_checkbox.isChecked():
+            pipedream_ping_dict = self._thread_worker_manager.session_progress_dictionary
             if Path(get_blender_file_path(self._session_id)).exists():
                 pipedream_ping_dict["blender_file_created"] = True
             else:
@@ -903,18 +792,12 @@ class MainWindow(QMainWindow):
             else:
                 try:
                     session_log_path = (
-                        str(
-                            Path(get_session_folder_path(self._session_id))
-                            / self._session_id
-                        )
-                        + "_log.log"
+                        str(Path(get_session_folder_path(self._session_id)) / self._session_id) + "_log.log"
                     )
                     logger.info(
                         f"Trying to copy log file from {LOG_FILE_PATH} as session log file: {session_log_path}..."
                     )
-                    shutil.copy2(
-                        LOG_FILE_PATH, get_session_folder_path(self._session_id)
-                    )
+                    shutil.copy2(LOG_FILE_PATH, get_session_folder_path(self._session_id))
                 except Exception as e:
                     logger.error(f"Something went wrong copying the log file")
                     print(e)

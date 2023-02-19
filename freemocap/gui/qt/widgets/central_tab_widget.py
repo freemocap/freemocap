@@ -65,6 +65,6 @@ class CentralTabWidget(QTabWidget):
         self._camera_view_layout.addWidget(self._skelly_cam_widget)
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):
-        logger.info("Creating visualization tab")
+        logger.info("Creating export_data tab")
         tab_widget.addTab(self._skelly_viewer_widget, f"Skelly Viewer {EYES_EMOJI_STRING}")
         # tab_widget.setToolTip(skelly_viewer.__repo_url__)

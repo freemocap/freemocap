@@ -28,16 +28,12 @@ try:
     print(f" user specified `good clean frame number`: {good_clean_frame_number}")
 except Exception as e:
     print(e)
-    print(
-        "we appear to be running from the Blender Scripting tab! Manually enter your `session_path` at line 23"
-    )
+    print("we appear to be running from the Blender Scripting tab! Manually enter your `session_path` at line 23")
     # TODO - This should point to some kinda online-hosted demo session data or something
     session_path = Path(
         r"D:\Dropbox\FreeMoCapProject\teddy_animation\FreeMocap_Data\sesh_2022-10-01_13_38_04_paul_dance_2"
     )
-    good_clean_frame_number = (
-        0  # pick a frame where subject is in a good pose (e.g. T- or A-pose
-    )
+    good_clean_frame_number = 0  # pick a frame where subject is in a good pose (e.g. T- or A-pose
 
 ############
 ## Define some things that we'll need later
@@ -323,9 +319,7 @@ def apply_constraints_to_bone(bone_name: str, bone_constraint_dict: dict, armatu
         constraint_name = constraint_name.split(".")[
             0
         ]  # for duplicated constraints, named `[constraint_name].001`, etc
-        print(
-            f"constraint: {constraint_name} with parameters:{constrain_parameters_dict}"
-        )
+        print(f"constraint: {constraint_name} with parameters:{constrain_parameters_dict}")
 
         bone = armature_rig.pose.bones[bone_name]
         print(f"bone: {bone.name}")
@@ -409,9 +403,7 @@ def create_virtual_marker(
 
     for trajectory_number, trajectory_name in enumerate(component_trajectory_names):
         # pull out the trajectory data for this component trajectory
-        component_trajectory_xyz = trajectory_3d_frame_marker_xyz[
-            :, all_trajectory_names.index(trajectory_name), :
-        ]
+        component_trajectory_xyz = trajectory_3d_frame_marker_xyz[:, all_trajectory_names.index(trajectory_name), :]
 
         # scale it by its weight
         component_trajectory_xyz *= trajectory_weights[trajectory_number]
@@ -432,9 +424,7 @@ def put_sphere_meshes_on_empties(
     """
 
     for empty_name in empty_names_list:
-        bpy.ops.mesh.primitive_uv_sphere_add(
-            segments=8, ring_count=8, scale=(sphere_scale, sphere_scale, sphere_scale)
-        )
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=8, scale=(sphere_scale, sphere_scale, sphere_scale))
         sphere = bpy.context.active_object
         sphere.name = f"{empty_name}_sphere"
         sphere.parent = parent_object
@@ -507,12 +497,8 @@ def find_good_clean_frame_reprojection_error_method(
     )
 
     nans_per_frame = np.sum(np.isnan(skeleton_3d_fr_mar_xyz[:, :, 0]), axis=1)
-    reprojection_error_per_frame = np.nanmedian(
-        skeleton_reprojection_error_fr_mar, axis=1
-    )
-    marker_velocity_per_frame = np.nanmedian(
-        np.abs(np.diff(skeleton_3d_fr_mar_xyz, axis=1)), axis=1
-    )
+    reprojection_error_per_frame = np.nanmedian(skeleton_reprojection_error_fr_mar, axis=1)
+    marker_velocity_per_frame = np.nanmedian(np.abs(np.diff(skeleton_3d_fr_mar_xyz, axis=1)), axis=1)
     marker_velocity_per_frame = np.nanmean(np.abs(marker_velocity_per_frame), axis=1)
 
     print(f"nans_per_frame.shape: {nans_per_frame.shape}")
@@ -521,12 +507,8 @@ def find_good_clean_frame_reprojection_error_method(
 
     # normalize errors by relevant thing
     nans_per_frame_normalized = nans_per_frame / skeleton_3d_fr_mar_xyz.shape[1]
-    reprojection_error_per_frame_normalized = (
-        reprojection_error_per_frame / np.nanmedian(reprojection_error_per_frame)
-    )
-    marker_velocity_per_frame_normalized = marker_velocity_per_frame / np.nanmedian(
-        marker_velocity_per_frame
-    )
+    reprojection_error_per_frame_normalized = reprojection_error_per_frame / np.nanmedian(reprojection_error_per_frame)
+    marker_velocity_per_frame_normalized = marker_velocity_per_frame / np.nanmedian(marker_velocity_per_frame)
 
     print(
         f"nans_per_frame_normalized (mean, [standard_deviation] : {np.nanmean(nans_per_frame_normalized):.3f} [{np.nanstd(nans_per_frame_normalized):.3f}]"
@@ -539,14 +521,10 @@ def find_good_clean_frame_reprojection_error_method(
     )
 
     frame_cleanliness_score_where_low_scores_are_good = (
-        nans_per_frame_normalized
-        + reprojection_error_per_frame_normalized
-        + marker_velocity_per_frame_normalized
+        nans_per_frame_normalized + reprojection_error_per_frame_normalized + marker_velocity_per_frame_normalized
     )
 
-    good_clean_frame_number = np.nanargmin(
-        frame_cleanliness_score_where_low_scores_are_good
-    )
+    good_clean_frame_number = np.nanargmin(frame_cleanliness_score_where_low_scores_are_good)
     print(f"----estimated good_clean_frame_number: {good_clean_frame_number}----")
     return good_clean_frame_number
 
@@ -581,38 +559,26 @@ if Path(session_path / "output_data").exists():  # freemocap version > v0.0.54
     path_to_data_arrays_folder = session_path / "output_data"
     path_to_body_npy = path_to_data_arrays_folder / "mediapipe_body_3d_xyz.npy"
     path_to_reprojection_error_npy = (
-        path_to_data_arrays_folder
-        / "raw_data"
-        / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+        path_to_data_arrays_folder / "raw_data" / "mediapipe_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
     )
     mediapipe_skel_fr_mar_xyz = np.load(str(path_to_body_npy))
     mediapipe_reprojection_error_fr_mar = np.load(str(path_to_reprojection_error_npy))
 
 else:
-    path_to_data_arrays_folder = (
-        session_path / "DataArrays"
-    )  # freemocap version <= v0.0.54
-    if Path(
-        path_to_data_arrays_folder / "mediapipe_body_3d_xyz.npy"
-    ).exists():  # data has been 'post processed'
+    path_to_data_arrays_folder = session_path / "DataArrays"  # freemocap version <= v0.0.54
+    if Path(path_to_data_arrays_folder / "mediapipe_body_3d_xyz.npy").exists():  # data has been 'post processed'
         path_to_body_npy = path_to_data_arrays_folder / "mediapipe_body_3d_xyz.npy"
     else:
-        path_to_body_npy = (
-            path_to_data_arrays_folder / "mediaPipeSkel_3d_smoothed.npy.npy"
-        )
+        path_to_body_npy = path_to_data_arrays_folder / "mediaPipeSkel_3d_smoothed.npy.npy"
 
-    path_to_reprojection_error_npy = (
-        path_to_data_arrays_folder / "mediaPipeSkel_reprojErr.npy"
-    )
+    path_to_reprojection_error_npy = path_to_data_arrays_folder / "mediaPipeSkel_reprojErr.npy"
 
     print(f"Loading mediapipe data from {path_to_body_npy}")
 
     mediapipe_skel_fr_mar_xyz = np.load(str(path_to_body_npy))
     mediapipe_reprojection_error_fr_mar = np.load(str(path_to_reprojection_error_npy))
 
-    mediapipe_skel_fr_mar_xyz = mediapipe_skel_fr_mar_xyz[
-        :, :33, :
-    ]  # remove the hand and face markers
+    mediapipe_skel_fr_mar_xyz = mediapipe_skel_fr_mar_xyz[:, :33, :]  # remove the hand and face markers
     mediapipe_reprojection_error_fr_mar = mediapipe_reprojection_error_fr_mar[
         :, :33
     ]  # remove the hand and face markers
@@ -622,9 +588,7 @@ else:
 mediapipe_skel_fr_mar_xyz = mediapipe_skel_fr_mar_xyz / 1000  # convert to meters
 number_of_frames = mediapipe_skel_fr_mar_xyz.shape[0]
 print(f"mediapipe_skel_fr_mar_dim.shape: {mediapipe_skel_fr_mar_xyz.shape}")
-print(
-    f"mediapipe_reprojection_error_fr_mar.shape: {mediapipe_reprojection_error_fr_mar.shape}"
-)
+print(f"mediapipe_reprojection_error_fr_mar.shape: {mediapipe_reprojection_error_fr_mar.shape}")
 
 # get video paths (running through all iterations of our folder names
 if Path(session_path / "annotated_videos").is_dir():
@@ -639,21 +603,15 @@ else:
     print("Couldn't find a video folder")
 
 # load skeleton segment lengths
-path_to_segment_length_json = (
-    path_to_data_arrays_folder / "skeleton_segment_lengths.json"
-)
+path_to_segment_length_json = path_to_data_arrays_folder / "mediapipe_skeleton_segment_lengths.json"
 try:
-    print(
-        f"loading skeleton segment lengths from `json` at - {str(path_to_segment_length_json)}"
-    )
+    print(f"loading skeleton segment lengths from `json` at - {str(path_to_segment_length_json)}")
     f = open(path_to_segment_length_json)
     skeleton_segment_lengths_dict = json.load(f)
     f.close()
 except Exception as e:
     print(e)
-    print(
-        f"Failed to load skeleton segment lengths from `json` at : {str(path_to_segment_length_json)}"
-    )
+    print(f"Failed to load skeleton segment lengths from `json` at : {str(path_to_segment_length_json)}")
     skeleton_segment_lengths_dict = None
 
 #########################
@@ -665,7 +623,9 @@ world_origin_axes.name = "world_origin"  # will stay at origin
 
 bpy.ops.object.empty_add(type="ARROWS")
 freemocap_origin_axes = bpy.context.active_object
-freemocap_origin_axes.name = "freemocap_origin_axes"  # will translate to put skelly on ground symmetric-ish about origin
+freemocap_origin_axes.name = (
+    "freemocap_origin_axes"  # will translate to put skelly on ground symmetric-ish about origin
+)
 
 ##############################
 # %% Set start and end frames
@@ -688,9 +648,7 @@ bpy.context.scene.frame_current = good_clean_frame_number
 ### Load body data as empty markers
 empty_scale = 0.01
 for trajectory_name in mediapipe_body_trajectory_names:
-    this_trajectory_fr_xyz = mediapipe_skel_fr_mar_xyz[
-        :, mediapipe_body_trajectory_names.index(trajectory_name), :
-    ]
+    this_trajectory_fr_xyz = mediapipe_skel_fr_mar_xyz[:, mediapipe_body_trajectory_names.index(trajectory_name), :]
     create_keyframed_empty_from_3d_trajectory_data(
         trajectory_fr_xyz=this_trajectory_fr_xyz,
         trajectory_name=trajectory_name,
@@ -864,9 +822,7 @@ try:
     for window in bpy.context.window_manager.windows:
         for area in window.screen.areas:  # iterate through areas in current screen
             if area.type == "VIEW_3D":
-                for (
-                    space
-                ) in area.spaces:  # iterate through spaces in current VIEW_3D area
+                for space in area.spaces:  # iterate through spaces in current VIEW_3D area
                     if space.type == "VIEW_3D":  # check if space is a 3D view
                         space.shading.type = "MATERIAL"
 except Exception as e:

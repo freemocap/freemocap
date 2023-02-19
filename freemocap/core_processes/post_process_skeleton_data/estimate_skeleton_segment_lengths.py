@@ -1,7 +1,5 @@
-import json
 import logging
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -123,16 +121,6 @@ def create_skeleton_dictionary_from_skeleton_body_data_frame(
         skeleton_data_dictionary, "chest_center", ["hips_center", "neck_center"]
     )
     return skeleton_data_dictionary
-
-
-def save_skeleton_segment_lengths_to_json(save_path: Union[Path, str], skeleton_segment_lengths_dict: dict):
-    logger.info("Saving skeleton segment lengths to JSON file...")
-    json_file_path = Path(save_path) / "skeleton_segment_lengths.json"
-
-    with open(json_file_path, "w") as file:
-        json.dump(skeleton_segment_lengths_dict, file, indent=4)
-
-    print(f"Saved skeleton segment lengths to: {json_file_path}")
 
 
 if __name__ == "__main__":

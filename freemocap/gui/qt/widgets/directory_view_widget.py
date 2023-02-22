@@ -33,7 +33,7 @@ class DirectoryViewWidget(QWidget):
         self._file_system_model = QFileSystemModel()
 
         self._tree_view_widget = QTreeView()
-        self._tree_view_widget.setHeaderHidden(True)
+        self._tree_view_widget.setHeaderHidden(False)
 
         self._layout.addWidget(self._tree_view_widget)
 

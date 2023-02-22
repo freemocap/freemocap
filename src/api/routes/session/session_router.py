@@ -80,9 +80,7 @@ async def create_session(
 
     create_session_folder(session_id)
 
-    return SessionResponse(
-        session_id=session_id, session_path=get_session_folder_path(session_id)
-    )
+    return SessionResponse(session_id=session_id, session_path=get_session_folder_path(session_id))
 
 
 @session_router.post("/session/calibrate")
@@ -143,9 +141,7 @@ def mediapipe_track_2D_skeletons_offline(
     else:
         this_session_id = session_id_model.session_id
 
-    logger.info(
-        f"tracking 2D mediapipe skeletons in videos from session: {this_session_id}"
-    )
+    logger.info(f"tracking 2D mediapipe skeletons in videos from session: {this_session_id}")
     mediapipe_skeleton_detector = MediaPipeSkeletonDetector(this_session_id)
     mediapipe_skeleton_detector.process_session_folder()
 
@@ -161,9 +157,7 @@ def mediapipe_reconstruct_3D_skeletons_offline(session_id_model: SessionIdModel 
     this_session_orchestrator.anipose_camera_calibration_object = (
         CalibrationPipelineOrchestrator().load_calibration_from_session_id(session_id)
     )
-    this_session_orchestrator.mediapipe2d_numCams_numFrames_numTrackedPoints_XY = (
-        load_mediapipe2d_data(session_id)
-    )
+    this_session_orchestrator.mediapipe2d_numCams_numFrames_numTrackedPoints_XY = load_mediapipe2d_data(session_id)
     this_session_orchestrator.reconstruct3d_from_2d_data_offline()
 
 
@@ -176,9 +170,7 @@ def visualize_session_offline(session_id_model: SessionIdModel = None):
 
     mediapipe3d_data_payload = load_mediapipe3d_skeleton_data(session_id)
 
-    mediapipe3d_skeleton_nFrames_nTrajectories_xyz = (
-        mediapipe3d_data_payload.data3d_numFrames_numTrackedPoints_XYZ
-    )
+    mediapipe3d_skeleton_nFrames_nTrajectories_xyz = mediapipe3d_data_payload.data3d_numFrames_numTrackedPoints_XYZ
     mediapipe3d_skeleton_nFrames_nTrajectories_reprojectionError = (
         mediapipe3d_data_payload.data3d_numFrames_numTrackedPoint_reprojectionError
     )
@@ -190,7 +182,7 @@ def visualize_session_offline(session_id_model: SessionIdModel = None):
 
 
 if __name__ == "__main__":
-    # # create_blend_file_from_session_data
+    # # call_blender_subprocess_megascript_take2
     # session_id_in = create_default_session_id('session_router_as_main')
     # session_id_model = SessionIdModel(session_id=session_id_in)
     #

@@ -36,14 +36,14 @@ if annotated_videos_path.is_dir():
 else:
     vidFolderPath = session_path / "synchronized_videos"
 
-path_to_segment_length_json = (
-    path_to_data_arrays_folder / "skeleton_segment_lengths.json"
-)
+path_to_segment_length_json = path_to_data_arrays_folder / "mediapipe_skeleton_segment_lengths.json"
 print(f" json path - {str(path_to_segment_length_json)}")
 f = open(path_to_segment_length_json)
 skeleton_segment_lengths_dict = json.load(f)
 
-path_to_mixamo_fbx = r"/Users/jon/Dropbox/FreeMoCapProject/teddy_animation/mixamo_binding_stuff/mixamo_mannequin_fbx_Ch36_nonPBR.fbx"
+path_to_mixamo_fbx = (
+    r"/Users/jon/Dropbox/FreeMoCapProject/teddy_animation/mixamo_binding_stuff/mixamo_mannequin_fbx_Ch36_nonPBR.fbx"
+)
 # path_to_mixamo_fbx = r"D:\Dropbox\FreeMoCapProject\teddy_animation\mixamo_binding_stuff\mixamo_mannequin_fbx_Ch36_nonPBR.fbx"
 
 #########################
@@ -55,7 +55,9 @@ world_origin_axes.name = "world_origin"  # will stay at origin
 
 bpy.ops.object.empty_add(type="ARROWS")
 freemocap_origin_axes = bpy.context.active_object
-freemocap_origin_axes.name = "freemocap_origin_axes"  # will translate to put skelly on ground symmetric-ish about origin
+freemocap_origin_axes.name = (
+    "freemocap_origin_axes"  # will translate to put skelly on ground symmetric-ish about origin
+)
 
 #####################
 ## Load nSynched Videos
@@ -196,10 +198,7 @@ print("creating virtual markers")
 left_ear_index = 7
 right_ear_index = 8
 print("head_center - midway between left and right ears")
-head_xyz = (
-    mediapipe_skel_fr_mar_dim[:, left_ear_index, :]
-    + mediapipe_skel_fr_mar_dim[:, right_ear_index, :]
-) / 2
+head_xyz = (mediapipe_skel_fr_mar_dim[:, left_ear_index, :] + mediapipe_skel_fr_mar_dim[:, right_ear_index, :]) / 2
 bpy.ops.object.empty_add(type="SPHERE")
 this_empty = bpy.context.active_object
 this_empty.name = "head_center"
@@ -218,8 +217,7 @@ print("neck_center - midway between left and right shoulders")
 left_shoulder_index = 11
 right_shoulder_index = 12
 neck_xyz = (
-    mediapipe_skel_fr_mar_dim[:, left_shoulder_index, :]
-    + mediapipe_skel_fr_mar_dim[:, right_shoulder_index, :]
+    mediapipe_skel_fr_mar_dim[:, left_shoulder_index, :] + mediapipe_skel_fr_mar_dim[:, right_shoulder_index, :]
 ) / 2
 bpy.ops.object.empty_add(type="PLAIN_AXES")
 this_empty = bpy.context.active_object
@@ -238,10 +236,7 @@ for frame_num in range(end_frame):
 print("hip_center - midway between left and right hips")
 left_hip_index = 23
 right_hip_index = 24
-hips_xyz = (
-    mediapipe_skel_fr_mar_dim[:, left_hip_index, :]
-    + mediapipe_skel_fr_mar_dim[:, right_hip_index, :]
-) / 2
+hips_xyz = (mediapipe_skel_fr_mar_dim[:, left_hip_index, :] + mediapipe_skel_fr_mar_dim[:, right_hip_index, :]) / 2
 bpy.ops.object.empty_add(type="PLAIN_AXES")
 this_empty = bpy.context.active_object
 this_empty.name = "hip_center"
@@ -313,15 +308,10 @@ for (
     segment_name,
     mixamo_bones_list,
 ) in mixamo_bone_to_skeleton_segment_name_correspondance.items():
-    print(
-        f"segment: {segment_name}, length: {skeleton_segment_lengths_dict[segment_name]['median']}mm"
-    )
+    print(f"segment: {segment_name}, length: {skeleton_segment_lengths_dict[segment_name]['median']}mm")
 
     for mixamo_bone in mixamo_bones_list:
-        segment_length = (
-            skeleton_segment_lengths_dict[segment_name]["median"]
-            / len(mixamo_bones_list)
-        ) * 0.001
+        segment_length = (skeleton_segment_lengths_dict[segment_name]["median"] / len(mixamo_bones_list)) * 0.001
         print(f"setting: {mixamo_bone} length to: {segment_length} m")
         armature.data.edit_bones[f"{rig_name}:{mixamo_bone}"].length = segment_length
 
@@ -412,9 +402,7 @@ rig_constraint_dict_of_dicts_og = {
 ### Pre-pend `rig_name` or whatever to bone names
 rig_constraint_dict_of_dicts = {}
 for key in rig_constraint_dict_of_dicts_og.keys():
-    rig_constraint_dict_of_dicts[f"{rig_name}:{key}"] = rig_constraint_dict_of_dicts_og[
-        key
-    ]
+    rig_constraint_dict_of_dicts[f"{rig_name}:{key}"] = rig_constraint_dict_of_dicts_og[key]
 
 ####
 #### Constrain bones to empties
@@ -433,9 +421,7 @@ for this_bone_name, this_bone_dict in rig_constraint_dict_of_dicts.items():
         this_constraint_name,
         this_constraint_target_empty_name,
     ) in this_bone_dict.items():
-        print(
-            f"constraint: {this_constraint_name} with target:{this_constraint_target_empty_name}"
-        )
+        print(f"constraint: {this_constraint_name} with target:{this_constraint_target_empty_name}")
         print("grab bone")
         this_bone = armature.pose.bones[this_bone_name]
         print("apply bone")

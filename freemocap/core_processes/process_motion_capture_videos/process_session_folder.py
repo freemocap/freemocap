@@ -3,6 +3,9 @@ from pathlib import Path
 
 import pandas as pd
 
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
+    mediapipe_names_and_connections_dict,
+)
 from freemocap.system.paths_and_files_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
@@ -22,7 +25,6 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.medi
 from freemocap.core_processes.post_process_skeleton_data.estimate_skeleton_segment_lengths import (
     estimate_skeleton_segment_lengths,
     mediapipe_skeleton_segment_definitions,
-    save_skeleton_segment_lengths_to_json,
 )
 from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import (
     gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass,
@@ -33,6 +35,7 @@ from freemocap.tests.test_mediapipe_2d_data_shape import (
     test_mediapipe_2d_data_shape,
 )
 from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
+from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +92,7 @@ def process_session_folder(
 
     assert test_mediapipe_3d_data_shape(
         synchronized_videos_folder=s.recording_info_model.synchronized_videos_folder_path,
-        mediapipe_3d_data_npy_path=s.recording_info_model.mediapipe_3d_data_npy_file_path,
+        mediapipe_3d_data_npy_path=s.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
         medipipe_reprojection_error_data_npy_path=s.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
     )
 
@@ -103,6 +106,11 @@ def process_session_folder(
         cut_off=s.post_processing_parameters_model.butterworth_filter_parameters.cutoff_frequency,
         order=s.post_processing_parameters_model.butterworth_filter_parameters.order,
         reference_frame_number=None,
+    )
+    assert test_mediapipe_3d_data_shape(
+        synchronized_videos_folder=s.recording_info_model.synchronized_videos_folder_path,
+        mediapipe_3d_data_npy_path=s.recording_info_model.mediapipe_3d_data_npy_file_path,
+        medipipe_reprojection_error_data_npy_path=s.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
     )
 
     logger.info("Breaking up big `npy` into smaller bits and converting to `csv`...")
@@ -123,9 +131,15 @@ def process_session_folder(
         skeleton_segment_definitions=mediapipe_skeleton_segment_definitions,
     )
 
-    save_skeleton_segment_lengths_to_json(
-        s.recording_info_model.output_data_folder_path,
-        skeleton_segment_lengths_dict,
+    save_dictionary_to_json(
+        save_path=s.recording_info_model.output_data_folder_path,
+        file_name="mediapipe_skeleton_segment_lengths.json",
+        dictionary=skeleton_segment_lengths_dict,
+    )
+    save_dictionary_to_json(
+        save_path=s.recording_info_model.output_data_folder_path,
+        file_name="mediapipe_names_and_connections_dict.json",
+        dictionary=mediapipe_names_and_connections_dict,
     )
 
 

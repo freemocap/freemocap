@@ -3,7 +3,7 @@ import threading
 from pathlib import Path
 from typing import Callable
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt
 from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
@@ -45,10 +45,13 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
 
         self._layout = QVBoxLayout()
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.setLayout(self._layout)
 
+        calibration_group_box = QGroupBox("Select Capture Volume Calibration:")
         vbox = QVBoxLayout()
-        self._layout.addLayout(vbox)
+        calibration_group_box.setLayout(vbox)
+        self._layout.addWidget(calibration_group_box)
 
         self._calibration_control_panel = CalibrationControlPanel(
             get_active_recording_info_callable=self._get_active_recording_info,

@@ -3,15 +3,20 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QVBoxLayout,
     QWidget,
-    QToolBox,
+    QTabWidget,
 )
 from skellycam import SkellyCamParameterTreeWidget
 
-from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import (
-    CalibrationControlPanel,
-)
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
+)
+from freemocap.system.paths_and_files_names import (
+    HAMMER_AND_WRENCH_EMOJI_STRING,
+    CAMERA_WITH_FLASH_EMOJI_STRING,
+    THREE_HEARTS_EMOJI_STRING,
+    ROBOT_EMOJI_STRING,
+    WIND_EMOJI_STRING,
+    SPARKLES_EMOJI_STRING,
 )
 
 
@@ -29,7 +34,7 @@ class ControlPanelDockWidget(QDockWidget):
 
     @property
     def tool_box(self):
-        return self._control_panel_widget.tool_box
+        return self._control_panel_widget.tab_widget
 
 
 class ControlPanelWidget(QWidget):
@@ -46,21 +51,22 @@ class ControlPanelWidget(QWidget):
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
-        self._tool_box = QToolBox(parent=self)
-        self._layout.addWidget(self._tool_box)
+        self._tab_widget = QTabWidget(parent=self)
+        self._layout.addWidget(self._tab_widget)
 
-        self._tool_box.addItem(camera_configuration_parameter_tree_widget, "Camera Configuration")
-        # self._tool_box.addItem(calibration_control_panel, "Capture Volume Calibration")
-        self._tool_box.addItem(process_motion_capture_data_panel, "Process Motion Capture Data")
-        self._tool_box.addItem(visualize_data_widget, "Visualize Motion Capture Data")
+        self._tab_widget.addTab(
+            camera_configuration_parameter_tree_widget,
+            f"Camera Config {CAMERA_WITH_FLASH_EMOJI_STRING}{HAMMER_AND_WRENCH_EMOJI_STRING}",
+        )
+        # self._tool_box.addTab(calibration_control_panel, "Capture Volume Calibration")
+        self._tab_widget.addTab(
+            process_motion_capture_data_panel, f"Process MoCap Data {ROBOT_EMOJI_STRING}{THREE_HEARTS_EMOJI_STRING}"
+        )
+        self._tab_widget.addTab(visualize_data_widget, f"Export Data {WIND_EMOJI_STRING}{SPARKLES_EMOJI_STRING}")
 
-        self._tool_box.setProperty("disabled_appearance", True)
-        self.style().polish(self._tool_box)
+        self._tab_widget.setProperty("control_panel_tabs", True)
+        self.style().polish(self._tab_widget)
 
     @property
-    def tool_box(self):
-        return self._tool_box
-
-    def set_up_tool_box_appearance(self):
-        self._tool_box.setProperty("disabled_appearance", False)
-        self.style().polish(self._tool_box)
+    def tab_widget(self):
+        return self._tab_widget

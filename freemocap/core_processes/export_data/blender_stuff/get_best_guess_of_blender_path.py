@@ -28,9 +28,7 @@ def get_best_guess_of_blender_path():
                 blender_exe_path = guess_blender_exe_path_from_path(base_path)
 
         if blender_exe_path is not None and blender_exe_path.is_file():
-            logger.info(
-                f"Windows machine detected - guessing that `blender` is installed at: {str(blender_exe_path)}"
-            )
+            logger.info(f"Windows machine detected - guessing that `blender` is installed at: {str(blender_exe_path)}")
 
             return str(blender_exe_path)
         else:
@@ -40,7 +38,5 @@ def get_best_guess_of_blender_path():
             return None
 
     else:
-        logger.info(
-            f"Non-Windows machine detected - TODO - Test how this works on Mac/Linux"
-        )
+        logger.info(f"Non-Windows machine detected - TODO - Test how this works on Mac/Linux")
         return None

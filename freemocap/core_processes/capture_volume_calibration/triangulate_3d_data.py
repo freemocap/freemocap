@@ -5,7 +5,7 @@ from typing import Union
 import numpy as np
 
 from freemocap.system.paths_and_files_names import (
-    MEDIAPIPE_3D_NPY_FILE_NAME,
+    RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
 )
 
@@ -148,7 +148,7 @@ def save_mediapipe_3d_data_to_npy(
 ):
     path_to_folder_where_data_will_be_saved = Path(path_to_folder_where_data_will_be_saved)
     Path(path_to_folder_where_data_will_be_saved).mkdir(parents=True, exist_ok=True)  # save spatial XYZ data
-    mediapipe_3dData_save_path = path_to_folder_where_data_will_be_saved / MEDIAPIPE_3D_NPY_FILE_NAME
+    mediapipe_3dData_save_path = path_to_folder_where_data_will_be_saved / RAW_MEDIAPIPE_3D_NPY_FILE_NAME
 
     logger.info(f"saving: {mediapipe_3dData_save_path}")
     np.save(str(mediapipe_3dData_save_path), data3d_numFrames_numTrackedPoints_XYZ)

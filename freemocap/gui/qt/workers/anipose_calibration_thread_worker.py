@@ -50,25 +50,15 @@ class AniposeCalibrationThreadWorker(QThread):
 
         try:
 
-            task = asyncio.create_task(
-                run_anipose_capture_volume_calibration(
-                    charuco_board_definition=self._charuco_board_definition,
-                    charuco_square_size=self._charuco_square_size,
-                    calibration_videos_folder_path=self._calibration_videos_folder_path,
-                    pin_camera_0_to_origin=True,
-                    progress_callback=self._emit_in_progress_data,
-                )
+
+            run_anipose_capture_volume_calibration(
+                charuco_board_definition=self._charuco_board_definition,
+                charuco_square_size=self._charuco_square_size,
+                calibration_videos_folder_path=self._calibration_videos_folder_path,
+                pin_camera_0_to_origin=True,
+                progress_callback=self._emit_in_progress_data,
             )
 
-            while True:
-                asyncio.sleep(.001)
-                print('hello')
-                if self._kill_thread_event.is_set():
-                    task.cancel()
-                    logger.info("Anipose calibration thread -  cancelled")
-                    break
-                else:
-                    pass
 
 
         except Exception as e:

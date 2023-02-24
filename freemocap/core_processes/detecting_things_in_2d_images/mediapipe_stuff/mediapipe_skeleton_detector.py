@@ -10,11 +10,12 @@ from skellycam.detection.models.frame_payload import FramePayload
 from skellycam.opencv.video_recorder.video_recorder import VideoRecorder
 from tqdm import tqdm
 
-from freemocap.system.paths_and_files_names import MEDIAPIPE_2D_NPY_FILE_NAME, ANNOTATED_VIDEOS_FOLDER_NAME
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_tracked_point_names_dict,
 )
 from freemocap.parameter_info_models.recording_processing_parameter_models import MediapipeParametersModel
+from freemocap.system.paths_and_files_names import MEDIAPIPE_2D_NPY_FILE_NAME, ANNOTATED_VIDEOS_FOLDER_NAME, \
+    MEDIAPIPE_POSE_WORLD_FILE_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Mediapipe2dNumpyArrays:
     body2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
+    body_world_pose_3d_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
     rightHand2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
     leftHand2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
     face2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
@@ -72,8 +74,8 @@ class Mediapipe2dDataPayload:
 
 class MediaPipeSkeletonDetector:
     def __init__(
-        self,
-        parameter_model=MediapipeParametersModel(),
+            self,
+            parameter_model=MediapipeParametersModel(),
     ):
 
         self._mediapipe_payload_list = []
@@ -106,16 +108,16 @@ class MediaPipeSkeletonDetector:
         self.number_of_face_tracked_points = mp.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
 
         self.number_of_tracked_points_total = (
-            self.number_of_body_tracked_points
-            + self.number_of_left_hand_tracked_points
-            + self.number_of_right_hand_tracked_points
-            + self.number_of_face_tracked_points
+                self.number_of_body_tracked_points
+                + self.number_of_left_hand_tracked_points
+                + self.number_of_right_hand_tracked_points
+                + self.number_of_face_tracked_points
         )
 
     def detect_skeleton_in_image(
-        self,
-        raw_image: np.ndarray = None,
-        annotated_image: np.ndarray = None,
+            self,
+            raw_image: np.ndarray = None,
+            annotated_image: np.ndarray = None,
     ) -> Mediapipe2dDataPayload:
 
         mediapipe_results = self._holistic_tracker.process(
@@ -145,11 +147,11 @@ class MediaPipeSkeletonDetector:
         )
 
     def process_folder_full_of_videos(
-        self,
-        path_to_folder_of_videos_to_process: Union[Path, str],
-        output_data_folder_path: Union[str, Path],
-        save_annotated_videos: bool = True,
-    ) -> np.ndarray:
+            self,
+            path_to_folder_of_videos_to_process: Union[Path, str],
+            output_data_folder_path: Union[str, Path],
+            save_annotated_videos: bool = True,
+    ) -> (np.ndarray, np.ndarray):
 
         path_to_folder_of_videos_to_process = Path(path_to_folder_of_videos_to_process)
 
@@ -172,12 +174,12 @@ class MediaPipeSkeletonDetector:
             number_of_frames = int(video_capture_object.get(cv2.CAP_PROP_FRAME_COUNT))
 
             for frame_number in tqdm(
-                range(number_of_frames),
-                desc=f"mediapiping video: {synchronized_video_file_path.name}",
-                total=number_of_frames,
-                colour="magenta",
-                unit="frames",
-                dynamic_ncols=True,
+                    range(number_of_frames),
+                    desc=f"mediapiping video: {synchronized_video_file_path.name}",
+                    total=number_of_frames,
+                    colour="magenta",
+                    unit="frames",
+                    dynamic_ncols=True,
             ):
                 if not success or image is None:
                     logger.error(f"Failed to load an image from: {str(synchronized_video_file_path)}")
@@ -217,10 +219,16 @@ class MediaPipeSkeletonDetector:
             m2d.all_data2d_nFrames_nTrackedPts_XY for m2d in mediapipe2d_single_camera_npy_arrays_list
         ]
 
+        all_cameras_pose_world_data_list = [
+            m2d.body_world_pose_3d_frameNumber_trackedPointNumber_XYZ for m2d in mediapipe2d_single_camera_npy_arrays_list
+        ]
+
         number_of_cameras = len(all_cameras_data2d_list)
         number_of_frames = all_cameras_data2d_list[0].shape[0]
         number_of_tracked_points = all_cameras_data2d_list[0].shape[1]
         number_of_spatial_dimensions = all_cameras_data2d_list[0].shape[2]  # XY, 2d data
+
+        number_of_body_points = all_cameras_pose_world_data_list[0].shape[1]
 
         if not number_of_spatial_dimensions == 2:
             logger.error(f"this should be 2D data (XY pixel coordinates), but we founds {number_of_spatial_dimensions}")
@@ -235,26 +243,42 @@ class MediaPipeSkeletonDetector:
             )
         )
 
+        data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ = np.empty(
+            (
+                number_of_cameras,
+                number_of_frames,
+                number_of_tracked_points,
+                3,
+            )
+        )
+
         for cam_num in range(number_of_cameras):
             data2d_numCams_numFrames_numTrackedPts_XY[cam_num, :, :, :] = all_cameras_data2d_list[cam_num]
+            data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ[cam_num, :, :number_of_body_points, :] = all_cameras_pose_world_data_list[
+                cam_num]
 
-        mediapipe_data_2d_npy_path = self._save_mediapipe2d_data_to_npy(
+        self._save_mediapipe2d_data_to_npy(
             data2d_numCams_numFrames_numTrackedPts_XY=data2d_numCams_numFrames_numTrackedPts_XY,
+            data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ=data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ,
             output_data_folder_path=Path(output_data_folder_path),
         )
-        return data2d_numCams_numFrames_numTrackedPts_XY
+        return data2d_numCams_numFrames_numTrackedPts_XY, data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ
 
-    def _save_mediapipe2d_data_to_npy(
-        self,
-        data2d_numCams_numFrames_numTrackedPts_XY: np.ndarray,
-        output_data_folder_path: Union[str, Path],
-    ):
+    def _save_mediapipe2d_data_to_npy(self,
+                                      data2d_numCams_numFrames_numTrackedPts_XY: np.ndarray,
+                                      data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ: np.ndarray,
+                                      output_data_folder_path: Union[str, Path],
+                                      ):
         mediapipe_2dData_save_path = Path(output_data_folder_path) / MEDIAPIPE_2D_NPY_FILE_NAME
         mediapipe_2dData_save_path.parent.mkdir(exist_ok=True, parents=True)
         logger.info(f"saving: {mediapipe_2dData_save_path}")
         np.save(str(mediapipe_2dData_save_path), data2d_numCams_numFrames_numTrackedPts_XY)
 
-        return mediapipe_2dData_save_path
+        mediapipe_pose_world_save_path = Path(output_data_folder_path) / MEDIAPIPE_POSE_WORLD_FILE_NAME
+        mediapipe_pose_world_save_path.parent.mkdir(exist_ok=True, parents=True)
+        logger.info(f"saving: {mediapipe_pose_world_save_path}")
+        np.save(str(mediapipe_pose_world_save_path), data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ)
+
 
     def _annotate_image(self, image, mediapipe_results):
         self._mp_drawing.draw_landmarks(
@@ -295,10 +319,10 @@ class MediaPipeSkeletonDetector:
         return image
 
     def _list_of_mediapipe_results_to_npy_arrays(
-        self,
-        mediapipe_results_list: List,
-        image_width: Union[int, float],
-        image_height: Union[int, float],
+            self,
+            mediapipe_results_list: List,
+            image_width: Union[int, float],
+            image_height: Union[int, float],
     ) -> Mediapipe2dNumpyArrays:
 
         number_of_frames = len(mediapipe_results_list)
@@ -312,6 +336,15 @@ class MediaPipeSkeletonDetector:
             )
         )
         body2d_frameNumber_trackedPointNumber_XY[:] = np.nan
+
+        body_world_pose_3d_frameNumber_trackedPointNumber_XYZ = np.zeros(
+            (
+                number_of_frames,
+                self.number_of_body_tracked_points,
+                3,
+            )
+        )
+        body_world_pose_3d_frameNumber_trackedPointNumber_XYZ[:] = np.nan
 
         body2d_frameNumber_trackedPointNumber_confidence = np.zeros(
             (number_of_frames, self.number_of_body_tracked_points)
@@ -358,43 +391,55 @@ class MediaPipeSkeletonDetector:
 
                 for landmark_number, landmark_data in enumerate(frame_results.pose_landmarks.landmark):
                     body2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 0] = (
-                        landmark_data.x * image_width
+                            landmark_data.x * image_width
                     )
                     body2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 1] = (
-                        landmark_data.y * image_height
+                            landmark_data.y * image_height
                     )
                     body2d_frameNumber_trackedPointNumber_confidence[
                         frame_number, landmark_number
                     ] = landmark_data.visibility  # mediapipe calls their 'confidence' score 'visibility'
 
+                # get the world pose landmarks data
+                for landmark_number, landmark_data in enumerate(frame_results.pose_landmarks.landmark):  # could be `pose_world_landmarks`
+                    body_world_pose_3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
+                            landmark_data.x * image_width
+                    )
+                    body_world_pose_3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
+                            landmark_data.y * image_height
+                    )
+                    body_world_pose_3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
+                            0  # landmark_data.z * image_width
+                    )
+
             # get Right Hand data
             if frame_results.right_hand_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.right_hand_landmarks.landmark):
                     rightHand2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 0] = (
-                        landmark_data.x * image_width
+                            landmark_data.x * image_width
                     )
                     rightHand2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 1] = (
-                        landmark_data.y * image_height
+                            landmark_data.y * image_height
                     )
 
             # get Left Hand data
             if frame_results.left_hand_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.left_hand_landmarks.landmark):
                     leftHand2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 0] = (
-                        landmark_data.x * image_width
+                            landmark_data.x * image_width
                     )
                     leftHand2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 1] = (
-                        landmark_data.y * image_height
+                            landmark_data.y * image_height
                     )
 
             # get Face data
             if frame_results.face_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.face_landmarks.landmark):
                     face2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 0] = (
-                        landmark_data.x * image_width
+                            landmark_data.x * image_width
                     )
                     face2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 1] = (
-                        landmark_data.y * image_height
+                            landmark_data.y * image_height
                     )
 
             # check if all tracked points are visible on this frame
@@ -427,6 +472,7 @@ class MediaPipeSkeletonDetector:
 
         return Mediapipe2dNumpyArrays(
             body2d_frameNumber_trackedPointNumber_XY=np.squeeze(body2d_frameNumber_trackedPointNumber_XY),
+            body_world_pose_3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(body_world_pose_3d_frameNumber_trackedPointNumber_XYZ),
             rightHand2d_frameNumber_trackedPointNumber_XY=np.squeeze(rightHand2d_frameNumber_trackedPointNumber_XY),
             leftHand2d_frameNumber_trackedPointNumber_XY=np.squeeze(leftHand2d_frameNumber_trackedPointNumber_XY),
             face2d_frameNumber_trackedPointNumber_XY=np.squeeze(face2d_frameNumber_trackedPointNumber_XY),
@@ -436,10 +482,10 @@ class MediaPipeSkeletonDetector:
         )
 
     def _threshold_by_confidence(
-        self,
-        data2d_trackedPoint_dim: np.ndarray,
-        data2d_trackedPoint_confidence: np.ndarray,
-        confidence_threshold: float,
+            self,
+            data2d_trackedPoint_dim: np.ndarray,
+            data2d_trackedPoint_confidence: np.ndarray,
+            confidence_threshold: float,
     ):
 
         threshold_mask = data2d_trackedPoint_confidence < confidence_threshold

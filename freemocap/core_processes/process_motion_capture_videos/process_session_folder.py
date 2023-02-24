@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
@@ -14,7 +15,7 @@ from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibrat
     load_anipose_calibration_toml_from_path,
 )
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import (
-    triangulate_3d_data,
+    triangulate_3d_data, save_mediapipe_3d_data_to_npy,
 )
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
     convert_mediapipe_npy_to_csv,
@@ -66,7 +67,7 @@ def process_session_folder(
         parameter_model=s.mediapipe_parameters_model,
     )
 
-    mediapipe_2d_data = mediapipe_skeleton_detector.process_folder_full_of_videos(
+    mediapipe_2d_data, mediapipe_pose_world_data = mediapipe_skeleton_detector.process_folder_full_of_videos(
         s.recording_info_model.synchronized_videos_folder_path,
         Path(s.recording_info_model.output_data_folder_path) / RAW_DATA_FOLDER_NAME,
     )
@@ -76,19 +77,33 @@ def process_session_folder(
         mediapipe_2d_data_file_path=s.recording_info_model.mediapipe_2d_data_npy_file_path,
     )
 
-    logger.info("Triangulating 3d skeletons...")
+    # spoof 3D data if single camera
+    if mediapipe_pose_world_data.shape[0] == 1:
 
-    anipose_calibration_object = load_anipose_calibration_toml_from_path(
-        camera_calibration_data_toml_path=s.recording_info_model.calibration_toml_file_path,
-        save_copy_of_calibration_to_this_path=s.recording_info_model.path,
-    )
-    (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar,) = triangulate_3d_data(
-        anipose_calibration_object=anipose_calibration_object,
-        mediapipe_2d_data=mediapipe_2d_data,
-        output_data_folder_path=s.recording_info_model.raw_data_folder_path,
-        mediapipe_confidence_cutoff_threshold=s.anipose_triangulate_3d_parameters_model.confidence_threshold_cutoff,
-        use_triangulate_ransac=s.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
-    )
+        raw_skel3d_frame_marker_xyz = mediapipe_pose_world_data[0]
+        skeleton_reprojection_error_fr_mar = np.zeros(raw_skel3d_frame_marker_xyz.shape[0:2])
+
+        save_mediapipe_3d_data_to_npy(
+            data3d_numFrames_numTrackedPoints_XYZ=raw_skel3d_frame_marker_xyz,
+            data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
+            path_to_folder_where_data_will_be_saved=s.recording_info_model.raw_data_folder_path,
+        )
+
+    else:
+
+        logger.info("Triangulating 3d skeletons...")
+
+        anipose_calibration_object = load_anipose_calibration_toml_from_path(
+            camera_calibration_data_toml_path=s.recording_info_model.calibration_toml_file_path,
+            save_copy_of_calibration_to_this_path=s.recording_info_model.path,
+        )
+        (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar,) = triangulate_3d_data(
+            anipose_calibration_object=anipose_calibration_object,
+            mediapipe_2d_data=mediapipe_2d_data,
+            output_data_folder_path=s.recording_info_model.raw_data_folder_path,
+            mediapipe_confidence_cutoff_threshold=s.anipose_triangulate_3d_parameters_model.confidence_threshold_cutoff,
+            use_triangulate_ransac=s.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
+        )
 
     assert test_mediapipe_3d_data_shape(
         synchronized_videos_folder=s.recording_info_model.synchronized_videos_folder_path,

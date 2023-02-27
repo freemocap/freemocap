@@ -406,10 +406,10 @@ class MediaPipeSkeletonDetector:
                             landmark_data.x * image_width
                     )
                     body_world_pose_3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
-                            landmark_data.y * image_height
+                            0
                     )
                     body_world_pose_3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
-                            0  # landmark_data.z * image_width
+                            landmark_data.y * image_height  # 0  # landmark_data.z * image_width
                     )
 
             # get Right Hand data

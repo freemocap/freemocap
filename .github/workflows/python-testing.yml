@@ -26,7 +26,7 @@ jobs:
       - name: Run Tests with Pytest
         run: |
           pip install pytest
-          pytest freemocap/tests/test_test.py
+          pytest freemocap/tests
       - name: Upload pytest test results
         uses: actions/upload-artifact@v3
         with:

@@ -36,8 +36,8 @@ from freemocap.tests.test_mediapipe_2d_data_shape import (
     test_mediapipe_2d_data_shape,
 )
 from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
-from freemocap.utilities.rotate_3d_data_around_x_axis import rotate_3d_data_around_x_axis
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
+from freemocap.utilities.swap_axes import swap_axes
 
 logger = logging.getLogger(__name__)
 
@@ -83,14 +83,13 @@ def process_session_folder(
 
         raw_skel3d_frame_marker_xyz = mediapipe_pose_world_data[0]
 
-        rotated_skel3d_frame_marker_xyz = rotate_3d_data_around_x_axis(
-            raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
-            x_rotation_degrees=270,
+        swapped_skel3d_frame_marker_xyz = swap_axes(
+            raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz
         )
         skeleton_reprojection_error_fr_mar = np.zeros(raw_skel3d_frame_marker_xyz.shape[0:2])
 
         save_mediapipe_3d_data_to_npy(
-            data3d_numFrames_numTrackedPoints_XYZ=rotated_skel3d_frame_marker_xyz,
+            data3d_numFrames_numTrackedPoints_XYZ=swapped_skel3d_frame_marker_xyz,
             data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
             path_to_folder_where_data_will_be_saved=s.recording_info_model.raw_data_folder_path,
         )

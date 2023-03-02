@@ -81,6 +81,7 @@ def process_session_folder(
     if mediapipe_pose_world_data.shape[0] == 1:
 
         raw_skel3d_frame_marker_xyz = mediapipe_pose_world_data[0]
+        #### TODO <- This is where rotation and flattening on raw_skel3d_frame_marker_xyz needs to happen
         skeleton_reprojection_error_fr_mar = np.zeros(raw_skel3d_frame_marker_xyz.shape[0:2])
 
         save_mediapipe_3d_data_to_npy(

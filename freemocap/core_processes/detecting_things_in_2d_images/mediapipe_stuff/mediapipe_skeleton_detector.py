@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Mediapipe2dNumpyArrays:
     body2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
-    body_world_pose_3d_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
-    rightHand2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
-    leftHand2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
-    face2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
+    body_pose_3d_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
+    rightHand3d_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
+    leftHand3d_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
+    face3d_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
 
     body2d_frameNumber_trackedPointNumber_confidence: np.ndarray = None
 
@@ -46,18 +46,18 @@ class Mediapipe2dNumpyArrays:
             return np.hstack(
                 [
                     self.body2d_frameNumber_trackedPointNumber_XY,
-                    self.rightHand2d_frameNumber_trackedPointNumber_XY,
-                    self.leftHand2d_frameNumber_trackedPointNumber_XY,
-                    self.face2d_frameNumber_trackedPointNumber_XY,
+                    self.rightHand3d_frameNumber_trackedPointNumber_XYZ[:, :, :2],
+                    self.leftHand3d_frameNumber_trackedPointNumber_XYZ[:, :, :2],
+                    self.face3d_frameNumber_trackedPointNumber_XYZ[:, :, :2],
                 ]
             )
         elif len(self.body2d_frameNumber_trackedPointNumber_XY.shape) == 2:  # single frame
             return np.vstack(
                 [
                     self.body2d_frameNumber_trackedPointNumber_XY,
-                    self.rightHand2d_frameNumber_trackedPointNumber_XY,
-                    self.leftHand2d_frameNumber_trackedPointNumber_XY,
-                    self.face2d_frameNumber_trackedPointNumber_XY,
+                    self.rightHand3d_frameNumber_trackedPointNumber_XYZ[:, :, :2],
+                    self.leftHand3d_frameNumber_trackedPointNumber_XYZ[:, :, :2],
+                    self.face3d_frameNumber_trackedPointNumber_XYZ[:, :, :2],
                 ]
             )
         else:
@@ -220,7 +220,19 @@ class MediaPipeSkeletonDetector:
         ]
 
         all_cameras_pose_world_data_list = [
-            m2d.body_world_pose_3d_frameNumber_trackedPointNumber_XYZ for m2d in mediapipe2d_single_camera_npy_arrays_list
+            m2d.body_pose_3d_frameNumber_trackedPointNumber_XYZ for m2d in mediapipe2d_single_camera_npy_arrays_list
+        ]
+
+        all_cameras_right_hand_world_data_list = [
+            m2d.rightHand3d_frameNumber_trackedPointNumber_XYZ for m2d in mediapipe2d_single_camera_npy_arrays_list
+        ]
+
+        all_cameras_left_hand_world_data_list = [
+            m2d.leftHand3d_frameNumber_trackedPointNumber_XYZ for m2d in mediapipe2d_single_camera_npy_arrays_list
+        ]
+
+        all_cameras_face_world_data_list = [
+            m2d.face3d_frameNumber_trackedPointNumber_XYZ for m2d in mediapipe2d_single_camera_npy_arrays_list
         ]
 
         number_of_cameras = len(all_cameras_data2d_list)
@@ -254,8 +266,20 @@ class MediaPipeSkeletonDetector:
 
         for cam_num in range(number_of_cameras):
             data2d_numCams_numFrames_numTrackedPts_XY[cam_num, :, :, :] = all_cameras_data2d_list[cam_num]
-            data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ[cam_num, :, :number_of_body_points, :] = all_cameras_pose_world_data_list[
-                cam_num]
+
+            pose_3d = all_cameras_pose_world_data_list[cam_num]
+            right_hand_3d = all_cameras_right_hand_world_data_list[cam_num]
+            left_hand_3d = all_cameras_left_hand_world_data_list[cam_num]
+            face_3d = all_cameras_face_world_data_list[cam_num]
+
+            data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ[cam_num, :, :, :] = np.concatenate((pose_3d,
+                                                                                                      right_hand_3d,
+                                                                                                      left_hand_3d,
+                                                                                                      face_3d),
+                                                                                                      axis=1)
+
+            logger.info(f"The shape of data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ is {data2d_pose_world_numCams_numFrames_numTrackedPts_XYZ.shape}")
+
 
         self._save_mediapipe2d_data_to_npy(
             data2d_numCams_numFrames_numTrackedPts_XY=data2d_numCams_numFrames_numTrackedPts_XY,
@@ -351,32 +375,32 @@ class MediaPipeSkeletonDetector:
         )
         body2d_frameNumber_trackedPointNumber_confidence[:] = np.nan  # only body markers get a 'confidence' value
 
-        rightHand2d_frameNumber_trackedPointNumber_XY = np.zeros(
+        rightHand3d_frameNumber_trackedPointNumber_XYZ = np.zeros(
             (
                 number_of_frames,
                 self.number_of_right_hand_tracked_points,
-                number_of_spatial_dimensions,
+                3,
             )
         )
-        rightHand2d_frameNumber_trackedPointNumber_XY[:] = np.nan
+        rightHand3d_frameNumber_trackedPointNumber_XYZ[:] = np.nan
 
-        leftHand2d_frameNumber_trackedPointNumber_XY = np.zeros(
+        leftHand3d_frameNumber_trackedPointNumber_XYZ = np.zeros(
             (
                 number_of_frames,
                 self.number_of_left_hand_tracked_points,
-                number_of_spatial_dimensions,
+                3,
             )
         )
-        leftHand2d_frameNumber_trackedPointNumber_XY[:] = np.nan
+        leftHand3d_frameNumber_trackedPointNumber_XYZ[:] = np.nan
 
-        face2d_frameNumber_trackedPointNumber_XY = np.zeros(
+        face3d_frameNumber_trackedPointNumber_XYZ = np.zeros(
             (
                 number_of_frames,
                 self.number_of_face_tracked_points,
-                number_of_spatial_dimensions,
+                3,
             )
         )
-        face2d_frameNumber_trackedPointNumber_XY[:] = np.nan
+        face3d_frameNumber_trackedPointNumber_XYZ[:] = np.nan
 
         all_body_tracked_points_visible_on_frame_bool_list = []
         all_right_hand_points_visible_on_frame_bool_list = []
@@ -400,46 +424,54 @@ class MediaPipeSkeletonDetector:
                         frame_number, landmark_number
                     ] = landmark_data.visibility  # mediapipe calls their 'confidence' score 'visibility'
 
-                # get the world pose landmarks data
-                for landmark_number, landmark_data in enumerate(frame_results.pose_landmarks.landmark):  # could be `pose_world_landmarks`
+                for landmark_number, landmark_data in enumerate(frame_results.pose_landmarks.landmark):
                     body_world_pose_3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
                             landmark_data.x * image_width
                     )
                     body_world_pose_3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
-                            0
+                            landmark_data.y * image_width
                     )
                     body_world_pose_3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
-                            landmark_data.y * image_height  # 0  # landmark_data.z * image_width
+                            landmark_data.z * image_height
                     )
 
             # get Right Hand data
             if frame_results.right_hand_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.right_hand_landmarks.landmark):
-                    rightHand2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 0] = (
+                    rightHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
                             landmark_data.x * image_width
                     )
-                    rightHand2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 1] = (
+                    rightHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
                             landmark_data.y * image_height
+                    )
+                    rightHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
+                            landmark_data.z * image_width
                     )
 
             # get Left Hand data
             if frame_results.left_hand_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.left_hand_landmarks.landmark):
-                    leftHand2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 0] = (
+                    leftHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
                             landmark_data.x * image_width
                     )
-                    leftHand2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 1] = (
+                    leftHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
                             landmark_data.y * image_height
+                    )
+                    leftHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
+                            landmark_data.z * image_width
                     )
 
             # get Face data
             if frame_results.face_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.face_landmarks.landmark):
-                    face2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 0] = (
+                    face3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
                             landmark_data.x * image_width
                     )
-                    face2d_frameNumber_trackedPointNumber_XY[frame_number, landmark_number, 1] = (
+                    face3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
                             landmark_data.y * image_height
+                    )
+                    face3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
+                            landmark_data.z * image_width
                     )
 
             # check if all tracked points are visible on this frame
@@ -447,16 +479,16 @@ class MediaPipeSkeletonDetector:
             all_body_tracked_points_visible_on_frame_bool_list.append(all_body_visible)
 
             all_right_hand_visible = all(
-                sum(np.isnan(rightHand2d_frameNumber_trackedPointNumber_XY[frame_number, :, :])) == 0
+                sum(np.isnan(rightHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, :, :])) == 0
             )
             all_right_hand_points_visible_on_frame_bool_list.append(all_right_hand_visible)
 
             all_left_hand_visible = all(
-                sum(np.isnan(leftHand2d_frameNumber_trackedPointNumber_XY[frame_number, :, :])) == 0
+                sum(np.isnan(leftHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, :, :])) == 0
             )
             all_left_hand_points_visible_on_frame_bool_list.append(all_left_hand_visible)
 
-            all_face_visible = all(sum(np.isnan(face2d_frameNumber_trackedPointNumber_XY[frame_number, :, :])) == 0)
+            all_face_visible = all(sum(np.isnan(face3d_frameNumber_trackedPointNumber_XYZ[frame_number, :, :])) == 0)
             all_face_points_visible_on_frame_bool_list.append(all_face_visible)
 
             all_points_visible = all(
@@ -472,10 +504,10 @@ class MediaPipeSkeletonDetector:
 
         return Mediapipe2dNumpyArrays(
             body2d_frameNumber_trackedPointNumber_XY=np.squeeze(body2d_frameNumber_trackedPointNumber_XY),
-            body_world_pose_3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(body_world_pose_3d_frameNumber_trackedPointNumber_XYZ),
-            rightHand2d_frameNumber_trackedPointNumber_XY=np.squeeze(rightHand2d_frameNumber_trackedPointNumber_XY),
-            leftHand2d_frameNumber_trackedPointNumber_XY=np.squeeze(leftHand2d_frameNumber_trackedPointNumber_XY),
-            face2d_frameNumber_trackedPointNumber_XY=np.squeeze(face2d_frameNumber_trackedPointNumber_XY),
+            body_pose_3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(body_world_pose_3d_frameNumber_trackedPointNumber_XYZ),
+            rightHand3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(rightHand3d_frameNumber_trackedPointNumber_XYZ),
+            leftHand3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(leftHand3d_frameNumber_trackedPointNumber_XYZ),
+            face3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(face3d_frameNumber_trackedPointNumber_XYZ),
             body2d_frameNumber_trackedPointNumber_confidence=np.squeeze(
                 body2d_frameNumber_trackedPointNumber_confidence
             ),

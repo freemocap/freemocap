@@ -67,6 +67,7 @@ from freemocap.system.paths_and_files_names import (
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.start_file import open_file
+from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
 EXIT_CODE_REBOOT = -123456789
 
@@ -76,7 +77,8 @@ logger = logging.getLogger(__name__)
 class FreemocapMainWindow(QMainWindow):
     def __init__(
         self,
-        freemocap_data_folder_path: Union[str, Path] = None,
+        freemocap_data_folder_path: Union[str, Path],
+        pipedream_pings: PipedreamPings,
         parent=None,
     ):
 
@@ -89,10 +91,8 @@ class FreemocapMainWindow(QMainWindow):
 
         self._css_file_watcher = self._set_up_stylesheet()
 
-        if freemocap_data_folder_path is None:
-            self._freemocap_data_folder_path = get_freemocap_data_folder_path()
-        else:
-            self._freemocap_data_folder_path = freemocap_data_folder_path
+        self._freemocap_data_folder_path = freemocap_data_folder_path
+        self._pipedream_pings = pipedream_pings
 
         self._kill_thread_event = threading.Event()
 
@@ -415,6 +415,8 @@ class FreemocapMainWindow(QMainWindow):
             shutil.copy(video_path, synchronized_videos_folder_path)
 
     def closeEvent(self, a0) -> None:
+        self._pipedream_pings.update_pings_dict(key="gui_closed", value=True)
+        self._pipedream_pings.send_pipedream_ping()
         logger.info("Main window `closeEvent` detected")
         remove_empty_directories(get_recording_session_folder_path())
 

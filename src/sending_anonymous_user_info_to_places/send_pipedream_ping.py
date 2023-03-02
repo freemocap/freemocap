@@ -11,6 +11,6 @@ def send_pipedream_ping(pipe_dream_ping_dictionary):
     )
 
     r = requests.post(
-        "https://eoivu13g86if0cp.m.pipedream.net",
-        json={"pinged_string": pipe_dream_ping_dictionary},
+        "https://eowipinr6rcpbo0.m.pipedream.net",
+        json={"pinged_dict": pipe_dream_ping_dictionary},
     )

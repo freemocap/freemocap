@@ -16,6 +16,8 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.medi
 from freemocap.parameter_info_models.recording_processing_parameter_models import MediapipeParametersModel
 from freemocap.system.paths_and_files_names import MEDIAPIPE_2D_NPY_FILE_NAME, ANNOTATED_VIDEOS_FOLDER_NAME, \
     MEDIAPIPE_POSE_WORLD_FILE_NAME
+from freemocap.utilities.flatten_3d_data import flatten_3d_data
+from freemocap.utilities.swap_axes import swap_axes
 
 logger = logging.getLogger(__name__)
 
@@ -502,9 +504,13 @@ class MediaPipeSkeletonDetector:
 
             all_tracked_points_visible_on_frame_list.append(all_points_visible)
 
+        # swap axes for single camera data
+        yz_swapped_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ = swap_axes(raw_skel3d_frame_marker_xyz=body_world_pose_3d_frameNumber_trackedPointNumber_XYZ)
+        flattened_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ = flatten_3d_data(skel3d_frame_marker_xyz=yz_swapped_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ)
+
         return Mediapipe2dNumpyArrays(
             body2d_frameNumber_trackedPointNumber_XY=np.squeeze(body2d_frameNumber_trackedPointNumber_XY),
-            body_pose_3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(body_world_pose_3d_frameNumber_trackedPointNumber_XYZ),
+            body_pose_3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(flattened_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ),
             rightHand3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(rightHand3d_frameNumber_trackedPointNumber_XYZ),
             leftHand3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(leftHand3d_frameNumber_trackedPointNumber_XYZ),
             face3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(face3d_frameNumber_trackedPointNumber_XYZ),

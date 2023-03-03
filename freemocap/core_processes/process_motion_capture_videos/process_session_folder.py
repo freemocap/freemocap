@@ -88,8 +88,10 @@ def process_session_folder(
         )
         skeleton_reprojection_error_fr_mar = np.zeros(raw_skel3d_frame_marker_xyz.shape[0:2])
 
+        temp_skel3d_frame_marker_xyz = np.zeros(raw_skel3d_frame_marker_xyz.shape)
+
         save_mediapipe_3d_data_to_npy(
-            data3d_numFrames_numTrackedPoints_XYZ=swapped_skel3d_frame_marker_xyz,
+            data3d_numFrames_numTrackedPoints_XYZ=temp_skel3d_frame_marker_xyz,
             data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
             path_to_folder_where_data_will_be_saved=s.recording_info_model.raw_data_folder_path,
         )

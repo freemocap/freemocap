@@ -506,11 +506,11 @@ class MediaPipeSkeletonDetector:
 
         # swap axes for single camera data
         yz_swapped_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ = swap_axes(raw_skel3d_frame_marker_xyz=body_world_pose_3d_frameNumber_trackedPointNumber_XYZ)
-        # flattened_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ = flatten_3d_data(skel3d_frame_marker_xyz=yz_swapped_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ)
+        flattened_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ = flatten_3d_data(skel3d_frame_marker_xyz=yz_swapped_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ)
 
         return Mediapipe2dNumpyArrays(
             body2d_frameNumber_trackedPointNumber_XY=np.squeeze(body2d_frameNumber_trackedPointNumber_XY),
-            body_pose_3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(yz_swapped_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ),
+            body_pose_3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(flattened_body_world_pose_3d_frameNumber_trackedPointNumber_XYZ),
             rightHand3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(rightHand3d_frameNumber_trackedPointNumber_XYZ),
             leftHand3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(leftHand3d_frameNumber_trackedPointNumber_XYZ),
             face3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(face3d_frameNumber_trackedPointNumber_XYZ),

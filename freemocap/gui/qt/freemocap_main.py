@@ -11,6 +11,7 @@ from freemocap.system.paths_and_files_names import (
 )
 from freemocap.gui.qt.main_window.freemocap_main_window import FreemocapMainWindow, EXIT_CODE_REBOOT
 from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
+from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
 repo = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(repo))
@@ -30,8 +31,11 @@ def qt_gui_main():
     timer = QTimer()
     timer.start(500)
 
+    pipedream_pings = PipedreamPings()
+
     while True:
-        freemocap_main_window = FreemocapMainWindow(freemocap_data_folder_path=get_freemocap_data_folder_path())
+        freemocap_main_window = FreemocapMainWindow(freemocap_data_folder_path=get_freemocap_data_folder_path(),
+                                                    pipedream_pings=pipedream_pings)
         freemocap_main_window.show()
         timer.timeout.connect(freemocap_main_window.update)
         error_code = app.exec()

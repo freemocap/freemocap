@@ -2,7 +2,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Union, Dict
 
 import addon_utils
 import bpy
@@ -11,135 +11,452 @@ import numpy as np
 logging.info("Running script to create Blender file from freemocap session data: " + __file__)
 
 logger = logging.getLogger(__name__)
+
+
 ###############################################################
-### parse arguments from command line
+### IF YOU ARE RUNNING THIS SCRIPT FROM WITHIN BLENDER -
+### CHANGE THE PATH TO THE SESSION FOLDER IN THE `if __name__ == "__main__":` BLOCK AT THE **BOTTOM** OF THIS FILE
+### the variable is named `recording_path_input`
+###############################################################
+def main(recording_path: Union[str, Path],
+         blender_file_save_path: Union[str, Path],
+         mediapipe_empty_names: Dict[str, List[str]],
+         create_rig: bool = False,
+         ):
+    ###%% clear the scene - Scorch the earth \o/
+    print("Clearing scene...")
+    try:
+        bpy.ops.object.mode_set(mode="OBJECT")
+    except:
+        pass
+    try:
+        bpy.ops.object.select_all(action="SELECT")  # select all objects
+        bpy.ops.object.delete(use_global=True)  # delete all objects from all scenes
+    except:
+        pass
 
-logger.info(f"Running script to create Blender file from freemocap session data from script {__file__}")
-try:
-    ##% Session path
-    # #get session path as command line argument
-    argv = sys.argv
-    print(f"Received command line arguments: {argv}")
-    argv = argv[argv.index("--") + 1 :]
+    print("Loading data....")
 
-    recording_path = Path(argv[0])
-    blender_file_save_path = Path(argv[1])
-except:
-    logger.info("No command line arguments received, using hard-coded path instead :D")
-    recording_path = Path(
-        r"C:\Users\jonma\freemocap_data\recording_sessions\session_2023-02-15_08_46_43_wud\recording_08_47_25_gmt-5_wud"
-    )
-    blender_file_save_path = Path(recording_path).parent / f"{Path(recording_path).name}_.blend"
-
-skeleton_points_names_and_connections = (
-    Path(recording_path).parent / "output_data" / "skeleton_points_names_and_connections.json"
-)
-
-print(skeleton_points_names_and_connections)
-
-
-print("Loading data....")
-
-# %% load mediapipe data
-# paths and whatnot
-if Path(recording_path / "output_data").exists():  # freemocap version > v0.0.54
-    path_to_data_arrays_folder = recording_path / "output_data"
-    path_to_body_npy = path_to_data_arrays_folder / "mediapipe_body_3d_xyz.npy"
-    path_to_reprojection_error_npy = (
-        path_to_data_arrays_folder / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
-    )
-    mediapipe_skel_fr_mar_xyz = np.load(str(path_to_body_npy))
-    mediapipe_reprojection_error_fr_mar = np.load(str(path_to_reprojection_error_npy))
-
-else:
-    path_to_data_arrays_folder = recording_path / "DataArrays"  # freemocap version <= v0.0.54
-    if Path(path_to_data_arrays_folder / "mediapipe_body_3d_xyz.npy").exists():  # data has been 'post processed'
+    # paths and whatnot
+    try:
+        # load mediapipe skeleton data
+        path_to_data_arrays_folder = recording_path / "output_data"
         path_to_body_npy = path_to_data_arrays_folder / "mediapipe_body_3d_xyz.npy"
+        path_to_right_hand_npy = path_to_data_arrays_folder / "mediapipe_right_hand_3d_xyz.npy"
+        path_to_left_hand_npy = path_to_data_arrays_folder / "mediapipe_left_hand_3d_xyz.npy"
+        path_to_face_npy = path_to_data_arrays_folder / "mediapipe_face_3d_xyz.npy"
+
+        mediapipe_body_fr_mar_xyz = np.load(str(path_to_body_npy)) / 1000  # load and convert to meters
+        mediapipe_right_hand_fr_mar_xyz = np.load(str(path_to_right_hand_npy)) / 1000
+        mediapipe_left_hand_fr_mar_xyz = np.load(str(path_to_left_hand_npy)) / 1000
+        mediapipe_face_fr_mar_xyz = np.load(str(path_to_face_npy)) / 1000
+
+        # load reprojection error
+        path_to_reprojection_error_npy = (
+                path_to_data_arrays_folder / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+        )
+        mediapipe_reprojection_error_fr_mar = np.load(str(path_to_reprojection_error_npy))
+
+        # load skeleton segment lengths
+        path_to_segment_length_json = path_to_data_arrays_folder / "mediapipe_skeleton_segment_lengths.json"
+        print(f"loading skeleton segment lengths from `json` at - {str(path_to_segment_length_json)}")
+        f = open(path_to_segment_length_json)
+        skeleton_segment_lengths_dict = json.load(f)
+
+    except Exception as e:
+        print("Failed to load freemocap data")
+        raise e
+
+    number_of_frames = mediapipe_body_fr_mar_xyz.shape[0]
+    print(f"mediapipe_body_fr_mar_dim.shape: {mediapipe_body_fr_mar_xyz.shape}")
+    print(f"mediapipe_reprojection_error_fr_mar.shape: {mediapipe_reprojection_error_fr_mar.shape}")
+
+
+
+    #########################
+    ### Create Origin Axes
+
+    bpy.ops.object.empty_add(type="SPHERE", scale=(3.0, 3.0, 3.0))
+    world_origin_axes = bpy.context.editable_objects[-1]
+    world_origin_axes.name = "world_origin"  # will stay at origin
+
+    bpy.ops.object.empty_add(type="ARROWS")
+    freemocap_origin_axes = bpy.context.editable_objects[-1]
+    freemocap_origin_axes.name = (
+        "freemocap_origin_axes"  # will translate to put skelly on ground symmetric-ish about origin
+    )
+
+    ##############################
+    # %% Set start and end frames
+
+    start_frame = 1
+    end_frame = number_of_frames
+
+    bpy.context.scene.frame_start = start_frame
+    bpy.context.scene.frame_end = end_frame
+
+    ############################
+    ### Load mocap data as empty markers
+
+    mediapipe_body_trajectory_names = [f"body_{number}:{empty_name}" for number, empty_name in
+                                       enumerate(mediapipe_empty_names["body"])]
+    mediapipe_right_hand_trajectory_names = [f"right_hand_{number}:{empty_name}" for number, empty_name in
+                                             enumerate(mediapipe_empty_names["hand"])]
+    mediapipe_left_hand_trajectory_names = [f"left_hand_{number}:{empty_name}" for number, empty_name in
+                                            enumerate(mediapipe_empty_names["hand"])]
+    mediapipe_face_trajectory_names = [f"face_{number}:{empty_name}" for number, empty_name in
+                                       enumerate(mediapipe_empty_names["face"])]
+
+    # create empty markers for body
+    body_empty_scale = 0.01
+    for marker_number in range(mediapipe_body_fr_mar_xyz.shape[1]):
+        trajectory_name = mediapipe_body_trajectory_names[marker_number]
+        trajectory_fr_xyz = mediapipe_body_fr_mar_xyz[:, marker_number, :]
+        create_keyframed_empty_from_3d_trajectory_data(
+            trajectory_fr_xyz=trajectory_fr_xyz,
+            trajectory_name=trajectory_name,
+            parent_origin=freemocap_origin_axes,
+            empty_scale=0.01,
+            empty_type="SPHERE",
+        )
+    #
+    # # create empty markers for right hand
+    # hand_empty_scale = 0.005
+    # for marker_number in range(mediapipe_right_hand_fr_mar_xyz.shape[1]):
+    #     trajectory_name = mediapipe_right_hand_trajectory_names[marker_number]
+    #     trajectory_fr_xyz = mediapipe_right_hand_fr_mar_xyz[:, marker_number, :]
+    #     create_keyframed_empty_from_3d_trajectory_data(
+    #         trajectory_fr_xyz=trajectory_fr_xyz,
+    #         trajectory_name=trajectory_name,
+    #         parent_origin=freemocap_origin_axes,
+    #         empty_scale=hand_empty_scale,
+    #         empty_type="PLAIN_AXES",
+    #     )
+    #
+    # # create empty markers for left hand
+    # for marker_number in range(mediapipe_left_hand_fr_mar_xyz.shape[1]):
+    #     trajectory_name = mediapipe_left_hand_trajectory_names[marker_number]
+    #     trajectory_fr_xyz = mediapipe_left_hand_fr_mar_xyz[:, marker_number, :]
+    #     create_keyframed_empty_from_3d_trajectory_data(
+    #         trajectory_fr_xyz=trajectory_fr_xyz,
+    #         trajectory_name=trajectory_name,
+    #         parent_origin=freemocap_origin_axes,
+    #         empty_scale=hand_empty_scale,
+    #         empty_type="PLAIN_AXES",
+    #     )
+
+    # # create empty markers for face
+    # face_empty_scale = 0.0025
+    # for marker_number in face_contour_marker_indices:
+    #
+    #     if marker_number < len(mediapipe_face_trajectory_names):
+    #         trajectory_name = mediapipe_face_trajectory_names[marker_number]
+    #     else:
+    #         trajectory_name = f"face_{marker_number}"
+    #
+    #     trajectory_fr_xyz = mediapipe_face_fr_mar_xyz[:, marker_number, :]
+    #     create_keyframed_empty_from_3d_trajectory_data(
+    #         trajectory_fr_xyz=trajectory_fr_xyz,
+    #         trajectory_name=trajectory_name,
+    #         parent_origin=freemocap_origin_axes,
+    #         empty_scale=face_empty_scale,
+    #         empty_type="PLAIN_AXES",
+    #     )
+
+    #######################################################################
+    # %% create virtual markers
+    print("Creating virtual markers...")
+
+    # verify that the virtual marker definition dictionary is valid
+    test_virtual_marker_definitions(mediapipe_virtual_marker_definitions_dict)
+
+    for (
+            virtual_marker_number,
+            virtual_marker_key,
+    ) in enumerate(mediapipe_virtual_marker_definitions_dict.keys()):
+        virtual_marker_dict = mediapipe_virtual_marker_definitions_dict[virtual_marker_key]
+        virtual_marker_name = f"virtual_marker_{virtual_marker_number}_{virtual_marker_key}"
+        logging.info(
+            f"Creating virtual marker: {virtual_marker_name}: \n"
+            f"from 'real' markers: {virtual_marker_dict['marker_names']}, \n"
+            f"with weights: {virtual_marker_dict['marker_weights']}\n"
+        )
+
+        mediapipe_body_trajectory_names.append(virtual_marker_name)
+        virtual_marker_xyz = calculate_virtual_marker_trajectory(
+            trajectory_3d_frame_marker_xyz=mediapipe_body_fr_mar_xyz,
+            all_trajectory_names=[name.split(":")[-1] for name in mediapipe_body_trajectory_names],
+            component_trajectory_names=virtual_marker_dict["marker_names"],
+            trajectory_weights=virtual_marker_dict["marker_weights"],
+        )
+        create_keyframed_empty_from_3d_trajectory_data(
+            trajectory_fr_xyz=virtual_marker_xyz,
+            trajectory_name=virtual_marker_name,
+            parent_origin=freemocap_origin_axes,
+            empty_scale=body_empty_scale * 3,
+            empty_type="PLAIN_AXES",
+        )
+
+    print("Done creating virtual markers")
+
+    #######################################################################
+    # put sphere meshes on empty markers for visualization
+
+    # body
+    put_sphere_meshes_on_empties(
+        empty_names_list=mediapipe_body_trajectory_names,
+        parent_object=freemocap_origin_axes,
+        sphere_scale=body_empty_scale,
+    )
+
+    # right hand
+    # put_sphere_meshes_on_empties(
+    #     empty_names_list=mediapipe_right_hand_trajectory_names,
+    #     parent_object=freemocap_origin_axes,
+    #     sphere_scale=hand_empty_scale,
+    # )
+    # put_sphere_meshes_on_empties(
+    #     empty_names_list=mediapipe_left_hand_trajectory_names,
+    #     parent_object=freemocap_origin_axes,
+    #     sphere_scale=hand_empty_scale,
+    # )
+
+    # # face
+    # put_sphere_meshes_on_empties(
+    #     empty_names_list=mediapipe_face_trajectory_names,
+    #     parent_object=freemocap_origin_axes,
+    #     sphere_scale=face_empty_scale,
+    # )
+    ############################
+    ### Load videos into scene
+    if Path(recording_path / "annotated_videos").is_dir():
+        videos_path = Path(recording_path / "annotated_videos")
+    elif Path(recording_path / "synchronized_videos").is_dir():
+        videos_path = Path(recording_path / "synchronized_videos")
     else:
-        path_to_body_npy = path_to_data_arrays_folder / "mediaPipeSkel_3d_smoothed.npy"
+        print("Did not find an `annotated_videos` or `synchronized_videos` folder in the recording path")
+        videos_path = None
 
-    path_to_reprojection_error_npy = path_to_data_arrays_folder / "mediaPipeSkel_reprojErr.npy"
+    if videos_path is not None:
+        try:
+            addon_utils.enable("io_import_images_as_planes")
+        except Exception as e:
+            print("Error enabling `io_import_images_as_planes` addon: ")
+            print(e)
+        try:
+            add_videos_to_scene(videos_path=videos_path, parent_object=world_origin_axes)
+        except Exception as e:
+            print("Error adding videos to scene: ")
+            print(e)
 
-    print(f"Loading mediapipe data from {path_to_body_npy}")
+    if create_rig:
+        #######################################################################
+        print("Saving blender file with raw motion capture data before moving on to rigging")
+        bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
 
-    mediapipe_skel_fr_mar_xyz = np.load(str(path_to_body_npy))
-    mediapipe_reprojection_error_fr_mar = np.load(str(path_to_reprojection_error_npy))
+        logging.info(
+            "____________________________________________________________________________\n",
+            "Done loading in motion capture data -  Now lets use it to drive an armature!\n"
+            "____________________________________________________________________________\n",
+        )
 
-    mediapipe_skel_fr_mar_xyz = mediapipe_skel_fr_mar_xyz[:, :33, :]  # remove the hand and face markers
-    mediapipe_reprojection_error_fr_mar = mediapipe_reprojection_error_fr_mar[
-        :, :33
-    ]  # remove the hand and face markers
+        #######################################################################
+        ##% Activate necessary addons
+        addon_utils.enable("rigify")
 
-# load mediapipe skeleton data
+        ######################
+        ### Create Rigify human meta-rig
+        logging.info(f"Creating `rigify human meta-rig`")
+        bpy.ops.object.armature_human_metarig_add()
+        human_metarig = bpy.context.editable_objects[-1]
 
-mediapipe_skel_fr_mar_xyz = mediapipe_skel_fr_mar_xyz / 1000  # convert to meters
-number_of_frames = mediapipe_skel_fr_mar_xyz.shape[0]
-print(f"mediapipe_skel_fr_mar_dim.shape: {mediapipe_skel_fr_mar_xyz.shape}")
-print(f"mediapipe_reprojection_error_fr_mar.shape: {mediapipe_reprojection_error_fr_mar.shape}")
+        ##################
+        ### Scale armature
 
-# get video paths (running through all iterations of our folder names
-if Path(recording_path / "annotated_videos").is_dir():
-    video_folder_path = Path(recording_path / "annotated_videos")
-elif Path(recording_path / "synchronized_videos").is_dir():
-    video_folder_path = recording_path / "synchronized_videos"
-elif Path(recording_path / "Annotated_Videos").is_dir():
-    video_folder_path = recording_path / "Annotated_Videos"
-elif Path(recording_path / "SyncedVideos").is_dir():
-    video_folder_path = recording_path / "SyncedVideos"
-else:
-    print("Couldn't find a video folder")
+        try:
+            bpy.ops.object.mode_set(mode="EDIT")
+        except:
+            pass
 
-# load skeleton segment lengths
-path_to_segment_length_json = path_to_data_arrays_folder / "mediapipe_skeleton_segment_lengths.json"
-try:
-    print(f"loading skeleton segment lengths from `json` at - {str(path_to_segment_length_json)}")
-    f = open(path_to_segment_length_json)
-    skeleton_segment_lengths_dict = json.load(f)
-    f.close()
-except Exception as e:
-    print(e)
-    print(f"Failed to load skeleton segment lengths from `json` at : {str(path_to_segment_length_json)}")
-    skeleton_segment_lengths_dict = None
+        for (
+                segment_name,
+                rigify_bones_list,
+        ) in rigify_bone_to_skeleton_segment_name_correspondance.items():
 
-############
-## Define some things that we'll need later
+            for rigify_bone_name in rigify_bones_list:
+                median_segment_length = skeleton_segment_lengths_dict[segment_name]["median"]
+                median_segment_length *= 0.001  # scale to meters
+
+                segment_length = median_segment_length / len(
+                    rigify_bones_list
+                )  # divide by number of bones in segment (for now, eventually will want to set weights
+                logging.info(f"setting {rigify_bone_name} length to: {segment_length:.3f} m")
+                human_metarig.data.edit_bones[rigify_bone_name].length = segment_length
+
+        ####
+        #### Constrain bones to empties
+        ####
+
+        # loop through dictionary applying  constraints
+        try:
+            bpy.ops.object.mode_set(mode="POSE")
+        except:
+            pass
+
+        try:
+            for bone_name, bone_constraint_dict in rig_constraint_dict_of_dicts.items():
+                logging.info(f"---Setting constraints for bone:{bone_name}---")
+                apply_constraints_to_bone(
+                    bone_name=bone_name,
+                    bone_constraint_dict=bone_constraint_dict,
+                    armature_rig=human_metarig,
+                )
+
+        except Exception as e:
+            logging.info(e)
+            logging.info("Something went wrong applying constraints to armarture bones")
+
+        logging.info(
+            "____________________________________________________________________________\n",
+            "Done constraining armature bones to follow keyframed empties!",
+            "____________________________________________________________________________",
+        )
+
+    try:
+        # from https://blender.stackexchange.com/a/238223
+
+        for window in bpy.context.window_manager.windows:
+            for area in window.screen.areas:  # iterate through areas in current screen
+                if area.type == "VIEW_3D":
+                    for space in area.spaces:  # iterate through spaces in current VIEW_3D area
+                        if space.type == "VIEW_3D":  # check if space is a 3D view
+                            space.shading.type = "MATERIAL"
+    except Exception as e:
+        print(e)
+        print("Failed to set shading to material")
+
+    # save .blend file
+    bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
+
+    logging.info(
+        "____________________________________________________________________________\n",
+        "____________________________________________________________________________\n",
+        "Done creating Blender scene!\n",
+        f"Saved .blend file to: {blender_file_save_path}\n",
+        "You can now open the `.blend` file in Blender and play the animation!\n",
+        "____________________________________________________________________________\n",
+        "____________________________________________________________________________",
+    )
+
+
+def add_videos_to_scene(videos_path: Union[Path, str], parent_object: bpy.types.Object, vid_location_scale: float = 2):
+    print("loading videos as planes...")
+
+    number_of_videos = len(list(videos_path.glob("*.mp4")))
+    print(f"Found {number_of_videos} videos in {videos_path}")
+    for (
+            video_number,
+            video_path,
+    ) in enumerate(videos_path.glob("*.mp4")):
+        print(f"Adding video: {video_path.name} to scene")
+
+        bpy.ops.import_image.to_plane(
+            files=[{"name": video_path.name}],
+            directory=str(video_path.parent),
+            shader="EMISSION",
+        )
+        print(f"Added video: {video_path.name} to scene")
+        video_as_plane = bpy.context.editable_objects[-1]
+        print(f"video_as_plane: {video_as_plane}")
+        video_as_plane.name = "video_" + str(video_number)
+        print(f"video_as_plane.name: {video_as_plane.name}")
+        buffer = 1.1
+        vid_x = (video_number*buffer - np.mean(np.arange(0, number_of_videos)) ) *  vid_location_scale
+
+        video_as_plane.location = [
+            vid_x,
+            vid_location_scale,
+            1,
+        ]
+        video_as_plane.rotation_euler = [np.pi / 2, 0, 0]
+        video_as_plane.scale = [vid_location_scale*.5] * 3
+        video_as_plane.parent = parent_object
+
 
 # Mediapipe Tracked Point Names
-mediapipe_body_trajectory_names = [
-    "nose",
-    "left_eye_inner",
-    "left_eye",
-    "left_eye_outer",
-    "right_eye_inner",
-    "right_eye",
-    "right_eye_outer",
-    "left_ear",
-    "right_ear",
-    "mouth_left",
-    "mouth_right",
-    "left_shoulder",
-    "right_shoulder",
-    "left_elbow",
-    "right_elbow",
-    "left_wrist",
-    "right_wrist",
-    "left_pinky",
-    "right_pinky",
-    "left_index",
-    "right_index",
-    "left_thumb",
-    "right_thumb",
-    "left_hip",
-    "right_hip",
-    "left_knee",
-    "right_knee",
-    "left_ankle",
-    "right_ankle",
-    "left_heel",
-    "right_heel",
-    "left_foot_index",
-    "right_foot_index",
-]
+
+mediapipe_empty_names = {
+    # generated by: freemocap/core_processes/detecting_things_in_2d_images/mediapipe_stuff/mediapipe_skeleton_names_and_connections.py
+    'body': ['nose',
+             'left_eye_inner',
+             'left_eye',
+             'left_eye_outer',
+             'right_eye_inner',
+             'right_eye',
+             'right_eye_outer',
+             'left_ear',
+             'right_ear',
+             'mouth_left',
+             'mouth_right',
+             'left_shoulder',
+             'right_shoulder',
+             'left_elbow',
+             'right_elbow',
+             'left_wrist',
+             'right_wrist',
+             'left_pinky',
+             'right_pinky',
+             'left_index',
+             'right_index',
+             'left_thumb',
+             'right_thumb',
+             'left_hip',
+             'right_hip',
+             'left_knee',
+             'right_knee',
+             'left_ankle',
+             'right_ankle',
+             'left_heel',
+             'right_heel',
+             'left_foot_index',
+             'right_foot_index'],
+    'hand': ['wrist',
+             'thumb_cmc',
+             'thumb_mcp',
+             'thumb_ip',
+             'thumb_tip',
+             'index_finger_mcp',
+             'index_finger_pip',
+             'index_finger_dip',
+             'index_finger_tip',
+             'middle_finger_mcp',
+             'middle_finger_pip',
+             'middle_finger_dip',
+             'middle_finger_tip',
+             'ring_finger_mcp',
+             'ring_finger_pip',
+             'ring_finger_dip',
+             'ring_finger_tip',
+             'pinky_mcp',
+             'pinky_pip',
+             'pinky_dip',
+             'pinky_tip'],
+
+    'face': ['right_eye',
+             'left_eye',
+             'nose_tip',
+             'mouth_center',
+             'right_ear_tragion',
+             'left_ear_tragion']}
+
+# boy howdy mediapipe did not make it easy to get this info...
+face_contour_marker_indices = [0, 7, 10, 13, 14, 17, 21, 33, 37, 39, 40, 46, 52, 53, 54, 55, 58, 61, 63, 65, 66, 67, 70,
+                               78, 80, 81, 82, 84, 87, 88, 91, 93, 95, 103, 105, 107, 109, 127, 132, 133, 136, 144, 145,
+                               146, 148, 149, 150, 152, 153, 154, 155, 157, 158, 159, 160, 161, 162, 163, 172, 173, 176,
+                               178, 181, 185, 191, 234, 246, 249, 251, 263, 267, 269, 270, 276, 282, 283, 284, 285, 288,
+                               291, 293, 295, 296, 297, 300, 308, 310, 311, 312, 314, 317, 318, 321, 323, 324, 332, 334,
+                               336, 338, 356, 361, 362, 365, 373, 374, 375, 377, 378, 379, 380, 381, 382, 384, 385, 386,
+                               387, 388, 389, 390, 397, 398, 400, 402, 405, 409, 415, 454, 466]
 
 mediapipe_virtual_marker_definitions_dict = {
     "head_center": {
@@ -266,11 +583,11 @@ rig_constraint_dict_of_dicts = {
 
 
 def create_keyframed_empty_from_3d_trajectory_data(
-    trajectory_fr_xyz: np.ndarray,
-    trajectory_name: str,
-    parent_origin: bpy.types.Object = None,
-    empty_scale: float = 0.1,
-    empty_type: str = "PLAIN_AXES",
+        trajectory_fr_xyz: np.ndarray,
+        trajectory_name: str,
+        parent_origin: bpy.types.Object = None,
+        empty_scale: float = 0.1,
+        empty_type: str = "PLAIN_AXES",
 ):
     """
     Create a key framed empty from 3d trajectory data
@@ -282,9 +599,9 @@ def create_keyframed_empty_from_3d_trajectory_data(
 
     empty_object.scale = [empty_scale] * 3
 
-    empty_object.parent = freemocap_origin_axes
+    empty_object.parent = parent_origin
 
-    for frame_number in range(end_frame):
+    for frame_number in range(trajectory_fr_xyz.shape[0]):
         empty_object.location = [
             trajectory_fr_xyz[frame_number, 0],
             trajectory_fr_xyz[frame_number, 1],
@@ -300,8 +617,8 @@ def apply_constraints_to_bone(bone_name: str, bone_constraint_dict: dict, armatu
     Apply constraints to a bone (that exists in `armature_rig` based on a dictionary of constraints
     """
     for (
-        constraint_name,
-        constrain_parameters_dict,
+            constraint_name,
+            constrain_parameters_dict,
     ) in bone_constraint_dict.items():
         constraint_name = constraint_name.split(".")[
             0
@@ -349,8 +666,6 @@ def apply_constraints_to_bone(bone_name: str, bone_constraint_dict: dict, armatu
                 print(f"constraint.track_axis: {constraint.track_axis}")
 
 
-# Virtual marker stuff
-
 
 def test_virtual_marker_definitions(virtual_marker_definitions_dict: dict):
     """
@@ -358,22 +673,22 @@ def test_virtual_marker_definitions(virtual_marker_definitions_dict: dict):
     """
 
     for (
-        virtual_marker_name,
-        virtual_marker_definition,
+            virtual_marker_name,
+            virtual_marker_definition,
     ) in virtual_marker_definitions_dict.items():
         assert len(virtual_marker_definition["marker_names"]) == len(
             virtual_marker_definition["marker_weights"]
         ), f"marker_names and marker_weights must be the same length for virtual marker {virtual_marker_name}"
         assert (
-            sum(virtual_marker_definition["marker_weights"]) == 1
+                sum(virtual_marker_definition["marker_weights"]) == 1
         ), f"marker_weights must sum to 1 for virtual marker {virtual_marker_name}"
 
 
-def create_virtual_marker(
-    trajectory_3d_frame_marker_xyz: np.ndarray,
-    all_trajectory_names: list,
-    component_trajectory_names: List,
-    trajectory_weights: List,
+def calculate_virtual_marker_trajectory(
+        trajectory_3d_frame_marker_xyz: np.ndarray,
+        all_trajectory_names: list,
+        component_trajectory_names: List,
+        trajectory_weights: List,
 ) -> np.ndarray:
     """
     Create a virtual marker from a set of component markers. A 'Virtual Marker' is a 'fake' marker created by combining the data from 'real' (measured) marker/trajectory data
@@ -401,9 +716,9 @@ def create_virtual_marker(
 
 
 def put_sphere_meshes_on_empties(
-    empty_names_list: list,
-    parent_object: bpy.types.Object,
-    sphere_scale: float = 0.02,
+        empty_names_list: list,
+        parent_object: bpy.types.Object,
+        sphere_scale: float = 0.02,
 ):
     """
     put uv sphere meshes on the empties in `empty_names_list` with a scale of `sphere_scale`
@@ -419,245 +734,33 @@ def put_sphere_meshes_on_empties(
         constraint.target = bpy.data.objects[empty_name]
 
 
-#######################################################################
-##% Activate necessary addons
-addon_utils.enable("io_import_images_as_planes")
-addon_utils.enable("rigify")
+print(f"__name__: {__name__}")
 
-#####################################################################
-###%% clear the scene - Scorch the earth \o/
-print("clearing scene")
-try:
-    bpy.ops.object.mode_set(mode="OBJECT")
-except:
-    pass
+if __name__ == "__main__" or __name__ == "<run_path>":
 
-try:
-    bpy.ops.object.select_all(action="SELECT")  # select all objects
-    bpy.ops.object.delete(use_global=True)  # delete all objects from all scenes
-except:
-    pass
+    # this is the part that actually runs the script
 
-##################
-### Getcher paths straight, lock and load yr data
-# path_to_data_folder = Path("/Users/jon/Dropbox/FreeMoCapProject/FreeMocap_Data/")
+    print(f"Running script to create Blender file from freemocap session data from script {__file__}")
+    try:
+        ##% Session path
+        # get session path as command line argument
+        argv = sys.argv
+        print(f"Received command line arguments: {argv}")
+        argv = argv[argv.index("--") + 1:]
 
-#########################
-### Create Origin Axes
+        recording_path_input = Path(argv[0])
+        blender_file_save_path_input = Path(argv[1])
+    except:
+        print("No command line arguments received, using hard-coded path instead :D")
 
-bpy.ops.object.empty_add(type="SPHERE", scale=(3.0, 3.0, 3.0))
-world_origin_axes = bpy.context.editable_objects[-1]
-world_origin_axes.name = "world_origin"  # will stay at origin
-
-bpy.ops.object.empty_add(type="ARROWS")
-freemocap_origin_axes = bpy.context.editable_objects[-1]
-freemocap_origin_axes.name = (
-    "freemocap_origin_axes"  # will translate to put skelly on ground symmetric-ish about origin
-)
-
-##############################
-# %% Set start and end frames
-
-start_frame = 1
-end_frame = number_of_frames
-
-bpy.context.scene.frame_start = start_frame
-bpy.context.scene.frame_end = end_frame
-
-############################
-### Load body data as empty markers
-empty_scale = 0.01
-for trajectory_name in mediapipe_body_trajectory_names:
-    trajectory_fr_xyz = mediapipe_skel_fr_mar_xyz[:, mediapipe_body_trajectory_names.index(trajectory_name), :]
-    create_keyframed_empty_from_3d_trajectory_data(
-        trajectory_fr_xyz=trajectory_fr_xyz,
-        trajectory_name=trajectory_name,
-        parent_origin=freemocap_origin_axes,
-        empty_scale=0.01,
-        empty_type="SPHERE",
-    )
-
-#######################################################################
-# %% create virtual markers
-print("Creating virtual markers...")
-
-# verify that the virtual marker definition dictionary is valid
-test_virtual_marker_definitions(mediapipe_virtual_marker_definitions_dict)
-
-for (
-    virtual_marker_name,
-    virtual_marker_dict,
-) in mediapipe_virtual_marker_definitions_dict.items():
-    logging.info(
-        f"Creating virtual marker: {virtual_marker_name}: \n"
-        f"from 'real' markers: {virtual_marker_dict['marker_names']}, \n"
-        f"with weights: {virtual_marker_dict['marker_weights']}\n"
-    )
-
-    mediapipe_body_trajectory_names.append(virtual_marker_name)
-    virtual_marker_xyz = create_virtual_marker(
-        trajectory_3d_frame_marker_xyz=mediapipe_skel_fr_mar_xyz,
-        all_trajectory_names=mediapipe_body_trajectory_names,
-        component_trajectory_names=virtual_marker_dict["marker_names"],
-        trajectory_weights=virtual_marker_dict["marker_weights"],
-    )
-    create_keyframed_empty_from_3d_trajectory_data(
-        trajectory_fr_xyz=virtual_marker_xyz,
-        trajectory_name=virtual_marker_name,
-        parent_origin=freemocap_origin_axes,
-        empty_scale=empty_scale * 3,
-        empty_type="PLAIN_AXES",
-    )
-
-logging.info(
-    "____________________________________________________________________________\n",
-    "Done loading in motion capture data -  Now lets use it to drive an armature!\n"
-    "____________________________________________________________________________\n",
-)
-
-######################
-### Create Rigify human meta-rig
-logging.info(f"Creating `rigify human meta-rig`")
-bpy.ops.object.armature_human_metarig_add()
-human_metarig = bpy.context.editable_objects[-1]
-
-##################
-### Scale armature
-
-
-try:
-    bpy.ops.object.mode_set(mode="EDIT")
-except:
-    pass
-
-for (
-    segment_name,
-    rigify_bones_list,
-) in rigify_bone_to_skeleton_segment_name_correspondance.items():
-
-    for rigify_bone_name in rigify_bones_list:
-        median_segment_length = skeleton_segment_lengths_dict[segment_name]["median"]
-        median_segment_length *= 0.001  # scale to meters
-
-        segment_length = median_segment_length / len(
-            rigify_bones_list
-        )  # divide by number of bones in segment (for now, eventually will want to set weights
-        logging.info(f"setting {rigify_bone_name} length to: {segment_length:.3f} m")
-        human_metarig.data.edit_bones[rigify_bone_name].length = segment_length
-
-####
-#### Constrain bones to empties
-####
-
-# loop through dictionary applying  constraints
-try:
-    bpy.ops.object.mode_set(mode="POSE")
-except:
-    pass
-
-try:
-    for bone_name, bone_constraint_dict in rig_constraint_dict_of_dicts.items():
-        logging.info(f"---Setting constraints for bone:{bone_name}---")
-        apply_constraints_to_bone(
-            bone_name=bone_name,
-            bone_constraint_dict=bone_constraint_dict,
-            armature_rig=human_metarig,
+        ####
+        ### Change the path below (`recording_path_input`) to the path to your recording session folder
+        ####
+        recording_path_input = Path(
+            r"C:\Users\jonma\freemocap_data\recording_sessions\session_2023-02-15_08_46_43_wud\recording_08_47_25_gmt-5_wud"
         )
+        blender_file_save_path_input = Path(recording_path_input) / f"{Path(recording_path_input).name}_.blend"
 
-except Exception as e:
-    logging.info(e)
-    logging.info("Something went wrong applying constraints to armarture bones")
-
-logging.info(
-    "____________________________________________________________________________\n",
-    "Done constraining armature bones to follow keyframed empties!",
-    "____________________________________________________________________________",
-)
-
-####################
-## Create simple stick figure mesh
-
-logging.info(
-    "____________________________________________________________________________\n",
-    "Creating simple stick figure mesh\n",
-    "____________________________________________________________________________",
-)
-try:
-    bpy.ops.object.mode_set(mode="OBJECT")
-except:
-    pass
-put_sphere_meshes_on_empties(
-    empty_names_list=mediapipe_body_trajectory_names,
-    parent_object=freemocap_origin_axes,
-    sphere_scale=0.02,
-)
-
-#####################
-## Load nSynched Videos
-try:
-    logger.info("loading videos as planes...")
-
-    world_origin = bpy.data.objects["world_origin"]
-
-    number_of_videos = len(list(video_folder_path.glob("*.mp4")))
-
-    vid_location_scale = 1
-
-    for (
-        vid_number,
-        thisVidPath,
-    ) in enumerate(video_folder_path.glob("*.mp4")):
-        logger.info(thisVidPath)
-        # use 'images as planes' add on to load in the video files as planes
-        bpy.ops.import_image.to_plane(
-            files=[{"name": thisVidPath.name}],
-            directory=str(thisVidPath.parent),
-            shader="EMISSION",
-        )
-        vid_as_plane = bpy.context.editable_objects[-1]
-        vid_as_plane.name = "vid_" + str(vid_number)
-
-        vid_x = (vid_number - number_of_videos / 2) * vid_location_scale
-
-        vid_as_plane.location = [
-            vid_x,
-            vid_location_scale,
-            vid_location_scale,
-        ]
-        vid_as_plane.rotation_euler = [np.pi / 2, 0, 0]
-        vid_as_plane.scale = [vid_location_scale * 1.5] * 3
-        vid_as_plane.parent = world_origin
-        # create a light
-        # bpy.ops.object.light_add(type='POINT', radius=1, align='WORLD')
-except Exception as e:
-    logger.info(e)
-    logger.info(
-        'Failed to load videos to Blender scene - You might need to install the "images as planes" addon to this version of Blender'
-    )
-
-try:
-    # from https://blender.stackexchange.com/a/238223
-
-    for window in bpy.context.window_manager.windows:
-        for area in window.screen.areas:  # iterate through areas in current screen
-            if area.type == "VIEW_3D":
-                for space in area.spaces:  # iterate through spaces in current VIEW_3D area
-                    if space.type == "VIEW_3D":  # check if space is a 3D view
-                        space.shading.type = "MATERIAL"
-except Exception as e:
-    logger.info(e)
-    logger.info("Failed to set shading to material")
-
-# save .blend file
-
-bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
-
-logging.info(
-    "____________________________________________________________________________\n",
-    "____________________________________________________________________________\n",
-    "Done creating Blender scene!\n",
-    f"Saved .blend file to: {blender_file_save_path}\n",
-    "You can now open the `.blend` file in Blender and play the animation!\n",
-    "____________________________________________________________________________\n",
-    "____________________________________________________________________________",
-)
+    main(recording_path=recording_path_input,
+         blender_file_save_path=blender_file_save_path_input,
+         mediapipe_empty_names=mediapipe_empty_names)

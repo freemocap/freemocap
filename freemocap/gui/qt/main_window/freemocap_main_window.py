@@ -111,6 +111,8 @@ class FreemocapMainWindow(QMainWindow):
         self._menu_bar = MenuBar(actions=self._actions, parent=self)
         self.setMenuBar(self._menu_bar)
 
+        self.statusBar().showMessage("Watch the terminal output for status updates, we're working on integrating better status updates into the GUI")
+
         self._central_tab_widget = self._create_central_tab_widget()
         self.setCentralWidget(self._central_tab_widget)
 
@@ -151,7 +153,7 @@ class FreemocapMainWindow(QMainWindow):
 
     def _handle_videos_saved_to_this_folder_signal(self, folder_path: str):
         save_most_recent_recording_path_as_toml(most_recent_recording_path=folder_path)
-        self._directory_view_widget.expand_directory_to_path(directory_path=folder_path)
+        self._directory_view_widget.expand_directory_to_path(path=folder_path)
         self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
         if (
@@ -181,8 +183,12 @@ class FreemocapMainWindow(QMainWindow):
 
     def update(self):
         super().update()
-        if not self._skellycam_widget.is_recording:
-            self._controller_group_box.update_recording_name_string()
+
+        try:
+            if not self._skellycam_widget.is_recording:
+                self._controller_group_box.update_recording_name_string()
+        except Exception as e:
+            logger.exception(e)
 
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
@@ -200,14 +206,15 @@ class FreemocapMainWindow(QMainWindow):
         self._welcome_to_freemocap_widget = WelcomeToFreemocapPanel(actions=self._actions, parent=self)
 
         self._skellycam_widget = SkellyCamWidget(
-            parent=self, get_new_synchronized_videos_folder_callable=self._create_new_synchronized_videos_folder
+            self._create_new_synchronized_videos_folder,
+        parent=self,
         )
         self._skellycam_widget.videos_saved_to_this_folder_signal.connect(
             self._handle_videos_saved_to_this_folder_signal
         )
 
         self._skellycam_controller_widget = SkellyCamControllerWidget(
-            camera_viewer_widget=self._skellycam_widget,
+            self._skellycam_widget,
             parent=self,
         )
 
@@ -237,12 +244,7 @@ class FreemocapMainWindow(QMainWindow):
             get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
         )
 
-    def _create_directory_view_dock_widget(self):
-        directory_view_dock_widget = QDockWidget("Directory View", self)
-        self._directory_view_widget = self._create_directory_view_widget()
-        directory_view_dock_widget.setWidget(self._directory_view_widget)
 
-        return directory_view_dock_widget
 
     # def _create_tool_bar(self):
     #     self._calibration_control_panel = CalibrationControlPanel(
@@ -312,7 +314,9 @@ class FreemocapMainWindow(QMainWindow):
 
         # self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
 
-        self._directory_view_widget.set_folder_as_root(Path(recording_info_model.path).parent)
+        path = Path(recording_info_model.path)
+        path.mkdir(parents=True, exist_ok=True)
+        self._directory_view_widget.set_folder_as_root(path.parent)
         if Path(recording_info_model.synchronized_videos_folder_path).exists():
             self._directory_view_widget.expand_directory_to_path(recording_info_model.synchronized_videos_folder_path)
         else:

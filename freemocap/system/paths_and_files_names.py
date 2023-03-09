@@ -181,6 +181,10 @@ def get_most_recent_recording_path(subfolder_str: str = None):
     most_recent_recording_dict = toml.load(str(get_most_recent_recording_toml_path()))
     most_recent_recording_path = most_recent_recording_dict["most_recent_recording_path"]
 
+    if not Path(most_recent_recording_path).exists():
+        logger.error(f"Most recent recording path {most_recent_recording_path} not found!!")
+        return None
+
     if subfolder_str is not None:
         try:
             # check if folder is specified in toml file, otherwise return default

@@ -136,6 +136,7 @@ def process_session_folder(
         file_name="mediapipe_skeleton_segment_lengths.json",
         dictionary=skeleton_segment_lengths_dict,
     )
+
     save_dictionary_to_json(
         save_path=s.recording_info_model.output_data_folder_path,
         file_name="mediapipe_names_and_connections_dict.json",

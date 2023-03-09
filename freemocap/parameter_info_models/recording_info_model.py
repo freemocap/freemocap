@@ -152,7 +152,7 @@ class RecordingFolderStatusChecker:
             return False
 
     def check_data2d_status(self) -> bool:
-        logger.info(f"Checking 2D data status for recording: {self.recording_info_model.name}")
+
         try:
             test_mediapipe_2d_data_shape(
                 synchronized_videos_folder=self.recording_info_model.synchronized_videos_folder_path,
@@ -161,11 +161,9 @@ class RecordingFolderStatusChecker:
 
             return True
         except AssertionError as e:
-            logger.info(f"Failed`test_mediapipe_2d_data_shape` with message: {e}")
             return False
 
     def check_data3d_status(self) -> bool:
-        logger.info(f"Checking 3D data status for recording: {self.recording_info_model.name}")
         try:
             test_mediapipe_3d_data_shape(
                 synchronized_videos_folder=self.recording_info_model.synchronized_videos_folder_path,
@@ -174,11 +172,10 @@ class RecordingFolderStatusChecker:
             )
             return True
         except AssertionError as e:
-            logger.info(f"Failed`test_mediapipe_3d_data_shape` with message: {e}")
+
             return False
 
     def check_center_of_mass_data_status(self) -> bool:
-        logger.info(f"Checking center of mass data status for recording: {self.recording_info_model.name}")
         try:
             test_total_body_center_of_mass_data_shape(
                 synchronized_videos_folder=self.recording_info_model.synchronized_videos_folder_path,
@@ -186,5 +183,4 @@ class RecordingFolderStatusChecker:
             )
             return True
         except AssertionError as e:
-            logger.info(f"Failed `test_total_body_center_of_mass_data_shape` with message: {e}")
             return False

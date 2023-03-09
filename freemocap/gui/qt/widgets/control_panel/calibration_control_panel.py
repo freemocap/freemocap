@@ -211,6 +211,7 @@ class CalibrationControlPanel(QWidget):
             )
 
             return
+
         self._anipose_calibration_frame_worker = AniposeCalibrationThreadWorker(
             calibration_videos_folder_path=active_recording_info.synchronized_videos_folder_path,
             charuco_square_size=float(charuco_square_size_mm),

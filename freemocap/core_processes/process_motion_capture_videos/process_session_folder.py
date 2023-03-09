@@ -39,7 +39,7 @@ from freemocap.tests.test_mediapipe_2d_data_shape import (
 )
 from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
-from freemocap.utilities.swap_axes import swap_axes
+from freemocap.utilities.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 
 logger = logging.getLogger(__name__)
 
@@ -109,12 +109,12 @@ def process_session_folder(
         medipipe_reprojection_error_data_npy_path=s.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
     )
 
-    axes_swapped_raw_skel3d_frame_marker_xyz = swap_axes(raw_skel3d_frame_marker_xyz)
+    rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
 
     logger.info("Gap-filling, butterworth filtering, origin aligning 3d skeletons, then calculating center of mass ...")
 
     skel3d_frame_marker_xyz = gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
-        skel3d_frame_marker_xyz=axes_swapped_raw_skel3d_frame_marker_xyz,
+        skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
         skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
         path_to_folder_where_we_will_save_this_data=s.recording_info_model.output_data_folder_path,
         sampling_rate=s.post_processing_parameters_model.framerate,

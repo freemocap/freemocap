@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def swap_axes(raw_skel3d_frame_marker_xyz: np.ndarray) -> np.ndarray:
+def rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz: np.ndarray) -> np.ndarray:
 
     swapped_skel3d_frame_marker_xyz = np.zeros(raw_skel3d_frame_marker_xyz.shape)
 

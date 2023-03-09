@@ -98,6 +98,7 @@ def convert_mediapipe_npy_to_csv(
 
     # %%
     # save broken up npy files
+    # TODO: save `.npy` files as an independent function
     np.save(
         str(Path(output_data_folder_path) / "mediapipe_body_3d_xyz.npy"), body_3d_xyz
     )

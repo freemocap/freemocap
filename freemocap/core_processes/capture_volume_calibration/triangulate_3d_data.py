@@ -150,7 +150,7 @@ def save_mediapipe_3d_data_to_npy(
     Path(path_to_folder_where_data_will_be_saved).mkdir(parents=True, exist_ok=True)  # save spatial XYZ data
     mediapipe_3dData_save_path = path_to_folder_where_data_will_be_saved / RAW_MEDIAPIPE_3D_NPY_FILE_NAME
 
-    logger.info(f"saving: {mediapipe_3dData_save_path}")
+    logger.info(f"saving mediapipe 3D data: {mediapipe_3dData_save_path}")
     np.save(str(mediapipe_3dData_save_path), data3d_numFrames_numTrackedPoints_XYZ)
 
     # save reprojection error
@@ -158,7 +158,7 @@ def save_mediapipe_3d_data_to_npy(
         path_to_folder_where_data_will_be_saved / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
     )
 
-    logger.info(f"saving: {mediapipe_reprojection_error_save_path}")
+    logger.info(f"saving mediapipe reprojection error: {mediapipe_reprojection_error_save_path}")
     np.save(
         str(mediapipe_reprojection_error_save_path),
         data3d_numFrames_numTrackedPoints_reprojectionError,

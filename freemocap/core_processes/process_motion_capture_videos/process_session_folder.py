@@ -36,7 +36,9 @@ from freemocap.tests.test_mediapipe_2d_data_shape import (
     test_mediapipe_2d_data_shape,
 )
 from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
+from freemocap.utilities.flatten_3d_data import flatten_3d_data
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
+from freemocap.utilities.swap_axes import swap_axes
 
 logger = logging.getLogger(__name__)
 
@@ -84,11 +86,22 @@ def process_session_folder(
 
         skeleton_reprojection_error_fr_mar = np.zeros(raw_skel3d_frame_marker_xyz.shape[0:2])
 
-        # TODO: changing data input to data3d_numFrames_numTrackedPoints_XYZ doesn't change blender output. Investigate.
+        yz_swapped_raw_skel3d_frame_marker_xyz = swap_axes(
+                                                raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz)
+        flattened_raw_skel3d_frame_marker_xyz = flatten_3d_data(
+                                                skel3d_frame_marker_xyz=yz_swapped_raw_skel3d_frame_marker_xyz)
+
         save_mediapipe_3d_data_to_npy(
-            data3d_numFrames_numTrackedPoints_XYZ=raw_skel3d_frame_marker_xyz,
+            data3d_numFrames_numTrackedPoints_XYZ=flattened_raw_skel3d_frame_marker_xyz,
             data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
             path_to_folder_where_data_will_be_saved=s.recording_info_model.raw_data_folder_path,
+        )
+
+        logger.info("Single Camera: Breaking up big `npy` into smaller bits and converting to `csv`...")
+        # break up big NPY and save out csv's
+        convert_mediapipe_npy_to_csv(
+            mediapipe_3d_frame_trackedPoint_xyz=flattened_raw_skel3d_frame_marker_xyz,
+            output_data_folder_path=s.recording_info_model.output_data_folder_path,
         )
 
     else:
@@ -130,12 +143,15 @@ def process_session_folder(
         medipipe_reprojection_error_data_npy_path=s.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
     )
 
-    logger.info("Breaking up big `npy` into smaller bits and converting to `csv`...")
-    # break up big NPY and save out csv's
-    convert_mediapipe_npy_to_csv(
-        mediapipe_3d_frame_trackedPoint_xyz=skel3d_frame_marker_xyz,
-        output_data_folder_path=s.recording_info_model.output_data_folder_path,
-    )
+    # throw saving function into an if statement, because if we have a single camera, we already saved the data
+    if mediapipe_pose_world_data.shape[0] > 1:
+
+        logger.info("Breaking up big `npy` into smaller bits and converting to `csv`...")
+        # break up big NPY and save out csv's
+        convert_mediapipe_npy_to_csv(
+            mediapipe_3d_frame_trackedPoint_xyz=skel3d_frame_marker_xyz,
+            output_data_folder_path=s.recording_info_model.output_data_folder_path,
+        )
 
     path_to_skeleton_body_csv = (
         Path(s.recording_info_model.output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME

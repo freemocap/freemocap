@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import save_mediapipe_3d_data_to_npy
-from freemocap.utilities.flatten_3d_data import flatten_3d_data
+from freemocap.utilities.flatten_3d_data import project_3d_data_to_z_plane
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ def process_single_camera_3d_data(input_skel3d_frame_marker_xyz: np.ndarray, raw
 
     skeleton_reprojection_error_fr_mar = np.zeros(input_skel3d_frame_marker_xyz.shape[0:2])
 
-    raw_skel3d_frame_marker_xyz = flatten_3d_data(
+    raw_skel3d_frame_marker_xyz = project_3d_data_to_z_plane(
         skel3d_frame_marker_xyz=input_skel3d_frame_marker_xyz)
 
     save_mediapipe_3d_data_to_npy(

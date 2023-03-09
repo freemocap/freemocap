@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def export_to_blender(
     recording_folder_path: Union[str, Path],
     blender_file_path: Union[str, Path],
-    blender_exe_path: Union[str, Path],
+    blender_exe_path: Union[str, Path] = get_best_guess_of_blender_path(),
     method: str = "megascript_take2",
 ):
 

@@ -268,7 +268,8 @@ class MediaPipeSkeletonDetector:
             left_hand_3d = all_cameras_left_hand_world_data_list[cam_num]
             face_3d = all_cameras_face_world_data_list[cam_num]
 
-            body_world_numCams_numFrames_numTrackedPts_XYZ[cam_num, :, :, :] = np.concatenate((pose_3d,
+            body_world_numCams_numFrames_numTrackedPts_XYZ[cam_num, :, :number_of_body_points, :] = np.concatenate((
+                                                                                                      pose_3d,
                                                                                                       right_hand_3d,
                                                                                                       left_hand_3d,
                                                                                                       face_3d),
@@ -366,37 +367,37 @@ class MediaPipeSkeletonDetector:
         )
         body_world_frameNumber_trackedPointNumber_XYZ[:] = np.nan
 
-        body2d_frameNumber_trackedPointNumber_confidence = np.zeros(
+        body_frameNumber_trackedPointNumber_confidence = np.zeros(
             (number_of_frames, self.number_of_body_tracked_points)
         )
-        body2d_frameNumber_trackedPointNumber_confidence[:] = np.nan  # only body markers get a 'confidence' value
+        body_frameNumber_trackedPointNumber_confidence[:] = np.nan  # only body markers get a 'confidence' value
 
-        rightHand3d_frameNumber_trackedPointNumber_XYZ = np.zeros(
+        rightHand_frameNumber_trackedPointNumber_XYZ = np.zeros(
             (
                 number_of_frames,
                 self.number_of_right_hand_tracked_points,
                 3,
             )
         )
-        rightHand3d_frameNumber_trackedPointNumber_XYZ[:] = np.nan
+        rightHand_frameNumber_trackedPointNumber_XYZ[:] = np.nan
 
-        leftHand3d_frameNumber_trackedPointNumber_XYZ = np.zeros(
+        leftHand_frameNumber_trackedPointNumber_XYZ = np.zeros(
             (
                 number_of_frames,
                 self.number_of_left_hand_tracked_points,
                 3,
             )
         )
-        leftHand3d_frameNumber_trackedPointNumber_XYZ[:] = np.nan
+        leftHand_frameNumber_trackedPointNumber_XYZ[:] = np.nan
 
-        face3d_frameNumber_trackedPointNumber_XYZ = np.zeros(
+        face_frameNumber_trackedPointNumber_XYZ = np.zeros(
             (
                 number_of_frames,
                 self.number_of_face_tracked_points,
                 3,
             )
         )
-        face3d_frameNumber_trackedPointNumber_XYZ[:] = np.nan
+        face_frameNumber_trackedPointNumber_XYZ[:] = np.nan
 
         all_body_tracked_points_visible_on_frame_bool_list = []
         all_right_hand_points_visible_on_frame_bool_list = []
@@ -419,7 +420,7 @@ class MediaPipeSkeletonDetector:
                     body_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
                             landmark_data.z * image_width  # z is on roughly the same scale as x, according to mediapipe docs
                     )
-                    body2d_frameNumber_trackedPointNumber_confidence[
+                    body_frameNumber_trackedPointNumber_confidence[
                         frame_number, landmark_number
                     ] = landmark_data.visibility  # mediapipe calls their 'confidence' score 'visibility'
 
@@ -437,39 +438,39 @@ class MediaPipeSkeletonDetector:
             # get Right Hand data
             if frame_results.right_hand_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.right_hand_landmarks.landmark):
-                    rightHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
+                    rightHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
                             landmark_data.x * image_width
                     )
-                    rightHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
+                    rightHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
                             landmark_data.y * image_height
                     )
-                    rightHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
+                    rightHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
                             landmark_data.z * image_width
                     )
 
             # get Left Hand data
             if frame_results.left_hand_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.left_hand_landmarks.landmark):
-                    leftHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
+                    leftHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
                             landmark_data.x * image_width
                     )
-                    leftHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
+                    leftHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
                             landmark_data.y * image_height
                     )
-                    leftHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
+                    leftHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
                             landmark_data.z * image_width
                     )
 
             # get Face data
             if frame_results.face_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.face_landmarks.landmark):
-                    face3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
+                    face_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
                             landmark_data.x * image_width
                     )
-                    face3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
+                    face_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
                             landmark_data.y * image_height
                     )
-                    face3d_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
+                    face_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
                             landmark_data.z * image_width
                     )
 
@@ -478,16 +479,16 @@ class MediaPipeSkeletonDetector:
             all_body_tracked_points_visible_on_frame_bool_list.append(all_body_visible)
 
             all_right_hand_visible = all(
-                sum(np.isnan(rightHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, :, :])) == 0
+                sum(np.isnan(rightHand_frameNumber_trackedPointNumber_XYZ[frame_number, :, :])) == 0
             )
             all_right_hand_points_visible_on_frame_bool_list.append(all_right_hand_visible)
 
             all_left_hand_visible = all(
-                sum(np.isnan(leftHand3d_frameNumber_trackedPointNumber_XYZ[frame_number, :, :])) == 0
+                sum(np.isnan(leftHand_frameNumber_trackedPointNumber_XYZ[frame_number, :, :])) == 0
             )
             all_left_hand_points_visible_on_frame_bool_list.append(all_left_hand_visible)
 
-            all_face_visible = all(sum(np.isnan(face3d_frameNumber_trackedPointNumber_XYZ[frame_number, :, :])) == 0)
+            all_face_visible = all(sum(np.isnan(face_frameNumber_trackedPointNumber_XYZ[frame_number, :, :])) == 0)
             all_face_points_visible_on_frame_bool_list.append(all_face_visible)
 
             all_points_visible = all(
@@ -502,23 +503,21 @@ class MediaPipeSkeletonDetector:
             all_tracked_points_visible_on_frame_list.append(all_points_visible)
 
         return MediapipeNumpyArrays(
-            body2d_frameNumber_trackedPointNumber_XY=np.squeeze(body_frameNumber_trackedPointNumber_XYZ),
-            body_pose_3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(body_world_frameNumber_trackedPointNumber_XYZ),
-            rightHand3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(rightHand3d_frameNumber_trackedPointNumber_XYZ),
-            leftHand3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(leftHand3d_frameNumber_trackedPointNumber_XYZ),
-            face3d_frameNumber_trackedPointNumber_XYZ=np.squeeze(face3d_frameNumber_trackedPointNumber_XYZ),
-            body2d_frameNumber_trackedPointNumber_confidence=np.squeeze(
-                body2d_frameNumber_trackedPointNumber_confidence
-            ),
+            body_frameNumber_trackedPointNumber_XYZ=np.squeeze(body_frameNumber_trackedPointNumber_XYZ),
+            body_world_frameNumber_trackedPointNumber_XYZ=np.squeeze(body_world_frameNumber_trackedPointNumber_XYZ),
+            rightHand_frameNumber_trackedPointNumber_XYZ=np.squeeze(rightHand_frameNumber_trackedPointNumber_XYZ),
+            leftHand_frameNumber_trackedPointNumber_XYZ=np.squeeze(leftHand_frameNumber_trackedPointNumber_XYZ),
+            face_frameNumber_trackedPointNumber_XYZ=np.squeeze(face_frameNumber_trackedPointNumber_XYZ),
+            body_frameNumber_trackedPointNumber_confidence=np.squeeze(body_frameNumber_trackedPointNumber_confidence),
         )
 
     def _threshold_by_confidence(
             self,
-            data2d_trackedPoint_dim: np.ndarray,
-            data2d_trackedPoint_confidence: np.ndarray,
+            image_data_trackedPoint_dim: np.ndarray,
+            image_data_trackedPoint_confidence: np.ndarray,
             confidence_threshold: float,
     ):
 
-        threshold_mask = data2d_trackedPoint_confidence < confidence_threshold
-        data2d_trackedPoint_dim[threshold_mask, :] = np.nan
-        return data2d_trackedPoint_dim
+        threshold_mask = image_data_trackedPoint_confidence < confidence_threshold
+        image_data_trackedPoint_dim[threshold_mask, :] = np.nan
+        return image_data_trackedPoint_dim

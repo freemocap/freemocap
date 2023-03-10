@@ -5,7 +5,7 @@ from freemocap.tests.utilities.import_sample_data import (
     find_data_folder_path,
     find_skeleton_npy_file_name,
     find_synchronized_videos_folder_path,
-    find_2d_data_file_name,
+    find_image_data_file_name,
     find_reprojection_error_file_name,
     find_total_body_center_of_mass_file_name,
 )
@@ -39,8 +39,8 @@ def total_body_center_of_mass_file_path():
 
 
 @pytest.fixture
-def data_2d_file_name():
-    return find_2d_data_file_name(find_data_folder_path(sample_session_folder_path))
+def image_data_file_name():
+    return find_image_data_file_name(find_data_folder_path(sample_session_folder_path))
 
 
 @pytest.fixture

@@ -10,13 +10,13 @@ from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import
 
 
 @pytest.mark.usefixtures("synchronized_video_folder_path", "skeleton_npy_file_path", "reprojection_error_file_name")
-def test_mediapipe_3d_data_shape(
+def test_mediapipe_skeleton_data_shape(
     synchronized_video_folder_path: Union[str, Path],
     skeleton_npy_file_path: Union[str, Path],
     reprojection_error_file_name: Union[str, Path],
 ):
     """
-    test that the `mediapipe 3d detection` process worked correctly by checking:
+    test that the `mediapipe skeleton detection` process worked correctly by checking:
 
     1. There is an `.npy` file containing the mediapipe 3d data in the `output_data_folder`
     2. The dimensions of that `npy` ( number of frames, [ need to do - number of tracked points], [X,Y,Z] matches the videos in the `synchronized videos` folder

@@ -9,24 +9,24 @@ from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import
 )
 
 
-@pytest.mark.usefixtures("synchronized_video_folder_path", "data_2d_file_name")
-def test_mediapipe_2d_data_shape(
+@pytest.mark.usefixtures("synchronized_video_folder_path", "image_data_file_name")
+def test_mediapipe_image_shape(
     synchronized_video_folder_path: Union[str, Path],
-    data_2d_file_name: Union[str, Path],
+    image_data_file_name,
 ):
 
     """
-    test that the `mediapipe 2d detection` process worked correctly by checking:
+    test that the `mediapipe image detection` process worked correctly by checking:
 
-    1. There is an `.npy` file containing the mediapipe 2d data in the `output_data_folder`
+    1. There is an `.npy` file containing the mediapipe image data in the `output_data_folder`
     2. The dimensions of that `npy` (number of cameras, number of frames, [ need to do - number of tracked points], [pixelX, pixelY] matches the videos in the `synchronized videos` folder
 
     TODO - check number of tracked points vs 'expected' number of tracked points
     """
 
-    assert Path(data_2d_file_name).is_file(), f"{data_2d_file_name} is not a file"
+    assert Path(image_data_file_name).is_file(), f"{image_data_file_name} is not a file"
 
-    mediapipe_2d_data = np.load(data_2d_file_name)
+    mediapipe_2d_data = np.load(image_data_file_name)
 
     list_of_video_paths = list(Path(synchronized_video_folder_path).glob("*.mp4"))
     number_of_videos = len(list_of_video_paths)
@@ -39,7 +39,7 @@ def test_mediapipe_2d_data_shape(
     ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_count}"
     assert (
         mediapipe_2d_data.shape[1] == frame_count[0]
-    ), f"Number of frames in {data_2d_file_name} does not match number of frames of videos in {synchronized_video_folder_path}"
+    ), f"Number of frames in {image_data_file_name} does not match number of frames of videos in {synchronized_video_folder_path}"
 
     # TODO - check number of tracked points vs 'expected' number of tracked points
 

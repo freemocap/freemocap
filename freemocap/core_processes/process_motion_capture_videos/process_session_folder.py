@@ -31,10 +31,10 @@ from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_ori
 )
 from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
 
-from freemocap.tests.test_mediapipe_2d_data_shape import (
-    test_mediapipe_2d_data_shape,
+from freemocap.tests.test_mediapipe_image_data_shape import (
+    test_mediapipe_image_shape,
 )
-from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
+from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_3d_data_shape
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ def process_session_folder(
         Path(s.recording_info_model.output_data_folder_path) / RAW_DATA_FOLDER_NAME,
     )
 
-    assert test_mediapipe_2d_data_shape(
+    assert test_mediapipe_image_shape(
         synchronized_videos_folder=s.recording_info_model.synchronized_videos_folder_path,
         mediapipe_2d_data_file_path=s.recording_info_model.mediapipe_2d_data_npy_file_path,
     )

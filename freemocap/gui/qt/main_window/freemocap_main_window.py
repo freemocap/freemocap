@@ -336,7 +336,7 @@ class FreemocapMainWindow(QMainWindow):
 
         if active_recording_info.data3d_status_check:
             self._skelly_viewer_widget.load_skeleton_data(
-                mediapipe_skeleton_npy_path=active_recording_info.mediapipe_3d_data_npy_file_path
+                mediapipe_skeleton_npy_path=active_recording_info.mediapipe_processed_data_npy_file_path
             )
             self._central_tab_widget.set_visualize_data_tab_enabled(True)
 

@@ -442,7 +442,7 @@ class SessionPipelineOrchestrator:
                 mediapipe2d_data_per_cam_dict[
                     this_webcam_id
                 ] = (
-                    this_mediapipe_payload.pixel_data_numpy_arrays.all_data2d_nFrames_nTrackedPts_XY
+                    this_mediapipe_payload.pixel_data_numpy_arrays.all_data_nFrames_nTrackedPts_XYZ
                 )
 
             mediapipe_3d_data_payload = self._triangulate_2d_data(

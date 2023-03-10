@@ -8,9 +8,9 @@ from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import
 )
 
 
-def test_mediapipe_2d_data_shape(
+def test_mediapipe_image_data_shape(
     synchronized_videos_folder: Union[str, Path],
-    mediapipe_2d_data_file_path: Union[str, Path],
+    mediapipe_image_data_file_path: Union[str, Path],
 ):
 
     """
@@ -23,10 +23,10 @@ def test_mediapipe_2d_data_shape(
     """
 
     assert Path(
-        mediapipe_2d_data_file_path
-    ).is_file(), f"{mediapipe_2d_data_file_path} is not a file"
+        mediapipe_image_data_file_path
+    ).is_file(), f"{mediapipe_image_data_file_path} is not a file"
 
-    mediapipe_2d_data = np.load(mediapipe_2d_data_file_path)
+    mediapipe_2d_data = np.load(mediapipe_image_data_file_path)
 
     list_of_video_paths = list(Path(synchronized_videos_folder).glob("*.mp4"))
     number_of_videos = len(list_of_video_paths)
@@ -39,7 +39,7 @@ def test_mediapipe_2d_data_shape(
     ), f"Videos in {synchronized_videos_folder} have different frame counts: {frame_count}"
     assert (
         mediapipe_2d_data.shape[1] == frame_count[0]
-    ), f"Number of frames in {mediapipe_2d_data_file_path} does not match number of frames of videos in {synchronized_videos_folder}"
+    ), f"Number of frames in {mediapipe_image_data_file_path} does not match number of frames of videos in {synchronized_videos_folder}"
 
     # TODO - check number of tracked points vs 'expected' number of tracked points
 

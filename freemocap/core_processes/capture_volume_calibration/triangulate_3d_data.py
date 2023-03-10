@@ -5,7 +5,7 @@ from typing import Union
 import numpy as np
 
 from freemocap.system.paths_and_files_names import (
-    RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
+    MEDIAPIPE_RAW_SKELETON_NPY_FILE_NAME,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
 )
 
@@ -129,7 +129,7 @@ def triangulate_3d_data(
         data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_error_data3d_numFrames_numTrackedPoints,
     )
 
-    save_mediapipe_3d_data_to_npy(
+    save_mediapipe_skeleton_data_to_npy(
         data3d_numFrames_numTrackedPoints_XYZ=spatial_data3d_numFrames_numTrackedPoints_XYZ,
         data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_error_data3d_numFrames_numTrackedPoints,
         path_to_folder_where_data_will_be_saved=output_data_folder_path,
@@ -141,16 +141,16 @@ def triangulate_3d_data(
     )
 
 
-def save_mediapipe_3d_data_to_npy(
+def save_mediapipe_skeleton_data_to_npy(
     data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
     data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
     path_to_folder_where_data_will_be_saved: Union[str, Path],
 ):
     path_to_folder_where_data_will_be_saved = Path(path_to_folder_where_data_will_be_saved)
     Path(path_to_folder_where_data_will_be_saved).mkdir(parents=True, exist_ok=True)  # save spatial XYZ data
-    mediapipe_3dData_save_path = path_to_folder_where_data_will_be_saved / RAW_MEDIAPIPE_3D_NPY_FILE_NAME
+    mediapipe_3dData_save_path = path_to_folder_where_data_will_be_saved / MEDIAPIPE_RAW_SKELETON_NPY_FILE_NAME
 
-    logger.info(f"saving mediapipe 3D data: {mediapipe_3dData_save_path}")
+    logger.info(f"saving mediapipe skeleton data: {mediapipe_3dData_save_path}")
     np.save(str(mediapipe_3dData_save_path), data3d_numFrames_numTrackedPoints_XYZ)
 
     # save reprojection error

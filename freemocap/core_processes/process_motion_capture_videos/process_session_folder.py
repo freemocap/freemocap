@@ -8,16 +8,16 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.medi
     mediapipe_names_and_connections_dict,
 )
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_3d_data import \
-    process_single_camera_3d_data
+    process_single_camera_skeleton_data
 from freemocap.system.paths_and_files_names import (
-    MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
+    MEDIAPIPE_BODY_DATAFRAME_CSV_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
 )
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
 )
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import (
-    triangulate_3d_data, save_mediapipe_3d_data_to_npy,
+    triangulate_3d_data, save_mediapipe_skeleton_data_to_npy,
 )
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
     convert_mediapipe_npy_to_csv,
@@ -35,7 +35,7 @@ from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_ori
 from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
 
 from freemocap.tests.test_mediapipe_2d_data_shape import (
-    test_mediapipe_2d_data_shape,
+    test_mediapipe_image_data_shape,
 )
 from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
@@ -70,21 +70,21 @@ def process_session_folder(
         parameter_model=s.mediapipe_parameters_model,
     )
 
-    mediapipe_2d_data, mediapipe_pose_world_data = mediapipe_skeleton_detector.process_folder_full_of_videos(
+    mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = mediapipe_skeleton_detector.process_folder_full_of_videos(
         s.recording_info_model.synchronized_videos_folder_path,
         Path(s.recording_info_model.output_data_folder_path) / RAW_DATA_FOLDER_NAME,
     )
 
-    assert test_mediapipe_2d_data_shape(
+    assert test_mediapipe_image_data_shape(
         synchronized_videos_folder=s.recording_info_model.synchronized_videos_folder_path,
-        mediapipe_2d_data_file_path=s.recording_info_model.mediapipe_2d_data_npy_file_path,
+        mediapipe_image_data_file_path=s.recording_info_model.mediapipe_image_data_npy_file_path,
     )
 
     # spoof 3D data if single camera
-    if mediapipe_pose_world_data.shape[0] == 1:
+    if mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
 
-        (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_3d_data(
-            input_skel3d_frame_marker_xyz=mediapipe_pose_world_data[0],
+        (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
+            input_image_data_frame_marker_xyz=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ[0],
             raw_data_folder_path=Path(s.recording_info_model.raw_data_folder_path))
 
     else:
@@ -97,7 +97,7 @@ def process_session_folder(
         )
         (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar,) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
-            mediapipe_2d_data=mediapipe_2d_data,
+            mediapipe_2d_data=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
             output_data_folder_path=s.recording_info_model.raw_data_folder_path,
             mediapipe_confidence_cutoff_threshold=s.anipose_triangulate_3d_parameters_model.confidence_threshold_cutoff,
             use_triangulate_ransac=s.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
@@ -105,7 +105,7 @@ def process_session_folder(
 
     assert test_mediapipe_3d_data_shape(
         synchronized_videos_folder=s.recording_info_model.synchronized_videos_folder_path,
-        mediapipe_3d_data_npy_path=s.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
+        mediapipe_3d_data_npy_path=s.recording_info_model.mediapipe_raw_skeleton_npy_file_path,
         medipipe_reprojection_error_data_npy_path=s.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
     )
 
@@ -124,7 +124,7 @@ def process_session_folder(
     )
     assert test_mediapipe_3d_data_shape(
         synchronized_videos_folder=s.recording_info_model.synchronized_videos_folder_path,
-        mediapipe_3d_data_npy_path=s.recording_info_model.mediapipe_3d_data_npy_file_path,
+        mediapipe_3d_data_npy_path=s.recording_info_model.mediapipe_processed_data_npy_file_path,
         medipipe_reprojection_error_data_npy_path=s.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
     )
 
@@ -136,7 +136,7 @@ def process_session_folder(
     )
 
     path_to_skeleton_body_csv = (
-        Path(s.recording_info_model.output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME
+            Path(s.recording_info_model.output_data_folder_path) / MEDIAPIPE_BODY_DATAFRAME_CSV_FILE_NAME
     )
     skeleton_dataframe = pd.read_csv(path_to_skeleton_body_csv)
 
@@ -160,43 +160,4 @@ def process_session_folder(
 
 if __name__ == "__main__":
     pass
-    # from rich.pretty import pprint
-    #
-    # session_folder_path = Path(r"H:\My Drive\Biol2299_Fall2022\com_vs_bos_posture_data\sesh_2022-09-28_15_52_24_bbbbbb")
-    #
-    # path_to_camera_calibration_toml = Path(
-    #     r"H:\My Drive\Biol2299_Fall2022\calibration_recordings\sesh_2022-09-28_15_39_31_calibration\sesh_2022-09-28_15_39_31_calibration.toml"
-    # )
-    #
-    # path_to_blender_executable = Path(r"C:\Program Files\Blender Foundation\Blender 3.2\blender.exe")
-    #
-    # anipose_calibration_object = freemocap_anipose.CameraGroup.load(str(path_to_camera_calibration_toml))
-    #
-    # if Path(session_folder_path / "synchronized_videos").exists():  # freemocap version > v0.0.54 (aka `alpha`)
-    #     synchronized_videos_folder_in = Path(session_folder_path) / "synchronized_videos"
-    # elif Path(session_folder_path / "SyncedVideos").exists():  # freemocap version <= v0.0.54 (aka `pre-alpha`)
-    #     synchronized_videos_folder_in = Path(session_folder_path) / "SyncedVideos"
-    # else:
-    #     print(f"No folder full of synchronized videos found for {session_folder_path}")
-    #     raise FileNotFoundError
-    #
-    # output_data_folder = Path(session_folder_path) / "output_data"
-    # output_data_folder.mkdir(exist_ok=True, parents=True)
-    #
-    # session_processing_parameter_model = SessionProcessingParameterModel(
-    #     path_to_session_folder=session_folder_path,
-    #     path_to_output_data_folder=output_data_folder,
-    #     path_to_folder_of_synchronized_videos=synchronized_videos_folder_in,
-    #     anipose_calibration_object=anipose_calibration_object,
-    #     path_to_blender_executable=path_to_blender_executable,
-    # )
-    #
-    # session_processing_parameter_model.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method = False
-    #
-    # session_processing_parameter_model.start_processing_at_stage = 2
-    #
-    # pprint(session_processing_parameter_model.dict(), expand_all=True)
-    #
-    # process_session_folder(session_processing_parameter_model)
-    #
-    # print("Done!")
+

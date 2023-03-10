@@ -4,8 +4,8 @@ from typing import Union
 
 from freemocap.system.paths_and_files_names import (
     CENTER_OF_MASS_FOLDER_NAME,
-    MEDIAPIPE_2D_NPY_FILE_NAME,
-    RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
+    MEDIAPIPE_IMAGE_NPY_FILE_NAME,
+    MEDIAPIPE_RAW_SKELETON_NPY_FILE_NAME,
     OUTPUT_DATA_FOLDER_NAME,
     RAW_DATA_FOLDER_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
@@ -13,10 +13,9 @@ from freemocap.system.paths_and_files_names import (
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
     get_blender_file_path,
     get_last_successful_calibration_toml_path,
-    ANNOTATED_VIDEOS_FOLDER_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME,
+    ANNOTATED_VIDEOS_FOLDER_NAME, MEDIAPIPE_PROCESSED_SKELETON_NPY_FILE_NAME,
 )
-from freemocap.tests.test_mediapipe_2d_data_shape import test_mediapipe_2d_data_shape
+from freemocap.tests.test_mediapipe_2d_data_shape import test_mediapipe_image_data_shape
 from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import (
     test_synchronized_video_frame_counts,
@@ -79,16 +78,16 @@ class RecordingInfoModel:
         return str(self._annotated_videos_folder_path)
 
     @property
-    def mediapipe_2d_data_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / MEDIAPIPE_2D_NPY_FILE_NAME)
+    def mediapipe_image_data_npy_file_path(self):
+        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / MEDIAPIPE_IMAGE_NPY_FILE_NAME)
 
     @property
-    def mediapipe_3d_data_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / MEDIAPIPE_3D_NPY_FILE_NAME)
+    def mediapipe_processed_data_npy_file_path(self):
+        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / MEDIAPIPE_PROCESSED_SKELETON_NPY_FILE_NAME)
 
     @property
-    def raw_mediapipe_3d_data_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / RAW_MEDIAPIPE_3D_NPY_FILE_NAME)
+    def mediapipe_raw_skeleton_npy_file_path(self):
+        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / MEDIAPIPE_RAW_SKELETON_NPY_FILE_NAME)
 
     @property
     def mediapipe_reprojection_error_data_npy_file_path(self):
@@ -126,7 +125,7 @@ class RecordingInfoModel:
 
     @property
     def data2d_status_check(self) -> bool:
-        return self._recording_folder_status_checker.check_data2d_status()
+        return self._recording_folder_status_checker.check_mediapipe_image_data_status()
 
     @property
     def data3d_status_check(self) -> bool:
@@ -151,12 +150,12 @@ class RecordingFolderStatusChecker:
         except AssertionError:
             return False
 
-    def check_data2d_status(self) -> bool:
-        logger.info(f"Checking 2D data status for recording: {self.recording_info_model.name}")
+    def check_mediapipe_image_data_status(self) -> bool:
+        logger.info(f"Checking mediapipe image data status for recording: {self.recording_info_model.name}")
         try:
-            test_mediapipe_2d_data_shape(
+            test_mediapipe_image_data_shape(
                 synchronized_videos_folder=self.recording_info_model.synchronized_videos_folder_path,
-                mediapipe_2d_data_file_path=self.recording_info_model.mediapipe_2d_data_npy_file_path,
+                mediapipe_image_data_file_path=self.recording_info_model.mediapipe_image_data_npy_file_path,
             )
 
             return True
@@ -169,7 +168,7 @@ class RecordingFolderStatusChecker:
         try:
             test_mediapipe_3d_data_shape(
                 synchronized_videos_folder=self.recording_info_model.synchronized_videos_folder_path,
-                mediapipe_3d_data_npy_path=self.recording_info_model.mediapipe_3d_data_npy_file_path,
+                mediapipe_3d_data_npy_path=self.recording_info_model.mediapipe_processed_data_npy_file_path,
                 medipipe_reprojection_error_data_npy_path=self.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
             )
             return True

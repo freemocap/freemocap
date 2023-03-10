@@ -255,7 +255,7 @@ class MediaPipeSkeletonDetector:
             (
                 number_of_cameras,
                 number_of_frames,
-                number_of_body_points,
+                number_of_tracked_points,
                 number_of_spatial_dimensions,
             )
         )
@@ -268,7 +268,7 @@ class MediaPipeSkeletonDetector:
             left_hand_3d = all_cameras_left_hand_world_data_list[cam_num]
             face_3d = all_cameras_face_world_data_list[cam_num]
 
-            body_world_numCams_numFrames_numTrackedPts_XYZ[cam_num, :, :number_of_body_points, :] = np.concatenate((
+            body_world_numCams_numFrames_numTrackedPts_XYZ[cam_num, :, :, :] = np.concatenate((
                                                                                                       pose_3d,
                                                                                                       right_hand_3d,
                                                                                                       left_hand_3d,

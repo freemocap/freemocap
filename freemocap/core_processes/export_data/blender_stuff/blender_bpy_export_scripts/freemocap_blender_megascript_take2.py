@@ -18,10 +18,12 @@ logger = logging.getLogger(__name__)
 ### CHANGE THE PATH TO THE SESSION FOLDER IN THE `if __name__ == "__main__":` BLOCK AT THE **BOTTOM** OF THIS FILE
 ### the variable is named `recording_path_input`
 ###############################################################
+
+
 def main(recording_path: Union[str, Path],
          blender_file_save_path: Union[str, Path],
          mediapipe_empty_names: Dict[str, List[str]],
-         create_rig: bool = False,
+         create_rig: bool = True,
          ):
     ###%% clear the scene - Scorch the earth \o/
     print("Clearing scene...")
@@ -71,8 +73,6 @@ def main(recording_path: Union[str, Path],
     print(f"mediapipe_body_fr_mar_dim.shape: {mediapipe_body_fr_mar_xyz.shape}")
     print(f"mediapipe_reprojection_error_fr_mar.shape: {mediapipe_reprojection_error_fr_mar.shape}")
 
-
-
     #########################
     ### Create Origin Axes
 
@@ -104,8 +104,8 @@ def main(recording_path: Union[str, Path],
                                              enumerate(mediapipe_empty_names["hand"])]
     mediapipe_left_hand_trajectory_names = [f"left_hand_{number}:{empty_name}" for number, empty_name in
                                             enumerate(mediapipe_empty_names["hand"])]
-    mediapipe_face_trajectory_names = [f"face_{number}:{empty_name}" for number, empty_name in
-                                       enumerate(mediapipe_empty_names["face"])]
+    # mediapipe_face_trajectory_names = [f"face_{number}:{empty_name}" for number, empty_name in
+    #                                    face_contour_marker_indices]
 
     # create empty markers for body
     body_empty_scale = 0.01
@@ -119,31 +119,31 @@ def main(recording_path: Union[str, Path],
             empty_scale=0.01,
             empty_type="SPHERE",
         )
-    #
-    # # create empty markers for right hand
-    # hand_empty_scale = 0.005
-    # for marker_number in range(mediapipe_right_hand_fr_mar_xyz.shape[1]):
-    #     trajectory_name = mediapipe_right_hand_trajectory_names[marker_number]
-    #     trajectory_fr_xyz = mediapipe_right_hand_fr_mar_xyz[:, marker_number, :]
-    #     create_keyframed_empty_from_3d_trajectory_data(
-    #         trajectory_fr_xyz=trajectory_fr_xyz,
-    #         trajectory_name=trajectory_name,
-    #         parent_origin=freemocap_origin_axes,
-    #         empty_scale=hand_empty_scale,
-    #         empty_type="PLAIN_AXES",
-    #     )
-    #
-    # # create empty markers for left hand
-    # for marker_number in range(mediapipe_left_hand_fr_mar_xyz.shape[1]):
-    #     trajectory_name = mediapipe_left_hand_trajectory_names[marker_number]
-    #     trajectory_fr_xyz = mediapipe_left_hand_fr_mar_xyz[:, marker_number, :]
-    #     create_keyframed_empty_from_3d_trajectory_data(
-    #         trajectory_fr_xyz=trajectory_fr_xyz,
-    #         trajectory_name=trajectory_name,
-    #         parent_origin=freemocap_origin_axes,
-    #         empty_scale=hand_empty_scale,
-    #         empty_type="PLAIN_AXES",
-    #     )
+
+    # create empty markers for right hand
+    hand_empty_scale = 0.005
+    for marker_number in range(mediapipe_right_hand_fr_mar_xyz.shape[1]):
+        trajectory_name = mediapipe_right_hand_trajectory_names[marker_number]
+        trajectory_fr_xyz = mediapipe_right_hand_fr_mar_xyz[:, marker_number, :]
+        create_keyframed_empty_from_3d_trajectory_data(
+            trajectory_fr_xyz=trajectory_fr_xyz,
+            trajectory_name=trajectory_name,
+            parent_origin=freemocap_origin_axes,
+            empty_scale=hand_empty_scale,
+            empty_type="PLAIN_AXES",
+        )
+
+    # create empty markers for left hand
+    for marker_number in range(mediapipe_left_hand_fr_mar_xyz.shape[1]):
+        trajectory_name = mediapipe_left_hand_trajectory_names[marker_number]
+        trajectory_fr_xyz = mediapipe_left_hand_fr_mar_xyz[:, marker_number, :]
+        create_keyframed_empty_from_3d_trajectory_data(
+            trajectory_fr_xyz=trajectory_fr_xyz,
+            trajectory_name=trajectory_name,
+            parent_origin=freemocap_origin_axes,
+            empty_scale=hand_empty_scale,
+            empty_type="PLAIN_AXES",
+        )
 
     # # create empty markers for face
     # face_empty_scale = 0.0025
@@ -209,17 +209,25 @@ def main(recording_path: Union[str, Path],
         sphere_scale=body_empty_scale,
     )
 
-    # right hand
-    # put_sphere_meshes_on_empties(
-    #     empty_names_list=mediapipe_right_hand_trajectory_names,
+    # create_stick_meshes_between_emtpies(
+    #     body_frame_marker_xyz=mediapipe_body_fr_mar_xyz,
+    #     empty_names=mediapipe_body_trajectory_names,
+    #     body_connections=body_connections,
     #     parent_object=freemocap_origin_axes,
-    #     sphere_scale=hand_empty_scale,
     # )
-    # put_sphere_meshes_on_empties(
-    #     empty_names_list=mediapipe_left_hand_trajectory_names,
-    #     parent_object=freemocap_origin_axes,
-    #     sphere_scale=hand_empty_scale,
-    # )
+
+    #right hand
+    put_sphere_meshes_on_empties(
+        empty_names_list=mediapipe_right_hand_trajectory_names,
+        parent_object=freemocap_origin_axes,
+        sphere_scale=hand_empty_scale,
+    )
+
+    put_sphere_meshes_on_empties(
+        empty_names_list=mediapipe_left_hand_trajectory_names,
+        parent_object=freemocap_origin_axes,
+        sphere_scale=hand_empty_scale,
+    )
 
     # # face
     # put_sphere_meshes_on_empties(
@@ -371,7 +379,7 @@ def add_videos_to_scene(videos_path: Union[Path, str], parent_object: bpy.types.
         video_as_plane.name = "video_" + str(video_number)
         print(f"video_as_plane.name: {video_as_plane.name}")
         buffer = 1.1
-        vid_x = (video_number*buffer - np.mean(np.arange(0, number_of_videos)) ) *  vid_location_scale
+        vid_x = (video_number * buffer - np.mean(np.arange(0, number_of_videos))) * vid_location_scale
 
         video_as_plane.location = [
             vid_x,
@@ -379,9 +387,216 @@ def add_videos_to_scene(videos_path: Union[Path, str], parent_object: bpy.types.
             1,
         ]
         video_as_plane.rotation_euler = [np.pi / 2, 0, 0]
-        video_as_plane.scale = [vid_location_scale*.5] * 3
+        video_as_plane.scale = [vid_location_scale * .5] * 3
         video_as_plane.parent = parent_object
 
+
+
+
+def create_keyframed_empty_from_3d_trajectory_data(
+        trajectory_fr_xyz: np.ndarray,
+        trajectory_name: str,
+        parent_origin: bpy.types.Object = None,
+        empty_scale: float = 0.1,
+        empty_type: str = "PLAIN_AXES",
+):
+    """
+    Create a key framed empty from 3d trajectory data
+    """
+    print(f"Creating keyframed empty from: {trajectory_name}...")
+    bpy.ops.object.empty_add(type=empty_type)
+    empty_object = bpy.context.editable_objects[-1]
+    empty_object.name = trajectory_name
+
+    empty_object.scale = [empty_scale] * 3
+
+    empty_object.parent = parent_origin
+
+    for frame_number in range(trajectory_fr_xyz.shape[0]):
+        empty_object.location = [
+            trajectory_fr_xyz[frame_number, 0],
+            trajectory_fr_xyz[frame_number, 1],
+            trajectory_fr_xyz[frame_number, 2],
+        ]
+
+        empty_object.keyframe_insert(data_path="location", frame=frame_number)
+
+
+def put_sphere_meshes_on_empties(
+        empty_names_list: list,
+        parent_object: bpy.types.Object,
+        sphere_scale: float = 0.02,
+):
+    """
+    put uv sphere meshes on the empties in `empty_names_list` with a scale of `sphere_scale`
+    """
+
+    for empty_name in empty_names_list:
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=8, scale=(sphere_scale, sphere_scale, sphere_scale))
+        sphere = bpy.context.editable_objects[-1]
+        sphere.name = f"{empty_name}_sphere"
+        sphere.parent = parent_object
+
+        constraint = sphere.constraints.new(type="COPY_LOCATION")
+        constraint.target = bpy.data.objects[empty_name]
+
+
+def create_stick_meshes_between_emtpies(body_frame_marker_xyz: np.ndarray,
+                                        empty_names: List[str],
+                                        body_connections: Dict[int, int],
+                                        parent_object: bpy.types.Object, ):
+    """make cylinder meshes between the empties as defined in `body_connections`"""
+    for origin_marker_index, target_marker_index in body_connections.items():
+        origin_marker_name = empty_names[origin_marker_index]
+        target_marker_name = empty_names[target_marker_index]
+
+        stick = create_stick_mesh()
+        stick = bpy.context.editable_objects[-1]
+        stick.name = f"{origin_marker_name}_to_{target_marker_name}"
+        stick.parent = parent_object
+
+        constraint = stick.constraints.new(type="COPY_LOCATION")
+        constraint.target = bpy.data.objects[origin_marker_name]
+
+        constraint = stick.constraints.new(type="DAMPED_TRACK")
+        constraint.target = bpy.data.objects[target_marker_name]
+        constraint.track_axis = "TRACK_Z"
+
+        for frame_number in range(body_frame_marker_xyz.shape[0]):
+            distance_between_markers = np.linalg.norm(
+                body_frame_marker_xyz[frame_number, origin_marker_index, :] -
+                body_frame_marker_xyz[frame_number, target_marker_index, :]
+            )
+            stick.scale = [1, 1, distance_between_markers]
+            stick.keyframe_insert(data_path="scale", frame=frame_number)
+
+
+def create_stick_mesh(vertices: int = 12,
+                      radius: float = 0.02,
+                      depth: float = 1.0,
+                      location=(0, 0, 0),
+                      rotation=(0, 0, 0),
+                      scale=(1, 1, 1),
+                      end_fill_type='TRIFAN',
+                      enter_editmode=False,
+                      align='WORLD'):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius,
+                                        depth=depth,
+                                        vertices=vertices,
+                                        location=location,
+                                        rotation=rotation,
+                                        scale=scale,
+                                        end_fill_type=end_fill_type,
+                                        enter_editmode=enter_editmode,
+                                        align=align)
+    # give 3dcursor new coordinates
+    bpy.context.scene.cursor.location = (0.0, 0.0, -0.5)
+
+    # set the origin on the current object to the 3dcursor location
+    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+    return bpy.context.editable_objects[-1]
+
+
+def apply_constraints_to_bone(bone_name: str, bone_constraint_dict: dict, armature_rig):
+    """
+    Apply constraints to a bone (that exists in `armature_rig` based on a dictionary of constraints
+    """
+    for (
+            constraint_name,
+            constrain_parameters_dict,
+    ) in bone_constraint_dict.items():
+        constraint_name = constraint_name.split(".")[
+            0
+        ]  # for duplicated constraints, named `[constraint_name].001`, etc
+        print(f"constraint: {constraint_name} with parameters:{constrain_parameters_dict}")
+
+        bone = armature_rig.pose.bones[bone_name]
+        print(f"bone: {bone.name}")
+
+        constraint = bone.constraints.new(type=constraint_name)
+        print(f"constraint: {constraint.name}")
+
+        # generic constraint settings
+        if "target" in constrain_parameters_dict:
+
+            if constrain_parameters_dict["target"] == "armature":
+                constraint.target = armature_rig
+                constraint.subtarget = constrain_parameters_dict["subtarget"]
+                print(f"constraint.target: {constraint.target.name}")
+                print(f"constraint.subtarget: {constraint.target.name}")
+            else:
+                constraint.target = bpy.data.objects[
+                    constrain_parameters_dict["target"]
+                ]  # point constraint at relevant empty object
+                print(f"constraint.target: {constraint.target.name}")
+
+        if "influence" in constrain_parameters_dict:
+            constraint.influence = constrain_parameters_dict["influence"]
+            print(f"constraint.influence: {constraint.influence}")
+
+        # constraint-specific settings
+        if constraint_name == "IK":
+            constraint.chain_count = constrain_parameters_dict["chain_length"]
+            print(f"constraint.chain_count: {constraint.chain_count}")
+
+        if constraint_name == "LOCKED_TRACK":
+            constraint.track_axis = constrain_parameters_dict["track_axis"]
+            constraint.lock_axis = constrain_parameters_dict["lock_axis"]
+            print(f"constraint.track_axis: {constraint.track_axis}")
+            print(f"constraint.lock_axis: {constraint.lock_axis}")
+
+        if constraint_name == "DAMPED_TRACK":
+            if "track_axis" in constrain_parameters_dict:
+                constraint.track_axis = constrain_parameters_dict["track_axis"]
+                print(f"constraint.track_axis: {constraint.track_axis}")
+
+
+def test_virtual_marker_definitions(virtual_marker_definitions_dict: dict):
+    """
+    Validate the virtual marker definitions dictionary to ensure that there are the same number of marker names and weights, and that the weights sum to 1
+    """
+
+    for (
+            virtual_marker_name,
+            virtual_marker_definition,
+    ) in virtual_marker_definitions_dict.items():
+        assert len(virtual_marker_definition["marker_names"]) == len(
+            virtual_marker_definition["marker_weights"]
+        ), f"marker_names and marker_weights must be the same length for virtual marker {virtual_marker_name}"
+        assert (
+                sum(virtual_marker_definition["marker_weights"]) == 1
+        ), f"marker_weights must sum to 1 for virtual marker {virtual_marker_name}"
+
+
+def calculate_virtual_marker_trajectory(
+        trajectory_3d_frame_marker_xyz: np.ndarray,
+        all_trajectory_names: list,
+        component_trajectory_names: List,
+        trajectory_weights: List,
+) -> np.ndarray:
+    """
+    Create a virtual marker from a set of component markers. A 'Virtual Marker' is a 'fake' marker created by combining the data from 'real' (measured) marker/trajectory data
+    `trajectory_3d_frame_marker_xyz`: all trajectory data in a numpy array with shape [frame, marker, xyz]
+    `all_trajectory_names`: list of all trajectory names
+    `component_trajectory_names`: the trajectories we'll use to make this virtual marker
+    `trajectory_weights`: the weights we'll use to combine the compoenent trajectories into the virtual maker
+    """
+    # double check that the weights scale to one, otherwise this function will return screwy results
+    assert np.sum(trajectory_weights) == 1, "Error - Trajectory_weights must sum to 1!"
+
+    virtual_marker_xyz = np.zeros((trajectory_3d_frame_marker_xyz.shape[0], 3))
+
+    for trajectory_number, trajectory_name in enumerate(component_trajectory_names):
+        # pull out the trajectory data for this component trajectory
+        component_trajectory_xyz = trajectory_3d_frame_marker_xyz[:, all_trajectory_names.index(trajectory_name), :]
+
+        # scale it by its weight
+        component_trajectory_xyz *= trajectory_weights[trajectory_number]
+
+        # add it to the virtual marker
+        virtual_marker_xyz += component_trajectory_xyz
+
+    return virtual_marker_xyz
 
 # Mediapipe Tracked Point Names
 
@@ -449,6 +664,48 @@ mediapipe_empty_names = {
              'right_ear_tragion',
              'left_ear_tragion']}
 
+# NOTE - numbers refer to the index of the name in the relevant list above
+body_connections = {15: 19,
+                    16: 18,
+                    18: 20,
+                    3: 7,
+                    14: 16,
+                    23: 24,
+                    28: 32,
+                    11: 12,
+                    27: 29,
+                    6: 8,
+                    24: 26,
+                    4: 5,
+                    5: 6,
+                    29: 31,
+                    12: 14,
+                    0: 4,
+                    9: 10,
+                    1: 2,
+                    30: 32,
+                    25: 27,
+                    26: 28,
+                    17: 19,
+                    2: 3,
+                    13: 15}
+
+hand_connections = {3: 4,
+                    0: 1,
+                    17: 18,
+                    13: 17,
+                    18: 19,
+                    5: 9,
+                    14: 15,
+                    9: 13,
+                    1: 2,
+                    10: 11,
+                    19: 20,
+                    6: 7,
+                    15: 16,
+                    2: 3,
+                    11: 12,
+                    7: 8}
 # boy howdy mediapipe did not make it easy to get this info...
 face_contour_marker_indices = [0, 7, 10, 13, 14, 17, 21, 33, 37, 39, 40, 46, 52, 53, 54, 55, 58, 61, 63, 65, 66, 67, 70,
                                78, 80, 81, 82, 84, 87, 88, 91, 93, 95, 103, 105, 107, 109, 127, 132, 133, 136, 144, 145,
@@ -576,163 +833,6 @@ rig_constraint_dict_of_dicts = {
         "DAMPED_TRACK": {"target": "left_foot_index"},
     },
 }
-
-
-#################################################
-## FUNCTIONS - We'll define some functions here and use them later
-
-
-def create_keyframed_empty_from_3d_trajectory_data(
-        trajectory_fr_xyz: np.ndarray,
-        trajectory_name: str,
-        parent_origin: bpy.types.Object = None,
-        empty_scale: float = 0.1,
-        empty_type: str = "PLAIN_AXES",
-):
-    """
-    Create a key framed empty from 3d trajectory data
-    """
-    print(f"Creating keyframed empty from: {trajectory_name}...")
-    bpy.ops.object.empty_add(type=empty_type)
-    empty_object = bpy.context.editable_objects[-1]
-    empty_object.name = trajectory_name
-
-    empty_object.scale = [empty_scale] * 3
-
-    empty_object.parent = parent_origin
-
-    for frame_number in range(trajectory_fr_xyz.shape[0]):
-        empty_object.location = [
-            trajectory_fr_xyz[frame_number, 0],
-            trajectory_fr_xyz[frame_number, 1],
-            trajectory_fr_xyz[frame_number, 2],
-        ]
-        bpy.context.view_layer.update()
-
-        empty_object.keyframe_insert(data_path="location", frame=frame_number)
-
-
-def apply_constraints_to_bone(bone_name: str, bone_constraint_dict: dict, armature_rig):
-    """
-    Apply constraints to a bone (that exists in `armature_rig` based on a dictionary of constraints
-    """
-    for (
-            constraint_name,
-            constrain_parameters_dict,
-    ) in bone_constraint_dict.items():
-        constraint_name = constraint_name.split(".")[
-            0
-        ]  # for duplicated constraints, named `[constraint_name].001`, etc
-        print(f"constraint: {constraint_name} with parameters:{constrain_parameters_dict}")
-
-        bone = armature_rig.pose.bones[bone_name]
-        print(f"bone: {bone.name}")
-
-        constraint = bone.constraints.new(type=constraint_name)
-        print(f"constraint: {constraint.name}")
-
-        # generic constraint settings
-        if "target" in constrain_parameters_dict:
-
-            if constrain_parameters_dict["target"] == "armature":
-                constraint.target = armature_rig
-                constraint.subtarget = constrain_parameters_dict["subtarget"]
-                print(f"constraint.target: {constraint.target.name}")
-                print(f"constraint.subtarget: {constraint.target.name}")
-            else:
-                constraint.target = bpy.data.objects[
-                    constrain_parameters_dict["target"]
-                ]  # point constraint at relevant empty object
-                print(f"constraint.target: {constraint.target.name}")
-
-        if "influence" in constrain_parameters_dict:
-            constraint.influence = constrain_parameters_dict["influence"]
-            print(f"constraint.influence: {constraint.influence}")
-
-        # constraint-specific settings
-        if constraint_name == "IK":
-            constraint.chain_count = constrain_parameters_dict["chain_length"]
-            print(f"constraint.chain_count: {constraint.chain_count}")
-
-        if constraint_name == "LOCKED_TRACK":
-            constraint.track_axis = constrain_parameters_dict["track_axis"]
-            constraint.lock_axis = constrain_parameters_dict["lock_axis"]
-            print(f"constraint.track_axis: {constraint.track_axis}")
-            print(f"constraint.lock_axis: {constraint.lock_axis}")
-
-        if constraint_name == "DAMPED_TRACK":
-            if "track_axis" in constrain_parameters_dict:
-                constraint.track_axis = constrain_parameters_dict["track_axis"]
-                print(f"constraint.track_axis: {constraint.track_axis}")
-
-
-
-def test_virtual_marker_definitions(virtual_marker_definitions_dict: dict):
-    """
-    Validate the virtual marker definitions dictionary to ensure that there are the same number of marker names and weights, and that the weights sum to 1
-    """
-
-    for (
-            virtual_marker_name,
-            virtual_marker_definition,
-    ) in virtual_marker_definitions_dict.items():
-        assert len(virtual_marker_definition["marker_names"]) == len(
-            virtual_marker_definition["marker_weights"]
-        ), f"marker_names and marker_weights must be the same length for virtual marker {virtual_marker_name}"
-        assert (
-                sum(virtual_marker_definition["marker_weights"]) == 1
-        ), f"marker_weights must sum to 1 for virtual marker {virtual_marker_name}"
-
-
-def calculate_virtual_marker_trajectory(
-        trajectory_3d_frame_marker_xyz: np.ndarray,
-        all_trajectory_names: list,
-        component_trajectory_names: List,
-        trajectory_weights: List,
-) -> np.ndarray:
-    """
-    Create a virtual marker from a set of component markers. A 'Virtual Marker' is a 'fake' marker created by combining the data from 'real' (measured) marker/trajectory data
-    `trajectory_3d_frame_marker_xyz`: all trajectory data in a numpy array with shape [frame, marker, xyz]
-    `all_trajectory_names`: list of all trajectory names
-    `component_trajectory_names`: the trajectories we'll use to make this virtual marker
-    `trajectory_weights`: the weights we'll use to combine the compoenent trajectories into the virtual maker
-    """
-    # double check that the weights scale to one, otherwise this function will return screwy results
-    assert np.sum(trajectory_weights) == 1, "Error - Trajectory_weights must sum to 1!"
-
-    virtual_marker_xyz = np.zeros((trajectory_3d_frame_marker_xyz.shape[0], 3))
-
-    for trajectory_number, trajectory_name in enumerate(component_trajectory_names):
-        # pull out the trajectory data for this component trajectory
-        component_trajectory_xyz = trajectory_3d_frame_marker_xyz[:, all_trajectory_names.index(trajectory_name), :]
-
-        # scale it by its weight
-        component_trajectory_xyz *= trajectory_weights[trajectory_number]
-
-        # add it to the virtual marker
-        virtual_marker_xyz += component_trajectory_xyz
-
-    return virtual_marker_xyz
-
-
-def put_sphere_meshes_on_empties(
-        empty_names_list: list,
-        parent_object: bpy.types.Object,
-        sphere_scale: float = 0.02,
-):
-    """
-    put uv sphere meshes on the empties in `empty_names_list` with a scale of `sphere_scale`
-    """
-
-    for empty_name in empty_names_list:
-        bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=8, scale=(sphere_scale, sphere_scale, sphere_scale))
-        sphere = bpy.context.editable_objects[-1]
-        sphere.name = f"{empty_name}_sphere"
-        sphere.parent = parent_object
-
-        constraint = sphere.constraints.new(type="COPY_LOCATION")
-        constraint.target = bpy.data.objects[empty_name]
-
 
 print(f"__name__: {__name__}")
 

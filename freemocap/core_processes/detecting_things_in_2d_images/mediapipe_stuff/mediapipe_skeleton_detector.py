@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 from pathlib import Path
 from typing import List, Union
 
@@ -96,7 +97,8 @@ class MediaPipeSkeletonDetector:
             path_to_folder_of_videos_to_process: Union[Path, str],
             output_data_folder_path: Union[str, Path],
             save_annotated_videos: bool = True,
-    ) -> np.ndarray:
+            kill_event: multiprocessing.Event = None,
+    ) -> Union[np.ndarray, None]:
 
         path_to_folder_of_videos_to_process = Path(path_to_folder_of_videos_to_process)
 
@@ -127,6 +129,10 @@ class MediaPipeSkeletonDetector:
                     unit="frames",
                     dynamic_ncols=True,
             ):
+                if kill_event is not None and kill_event.is_set():
+                    logger.info("kill event received, exiting mediapipe process")
+                    return
+
                 if not success or image is None:
                     logger.error(f"Failed to load an image from: {str(synchronized_video_file_path)}")
                     raise Exception

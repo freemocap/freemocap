@@ -17,7 +17,9 @@ QGroupBox[calibration_videos_radio_button_checked=true] {
     background-color: #9f795e;
 }
 
-
+QStatusBar {    
+    color: #334411;
+}
 
 QMainWindow {
     background-color: #2b9ba1;

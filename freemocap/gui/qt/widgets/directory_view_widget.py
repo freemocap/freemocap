@@ -44,7 +44,7 @@ class DirectoryViewWidget(QWidget):
         self._tree_view_widget.setModel(self._file_system_model)
 
         self._tree_view_widget.setAlternatingRowColors(True)
-        self._tree_view_widget.resizeColumnToContents(1)
+        self._tree_view_widget.setColumnWidth(0, 250)
 
         if self._top_level_folder_path is not None:
             self.set_folder_as_root(self._top_level_folder_path)

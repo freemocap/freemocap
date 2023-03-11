@@ -71,13 +71,12 @@ class CalibrationControlPanel(QWidget):
     def _create_radio_button_layout(self):
         radio_button_form_layout = QFormLayout()
 
-        radio_button_form_layout.addRow(self._add_calibrate_from_active_recording_radio_button())
+        radio_button_form_layout.addRow(self._create_use_most_recent_calibration_radio_button())
 
         radio_button_form_layout.addRow(self._create_load_calibration_from_file_radio_button())
 
-        radio_button_form_layout.addRow(self._create_use_most_recent_calibration_radio_button())
+        radio_button_form_layout.addRow(self._add_calibrate_from_active_recording_radio_button())
 
-        self._calibrate_from_active_recording_radio_button.setChecked(True)
         self.update_calibration_toml_path()
         return radio_button_form_layout
 
@@ -109,6 +108,15 @@ class CalibrationControlPanel(QWidget):
                 active_recording_info = self._get_active_recording_info_callable()
                 if active_recording_info.calibration_toml_check:
                     toml_path = active_recording_info.calibration_toml_path
+            else:
+                if self._get_active_recording_info_callable().calibration_toml_check:
+                    toml_path = self._get_active_recording_info_callable().calibration_toml_path
+                    self._load_calibration_from_file_radio_button.setChecked(True)
+                else:
+                    toml_path = get_last_successful_calibration_toml_path()
+                    self._use_most_recent_calibration_radio_button.setChecked(True)
+
+
 
         self._calibration_toml_path = toml_path
 

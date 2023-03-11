@@ -55,7 +55,7 @@ class RecordingInfoModel:
         return self._name
 
     @property
-    def status(self) -> Dict[str, bool]:
+    def status_check(self) -> Dict[str, bool]:
         return self._recording_folder_status_checker.status_check
 
     @property

@@ -462,9 +462,12 @@ class FreemocapMainWindow(QMainWindow):
             recording_folder_path=Path(folder_to_save_videos).parent)
 
     def closeEvent(self, a0) -> None:
-        self._pipedream_pings.update_pings_dict(key="gui_closed", value=True)
-        self._pipedream_pings.send_pipedream_ping()
         logger.info("Main window `closeEvent` detected")
+
+        self._pipedream_pings.update_pings_dict(key="gui_closed", value=True)
+        self._pipedream_pings.update_pings_dict(key="active recording status on close", value=self._active_recording_info_widget.active_recording_info.status_check)
+        self._pipedream_pings.send_pipedream_ping()
+
         remove_empty_directories(get_recording_session_folder_path())
 
         try:

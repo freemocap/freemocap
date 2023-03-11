@@ -23,7 +23,7 @@ def update_most_recent_recording_toml(recording_info_model: RecordingInfoModel):
     )
     toml_dict = {}
     toml_dict["most_recent_recording_path"] = str(recording_info_model.path)
-    toml_dict["recording_status"] = recording_info_model.status
+    toml_dict["recording_status"] = recording_info_model.status_check
 
     with open(str(output_file_path), "w") as toml_file:
         toml.dump(toml_dict, toml_file)

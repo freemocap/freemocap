@@ -129,7 +129,7 @@ class ActiveRecordingTreeView(ParameterTree):
                 dict(
                     name="Calibration TOML",
                     type="str",
-                    value=recording_info_model.calibration_toml_file_path,
+                    value=recording_info_model.calibration_toml_path,
                     readonly=True,
                 ),
                 dict(

@@ -7,7 +7,7 @@ from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
 
 from freemocap.system.paths_and_files_names import (
     get_calibrations_folder_path,
-    get_last_successful_calibration_toml_path,
+    get_last_successful_calibration_toml_path, create_camera_calibration_file_name,
 )
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
@@ -85,7 +85,7 @@ class AniposeCameraCalibrator:
             # self._anipose_camera_group_object = self.rotate_cameras_so_camera_zero_aligns_with_XYZ(self._anipose_camera_group_object)
 
         # save calibration info to files
-        calibration_toml_filename = f"{self._calibration_videos_folder_path.parent.stem}_camera_calibration.toml"
+        calibration_toml_filename = create_camera_calibration_file_name(recording_name = self._calibration_videos_folder_path.parent.stem)
 
         calibration_folder_toml_path = Path(get_calibrations_folder_path()) / calibration_toml_filename
 

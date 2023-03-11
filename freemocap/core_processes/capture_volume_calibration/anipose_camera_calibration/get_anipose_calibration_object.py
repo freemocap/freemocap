@@ -1,3 +1,4 @@
+import filecmp
 import logging
 import shutil
 from pathlib import Path
@@ -28,21 +29,20 @@ def load_most_recent_anipose_calibration_toml(save_copy_of_calibration_to_this_p
 
 
 def load_anipose_calibration_toml_from_path(
-    camera_calibration_data_toml_path: Union[str, Path],
-    save_copy_of_calibration_to_this_path: Union[str, Path] = None,
+        camera_calibration_data_toml_path: Union[str, Path],
+        save_copy_of_calibration_to_this_path: Union[str, Path],
 ):
     logger.info(f"loading camera calibration file from:{str(camera_calibration_data_toml_path)}")
     try:
         anipose_calibration_object = freemocap_anipose.CameraGroup.load(str(camera_calibration_data_toml_path))
+        copy_toml_path = str(Path(save_copy_of_calibration_to_this_path) / Path(camera_calibration_data_toml_path).name)
 
-        if save_copy_of_calibration_to_this_path is not None:
+        if Path(copy_toml_path).is_file() and\
+                not filecmp.cmp(str(camera_calibration_data_toml_path), copy_toml_path):
             logger.info(
-                f"Saving copy of {camera_calibration_data_toml_path} to {save_copy_of_calibration_to_this_path}"
-            )
-            shutil.copy(
-                str(camera_calibration_data_toml_path),
-                str(Path(save_copy_of_calibration_to_this_path) / Path(camera_calibration_data_toml_path).name),
-            )
+                f"Saving copy of {camera_calibration_data_toml_path} to {save_copy_of_calibration_to_this_path}")
+            shutil.copyfile(str(camera_calibration_data_toml_path), copy_toml_path)
+
         return anipose_calibration_object
     except Exception as e:
         logger.error(f"Failed to load anipose calibration info from {str(camera_calibration_data_toml_path)}")
@@ -50,7 +50,7 @@ def load_anipose_calibration_toml_from_path(
 
 
 def load_calibration_from_session_id(
-    session_calibration_file_path: Union[str, Path],
+        session_calibration_file_path: Union[str, Path],
 ):
     logger.info(f"loading camera calibration file from:{str(session_calibration_file_path)}")
     try:

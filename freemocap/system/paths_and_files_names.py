@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Union
 
 import toml
 
@@ -68,9 +69,11 @@ def create_log_file_name():
     return "log_" + time.strftime("%m-%d-%Y-%H_%M_%S") + ".log"
 
 
+def create_camera_calibration_file_name(recording_name: str):
+    return f"{recording_name}_camera_calibration.toml"
+
+
 freemocap_data_folder_path = None
-
-
 def get_freemocap_data_folder_path(create_folder: bool = True):
     global freemocap_data_folder_path
 
@@ -122,21 +125,21 @@ def create_new_default_recording_name():
     return recording_name
 
 
+def session_time_tag_format():
+    return "%Y-%m-%d_%H_%M_%S"
 def default_session_name(string_tag: str = None):
     if string_tag is not None:
         string_tag = f"_{string_tag}"
     else:
         string_tag = ""
 
-    session_name = time.strftime("session_%Y-%m-%d_%H_%M_%S" + string_tag)
+    session_name = time.strftime(f"session_{session_time_tag_format()}" + string_tag)
     logger.debug(f"Creating default session name: {session_name}")
 
     return session_name
 
 
 session_folder_path = None
-
-
 def create_new_session_folder():
     global session_folder_path
     if session_folder_path is None:
@@ -214,5 +217,5 @@ def get_blender_file_name(recording_name: str):
     return f"{recording_name}.blend"
 
 
-def get_blender_file_path(recording_folder_path: str):
+def get_blender_file_path(recording_folder_path: Union[Path,str]):
     return str(Path(recording_folder_path) / get_blender_file_name(recording_name=Path(recording_folder_path).name))

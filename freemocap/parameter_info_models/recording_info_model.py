@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Union, Dict
 
 from freemocap.system.paths_and_files_names import (
     CENTER_OF_MASS_FOLDER_NAME,
@@ -14,7 +14,7 @@ from freemocap.system.paths_and_files_names import (
     get_blender_file_path,
     get_last_successful_calibration_toml_path,
     ANNOTATED_VIDEOS_FOLDER_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME,
+    MEDIAPIPE_3D_NPY_FILE_NAME, create_camera_calibration_file_name,
 )
 from freemocap.tests.test_mediapipe_2d_data_shape import test_mediapipe_2d_data_shape
 from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
@@ -30,29 +30,21 @@ logger = logging.getLogger(__name__)
 
 class RecordingInfoModel:
     def __init__(
-        self,
-        recording_folder_path: Union[Path, str],
-        calibration_toml_path: Union[Path, str] = None,
+            self,
+            recording_folder_path: Union[Path, str],
     ):
-
-        if Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME:
+        if any([Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME,
+                Path(recording_folder_path).name == ANNOTATED_VIDEOS_FOLDER_NAME,
+                Path(recording_folder_path).name == OUTPUT_DATA_FOLDER_NAME]):
             recording_folder_path = Path(recording_folder_path).parent
 
         self._path = Path(recording_folder_path)
         self._name = self._path.name
 
-        self._output_data_folder_path = Path(self._path) / OUTPUT_DATA_FOLDER_NAME
+        self._calibration_toml_path = str(
+            Path(self._path) / create_camera_calibration_file_name(recording_name=self._name))
 
-        self._synchronized_videos_folder_path: Union[Path, str] = Path(self._path) / SYNCHRONIZED_VIDEOS_FOLDER_NAME
-
-        self._annotated_videos_folder_path: Union[Path, str] = Path(self._path) / ANNOTATED_VIDEOS_FOLDER_NAME
-
-        if calibration_toml_path is None:
-            self._calibration_toml_file_path = get_last_successful_calibration_toml_path()
-        else:
-            self._calibration_toml_file_path = calibration_toml_path
-
-        self._recording_folder_status_checker = RecordingFolderStatusChecker(self)
+        self._recording_folder_status_checker = RecordingFolderStatusChecker(recording_info_model=self)
 
     @property
     def path(self) -> str:
@@ -63,20 +55,31 @@ class RecordingInfoModel:
         return self._name
 
     @property
+    def status(self) -> Dict[str, bool]:
+        return self._recording_folder_status_checker.status_check
+
+    @property
+    def calibration_toml_path(self) -> str:
+        return self._calibration_toml_path
+    @calibration_toml_path.setter
+    def calibration_toml_path(self, path: Union[Path, str]):
+        self._calibration_toml_path = str(path)
+
+    @property
     def output_data_folder_path(self) -> str:
-        return str(self._output_data_folder_path)
+        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME)
 
     @property
     def raw_data_folder_path(self) -> str:
-        return str(self._output_data_folder_path / RAW_DATA_FOLDER_NAME)
+        return str(Path(self.output_data_folder_path) / RAW_DATA_FOLDER_NAME)
 
     @property
     def synchronized_videos_folder_path(self) -> str:
-        return str(self._synchronized_videos_folder_path)
+        return str(Path(self._path) / SYNCHRONIZED_VIDEOS_FOLDER_NAME)
 
     @property
     def annotated_videos_folder_path(self) -> str:
-        return str(self._annotated_videos_folder_path)
+        return str(Path(self._path) / ANNOTATED_VIDEOS_FOLDER_NAME)
 
     @property
     def mediapipe_2d_data_npy_file_path(self):
@@ -117,8 +120,8 @@ class RecordingInfoModel:
         return Path(self.blender_file_path).is_file()
 
     @property
-    def calibration_toml_file_path(self) -> str:
-        return str(self._calibration_toml_file_path)
+    def calibration_toml_check(self) -> bool:
+        return self._recording_folder_status_checker.check_calibration_toml_status()
 
     @property
     def synchronized_videos_status_check(self) -> bool:
@@ -136,13 +139,20 @@ class RecordingInfoModel:
     def center_of_mass_data_status_check(self) -> bool:
         return self._recording_folder_status_checker.check_center_of_mass_data_status()
 
-    def calibration_toml_file_exists(self) -> bool:
-        return Path(self._calibration_toml_file_path).is_file()
-
 
 class RecordingFolderStatusChecker:
     def __init__(self, recording_info_model: RecordingInfoModel):
+
         self.recording_info_model = recording_info_model
+
+    @property
+    def status_check(self) -> Dict[str, bool]:
+        return {
+            'synchronized_videos_status_check': self.check_synchronized_videos_status(),
+            'data2d_status_check': self.check_data2d_status(),
+            'data3d_status_check': self.check_data3d_status(),
+            'center_of_mass_data_status_check': self.check_center_of_mass_data_status(),
+            'blender_file_status_check': self.check_blender_file_status(), }
 
     def check_synchronized_videos_status(self) -> bool:
         try:
@@ -184,3 +194,9 @@ class RecordingFolderStatusChecker:
             return True
         except AssertionError as e:
             return False
+
+    def check_blender_file_status(self) -> bool:
+        return Path(self.recording_info_model.blender_file_path).is_file()
+
+    def check_calibration_toml_status(self) -> bool:
+        return Path(self.recording_info_model.calibration_toml_path).is_file()

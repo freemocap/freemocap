@@ -46,7 +46,9 @@ class ActiveRecordingInfoWidget(QWidget):
         # rather than relying on 'pass-by-reference' magic lol
 
         if self._active_recording_info is None:
-            self.set_active_recording(get_most_recent_recording_path())
+            most_recent_path = get_most_recent_recording_path()
+            if most_recent_path is not None:
+                self.set_active_recording(most_recent_path)
 
         if return_path:
             return self._active_recording_info.path
@@ -127,7 +129,7 @@ class ActiveRecordingTreeView(ParameterTree):
                 dict(
                     name="Calibration TOML",
                     type="str",
-                    value=recording_info_model.calibration_toml_file_path,
+                    value=recording_info_model.calibration_toml_path,
                     readonly=True,
                 ),
                 dict(

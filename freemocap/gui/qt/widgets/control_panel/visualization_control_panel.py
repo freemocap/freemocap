@@ -20,7 +20,7 @@ class VisualizationControlPanel(QWidget):
 
         self._open_in_blender_automatically_checkbox = QCheckBox("Open in Blender automatically")
         self._open_in_blender_automatically_checkbox.setChecked(True)
-        groupbox.layout().addWidget(self._open_in_blender_automatically_checkbox)
+        # groupbox.layout().addWidget(self._open_in_blender_automatically_checkbox)
 
         self._use_default_method_radio_button = QRadioButton("Use default method (Recommended)")
         self._use_default_method_radio_button.setChecked(True)

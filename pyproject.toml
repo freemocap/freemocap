@@ -68,7 +68,7 @@ keywords = [
 
 #dynamic = ["dependencies"]
 dependencies = [
-    "skellycam",
+    "skellycam==2023.2.1076",
     "skelly_viewer",
     "mediapipe",
     "opencv-contrib-python==4.6.0.66",

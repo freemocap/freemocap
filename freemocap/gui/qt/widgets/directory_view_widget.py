@@ -44,7 +44,7 @@ class DirectoryViewWidget(QWidget):
         self._tree_view_widget.setModel(self._file_system_model)
 
         self._tree_view_widget.setAlternatingRowColors(True)
-        self._tree_view_widget.resizeColumnToContents(1)
+        self._tree_view_widget.setColumnWidth(0, 250)
 
         if self._top_level_folder_path is not None:
             self.set_folder_as_root(self._top_level_folder_path)
@@ -59,15 +59,15 @@ class DirectoryViewWidget(QWidget):
         self._path_label = QLabel(str(self._top_level_folder_path))
         self._layout.addWidget(self._path_label)
 
-    def expand_directory_to_path(self, directory_path: Union[str, Path], collapse_other_directories: bool = True):
+    def expand_directory_to_path(self, path: Union[str, Path], collapse_other_directories: bool = True):
         if collapse_other_directories:
             logger.debug("Collapsing other directories")
             self._tree_view_widget.collapseAll()
-        logger.debug(f"Expanding directory at  path: {str(directory_path)}")
-        og_index = self._file_system_model.index(str(directory_path))
+        logger.debug(f"Expanding directory at  path: {str(path)}")
+        og_index = self._file_system_model.index(str(path))
         self._tree_view_widget.expand(og_index)
 
-        parent_path = copy(directory_path)
+        parent_path = copy(path)
         while Path(self._file_system_model.rootPath()) in Path(parent_path).parents:
             parent_path = Path(parent_path).parent
             index = self._file_system_model.index(str(parent_path))

@@ -24,5 +24,5 @@ def get_number_of_frames_of_videos_in_a_folder(folder_path: Union[str, Path]):
         frame_count.append(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
         cap.release()
 
-    logger.info(f"Number of frames is - {frame_count} - for videos in {folder_path}")
+
     return frame_count

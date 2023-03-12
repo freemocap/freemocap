@@ -30,6 +30,7 @@ class ButterworthFilterParametersModel(BaseModel):
 class PostProcessingParametersModel(BaseModel):
     framerate: float = 30.0
     butterworth_filter_parameters = ButterworthFilterParametersModel()
+    max_gap_to_fill: int = 10
 
 
 class RecordingProcessingParameterModel(BaseModel):

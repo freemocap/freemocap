@@ -258,6 +258,7 @@ def main(recording_path: Union[str, Path],
     if create_rig:
         #######################################################################
         print("Saving blender file with raw motion capture data before moving on to rigging")
+        bpy.ops.object.mode_set(mode="OBJECT")
         bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
 
         print(
@@ -345,6 +346,7 @@ def main(recording_path: Union[str, Path],
                         space.shading.type = "MATERIAL"
 
     # save .blend file
+    bpy.ops.object.mode_set(mode="OBJECT")
     bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
 
     print(

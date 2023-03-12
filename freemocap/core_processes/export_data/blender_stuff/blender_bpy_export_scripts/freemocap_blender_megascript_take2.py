@@ -8,7 +8,7 @@ import addon_utils
 import bpy
 import numpy as np
 
-logging.info("Running script to create Blender file from freemocap session data: " + __file__)
+print("Running script to create Blender file from freemocap session data: " + __file__)
 
 logger = logging.getLogger(__name__)
 
@@ -98,12 +98,10 @@ def main(recording_path: Union[str, Path],
     ############################
     ### Load mocap data as empty markers
 
-    mediapipe_body_trajectory_names = [f"body_{number}:{empty_name}" for number, empty_name in
-                                       enumerate(mediapipe_empty_names["body"])]
-    mediapipe_right_hand_trajectory_names = [f"right_hand_{number}:{empty_name}" for number, empty_name in
-                                             enumerate(mediapipe_empty_names["hand"])]
-    mediapipe_left_hand_trajectory_names = [f"left_hand_{number}:{empty_name}" for number, empty_name in
-                                            enumerate(mediapipe_empty_names["hand"])]
+    mediapipe_body_trajectory_names = [empty_name for empty_name in mediapipe_empty_names["body"]]
+
+    mediapipe_right_hand_trajectory_names = [f"right_hand_{empty_name}" for empty_name in mediapipe_empty_names["hand"]]
+    mediapipe_left_hand_trajectory_names = [f"left_hand_{empty_name}" for empty_name in mediapipe_empty_names["hand"]]
     # mediapipe_face_trajectory_names = [f"face_{number}:{empty_name}" for number, empty_name in
     #                                    face_contour_marker_indices]
 
@@ -175,8 +173,8 @@ def main(recording_path: Union[str, Path],
             virtual_marker_key,
     ) in enumerate(mediapipe_virtual_marker_definitions_dict.keys()):
         virtual_marker_dict = mediapipe_virtual_marker_definitions_dict[virtual_marker_key]
-        virtual_marker_name = f"virtual_marker_{virtual_marker_number}_{virtual_marker_key}"
-        logging.info(
+        virtual_marker_name = virtual_marker_key
+        print(
             f"Creating virtual marker: {virtual_marker_name}: \n"
             f"from 'real' markers: {virtual_marker_dict['marker_names']}, \n"
             f"with weights: {virtual_marker_dict['marker_weights']}\n"
@@ -262,7 +260,7 @@ def main(recording_path: Union[str, Path],
         print("Saving blender file with raw motion capture data before moving on to rigging")
         bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
 
-        logging.info(
+        print(
             "____________________________________________________________________________\n",
             "Done loading in motion capture data -  Now lets use it to drive an armature!\n"
             "____________________________________________________________________________\n",
@@ -274,17 +272,22 @@ def main(recording_path: Union[str, Path],
 
         ######################
         ### Create Rigify human meta-rig
-        logging.info(f"Creating `rigify human meta-rig`")
+        print(f"Creating `rigify human meta-rig`")
         bpy.ops.object.armature_human_metarig_add()
         human_metarig = bpy.context.editable_objects[-1]
 
         ##################
         ### Scale armature
 
-        try:
-            bpy.ops.object.mode_set(mode="EDIT")
-        except:
-            pass
+        bpy.ops.object.mode_set(mode="EDIT")
+
+        delete_bones = ["pelvis.L",
+                        "pelvis.R",
+                        "breast.L",
+                        "breast.R",]
+
+        for bone in delete_bones:
+            human_metarig.data.edit_bones.remove(human_metarig.data.edit_bones[bone])
 
         for (
                 segment_name,
@@ -298,7 +301,7 @@ def main(recording_path: Union[str, Path],
                 segment_length = median_segment_length / len(
                     rigify_bones_list
                 )  # divide by number of bones in segment (for now, eventually will want to set weights
-                logging.info(f"setting {rigify_bone_name} length to: {segment_length:.3f} m")
+                print(f"setting {rigify_bone_name} length to: {segment_length:.3f} m")
                 human_metarig.data.edit_bones[rigify_bone_name].length = segment_length
 
         ####
@@ -306,47 +309,34 @@ def main(recording_path: Union[str, Path],
         ####
 
         # loop through dictionary applying  constraints
-        try:
-            bpy.ops.object.mode_set(mode="POSE")
-        except:
-            pass
+        bpy.ops.object.mode_set(mode="POSE")
 
-        try:
-            for bone_name, bone_constraint_dict in rig_constraint_dict_of_dicts.items():
-                logging.info(f"---Setting constraints for bone:{bone_name}---")
-                apply_constraints_to_bone(
-                    bone_name=bone_name,
-                    bone_constraint_dict=bone_constraint_dict,
-                    armature_rig=human_metarig,
-                )
+        for bone_name, bone_constraint_dict in rig_constraint_dict_of_dicts.items():
+            print(f"---Setting constraints for bone:{bone_name}---")
+            apply_constraints_to_bone(
+                bone_name=bone_name,
+                bone_constraint_dict=bone_constraint_dict,
+                armature_rig=human_metarig,
+            )
 
-        except Exception as e:
-            logging.info(e)
-            logging.info("Something went wrong applying constraints to armarture bones")
-
-        logging.info(
+        print(
             "____________________________________________________________________________\n",
             "Done constraining armature bones to follow keyframed empties!",
             "____________________________________________________________________________",
         )
 
-    try:
-        # from https://blender.stackexchange.com/a/238223
 
-        for window in bpy.context.window_manager.windows:
-            for area in window.screen.areas:  # iterate through areas in current screen
-                if area.type == "VIEW_3D":
-                    for space in area.spaces:  # iterate through spaces in current VIEW_3D area
-                        if space.type == "VIEW_3D":  # check if space is a 3D view
-                            space.shading.type = "MATERIAL"
-    except Exception as e:
-        print(e)
-        print("Failed to set shading to material")
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:  # iterate through areas in current screen
+            if area.type == "VIEW_3D":
+                for space in area.spaces:  # iterate through spaces in current VIEW_3D area
+                    if space.type == "VIEW_3D":  # check if space is a 3D view
+                        space.shading.type = "MATERIAL"
 
     # save .blend file
     bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
 
-    logging.info(
+    print(
         "____________________________________________________________________________\n",
         "____________________________________________________________________________\n",
         "Done creating Blender scene!\n",
@@ -387,7 +377,7 @@ def add_videos_to_scene(videos_path: Union[Path, str], parent_object: bpy.types.
             1,
         ]
         video_as_plane.rotation_euler = [np.pi / 2, 0, 0]
-        video_as_plane.scale = [vid_location_scale * .5] * 3
+        video_as_plane.scale = [1 ] * 3
         video_as_plane.parent = parent_object
 
 

@@ -111,7 +111,7 @@ def process_recording_folder(
     logger.info("Gap-filling, butterworth filtering, origin aligning 3d skeletons, then calculating center of mass ...")
 
     skel3d_frame_marker_xyz = gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
-        skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
+        raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
         skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
         path_to_folder_where_we_will_save_this_data=rec.recording_info_model.output_data_folder_path,
         sampling_rate=rec.post_processing_parameters_model.framerate,

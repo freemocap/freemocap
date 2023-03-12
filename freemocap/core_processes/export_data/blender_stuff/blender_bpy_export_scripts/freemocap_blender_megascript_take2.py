@@ -281,13 +281,6 @@ def main(recording_path: Union[str, Path],
 
         bpy.ops.object.mode_set(mode="EDIT")
 
-        delete_bones = ["pelvis.L",
-                        "pelvis.R",
-                        "breast.L",
-                        "breast.R",]
-
-        for bone in delete_bones:
-            human_metarig.data.edit_bones.remove(human_metarig.data.edit_bones[bone])
 
         for (
                 segment_name,
@@ -303,6 +296,24 @@ def main(recording_path: Union[str, Path],
                 )  # divide by number of bones in segment (for now, eventually will want to set weights
                 print(f"setting {rigify_bone_name} length to: {segment_length:.3f} m")
                 human_metarig.data.edit_bones[rigify_bone_name].length = segment_length
+
+
+        delete_bones = ["pelvis.L",
+                        "pelvis.R",
+                        "breast.L",
+                        "breast.R",
+                        "heel.02.L",
+                        "heel.02.R",
+                        "toe.L",
+                        "toe.R",]
+
+        for bone in delete_bones:
+            human_metarig.data.edit_bones.remove(human_metarig.data.edit_bones[bone])
+
+        extra_scale_bones = {"spine.005":.2}
+
+        for bone, scale in extra_scale_bones.items():
+            human_metarig.data.edit_bones[bone].length *= scale
 
         ####
         #### Constrain bones to empties

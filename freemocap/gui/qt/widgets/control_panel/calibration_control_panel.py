@@ -109,12 +109,14 @@ class CalibrationControlPanel(QWidget):
                 if active_recording_info.calibration_toml_check:
                     toml_path = active_recording_info.calibration_toml_path
             else:
-                if self._get_active_recording_info_callable().calibration_toml_check:
-                    toml_path = self._get_active_recording_info_callable().calibration_toml_path
-                    self._load_calibration_from_file_radio_button.setChecked(True)
-                else:
-                    toml_path = get_last_successful_calibration_toml_path()
-                    self._use_most_recent_calibration_radio_button.setChecked(True)
+                active_rec = self._get_active_recording_info_callable()
+                if active_rec is not None:
+                    if active_rec.calibration_toml_check:
+                        toml_path = self._get_active_recording_info_callable().calibration_toml_path
+                        self._load_calibration_from_file_radio_button.setChecked(True)
+                    else:
+                        toml_path = get_last_successful_calibration_toml_path()
+                        self._use_most_recent_calibration_radio_button.setChecked(True)
 
 
 
@@ -124,7 +126,7 @@ class CalibrationControlPanel(QWidget):
             logger.info(f"Setting calibration TOML path: {self._calibration_toml_path}")
             self._show_selected_calibration_toml_path(self._calibration_toml_path)
         else:
-            self._show_selected_calibration_toml_path('-Calibration File Not Found in Active Recording Folder-')
+            self._show_selected_calibration_toml_path('-Calibration File Not Found-')
 
     def _add_calibrate_from_active_recording_radio_button(self):
         vbox = QVBoxLayout()

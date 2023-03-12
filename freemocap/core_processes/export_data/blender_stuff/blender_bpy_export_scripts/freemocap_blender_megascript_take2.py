@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+from copy import copy
 from pathlib import Path
 from typing import List, Union, Dict
 
@@ -98,6 +99,11 @@ def main(recording_path: Union[str, Path],
     ############################
     ### Load mocap data as empty markers
 
+    print("_________________________\n"
+          "__________________________\n"
+          "Loading freemocap trajectory data as empty markers..."
+          "_________________________\n")
+
     mediapipe_body_trajectory_names = [empty_name for empty_name in mediapipe_empty_names["body"]]
 
     mediapipe_right_hand_trajectory_names = [f"right_hand_{empty_name}" for empty_name in mediapipe_empty_names["hand"]]
@@ -163,29 +169,28 @@ def main(recording_path: Union[str, Path],
 
     #######################################################################
     # %% create virtual markers
-    print("Creating virtual markers...")
+    print("_________________________\n"
+          "-------------------------\n"
+          "Creating virtual markers...")
 
     # verify that the virtual marker definition dictionary is valid
     test_virtual_marker_definitions(mediapipe_virtual_marker_definitions_dict)
 
-    for (
-            virtual_marker_number,
-            virtual_marker_key,
-    ) in enumerate(mediapipe_virtual_marker_definitions_dict.keys()):
-        virtual_marker_dict = mediapipe_virtual_marker_definitions_dict[virtual_marker_key]
-        virtual_marker_name = virtual_marker_key
-        print(
-            f"Creating virtual marker: {virtual_marker_name}: \n"
-            f"from 'real' markers: {virtual_marker_dict['marker_names']}, \n"
-            f"with weights: {virtual_marker_dict['marker_weights']}\n"
-        )
+    virtual_marker_names = list(mediapipe_virtual_marker_definitions_dict.keys())
+    for virtual_marker_name in virtual_marker_names:
+        component_trajectory_names = mediapipe_virtual_marker_definitions_dict[virtual_marker_name]["marker_names"]
+        trajectory_weights = mediapipe_virtual_marker_definitions_dict[virtual_marker_name]["marker_weights"]
 
-        mediapipe_body_trajectory_names.append(virtual_marker_name)
+        print(
+            f"Calculating virtual marker trajectory: {virtual_marker_name} \n"
+            f"Component trajectories: {component_trajectory_names} \n"
+            f" weights: {trajectory_weights}\n")
+
         virtual_marker_xyz = calculate_virtual_marker_trajectory(
             trajectory_3d_frame_marker_xyz=mediapipe_body_fr_mar_xyz,
-            all_trajectory_names=[name.split(":")[-1] for name in mediapipe_body_trajectory_names],
-            component_trajectory_names=virtual_marker_dict["marker_names"],
-            trajectory_weights=virtual_marker_dict["marker_weights"],
+            all_trajectory_names=mediapipe_body_trajectory_names,
+            component_trajectory_names=component_trajectory_names,
+            trajectory_weights=trajectory_weights,
         )
         create_keyframed_empty_from_3d_trajectory_data(
             trajectory_fr_xyz=virtual_marker_xyz,
@@ -195,6 +200,8 @@ def main(recording_path: Union[str, Path],
             empty_type="PLAIN_AXES",
         )
 
+    print(f"Adding virtual marker names to body trajectory names  - {virtual_marker_names}")
+    mediapipe_body_trajectory_names.extend(virtual_marker_names)
     print("Done creating virtual markers")
 
     #######################################################################
@@ -214,7 +221,7 @@ def main(recording_path: Union[str, Path],
     #     parent_object=freemocap_origin_axes,
     # )
 
-    #right hand
+    # right hand
     put_sphere_meshes_on_empties(
         empty_names_list=mediapipe_right_hand_trajectory_names,
         parent_object=freemocap_origin_axes,
@@ -282,7 +289,6 @@ def main(recording_path: Union[str, Path],
 
         bpy.ops.object.mode_set(mode="EDIT")
 
-
         for (
                 segment_name,
                 rigify_bones_list,
@@ -298,7 +304,6 @@ def main(recording_path: Union[str, Path],
                 print(f"setting {rigify_bone_name} length to: {segment_length:.3f} m")
                 human_metarig.data.edit_bones[rigify_bone_name].length = segment_length
 
-
         delete_bones = ["pelvis.L",
                         "pelvis.R",
                         "breast.L",
@@ -306,12 +311,12 @@ def main(recording_path: Union[str, Path],
                         "heel.02.L",
                         "heel.02.R",
                         "toe.L",
-                        "toe.R",]
+                        "toe.R", ]
 
         for bone in delete_bones:
             human_metarig.data.edit_bones.remove(human_metarig.data.edit_bones[bone])
 
-        extra_scale_bones = {"spine.005":.2}
+        extra_scale_bones = {"spine.005": .2}
 
         for bone, scale in extra_scale_bones.items():
             human_metarig.data.edit_bones[bone].length *= scale
@@ -336,7 +341,6 @@ def main(recording_path: Union[str, Path],
             "Done constraining armature bones to follow keyframed empties!",
             "____________________________________________________________________________",
         )
-
 
     for window in bpy.context.window_manager.windows:
         for area in window.screen.areas:  # iterate through areas in current screen
@@ -390,10 +394,8 @@ def add_videos_to_scene(videos_path: Union[Path, str], parent_object: bpy.types.
             1,
         ]
         video_as_plane.rotation_euler = [np.pi / 2, 0, 0]
-        video_as_plane.scale = [1 ] * 3
+        video_as_plane.scale = [1] * 3
         video_as_plane.parent = parent_object
-
-
 
 
 def create_keyframed_empty_from_3d_trajectory_data(
@@ -584,22 +586,23 @@ def calculate_virtual_marker_trajectory(
     `component_trajectory_names`: the trajectories we'll use to make this virtual marker
     `trajectory_weights`: the weights we'll use to combine the compoenent trajectories into the virtual maker
     """
+
     # double check that the weights scale to one, otherwise this function will return screwy results
     assert np.sum(trajectory_weights) == 1, "Error - Trajectory_weights must sum to 1!"
-
+    assert len(component_trajectory_names) == len(trajectory_weights), \
+        "Error - component_trajectory_names and trajectory_weights must be the same length!"
     virtual_marker_xyz = np.zeros((trajectory_3d_frame_marker_xyz.shape[0], 3))
 
-    for trajectory_number, trajectory_name in enumerate(component_trajectory_names):
-        # pull out the trajectory data for this component trajectory
-        component_trajectory_xyz = trajectory_3d_frame_marker_xyz[:, all_trajectory_names.index(trajectory_name), :]
-
-        # scale it by its weight
-        component_trajectory_xyz *= trajectory_weights[trajectory_number]
+    for trajectory_name, weight in zip(component_trajectory_names, trajectory_weights):
+        # pull out the trajectory data for this component trajectory and scale by it's `weight`
+        component_trajectory_xyz = copy(
+            trajectory_3d_frame_marker_xyz[:, all_trajectory_names.index(trajectory_name), :] * weight)
 
         # add it to the virtual marker
         virtual_marker_xyz += component_trajectory_xyz
 
     return virtual_marker_xyz
+
 
 # Mediapipe Tracked Point Names
 
@@ -727,13 +730,13 @@ mediapipe_virtual_marker_definitions_dict = {
         "marker_names": ["left_shoulder", "right_shoulder"],
         "marker_weights": [0.5, 0.5],
     },
-    "hips_center": {
-        "marker_names": ["left_hip", "right_hip"],
-        "marker_weights": [0.5, 0.5],
-    },
     "trunk_center": {
         "marker_names": ["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
         "marker_weights": [0.25, 0.25, 0.25, 0.25],
+    },
+    "hips_center": {
+        "marker_names": ["left_hip", "right_hip"],
+        "marker_weights": [0.5, 0.5],
     },
 }
 

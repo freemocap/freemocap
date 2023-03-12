@@ -9,6 +9,8 @@ import pandas as pd
 from rich.progress import track
 from scipy import signal
 
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import \
+    NUMBER_OF_MEDIAPIPE_BODY_MARKERS
 from freemocap.system.paths_and_files_names import (
     CENTER_OF_MASS_FOLDER_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
@@ -51,7 +53,7 @@ def find_good_clean_frame_reprojection_error_method(skeleton_3d_fr_mar_xyz, skel
     )
 
     frame_cleanliness_score_where_low_scores_are_good = (
-        nans_per_frame_normalized + reprojection_error_per_frame_normalized + marker_velocity_per_frame_normalized
+            nans_per_frame_normalized + reprojection_error_per_frame_normalized + marker_velocity_per_frame_normalized
     )
 
     good_clean_frame_number = np.nanargmin(frame_cleanliness_score_where_low_scores_are_good)
@@ -60,35 +62,30 @@ def find_good_clean_frame_reprojection_error_method(skeleton_3d_fr_mar_xyz, skel
 
 
 # %%
-def fill_gaps_in_freemocap_data(freemocap_marker_data: np.ndarray) -> np.ndarray:
+def fill_gaps_in_freemocap_data(inputData_frame_marker_xyz: np.ndarray) -> np.ndarray:
     """
     Takes in a 3d skeleton numpy array from freemocap and interpolates missing NaN values
     TODO - refactor so it doesn't use a for loop (and maybe uses more sophisticated gap-fill methods?)
     """
-    num_frames = freemocap_marker_data.shape[0]
-    num_markers = freemocap_marker_data.shape[1]
 
-    freemocap_interpolated_data = np.empty((num_frames, num_markers, 3))
+    interpolatedData_frame_marker_xyz = inputData_frame_marker_xyz.copy()
 
-    for marker in track(
-        range(num_markers),
-        description="Filling gaps (`nan` values) via linear interpolation",
-    ):
-        this_marker_skel3d_data = freemocap_marker_data[:, marker, :]
+    for marker_number in range(interpolatedData_frame_marker_xyz.shape[1]):
+        trajectory_frame_xyz = inputData_frame_marker_xyz[:, marker_number, :]
 
-        df = pd.DataFrame(this_marker_skel3d_data)
-        df2 = df.interpolate(method="linear", axis=0)  # use pandas interpolation methods to fill in missing data
-        this_marker_interpolated_skel3d_array = np.array(df2)
-        # replace the remaining NaN values (the ones that often happen at the start of the recording)
-        this_marker_interpolated_skel3d_array = np.where(
-            np.isfinite(this_marker_interpolated_skel3d_array),
-            this_marker_interpolated_skel3d_array,
-            np.nanmean(this_marker_interpolated_skel3d_array),
-        )
+        if marker_number < NUMBER_OF_MEDIAPIPE_BODY_MARKERS:
+            df = pd.DataFrame(trajectory_frame_xyz).interpolate(method="linear", axis=0)
+            df.fillna(method="bfill", axis=0, inplace=True)
+            df.fillna(method="ffill", axis=0, inplace=True)
 
-        freemocap_interpolated_data[:, marker, :] = this_marker_interpolated_skel3d_array
+            if np.any(np.isnan(df.to_numpy())):
+                raise ValueError("Nans still present after interpolation")
+            if np.any(np.isinf(df.to_numpy())):
+                raise ValueError("Infs still present after interpolation")
 
-    return freemocap_interpolated_data
+            interpolatedData_frame_marker_xyz[:, marker_number, :] = df.to_numpy()
+
+    return interpolatedData_frame_marker_xyz
 
 
 # %%
@@ -104,11 +101,10 @@ def butterworth_lowpass_zerolag_filter(data, cutoff, sampling_rate, order):
 
 def butterworth_filter_skeleton(skeleton_3d_data, cutoff, sampling_rate, order):
     """Take in a 3d skeleton numpy array and calculate_center_of_mass a low pass butterworth filter on each marker in the data"""
-    number_of_frames = skeleton_3d_data.shape[0]
-    number_of_markers = skeleton_3d_data.shape[1]
-    butterworth_filtered_data = np.empty((number_of_frames, number_of_markers, 3))
 
-    for marker_number in range(number_of_markers):
+    butterworth_filtered_data = skeleton_3d_data.copy()
+
+    for marker_number in range(NUMBER_OF_MEDIAPIPE_BODY_MARKERS):
         for dimension in range(3):
             butterworth_filtered_data[:, marker_number, dimension] = butterworth_lowpass_zerolag_filter(
                 skeleton_3d_data[:, marker_number, dimension],
@@ -232,7 +228,7 @@ def find_best_velocity_guess(skeleton_velocity_data, skeleton_indices, velocity_
 
 
 def find_good_frame_recursive_guess_method(
-    skeleton_data, skeleton_indices: list, initial_velocity_guess: float, debug=False
+        skeleton_data, skeleton_indices: list, initial_velocity_guess: float, debug=False
 ):
     """
     Finds a frame (called the good frame) where the velocity of both feet are closest to 0
@@ -274,9 +270,9 @@ def normalize_vector(vector):
     """Take in a vector, normalize it"""
     unit_vector = vector / np.linalg.norm(vector)
 
-    vector_length = np.sqrt(np.sum(unit_vector**2))
+    vector_length = np.sqrt(np.sum(unit_vector ** 2))
     assert (
-        np.abs(vector_length - 1.0) < sys.float_info.epsilon
+            np.abs(vector_length - 1.0) < sys.float_info.epsilon
     ), f"Vector is not normalized: vector_length = {vector_length}"
     return unit_vector
 
@@ -309,9 +305,9 @@ def calculate_mid_hip_XYZ_coordinates(single_frame_skeleton_data, left_hip_index
 
 
 def calculate_mid_foot_XYZ_coordinate(
-    single_frame_skeleton_data,
-    left_heel_index,
-    right_heel_index,
+        single_frame_skeleton_data,
+        left_heel_index,
+        right_heel_index,
 ):
     """Take in the primary and secondary foot indices, and calculate the mid foot point"""
     right_foot_point = single_frame_skeleton_data[right_heel_index, :]
@@ -381,11 +377,11 @@ def calculate_rotation_matrix(vector1, vector2):
     vector_dot_product = np.dot(vector1, vector2)
     skew_symmetric_cross_product = calculate_skewed_symmetric_cross_product(vector_cross_product)
     rotation_matrix = (
-        identity_matrix
-        + skew_symmetric_cross_product
-        + (np.dot(skew_symmetric_cross_product, skew_symmetric_cross_product))
-        * (1 - vector_dot_product)
-        / (np.linalg.norm(vector_cross_product) ** 2)
+            identity_matrix
+            + skew_symmetric_cross_product
+            + (np.dot(skew_symmetric_cross_product, skew_symmetric_cross_product))
+            * (1 - vector_dot_product)
+            / (np.linalg.norm(vector_cross_product) ** 2)
     )
 
     return rotation_matrix
@@ -420,10 +416,10 @@ def rotate_skeleton_frame(this_frame_aligned_skeleton_data, rotation_matrix):
 
 
 def calculate_skeleton_rotation_matrix(
-    skeleton_right_vector: np.ndarray,
-    skeleton_up_vector: np.ndarray,
-    skeleton_forward_vector: np.ndarray,
-    world_up_vector: str,
+        skeleton_right_vector: np.ndarray,
+        skeleton_up_vector: np.ndarray,
+        skeleton_forward_vector: np.ndarray,
+        world_up_vector: str,
 ):
     """Calculate the rotation matrix to align the skeleton to the world coordinate system"""
 
@@ -447,24 +443,24 @@ def calculate_skeleton_rotation_matrix(
         raise ValueError("world_up_vector must be one of 'x', 'y', or 'z'")
 
     assert (
-        np.dot(rotation_matrix[0, :], rotation_matrix[1, :]) < sys.float_info.epsilon
+            np.dot(rotation_matrix[0, :], rotation_matrix[1, :]) < sys.float_info.epsilon
     ), "x_hat and y_hat are not orthogonal"
     assert (
-        np.dot(rotation_matrix[1, :], rotation_matrix[2, :]) < sys.float_info.epsilon
+            np.dot(rotation_matrix[1, :], rotation_matrix[2, :]) < sys.float_info.epsilon
     ), "y_hat and z_hat are not orthogonal"
     assert (
-        np.dot(rotation_matrix[2, :], rotation_matrix[0, :]) < sys.float_info.epsilon
+            np.dot(rotation_matrix[2, :], rotation_matrix[0, :]) < sys.float_info.epsilon
     ), "z_hat and x_hat are not orthogonal"
 
     return rotation_matrix
 
 
 def rotate_align_skeleton(
-    positive_x_reference_vector_on_the_skeleton: np.ndarray,
-    positive_y_reference_vector_on_the_skeleton: np.ndarray,
-    positive_z_reference_vector_on_the_skeleton: np.ndarray,
-    world_up_vector: str,
-    original_skeleton_np_array: np.ndarray,
+        positive_x_reference_vector_on_the_skeleton: np.ndarray,
+        positive_y_reference_vector_on_the_skeleton: np.ndarray,
+        positive_z_reference_vector_on_the_skeleton: np.ndarray,
+        world_up_vector: str,
+        original_skeleton_np_array: np.ndarray,
 ) -> np.ndarray:
     """
     Find the rotation matrix needed to rotate the 'reference_vector_on_the_skeleton' to match the 'world_vector_to_align_skeleton_vector_to', and
@@ -491,20 +487,20 @@ def rotate_align_skeleton(
     logger.info(f"Skeleton inverse rotation matrix: \n {skeleton_inverse_rotation_matrix}")
 
     skeleton_z_vector_rotated = positive_z_reference_vector_on_the_skeleton @ skeleton_inverse_rotation_matrix
-    original_z_vector_length = np.sqrt(np.sum(positive_z_reference_vector_on_the_skeleton**2))
-    rotated_up_vector_length = np.sqrt(np.sum(skeleton_z_vector_rotated**2))
+    original_z_vector_length = np.sqrt(np.sum(positive_z_reference_vector_on_the_skeleton ** 2))
+    rotated_up_vector_length = np.sqrt(np.sum(skeleton_z_vector_rotated ** 2))
 
     assert (
-        original_z_vector_length - rotated_up_vector_length < 1
+            original_z_vector_length - rotated_up_vector_length < 1
     ), f"Rotating the skeleton up vector changed its size -\ something went wrong (original_z_vector_length {original_z_vector_length} - rotated_up_vector_length {rotated_up_vector_length} = {original_z_vector_length - rotated_up_vector_length})"
 
     skeleton_left_vector_rotated = positive_x_reference_vector_on_the_skeleton @ skeleton_inverse_rotation_matrix
 
-    rotated_left_vector_length = np.sqrt(np.sum(skeleton_left_vector_rotated**2))
-    original_x_vector_length = np.sqrt(np.sum(positive_x_reference_vector_on_the_skeleton**2))
+    rotated_left_vector_length = np.sqrt(np.sum(skeleton_left_vector_rotated ** 2))
+    original_x_vector_length = np.sqrt(np.sum(positive_x_reference_vector_on_the_skeleton ** 2))
 
     assert (
-        rotated_left_vector_length - original_x_vector_length < 1
+            rotated_left_vector_length - original_x_vector_length < 1
     ), f"Rotating the skeleton left vector changed its size - something went wrong (rotated_left_vector_length {rotated_left_vector_length} - original_x_vector_length {original_x_vector_length} = {rotated_left_vector_length - original_x_vector_length})"
 
     print(
@@ -518,7 +514,7 @@ def rotate_align_skeleton(
     for frame_number in track(range(original_skeleton_np_array.shape[0]), description="Rotating Skeleton..."):
         for point_number in range(original_skeleton_np_array.shape[1]):
             rotated_point_xyz = (
-                original_skeleton_np_array[frame_number, point_number, :] @ skeleton_inverse_rotation_matrix
+                    original_skeleton_np_array[frame_number, point_number, :] @ skeleton_inverse_rotation_matrix
             )
 
             rotated_skeleton_data_array[frame_number, point_number, :] = rotated_point_xyz
@@ -528,7 +524,7 @@ def rotate_align_skeleton(
 
 # %%
 def align_skeleton_with_origin_mean_blob_method(
-    skeleton_3d_frame_landmark_xyz: np.ndarray,
+        skeleton_3d_frame_landmark_xyz: np.ndarray,
 ) -> np.ndarray:
     """get stats of skeleton postions and align with origin and point upwards based on that"""
     skeleton_3d_frame_landmark_xyz_og = skeleton_3d_frame_landmark_xyz.copy()
@@ -565,7 +561,7 @@ def align_skeleton_with_origin_mean_blob_method(
 
 
 def align_skeleton_with_origin_foot_spine_method(
-    skeleton_data: np.ndarray, skeleton_indices: list, good_frame: int
+        skeleton_data: np.ndarray, skeleton_indices: list, good_frame: int
 ) -> np.ndarray:
     """
     Takes in freemocap skeleton data and translates the skeleton to the origin, and then rotates the data
@@ -589,8 +585,8 @@ def align_skeleton_with_origin_foot_spine_method(
     # the mid point between the two heels
     midpoint_between_heels_xyz = np.mean(
         good_skeleton_frame[
-            [skeleton_indices.index("left_heel"), skeleton_indices.index("right_heel")],
-            :,
+        [skeleton_indices.index("left_heel"), skeleton_indices.index("right_heel")],
+        :,
         ],
         axis=0,
     )
@@ -607,21 +603,21 @@ def align_skeleton_with_origin_foot_spine_method(
     # Rotating the skeleton so that the spine is aligned with +z
     midpoint_between_hips_xyz = np.mean(
         skeleton_data_zeroed[
-            good_frame,
-            [skeleton_indices.index("left_hip"), skeleton_indices.index("right_hip")],
-            :,
+        good_frame,
+        [skeleton_indices.index("left_hip"), skeleton_indices.index("right_hip")],
+        :,
         ],
         axis=0,
     )
 
     midpoint_between_toes_xyz = np.mean(
         skeleton_data_zeroed[
-            good_frame,
-            [
-                skeleton_indices.index("left_foot_index"),
-                skeleton_indices.index("right_foot_index"),
-            ],
-            :,
+        good_frame,
+        [
+            skeleton_indices.index("left_foot_index"),
+            skeleton_indices.index("right_foot_index"),
+        ],
+        :,
         ],
         axis=0,
     )
@@ -742,10 +738,10 @@ def build_mediapipe_skeleton(mediapipe_pose_data, segment_dataframe, mediapipe_i
 
         mediapipe_pose_skeleton_coordinates = {}
         for (
-            segment,
-            segment_info,
+                segment,
+                segment_info,
         ) in (
-            segment_dataframe.iterrows()
+                segment_dataframe.iterrows()
         ):  # iterate through the data frame by the segment name and all the info for that segment
             if segment == "trunk":
 
@@ -882,9 +878,9 @@ segment_COM_percentages = [
 
 # %%
 def calculate_segment_COM(
-    segment_conn_len_perc_dataframe,
-    skelcoordinates_frame_segment_joint_XYZ,
-    num_frame_range,
+        segment_conn_len_perc_dataframe,
+        skelcoordinates_frame_segment_joint_XYZ,
+        num_frame_range,
 ):
     segment_COM_frame_dict = []
     for frame in track(num_frame_range, description="Calculating Segment Center of Mass"):
@@ -898,7 +894,7 @@ def calculate_segment_COM(
             this_segment_COM_length = segment_info["Segment_COM_Length"]
 
             this_segment_COM = this_segment_proximal + this_segment_COM_length * (
-                this_segment_distal - this_segment_proximal
+                    this_segment_distal - this_segment_proximal
             )
             segment_COM_dict[segment] = this_segment_COM
         segment_COM_frame_dict.append(segment_COM_dict)
@@ -948,10 +944,10 @@ def calculate_total_body_COM(segment_conn_len_perc_dataframe, segment_COM_frame_
 
 
 def build_anthropometric_dataframe(
-    segments: list,
-    joint_connections: list,
-    segment_COM_lengths: list,
-    segment_COM_percentages: list,
+        segments: list,
+        joint_connections: list,
+        segment_COM_lengths: list,
+        segment_COM_percentages: list,
 ) -> pd.DataFrame:
     # load anthropometric data into a pandas dataframe
     df = pd.DataFrame(
@@ -975,9 +971,9 @@ def build_anthropometric_dataframe(
 
 
 def calculate_center_of_mass(
-    freemocap_marker_data_array: np.ndarray,
-    pose_estimation_skeleton: list,
-    anthropometric_info_dataframe: pd.DataFrame,
+        freemocap_marker_data_array: np.ndarray,
+        pose_estimation_skeleton: list,
+        anthropometric_info_dataframe: pd.DataFrame,
 ):
     num_frames = freemocap_marker_data_array.shape[0]
     num_frame_range = range(num_frames)
@@ -1027,36 +1023,37 @@ def are_there_feet_in_this_mediapipe_skeleton_data(skeleton3d_frame_landmark_xyz
 
 
 def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
-    skel3d_frame_marker_xyz: np.ndarray,
-    skeleton_reprojection_error_fr_mar: np.ndarray,
-    path_to_folder_where_we_will_save_this_data: [str, Path],
-    # Filter the data, set the filtering options here
-    sampling_rate: Union[float, int],
-    cut_off: Union[float, int],
-    order: Union[float, int],
-    reference_frame_number: Union[float, int] = None,
+        raw_skel3d_frame_marker_xyz: np.ndarray,
+        skeleton_reprojection_error_fr_mar: np.ndarray,
+        path_to_folder_where_we_will_save_this_data: [str, Path],
+        # Filter the data, set the filtering options here
+        sampling_rate: Union[float, int],
+        cut_off: Union[float, int],
+        order: Union[float, int],
+        reference_frame_number: Union[float, int] = None,
+
 ):
     path_to_folder_where_we_will_save_this_data = Path(path_to_folder_where_we_will_save_this_data)
 
     logger.info("Gap-filling data...")
     # Interpolate the data
-    freemocap_interpolated_data = fill_gaps_in_freemocap_data(skel3d_frame_marker_xyz)
+    processed_skel3d_frame_marker_xyz = fill_gaps_in_freemocap_data(raw_skel3d_frame_marker_xyz, )
 
     logger.info(
         f"Filtering data at with a {order}th order, zero-lag, low-pass Butterworth filter with a cut-off frequency of {cut_off} Hz..."
     )
-    butterworth_filtered_skeleton_data = butterworth_filter_skeleton(
-        freemocap_interpolated_data, cut_off, sampling_rate, order
+    processed_skel3d_frame_marker_xyz = butterworth_filter_skeleton(
+        processed_skel3d_frame_marker_xyz, cut_off, sampling_rate, order
     )
 
-    # pin skeleton to origin (set to mean positin of skeletonin this recording)
-    zeroed_skeleton_data = butterworth_filtered_skeleton_data.copy()
-    zeroed_skeleton_data[:, :, 0] -= np.nanmean(zeroed_skeleton_data[:, :, 0])
-    zeroed_skeleton_data[:, :, 1] -= np.nanmean(zeroed_skeleton_data[:, :, 1])
-    zeroed_skeleton_data[:, :, 2] -= np.nanmean(zeroed_skeleton_data[:, :, 2])
-
-    # TODO - align skeleton so feet are at Z-plane and head is facing up
-    origin_aligned_freemocap_marker_data = zeroed_skeleton_data.copy()
+    # # pin skeleton to origin (set to mean positin of skeletonin this recording)
+    # zeroed_skeleton_data = butterworth_filtered_skeleton_data.copy()
+    # zeroed_skeleton_data[:, :, 0] -= np.nanmean(zeroed_skeleton_data[:, :, 0])
+    # zeroed_skeleton_data[:, :, 1] -= np.nanmean(zeroed_skeleton_data[:, :, 1])
+    # zeroed_skeleton_data[:, :, 2] -= np.nanmean(zeroed_skeleton_data[:, :, 2])
+    #
+    # # TODO - align skeleton so feet are at Z-plane and head is facing up
+    # origin_aligned_freemocap_marker_data = zeroed_skeleton_data.copy()
     # logger.info("Aligning data to the origin...")
 
     #     reference_frame_number = find_good_clean_frame_reprojection_error_method(
@@ -1092,7 +1089,7 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)
     np.save(
         str(path_to_folder_where_we_will_save_this_data / "mediaPipeSkel_3d_body_hands_face.npy"),
-        origin_aligned_freemocap_marker_data,
+        processed_skel3d_frame_marker_xyz,
     )
 
     # Calculate segment and total body COM
@@ -1100,12 +1097,12 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
         segments, joint_connections, segment_COM_lengths, segment_COM_percentages
     )
     skelcoordinates_frame_segment_joint_XYZ = build_mediapipe_skeleton(
-        origin_aligned_freemocap_marker_data,
+        processed_skel3d_frame_marker_xyz,
         anthropometric_info_dataframe,
         mediapipe_landmark_names,
     )
     (segment_COM_frame_dict, segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ,) = calculate_center_of_mass(
-        origin_aligned_freemocap_marker_data,
+        processed_skel3d_frame_marker_xyz,
         skelcoordinates_frame_segment_joint_XYZ,
         anthropometric_info_dataframe,
     )
@@ -1128,7 +1125,7 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     )
 
     logger.info("Done with gap filling, filtering, aligning, and COM calculation")
-    return origin_aligned_freemocap_marker_data
+    return processed_skel3d_frame_marker_xyz
 
 
 if __name__ == "__main__":

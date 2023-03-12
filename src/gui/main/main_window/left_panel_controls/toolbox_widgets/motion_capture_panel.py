@@ -42,7 +42,7 @@ class MotionCapturePanel(QWidget):
         self._layout.addWidget(process_videos_section_title, alignment=Qt.AlignCenter)
         process_videos_section_title.setToolTip(
             "TODO: \n"
-            + "- Convert this mess of buttons into a 'Parameter Tree' like the one in the 'Camera Setup' panel (see `src/core_processes/batch_processes/process_session_folder.py`)\n\n"
+            + "- Convert this mess of buttons into a 'Parameter Tree' like the one in the 'Camera Setup' panel (see `src/core_processes/batch_processes/process_recording_folder.py`)\n\n"
             + "- Add method to check what's in the `session_folder` and only enable the appropriate buttons"
         )
 

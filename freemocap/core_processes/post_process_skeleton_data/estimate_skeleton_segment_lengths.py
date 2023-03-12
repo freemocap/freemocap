@@ -92,9 +92,9 @@ def create_virtual_markers(skeleton_data_dictionary, virtual_marker_name: str, m
         y.append(skeleton_data_dictionary[f"{marker_name}_y"])
         z.append(skeleton_data_dictionary[f"{marker_name}_z"])
 
-    skeleton_data_dictionary[f"{virtual_marker_name}_x"] = np.mean(np.asarray(x), axis=0)
-    skeleton_data_dictionary[f"{virtual_marker_name}_y"] = np.mean(np.asarray(y), axis=0)
-    skeleton_data_dictionary[f"{virtual_marker_name}_z"] = np.mean(np.asarray(z), axis=0)
+    skeleton_data_dictionary[f"{virtual_marker_name}_x"] = np.nanmean(np.asarray(x), axis=0)
+    skeleton_data_dictionary[f"{virtual_marker_name}_y"] = np.nanmean(np.asarray(y), axis=0)
+    skeleton_data_dictionary[f"{virtual_marker_name}_z"] = np.nanmean(np.asarray(z), axis=0)
 
     return skeleton_data_dictionary
 

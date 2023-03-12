@@ -31,77 +31,79 @@ class CameraControllerGroupBox(QGroupBox):
 
         # self.setFlat(True)
         self._layout = QVBoxLayout()
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.setLayout(self._layout)
 
         # self._layout.setContentsMargins(0, 0, 0, 0)
         # self._layout.setSpacing(0)
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self._layout.addWidget(self._skellycam_controller)
 
-        self._recording_name_controller_row_layout = QHBoxLayout()
-        self._layout.addLayout(self._recording_name_controller_row_layout)
 
-        self._recording_string_tag_line_edit = QLineEdit(parent=self)
-        self._recording_string_tag_line_edit.setPlaceholderText("(Optional)")
-        # self._recording_string_tag_line_edit.setFixedWidth(300)
-        recording_string_tag_form_layout = QFormLayout(parent=self)
-        recording_string_tag_form_layout.addRow("Recording Name Tag", self._recording_string_tag_line_edit)
-        self._recording_name_controller_row_layout.addLayout(recording_string_tag_form_layout)
-
-        hbox = QHBoxLayout()
-        hbox.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        hbox.addWidget(QLabel("Videos will save to folder: "))
-        self._recording_path_label = QLabel(f"{self.get_new_recording_path()}")
-        self._recording_path_label.setStyleSheet("font-family: monospace;")
-        hbox.addWidget(self._recording_path_label)
-        # self._recording_path_label.setStyleSheet("font-family: monospace; font-size: 12px; font-weight: bold;")
-        self._layout.addLayout(hbox)
-
-        recording_type_radio_button_layout = QVBoxLayout()
-        self._layout.addLayout(recording_type_radio_button_layout)
-
-        motion_capture_recording_options_layout = QHBoxLayout()
-        motion_capture_recording_options_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-        self._mocap_videos_radio_button = QRadioButton("Record Motion Capture Videos")
-        motion_capture_recording_options_layout.addWidget(self._mocap_videos_radio_button)
-        self._mocap_videos_radio_button.setChecked(True)
-
-        motion_capture_recording_options_layout.addWidget(QLabel(" - "))
-
-        self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
-        self._auto_process_videos_checkbox.setChecked(True)
-        motion_capture_recording_options_layout.addWidget(self._auto_process_videos_checkbox)
-
-        self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
-        self._auto_open_in_blender_checkbox.setChecked(True)
-        motion_capture_recording_options_layout.addWidget(self._auto_open_in_blender_checkbox)
+        motion_capture_recording_options_layout = self._create_mocap_recording_option_layout()
         self._layout.addLayout(motion_capture_recording_options_layout)
 
-        calibration_recordings_options_layout = QHBoxLayout()
+        calibration_recording_option_layout = self._create_calibration_recording_option_layout()
+        self._layout.addLayout(calibration_recording_option_layout)
 
-        calibration_recordings_options_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        calibration_recordings_options_layout.setSizeConstraint(
-            motion_capture_recording_options_layout.sizeConstraint()
-        )
+        self._layout.addLayout(self._create_videos_will_save_to_layout())
+
+        self._layout.addWidget(self._skellycam_controller)
+
+    def _create_videos_will_save_to_layout(self):
+        hbox = QHBoxLayout()
+        self._recording_string_tag_line_edit = QLineEdit(parent=self)
+        self._recording_string_tag_line_edit.setPlaceholderText("(Optional)")
+
+        recording_string_tag_form_layout = QFormLayout(parent=self)
+        recording_string_tag_form_layout.addRow("Tag:", self._recording_string_tag_line_edit)
+        hbox.addLayout(recording_string_tag_form_layout)
+
+        hbox.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        videos_will_save_to_label = QLabel("Videos will save to folder: ")
+        videos_will_save_to_label.setStyleSheet("font-size: 10px;")
+        hbox.addWidget(videos_will_save_to_label)
+        self._recording_path_label = QLabel(f"{self.get_new_recording_path()}")
+        self._recording_path_label.setStyleSheet("font-family: monospace; font-size: 10px;")
+        hbox.addWidget(self._recording_path_label)
+        return hbox
+
+    def _create_mocap_recording_option_layout(self):
+        hbox = QHBoxLayout()
+        hbox.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        self._mocap_videos_radio_button = QRadioButton("Record Motion Capture Videos")
+        hbox.addWidget(self._mocap_videos_radio_button)
+
+        self._mocap_videos_radio_button.setChecked(True)
+        hbox.addWidget(QLabel(" - "))
+        self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
+        self._auto_process_videos_checkbox.setChecked(True)
+        hbox.addWidget(self._auto_process_videos_checkbox)
+        self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
+        self._auto_open_in_blender_checkbox.setChecked(True)
+        hbox.addWidget(self._auto_open_in_blender_checkbox)
+        return hbox
+
+    def _create_calibration_recording_option_layout(self):
+        hbox = QHBoxLayout()
+        hbox.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
         self._calibration_videos_radio_button = QRadioButton("Record Calibration Videos")
-        calibration_recordings_options_layout.addWidget(self._calibration_videos_radio_button)
-        calibration_recordings_options_layout.addWidget(QLabel(" - "))
+        hbox.addWidget(self._calibration_videos_radio_button)
+        hbox.addWidget(QLabel(" - "))
         self._calibration_videos_radio_button.toggled.connect(self._handle_calibration_videos_radio_button_changed)
 
-        charuco_square_size_form_layout = QFormLayout(parent=self)
-        calibration_recordings_options_layout.addLayout(charuco_square_size_form_layout)
+        hbox.addWidget(QLabel("Charuco square size (mm)", parent=self))
         self._charuco_square_size_line_edit = QLineEdit(parent=self)
         self._charuco_square_size_line_edit.setFixedWidth(100)
-        self._charuco_square_size_label = QLabel("Charuco square size (mm)")
         self._charuco_square_size_line_edit.setText(str(default_charuco_square_size_mm))
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
-        charuco_square_size_form_layout.addRow(self._charuco_square_size_label, self._charuco_square_size_line_edit)
-
-        self._layout.addLayout(calibration_recordings_options_layout)
+        hbox.addWidget(self._charuco_square_size_line_edit)
+        hbox.addStretch()
+        return hbox
 
     @property
     def mocap_videos_radio_button_checked(self) -> bool:
@@ -140,11 +142,15 @@ class CameraControllerGroupBox(QGroupBox):
             return ""
 
     def _get_recording_name(self):
+        name = create_new_default_recording_name()
+        if self._calibration_videos_radio_button.isChecked():
+            name = f"{name}_calibration"
+
         tag = self._get_recording_name_string_tag()
         if tag == "":
-            return create_new_default_recording_name()
+            return name
         else:
-            return f"{create_new_default_recording_name()}__{self._get_recording_name_string_tag()}"
+            return f"{name}__{self._get_recording_name_string_tag()}"
 
     def _handle_calibration_videos_radio_button_changed(self, state):
         if self._calibration_videos_radio_button.isChecked():

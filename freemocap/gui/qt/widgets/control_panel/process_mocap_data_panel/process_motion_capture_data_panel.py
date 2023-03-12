@@ -8,15 +8,12 @@ from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
-from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_3d_triangulation_parameter_group import (
-    create_3d_triangulation_prarameter_group,
+
+from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
+    create_mediapipe_parameter_group, extract_mediapipe_parameter_model_from_parameter_tree,
+    create_3d_triangulation_prarameter_group, create_post_processing_parameter_group,
 )
-from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_mediapipe_parameter_group import (
-    create_mediapipe_parameter_group,
-)
-from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_post_processing_parameter_group import (
-    create_post_processing_parameter_group,
-)
+
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
 )
@@ -31,11 +28,11 @@ class ProcessMotionCaptureDataPanel(QWidget):
     processing_finished_signal = pyqtSignal()
 
     def __init__(
-        self,
-        recording_processing_parameters: RecordingProcessingParameterModel,
-        get_active_recording_info: Callable,
-        kill_thread_event: threading.Event,
-        parent=None,
+            self,
+            recording_processing_parameters: RecordingProcessingParameterModel,
+            get_active_recording_info: Callable,
+            kill_thread_event: threading.Event,
+            parent=None,
     ):
         super().__init__(parent=parent)
 
@@ -48,7 +45,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.setLayout(self._layout)
 
-        calibration_group_box = QGroupBox("Select Capture Volume Calibration:")
+        calibration_group_box = QGroupBox("Selected Capture Volume Calibration TOML:")
         vbox = QVBoxLayout()
         calibration_group_box.setLayout(vbox)
         self._layout.addWidget(calibration_group_box)
@@ -83,15 +80,14 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def calibrate_from_active_recording(self, charuco_square_size_mm: float):
         self._calibration_control_panel.calibrate_from_active_recording(charuco_square_size_mm=charuco_square_size_mm)
 
-    def kill_running_threads(self):
-        self._calibration_control_panel.kill_running_threads()
-        if self._process_motion_capture_data_thread_worker is not None:
-            self._process_motion_capture_data_thread_worker.kill()
+    def update_calibration_path(self) -> bool:
+        self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
+        return self._calibration_control_panel.update_calibration_toml_path()
 
     def _add_parameters_to_parameter_tree_widget(
-        self,
-        parameter_tree_widget: ParameterTree,
-        session_processing_parameter_model: RecordingProcessingParameterModel,
+            self,
+            parameter_tree_widget: ParameterTree,
+            session_processing_parameter_model: RecordingProcessingParameterModel,
     ):
         parameter_group = self._convert_session_processing_parameter_model_to_parameter_group(
             session_processing_parameter_model
@@ -101,8 +97,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
         return parameter_group
 
     def _convert_session_processing_parameter_model_to_parameter_group(
-        self,
-        session_processing_parameter_model: RecordingProcessingParameterModel,
+            self,
+            session_processing_parameter_model: RecordingProcessingParameterModel,
     ):
 
         return Parameter.create(
@@ -139,20 +135,29 @@ class ProcessMotionCaptureDataPanel(QWidget):
                         ),
                     ],
                     tip="Methods for cleaning up the data (e.g. filtering/smoothing, gap filling, etc ...)"
-                    "TODO - Add/expose more post processing methods here (e.g. gap filling, outlier removal, etc ...)",
+                        "TODO - Add/expose more post processing methods here (e.g. gap filling, outlier removal, etc ...)",
                 ),
             ],
         )
 
     def _extract_session_parameter_model_from_parameter_tree(
-        self,
+            self,
     ) -> RecordingProcessingParameterModel:
-        session_processing_parameter_model = self._recording_processing_parameter_model
+        # rec = extract_mediapipe_parameter_model_from_parameter_tree(self._parameter_tree_widget)
+        logger.debug("TODO - extract session parameter model from parameter tree")
+        rec = self._recording_processing_parameter_model
+        rec.recording_info_model = self._get_active_recording_info()
 
-        logger.debug(
-            "TODO - extract the parameter values from the parameter tree and populate the session_parameter_model. Just using defaults for now."
-        )
-        return session_processing_parameter_model
+        if self._calibration_control_panel.calibration_toml_path:
+            rec.recording_info_model.calibration_toml_path = self._calibration_control_panel.calibration_toml_path
+        else:
+            rec.recording_info_model.calibration_toml_path = self._calibration_control_panel.open_load_camera_calibration_toml_dialog()
+
+        if not rec.recording_info_model.calibration_toml_path:
+            logger.error(
+                "No calibration TOML selected - Processing will fail at the '3d triangulation' step (but it will get through the 'Tracking things in 2d images' step).")
+
+        return rec
 
     def _create_new_skip_this_step_parameter(self):
         parameter = Parameter.create(
@@ -187,7 +192,10 @@ class ProcessMotionCaptureDataPanel(QWidget):
             logger.error(f"Recording path does not exist: {session_parameter_model.recording_info_model.path}.")
             return
 
-        self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(session_parameter_model)
+        session_parameter_model.recording_info_model.calibration_toml_path = self._calibration_control_panel.calibration_toml_path
+
+        self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(session_parameter_model,
+                                                                                               kill_event=self._kill_thread_event)
         self._process_motion_capture_data_thread_worker.start()
 
         self._process_motion_capture_data_thread_worker.finished.connect(self._handle_finished_signal)

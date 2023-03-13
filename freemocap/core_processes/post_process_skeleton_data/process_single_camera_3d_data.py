@@ -9,7 +9,7 @@ from freemocap.utilities.project_3d_data_to_z_plane import project_3d_data_to_z_
 logger = logging.getLogger(__name__)
 
 
-def process_single_camera_skeleton_data(input_image_data_frame_marker_xyz: np.ndarray, raw_data_folder_path: Path) \
+def process_single_camera_skeleton_data(input_image_data_frame_marker_xyz: np.ndarray, raw_data_folder_path: Union[str, Path], project_to_z_plane:bool=True):
         -> [np.ndarray, np.ndarray]:
 
     logger.info("Single camera detected - Altering image-derived 3d data to resemble multi-camera reconstructed data.")

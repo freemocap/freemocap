@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def process_single_camera_skeleton_data(input_image_data_frame_marker_xyz: np.ndarray, raw_data_folder_path: Path) \
         -> [np.ndarray, np.ndarray]:
 
-    logger.info("Processing Single Camera Skeleton data...")
+    logger.info("Single camera detected - Altering image-derived 3d data to resemble multi-camera reconstructed data.")
 
     skeleton_reprojection_error_fr_mar = np.zeros(input_image_data_frame_marker_xyz.shape[0:2])
 

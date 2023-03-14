@@ -1,9 +1,12 @@
 import json
 import logging
+import pprint
 import sys
 from copy import copy
 from pathlib import Path
 from typing import List, Union, Dict
+
+
 
 import addon_utils
 import bpy
@@ -112,7 +115,7 @@ def main(recording_path: Union[str, Path],
     #                                    face_contour_marker_indices]
 
     # create empty markers for body
-    body_empty_scale = 0.01
+    body_empty_scale = 0.02
     for marker_number in range(mediapipe_body_fr_mar_xyz.shape[1]):
         trajectory_name = mediapipe_body_trajectory_names[marker_number]
         trajectory_fr_xyz = mediapipe_body_fr_mar_xyz[:, marker_number, :]
@@ -125,7 +128,7 @@ def main(recording_path: Union[str, Path],
         )
 
     # create empty markers for right hand
-    hand_empty_scale = 0.005
+    hand_empty_scale = 0.01
     for marker_number in range(mediapipe_right_hand_fr_mar_xyz.shape[1]):
         trajectory_name = mediapipe_right_hand_trajectory_names[marker_number]
         trajectory_fr_xyz = mediapipe_right_hand_fr_mar_xyz[:, marker_number, :]
@@ -150,7 +153,7 @@ def main(recording_path: Union[str, Path],
         )
 
     # # create empty markers for face
-    # face_empty_scale = 0.0025
+    # face_empty_scale = 0.005
     # for marker_number in face_contour_marker_indices:
     #
     #     if marker_number < len(mediapipe_face_trajectory_names):
@@ -240,6 +243,11 @@ def main(recording_path: Union[str, Path],
     #     parent_object=freemocap_origin_axes,
     #     sphere_scale=face_empty_scale,
     # )
+
+    ###########################
+    ### Make stick figure
+    creating_stick_figure_mesh_from_bone_dictionary(trajectory_frame_marker_xyz=mediapipe_body_fr_mar_xyz,
+                                                    body_connections=body_connections,)
     ############################
     ### Load videos into scene
     if Path(recording_path / "annotated_videos").is_dir():
@@ -263,84 +271,91 @@ def main(recording_path: Union[str, Path],
             print(e)
 
     if create_rig:
-        #######################################################################
-        print("Saving blender file with raw motion capture data before moving on to rigging")
-        bpy.ops.object.mode_set(mode="OBJECT")
-        bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
+        try:
+            #######################################################################
+            ### Create meta-rig
+            print("Saving blender file with raw motion capture data before moving on to rigging")
+            bpy.ops.object.mode_set(mode="OBJECT")
+            bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
 
-        print(
-            "____________________________________________________________________________\n",
-            "Done loading in motion capture data -  Now lets use it to drive an armature!\n"
-            "____________________________________________________________________________\n",
-        )
-
-        #######################################################################
-        ##% Activate necessary addons
-        addon_utils.enable("rigify")
-
-        ######################
-        ### Create Rigify human meta-rig
-        print(f"Creating `rigify human meta-rig`")
-        bpy.ops.object.armature_human_metarig_add()
-        human_metarig = bpy.context.editable_objects[-1]
-
-        ##################
-        ### Scale armature
-
-        bpy.ops.object.mode_set(mode="EDIT")
-
-        for (
-                segment_name,
-                rigify_bones_list,
-        ) in rigify_bone_to_skeleton_segment_name_correspondance.items():
-
-            for rigify_bone_name in rigify_bones_list:
-                median_segment_length = skeleton_segment_lengths_dict[segment_name]["median"]
-                median_segment_length *= 0.001  # scale to meters
-
-                segment_length = median_segment_length / len(
-                    rigify_bones_list
-                )  # divide by number of bones in segment (for now, eventually will want to set weights
-                print(f"setting {rigify_bone_name} length to: {segment_length:.3f} m")
-                human_metarig.data.edit_bones[rigify_bone_name].length = segment_length
-
-        delete_bones = ["pelvis.L",
-                        "pelvis.R",
-                        "breast.L",
-                        "breast.R",
-                        "heel.02.L",
-                        "heel.02.R",
-                        "toe.L",
-                        "toe.R", ]
-
-        for bone in delete_bones:
-            human_metarig.data.edit_bones.remove(human_metarig.data.edit_bones[bone])
-
-        extra_scale_bones = {"spine.005": .2}
-
-        for bone, scale in extra_scale_bones.items():
-            human_metarig.data.edit_bones[bone].length *= scale
-
-        ####
-        #### Constrain bones to empties
-        ####
-
-        # loop through dictionary applying  constraints
-        bpy.ops.object.mode_set(mode="POSE")
-
-        for bone_name, bone_constraint_dict in rig_constraint_dict_of_dicts.items():
-            print(f"---Setting constraints for bone:{bone_name}---")
-            apply_constraints_to_bone(
-                bone_name=bone_name,
-                bone_constraint_dict=bone_constraint_dict,
-                armature_rig=human_metarig,
+            print(
+                "____________________________________________________________________________\n",
+                "Done loading in motion capture data -  Now lets use it to drive an armature!\n"
+                "____________________________________________________________________________\n",
             )
 
-        print(
-            "____________________________________________________________________________\n",
-            "Done constraining armature bones to follow keyframed empties!",
-            "____________________________________________________________________________",
-        )
+            #######################################################################
+            ##% Activate necessary addons
+            addon_utils.enable("rigify")
+
+            ######################
+            ### Create Rigify human meta-rig
+            print(f"Creating `rigify human meta-rig`")
+            bpy.ops.object.armature_human_metarig_add()
+            human_metarig = bpy.context.editable_objects[-1]
+
+            ##################
+            ### Scale armature
+
+            bpy.ops.object.mode_set(mode="EDIT")
+
+            for (
+                    segment_name,
+                    rigify_bones_list,
+            ) in rigify_bone_to_skeleton_segment_name_correspondance.items():
+
+                for rigify_bone_name in rigify_bones_list:
+                    median_segment_length = skeleton_segment_lengths_dict[segment_name]["median"]
+                    median_segment_length *= 0.001  # scale to meters
+
+                    segment_length = median_segment_length / len(
+                        rigify_bones_list
+                    )  # divide by number of bones in segment (for now, eventually will want to set weights
+                    print(f"setting {rigify_bone_name} length to: {segment_length:.3f} m")
+                    human_metarig.data.edit_bones[rigify_bone_name].length = segment_length
+
+            delete_bones = ["pelvis.L",
+                            "pelvis.R",
+                            "breast.L",
+                            "breast.R",
+                            "heel.02.L",
+                            "heel.02.R",
+                            "toe.L",
+                            "toe.R", ]
+
+            for bone in delete_bones:
+                human_metarig.data.edit_bones.remove(human_metarig.data.edit_bones[bone])
+
+            extra_scale_bones = {"spine.005": .2}
+
+            for bone, scale in extra_scale_bones.items():
+                human_metarig.data.edit_bones[bone].length *= scale
+
+            ####
+            #### Constrain bones to empties
+            ####
+
+            # loop through dictionary applying  constraints
+            bpy.ops.object.mode_set(mode="POSE")
+
+            for bone_name, bone_constraint_dict in rig_constraint_dict_of_dicts.items():
+                print(f"---Setting constraints for bone:{bone_name}---")
+                apply_constraints_to_bone(
+                    bone_name=bone_name,
+                    bone_constraint_dict=bone_constraint_dict,
+                    armature_rig=human_metarig,
+                )
+
+            print(
+                "____________________________________________________________________________\n",
+                "Done constraining armature bones to follow keyframed empties!",
+                "____________________________________________________________________________",
+            )
+
+
+        except Exception as e:
+            print("Error creating rig!! (You might need to manually activate the `rigify` addon in Blender)")
+            print(e)
 
     for window in bpy.context.window_manager.windows:
         for area in window.screen.areas:  # iterate through areas in current screen
@@ -352,6 +367,12 @@ def main(recording_path: Union[str, Path],
     # save .blend file
     bpy.ops.object.mode_set(mode="OBJECT")
     bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
+    print(f"Saved .blend file to: {blender_file_save_path}")
+
+    print("try to hide the shameful metarig and then save again lol")
+    human_metarig.hide_set = True
+    bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
+
 
     print(
         "____________________________________________________________________________\n",
@@ -604,7 +625,35 @@ def calculate_virtual_marker_trajectory(
     return virtual_marker_xyz
 
 
-# Mediapipe Tracked Point Names
+def creating_stick_figure_mesh_from_bone_dictionary(trajectory_frame_marker_xyz: np.ndarray,
+                                                    body_connections: Dict[int, int]):
+    print("creating_stick_figure_mesh_from_bone_dictionary")
+
+    assert (
+                len(trajectory_frame_marker_xyz.shape) == 3), "trajectory_frame_marker_xyz must have three axes - [frame, marker, xyz] (e.g. skeleton data from a single frame"
+    mesh = bpy.data.meshes.new("stick_figure_mesh")
+
+    init_zero_vertices = np.zeros((trajectory_frame_marker_xyz.shape[1], 3))
+
+    edges = []
+    for head_index, tail_index in body_connections.items():
+        edges.append((head_index, tail_index))
+
+    mesh.from_pydata(init_zero_vertices, edges, [])
+    mesh.validate(verbose=True)
+    mesh.update()
+
+    skin_radius = .025
+    print(f"Skinning stick figure mesh with radius {skin_radius}...")
+    bpy.data.objects['stick_figure_mesh'].modifiers.new('stick_figure_mesh_skin', 'SKIN')
+    bpy.ops.transform.skin_resize(value=(skin_radius, skin_radius, skin_radius))
+
+    for frame_number in range(trajectory_frame_marker_xyz.shape[0]):
+        for vertex in mesh.vertices:
+            vertex.co = trajectory_frame_marker_xyz[frame_number, vertex.index, :]
+            vertex.keyframe_insert(data_path="co", frame=frame_number)  # keyframe the vertex location
+        mesh.update()
+
 
 mediapipe_empty_names = {
     # generated by: freemocap/core_processes/detecting_things_in_2d_images/mediapipe_stuff/mediapipe_skeleton_names_and_connections.py
@@ -856,6 +905,7 @@ if __name__ == "__main__" or __name__ == "<run_path>":
 
         recording_path_input = Path(argv[0])
         blender_file_save_path_input = Path(argv[1])
+        create_rig_input = bool(argv[2])
     except:
         print("No command line arguments received, using hard-coded path instead :D")
 
@@ -866,7 +916,9 @@ if __name__ == "__main__" or __name__ == "<run_path>":
             r"C:\Users\jonma\freemocap_data\recording_sessions\session_2023-02-15_08_46_43_wud\recording_08_47_25_gmt-5_wud"
         )
         blender_file_save_path_input = Path(recording_path_input) / f"{Path(recording_path_input).name}_.blend"
+        create_rig = True
 
     main(recording_path=recording_path_input,
          blender_file_save_path=blender_file_save_path_input,
-         mediapipe_empty_names=mediapipe_empty_names)
+         mediapipe_empty_names=mediapipe_empty_names,
+         create_rig=create_rig_input,)

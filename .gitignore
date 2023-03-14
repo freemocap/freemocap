@@ -108,8 +108,8 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
-.venv
+.env*
+.venv*
 env/
 venv/
 ENV/
@@ -142,7 +142,7 @@ freemocap/fmc_startup/user_preferences.yaml
 
 .obsidian/
 data/
-freemocap-ui/threejs_stuff/
+experimental/freemocap-ui/threejs_stuff/
 
 *.avi
 *.mp4
@@ -156,3 +156,4 @@ freemocap/fmc_calibration/
 .DS_Store
 
 desktop.ini
+/BlendArMocap/

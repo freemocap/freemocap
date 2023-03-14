@@ -1,0 +1,88 @@
+{
+  "name": "freemocap-ui",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.tsx",
+  "engines": {
+    "node": "=16"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.7.1",
+    "@emotion/styled": "^11.6.0",
+    "@mui/icons-material": "^5.2.5",
+    "@mui/material": "^5.2.8",
+    "@mui/styled-engine": "^5.2.6",
+    "@mui/system": "^5.2.8",
+    "@reduxjs/toolkit": "^1.7.1",
+    "@shopify/react-web-worker": "^5.0.1",
+    "@techstark/opencv-js": "^4.5.5-release.2",
+    "@types/dom-mediacapture-record": "^1.0.11",
+    "@types/w3c-image-capture": "^1.0.6",
+    "@wmik/use-media-recorder": "^1.6.3-beta.0",
+    "axios": "^0.25.0",
+    "class-transformer": "0.5.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-media-recorder": "^1.6.6",
+    "react-number-format": "^4.9.3",
+    "react-redux": "^7.2.6",
+    "react-router": "^6.2.1",
+    "react-router-dom": "^6.2.1",
+    "react-scripts": "5.0.0",
+    "react-step-wizard": "^5.3.11",
+    "react-use": "^17.3.2",
+    "react-use-websocket": "^3.0.0",
+    "react-use-wizard": "^2.2.0",
+    "react-webcam": "^6.0.0",
+    "reflect-metadata": "^0.1.13",
+    "three.js": "^0.77.1",
+    "typescript": "4.5.5"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^5.16.1",
+    "@testing-library/react": "^12.1.2",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/axios": "^0.14.0",
+    "@types/debounce": "^1.2.1",
+    "@types/jest": "^27.4.0",
+    "@types/lodash": "^4.14.165",
+    "@types/node": "^16.11.21",
+    "@types/react": "^17.0.38",
+    "@types/react-dom": "^17.0.11",
+    "@types/react-redux": "^7.1.11",
+    "@types/react-router-dom": "^5.1.6",
+    "assert": "^2.0.0",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.0",
+    "https-browserify": "^1.0.0",
+    "os-browserify": "^0.3.0",
+    "process": "^0.11.10",
+    "react-app-rewired": "^2.2.1",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "url": "^0.11.0"
+  },
+  "scripts": {
+    "start:https": "HTTPS=true SSL_CRT_FILE=./localhost.pem SSL_KEY_FILE=./localhost-key.pem react-scripts start",
+    "certs": "scripts/cert.sh",
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test": "react-app-rewired test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

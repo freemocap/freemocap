@@ -43,124 +43,47 @@
 https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-a4b9-1aa068e094c9.mp4
 
 
-___
-# How to use the `pre-alpha` code
-
-
-We're in the process of switching over to the `alpha` phase of this project (`v0.1.0` and on) , which use full refactor code written with help from a professional experienced software architect.
-
-Until the new code stabilizes, you may have more luck using the `pre-alpha` code (e.g. `v0.0.54`)
 
 ---
 ## INSTALLATION
 
-Note: This will install the latest/last version from the `pre-alpha` phase of this project, frozen at release tag `v0.0.54` [here](https://github.com/freemocap/freemocap/releases/tag/v0.0.54)
+> NOTE - these are super bare-bones install instructions just to show the new entry point - these instructions will be overhauled very soon (written 2023-03-14)
 
-Open an Anaconda-enabled command prompt or powershell window and enter the following commands:
+Open an [Anaconda-enabled command prompt](https://www.anaconda.org) (or equivalent) and enter the following commands:
 
-1) Create a Python3.7 Anaconda environment
+1) Create a `Python3.8+` environment 
 ```bash
-conda create -n freemocap-env python=3.7
+conda create -n freemocap-env python=3.9
 ```
 
 2) Activate that newly created environment
 ```bash
 conda activate freemocap-env
 ```
-3) Install freemocap (version `0.0.54`)  from PyPi using `pip`
+3) Clone the repository (pip install coming very soon!)
 ```bash
-pip install freemocap==0.0.54
-```
-
-BUG FIX - Update `mediapipe` with: `pip install mediapipe --upgrade`
-
-That should be it!
-___
-##  How to create a *NEW* `freemocap` recording session
-
-tl;dr- **Activate the freemocap Python environment** and run the following lines of code (either in a script or in a console)
-
-```python
-import freemocap
-freemocap.RunMe()
-```
-
-But COOL KIDS will install Blender ([blender.org](https://blender.org) and generate an awesome `.blend` file animation by setting `useBlender=True`:
-
-```python
-import freemocap
-freemocap.RunMe(useBlender=True)
-```
-
-:point_right: **For additional, more detailed instructions (including methods to re-process recorded sessions), [refer to the `OLD_README.md` document](https://github.com/freemocap/freemocap/blob/main/OLD_README.md))** :point_left:
-
-___
-
-#  HOW TO RUN THE `alpha` GUI
-
-NOTES
-- no promises here, friends. Work in progress lol :joy:
-- Personally, I run the gui through PyCharm, but its easier to write instructions on how to run from an anaconda prompt
-
-## Pre-requisites:
-1. Install Anaconda
-    - https://anaconda.org
-2. Install git
-     - https://git-scm.com/book/en/v2/Getting-Started-Installing-Git (just use the defaults)
-3. (OPTIONAL) Install Blender - https://blender.org
-
-## Installation instructions
-
-1. Open anaconda enabled terminal
-
-2. Create a `python=3.9` environment
-```bash
-conda create -n freemocap-gui python=3.9
-```
-
-3. Activate that environment:
-```
-conda activate freemocap-gui
-```
-
-4. Clone the repository (i.e. download the code from github. It'll show up in the current working directory of your terminal session)
-```
 git clone https://github.com/freemocap/freemocap
 ```
 
-5. Navigate into that newly cloned/downloaded `freemocap` folder with:
-```
+4) Navigate into the newly cloned/downloaded `freemocap` folder
+```bash
 cd freemocap
 ```
 
-6. Install the dependencies listed in the `requirements.txt` file:
-```
-pip install -r requirements.txt
-```
-7. Run the GUI by running the `src/gui/main/main.py` file by entering this command into the terminal:
-
+5) Install the package via the `pyproject.toml` file
 ```bash
-python old_src/gui/main/main.py
+pip install -e .
 ```
 
-8. Hopefully a GUI popped up! There are no docs on usage yet, so just click and see what you can figure out :joy:
+6) Launch the GUI (via the `freemocap.__main__.py` entry point)
+```bash
+python -m freemocap
+```
 
-## Current limitations
+A GUI should pop up! 
 
-At the moment, the `alpha GUI`'s method for connecting to the cameras is very innefficient and will experience framerate drops with more than ~3 cameras (even with a powerful PC). We're working on a fix, and should have it handled soon! In the mean time, you can still use the GUI to process videos recorded with other methods (workflow described in the next section!)
-__
-# Create 3D skeleton animations from externally recorded (and synchronized) videos :sparkles:
 
-You can use `alpha GUI` to process videos that were recorded and synchronized from any source!
-
-Simply synchronize your videos in whatever way you wish, convert them to `.mp4` format, and place them all in a single folder.
-
-Then, *import* that folder via the `Import Videos` button in the GUI and follow the standard processing steps
-
-For details, see this guide - https://freemocap.readthedocs.io/en/latest/how_to_guides/how_to_process_previously_recorded_videos/
-___
-
-## Documentation and Knowledge Base
+## Documentation and Knowledge Base (NOTE - no docs exist for the version of the GUI on the `main` branch yet - these docs refer to the `Alpha` release
 
 Documentation for this software is currently pretty thin... but we're woking on it!
 

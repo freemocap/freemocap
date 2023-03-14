@@ -2,9 +2,9 @@ name: Freemocap Tests
 
 on:
   pull_request:
-    branches: [ icis_conference_main ]
+    branches: [ jon/full-refactor ]
     paths:
-      - src
+      - freemocap
 
 jobs:
   build:
@@ -23,9 +23,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Run Tests
+      - name: Run Tests with Pytest
         run: |
-          task test
+          pip install pytest
+          pytest freemocap/tests/test_test.py
       - name: Upload pytest test results
         uses: actions/upload-artifact@v3
         with:

@@ -88,8 +88,8 @@ Documentation = "https://freemocap.readthedocs.io/en/latest/"
 Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]
-current_version = "v2023.01.1000"
-version_pattern = "vYYYY.0M.BUILD[-TAG]"
+current_version = "v1.0.0"
+version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
 tag = true

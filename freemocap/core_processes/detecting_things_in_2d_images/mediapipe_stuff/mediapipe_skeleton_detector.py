@@ -23,42 +23,42 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Mediapipe2dNumpyArrays:
-    body2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
+    body_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
     body_world_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
-    rightHand2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
-    leftHand2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
-    face2d_frameNumber_trackedPointNumber_XY: np.ndarray = None
+    rightHand_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
+    leftHand_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
+    face_frameNumber_trackedPointNumber_XYZ: np.ndarray = None
 
-    body2d_frameNumber_trackedPointNumber_confidence: np.ndarray = None
+    body_frameNumber_trackedPointNumber_confidence: np.ndarray = None
 
     @property
     def has_data(self):
-        return not np.isnan(self.body2d_frameNumber_trackedPointNumber_XY).all()
+        return not np.isnan(self.body_frameNumber_trackedPointNumber_XYZ).all()
 
     @property
     def all_data2d_nFrames_nTrackedPts_XY(self):
         """dimensions will be [number_of_frames , number_of_markers, XY]"""
 
-        if self.body2d_frameNumber_trackedPointNumber_XY is None:
+        if self.body_frameNumber_trackedPointNumber_XYZ is None:
             # if there's no body data, there's no hand or face data either
             return
 
-        if len(self.body2d_frameNumber_trackedPointNumber_XY.shape) == 3:  # multiple frames
+        if len(self.body_frameNumber_trackedPointNumber_XYZ.shape) == 3:  # multiple frames
             return np.hstack(
                 [
-                    self.body2d_frameNumber_trackedPointNumber_XY,
-                    self.rightHand2d_frameNumber_trackedPointNumber_XY,
-                    self.leftHand2d_frameNumber_trackedPointNumber_XY,
-                    self.face2d_frameNumber_trackedPointNumber_XY,
+                    self.body_frameNumber_trackedPointNumber_XYZ,
+                    self.rightHand_frameNumber_trackedPointNumber_XYZ,
+                    self.leftHand_frameNumber_trackedPointNumber_XYZ,
+                    self.face_frameNumber_trackedPointNumber_XYZ,
                 ]
             )
-        elif len(self.body2d_frameNumber_trackedPointNumber_XY.shape) == 2:  # single frame
+        elif len(self.body_frameNumber_trackedPointNumber_XYZ.shape) == 2:  # single frame
             return np.vstack(
                 [
-                    self.body2d_frameNumber_trackedPointNumber_XY,
-                    self.rightHand2d_frameNumber_trackedPointNumber_XY,
-                    self.leftHand2d_frameNumber_trackedPointNumber_XY,
-                    self.face2d_frameNumber_trackedPointNumber_XY,
+                    self.body_frameNumber_trackedPointNumber_XYZ,
+                    self.rightHand_frameNumber_trackedPointNumber_XYZ,
+                    self.leftHand_frameNumber_trackedPointNumber_XYZ,
+                    self.face_frameNumber_trackedPointNumber_XYZ,
                 ]
             )
         else:
@@ -135,9 +135,9 @@ class MediaPipeSkeletonDetector:
             image_width=annotated_image.shape[0],
             image_height=annotated_image.shape[1],
         )
-        mediapipe_single_frame_npy_data.body2d_frameNumber_trackedPointNumber_XY = self._threshold_by_confidence(
-            mediapipe_single_frame_npy_data.body2d_frameNumber_trackedPointNumber_XY,
-            mediapipe_single_frame_npy_data.body2d_frameNumber_trackedPointNumber_confidence,
+        mediapipe_single_frame_npy_data.body_frameNumber_trackedPointNumber_XYZ = self._threshold_by_confidence(
+            mediapipe_single_frame_npy_data.body_frameNumber_trackedPointNumber_XYZ,
+            mediapipe_single_frame_npy_data.body_frameNumber_trackedPointNumber_confidence,
             confidence_threshold=0.5,
         )
 
@@ -287,6 +287,7 @@ class MediaPipeSkeletonDetector:
 
         self._save_mediapipe2d_data_to_npy(
             data2d_numCams_numFrames_numTrackedPts_XY=data2d_numCams_numFrames_numTrackedPts_XY,
+            body_world_numCams_numFrames_numTrackedPts_XYZ=body_world_numCams_numFrames_numTrackedPts_XYZ,
             output_data_folder_path=Path(output_data_folder_path),
         )
         return data2d_numCams_numFrames_numTrackedPts_XY
@@ -509,12 +510,12 @@ class MediaPipeSkeletonDetector:
             all_tracked_points_visible_on_frame_list.append(all_points_visible)
 
         return Mediapipe2dNumpyArrays(
-            body2d_frameNumber_trackedPointNumber_XY=np.squeeze(body_frameNumber_trackedPointNumber_XYZ),
+            body_frameNumber_trackedPointNumber_XYZ=np.squeeze(body_frameNumber_trackedPointNumber_XYZ),
             body_world_frameNumber_trackedPointNumber_XYZ=np.squeeze(body_world_frameNumber_trackedPointNumber_XYZ),
-            rightHand2d_frameNumber_trackedPointNumber_XY=np.squeeze(rightHand_frameNumber_trackedPointNumber_XYZ),
-            leftHand2d_frameNumber_trackedPointNumber_XY=np.squeeze(leftHand_frameNumber_trackedPointNumber_XYZ),
-            face2d_frameNumber_trackedPointNumber_XY=np.squeeze(face_frameNumber_trackedPointNumber_XYZ),
-            body2d_frameNumber_trackedPointNumber_confidence=np.squeeze(
+            rightHand_frameNumber_trackedPointNumber_XYZ=np.squeeze(rightHand_frameNumber_trackedPointNumber_XYZ),
+            leftHand_frameNumber_trackedPointNumber_XYZ=np.squeeze(leftHand_frameNumber_trackedPointNumber_XYZ),
+            face_frameNumber_trackedPointNumber_XYZ=np.squeeze(face_frameNumber_trackedPointNumber_XYZ),
+            body_frameNumber_trackedPointNumber_confidence=np.squeeze(
                 body_frameNumber_trackedPointNumber_confidence
             ),
         )

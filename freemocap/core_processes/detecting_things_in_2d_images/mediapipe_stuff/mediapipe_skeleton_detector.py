@@ -116,8 +116,8 @@ class MediaPipeSkeletonDetector:
         if yolo_crop:
             mediapipe_results, annotated_image = self._yolo_tracker.process_image(
                 image=image)
-
-        mediapipe_results = self._holistic_tracker.process(image)
+        else:
+            mediapipe_results = self._holistic_tracker.process(image)
 
         if annotated_image is None:
             annotated_image = image.copy()

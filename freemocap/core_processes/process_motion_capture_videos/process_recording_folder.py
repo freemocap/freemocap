@@ -7,6 +7,8 @@ import pandas as pd
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_names_and_connections_dict,
 )
+from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import \
+    process_single_camera_skeleton_data
 from freemocap.system.paths_and_files_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
@@ -67,7 +69,7 @@ def process_recording_folder(
         parameter_model=rec.mediapipe_parameters_model,
     )
 
-    mediapipe_2d_data = mediapipe_skeleton_detector.process_folder_full_of_videos(
+    mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = mediapipe_skeleton_detector.process_folder_full_of_videos(
         rec.recording_info_model.synchronized_videos_folder_path,
         Path(rec.recording_info_model.output_data_folder_path) / RAW_DATA_FOLDER_NAME,
         kill_event=kill_event,
@@ -81,32 +83,41 @@ def process_recording_folder(
         mediapipe_2d_data_file_path=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
     )
 
-    logger.info("Triangulating 3d skeletons...")
+    # spoof 3D data if single camera
+    if mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
 
-    assert rec.recording_info_model.calibration_toml_check, f"No calibration file found at: {rec.recording_info_model.calibration_toml_path}"
-    assert rec.recording_info_model.data2d_status_check, f"No mediapipe 2d data found at: {rec.recording_info_model.mediapipe_2d_data_npy_file_path}"
+        (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
+            input_image_data_frame_marker_xyz=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ[0],
+            raw_data_folder_path=Path(rec.recording_info_model.raw_data_folder_path))
 
-    anipose_calibration_object = load_anipose_calibration_toml_from_path(
-        camera_calibration_data_toml_path=rec.recording_info_model.calibration_toml_path,
-        save_copy_of_calibration_to_this_path=rec.recording_info_model.path,
-    )
-    (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar,) = triangulate_3d_data(
-        anipose_calibration_object=anipose_calibration_object,
-        mediapipe_2d_data=mediapipe_2d_data,
-        output_data_folder_path=rec.recording_info_model.raw_data_folder_path,
-        mediapipe_confidence_cutoff_threshold=rec.anipose_triangulate_3d_parameters_model.confidence_threshold_cutoff,
-        use_triangulate_ransac=rec.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
-        kill_event=kill_event,
-    )
+    else:
 
-    if kill_event is not None and kill_event.is_set():
-        return
+        logger.info("Triangulating 3d skeletons...")
 
-    assert test_mediapipe_3d_data_shape(
-        synchronized_videos_folder=rec.recording_info_model.synchronized_videos_folder_path,
-        mediapipe_3d_data_npy_path=rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
-        medipipe_reprojection_error_data_npy_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
-    )
+        assert rec.recording_info_model.calibration_toml_check, f"No calibration file found at: {rec.recording_info_model.calibration_toml_path}"
+        assert rec.recording_info_model.data2d_status_check, f"No mediapipe 2d data found at: {rec.recording_info_model.mediapipe_2d_data_npy_file_path}"
+
+        anipose_calibration_object = load_anipose_calibration_toml_from_path(
+            camera_calibration_data_toml_path=rec.recording_info_model.calibration_toml_path,
+            save_copy_of_calibration_to_this_path=rec.recording_info_model.path,
+        )
+        (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar,) = triangulate_3d_data(
+            anipose_calibration_object=anipose_calibration_object,
+            mediapipe_2d_data=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ,
+            output_data_folder_path=rec.recording_info_model.raw_data_folder_path,
+            mediapipe_confidence_cutoff_threshold=rec.anipose_triangulate_3d_parameters_model.confidence_threshold_cutoff,
+            use_triangulate_ransac=rec.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
+            kill_event=kill_event,
+        )
+
+        if kill_event is not None and kill_event.is_set():
+            return
+
+        assert test_mediapipe_3d_data_shape(
+            synchronized_videos_folder=rec.recording_info_model.synchronized_videos_folder_path,
+            mediapipe_3d_data_npy_path=rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
+            medipipe_reprojection_error_data_npy_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
+        )
 
     logger.info("Gap-filling, butterworth filtering, origin aligning 3d skeletons, then calculating center of mass ...")
 

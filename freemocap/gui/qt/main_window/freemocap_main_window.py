@@ -26,6 +26,8 @@ from tqdm import tqdm
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender import (
     export_to_blender,
 )
+from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import \
+    get_best_guess_of_blender_path
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
@@ -282,7 +284,8 @@ class FreemocapMainWindow(QMainWindow):
             self._handle_processing_finished_signal
         )
 
-        self._visualization_control_panel = VisualizationControlPanel(parent=self)
+        self._visualization_control_panel = VisualizationControlPanel(parent=self,
+                                                                      blender_executable=get_best_guess_of_blender_path())
         self._visualization_control_panel.export_to_blender_button.clicked.connect(
             self._export_active_recording_to_blender
         )

@@ -1,12 +1,9 @@
 import json
 import logging
-import pprint
 import sys
 from copy import copy
 from pathlib import Path
 from typing import List, Union, Dict
-
-
 
 import addon_utils
 import bpy

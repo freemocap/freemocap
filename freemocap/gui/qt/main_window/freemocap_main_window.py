@@ -1,10 +1,7 @@
 import logging
 import multiprocessing
 import shutil
-import threading
-from copy import copy
 from pathlib import Path
-from time import sleep
 from typing import Union, List
 
 from PyQt6.QtCore import Qt, pyqtSlot
@@ -13,8 +10,7 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QMainWindow,
     QFileDialog,
-    QTabWidget, QLineEdit,
-)
+    QTabWidget, )
 from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
@@ -60,7 +56,6 @@ from freemocap.parameter_info_models.recording_processing_parameter_models impor
 )
 from freemocap.system.paths_and_files_names import (
     get_css_stylesheet_path,
-    get_freemocap_data_folder_path,
     get_most_recent_recording_path,
     PATH_TO_FREEMOCAP_LOGO_SVG,
     get_blender_file_path,
@@ -69,7 +64,6 @@ from freemocap.system.paths_and_files_names import (
     GEAR_EMOJI_STRING,
     COOL_EMOJI_STRING,
 )
-
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.start_file import open_file
 from freemocap.system.user_data.pipedream_pings import PipedreamPings

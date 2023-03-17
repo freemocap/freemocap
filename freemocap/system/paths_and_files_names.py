@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime
 from pathlib import Path
@@ -6,7 +7,6 @@ from typing import Union
 import toml
 
 import freemocap
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QRadioButton,
     QCheckBox,
-    QWidget,
 )
 from skellycam import SkellyCamControllerWidget
 

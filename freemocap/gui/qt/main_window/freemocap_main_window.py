@@ -285,7 +285,7 @@ class FreemocapMainWindow(QMainWindow):
         )
 
         self._visualization_control_panel = VisualizationControlPanel(parent=self,
-                                                                      blender_executable=get_best_guess_of_blender_path())
+                                                                      blender_executable_path=get_best_guess_of_blender_path())
         self._visualization_control_panel.export_to_blender_button.clicked.connect(
             self._export_active_recording_to_blender
         )
@@ -299,12 +299,18 @@ class FreemocapMainWindow(QMainWindow):
         )
 
     def _export_active_recording_to_blender(self):
+        logger.info("Exporting active recording to Blender...")
         recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
+
+        if self._visualization_control_panel.blender_executable_path is None:
+            logger.error("Blender executable path is None!")
+            return
 
         self._visualization_control_panel.get_user_selected_method_string()
         export_to_blender(
             recording_folder_path=recording_path,
             blender_file_path=get_blender_file_path(recording_path),
+            blender_exe_path=self._visualization_control_panel.blender_executable_path,
             method=self._visualization_control_panel.get_user_selected_method_string(),
         )
 

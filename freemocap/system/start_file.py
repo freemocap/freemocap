@@ -1,4 +1,6 @@
-import os, sys, subprocess
+import os
+import subprocess
+import sys
 
 
 def open_file(filename):

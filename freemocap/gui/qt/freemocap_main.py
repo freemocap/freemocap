@@ -6,11 +6,11 @@ from pathlib import Path
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 
+from freemocap.gui.qt.main_window.freemocap_main_window import FreemocapMainWindow, EXIT_CODE_REBOOT
+from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.system.paths_and_files_names import (
     get_freemocap_data_folder_path,
 )
-from freemocap.gui.qt.main_window.freemocap_main_window import FreemocapMainWindow, EXIT_CODE_REBOOT
-from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
 repo = Path(__file__).parent.parent.parent.parent

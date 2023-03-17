@@ -1,10 +1,7 @@
 import logging
 import multiprocessing
 import shutil
-import threading
-from copy import copy
 from pathlib import Path
-from time import sleep
 from typing import Union, List
 
 from PyQt6.QtCore import Qt, pyqtSlot
@@ -13,8 +10,7 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QMainWindow,
     QFileDialog,
-    QTabWidget, QLineEdit,
-)
+    QTabWidget, )
 from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
@@ -26,6 +22,8 @@ from tqdm import tqdm
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender import (
     export_to_blender,
 )
+from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import \
+    get_best_guess_of_blender_path
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
@@ -58,7 +56,6 @@ from freemocap.parameter_info_models.recording_processing_parameter_models impor
 )
 from freemocap.system.paths_and_files_names import (
     get_css_stylesheet_path,
-    get_freemocap_data_folder_path,
     get_most_recent_recording_path,
     PATH_TO_FREEMOCAP_LOGO_SVG,
     get_blender_file_path,
@@ -67,7 +64,6 @@ from freemocap.system.paths_and_files_names import (
     GEAR_EMOJI_STRING,
     COOL_EMOJI_STRING,
 )
-
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.start_file import open_file
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
@@ -282,7 +278,8 @@ class FreemocapMainWindow(QMainWindow):
             self._handle_processing_finished_signal
         )
 
-        self._visualization_control_panel = VisualizationControlPanel(parent=self)
+        self._visualization_control_panel = VisualizationControlPanel(parent=self,
+                                                                      blender_executable_path=get_best_guess_of_blender_path())
         self._visualization_control_panel.export_to_blender_button.clicked.connect(
             self._export_active_recording_to_blender
         )
@@ -296,12 +293,18 @@ class FreemocapMainWindow(QMainWindow):
         )
 
     def _export_active_recording_to_blender(self):
+        logger.info("Exporting active recording to Blender...")
         recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
+
+        if self._visualization_control_panel.blender_executable_path is None:
+            logger.error("Blender executable path is None!")
+            return
 
         self._visualization_control_panel.get_user_selected_method_string()
         export_to_blender(
             recording_folder_path=recording_path,
             blender_file_path=get_blender_file_path(recording_path),
+            blender_exe_path=self._visualization_control_panel.blender_executable_path,
             method=self._visualization_control_panel.get_user_selected_method_string(),
         )
 

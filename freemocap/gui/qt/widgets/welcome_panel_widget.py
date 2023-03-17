@@ -10,17 +10,14 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from freemocap.system.paths_and_files_names import PATH_TO_FREEMOCAP_LOGO_SVG, SPARKLES_EMOJI_STRING
 from freemocap.gui.qt.actions_and_menus.actions import (
     CREATE_NEW_RECORDING_ACTION_NAME,
     LOAD_MOST_RECENT_RECORDING_ACTION_NAME,
     LOAD_EXISTING_RECORDING_ACTION_NAME,
     IMPORT_VIDEOS_ACTION_NAME,
-    REBOOT_GUI_ACTION_NAME,
-    EXIT_ACTION_NAME,
     Actions,
-    KILL_THREADS_AND_PROCESSES_ACTION_NAME,
 )
+from freemocap.system.paths_and_files_names import PATH_TO_FREEMOCAP_LOGO_SVG, SPARKLES_EMOJI_STRING
 
 logger = logging.getLogger(__name__)
 

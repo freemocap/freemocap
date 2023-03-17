@@ -1,8 +1,7 @@
 import logging
 import os
 import threading
-from pathlib import Path
-from typing import Callable, Union
+from typing import Callable
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDoubleValidator
@@ -16,18 +15,16 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QHBoxLayout,
-    QLayout, QInputDialog, QDialogButtonBox, QDialog, QCheckBox,
-)
+    QLayout, )
 
-from freemocap.system.paths_and_files_names import (
-    get_last_successful_calibration_toml_path,
-    get_calibrations_folder_path,
-)
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
     default_charuco_square_size_mm,
 )
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
+)
+from freemocap.system.paths_and_files_names import (
+    get_last_successful_calibration_toml_path,
 )
 
 logger = logging.getLogger(__name__)

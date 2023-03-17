@@ -10,10 +10,8 @@ logger = logging.getLogger(__name__)
 def guess_blender_exe_path_from_path(base_path: Union[str, Path]) -> Path:
     blender_folder_path = [path for path in base_path.glob("Blender*")]
     if len(blender_folder_path) > 0:
-        blender_exe_path = blender_folder_path[0] / "blender.exe"
+        blender_exe_path = blender_folder_path[-1] / "blender.exe"
         return blender_exe_path
-
-    return
 
 
 def get_best_guess_of_blender_path():

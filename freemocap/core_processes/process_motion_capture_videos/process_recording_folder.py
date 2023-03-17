@@ -4,13 +4,6 @@ from pathlib import Path
 
 import pandas as pd
 
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
-    mediapipe_names_and_connections_dict,
-)
-from freemocap.system.paths_and_files_names import (
-    MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
-    RAW_DATA_FOLDER_NAME,
-)
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
 )
@@ -23,6 +16,9 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.conv
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
+    mediapipe_names_and_connections_dict,
+)
 from freemocap.core_processes.post_process_skeleton_data.estimate_skeleton_segment_lengths import (
     estimate_skeleton_segment_lengths,
     mediapipe_skeleton_segment_definitions,
@@ -31,7 +27,10 @@ from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_ori
     gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass,
 )
 from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
-
+from freemocap.system.paths_and_files_names import (
+    MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
+    RAW_DATA_FOLDER_NAME,
+)
 from freemocap.tests.test_mediapipe_2d_data_shape import (
     test_mediapipe_2d_data_shape,
 )

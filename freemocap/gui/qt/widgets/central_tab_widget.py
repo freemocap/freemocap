@@ -2,14 +2,13 @@ import logging
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
-
 # from skelly_viewer import SkellyViewer
 from skellycam import SkellyCamWidget
 
 from freemocap.gui.qt.widgets.welcome_panel_widget import (
     WelcomeToFreemocapPanel,
 )
-from freemocap.system.paths_and_files_names import SKULL_EMOJI_STRING, CAMERA_WITH_FLASH_EMOJI_STRING, EYES_EMOJI_STRING
+from freemocap.system.paths_and_files_names import CAMERA_WITH_FLASH_EMOJI_STRING, EYES_EMOJI_STRING
 
 logger = logging.getLogger(__name__)
 

@@ -8,12 +8,9 @@ from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
-
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
-    create_mediapipe_parameter_group, extract_mediapipe_parameter_model_from_parameter_tree,
-    create_3d_triangulation_prarameter_group, create_post_processing_parameter_group,
+    create_mediapipe_parameter_group, create_3d_triangulation_prarameter_group, create_post_processing_parameter_group,
 )
-
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
 )

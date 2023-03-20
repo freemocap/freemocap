@@ -122,11 +122,11 @@ class FreemocapMainWindow(QMainWindow):
         self._tools_dock_widget.setWidget(self._tools_dock_tab_widget)
 
         self._control_panel_dock_widget = self._create_control_panel_widget()
-        self._tools_dock_tab_widget.addTab(self._control_panel_dock_widget, f"Control Panel{GEAR_EMOJI_STRING}")
+        self._tools_dock_tab_widget.addTab(self._control_panel_dock_widget, f"Control Panel")
 
-        self._tools_dock_tab_widget.addTab(self._directory_view_widget, f"Directory View{DIRECTORY_EMOJI_STRING}")
+        self._tools_dock_tab_widget.addTab(self._directory_view_widget, f"Directory View")
         self._tools_dock_tab_widget.addTab(
-            self._active_recording_info_widget, f"Active Recording Info{COOL_EMOJI_STRING}"
+            self._active_recording_info_widget, f"Active Recording Info"
         )
 
         # self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._directory_view_dock_widget)

@@ -4,17 +4,24 @@
     color: #333333;
 }
 
+/* Style Guide:
+Skelly Bone Blue: #a4d6d9
+Laser Red: #d95157
+FreeMoCap Green: #365d5f
+FreeMoCap Dark Green: #254342
+*/
+
 QGroupBox {
-    border: 1px solid #1c6266;
+    border: 1px solid #254342;
     border-radius: 4px;
     margin-top: 10px;
     font-weight: bold;
 }
 QGroupBox[calibration_videos_radio_button_checked=false] {
-    background-color: #06bbda;
+    background-color: #a4d6d9;
 }
 QGroupBox[calibration_videos_radio_button_checked=true] {
-    background-color: #9f795e;
+    background-color: #d95157;
 }
 
 QStatusBar {    
@@ -22,7 +29,7 @@ QStatusBar {
 }
 
 QMainWindow {
-    background-color: #2b9ba1;
+    background-color: #365d5f;
 }
 
 QTabWidget::pane {
@@ -32,8 +39,7 @@ QTabWidget::pane {
 }
 
 QTabBar::tab {
-    background: lightseagreen;
-    border: 1px solid #2b9692;
+    border: 1px solid;
     padding: 5px;
     color: #235957;
     border-top-left-radius: 20px;
@@ -43,6 +49,7 @@ QTabBar::tab {
 
 QTabBar::tab {
     background: seashell;
+    border-color: #235957;
     margin-bottom: -5px;
     font-weight: bolder;
     font-size: 14px;
@@ -51,6 +58,7 @@ QTabBar::tab {
 QTabBar::tab:selected {
     background: #235957;
     color: white;
+    border-color: seashell;
 }
 
 QDockWidget:disabled {
@@ -59,31 +67,7 @@ QDockWidget:disabled {
 }
 
 
-QTabBar::tab [control_panel_tabs=true] {
-
-    background: #2a595f;
-    border: 2px solid #7906e5;
-    padding: 1px;
-    border-bottom-right-radius: 20px;
-    border-top-right-radius: 5px;
-    margin-right: 90px;
-    color: #1ec2c2;
-}
-
-
-QTabBar[control_panel_tabs=true]::tab:selected {
-    background: #4b1d7e;
-    border-bottom-right-radius: 20px;
-    border-top-right-radius: 5px;
-    margin-right: 70px;
-    color: mintcream;
-}
-
-
-
 QPushButton {
-    /*font-size: 24px;*/
-
     font-weight: bold;
     border-radius: 4px;
     border: 2px solid #29394a;
@@ -91,9 +75,9 @@ QPushButton {
     color: #dddddd;
 }
 
-QPushButton:focus {
-    border: 3px solid #ff0893;
-}
+/*QPushButton:focus {*/
+/*    border: 3px solid #ff0893;*/
+/*}*/
 
 QPushButton:disabled {
     border: 2px solid #a0a2af;
@@ -102,7 +86,7 @@ QPushButton:disabled {
 }
 
 QPushButton:hover {
-    border: 3px solid #ff40aa;
+    border: 3px solid white;
 }
 QPushButton#start_recording_button {
     font-size: 18px;
@@ -123,45 +107,26 @@ QPushButton#stop_recording_button:enabled {
 
 
 WelcomeScreenButton {
-    border: 2px solid #29394a;
-    background-color: #213496;
-    color: #dddddd;
+    border: 2px solid #254342;
+    background-color: #365d5f;
+    color: white;
     font-size: 24px;
     border-radius: 20px;
     padding: 10px;
-
-
-}
-
-
-
-
-WelcomeScreenButton[secondary_button = true] {
-
-    background-color: #12194b;
-    color: #cccccc;
-    font-size: 20px;
-
 }
 
 
 WelcomeScreenButton[recommended_next = true] {
-    background-color: #7b20b7;
-    color: #ffffff;
+    background-color: #d95157;
+    color: white;
 }
-
-
 
 
 QLabel {
 
-    /*font-family: "Roboto", sans-serif;*/
-    /*font-weight: bold;*/
     font-size: 14px;
     color: #333333;
 }
-
-
 
 QLabel:disabled {
     color: #33594d;
@@ -182,7 +147,6 @@ QLineEdit:disabled {
 
 QRadioButton:checked {
     color: #7906e5;
-
 }
 
 QTreeView {
@@ -201,7 +165,7 @@ QTreeView::item:has-children {
 }
 
 QTreeView::item:selected {
-    background-color: #0932c2;
+    background-color: #d95157;
 }
 
 QTreeView::item:selected:active {
@@ -209,12 +173,12 @@ QTreeView::item:selected:active {
 }
 
 QTreeView::item:hover {
-    background-color: #378e90;
+    background-color: #d95157;
 }
 
 LogViewWidget {
     background-color: #0b2424;
-    color: #1ed760;
+    color: #a4d6d9;
     /*font-weight: bold;*/
     font-family: "Roboto", sans-serif;
     font-size: 12px;

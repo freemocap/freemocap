@@ -96,6 +96,8 @@ class VisualizationControlPanel(QWidget):
 
         if "blender." in path_selection[0]:
             self._blender_executable_path = path_selection[0]
+        elif "blender." or "Blender" in self._blender_executable_label.text():
+            self._blender_executable_path = self._blender_executable_label.text()
         else:
             self._blender_executable_path = BLENDER_EXECUTABLE_PATH_MISSING_STRING
 

@@ -12,7 +12,6 @@ from freemocap.system.paths_and_files_names import (
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
     get_blender_file_path,
-    get_last_successful_calibration_toml_path,
     ANNOTATED_VIDEOS_FOLDER_NAME,
     MEDIAPIPE_3D_NPY_FILE_NAME, create_camera_calibration_file_name,
 )

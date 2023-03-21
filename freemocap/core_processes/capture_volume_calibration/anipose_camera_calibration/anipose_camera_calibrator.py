@@ -5,15 +5,15 @@ from typing import Callable, Union
 import numpy as np
 from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
 
-from freemocap.system.paths_and_files_names import (
-    get_calibrations_folder_path,
-    get_last_successful_calibration_toml_path, create_camera_calibration_file_name,
-)
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
+)
+from freemocap.system.paths_and_files_names import (
+    get_calibrations_folder_path,
+    get_last_successful_calibration_toml_path, create_camera_calibration_file_name,
 )
 
 logger = logging.getLogger(__name__)

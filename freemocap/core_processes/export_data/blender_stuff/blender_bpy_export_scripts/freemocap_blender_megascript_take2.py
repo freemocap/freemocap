@@ -1,12 +1,9 @@
 import json
 import logging
-import pprint
 import sys
 from copy import copy
 from pathlib import Path
 from typing import List, Union, Dict
-
-
 
 import addon_utils
 import bpy
@@ -246,8 +243,8 @@ def main(recording_path: Union[str, Path],
 
     ###########################
     ### Make stick figure
-    creating_stick_figure_mesh_from_bone_dictionary(trajectory_frame_marker_xyz=mediapipe_body_fr_mar_xyz,
-                                                    body_connections=body_connections,)
+    # creating_stick_figure_mesh_from_bone_dictionary(trajectory_frame_marker_xyz=mediapipe_body_fr_mar_xyz,
+    #                                                 body_connections=body_connections,)
     ############################
     ### Load videos into scene
     if Path(recording_path / "annotated_videos").is_dir():
@@ -894,29 +891,36 @@ print(f"__name__: {__name__}")
 if __name__ == "__main__" or __name__ == "<run_path>":
 
     # this is the part that actually runs the script
+    argv = sys.argv
+    create_rig_input = False
 
     print(f"Running script to create Blender file from freemocap session data from script {__file__}")
     try:
-        ##% Session path
+        # Session path
         # get session path as command line argument
-        argv = sys.argv
         print(f"Received command line arguments: {argv}")
         argv = argv[argv.index("--") + 1:]
 
         recording_path_input = Path(argv[0])
         blender_file_save_path_input = Path(argv[1])
         create_rig_input = bool(argv[2])
-    except:
-        print("No command line arguments received, using hard-coded path instead :D")
+    except Exception as e:
+        print(f"There was a problem loading command line arguments: {e}. Using hardcoded values instead.")
 
-        ####
-        ### Change the path below (`recording_path_input`) to the path to your recording session folder
-        ####
-        recording_path_input = Path(
-            r"C:\Users\jonma\freemocap_data\recording_sessions\session_2023-02-15_08_46_43_wud\recording_08_47_25_gmt-5_wud"
-        )
-        blender_file_save_path_input = Path(recording_path_input) / f"{Path(recording_path_input).name}_.blend"
-        create_rig = True
+        if len(argv) == 0:
+
+            ####
+            # Change the path below (`recording_path_input`) to the path to your recording session folder
+            ####
+            recording_path_input = Path(
+                r"C:\Users\jonma\freemocap_data\recording_sessions\session_2023-02-15_08_46_43_wud\recording_08_47_25_gmt-5_wud"
+            )
+            blender_file_save_path_input = Path(recording_path_input) / f"{Path(recording_path_input).name}_.blend"
+            create_rig = True
+
+    print(f"recording_path_input: {recording_path_input}, \n"
+          f"blender_file_save_path_input: {blender_file_save_path_input}, \n"
+          f"create_rig_input: {create_rig_input}")
 
     main(recording_path=recording_path_input,
          blender_file_save_path=blender_file_save_path_input,

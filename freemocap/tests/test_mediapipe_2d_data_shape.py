@@ -43,6 +43,6 @@ def test_mediapipe_2d_data_shape(
 
     # TODO - check number of tracked points vs 'expected' number of tracked points
 
-    assert mediapipe_2d_data.shape[3] == 3  # the shape is now 3, x y z
+    assert mediapipe_2d_data.shape[3] == 3  # x y z
 
     return True

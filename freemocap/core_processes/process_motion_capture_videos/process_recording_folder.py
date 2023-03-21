@@ -120,7 +120,8 @@ def process_recording_folder(
             medipipe_reprojection_error_data_npy_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
         )
 
-    rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
+    #rotate so skeleton is closer to 'vertical' in a z-up reference frame
+    rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz) 
 
     logger.info("Gap-filling, butterworth filtering, origin aligning 3d skeletons, then calculating center of mass ...")
 

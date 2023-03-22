@@ -1,0 +1,201 @@
+$dark-charcoal: #333333;
+$skelly-bone-blue: #a4d6d9;
+$laser-red: #d95158;
+$disabled-laser-red: #8c5454;
+$freemocap-green: #365d5f;
+$freemocap-dark-green: #254342; 
+$deep-purple: #6c00e0;
+$plain-white: white;
+/* */
+$pfwpwpwpw: #29394a;
+$artcxdvvrsat: #334411;
+$pwf: #49587d;
+$rsta: #7983b1;
+$xcd: #687e90;
+$rst: #496482;
+$xcdd: #33594d;
+$ppfwq: #2d736f;
+$fwpfpw: #a0a2af;
+$artsrtrsat: #1ec2c2;
+$ararstrsatrtrsat: #2b9692;
+$arwpfpwqpfwrsat: cadetblue;
+
+* {
+    font-family: "Dosis", sans-serif;
+    /*font-size: 12px;*/
+    color: $dark-charcoal;
+}
+
+QGroupBox {
+    border: 1px solid $freemocap-dark-green;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-weight: bold;
+}
+QGroupBox[calibration_videos_radio_button_checked=false] {
+    background-color: $skelly-bone-blue;
+}
+QGroupBox[calibration_videos_radio_button_checked=true] {
+    background-color: $laser-red;
+}
+
+QStatusBar {    
+    color: $freemocap-green;
+}
+
+QMainWindow {
+    background-color: $freemocap-green;
+}
+
+QTabWidget::pane {
+    border: 1px solid $plain-white;
+    top: 1px;
+    background: cadetblue;
+}
+
+QTabBar::tab {
+    border: 1px solid;
+    padding: 5px;
+    color: $freemocap-green;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 5px;
+    /*min-width: 200px;*/
+}
+
+QTabBar::tab {
+    background: $plain-white;
+    border-color: $freemocap-green;
+    margin-bottom: -5px;
+    font-weight: bolder;
+    font-size: 16px;
+}
+
+QTabBar::tab:selected {
+    background: $freemocap-green;
+    color: $plain-white;
+    border-color: $plain-white;
+}
+
+QDockWidget:disabled {
+    background-color: #2b9692;
+    color: #1ec2c2;
+}
+
+
+QPushButton {
+    font-weight: bold;
+    border-radius: 4px;
+    border: 2px solid #29394a;
+    background-color: #29394a;
+    color: $plain-white;
+}
+
+/*QPushButton:focus {*/
+/*    border: 3px solid #ff0893;*/
+/*}*/
+
+QPushButton:disabled {
+    border: 2px solid #a0a2af;
+    background-color: #a0a2af;
+    color: #2d736f;
+}
+
+QPushButton:hover {
+    border: 3px solid $plain-white;
+}
+QPushButton#start_recording_button {
+    font-size: 18px;
+    background-color: $laser-red;
+}
+QPushButton#start_recording_button:disabled {
+    background-color: $disabled-laser-red;
+}
+
+QPushButton#stop_recording_button {
+    font-size: 18px;
+
+}
+QPushButton#stop_recording_button:enabled {
+    /*font-size: 24px;*/
+    border: 3px solid $laser-red;
+}
+
+
+WelcomeScreenButton {
+    border: 2px solid $freemocap-dark-green;
+    background-color: $freemocap-green;
+    color: $plain-white;
+    font-size: 24px;
+    border-radius: 20px;
+    padding: 10px;
+}
+
+
+WelcomeScreenButton[recommended_next = true] {
+    background-color: $laser-red;
+    color: $plain-white;
+}
+
+
+QLabel {
+
+    font-size: 14px;
+    color: $dark-charcoal;
+}
+
+QLabel:disabled {
+    color: #33594d;
+}
+
+QLineEdit {
+    border: 1px solid #496482;
+    border-radius: 4px;
+    padding: 0 8px;
+    color: $dark-charcoal;
+
+}
+
+QLineEdit:disabled {
+    color: #3c3d48;
+    background-color: #687e90;
+}
+
+QRadioButton:checked {
+    color: $deep-purple;
+}
+
+QTreeView {
+    background-color: #7983b1;
+    /*alternate-background-color: #a3b1ed;*/
+    color: $dark-charcoal;
+    font-weight: bold;
+    font-family: "Roboto", sans-serif;
+    font-size: 12px;
+}
+
+
+QTreeView::item:has-children {
+    background-color: #49587d;
+    color: $plain-white;
+}
+
+QTreeView::item:selected {
+    background-color: $laser-red;
+}
+
+QTreeView::item:selected:active {
+    background-color: $deep-purple;
+}
+
+QTreeView::item:hover {
+    background-color: $laser-red;
+}
+
+LogViewWidget {
+    background-color: $freemocap-dark-green;
+    color: $skelly-bone-blue;
+    /*font-weight: bold;*/
+    font-family: "Roboto", sans-serif;
+    font-size: 12px;
+    padding: 8px;
+}

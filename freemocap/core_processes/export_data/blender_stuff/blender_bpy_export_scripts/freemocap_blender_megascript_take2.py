@@ -9,6 +9,8 @@ import addon_utils
 import bpy
 import numpy as np
 
+from freemocap.utilities.get_video_paths import get_video_paths
+
 print("Running script to create Blender file from freemocap session data: " + __file__)
 
 logger = logging.getLogger(__name__)
@@ -385,12 +387,12 @@ def main(recording_path: Union[str, Path],
 def add_videos_to_scene(videos_path: Union[Path, str], parent_object: bpy.types.Object, vid_location_scale: float = 2):
     print("loading videos as planes...")
 
-    number_of_videos = len(list(videos_path.glob("*.mp4")))
+    number_of_videos = len(list(get_video_paths(videos_path)))
     print(f"Found {number_of_videos} videos in {videos_path}")
     for (
             video_number,
             video_path,
-    ) in enumerate(videos_path.glob("*.mp4")):
+    ) in enumerate(get_video_paths(videos_path)):
         print(f"Adding video: {video_path.name} to scene")
 
         bpy.ops.import_image.to_plane(

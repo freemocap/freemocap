@@ -4,6 +4,8 @@ from pathlib import Path
 import bpy
 import numpy as np
 
+from freemocap.utilities.get_video_paths import get_video_paths
+
 print(" - Starting (alpha) blender megascript - ")
 
 #######################################################################
@@ -1617,14 +1619,14 @@ try:
 
             world_origin = bpy.data.objects["world_origin"]
 
-            number_of_videos = len(list(vidFolderPath.glob("*.mp4")))
+            number_of_videos = len(list(get_video_paths(vidFolderPath)))
 
             vid_location_scale = 1
 
             for (
                 vid_number,
                 thisVidPath,
-            ) in enumerate(vidFolderPath.glob("*.mp4")):
+            ) in enumerate(get_video_paths(vidFolderPath)):
                 print(thisVidPath)
                 # use 'images as planes' add on to load in the video files as planes
                 bpy.ops.import_image.to_plane(

@@ -61,6 +61,11 @@ QTabBar::tab:selected {
     border-color: seashell;
 }
 
+QTabBar::tab:selected {
+    background: #235957;
+    color: white;
+}
+
 QDockWidget:disabled {
     background-color: #2b9692;
     color: #1ec2c2;

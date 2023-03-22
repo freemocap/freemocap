@@ -3,7 +3,8 @@ $skelly-bone-blue: #a4d6d9;
 $laser-red: #d95158;
 $disabled-laser-red: #8c5454;
 $freemocap-green: #365d5f;
-$freemocap-dark-green: #254342; 
+$freemocap-dark-green: #254342;
+$button-blue: #29394a;
 $deep-purple: #6c00e0;
 $plain-white: white;
 /* */
@@ -85,8 +86,8 @@ QDockWidget:disabled {
 QPushButton {
     font-weight: bold;
     border-radius: 4px;
-    border: 2px solid #29394a;
-    background-color: #29394a;
+    border: 2px solid $button-blue;
+    background-color: $button-blue;
     color: $plain-white;
 }
 

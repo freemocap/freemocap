@@ -93,7 +93,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
             session_processing_parameter_model
         )
         parameter_tree_widget.setParameters(parameter_group, showTop=False)
-
+        parameter_tree_widget.setObjectName("parameter-tree-widget")
         return parameter_group
 
     def _convert_session_processing_parameter_model_to_parameter_group(

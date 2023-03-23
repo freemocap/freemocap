@@ -7,20 +7,9 @@ $freemocap-green: #365d5f;
 $freemocap-dark-green: #254342;
 $button-blue: #29394a;
 $disabled-button-blue: #687e90;
-$deep-purple: #6c00e0;
+$tree-primary: #7983b1;
+$tree-secondary: #a3b1ed;
 $plain-white: white;
-/* */
-$pfwpwpwpw: #29394a;
-$artcxdvvrsat: #334411;
-$pwf: #49587d;
-$rsta: #7983b1;
-$xcd: #687e90;
-$rst: #496482;
-$xcdd: #33594d;
-$ppfwq: #2d736f;
-$fwpfpw: #a0a2af;
-$artsrtrsat: #1ec2c2;
-$ararstrsatrtrsat: #2b9692;
 
 
 * {
@@ -138,7 +127,7 @@ QLabel {
 }
 
 QLabel:disabled {
-    color: #33594d;
+    color: $skelly-bone-blue
 }
 
 QLineEdit {
@@ -154,7 +143,8 @@ QLineEdit:disabled {
 }
 
 QTreeView {
-    background-color: $freemocap-green;
+    background-color: $tree-primary;
+    alternate-background-color: $tree-secondary;
     color: $plain-white;
     font-weight: bold;
     font-family: "Roboto", sans-serif;
@@ -162,17 +152,13 @@ QTreeView {
 }
 
 QTreeView::item:has-children {
-    background-color: $freemocap-dark-green;
+    background-color: $button-blue;
     color: $plain-white;
 }
 
-QTreeView::item:selected {
-    background-color: $skelly-bone-blue;
-    color: $dark-charcoal;
-}
-
-QTreeView::item:hover {
-    background-color: $skelly-bone-blue;
+QTreeView::item:selected,
+    QTreeView::item:hover{
+    background-color: $plain-white;
     color: $dark-charcoal;
 }
 

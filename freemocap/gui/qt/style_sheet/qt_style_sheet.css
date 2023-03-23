@@ -1,4 +1,3 @@
-/* */
 * {
   font-family: "Dosis", sans-serif;
   /*font-size: 12px;*/
@@ -90,7 +89,7 @@ QLabel {
   color: #333333; }
 
 QLabel:disabled {
-  color: #33594d; }
+  color: #a4d6d9; }
 
 QLineEdit {
   border: 1px solid #29394a;
@@ -103,22 +102,20 @@ QLineEdit:disabled {
   background-color: #29394a; }
 
 QTreeView {
-  background-color: #365d5f;
+  background-color: #7983b1;
+  alternate-background-color: #a3b1ed;
   color: white;
   font-weight: bold;
   font-family: "Roboto", sans-serif;
   font-size: 12px; }
 
 QTreeView::item:has-children {
-  background-color: #254342;
+  background-color: #29394a;
   color: white; }
 
-QTreeView::item:selected {
-  background-color: #a4d6d9;
-  color: #333333; }
-
+QTreeView::item:selected,
 QTreeView::item:hover {
-  background-color: #a4d6d9;
+  background-color: white;
   color: #333333; }
 
 LogViewWidget {

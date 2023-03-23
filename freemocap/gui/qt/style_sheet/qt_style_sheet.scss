@@ -79,6 +79,7 @@ QPushButton {
 
 QPushButton:disabled {
     background-color: $tree-primary;
+    border: 1px solid $tree-primary;
     color: $skelly-bone-blue;
 }
 

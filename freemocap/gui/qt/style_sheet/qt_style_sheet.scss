@@ -1,10 +1,12 @@
 $dark-charcoal: #333333;
 $skelly-bone-blue: #a4d6d9;
+$cadet-skelly: cadetblue;
 $laser-red: #d95158;
 $disabled-laser-red: #8c5454;
 $freemocap-green: #365d5f;
 $freemocap-dark-green: #254342;
 $button-blue: #29394a;
+$disabled-button-blue: #687e90;
 $deep-purple: #6c00e0;
 $plain-white: white;
 /* */
@@ -19,7 +21,7 @@ $ppfwq: #2d736f;
 $fwpfpw: #a0a2af;
 $artsrtrsat: #1ec2c2;
 $ararstrsatrtrsat: #2b9692;
-$arwpfpwqpfwrsat: cadetblue;
+
 
 * {
     font-family: "Dosis", sans-serif;
@@ -33,14 +35,14 @@ QGroupBox {
     margin-top: 10px;
     font-weight: bold;
 }
-QGroupBox[calibration_videos_radio_button_checked=false] {
+QGroupBox{
     background-color: $skelly-bone-blue;
 }
-QGroupBox[calibration_videos_radio_button_checked=true] {
-    background-color: $laser-red;
-}
+//QGroupBox[calibration_videos_radio_button_checked=true] {
+//    background-color: $laser-red;
+//}
 
-QStatusBar {    
+QStatusBar {
     color: $freemocap-green;
 }
 
@@ -51,7 +53,7 @@ QMainWindow {
 QTabWidget::pane {
     border: 1px solid $plain-white;
     top: 1px;
-    background: cadetblue;
+    background: $cadet-skelly;
 }
 
 QTabBar::tab {
@@ -77,12 +79,6 @@ QTabBar::tab:selected {
     border-color: $plain-white;
 }
 
-QDockWidget:disabled {
-    background-color: #2b9692;
-    color: #1ec2c2;
-}
-
-
 QPushButton {
     font-weight: bold;
     border-radius: 4px;
@@ -91,19 +87,17 @@ QPushButton {
     color: $plain-white;
 }
 
-/*QPushButton:focus {*/
-/*    border: 3px solid #ff0893;*/
-/*}*/
 
 QPushButton:disabled {
-    border: 2px solid #a0a2af;
-    background-color: #a0a2af;
-    color: #2d736f;
+    border: 3px solid $button-blue;
+    background-color: $dark-charcoal;
+    color: $skelly-bone-blue;
 }
 
 QPushButton:hover {
     border: 3px solid $plain-white;
 }
+
 QPushButton#start_recording_button {
     font-size: 18px;
     background-color: $laser-red;
@@ -123,7 +117,7 @@ QPushButton#stop_recording_button:enabled {
 
 
 WelcomeScreenButton {
-    border: 2px solid $freemocap-dark-green;
+    border: 2px solid $dark-charcoal;
     background-color: $freemocap-green;
     color: $plain-white;
     font-size: 24px;
@@ -139,7 +133,6 @@ WelcomeScreenButton[recommended_next = true] {
 
 
 QLabel {
-
     font-size: 14px;
     color: $dark-charcoal;
 }
@@ -149,53 +142,43 @@ QLabel:disabled {
 }
 
 QLineEdit {
-    border: 1px solid #496482;
+    border: 1px solid $button-blue;
     border-radius: 4px;
     padding: 0 8px;
     color: $dark-charcoal;
 
 }
-
 QLineEdit:disabled {
-    color: #3c3d48;
-    background-color: #687e90;
-}
-
-QRadioButton:checked {
-    color: $deep-purple;
+    color: $dark-charcoal;
+    background-color: $button-blue;
 }
 
 QTreeView {
-    background-color: #7983b1;
-    /*alternate-background-color: #a3b1ed;*/
-    color: $dark-charcoal;
+    background-color: $freemocap-green;
+    color: $plain-white;
     font-weight: bold;
     font-family: "Roboto", sans-serif;
     font-size: 12px;
 }
 
-
 QTreeView::item:has-children {
-    background-color: #49587d;
+    background-color: $freemocap-dark-green;
     color: $plain-white;
 }
 
 QTreeView::item:selected {
-    background-color: $laser-red;
-}
-
-QTreeView::item:selected:active {
-    background-color: $deep-purple;
+    background-color: $skelly-bone-blue;
+    color: $dark-charcoal;
 }
 
 QTreeView::item:hover {
-    background-color: $laser-red;
+    background-color: $skelly-bone-blue;
+    color: $dark-charcoal;
 }
 
 LogViewWidget {
     background-color: $freemocap-dark-green;
-    color: $skelly-bone-blue;
-    /*font-weight: bold;*/
+    color: $plain-white;
     font-family: "Roboto", sans-serif;
     font-size: 12px;
     padding: 8px;

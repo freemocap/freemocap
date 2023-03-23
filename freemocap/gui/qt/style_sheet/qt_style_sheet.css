@@ -10,11 +10,8 @@ QGroupBox {
   margin-top: 10px;
   font-weight: bold; }
 
-QGroupBox[calibration_videos_radio_button_checked=false] {
+QGroupBox {
   background-color: #a4d6d9; }
-
-QGroupBox[calibration_videos_radio_button_checked=true] {
-  background-color: #d95158; }
 
 QStatusBar {
   color: #365d5f; }
@@ -47,10 +44,6 @@ QTabBar::tab:selected {
   color: white;
   border-color: white; }
 
-QDockWidget:disabled {
-  background-color: #2b9692;
-  color: #1ec2c2; }
-
 QPushButton {
   font-weight: bold;
   border-radius: 4px;
@@ -58,13 +51,10 @@ QPushButton {
   background-color: #29394a;
   color: white; }
 
-/*QPushButton:focus {*/
-/*    border: 3px solid #ff0893;*/
-/*}*/
 QPushButton:disabled {
-  border: 2px solid #a0a2af;
-  background-color: #a0a2af;
-  color: #2d736f; }
+  border: 3px solid #29394a;
+  background-color: #333333;
+  color: #a4d6d9; }
 
 QPushButton:hover {
   border: 3px solid white; }
@@ -84,7 +74,7 @@ QPushButton#stop_recording_button:enabled {
   border: 3px solid #d95158; }
 
 WelcomeScreenButton {
-  border: 2px solid #254342;
+  border: 2px solid #333333;
   background-color: #365d5f;
   color: white;
   font-size: 24px;
@@ -103,43 +93,37 @@ QLabel:disabled {
   color: #33594d; }
 
 QLineEdit {
-  border: 1px solid #496482;
+  border: 1px solid #29394a;
   border-radius: 4px;
   padding: 0 8px;
   color: #333333; }
 
 QLineEdit:disabled {
-  color: #3c3d48;
-  background-color: #687e90; }
-
-QRadioButton:checked {
-  color: #6c00e0; }
+  color: #333333;
+  background-color: #29394a; }
 
 QTreeView {
-  background-color: #7983b1;
-  /*alternate-background-color: #a3b1ed;*/
-  color: #333333;
+  background-color: #365d5f;
+  color: white;
   font-weight: bold;
   font-family: "Roboto", sans-serif;
   font-size: 12px; }
 
 QTreeView::item:has-children {
-  background-color: #49587d;
+  background-color: #254342;
   color: white; }
 
 QTreeView::item:selected {
-  background-color: #d95158; }
-
-QTreeView::item:selected:active {
-  background-color: #6c00e0; }
+  background-color: #a4d6d9;
+  color: #333333; }
 
 QTreeView::item:hover {
-  background-color: #d95158; }
+  background-color: #a4d6d9;
+  color: #333333; }
 
 LogViewWidget {
   background-color: #254342;
-  color: #a4d6d9;
-  /*font-weight: bold;*/
+  color: white;
   font-family: "Roboto", sans-serif;
   font-size: 12px;
   padding: 8px; }

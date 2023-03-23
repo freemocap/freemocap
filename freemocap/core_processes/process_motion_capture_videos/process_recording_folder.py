@@ -31,10 +31,10 @@ from freemocap.system.paths_and_files_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
 )
-from freemocap.tests.test_mediapipe_2d_data_shape import (
-    test_mediapipe_2d_data_shape,
+from freemocap.tests.test_mediapipe_image_data_shape import (
+    test_mediapipe_image_shape,
 )
-from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
+from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 logger = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ def process_recording_folder(
     if kill_event is not None and kill_event.is_set():
         return
 
-    assert test_mediapipe_2d_data_shape(
+    assert test_mediapipe_image_shape(
         synchronized_videos_folder=rec.recording_info_model.synchronized_videos_folder_path,
         mediapipe_2d_data_file_path=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
     )
@@ -101,7 +101,7 @@ def process_recording_folder(
     if kill_event is not None and kill_event.is_set():
         return
 
-    assert test_mediapipe_3d_data_shape(
+    assert test_mediapipe_skeleton_data_shape(
         synchronized_videos_folder=rec.recording_info_model.synchronized_videos_folder_path,
         mediapipe_3d_data_npy_path=rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
         medipipe_reprojection_error_data_npy_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
@@ -118,7 +118,7 @@ def process_recording_folder(
         order=rec.post_processing_parameters_model.butterworth_filter_parameters.order,
         reference_frame_number=None,
     )
-    assert test_mediapipe_3d_data_shape(
+    assert test_mediapipe_skeleton_data_shape(
         synchronized_videos_folder=rec.recording_info_model.synchronized_videos_folder_path,
         mediapipe_3d_data_npy_path=rec.recording_info_model.mediapipe_3d_data_npy_file_path,
         medipipe_reprojection_error_data_npy_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,

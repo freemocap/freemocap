@@ -15,8 +15,8 @@ from freemocap.system.paths_and_files_names import (
     ANNOTATED_VIDEOS_FOLDER_NAME,
     MEDIAPIPE_3D_NPY_FILE_NAME, create_camera_calibration_file_name,
 )
-from freemocap.tests.test_mediapipe_2d_data_shape import test_mediapipe_2d_data_shape
-from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
+from freemocap.tests.test_mediapipe_image_data_shape import test_mediapipe_image_shape
+from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import (
     test_synchronized_video_frame_counts,
 )
@@ -163,7 +163,7 @@ class RecordingFolderStatusChecker:
     def check_data2d_status(self) -> bool:
 
         try:
-            test_mediapipe_2d_data_shape(
+            test_mediapipe_image_shape(
                 synchronized_videos_folder=self.recording_info_model.synchronized_videos_folder_path,
                 mediapipe_2d_data_file_path=self.recording_info_model.mediapipe_2d_data_npy_file_path,
             )
@@ -174,7 +174,7 @@ class RecordingFolderStatusChecker:
 
     def check_data3d_status(self) -> bool:
         try:
-            test_mediapipe_3d_data_shape(
+            test_mediapipe_skeleton_data_shape(
                 synchronized_videos_folder=self.recording_info_model.synchronized_videos_folder_path,
                 mediapipe_3d_data_npy_path=self.recording_info_model.mediapipe_3d_data_npy_file_path,
                 medipipe_reprojection_error_data_npy_path=self.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,

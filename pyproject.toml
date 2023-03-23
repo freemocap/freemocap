@@ -74,6 +74,7 @@ dependencies = [
     "opencv-contrib-python==4.6.0.66",
     "toml",
     "aniposelib",
+    "libsass",
 ]
 requires-python = ">=3.8, <3.11"
 

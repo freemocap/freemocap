@@ -56,13 +56,13 @@ class ControlPanelWidget(QWidget):
 
         self._tab_widget.addTab(
             camera_configuration_parameter_tree_widget,
-            f"Camera Config {CAMERA_WITH_FLASH_EMOJI_STRING}{HAMMER_AND_WRENCH_EMOJI_STRING}",
+            f"Camera Configuration",
         )
         # self._tool_box.addTab(calibration_control_panel, "Capture Volume Calibration")
         self._tab_widget.addTab(
-            process_motion_capture_data_panel, f"Process MoCap Data {ROBOT_EMOJI_STRING}{THREE_HEARTS_EMOJI_STRING}"
+            process_motion_capture_data_panel, f"Process Data"
         )
-        self._tab_widget.addTab(visualize_data_widget, f"Export Data {WIND_EMOJI_STRING}{SPARKLES_EMOJI_STRING}")
+        self._tab_widget.addTab(visualize_data_widget, f"Export Data")
 
         self._tab_widget.setProperty("control_panel_tabs", True)
         self.style().polish(self._tab_widget)

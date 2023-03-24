@@ -4,6 +4,7 @@ from pathlib import Path
 import bpy
 import numpy as np
 
+
 print(" - Starting (alpha) blender megascript - ")
 
 #######################################################################
@@ -12,6 +13,24 @@ bpy.ops.preferences.addon_enable(module="io_import_images_as_planes")
 bpy.ops.preferences.addon_enable(module="rigify")
 
 #######################################################################
+
+def get_video_paths(path_to_video_folder: Path) -> list:
+    """Search the folder for 'mp4' files (case insensitive) and return them as a list"""
+
+    list_of_video_paths = list(Path(path_to_video_folder).glob("*.mp4")) + list(
+        Path(path_to_video_folder).glob("*.MP4")
+    )
+    unique_list_of_video_paths = get_unique_list(list_of_video_paths)
+
+    return unique_list_of_video_paths
+
+
+def get_unique_list(list: list) -> list:
+    """Return a list of the unique elements from input list"""
+    unique_list = []
+    [unique_list.append(clip) for clip in list if clip not in unique_list]
+
+    return unique_list
 
 try:
     ##% Session path
@@ -1617,14 +1636,14 @@ try:
 
             world_origin = bpy.data.objects["world_origin"]
 
-            number_of_videos = len(list(vidFolderPath.glob("*.mp4")))
+            number_of_videos = len(list(get_video_paths(vidFolderPath)))
 
             vid_location_scale = 1
 
             for (
                 vid_number,
                 thisVidPath,
-            ) in enumerate(vidFolderPath.glob("*.mp4")):
+            ) in enumerate(get_video_paths(vidFolderPath)):
                 print(thisVidPath)
                 # use 'images as planes' add on to load in the video files as planes
                 bpy.ops.import_image.to_plane(

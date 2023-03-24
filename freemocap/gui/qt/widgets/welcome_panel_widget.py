@@ -39,6 +39,8 @@ class WelcomeToFreemocapPanel(QWidget):
         self.sizePolicy().setHorizontalStretch(1)
         self.sizePolicy().setVerticalStretch(1)
 
+        self._layout.addStretch(1)
+
         self._add_freemocap_logo()
 
         self._welcome_to_freemocap_title_widget = self._welcome_to_freemocap_title()
@@ -54,35 +56,18 @@ class WelcomeToFreemocapPanel(QWidget):
         self._load_most_recent_session_button = WelcomeScreenButton(
             f"{LOAD_MOST_RECENT_RECORDING_ACTION_NAME}"
         )
-        self._load_most_recent_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
-        self._layout.addWidget(self._load_most_recent_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        self._load_existing_session_button = WelcomeScreenButton(f"{LOAD_EXISTING_RECORDING_ACTION_NAME}")
-        self._load_existing_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
-        self._layout.addWidget(self._load_existing_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        # self._load_most_recent_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
+        # self._layout.addWidget(self._load_most_recent_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        #
+        # self._load_existing_session_button = WelcomeScreenButton(f"{LOAD_EXISTING_RECORDING_ACTION_NAME}")
+        # self._load_existing_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
+        # self._layout.addWidget(self._load_existing_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self._import_videos_button = WelcomeScreenButton(f"{IMPORT_VIDEOS_ACTION_NAME}")
         self._import_videos_button.clicked.connect(actions.import_videos_action.trigger)
         self._layout.addWidget(self._import_videos_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # self._kill_threads_and_processes_button = WelcomeScreenButton(
-        #     f"{KILL_THREADS_AND_PROCESSES_ACTION_NAME} (Ctrl+K)"
-        # )
-        # self._kill_threads_and_processes_button.clicked.connect(
-        #     actions.kill_running_threads_and_processes_action.trigger
-        # )
-        # self._layout.addWidget(self._kill_threads_and_processes_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        # self._kill_threads_and_processes_button.setProperty("secondary_button", True)
-        #
-        # self._reboot_gui_button = WelcomeScreenButton(f"{REBOOT_GUI_ACTION_NAME} (Ctrl+R)")
-        # self._reboot_gui_button.clicked.connect(actions.reboot_gui_action.trigger)
-        # self._layout.addWidget(self._reboot_gui_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        # self._reboot_gui_button.setProperty("secondary_button", True)
-        #
-        # self._exit_button = WelcomeScreenButton(f"{EXIT_ACTION_NAME} (Ctrl+Q)")
-        # self._exit_button.clicked.connect(actions.exit_action.trigger)
-        # self._layout.addWidget(self._exit_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        # self._exit_button.setProperty("secondary_button", True)
+        self._layout.addStretch(1)
 
         send_pings_string = "Send ping to devs to let us know when you make a new session (being able to show that people are using this thing will help us get funding for this project :D )"
         self._send_pings_checkbox = QCheckBox(send_pings_string)

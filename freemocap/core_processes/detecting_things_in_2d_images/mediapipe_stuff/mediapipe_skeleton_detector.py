@@ -17,6 +17,8 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.medi
     mediapipe_tracked_point_names_dict,
 )
 from freemocap.parameter_info_models.recording_processing_parameter_models import MediapipeParametersModel
+from freemocap.utilities.get_video_paths import get_video_paths
+
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +162,7 @@ class MediaPipeSkeletonDetector:
         logger.info(f"processing videos from: {path_to_folder_of_videos_to_process}")
 
         mediapipe2d_single_camera_npy_arrays_list = []
-        for video_number, synchronized_video_file_path in enumerate(path_to_folder_of_videos_to_process.glob("*.mp4")):
+        for video_number, synchronized_video_file_path in enumerate(get_video_paths(path_to_folder_of_videos_to_process)):
             logger.info(f"Running `mediapipe` skeleton detection on  video: {str(synchronized_video_file_path)}")
             video_capture_object = cv2.VideoCapture(str(synchronized_video_file_path))
 

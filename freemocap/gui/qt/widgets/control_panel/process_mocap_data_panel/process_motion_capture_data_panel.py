@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Callable
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
@@ -57,6 +58,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._process_motion_capture_data_button = QPushButton(
             "Process Motion Capture Videos",
         )
+        self._process_motion_capture_data_button.setFont(QFont("Dosis", 16, QFont.Weight.Bold))
+        
         self._process_motion_capture_data_button.clicked.connect(self._launch_process_motion_capture_data_thread_worker)
         self._layout.addWidget(self._process_motion_capture_data_button)
 
@@ -90,7 +93,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
             session_processing_parameter_model
         )
         parameter_tree_widget.setParameters(parameter_group, showTop=False)
-
+        parameter_tree_widget.setObjectName("parameter-tree-widget")
         return parameter_group
 
     def _convert_session_processing_parameter_model_to_parameter_group(

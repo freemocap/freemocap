@@ -4,3 +4,4 @@ mediapipe==0.9.1.0
 opencv-contrib-python==4.6.0.66
 toml==0.10.2
 aniposelib==0.4.3
+libsass==0.22.0

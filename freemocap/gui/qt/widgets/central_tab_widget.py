@@ -47,7 +47,7 @@ class CentralTabWidget(QTabWidget):
 
     def _create_welcome_tab(self, tab_widget: QTabWidget):
         logger.info("Creating welcome tab")
-        tab_widget.addTab(self._welcome_to_freemocap_widget, "Welcome!")
+        tab_widget.addTab(self._welcome_to_freemocap_widget, "Home")
 
     def _create_skellycam_view_tab(self, tab_widget: QTabWidget):
         logger.info("Creating skellycam view tab")
@@ -55,7 +55,7 @@ class CentralTabWidget(QTabWidget):
         self._camera_view_layout = QVBoxLayout()
         self._camera_view_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         dummy_widget.setLayout(self._camera_view_layout)
-        tab_widget.addTab(dummy_widget, f"Skelly Cam {CAMERA_WITH_FLASH_EMOJI_STRING}")
+        tab_widget.addTab(dummy_widget, f"Skelly Cam")
         # tab_widget.setToolTip(skellycam.__repo_url__)
 
         # self._qt_multi_camera_viewer_widget.resize(1280, 720)
@@ -65,5 +65,5 @@ class CentralTabWidget(QTabWidget):
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):
         logger.info("Creating export_data tab")
-        tab_widget.addTab(self._skelly_viewer_widget, f"Skelly Viewer {EYES_EMOJI_STRING}")
+        tab_widget.addTab(self._skelly_viewer_widget, f"Skelly Viewer")
         # tab_widget.setToolTip(skelly_viewer.__repo_url__)

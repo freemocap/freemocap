@@ -70,7 +70,8 @@ keywords = [
 dependencies = [
     "skellycam==2023.2.1076",
     "skelly_viewer",
-    "mediapipe",
+    'mediapipe; platform_system != "Darwin" or platform_machine != "arm64"',
+    'mediapipe-silicon; platform_system == "Darwin" and platform_machine == "arm64"',
     "opencv-contrib-python==4.6.0.66",
     "toml",
     "aniposelib",

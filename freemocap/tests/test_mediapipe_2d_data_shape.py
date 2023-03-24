@@ -6,6 +6,7 @@ import numpy as np
 from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import (
     get_number_of_frames_of_videos_in_a_folder,
 )
+from freemocap.utilities.get_video_paths import get_video_paths
 
 
 def test_mediapipe_2d_data_shape(
@@ -28,7 +29,7 @@ def test_mediapipe_2d_data_shape(
 
     mediapipe_2d_data = np.load(mediapipe_2d_data_file_path)
 
-    list_of_video_paths = list(Path(synchronized_videos_folder).glob("*.mp4"))
+    list_of_video_paths = get_video_paths(Path(synchronized_videos_folder))
     number_of_videos = len(list_of_video_paths)
     assert mediapipe_2d_data.shape[0] == number_of_videos
 

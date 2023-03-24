@@ -45,23 +45,23 @@ class WelcomeToFreemocapPanel(QWidget):
         self._layout.addWidget(self._welcome_to_freemocap_title_widget)
 
         self._create_new_session_button = WelcomeScreenButton(
-            f"{CREATE_NEW_RECORDING_ACTION_NAME} (Ctrl+N) {SPARKLES_EMOJI_STRING}"
+            f"{CREATE_NEW_RECORDING_ACTION_NAME}"
         )
         self._create_new_session_button.clicked.connect(actions.create_new_recording_action.trigger)
         self._layout.addWidget(self._create_new_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
         self._create_new_session_button.setProperty("recommended_next", True)
 
         self._load_most_recent_session_button = WelcomeScreenButton(
-            f"{LOAD_MOST_RECENT_RECORDING_ACTION_NAME} (Ctrl+D)"
+            f"{LOAD_MOST_RECENT_RECORDING_ACTION_NAME}"
         )
         self._load_most_recent_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
         self._layout.addWidget(self._load_most_recent_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self._load_existing_session_button = WelcomeScreenButton(f"{LOAD_EXISTING_RECORDING_ACTION_NAME} (Ctrl+O)")
+        self._load_existing_session_button = WelcomeScreenButton(f"{LOAD_EXISTING_RECORDING_ACTION_NAME}")
         self._load_existing_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
         self._layout.addWidget(self._load_existing_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self._import_videos_button = WelcomeScreenButton(f"{IMPORT_VIDEOS_ACTION_NAME} (Ctrl+I)")
+        self._import_videos_button = WelcomeScreenButton(f"{IMPORT_VIDEOS_ACTION_NAME}")
         self._import_videos_button.clicked.connect(actions.import_videos_action.trigger)
         self._layout.addWidget(self._import_videos_button, alignment=Qt.AlignmentFlag.AlignCenter)
 

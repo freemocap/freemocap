@@ -9,7 +9,6 @@ import addon_utils
 import bpy
 import numpy as np
 
-from freemocap.utilities.get_video_paths import get_video_paths
 
 print("Running script to create Blender file from freemocap session data: " + __file__)
 
@@ -652,6 +651,24 @@ def creating_stick_figure_mesh_from_bone_dictionary(trajectory_frame_marker_xyz:
             vertex.co = trajectory_frame_marker_xyz[frame_number, vertex.index, :]
             vertex.keyframe_insert(data_path="co", frame=frame_number)  # keyframe the vertex location
         mesh.update()
+
+def get_video_paths(path_to_video_folder: Path) -> list:
+    """Search the folder for 'mp4' files (case insensitive) and return them as a list"""
+
+    list_of_video_paths = list(Path(path_to_video_folder).glob("*.mp4")) + list(
+        Path(path_to_video_folder).glob("*.MP4")
+    )
+    unique_list_of_video_paths = get_unique_list(list_of_video_paths)
+
+    return unique_list_of_video_paths
+
+
+def get_unique_list(list: list) -> list:
+    """Return a list of the unique elements from input list"""
+    unique_list = []
+    [unique_list.append(clip) for clip in list if clip not in unique_list]
+
+    return unique_list
 
 
 mediapipe_empty_names = {

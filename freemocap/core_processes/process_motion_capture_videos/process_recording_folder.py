@@ -30,7 +30,7 @@ from freemocap.core_processes.post_process_skeleton_data.estimate_skeleton_segme
 from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import (
     gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass,
 )
-from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
+from freemocap.core_processes.post_process_skeleton_data.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
 
 from freemocap.tests.test_mediapipe_2d_data_shape import (
     test_mediapipe_2d_data_shape,

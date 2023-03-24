@@ -172,6 +172,9 @@ def get_css_stylesheet_path():
     return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.css")
 
 
+def get_scss_stylesheet_path():
+    return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.scss")
+
 def get_most_recent_recording_toml_path():
     return str(Path(get_logs_info_and_settings_folder_path()) / MOST_RECENT_RECORDING_TOML_FILENAME)
 

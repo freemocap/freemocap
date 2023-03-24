@@ -27,6 +27,7 @@ from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blende
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
+from freemocap.gui.qt.style_sheet.scss_file_watcher import SCSSFileWatcher
 from freemocap.gui.qt.style_sheet.set_css_style_sheet import apply_css_style_sheet
 from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
@@ -55,6 +56,7 @@ from freemocap.parameter_info_models.recording_processing_parameter_models impor
     RecordingProcessingParameterModel,
 )
 from freemocap.system.paths_and_files_names import (
+    get_scss_stylesheet_path,
     get_css_stylesheet_path,
     get_most_recent_recording_path,
     PATH_TO_FREEMOCAP_LOGO_SVG,
@@ -122,11 +124,11 @@ class FreemocapMainWindow(QMainWindow):
         self._tools_dock_widget.setWidget(self._tools_dock_tab_widget)
 
         self._control_panel_dock_widget = self._create_control_panel_widget()
-        self._tools_dock_tab_widget.addTab(self._control_panel_dock_widget, f"Control Panel{GEAR_EMOJI_STRING}")
+        self._tools_dock_tab_widget.addTab(self._control_panel_dock_widget, f"Control Panel")
 
-        self._tools_dock_tab_widget.addTab(self._directory_view_widget, f"Directory View{DIRECTORY_EMOJI_STRING}")
+        self._tools_dock_tab_widget.addTab(self._directory_view_widget, f"Directory View")
         self._tools_dock_tab_widget.addTab(
-            self._active_recording_info_widget, f"Active Recording Info{COOL_EMOJI_STRING}"
+            self._active_recording_info_widget, f"Active Recording Info"
         )
 
         # self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._directory_view_dock_widget)
@@ -192,6 +194,7 @@ class FreemocapMainWindow(QMainWindow):
 
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
+        scss_file_watcher = SCSSFileWatcher(path_to_scss_file=get_scss_stylesheet_path(), path_to_css_file=get_css_stylesheet_path(), parent=self)
         css_file_watcher = CSSFileWatcher(path_to_css_file=get_css_stylesheet_path(), parent=self)
         return css_file_watcher
 

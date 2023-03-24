@@ -6,7 +6,7 @@ from PyQt6.QtCore import pyqtSignal, QFileSystemWatcher
 from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-from freemocap.parameter_info_models.recording_info_model import (
+from freemocap.core_processes.post_process_skeleton_data.parameter_info_models import (
     RecordingInfoModel,
 )
 from freemocap.system.paths_and_files_names import get_most_recent_recording_path

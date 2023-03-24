@@ -14,7 +14,7 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.medi
     mediapipe_tracked_point_names_dict,
 )
 from freemocap.core_processes.detecting_things_in_2d_images.yolo_tracker import YoloTracker
-from freemocap.parameter_info_models.recording_processing_parameter_models import MediapipeParametersModel
+from freemocap.core_processes.post_process_skeleton_data.parameter_info_models.recording_processing_parameter_models import MediapipeParametersModel
 from freemocap.system.paths_and_files_names import MEDIAPIPE_2D_NPY_FILE_NAME, ANNOTATED_VIDEOS_FOLDER_NAME
 
 logger = logging.getLogger(__name__)

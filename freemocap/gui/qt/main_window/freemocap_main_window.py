@@ -1,10 +1,7 @@
 import logging
 import multiprocessing
 import shutil
-import threading
-from copy import copy
 from pathlib import Path
-from time import sleep
 from typing import Union, List
 
 from PyQt6.QtCore import Qt, pyqtSlot
@@ -13,8 +10,7 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QMainWindow,
     QFileDialog,
-    QTabWidget, QLineEdit,
-)
+    QTabWidget, )
 from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
@@ -50,15 +46,14 @@ from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.welcome_panel_widget import (
     WelcomeToFreemocapPanel,
 )
-from freemocap.parameter_info_models.recording_info_model import (
+from freemocap.core_processes.post_process_skeleton_data.parameter_info_models import (
     RecordingInfoModel,
 )
-from freemocap.parameter_info_models.recording_processing_parameter_models import (
+from freemocap.core_processes.post_process_skeleton_data.parameter_info_models.recording_processing_parameter_models import (
     RecordingProcessingParameterModel,
 )
 from freemocap.system.paths_and_files_names import (
     get_css_stylesheet_path,
-    get_freemocap_data_folder_path,
     get_most_recent_recording_path,
     PATH_TO_FREEMOCAP_LOGO_SVG,
     get_blender_file_path,

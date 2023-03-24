@@ -194,7 +194,7 @@ class FreemocapMainWindow(QMainWindow):
 
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
-        scss_file_watcher = SCSSFileWatcher(path_to_scss_file=get_scss_stylesheet_path(), parent=self)
+        scss_file_watcher = SCSSFileWatcher(path_to_scss_file=get_scss_stylesheet_path(), path_to_css_file=get_css_stylesheet_path(), parent=self)
         css_file_watcher = CSSFileWatcher(path_to_css_file=get_css_stylesheet_path(), parent=self)
         return css_file_watcher
 

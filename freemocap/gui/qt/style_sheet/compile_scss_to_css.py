@@ -1,15 +1,8 @@
 import sass
 from pathlib import Path
+from typing import Union
 
-def compile_scss_to_css():
-    current_directory = Path(__file__).resolve().parent
-
-    scss_filename = 'qt_style_sheet.scss'
-    css_filename = 'qt_style_sheet.css'
-
-    scss_path = current_directory / scss_filename
-    css_path = current_directory / css_filename
-
+def compile_scss_to_css(scss_path: Union[str, Path], css_path: Union[str, Path]):
     with open(scss_path) as scss_file:
         scss_contents = scss_file.read()
 
@@ -17,6 +10,3 @@ def compile_scss_to_css():
 
     with open(css_path, 'w') as css_file:
         css_file.write(compiled_css)
-
-if __name__ == "__main__":
-    compile_scss_to_css()

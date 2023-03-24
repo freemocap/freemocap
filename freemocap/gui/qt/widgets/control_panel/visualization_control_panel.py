@@ -3,11 +3,21 @@ from pathlib import Path
 from typing import Union
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QGroupBox, QVBoxLayout, QPushButton, QRadioButton, QWidget, QCheckBox, QLabel, QFileDialog, \
-    QLineEdit
+from PyQt6.QtWidgets import (
+    QGroupBox,
+    QVBoxLayout,
+    QPushButton,
+    QRadioButton,
+    QWidget,
+    QCheckBox,
+    QLabel,
+    QFileDialog,
+    QLineEdit,
+)
 
 logger = logging.getLogger(__name__)
 BLENDER_EXECUTABLE_PATH_MISSING_STRING = "BLENDER EXECUTABLE NOT FOUND"
+
 
 class VisualizationControlPanel(QWidget):
     def __init__(self, blender_executable_path: Union[str, Path] = BLENDER_EXECUTABLE_PATH_MISSING_STRING, parent=None):
@@ -96,6 +106,8 @@ class VisualizationControlPanel(QWidget):
 
         if "blender." in path_selection[0]:
             self._blender_executable_path = path_selection[0]
+        elif "Blender.app" in path_selection[0]:
+            self._blender_executable_path = path_selection[0] + "/Contents/MacOS/Blender"  # executable is buried on mac
         else:
             self._blender_executable_path = BLENDER_EXECUTABLE_PATH_MISSING_STRING
 

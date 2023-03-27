@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
 from freemocap.gui.qt.actions_and_menus.actions import (
     CREATE_NEW_RECORDING_ACTION_NAME,
     LOAD_MOST_RECENT_RECORDING_ACTION_NAME,
-    LOAD_EXISTING_RECORDING_ACTION_NAME,
+    LOAD_RECORDING_ACTION_NAME,
     IMPORT_VIDEOS_ACTION_NAME,
     Actions,
 )
@@ -29,7 +29,7 @@ class WelcomeScreenButton(QPushButton):
         self.setFixedWidth(400)
 
 
-class WelcomeToFreemocapPanel(QWidget):
+class HomeWidget(QWidget):
     def __init__(self, actions: Actions, parent: QWidget = None):
         super().__init__(parent=parent)
 
@@ -59,9 +59,9 @@ class WelcomeToFreemocapPanel(QWidget):
         # self._load_most_recent_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
         # self._layout.addWidget(self._load_most_recent_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
         #
-        # self._load_existing_session_button = WelcomeScreenButton(f"{LOAD_EXISTING_RECORDING_ACTION_NAME}")
-        # self._load_existing_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
-        # self._layout.addWidget(self._load_existing_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        self._load_existing_session_button = WelcomeScreenButton(f"{LOAD_RECORDING_ACTION_NAME}")
+        self._load_existing_session_button.clicked.connect(actions.load_existing_recording_action.trigger)
+        self._layout.addWidget(self._load_existing_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self._import_videos_button = WelcomeScreenButton(f"{IMPORT_VIDEOS_ACTION_NAME}")
         self._import_videos_button.clicked.connect(actions.import_videos_action.trigger)

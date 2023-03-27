@@ -5,8 +5,8 @@ from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 # from skelly_viewer import SkellyViewer
 from skellycam import SkellyCamWidget
 
-from freemocap.gui.qt.widgets.welcome_panel_widget import (
-    WelcomeToFreemocapPanel,
+from freemocap.gui.qt.widgets.home_widget import (
+    HomeWidget,
 )
 from freemocap.system.paths_and_files_names import CAMERA_WITH_FLASH_EMOJI_STRING, EYES_EMOJI_STRING
 
@@ -18,7 +18,7 @@ class CentralTabWidget(QTabWidget):
         self,
         skelly_cam_widget: SkellyCamWidget,
         camera_controller_widget: QWidget,
-        welcome_to_freemocap_widget: WelcomeToFreemocapPanel,
+        welcome_to_freemocap_widget: HomeWidget,
         skelly_viewer_widget: QWidget,
         directory_view_widget: QWidget,
         active_recording_info_widget: QWidget,

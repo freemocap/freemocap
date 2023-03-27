@@ -20,6 +20,8 @@ class CentralTabWidget(QTabWidget):
         camera_controller_widget: QWidget,
         welcome_to_freemocap_widget: WelcomeToFreemocapPanel,
         skelly_viewer_widget: QWidget,
+        directory_view_widget: QWidget,
+        active_recording_info_widget: QWidget,
         parent=None,
     ):
         super().__init__(parent=parent)
@@ -31,10 +33,14 @@ class CentralTabWidget(QTabWidget):
         self._camera_controller_widget = camera_controller_widget
         self._welcome_to_freemocap_widget = welcome_to_freemocap_widget
         self._skelly_viewer_widget = skelly_viewer_widget
+        self._directory_view_widget = directory_view_widget
+        self._active_recording_info_widget = active_recording_info_widget
 
         self._create_welcome_tab(self)
         self._create_skellycam_view_tab(self)
         self._create_skelly_viewer_tab(self)
+        self._create_directory_view_tab(self)
+        self._create_active_recording_info_tab(self)
 
     def set_welcome_tab_enabled(self, enabled: bool):
         self.setTabEnabled(0, enabled)
@@ -55,7 +61,7 @@ class CentralTabWidget(QTabWidget):
         self._camera_view_layout = QVBoxLayout()
         self._camera_view_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         dummy_widget.setLayout(self._camera_view_layout)
-        tab_widget.addTab(dummy_widget, f"Skelly Cam")
+        tab_widget.addTab(dummy_widget, f"Cameras")
         # tab_widget.setToolTip(skellycam.__repo_url__)
 
         # self._qt_multi_camera_viewer_widget.resize(1280, 720)
@@ -65,5 +71,14 @@ class CentralTabWidget(QTabWidget):
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):
         logger.info("Creating export_data tab")
-        tab_widget.addTab(self._skelly_viewer_widget, f"Skelly Viewer")
+        tab_widget.addTab(self._skelly_viewer_widget, f"Data Viewer")
         # tab_widget.setToolTip(skelly_viewer.__repo_url__)
+
+    def _create_directory_view_tab(self, tab_widget: QTabWidget):
+        logger.info("Creating directory view tab")
+        tab_widget.addTab(self._directory_view_widget, f"Directory View")
+
+    def _create_active_recording_info_tab(self, tab_widget: QTabWidget):
+        logger.info("Creating active recording info tab")
+        tab_widget.addTab(self._active_recording_info_widget, f"Active Recording Info")
+

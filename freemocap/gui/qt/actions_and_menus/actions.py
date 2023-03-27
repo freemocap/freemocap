@@ -3,7 +3,7 @@ from PyQt6.QtGui import QAction
 
 CREATE_NEW_RECORDING_ACTION_NAME = "New Recording"
 LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording"
-LOAD_EXISTING_RECORDING_ACTION_NAME = "Load Existing Recording"
+LOAD_RECORDING_ACTION_NAME = "Load Recording"
 IMPORT_VIDEOS_ACTION_NAME = "Import Videos"
 KILL_THREADS_AND_PROCESSES_ACTION_NAME = "Kill Threads and Processes"
 REBOOT_GUI_ACTION_NAME = "Reboot GUI"
@@ -25,7 +25,7 @@ class Actions:
             freemocap_main_window.handle_load_most_recent_recording
         )
 
-        self.load_existing_recording_action = QAction(LOAD_EXISTING_RECORDING_ACTION_NAME, parent=freemocap_main_window)
+        self.load_existing_recording_action = QAction(LOAD_RECORDING_ACTION_NAME, parent=freemocap_main_window)
         self.load_existing_recording_action.setShortcut("Ctrl+O")
         self.load_existing_recording_action.triggered.connect(freemocap_main_window.open_load_existing_recording_dialog)
 

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, Dict
+from typing import Union, Dict, Any
 
 from freemocap.system.paths_and_files_names import (
     CENTER_OF_MASS_FOLDER_NAME,
@@ -145,13 +145,16 @@ class RecordingFolderStatusChecker:
         self.recording_info_model = recording_info_model
 
     @property
-    def status_check(self) -> Dict[str, bool]:
+    def status_check(self) -> Dict[str, Union[bool, str, float]]:
         return {
             'synchronized_videos_status_check': self.check_synchronized_videos_status(),
             'data2d_status_check': self.check_data2d_status(),
             'data3d_status_check': self.check_data3d_status(),
             'center_of_mass_data_status_check': self.check_center_of_mass_data_status(),
             'blender_file_status_check': self.check_blender_file_status(), }
+            # number of cameras
+            # number of frames
+            # mean of reprojection error
 
     def check_synchronized_videos_status(self) -> bool:
         try:

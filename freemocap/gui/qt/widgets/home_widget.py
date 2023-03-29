@@ -69,10 +69,10 @@ class HomeWidget(QWidget):
 
         self._layout.addStretch(1)
 
-        send_pings_string = "Send ping to devs to let us know when you make a new session (being able to show that people are using this thing will help us get funding for this project :D )"
+        send_pings_string = "Send User Pings"
         self._send_pings_checkbox = QCheckBox(send_pings_string)
         self._send_pings_checkbox.setChecked(True)
-        self._layout.addWidget(self._send_pings_checkbox)
+        self._layout.addWidget(self._send_pings_checkbox, alignment=Qt.AlignmentFlag.AlignCenter)
 
         privacy_policy_link_string = '<a href="https://freemocap.readthedocs.io/en/latest/" style="color: white;">Click here to view our privacy policy</a>'
         self._privacy_policy_link = QLabel(privacy_policy_link_string)

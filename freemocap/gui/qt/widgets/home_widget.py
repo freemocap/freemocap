@@ -74,6 +74,11 @@ class HomeWidget(QWidget):
         self._send_pings_checkbox.setChecked(True)
         self._layout.addWidget(self._send_pings_checkbox)
 
+        privacy_policy_link_string = '<a href="https://freemocap.readthedocs.io/en/latest/" style="color: white;">Click here to view our privacy policy</a>'
+        self._privacy_policy_link = QLabel(privacy_policy_link_string)
+        self._privacy_policy_link.setOpenExternalLinks(True)
+        self._layout.addWidget(self._privacy_policy_link, alignment=Qt.AlignmentFlag.AlignCenter)
+
         self.style().polish(self)
 
     def _welcome_to_freemocap_title(self):

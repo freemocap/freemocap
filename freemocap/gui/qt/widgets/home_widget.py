@@ -69,7 +69,7 @@ class HomeWidget(QWidget):
 
         self._layout.addStretch(1)
 
-        send_pings_string = "Send User Pings"
+        send_pings_string = "Send anonymous usage information"
         self._send_pings_checkbox = QCheckBox(send_pings_string)
         self._send_pings_checkbox.setChecked(True)
         self._layout.addWidget(self._send_pings_checkbox, alignment=Qt.AlignmentFlag.AlignCenter)

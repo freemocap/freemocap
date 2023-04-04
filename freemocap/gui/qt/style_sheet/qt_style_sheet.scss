@@ -11,7 +11,6 @@ $tree-primary: #7983b1;
 $tree-secondary: #a3b1ed;
 $plain-white: white;
 
-
 * {
     font-family: "Dosis", sans-serif;
     /*font-size: 12px;*/
@@ -23,13 +22,8 @@ QGroupBox {
     border-radius: 4px;
     margin-top: 10px;
     font-weight: bold;
-}
-QGroupBox{
     background-color: $skelly-bone-blue;
 }
-//QGroupBox[calibration_videos_radio_button_checked=true] {
-//    background-color: $laser-red;
-//}
 
 QStatusBar {
     color: $freemocap-green;
@@ -135,7 +129,7 @@ QLineEdit {
     border-radius: 4px;
     padding: 0 8px;
     color: $dark-charcoal;
-
+    background-color: $plain-white;
 }
 QLineEdit:disabled {
     color: $dark-charcoal;
@@ -144,7 +138,6 @@ QLineEdit:disabled {
 
 QTreeView {
     background-color: $tree-primary;
-    alternate-background-color: $tree-secondary;
     color: $plain-white;
     font-weight: bold;
     font-family: "Roboto", sans-serif;
@@ -169,3 +162,5 @@ LogViewWidget {
     font-size: 12px;
     padding: 8px;
 }
+
+

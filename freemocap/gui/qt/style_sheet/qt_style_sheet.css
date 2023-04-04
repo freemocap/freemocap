@@ -98,11 +98,11 @@ QLineEdit {
 
 QLineEdit:disabled {
   color: #333333;
-  background-color: #29394a; }
+  background-color: #687e90; }
 
 QTreeView {
   background-color: #7983b1;
-  color: white;
+  color: black;
   font-weight: bold;
   font-family: "Roboto", sans-serif;
   font-size: 12px; }

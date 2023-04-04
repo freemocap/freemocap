@@ -60,6 +60,7 @@ class Actions:
         self.open_docs_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://freemocap.readthedocs.io/en/latest/")))
         
         self.about_us_action = QAction(ABOUT_US_ACTION_NAME, parent=freemocap_main_window)
+        self.about_us_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://freemocap.org/about-us.html")))
 
         # # Navigation
         # show_camera_control_panel_action = QAction("&1 - Show Camera Control Panel", parent=main_window)

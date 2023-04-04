@@ -1,6 +1,4 @@
 from PyQt6.QtWidgets import QMainWindow, QMenuBar
-from PyQt6.QtGui import QAction, QDesktopServices
-from PyQt6.QtCore import QUrl
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 
 

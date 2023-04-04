@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QMainWindow, QMenuBar
-
+from PyQt6.QtGui import QAction, QDesktopServices
+from PyQt6.QtCore import QUrl
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 
 
@@ -33,24 +34,18 @@ class MenuBar(QMenuBar):
         # navigation_menu.addAction(self._show_calibrate_capture_volume_panel_action)
         # navigation_menu.addAction(self._show_motion_capture_videos_panel_action)
         #
-        # # help menu
-        # help_menu = QMenu("&Help", parent=self)
-        # self.addMenu(help_menu)
-        # help_menu.setEnabled(False)
+        # help menu
+        help_menu = self.addMenu("&Help")
+
+        help_menu.addAction(actions.open_docs_action)
+        help_menu.addAction(actions.about_us_action)
         #
-        # help_menu.addAction(self._open_docs_action)
-        # help_menu.addAction(self._about_us_action)
-        #
-        # # support menu
-        # support_menu = QMenu(
-        #     "\U00002665 &Support the FreeMoCap Project", parent=self
-        # )
-        # support_menu.setEnabled(False)
-        # self.addMenu(support_menu)
-        #
-        # support_menu.addAction(self._donate_action)
-        # support_menu.addAction(self._send_usage_statistics_action)
-        # support_menu.addAction(self._user_survey_action)
+        # support menu
+        support_menu = self.addMenu("&Support the Freemocap Project")
+   
+        support_menu.addAction(actions.donate_action)
+        # support_menu.addAction(actions.send_usage_statistics_action)
+        # support_menu.addAction(actions.user_survey_action)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QDesktopServices
+from PyQt6.QtCore import QUrl
 
 
 CREATE_NEW_RECORDING_ACTION_NAME = "New Recording"
@@ -8,6 +9,11 @@ IMPORT_VIDEOS_ACTION_NAME = "Import Videos"
 KILL_THREADS_AND_PROCESSES_ACTION_NAME = "Kill Threads and Processes"
 REBOOT_GUI_ACTION_NAME = "Reboot GUI"
 EXIT_ACTION_NAME = "Exit"
+
+DOCUMENTATION_ACTION_NAME = "Open Documentation"
+ABOUT_US_ACTION_NAME = "About Us"
+
+DONATE_ACTION_NAME = "Donate to Freemocap"
 
 
 class Actions:
@@ -49,10 +55,12 @@ class Actions:
         self.exit_action.setShortcut("Ctrl+Q")
         self.exit_action.triggered.connect(freemocap_main_window.close)
 
-        # # Help
-        # open_docs_action = QAction("Open  &Documentation", parent=main_window)
-        # about_us_action = QAction("&About Us", parent=main_window)
-        #
+        # Help
+        self.open_docs_action = QAction(DOCUMENTATION_ACTION_NAME, parent=freemocap_main_window)
+        self.open_docs_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://freemocap.readthedocs.io/en/latest/")))
+        
+        self.about_us_action = QAction(ABOUT_US_ACTION_NAME, parent=freemocap_main_window)
+
         # # Navigation
         # show_camera_control_panel_action = QAction("&1 - Show Camera Control Panel", parent=main_window)
         # show_camera_control_panel_action.setShortcut("Ctrl+1")
@@ -65,7 +73,8 @@ class Actions:
         # show_motion_capture_videos_panel_action = QAction("&3 - Show Motion Capture Videos Panel", parent=main_window)
         # show_motion_capture_videos_panel_action.setShortcut("Ctrl+3")
         #
-        # # Support
-        # donate_action = QAction("&Donate", parent=main_window)
-        # send_usage_statistics_action = QAction("Send &User Statistics", parent=main_window)
-        # user_survey_action = QAction("&User Survey", parent=main_window)
+        # Support
+        self.donate_action = QAction(DONATE_ACTION_NAME, parent=freemocap_main_window)
+        self.donate_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://freemocap.org/about-us.html#donate")))
+        # self.send_usage_statistics_action = QAction("Send &User Statistics", parent=freemocap_main_window)
+        # self.user_survey_action = QAction("&User Survey", parent=freemocap_main_window)

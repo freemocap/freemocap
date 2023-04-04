@@ -70,7 +70,7 @@ class CameraControllerGroupBox(QGroupBox):
 
         vbox.addLayout(hbox)
 
-        lag_note_label = QLabel("NOTE: Use fewer cameras or decrease resolution if you are experiencing lag")
+        lag_note_label = QLabel("NOTE: If you experience frame lag, decrease the resolution or use fewer cameras. We are working on a fix for this")
         vbox.addWidget(lag_note_label)
 
         return vbox

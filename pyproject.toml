@@ -68,7 +68,7 @@ keywords = [
 
 #dynamic = ["dependencies"]
 dependencies = [
-    "skellycam==2023.2.1076",
+    "skellycam==2023.4.1080",
     "skelly_viewer",
     'mediapipe; platform_system != "Darwin" or platform_machine != "arm64"',
     'mediapipe-silicon; platform_system == "Darwin" and platform_machine == "arm64"',

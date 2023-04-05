@@ -115,6 +115,10 @@ WelcomeScreenButton[recommended_next = true] {
 QLabel {
     font-size: 14px;
     color: $dark-charcoal;
+
+    QTreeView & {
+        color: $plain-black;
+  }
 }
 
 QLabel:disabled {

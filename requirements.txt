@@ -1,4 +1,4 @@
-skellycam==2023.2.1076
+skellycam==2023.4.1076
 skelly_viewer==2023.3.1017
 mediapipe==0.8.11; platform_system != "Darwin" or platform.machine != 'arm64'
 mediapipe-silicon==0.8.11; platform_system == "Darwin" and platform.machine == 'arm64'

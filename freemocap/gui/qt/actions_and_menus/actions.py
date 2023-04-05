@@ -10,7 +10,7 @@ KILL_THREADS_AND_PROCESSES_ACTION_NAME = "Kill Threads and Processes"
 REBOOT_GUI_ACTION_NAME = "Reboot GUI"
 EXIT_ACTION_NAME = "Exit"
 
-DOCUMENTATION_ACTION_NAME = "Open Documentation"
+OPEN_DOCS_ACTION_NAME = "Open Documentation"
 ABOUT_US_ACTION_NAME = "About Us"
 
 DONATE_ACTION_NAME = "Donate to Freemocap"

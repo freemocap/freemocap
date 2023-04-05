@@ -11,7 +11,7 @@ REBOOT_GUI_ACTION_NAME = "Reboot GUI"
 EXIT_ACTION_NAME = "Exit"
 
 OPEN_DOCS_ACTION_NAME = "Open Documentation"
-ABOUT_US_ACTION_NAME = "About Us"
+FREEMOCAP_FOUNDATION_ACTION_NAME = "Freemocap Foundation"
 
 DONATE_ACTION_NAME = "Donate to Freemocap"
 
@@ -56,11 +56,11 @@ class Actions:
         self.exit_action.triggered.connect(freemocap_main_window.close)
 
         # Help
-        self.open_docs_action = QAction(DOCUMENTATION_ACTION_NAME, parent=freemocap_main_window)
+        self.open_docs_action = QAction(OPEN_DOCS_ACTION_NAME, parent=freemocap_main_window)
         self.open_docs_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://freemocap.readthedocs.io/en/latest/")))
         
-        self.about_us_action = QAction(ABOUT_US_ACTION_NAME, parent=freemocap_main_window)
-        self.about_us_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://freemocap.org/about-us.html")))
+        self.freemocap_foundation_action = QAction(FREEMOCAP_FOUNDATION_ACTION_NAME, parent=freemocap_main_window)
+        self.freemocap_foundation_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://freemocap.org/about-us.html")))
 
         # # Navigation
         # show_camera_control_panel_action = QAction("&1 - Show Camera Control Panel", parent=main_window)

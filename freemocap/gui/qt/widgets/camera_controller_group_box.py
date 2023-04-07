@@ -50,6 +50,8 @@ class CameraControllerGroupBox(QGroupBox):
         self._layout.addWidget(self._skellycam_controller)
 
     def _create_videos_will_save_to_layout(self):
+        vbox = QVBoxLayout()
+
         hbox = QHBoxLayout()
         self._recording_string_tag_line_edit = QLineEdit(parent=self)
         self._recording_string_tag_line_edit.setPlaceholderText("(Optional)")
@@ -65,7 +67,13 @@ class CameraControllerGroupBox(QGroupBox):
         self._recording_path_label = QLabel(f"{self.get_new_recording_path()}")
         self._recording_path_label.setStyleSheet("font-family: monospace; font-size: 10px;")
         hbox.addWidget(self._recording_path_label)
-        return hbox
+
+        vbox.addLayout(hbox)
+
+        lag_note_label = QLabel("NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras.\nWe are working on a fix which should be done 'soon' (written: 2023-04-05)")
+        vbox.addWidget(lag_note_label)
+
+        return vbox
 
     def _create_mocap_recording_option_layout(self):
         hbox = QHBoxLayout()

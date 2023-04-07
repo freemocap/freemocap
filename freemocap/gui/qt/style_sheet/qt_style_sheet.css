@@ -1,4 +1,3 @@
- /* If you want to update the appearance of the GUI, please make changes to the `qt_stylesheet.scss` file. */
 * {
   font-family: "Dosis", sans-serif;
   /*font-size: 12px;*/
@@ -8,9 +7,7 @@ QGroupBox {
   border: 1px solid #254342;
   border-radius: 4px;
   margin-top: 10px;
-  font-weight: bold; }
-
-QGroupBox {
+  font-weight: bold;
   background-color: #a4d6d9; }
 
 QStatusBar {
@@ -88,6 +85,8 @@ WelcomeScreenButton[recommended_next=true] {
 QLabel {
   font-size: 14px;
   color: #333333; }
+  QTreeView QLabel {
+    color: black; }
 
 QLabel:disabled {
   color: #a4d6d9; }
@@ -96,16 +95,16 @@ QLineEdit {
   border: 1px solid #29394a;
   border-radius: 4px;
   padding: 0 8px;
-  color: #333333; }
+  color: #333333;
+  background-color: white; }
 
 QLineEdit:disabled {
   color: #333333;
-  background-color: #29394a; }
+  background-color: #687e90; }
 
 QTreeView {
   background-color: #7983b1;
-  alternate-background-color: #a3b1ed;
-  color: white;
+  color: black;
   font-weight: bold;
   font-family: "Roboto", sans-serif;
   font-size: 12px; }

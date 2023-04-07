@@ -78,10 +78,10 @@ def fill_gaps_in_freemocap_data(inputData_frame_marker_xyz: np.ndarray) -> np.nd
             df.fillna(method="bfill", axis=0, inplace=True)
             df.fillna(method="ffill", axis=0, inplace=True)
 
-            if np.any(np.isnan(df.to_numpy())):
-                raise ValueError("Nans still present after interpolation")
-            if np.any(np.isinf(df.to_numpy())):
-                raise ValueError("Infs still present after interpolation")
+            # if np.any(np.isnan(df.to_numpy())):
+            #     raise ValueError("Nans still present after interpolation")
+            # if np.any(np.isinf(df.to_numpy())):
+            #     raise ValueError("Infs still present after interpolation")
 
             interpolatedData_frame_marker_xyz[:, marker_number, :] = df.to_numpy()
 
@@ -99,21 +99,25 @@ def butterworth_lowpass_zerolag_filter(data, cutoff, sampling_rate, order):
     return y
 
 
-def butterworth_filter_skeleton(skeleton_3d_data, cutoff, sampling_rate, order):
+def butterworth_filter_skeleton(skeleton_frame_marker_xyz, cutoff, sampling_rate, order):
     """Take in a 3d skeleton numpy array and calculate_center_of_mass a low pass butterworth filter on each marker in the data"""
 
-    butterworth_filtered_data = skeleton_3d_data.copy()
+    butterworth_filtered_data = skeleton_frame_marker_xyz.copy()
 
     for marker_number in range(NUMBER_OF_MEDIAPIPE_BODY_MARKERS):
-        for dimension in range(3):
+        trajectory_xyz = skeleton_frame_marker_xyz[:, marker_number, :]
+        if np.any(np.isnan(trajectory_xyz)):
+            logger.warning(f"Trajectory number {marker_number} has nans, skipping butterworth filter")
+            continue
+        for dimension in range(trajectory_xyz.shape[1]):
             butterworth_filtered_data[:, marker_number, dimension] = butterworth_lowpass_zerolag_filter(
-                skeleton_3d_data[:, marker_number, dimension],
+                trajectory_xyz[:,dimension],
                 cutoff,
                 sampling_rate,
                 order,
             )
 
-    assert skeleton_3d_data.shape == butterworth_filtered_data.shape
+    assert skeleton_frame_marker_xyz.shape == butterworth_filtered_data.shape
 
     return butterworth_filtered_data
 

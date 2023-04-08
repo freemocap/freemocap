@@ -210,14 +210,16 @@ class RecordingFolderStatusChecker:
         return Path(self.recording_info_model.calibration_toml_path).is_file()
 
     def get_number_of_mp4s_in_synched_videos_directory(self) -> float:
-        synchronized_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path)
-        video_count = 0.0
 
+        synchronized_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path)
+
+        if not synchronized_directory_path.exists():
+            return 0
+
+        video_count = 0
         for file in synchronized_directory_path.iterdir():
             if file.is_file() and file.suffix.lower() == '.mp4':
                 video_count += 1
-
-        logger.info(f"Number of `.mp4`'s in {self.recording_info_model.synchronized_videos_folder_path}: {video_count}")
         return video_count
 
     def get_number_of_frames_in_videos(self):

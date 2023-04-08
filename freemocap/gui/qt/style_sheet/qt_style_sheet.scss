@@ -6,6 +6,7 @@ $disabled-laser-red: #8c5454;
 $freemocap-green: #365d5f;
 $freemocap-dark-green: #254342;
 $button-blue: #29394a;
+$tree-heading-blue: #5793cf;
 $disabled-button-blue: #687e90;
 $tree-primary: #7983b1;
 $tree-secondary: #a3b1ed;
@@ -146,7 +147,7 @@ QTreeView {
 }
 
 QTreeView::item:has-children {
-    background-color: $button-blue;
+    background-color: $tree-heading-blue;
     color: $plain-white;
 }
 

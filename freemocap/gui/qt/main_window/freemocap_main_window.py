@@ -95,7 +95,7 @@ class FreemocapMainWindow(QMainWindow):
         dummy_widget.setLayout(self._layout)
         self.setCentralWidget(dummy_widget)
 
-        self._scss_file_watcher = self._set_up_stylesheet()
+        self._css_file_watcher = self._set_up_stylesheet()
 
         self._freemocap_data_folder_path = freemocap_data_folder_path
         self._pipedream_pings = pipedream_pings
@@ -203,7 +203,8 @@ class FreemocapMainWindow(QMainWindow):
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
         scss_file_watcher = SCSSFileWatcher(path_to_scss_file=get_scss_stylesheet_path(), path_to_css_file=get_css_stylesheet_path(), parent=self)
-        return scss_file_watcher
+        css_file_watcher = CSSFileWatcher(path_to_css_file=get_css_stylesheet_path(), parent=self)
+        return css_file_watcher
 
     def _create_new_synchronized_videos_folder(self) -> str:
         new_recording_folder_path = self._controller_group_box.get_new_recording_path()

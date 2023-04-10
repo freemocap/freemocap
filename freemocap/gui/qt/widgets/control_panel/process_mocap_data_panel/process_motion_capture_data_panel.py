@@ -10,7 +10,7 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
-    create_mediapipe_parameter_group, create_3d_triangulation_prarameter_group, create_post_processing_parameter_group,
+    create_mediapipe_parameter_group, create_3d_triangulation_prarameter_group, create_post_processing_parameter_group, extract_parameter_model_from_parameter_tree
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
@@ -66,7 +66,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._parameter_tree_widget = ParameterTree(parent=self, showHeader=False)
         self._layout.addWidget(self._parameter_tree_widget)
 
-        self._add_parameters_to_parameter_tree_widget(
+        self._parameter_group = self._add_parameters_to_parameter_tree_widget(
             self._parameter_tree_widget,
             session_processing_parameter_model=self._recording_processing_parameter_model,
         )
@@ -143,21 +143,34 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def _extract_session_parameter_model_from_parameter_tree(
             self,
     ) -> RecordingProcessingParameterModel:
-        # rec = extract_mediapipe_parameter_model_from_parameter_tree(self._parameter_tree_widget)
-        logger.debug("TODO - extract session parameter model from parameter tree")
-        rec = self._recording_processing_parameter_model
-        rec.recording_info_model = self._get_active_recording_info()
+        self.parameter_values = self._get_all_parameter_values(self._parameter_group)
+        recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(self.parameter_values)
+        # logger.debug("TODO - extract session parameter model from parameter tree")
+        # rec = self._recording_processing_parameter_model
+        recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
 
         if self._calibration_control_panel.calibration_toml_path:
-            rec.recording_info_model.calibration_toml_path = self._calibration_control_panel.calibration_toml_path
+            recording_processing_parameter_model.recording_info_model.calibration_toml_path = self._calibration_control_panel.calibration_toml_path
         else:
-            rec.recording_info_model.calibration_toml_path = self._calibration_control_panel.open_load_camera_calibration_toml_dialog()
+            recording_processing_parameter_model.recording_info_model.calibration_toml_path = self._calibration_control_panel.open_load_camera_calibration_toml_dialog()
 
-        if not rec.recording_info_model.calibration_toml_path:
+        if not recording_processing_parameter_model.recording_info_model.calibration_toml_path:
             logger.error(
                 "No calibration TOML selected - Processing will fail at the '3d triangulation' step (but it will get through the 'Tracking things in 2d images' step).")
 
-        return rec
+        return recording_processing_parameter_model
+    
+    def _get_all_parameter_values(self, parameter_object, value_dictionary=None):
+        if value_dictionary is None:
+            value_dictionary = {}
+
+        for child in parameter_object.children():
+            if child.hasChildren():
+                self._get_all_parameter_values(child, value_dictionary)
+            else:
+                value_dictionary[child.name()] = child.value()
+        return value_dictionary
+
 
     def _create_new_skip_this_step_parameter(self):
         parameter = Parameter.create(

@@ -137,31 +137,35 @@ def create_post_processing_parameter_group(
     )
 
 
-def extract_mediapipe_parameter_model_from_parameter_tree(
-        parameter_tree: ParameterTree,
+def extract_parameter_model_from_parameter_tree(
+        parameter_values_dictionary: dict,
 ) -> RecordingProcessingParameterModel:
+    model_complexity_integer = get_integer_from_model_complexity(parameter_values_dictionary[MODEL_COMPLEXITY])
     return RecordingProcessingParameterModel(
         mediapipe_parameters_model=MediapipeParametersModel(
-            model_complexity=parameter_tree.param(MEDIAPIPE_TREE_NAME).param(MODEL_COMPLEXITY).value(),
-            min_detection_confidence=parameter_tree.param(MEDIAPIPE_TREE_NAME).param(
-                MINIMUM_DETECTION_CONFIDENCE).value(),
-            min_tracking_confidence=parameter_tree.param(MEDIAPIPE_TREE_NAME).param(
-                MINIUMUM_TRACKING_CONFIDENCE).value(),
-            static_image_mode=parameter_tree.param(MEDIAPIPE_TREE_NAME).param(STATIC_IMAGE_MODE).value(), ),
+            model_complexity=model_complexity_integer,
+            min_detection_confidence=parameter_values_dictionary[MINIMUM_DETECTION_CONFIDENCE],
+            min_tracking_confidence=parameter_values_dictionary[MINIUMUM_TRACKING_CONFIDENCE],
+            static_image_mode=parameter_values_dictionary[STATIC_IMAGE_MODE], ),
 
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
-            confidence_threshold_cutoff=parameter_tree.param(ANIPOSE_TREE_NAME).param(
-                ANIPOSE_CONFIDENCE_CUTOFF).value(),
-            use_triangulate_ransac_method=parameter_tree.param(ANIPOSE_TREE_NAME).param(USE_RANSAC_METHOD).value(),
+            confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
+            use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
             ),
         post_processing_parameters_model=PostProcessingParametersModel(
-            framerate=parameter_tree.param(BUTTERWORTH_FILTER_TREE_NAME).param(POST_PROCESSING_FRAME_RATE).value(),
+            framerate=parameter_values_dictionary[POST_PROCESSING_FRAME_RATE],
             butterworth_filter_parameters=ButterworthFilterParametersModel(
-                sampling_rate=parameter_tree.param(BUTTERWORTH_FILTER_TREE_NAME).param(
-                    POST_PROCESSING_FRAME_RATE).value(),
-                cutoff_frequency=parameter_tree.param(BUTTERWORTH_FILTER_TREE_NAME).param(
-                    BUTTERWORTH_CUTOFF_FREQUENCY).value(),
-                order=parameter_tree.param(BUTTERWORTH_FILTER_TREE_NAME).param(BUTTERWORTH_ORDER).value(),
+                sampling_rate=parameter_values_dictionary[POST_PROCESSING_FRAME_RATE],
+                cutoff_frequency=parameter_values_dictionary[BUTTERWORTH_CUTOFF_FREQUENCY],
+                order=parameter_values_dictionary[BUTTERWORTH_ORDER],
                 ),
             )
-        ) #thanks github co-pilot lol
+        )
+
+def get_integer_from_model_complexity(model_complexity_value: str):
+    model_complexity_dictionary = {
+        "0 (Fastest/Least accurate)": 0,
+        "1 (Middle ground)": 1,
+        "2 (Slowest/Most accurate)": 2,
+    }
+    return model_complexity_dictionary[model_complexity_value]

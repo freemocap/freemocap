@@ -145,8 +145,6 @@ class ProcessMotionCaptureDataPanel(QWidget):
     ) -> RecordingProcessingParameterModel:
         self.parameter_values = self._get_all_parameter_values(self._parameter_group)
         recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(self.parameter_values)
-        # logger.debug("TODO - extract session parameter model from parameter tree")
-        # rec = self._recording_processing_parameter_model
         recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
 
         if self._calibration_control_panel.calibration_toml_path:
@@ -183,15 +181,19 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         return parameter
 
-    def disable_this_parameter_group(self, parameter, changes):
-        logger.debug(f"TODO - disable parameter group when 'skip this step?' is checked")
-        pass
-        # skip_this_step_bool = parameter.value()
-        # parameter_group = parameter.parent()
-        # for child in parameter_group.children():
-        #     if child.name() != "Skip this step?":
-        #         logger.debug(f"Disabling {child.name()}")
-        #         child.setOpts(enabled=not skip_this_step_bool)
+    def disable_this_parameter_group(self, parameter):
+        skip_this_step_bool = parameter.value()
+        parameter_group = parameter.parent()
+        for child in parameter_group.children():
+            if child.name() != "Skip this step?":
+                logger.debug(f"{'Enabling' if not skip_this_step_bool else 'Disabling'} {child.name()}")
+                self.set_parameter_enabled(child, not skip_this_step_bool)
+
+    def set_parameter_enabled(self, parameter, enabled):
+        parameter.setOpts(enabled=enabled)
+        if parameter.hasChildren():
+            for child in parameter.children():
+                self.set_parameter_enabled(child, enabled)
 
     def _launch_process_motion_capture_data_thread_worker(self):
         logger.debug("Launching process motion capture data process")

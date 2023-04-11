@@ -141,6 +141,7 @@ def extract_parameter_model_from_parameter_tree(
         parameter_values_dictionary: dict,
 ) -> RecordingProcessingParameterModel:
     model_complexity_integer = get_integer_from_model_complexity(parameter_values_dictionary[MODEL_COMPLEXITY])
+    
     return RecordingProcessingParameterModel(
         mediapipe_parameters_model=MediapipeParametersModel(
             model_complexity=model_complexity_integer,

@@ -28,6 +28,12 @@ MODEL_COMPLEXITY = "Model Complexity"
 
 MEDIAPIPE_TREE_NAME = "Mediapipe"
 
+SKIP_2D_IMAGE_TRACKING_NAME = "Skip 2d image tracking?"
+
+SKIP_3D_TRIANGULATION = "Skip 3d triangulation?"
+
+SKIP_POST_PROCESSING = "Skip post processing?"
+
 
 def create_mediapipe_parameter_group(
         parameter_model: MediapipeParametersModel = MediapipeParametersModel(),
@@ -141,17 +147,19 @@ def extract_parameter_model_from_parameter_tree(
         parameter_values_dictionary: dict,
 ) -> RecordingProcessingParameterModel:
     model_complexity_integer = get_integer_from_model_complexity(parameter_values_dictionary[MODEL_COMPLEXITY])
-    
+
     return RecordingProcessingParameterModel(
         mediapipe_parameters_model=MediapipeParametersModel(
             model_complexity=model_complexity_integer,
             min_detection_confidence=parameter_values_dictionary[MINIMUM_DETECTION_CONFIDENCE],
             min_tracking_confidence=parameter_values_dictionary[MINIUMUM_TRACKING_CONFIDENCE],
-            static_image_mode=parameter_values_dictionary[STATIC_IMAGE_MODE], ),
+            static_image_mode=parameter_values_dictionary[STATIC_IMAGE_MODE],
+            skip_2d_image_tracking=parameter_values_dictionary[SKIP_2D_IMAGE_TRACKING_NAME], ),
 
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
+            skip_3d_triangulation=parameter_values_dictionary[SKIP_3D_TRIANGULATION]
             ),
         post_processing_parameters_model=PostProcessingParametersModel(
             framerate=parameter_values_dictionary[POST_PROCESSING_FRAME_RATE],
@@ -160,6 +168,7 @@ def extract_parameter_model_from_parameter_tree(
                 cutoff_frequency=parameter_values_dictionary[BUTTERWORTH_CUTOFF_FREQUENCY],
                 order=parameter_values_dictionary[BUTTERWORTH_ORDER],
                 ),
+            skip_post_processing=parameter_values_dictionary[SKIP_POST_PROCESSING],
             )
         )
 

@@ -10,7 +10,13 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
-    create_mediapipe_parameter_group, create_3d_triangulation_prarameter_group, create_post_processing_parameter_group, extract_parameter_model_from_parameter_tree
+    create_mediapipe_parameter_group, 
+    create_3d_triangulation_prarameter_group, 
+    create_post_processing_parameter_group, 
+    extract_parameter_model_from_parameter_tree,
+    SKIP_2D_IMAGE_TRACKING_NAME,
+    SKIP_3D_TRIANGULATION,
+    SKIP_POST_PROCESSING,
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
@@ -109,16 +115,16 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="2d Image Trackers",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(),
+                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_2D_IMAGE_TRACKING_NAME),
                         create_mediapipe_parameter_group(session_processing_parameter_model.mediapipe_parameters_model),
                     ],
                     tip="Methods for tracking 2d points in images (e.g. mediapipe, deeplabcut(TODO), openpose(TODO), etc ...)",
                 ),
                 dict(
-                    name="3d triangulation methods",
+                    name="3d Triangulation Methods",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(),
+                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_3D_TRIANGULATION),
                         create_3d_triangulation_prarameter_group(
                             session_processing_parameter_model.anipose_triangulate_3d_parameters_model
                         ),
@@ -129,7 +135,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="Post Processing (data cleaning)",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(),
+                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_POST_PROCESSING),
                         create_post_processing_parameter_group(
                             session_processing_parameter_model.post_processing_parameters_model
                         ),
@@ -170,9 +176,9 @@ class ProcessMotionCaptureDataPanel(QWidget):
         return value_dictionary
 
 
-    def _create_new_skip_this_step_parameter(self):
+    def _create_new_skip_this_step_parameter(self, skip_step_name: str):
         parameter = Parameter.create(
-            name="Skip this step?",
+            name=skip_step_name,
             type="bool",
             value=False,
             tip="If you have already run this step, you can skip it." "re-running it will overwrite the existing data.",
@@ -185,15 +191,15 @@ class ProcessMotionCaptureDataPanel(QWidget):
         skip_this_step_bool = parameter.value()
         parameter_group = parameter.parent()
         for child in parameter_group.children():
-            if child.name() != "Skip this step?":
-                logger.debug(f"{'Enabling' if not skip_this_step_bool else 'Disabling'} {child.name()}")
+            if child.name().split(" ")[0] != "Skip":
+                logger.debug(f"{'Enabling' if not skip_this_step_bool else 'Disabling'} {child.name()}") 
                 self.set_parameter_enabled(child, not skip_this_step_bool)
 
-    def set_parameter_enabled(self, parameter, enabled):
-        parameter.setOpts(enabled=enabled)
+    def set_parameter_enabled(self, parameter, enabled_bool):
+        parameter.setOpts(enabled=enabled_bool)
         if parameter.hasChildren():
             for child in parameter.children():
-                self.set_parameter_enabled(child, enabled)
+                self.set_parameter_enabled(child, enabled_bool)
 
     def _launch_process_motion_capture_data_thread_worker(self):
         logger.debug("Launching process motion capture data process")

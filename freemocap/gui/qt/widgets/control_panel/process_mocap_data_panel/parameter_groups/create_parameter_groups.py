@@ -144,8 +144,10 @@ def create_post_processing_parameter_group(
 
 
 def extract_parameter_model_from_parameter_tree(
-        parameter_values_dictionary: dict,
+        parameter_object,
 ) -> RecordingProcessingParameterModel:
+    parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
+
     model_complexity_integer = get_integer_from_model_complexity(parameter_values_dictionary[MODEL_COMPLEXITY])
 
     return RecordingProcessingParameterModel(
@@ -179,3 +181,14 @@ def get_integer_from_model_complexity(model_complexity_value: str):
         "2 (Slowest/Most accurate)": 2,
     }
     return model_complexity_dictionary[model_complexity_value]
+
+def extract_processing_parameter_model_from_tree(parameter_object, value_dictionary: dict=None):
+    if value_dictionary is None:
+        value_dictionary = {}
+
+    for child in parameter_object.children():
+        if child.hasChildren():
+            extract_processing_parameter_model_from_tree(child, value_dictionary)
+        else:
+            value_dictionary[child.name()] = child.value()
+    return value_dictionary

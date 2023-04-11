@@ -146,11 +146,10 @@ class ProcessMotionCaptureDataPanel(QWidget):
             ],
         )
 
-    def _extract_session_parameter_model_from_parameter_tree(
+    def _create_session_parameter_model(
             self,
     ) -> RecordingProcessingParameterModel:
-        self.parameter_values = self._get_all_parameter_values(self._parameter_group)
-        recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(self.parameter_values)
+        recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(parameter_object=self._parameter_group)
         recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
 
         if self._calibration_control_panel.calibration_toml_path:
@@ -163,17 +162,6 @@ class ProcessMotionCaptureDataPanel(QWidget):
                 "No calibration TOML selected - Processing will fail at the '3d triangulation' step (but it will get through the 'Tracking things in 2d images' step).")
 
         return recording_processing_parameter_model
-    
-    def _get_all_parameter_values(self, parameter_object, value_dictionary=None):
-        if value_dictionary is None:
-            value_dictionary = {}
-
-        for child in parameter_object.children():
-            if child.hasChildren():
-                self._get_all_parameter_values(child, value_dictionary)
-            else:
-                value_dictionary[child.name()] = child.value()
-        return value_dictionary
 
 
     def _create_new_skip_this_step_parameter(self, skip_step_name: str):
@@ -203,7 +191,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _launch_process_motion_capture_data_thread_worker(self):
         logger.debug("Launching process motion capture data process")
-        session_parameter_model = self._extract_session_parameter_model_from_parameter_tree()
+        session_parameter_model = self._create_session_parameter_model()
         session_parameter_model.recording_info_model = self._get_active_recording_info()
 
         if session_parameter_model.recording_info_model is None:

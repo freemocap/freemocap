@@ -15,8 +15,8 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
     create_post_processing_parameter_group, 
     extract_parameter_model_from_parameter_tree,
     SKIP_2D_IMAGE_TRACKING_NAME,
-    SKIP_3D_TRIANGULATION,
-    SKIP_POST_PROCESSING,
+    SKIP_3D_TRIANGULATION_NAME,
+    SKIP_BUTTERWORTH_FILTER_NAME,
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
@@ -124,7 +124,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="3d Triangulation Methods",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_3D_TRIANGULATION),
+                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_3D_TRIANGULATION_NAME),
                         create_3d_triangulation_prarameter_group(
                             session_processing_parameter_model.anipose_triangulate_3d_parameters_model
                         ),
@@ -135,7 +135,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="Post Processing (data cleaning)",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_POST_PROCESSING),
+                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_BUTTERWORTH_FILTER_NAME),
                         create_post_processing_parameter_group(
                             session_processing_parameter_model.post_processing_parameters_model
                         ),

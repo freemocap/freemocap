@@ -30,9 +30,9 @@ MEDIAPIPE_TREE_NAME = "Mediapipe"
 
 SKIP_2D_IMAGE_TRACKING_NAME = "Skip 2d image tracking?"
 
-SKIP_3D_TRIANGULATION = "Skip 3d triangulation?"
+SKIP_3D_TRIANGULATION_NAME = "Skip 3d triangulation?"
 
-SKIP_POST_PROCESSING = "Skip post processing?"
+SKIP_BUTTERWORTH_FILTER_NAME = "Skip butterworth filter?"
 
 
 def create_mediapipe_parameter_group(
@@ -161,7 +161,7 @@ def extract_parameter_model_from_parameter_tree(
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
-            skip_3d_triangulation=parameter_values_dictionary[SKIP_3D_TRIANGULATION]
+            skip_3d_triangulation=parameter_values_dictionary[SKIP_3D_TRIANGULATION_NAME]
             ),
         post_processing_parameters_model=PostProcessingParametersModel(
             framerate=parameter_values_dictionary[POST_PROCESSING_FRAME_RATE],
@@ -170,7 +170,7 @@ def extract_parameter_model_from_parameter_tree(
                 cutoff_frequency=parameter_values_dictionary[BUTTERWORTH_CUTOFF_FREQUENCY],
                 order=parameter_values_dictionary[BUTTERWORTH_ORDER],
                 ),
-            skip_post_processing=parameter_values_dictionary[SKIP_POST_PROCESSING],
+            skip_butterworth_filter=parameter_values_dictionary[SKIP_BUTTERWORTH_FILTER_NAME],
             )
         )
 

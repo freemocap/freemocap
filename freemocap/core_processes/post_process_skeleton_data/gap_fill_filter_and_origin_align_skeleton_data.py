@@ -1029,7 +1029,8 @@ def are_there_feet_in_this_mediapipe_skeleton_data(skeleton3d_frame_landmark_xyz
 def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
         raw_skel3d_frame_marker_xyz: np.ndarray,
         skeleton_reprojection_error_fr_mar: np.ndarray,
-        path_to_folder_where_we_will_save_this_data: [str, Path],
+        path_to_folder_where_we_will_save_this_data: Union[str, Path],
+        skip_butterworth_filter: bool,
         # Filter the data, set the filtering options here
         sampling_rate: Union[float, int],
         cut_off: Union[float, int],
@@ -1043,12 +1044,15 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     # Interpolate the data
     processed_skel3d_frame_marker_xyz = fill_gaps_in_freemocap_data(raw_skel3d_frame_marker_xyz, )
 
-    logger.info(
-        f"Filtering data at with a {order}th order, zero-lag, low-pass Butterworth filter with a cut-off frequency of {cut_off} Hz..."
-    )
-    processed_skel3d_frame_marker_xyz = butterworth_filter_skeleton(
-        processed_skel3d_frame_marker_xyz, cut_off, sampling_rate, order
-    )
+    if skip_butterworth_filter:
+        logger.info("Skipping butterworth filter...")
+    else:
+        logger.info(
+            f"Filtering data at with a {order}th order, zero-lag, low-pass Butterworth filter with a cut-off frequency of {cut_off} Hz..."
+        )
+        processed_skel3d_frame_marker_xyz = butterworth_filter_skeleton(
+            processed_skel3d_frame_marker_xyz, cut_off, sampling_rate, order
+        )
 
     # # pin skeleton to origin (set to mean positin of skeletonin this recording)
     # zeroed_skeleton_data = butterworth_filtered_skeleton_data.copy()

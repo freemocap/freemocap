@@ -136,20 +136,18 @@ def process_recording_folder(
     rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz) 
 
 
-    if rec.post_processing_parameters_model.skip_post_processing:
-        skel3d_frame_marker_xyz = rotated_raw_skel3d_frame_marker_xyz
-    else:
-        logger.info("Gap-filling, butterworth filtering, origin aligning 3d skeletons, then calculating center of mass ...")
+    logger.info("Gap-filling, butterworth filtering, origin aligning 3d skeletons, then calculating center of mass ...")
 
-        skel3d_frame_marker_xyz = gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
-            raw_skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
-            skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
-            path_to_folder_where_we_will_save_this_data=rec.recording_info_model.output_data_folder_path,
-            sampling_rate=rec.post_processing_parameters_model.framerate,
-            cut_off=rec.post_processing_parameters_model.butterworth_filter_parameters.cutoff_frequency,
-            order=rec.post_processing_parameters_model.butterworth_filter_parameters.order,
-            reference_frame_number=None,
-        )
+    skel3d_frame_marker_xyz = gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
+        raw_skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
+        skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
+        path_to_folder_where_we_will_save_this_data=rec.recording_info_model.output_data_folder_path,
+        skip_butterworth_filter=rec.post_processing_parameters_model.skip_butterworth_filter,
+        sampling_rate=rec.post_processing_parameters_model.framerate,
+        cut_off=rec.post_processing_parameters_model.butterworth_filter_parameters.cutoff_frequency,
+        order=rec.post_processing_parameters_model.butterworth_filter_parameters.order,
+        reference_frame_number=None,
+    )
         
     assert test_mediapipe_3d_data_shape(
         synchronized_videos_folder=rec.recording_info_model.synchronized_videos_folder_path,

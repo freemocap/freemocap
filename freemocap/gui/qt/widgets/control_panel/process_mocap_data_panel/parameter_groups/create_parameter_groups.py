@@ -144,7 +144,7 @@ def create_post_processing_parameter_group(
 
 
 def extract_parameter_model_from_parameter_tree(
-        parameter_object,
+        parameter_object: Parameter,
 ) -> RecordingProcessingParameterModel:
     parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
 

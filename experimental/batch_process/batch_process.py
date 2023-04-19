@@ -1,0 +1,11 @@
+from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
+from freemocap.parameter_info_models.recording_info_model import RecordingInfoModel
+from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
+
+rec = RecordingProcessingParameterModel()
+
+recording_path = r'C:\Users\Aaron\Documents\freemocap_sessions\recordings\recording_15_19_00_gmt-4__brit_baseline'
+
+rec.recording_info_model = RecordingInfoModel(recording_folder_path=recording_path)
+
+process_recording_folder(recording_processing_parameter_model=rec)

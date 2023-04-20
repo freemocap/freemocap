@@ -39,7 +39,7 @@ def get_best_guess_of_blender_path():
 
         blender_app_path = Path("/Applications/Blender.app")
         
-        if not blender_app_path.is_file():
+        if blender_app_path.exists():
             logger.info(f"Mac machine detected - guessing that `blender` is installed at: {str(blender_app_path)}")
 
             blender_exe_path = blender_app_path / "Contents/MacOS/Blender"

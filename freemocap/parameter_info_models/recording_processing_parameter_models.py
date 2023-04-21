@@ -18,7 +18,7 @@ class MediapipeParametersModel(BaseModel):
 
 
 class AniposeTriangulate3DParametersModel(BaseModel):
-    confidence_threshold_cutoff: float = 0.5
+    confidence_threshold_cutoff: float = 0.3
     use_triangulate_ransac_method: bool = False
     skip_3d_triangulation: bool = False
 

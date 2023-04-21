@@ -13,15 +13,18 @@ def process_folder_of_session_folders(
     path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
     path_to_blender_executable: Optional[Union[str, Path]] = None,
 ):
-    list_of_session_folders = list(path_to_folder_of_session_folders.glob("ses*"))
+    #list_of_session_folders = list(path_to_folder_of_session_folders.glob("ses*"))
+    list_of_session_folders = [f for f in path_to_folder_of_session_folders.iterdir() if f.is_dir()]
     print(list_of_session_folders)
 
     for session_folder_path in list_of_session_folders:
         logging.info(f"Looking in {session_folder_path} for recording folders")
-        for recording_folder_path in list(session_folder_path.glob("rec*")):
-            logging.info(f"Looking for calibration toml")
-            calibration_files = list(recording_folder_path.glob("*calibration.toml"))
+        list_of_recording_folders = [f for f in session_folder_path.iterdir() if f.is_dir() and (f/'synchronized_videos').exists() and any((f/'synchronized_videos').iterdir())]
 
+        calibration_files = [toml_file for sesh in list_of_recording_folders for toml_file in list(sesh.glob("*calibration.toml"))]
+
+        for recording_folder_path in list_of_recording_folders:
+            logging.info(f"Looking for calibration toml")
             if calibration_files:
                 this_recording_calibration_toml_path = calibration_files[0]
                 logging.info(f"Using {this_recording_calibration_toml_path} for this recording")
@@ -68,14 +71,12 @@ def process_recording_without_gui(
         logging.warning("No blender executable provided. Blender file will not be exported.")
 
 if __name__ == "__main__":
-    path_to_folder_of_session_folders = Path("PATH_TO_FOLDER_OF_SESSION_FOLDERS")
+    path_to_folder_of_session_folders = Path(r"D:\footropter_pilot_04_19_23\1.0_recordings")
 
     # Add path to camera calibration toml file you would like to default to
-    path_to_camera_calibration_toml = Path(
-        "PATH_TO_CAMERA_CALIBRATION_TOML"
-    )
+    path_to_camera_calibration_toml = None
 
-    path_to_blender_executable = Path("PATH_TO_BLENDER_EXECUTABLE")
+    path_to_blender_executable = Path(r"C:\Program Files\Blender Foundation\Blender 3.1\blender.exe")
 
     process_folder_of_session_folders(
         path_to_folder_of_session_folders=path_to_folder_of_session_folders,

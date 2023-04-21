@@ -63,6 +63,7 @@ class RecordingInfoModel:
     @property
     def calibration_toml_path(self) -> str:
         return self._calibration_toml_path
+
     @calibration_toml_path.setter
     def calibration_toml_path(self, path: Union[Path, str]):
         self._calibration_toml_path = str(path)

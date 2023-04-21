@@ -1029,7 +1029,8 @@ def are_there_feet_in_this_mediapipe_skeleton_data(skeleton3d_frame_landmark_xyz
 def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
         raw_skel3d_frame_marker_xyz: np.ndarray,
         skeleton_reprojection_error_fr_mar: np.ndarray,
-        path_to_folder_where_we_will_save_this_data: [str, Path],
+        path_to_folder_where_we_will_save_this_data: Union[str, Path],
+        skip_butterworth_filter: bool,
         # Filter the data, set the filtering options here
         sampling_rate: Union[float, int],
         cut_off: Union[float, int],
@@ -1043,51 +1044,15 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
     # Interpolate the data
     processed_skel3d_frame_marker_xyz = fill_gaps_in_freemocap_data(raw_skel3d_frame_marker_xyz, )
 
-    logger.info(
-        f"Filtering data at with a {order}th order, zero-lag, low-pass Butterworth filter with a cut-off frequency of {cut_off} Hz..."
-    )
-    processed_skel3d_frame_marker_xyz = butterworth_filter_skeleton(
-        processed_skel3d_frame_marker_xyz, cut_off, sampling_rate, order
-    )
-
-    # # pin skeleton to origin (set to mean positin of skeletonin this recording)
-    # zeroed_skeleton_data = butterworth_filtered_skeleton_data.copy()
-    # zeroed_skeleton_data[:, :, 0] -= np.nanmean(zeroed_skeleton_data[:, :, 0])
-    # zeroed_skeleton_data[:, :, 1] -= np.nanmean(zeroed_skeleton_data[:, :, 1])
-    # zeroed_skeleton_data[:, :, 2] -= np.nanmean(zeroed_skeleton_data[:, :, 2])
-    #
-    # # TODO - align skeleton so feet are at Z-plane and head is facing up
-    # origin_aligned_freemocap_marker_data = zeroed_skeleton_data.copy()
-    # logger.info("Aligning data to the origin...")
-
-    #     reference_frame_number = find_good_clean_frame_reprojection_error_method(
-    #         skeleton_3d_fr_mar_xyz=freemocap_filtered_marker_data,
-    #         skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
-    #     )
-
-    # has_feet = are_there_feet_in_this_mediapipe_skeleton_data(
-    #     butterworth_filtered_skeleton_data, mediapipe_landmark_names
-    # )
-    # if has_feet:
-    #     reference_frame_number = find_good_frame_recursive_guess_method(
-    #         butterworth_filtered_skeleton_data, mediapipe_landmark_names, 0.3
-    #     )
-    #
-    #     logger.info("Using the foot/spine method of alignment...")
-    #     origin_aligned_freemocap_marker_data = (
-    #         align_skeleton_with_origin_foot_spine_method(
-    #             butterworth_filtered_skeleton_data,
-    #             mediapipe_landmark_names,
-    #             reference_frame_number,
-    #         )
-    #     )
-    # else:  # no feet
-    #     logger.info("Using the skelly blob method of alignment...")
-    #     origin_aligned_freemocap_marker_data = (
-    #         align_skeleton_with_origin_mean_blob_method(
-    #             butterworth_filtered_skeleton_data
-    #         )
-    #     )
+    if skip_butterworth_filter:
+        logger.info("Skipping butterworth filter...")
+    else:
+        logger.info(
+            f"Filtering data at with a {order}th order, zero-lag, low-pass Butterworth filter with a cut-off frequency of {cut_off} Hz..."
+        )
+        processed_skel3d_frame_marker_xyz = butterworth_filter_skeleton(
+            processed_skel3d_frame_marker_xyz, cut_off, sampling_rate, order
+        )
 
     logger.info("Saving Origin Aligned Data")
     Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)

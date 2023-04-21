@@ -214,6 +214,9 @@ class RecordingFolderStatusChecker:
         synchronized_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path)
         video_count = 0.0
 
+        if not synchronized_directory_path.exists():
+            return video_count
+
         for file in synchronized_directory_path.iterdir():
             if file.is_file() and file.suffix.lower() == '.mp4':
                 video_count += 1
@@ -224,7 +227,10 @@ class RecordingFolderStatusChecker:
     def get_number_of_frames_in_videos(self):
         timestamps_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path) / "timestamps"
 
-        if timestamps_directory_path.exists() and timestamps_directory_path.is_dir():
+        if not timestamps_directory_path.exists():
+            return "No 'timestamps' directory found"
+
+        if timestamps_directory_path.exists() :
             frame_counts = {}
 
             for npy_file in timestamps_directory_path.iterdir():
@@ -233,26 +239,3 @@ class RecordingFolderStatusChecker:
                     frame_counts[npy_file.name] = str(len(video_npy)-1)
 
             return frame_counts
-        else:
-            return "No 'timestamps' directory found"
-
-    # def get_camera_rotation_and_translation_from_calibration_toml(self):
-    #     calibration_toml_path = Path(self.recording_info_model.calibration_toml_path)
-    #
-    #     logger.info(f"Looking for calibration file at {calibration_toml_path}")
-    #
-    #     if calibration_toml_path.exists() and calibration_toml_path.is_file():
-    #         calibration_data = toml.load(str(calibration_toml_path))
-    #
-    #         camera_data = {}
-    #
-    #         for cam_key, cam_values in calibration_data.items():
-    #             if cam_key.startswith("cam_"):
-    #                 camera_data[cam_key] = {
-    #                     'rotation': cam_values['rotation'],
-    #                     'translation': cam_values['translation']
-    #                 }
-    #
-    #         return camera_data
-    #     else:
-    #         return "No 'calibration.toml' file found"

@@ -180,7 +180,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         parameter_group = parameter.parent()
         for child in parameter_group.children():
             if child.name().split(" ")[0] != "Skip":
-                logger.debug(f"{'Enabling' if not skip_this_step_bool else 'Disabling'} {child.name()}") 
+                logger.debug(f"{'Enabling' if not skip_this_step_bool else 'Disabling'} {child.name()} in processing pipeline") 
                 self.set_parameter_enabled(child, not skip_this_step_bool)
 
     def set_parameter_enabled(self, parameter, enabled_bool):

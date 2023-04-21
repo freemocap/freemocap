@@ -210,13 +210,11 @@ class RecordingFolderStatusChecker:
         return Path(self.recording_info_model.calibration_toml_path).is_file()
 
     def get_number_of_mp4s_in_synched_videos_directory(self) -> float:
-
         synchronized_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path)
-
-        if not synchronized_directory_path.exists():
-            return 0
-
         video_count = 0
+        if not synchronized_directory_path.exists() is False:
+            return video_count
+
         for file in synchronized_directory_path.iterdir():
             if file.is_file() and file.suffix.lower() == '.mp4':
                 video_count += 1
@@ -225,7 +223,10 @@ class RecordingFolderStatusChecker:
     def get_number_of_frames_in_videos(self):
         timestamps_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path) / "timestamps"
 
-        if timestamps_directory_path.exists() and timestamps_directory_path.is_dir():
+        if not timestamps_directory_path.is_dir():
+            return 'No timestamps directory found.'
+
+        if timestamps_directory_path.exists():
             frame_counts = {}
 
             for npy_file in timestamps_directory_path.iterdir():
@@ -234,8 +235,8 @@ class RecordingFolderStatusChecker:
                     frame_counts[npy_file.name] = str(len(video_npy)-1)
 
             return frame_counts
-        else:
-            return "No 'timestamps' directory found"
+
+
 
     # def get_camera_rotation_and_translation_from_calibration_toml(self):
     #     calibration_toml_path = Path(self.recording_info_model.calibration_toml_path)

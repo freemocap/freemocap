@@ -18,7 +18,7 @@ from freemocap.system.paths_and_files_names import (
 
 
 def load_sample_data() -> Path:
-    extract_to_path = Path.home() / FIGSHARE_SAMPLE_DATA_FILE_NAME
+    extract_to_path = Path.home()
     extract_to_path.mkdir(exist_ok=True)
 
     figshare_sample_data_path = extract_to_path / FIGSHARE_SAMPLE_DATA_FILE_NAME

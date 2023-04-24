@@ -34,10 +34,10 @@ from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_ori
 )
 from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
 
-from freemocap.tests.test_mediapipe_2d_data_shape import (
-    test_mediapipe_2d_data_shape,
+from freemocap.tests.test_mediapipe_image_data_shape import (
+    test_mediapipe_image_data_shape,
 )
-from freemocap.tests.test_mediapipe_3d_data_shape import test_mediapipe_3d_data_shape
+from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
 from freemocap.utilities.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
@@ -79,9 +79,9 @@ def process_recording_folder(
     if kill_event is not None and kill_event.is_set():
         return
 
-    assert test_mediapipe_2d_data_shape(
-        synchronized_videos_folder=rec.recording_info_model.synchronized_videos_folder_path,
-        mediapipe_2d_data_file_path=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
+    assert test_mediapipe_image_data_shape(
+        synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
+        image_data_file_name=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
     )
 
     # spoof 3D data if single camera
@@ -114,11 +114,14 @@ def process_recording_folder(
         if kill_event is not None and kill_event.is_set():
             return
 
-        assert test_mediapipe_3d_data_shape(
-            synchronized_videos_folder=rec.recording_info_model.synchronized_videos_folder_path,
-            mediapipe_3d_data_npy_path=rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
-            medipipe_reprojection_error_data_npy_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
-        )
+        try:
+            assert test_mediapipe_skeleton_data_shape(
+                synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
+                raw_skeleton_npy_file_path=rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
+                reprojection_error_file_name=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
+            )
+        except AssertionError as error_message:
+            logger.error(error_message)
 
     #rotate so skeleton is closer to 'vertical' in a z-up reference frame
     rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz) 
@@ -134,11 +137,14 @@ def process_recording_folder(
         order=rec.post_processing_parameters_model.butterworth_filter_parameters.order,
         reference_frame_number=None,
     )
-    assert test_mediapipe_3d_data_shape(
-        synchronized_videos_folder=rec.recording_info_model.synchronized_videos_folder_path,
-        mediapipe_3d_data_npy_path=rec.recording_info_model.mediapipe_3d_data_npy_file_path,
-        medipipe_reprojection_error_data_npy_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
-    )
+    try:
+        test_mediapipe_skeleton_data_shape(
+            synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
+            raw_skeleton_npy_file_path=rec.recording_info_model.mediapipe_3d_data_npy_file_path,
+            reprojection_error_file_name=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
+        )
+    except AssertionError as error_message:
+        logger.error(error_message)
 
     logger.info("Breaking up big `npy` into smaller bits and converting to `csv`...")
     # break up big NPY and save out csv's

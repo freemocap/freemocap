@@ -44,5 +44,5 @@ def test_mediapipe_image_data_shape(
 
     # TODO - check number of tracked points vs 'expected' number of tracked points
 
-    assert image_data.shape[3] == 2, f"Data has {image_data.shape[3]} dimensions, expected 2 dimensions"
+    assert image_data.shape[3] == 3, f"Data has {image_data.shape[3]} dimensions, expected 3 dimensions"
 

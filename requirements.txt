@@ -1,8 +1,0 @@
-skellycam==2023.4.1080
-skelly_viewer==2023.3.1017
-mediapipe==0.8.11; platform_system != "Darwin" or platform.machine != 'arm64'
-mediapipe-silicon==0.8.11; platform_system == "Darwin" and platform.machine == 'arm64'
-opencv-contrib-python==4.6.0.66
-toml==0.10.2
-aniposelib==0.4.3
-libsass==0.22.0

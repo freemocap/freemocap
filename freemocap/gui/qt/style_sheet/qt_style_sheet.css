@@ -44,8 +44,8 @@ QTabBar::tab:selected {
 QPushButton {
   font-weight: bold;
   border-radius: 4px;
-  border: 2px solid #29394a;
-  background-color: #29394a;
+  border: 2px solid #7f6fb3;
+  background-color: #7f6fb3;
   color: white; }
 
 QPushButton:disabled {

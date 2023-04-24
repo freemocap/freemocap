@@ -5,7 +5,8 @@ $laser-red: #d95158;
 $disabled-laser-red: #8c5454;
 $freemocap-green: #365d5f;
 $freemocap-dark-green: #254342;
-$button-blue: #29394a;
+$heading-blue: #29394a;
+$button-blue: #7f6fb3;
 $disabled-button-blue: #687e90;
 $tree-primary: #7983b1;
 $tree-secondary: #a3b1ed;
@@ -126,7 +127,7 @@ QLabel:disabled {
 }
 
 QLineEdit {
-    border: 1px solid $button-blue;
+    border: 1px solid $heading-blue;
     border-radius: 4px;
     padding: 0 8px;
     color: $dark-charcoal;
@@ -146,7 +147,7 @@ QTreeView {
 }
 
 QTreeView::item:has-children {
-    background-color: $button-blue;
+    background-color: $heading-blue;
     color: $plain-white;
 }
 

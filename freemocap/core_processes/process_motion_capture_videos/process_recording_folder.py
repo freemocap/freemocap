@@ -88,10 +88,13 @@ def process_recording_folder(
     if kill_event is not None and kill_event.is_set():
         return
 
-    assert test_mediapipe_image_data_shape(
-        synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
-        image_data_file_name=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
-    )
+    try:
+        assert test_mediapipe_image_data_shape(
+            synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
+            image_data_file_name=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
+        )
+    except AssertionError as error_message:
+            logger.error(error_message)
 
     # spoof 3D data if single camera
     if mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:

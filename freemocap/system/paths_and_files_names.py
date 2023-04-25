@@ -37,8 +37,8 @@ SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
 TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
 
 # Figshare info
-FIGSHARE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/40260580"
-FIGSHARE_SAMPLE_DATA_FILE_NAME = "2022-09-19_16_16_50_in_class_jsm"
+FIGSHARE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/40293973"
+FIGSHARE_SAMPLE_DATA_FILE_NAME = "freemocap_sample_data"
 
 # logo
 PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent.parent / "assets/logo/freemocap-logo-black-border.svg")

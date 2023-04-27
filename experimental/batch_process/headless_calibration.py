@@ -27,7 +27,7 @@ def headless_calibration(
 
 if __name__ == "__main__":
     path_to_folder_of_calibration_videos = Path(
-        "/Users/philipqueen/Documents/Humon Research Lab/FreeMocap_Data/session/recording/4stepsequence_session1_10_5_22/synchronized_videos"
+        "/PATH/TO/CALIBRATION/VIDEOS"
     )
     charuco_square_size = 110  # size of a black square on your charuco board in mm
 

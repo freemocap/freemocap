@@ -6,6 +6,7 @@
 <p align="center">📝 The FreeMoCap Project: A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture system and platform for decentralized scientific research, education, and training</p>
 
 
+
 <p align="center">
 
 <a href="https://doi.org/10.5281/zenodo.7233714">

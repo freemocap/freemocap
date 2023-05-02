@@ -15,6 +15,7 @@ from freemocap.system.paths_and_files_names import (
     get_calibrations_folder_path,
     get_last_successful_calibration_toml_path, create_camera_calibration_file_name,
 )
+from freemocap.utilities.get_video_paths import get_video_paths
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +45,7 @@ class AniposeCameraCalibrator:
     def _get_video_paths(
         self,
     ):
-        self._list_of_video_paths = [
-            this_video_path for this_video_path in Path(self._calibration_videos_folder_path).glob("*.mp4".lower())
-        ]
+        self._list_of_video_paths = get_video_paths(path_to_video_folder=Path(self._calibration_videos_folder_path))
 
     def _initialize_anipose_objects(self):
         list_of_camera_names = [this_video_path.stem for this_video_path in self._list_of_video_paths]

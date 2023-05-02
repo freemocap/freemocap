@@ -28,7 +28,7 @@ class ImportVideosWizard(QDialog):
 
         self.setWindowTitle("Import Videos")
 
-
+        self.import_videos_path = import_videos_path
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
@@ -107,11 +107,13 @@ class ImportVideosWizard(QDialog):
         self._folder_where_videos_will_be_saved_to_label.setText(self._get_folder_videos_will_be_saved_to())
 
     def _handle_continue_button_clicked(self, event):
+        if self._synchronize_videos_checkbox.isChecked():
+            newly_synchronized_video_path = synchronize_videos(raw_video_folder_path=Path(self.import_videos_path))
+            self._video_file_paths = [str(path) for path in get_video_paths(path_to_video_folder=newly_synchronized_video_path)]
+
         self.folder_to_save_videos_to_selected.emit(
             self._video_file_paths,
             self._get_folder_videos_will_be_saved_to())
-        if self._synchronize_videos_checkbox.isChecked():
-            synchronize_videos(raw_video_folder_path=Path(self._get_folder_videos_will_be_saved_to()))
         self.accept()
 
     def _handle_synchronize_checkbox_toggled(self, event):

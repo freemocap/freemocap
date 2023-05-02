@@ -5,7 +5,7 @@ from typing import Union
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtWidgets import QVBoxLayout, QListWidget, QLabel, QFormLayout, QLineEdit, \
-    QTreeView, QPushButton, QDialog
+    QTreeView, QPushButton, QDialog, QCheckBox
 
 from freemocap.system.paths_and_files_names import get_recording_session_folder_path, SYNCHRONIZED_VIDEOS_FOLDER_NAME
 from freemocap.system.start_file import open_file
@@ -33,7 +33,7 @@ class ImportVideosWizard(QDialog):
         self._import_directory_view = self._create_import_directory_view(import_videos_path)
         self._layout.addWidget(self._import_directory_view)
 
-        self._video_file_paths = get_video_paths(path_to_video_folder=import_videos_path)
+        self._video_file_paths = [str(path) for path in get_video_paths(path_to_video_folder=import_videos_path)]
 
         self._video_file_list_view = self._create_video_file_list_widget()
         self._layout.addWidget(self._video_file_list_view)
@@ -44,6 +44,11 @@ class ImportVideosWizard(QDialog):
         self._folder_name = f"import_{Path(import_videos_path).name}"
         self._folder_name_line_edit = QLineEdit(parent=self)
         self._folder_name_line_edit.textChanged.connect(self._handle_folder_name_line_edit_changed)
+
+        self._synchronize_videos_checkbox = QCheckBox("Synchronize videos by audio")
+        self._synchronize_videos_checkbox.toggled.connect(self._handle_synchronize_checkbox_toggled)
+
+        self._form_layout.addRow(self._folder_name_line_edit, self._synchronize_videos_checkbox)
 
         self._folder_name_line_edit.setPlaceholderText(self._folder_name)
         self._form_layout.addRow("Recording Name:", self._folder_name_line_edit)
@@ -104,6 +109,14 @@ class ImportVideosWizard(QDialog):
             self._get_folder_videos_will_be_saved_to())
         self.accept()
 
+    def _handle_synchronize_checkbox_toggled(self, event):
+        if self._synchronize_videos_checkbox.isChecked():
+            self._synchronize_videos_checkbox.setText("toggled!")
+            print("button checked")
+        else:
+            self._synchronize_videos_checkbox.setText("untoggled :(")
+            print("button unchecked")
+        
 if __name__ == "__main__":
     # from PyQt6.QtWidgets import QApplication
     # import sys

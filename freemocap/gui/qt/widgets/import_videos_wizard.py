@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QVBoxLayout, QListWidget, QLabel, QFormLayout, QLine
 
 from freemocap.system.paths_and_files_names import get_recording_session_folder_path, SYNCHRONIZED_VIDEOS_FOLDER_NAME
 from freemocap.system.start_file import open_file
+from freemocap.utilities.get_video_paths import get_video_paths
 
 no_files_found_string = "No '.mp4' video files found! \n \n Note - We only look for `.mp4` files (for now). If your videos are a different format, convert them to `mp4` via online tools like `www.cloudconvert.com`, or softwares like `HandBrake`, `ffmpeg` or any video editing software"
 
@@ -32,7 +33,7 @@ class ImportVideosWizard(QDialog):
         self._import_directory_view = self._create_import_directory_view(import_videos_path)
         self._layout.addWidget(self._import_directory_view)
 
-        self._video_file_paths = [str(path) for path in Path(import_videos_path).glob('*.mp4')]
+        self._video_file_paths = get_video_paths(path_to_video_folder=import_videos_path)
 
         self._video_file_list_view = self._create_video_file_list_widget()
         self._layout.addWidget(self._video_file_list_view)

@@ -44,7 +44,7 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_mot
 )
 from freemocap.gui.qt.widgets.control_panel.visualization_control_panel import VisualizationControlPanel
 from freemocap.gui.qt.widgets.directory_view_widget import DirectoryViewWidget
-from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
+from freemocap.gui.qt.widgets.import_videos_wizard import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.home_widget import (
     HomeWidget,

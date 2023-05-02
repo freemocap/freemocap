@@ -67,7 +67,7 @@ QTabBar::tab:selected {
 QPushButton {
     font-weight: bold;
     border-radius: 4px;
-    border: 2px solid $plain-black;
+    border: 2px solid darken($button-background, 5%);
     background-color: $button-background;
     color: $plain-white;
 }
@@ -75,11 +75,15 @@ QPushButton {
 QPushButton:disabled {
     background-color: $tree-primary;
     border: 1px solid $tree-primary;
-    color: $skelly-bone-blue;
+    color: $plain-black;
 }
 
 QPushButton:hover {
     border: 3px solid $plain-white;
+}
+
+QPushButton:pressed {
+    background-color: darken($button-background, 20%);
 }
 
 QPushButton#start_recording_button {
@@ -165,4 +169,12 @@ LogViewWidget {
     padding: 8px;
 }
 
+
+QDialog {
+    background-color: $cadet-skelly;
+}
+
+QListWidget {
+    background-color: $skelly-bone-blue;
+}
 

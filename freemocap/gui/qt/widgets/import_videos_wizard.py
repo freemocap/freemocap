@@ -11,6 +11,9 @@ from freemocap.system.paths_and_files_names import get_recording_session_folder_
 from freemocap.system.start_file import open_file
 from freemocap.utilities.get_video_paths import get_video_paths
 
+
+from skelly_synchronize.skelly_synchronize import synchronize_videos
+
 no_files_found_string = "No '.mp4' video files found! \n \n Note - We only look for `.mp4` files (for now). If your videos are a different format, convert them to `mp4` via online tools like `www.cloudconvert.com`, or softwares like `HandBrake`, `ffmpeg` or any video editing software"
 
 
@@ -107,15 +110,17 @@ class ImportVideosWizard(QDialog):
         self.folder_to_save_videos_to_selected.emit(
             self._video_file_paths,
             self._get_folder_videos_will_be_saved_to())
+        if self._synchronize_videos_checkbox.isChecked():
+            synchronize_videos(raw_video_folder_path=Path(self._get_folder_videos_will_be_saved_to()))
         self.accept()
 
     def _handle_synchronize_checkbox_toggled(self, event):
         if self._synchronize_videos_checkbox.isChecked():
             self._synchronize_videos_checkbox.setText("toggled!")
-            print("button checked")
+            print("Synchronize videos by audio selected")
         else:
             self._synchronize_videos_checkbox.setText("untoggled :(")
-            print("button unchecked")
+            print("Synchronize videos by audio deselected")
         
 if __name__ == "__main__":
     # from PyQt6.QtWidgets import QApplication

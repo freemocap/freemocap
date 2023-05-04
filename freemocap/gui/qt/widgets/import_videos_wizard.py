@@ -66,23 +66,22 @@ class ImportVideosWizard(QDialog):
         self._continue_button.clicked.connect(self._handle_continue_button_clicked)
         self._form_layout.addRow(self._continue_button)
 
-        extension = QWidget()
+        synchronization_parameters = QWidget()
 
-        wholeWordsCheckBox =  QCheckBox("&Whole words")
-        backwardCheckBox =  QCheckBox("Search &backward")
-        searchSelectionCheckBox =  QCheckBox("Search se&lection")
+        synchronization_message = QLabel("Videos will be synchronized using cross correlation of their audio tracks")
 
-        self._synchronize_videos_checkbox.toggled.connect(extension.setVisible)
+        example_checkbox =  QCheckBox("This will do something someday...")
 
-        extensionLayout =  QVBoxLayout()
-        extensionLayout.addWidget(wholeWordsCheckBox)
-        extensionLayout.addWidget(backwardCheckBox)
-        extensionLayout.addWidget(searchSelectionCheckBox)
-        extension.setLayout(extensionLayout)
+        self._synchronize_videos_checkbox.toggled.connect(synchronization_parameters.setVisible)
 
-        extension.hide()
+        synchronization_parameters_layout =  QVBoxLayout()
+        synchronization_parameters_layout.addWidget(synchronization_message)
+        synchronization_parameters_layout.addWidget(example_checkbox)
+        synchronization_parameters.setLayout(synchronization_parameters_layout)
 
-        self._layout.addWidget(extension)
+        synchronization_parameters.hide()
+
+        self._layout.addWidget(synchronization_parameters)
 
 
 

@@ -5,7 +5,7 @@ from typing import Union
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtWidgets import QVBoxLayout, QListWidget, QLabel, QFormLayout, QLineEdit, \
-    QTreeView, QPushButton, QDialog, QCheckBox
+    QTreeView, QPushButton, QDialog, QCheckBox, QWidget
 
 from freemocap.system.paths_and_files_names import get_recording_session_folder_path, SYNCHRONIZED_VIDEOS_FOLDER_NAME
 from freemocap.system.start_file import open_file
@@ -34,11 +34,13 @@ class ImportVideosWizard(QDialog):
         self.setLayout(self._layout)
 
         self._import_directory_view = self._create_import_directory_view(import_videos_path)
+        print(f"_import_directory_view: {self._import_directory_view}")
         self._layout.addWidget(self._import_directory_view)
 
         self._video_file_paths = [str(path) for path in get_video_paths(path_to_video_folder=import_videos_path)]
 
         self._video_file_list_view = self._create_video_file_list_widget()
+        print(f"_video_file_list_view: {self._video_file_list_view}")
         self._layout.addWidget(self._video_file_list_view)
 
         self._form_layout = QFormLayout()
@@ -64,6 +66,24 @@ class ImportVideosWizard(QDialog):
         self._continue_button.clicked.connect(self._handle_continue_button_clicked)
         self._form_layout.addRow(self._continue_button)
 
+        extension = QWidget()
+
+        wholeWordsCheckBox =  QCheckBox("&Whole words")
+        backwardCheckBox =  QCheckBox("Search &backward")
+        searchSelectionCheckBox =  QCheckBox("Search se&lection")
+
+        self._synchronize_videos_checkbox.toggled.connect(extension.setVisible)
+
+        extensionLayout =  QVBoxLayout()
+        extensionLayout.addWidget(wholeWordsCheckBox)
+        extensionLayout.addWidget(backwardCheckBox)
+        extensionLayout.addWidget(searchSelectionCheckBox)
+        extension.setLayout(extensionLayout)
+
+        extension.hide()
+
+        self._layout.addWidget(extension)
+
 
 
     def _get_folder_videos_will_be_saved_to(self):
@@ -85,15 +105,16 @@ class ImportVideosWizard(QDialog):
 
         self._tree_view_widget.doubleClicked.connect(self._open_file)
 
+        return self._tree_view_widget
+
 
     def _open_file(self):
         index = self._tree_view_widget.currentIndex()
         file_path = self._file_system_model.filePath(index)
         logger.info(f"Opening file from file_system_view_widget: {file_path}")
         open_file(file_path)
+
     def _create_video_file_list_widget(self):
-
-
         list_view = QListWidget()
         list_view.setWordWrap(True)
         if len(self._video_file_paths) == 0:
@@ -118,11 +139,9 @@ class ImportVideosWizard(QDialog):
 
     def _handle_synchronize_checkbox_toggled(self, event):
         if self._synchronize_videos_checkbox.isChecked():
-            self._synchronize_videos_checkbox.setText("toggled!")
-            print("Synchronize videos by audio selected")
+            logger.info("Synchronize videos by audio selected, videos will be synchronized before importing")
         else:
-            self._synchronize_videos_checkbox.setText("untoggled :(")
-            print("Synchronize videos by audio deselected")
+            logger.info("Synchronize videos by audio deselected, videos will not be synchronized")
         
 if __name__ == "__main__":
     # from PyQt6.QtWidgets import QApplication

@@ -12,7 +12,7 @@ from freemocap.system.start_file import open_file
 from freemocap.utilities.get_video_paths import get_video_paths
 
 
-from skelly_synchronize.skelly_synchronize import synchronize_videos
+from skelly_synchronize.skelly_synchronize import synchronize_videos_from_audio
 
 no_files_found_string = "No '.mp4' video files found! \n \n Note - We only look for `.mp4` files (for now). If your videos are a different format, convert them to `mp4` via online tools like `www.cloudconvert.com`, or softwares like `HandBrake`, `ffmpeg` or any video editing software"
 
@@ -128,7 +128,7 @@ class ImportVideosWizard(QDialog):
 
     def _handle_continue_button_clicked(self, event):
         if self._synchronize_videos_checkbox.isChecked():
-            newly_synchronized_video_path = synchronize_videos(raw_video_folder_path=Path(self.import_videos_path))
+            newly_synchronized_video_path = synchronize_videos_from_audio(raw_video_folder_path=Path(self.import_videos_path))
             self._video_file_paths = [str(path) for path in get_video_paths(path_to_video_folder=newly_synchronized_video_path)]
 
         self.folder_to_save_videos_to_selected.emit(

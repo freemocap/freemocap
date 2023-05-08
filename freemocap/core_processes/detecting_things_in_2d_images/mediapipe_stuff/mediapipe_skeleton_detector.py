@@ -11,6 +11,7 @@ from skellycam.detection.models.frame_payload import FramePayload
 from skellycam.opencv.video_recorder.video_recorder import VideoRecorder
 from tqdm import tqdm
 
+from freemocap.core_processes.detecting_things_in_2d_images.yolo_tracker import YoloTracker
 from freemocap.system.paths_and_files_names import MEDIAPIPE_2D_NPY_FILE_NAME, ANNOTATED_VIDEOS_FOLDER_NAME, \
     MEDIAPIPE_BODY_WORLD_FILE_NAME
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
@@ -81,6 +82,7 @@ class MediaPipeSkeletonDetector:
         parameter_model=MediapipeParametersModel(),
     ):
 
+        self._yolo_tracker = None
         self._mediapipe_payload_list = []
 
         self._mp_drawing = mp.solutions.drawing_utils
@@ -121,11 +123,17 @@ class MediaPipeSkeletonDetector:
         self,
         raw_image: np.ndarray = None,
         annotated_image: np.ndarray = None,
+        yolo_crop: bool = True,
     ) -> Mediapipe2dDataPayload:
 
-        mediapipe_results = self._holistic_tracker.process(
-            raw_image
-        )  # <-this is where the magic happens, i.e. where the raw image is processed by a convolutional neural network to provide an estimate of joint position in pixel coordinates. Please don't forget that this is insane and should not be possible lol
+        if yolo_crop:
+            mediapipe_results, annotated_image = self._yolo_tracker.process_image(
+                image=raw_image)
+
+        else:
+            mediapipe_results = self._holistic_tracker.process(
+                raw_image
+            )  # <-this is where the magic happens, i.e. where the raw image is processed by a convolutional neural network to provide an estimate of joint position in pixel coordinates. Please don't forget that this is insane and should not be possible lol
 
         if annotated_image is None:
             annotated_image = raw_image.copy()
@@ -155,11 +163,16 @@ class MediaPipeSkeletonDetector:
             output_data_folder_path: Union[str, Path],
             save_annotated_videos: bool = True,
             kill_event: multiprocessing.Event = None,
+            yolo_crop_bool: bool = True,
     ) -> Union[np.ndarray, None]:
 
         path_to_folder_of_videos_to_process = Path(path_to_folder_of_videos_to_process)
 
         logger.info(f"processing videos from: {path_to_folder_of_videos_to_process}")
+
+        if yolo_crop_bool:
+            logger.info(f"Using YOLO crop")
+            self._yolo_tracker = YoloTracker(mediapipe_tracker=self._holistic_tracker)
 
         mediapipe2d_single_camera_npy_arrays_list = []
         for video_number, synchronized_video_file_path in enumerate(get_video_paths(path_to_folder_of_videos_to_process)):
@@ -193,7 +206,7 @@ class MediaPipeSkeletonDetector:
                     logger.error(f"Failed to load an image from: {str(synchronized_video_file_path)}")
                     raise Exception
 
-                mediapipe2d_data_payload = self.detect_skeleton_in_image(raw_image=image)
+                mediapipe2d_data_payload = self.detect_skeleton_in_image(raw_image=image, yolo_crop=yolo_crop_bool)
                 video_mediapipe_results_list.append(mediapipe2d_data_payload.mediapipe_results)
                 annotated_image = self._annotate_image(image, mediapipe2d_data_payload.mediapipe_results)
                 video_annotated_images_list.append(annotated_image)

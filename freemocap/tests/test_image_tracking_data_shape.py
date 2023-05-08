@@ -10,7 +10,7 @@ from freemocap.utilities.get_video_paths import get_video_paths
 
 
 @pytest.mark.usefixtures("synchronized_video_folder_path", "image_tracking_data_file_name")
-def test_mediapipe_image_data_shape(
+def test_image_tracking_data_shape(
     synchronized_video_folder_path: Union[str, Path],
     image_tracking_data_file_name: Union[str, Path],
 ):

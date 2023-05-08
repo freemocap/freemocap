@@ -36,7 +36,7 @@ from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_ori
 from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
 
 from freemocap.tests.test_image_tracking_data_shape import (
-    test_mediapipe_image_data_shape,
+    test_image_tracking_data_shape,
 )
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
 from freemocap.utilities.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
@@ -89,7 +89,7 @@ def process_recording_folder(
         return
 
     try:
-        assert test_mediapipe_image_data_shape(
+        assert test_image_tracking_data_shape(
             synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
             image_tracking_data_file_name=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
         )

@@ -46,7 +46,7 @@ from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.welcome_panel_widget import (
     WelcomeToFreemocapPanel,
 )
-from freemocap.core_processes.post_process_skeleton_data.parameter_info_models import (
+from freemocap.core_processes.post_process_skeleton_data.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
 )
 from freemocap.core_processes.post_process_skeleton_data.parameter_info_models.recording_processing_parameter_models import (

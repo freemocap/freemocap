@@ -68,15 +68,15 @@ class ImportVideosWizard(QDialog):
 
         synchronization_parameters = QWidget()
 
-        synchronization_message = QLabel("Videos will be synchronized using cross correlation of their audio tracks")
-
-        example_checkbox =  QCheckBox("This will do something someday...")
+        synchronization_message = QLabel(
+            "Videos will be synchronized using cross correlation of their audio tracks.\n" +
+            "Videos must have exact matching video framerates and audio sample rates to be synchronized."
+            )
 
         self._synchronize_videos_checkbox.toggled.connect(synchronization_parameters.setVisible)
 
         synchronization_parameters_layout =  QVBoxLayout()
         synchronization_parameters_layout.addWidget(synchronization_message)
-        synchronization_parameters_layout.addWidget(example_checkbox)
         synchronization_parameters.setLayout(synchronization_parameters_layout)
 
         synchronization_parameters.hide()

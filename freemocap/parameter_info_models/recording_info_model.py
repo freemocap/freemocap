@@ -18,7 +18,7 @@ from freemocap.system.paths_and_files_names import (
     ANNOTATED_VIDEOS_FOLDER_NAME,
     MEDIAPIPE_3D_NPY_FILE_NAME, create_camera_calibration_file_name,
 )
-from freemocap.tests.test_image_tracking_data_shape import test_mediapipe_image_data_shape
+from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import (
     test_synchronized_video_frame_counts,
@@ -173,7 +173,7 @@ class RecordingFolderStatusChecker:
     def check_data2d_status(self) -> bool:
 
         try:
-            test_mediapipe_image_data_shape(
+            test_image_tracking_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
                 image_tracking_data_file_name=self.recording_info_model.mediapipe_2d_data_npy_file_path,
             )

@@ -68,7 +68,7 @@ def find_total_body_center_of_mass_file_name(data_folder_name: Path) -> Path:
     raise Exception(f"Could not find a total body center of mass npy file in path {str(data_folder_name)}")
 
 
-def find_image_data_file_name(data_folder_name: Path) -> Path:
+def find_image_tracking_data_file_name(data_folder_name: Path) -> Path:
     raw_data_subfolder_path = data_folder_name / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]

@@ -34,13 +34,11 @@ class ImportVideosWizard(QDialog):
         self.setLayout(self._layout)
 
         self._import_directory_view = self._create_import_directory_view(import_videos_path)
-        print(f"_import_directory_view: {self._import_directory_view}")
         self._layout.addWidget(self._import_directory_view)
 
         self._video_file_paths = [str(path) for path in get_video_paths(path_to_video_folder=import_videos_path)]
 
         self._video_file_list_view = self._create_video_file_list_widget()
-        print(f"_video_file_list_view: {self._video_file_list_view}")
         self._layout.addWidget(self._video_file_list_view)
 
         self._form_layout = QFormLayout()

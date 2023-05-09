@@ -5,7 +5,7 @@ from typing import Union
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtWidgets import QVBoxLayout, QListWidget, QLabel, QFormLayout, QLineEdit, \
-    QTreeView, QPushButton, QDialog, QCheckBox, QWidget
+    QTreeView, QPushButton, QDialog, QCheckBox, QWidget, QHBoxLayout
 
 from freemocap.system.paths_and_files_names import get_recording_session_folder_path, SYNCHRONIZED_VIDEOS_FOLDER_NAME
 from freemocap.system.start_file import open_file
@@ -44,14 +44,23 @@ class ImportVideosWizard(QDialog):
         self._form_layout = QFormLayout()
         self._layout.addLayout(self._form_layout)
 
+        self._synchronize_videos_checkbox = QCheckBox("Synchronize videos by audio cross-correlation")
+        self._synchronize_videos_checkbox.toggled.connect(self._handle_synchronize_checkbox_toggled)
+
+        synchronization_message = QLabel(
+            "Videos must have exactly the same video frame rates and audio sample rates to be synchronized."
+        )
+
+        synchronization_layout = QHBoxLayout()
+
+        synchronization_layout.addWidget(self._synchronize_videos_checkbox)
+        synchronization_layout.addWidget(synchronization_message)
+
+        self._form_layout.addRow("Synchronize videos:", synchronization_layout)
+
         self._folder_name = f"import_{Path(import_videos_path).name}"
         self._folder_name_line_edit = QLineEdit(parent=self)
         self._folder_name_line_edit.textChanged.connect(self._handle_folder_name_line_edit_changed)
-
-        self._synchronize_videos_checkbox = QCheckBox("Synchronize videos by audio")
-        self._synchronize_videos_checkbox.toggled.connect(self._handle_synchronize_checkbox_toggled)
-
-        self._form_layout.addRow(self._folder_name_line_edit, self._synchronize_videos_checkbox)
 
         self._folder_name_line_edit.setPlaceholderText(self._folder_name)
         self._form_layout.addRow("Recording Name:", self._folder_name_line_edit)
@@ -63,25 +72,6 @@ class ImportVideosWizard(QDialog):
         self._continue_button.isDefault()
         self._continue_button.clicked.connect(self._handle_continue_button_clicked)
         self._form_layout.addRow(self._continue_button)
-
-        synchronization_parameters = QWidget()
-
-        synchronization_message = QLabel(
-            "Videos will be synchronized using cross correlation of their audio tracks.\n" +
-            "Videos must have exact matching video framerates and audio sample rates to be synchronized."
-            )
-
-        self._synchronize_videos_checkbox.toggled.connect(synchronization_parameters.setVisible)
-
-        synchronization_parameters_layout =  QVBoxLayout()
-        synchronization_parameters_layout.addWidget(synchronization_message)
-        synchronization_parameters.setLayout(synchronization_parameters_layout)
-
-        synchronization_parameters.hide()
-
-        self._layout.addWidget(synchronization_parameters)
-
-
 
     def _get_folder_videos_will_be_saved_to(self):
         return str(Path(get_recording_session_folder_path()) / self._folder_name / SYNCHRONIZED_VIDEOS_FOLDER_NAME)

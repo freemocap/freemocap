@@ -496,7 +496,7 @@ def rotate_align_skeleton(
 
     assert (
             original_z_vector_length - rotated_up_vector_length < 1
-    ), f"Rotating the skeleton up vector changed its size -\ something went wrong (original_z_vector_length {original_z_vector_length} - rotated_up_vector_length {rotated_up_vector_length} = {original_z_vector_length - rotated_up_vector_length})"
+    ), f"Rotating the skeleton up vector changed its size -\n something went wrong (original_z_vector_length {original_z_vector_length} - rotated_up_vector_length {rotated_up_vector_length} = {original_z_vector_length - rotated_up_vector_length})"
 
     skeleton_left_vector_rotated = positive_x_reference_vector_on_the_skeleton @ skeleton_inverse_rotation_matrix
 

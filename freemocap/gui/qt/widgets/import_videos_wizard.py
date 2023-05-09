@@ -5,7 +5,7 @@ from typing import Union
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtWidgets import QVBoxLayout, QListWidget, QLabel, QFormLayout, QLineEdit, \
-    QTreeView, QPushButton, QDialog, QCheckBox, QWidget, QHBoxLayout
+    QTreeView, QPushButton, QDialog, QCheckBox, QHBoxLayout
 
 from freemocap.system.paths_and_files_names import get_recording_session_folder_path, SYNCHRONIZED_VIDEOS_FOLDER_NAME
 from freemocap.system.start_file import open_file

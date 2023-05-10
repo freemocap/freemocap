@@ -49,8 +49,8 @@ QPushButton {
   color: #f5f5f7; }
 
 QPushButton:disabled {
-  background-color: #7983b1;
-  border: 1px solid #7983b1;
+  background-color: #bec2d3;
+  border: 1px solid #afb4c9;
   color: #1d1d1f; }
 
 QPushButton:hover {
@@ -111,7 +111,7 @@ QLineEdit {
 
 QLineEdit:disabled {
   color: #333333;
-  background-color: #687e90; }
+  background-color: #bec2d3; }
 
 QTreeView {
   background-color: #7983b1;

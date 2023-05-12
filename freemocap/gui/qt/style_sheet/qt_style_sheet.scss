@@ -7,7 +7,7 @@ $freemocap-green: #365d5f;
 $freemocap-dark-green: #254342;
 $heading: #29394a;
 $primary-button: #961d39;
-$secondary-button: #961d64;
+$secondary-button: #29394a;
 $disabled-button: #bec2d3;
 $tree-primary: #7983b1;
 $tree-secondary: #a3b1ed;
@@ -66,7 +66,6 @@ QTabBar::tab:selected {
 }
 
 QPushButton {
-    font-weight: bold;
     border-radius: 4px;
     border: 2px solid darken($secondary-button, 5%);
     background-color: $secondary-button;
@@ -105,11 +104,6 @@ QPushButton#stop_recording_button:enabled {
 }
 
 QPushButton#process_motion_capture_button {
-    font-size: 18px;
-    background-color: $primary-button;
-}
-
-QPushButton#detect_available_cameras_button {
     font-size: 18px;
     background-color: $primary-button;
 }
@@ -156,7 +150,6 @@ QLineEdit:disabled {
 QTreeView {
     background-color: $tree-primary;
     color: $plain-black;
-    font-weight: bold;
     font-family: "Roboto", sans-serif;
     font-size: 12px;
 }
@@ -188,4 +181,3 @@ QDialog {
 QListWidget {
     background-color: $skelly-bone-blue;
 }
-

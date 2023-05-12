@@ -17,7 +17,7 @@ QMainWindow {
   background-color: #365d5f; }
 
 QTabWidget::pane {
-  border: 1px solid white;
+  border: 1px solid #f5f5f7;
   top: 1px;
   background: cadetblue; }
 
@@ -30,7 +30,7 @@ QTabBar::tab {
   /*min-width: 200px;*/ }
 
 QTabBar::tab {
-  background: white;
+  background: #f5f5f7;
   border-color: #365d5f;
   margin-bottom: -5px;
   font-weight: bolder;
@@ -38,23 +38,25 @@ QTabBar::tab {
 
 QTabBar::tab:selected {
   background: #365d5f;
-  color: white;
-  border-color: white; }
+  color: #f5f5f7;
+  border-color: #f5f5f7; }
 
 QPushButton {
-  font-weight: bold;
   border-radius: 4px;
-  border: 2px solid #29394a;
+  border: 2px solid #202c3a;
   background-color: #29394a;
-  color: white; }
+  color: #f5f5f7; }
 
 QPushButton:disabled {
-  background-color: #7983b1;
-  border: 1px solid #7983b1;
-  color: #a4d6d9; }
+  background-color: #bec2d3;
+  border: 1px solid #afb4c9;
+  color: #1d1d1f; }
 
 QPushButton:hover {
-  border: 3px solid white; }
+  border: 3px solid #f5f5f7; }
+
+QPushButton:pressed {
+  background-color: #050608; }
 
 QPushButton#start_recording_button {
   font-size: 18px;
@@ -70,23 +72,27 @@ QPushButton#stop_recording_button:enabled {
   /*font-size: 24px;*/
   border: 3px solid #d95158; }
 
+QPushButton#process_motion_capture_button {
+  font-size: 18px;
+  background-color: #961d39; }
+
 WelcomeScreenButton {
   border: 2px solid #333333;
   background-color: #365d5f;
-  color: white;
+  color: #f5f5f7;
   font-size: 24px;
   border-radius: 20px;
   padding: 10px; }
 
 WelcomeScreenButton[recommended_next=true] {
   background-color: #d95158;
-  color: white; }
+  color: #f5f5f7; }
 
 QLabel {
   font-size: 14px;
   color: #333333; }
   QTreeView QLabel {
-    color: black; }
+    color: #1d1d1f; }
 
 QLabel:disabled {
   color: #a4d6d9; }
@@ -96,31 +102,36 @@ QLineEdit {
   border-radius: 4px;
   padding: 0 8px;
   color: #333333;
-  background-color: white; }
+  background-color: #f5f5f7; }
 
 QLineEdit:disabled {
   color: #333333;
-  background-color: #687e90; }
+  background-color: #bec2d3; }
 
 QTreeView {
   background-color: #7983b1;
-  color: black;
-  font-weight: bold;
+  color: #1d1d1f;
   font-family: "Roboto", sans-serif;
   font-size: 12px; }
 
 QTreeView::item:has-children {
   background-color: #29394a;
-  color: white; }
+  color: #f5f5f7; }
 
 QTreeView::item:selected,
 QTreeView::item:hover {
-  background-color: white;
+  background-color: #f5f5f7;
   color: #333333; }
 
 LogViewWidget {
   background-color: #254342;
-  color: white;
+  color: #f5f5f7;
   font-family: "Roboto", sans-serif;
   font-size: 12px;
   padding: 8px; }
+
+QDialog {
+  background-color: cadetblue; }
+
+QListWidget {
+  background-color: #a4d6d9; }

@@ -73,6 +73,7 @@ dependencies = [
     'mediapipe; platform_system != "Darwin" or platform_machine != "arm64"',
     'mediapipe-silicon; platform_system == "Darwin" and platform_machine == "arm64"',
     "opencv-contrib-python==4.6.0.66",
+    "ultralytics",
     "toml",
     "aniposelib",
     "libsass",

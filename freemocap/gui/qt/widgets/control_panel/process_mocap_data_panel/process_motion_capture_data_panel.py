@@ -65,6 +65,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
             "Process Motion Capture Videos",
         )
         self._process_motion_capture_data_button.setFont(QFont("Dosis", 16, QFont.Weight.Bold))
+        self._process_motion_capture_data_button.setObjectName("process_motion_capture_button")
         
         self._process_motion_capture_data_button.clicked.connect(self._launch_process_motion_capture_data_thread_worker)
         self._layout.addWidget(self._process_motion_capture_data_button)

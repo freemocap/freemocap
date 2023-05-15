@@ -10,7 +10,13 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
-    create_mediapipe_parameter_group, create_3d_triangulation_prarameter_group, create_post_processing_parameter_group,
+    create_mediapipe_parameter_group, 
+    create_3d_triangulation_prarameter_group, 
+    create_post_processing_parameter_group, 
+    extract_parameter_model_from_parameter_tree,
+    SKIP_2D_IMAGE_TRACKING_NAME,
+    SKIP_3D_TRIANGULATION_NAME,
+    SKIP_BUTTERWORTH_FILTER_NAME,
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
@@ -59,6 +65,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
             "Process Motion Capture Videos",
         )
         self._process_motion_capture_data_button.setFont(QFont("Dosis", 16, QFont.Weight.Bold))
+        self._process_motion_capture_data_button.setObjectName("process_motion_capture_button")
         
         self._process_motion_capture_data_button.clicked.connect(self._launch_process_motion_capture_data_thread_worker)
         self._layout.addWidget(self._process_motion_capture_data_button)
@@ -66,7 +73,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._parameter_tree_widget = ParameterTree(parent=self, showHeader=False)
         self._layout.addWidget(self._parameter_tree_widget)
 
-        self._add_parameters_to_parameter_tree_widget(
+        self._parameter_group = self._add_parameters_to_parameter_tree_widget(
             self._parameter_tree_widget,
             session_processing_parameter_model=self._recording_processing_parameter_model,
         )
@@ -109,16 +116,16 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="2d Image Trackers",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(),
+                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_2D_IMAGE_TRACKING_NAME),
                         create_mediapipe_parameter_group(session_processing_parameter_model.mediapipe_parameters_model),
                     ],
                     tip="Methods for tracking 2d points in images (e.g. mediapipe, deeplabcut(TODO), openpose(TODO), etc ...)",
                 ),
                 dict(
-                    name="3d triangulation methods",
+                    name="3d Triangulation Methods",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(),
+                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_3D_TRIANGULATION_NAME),
                         create_3d_triangulation_prarameter_group(
                             session_processing_parameter_model.anipose_triangulate_3d_parameters_model
                         ),
@@ -129,7 +136,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="Post Processing (data cleaning)",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(),
+                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_BUTTERWORTH_FILTER_NAME),
                         create_post_processing_parameter_group(
                             session_processing_parameter_model.post_processing_parameters_model
                         ),
@@ -140,28 +147,27 @@ class ProcessMotionCaptureDataPanel(QWidget):
             ],
         )
 
-    def _extract_session_parameter_model_from_parameter_tree(
+    def _create_session_parameter_model(
             self,
     ) -> RecordingProcessingParameterModel:
-        # rec = extract_mediapipe_parameter_model_from_parameter_tree(self._parameter_tree_widget)
-        logger.debug("TODO - extract session parameter model from parameter tree")
-        rec = self._recording_processing_parameter_model
-        rec.recording_info_model = self._get_active_recording_info()
+        recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(parameter_object=self._parameter_group)
+        recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
 
         if self._calibration_control_panel.calibration_toml_path:
-            rec.recording_info_model.calibration_toml_path = self._calibration_control_panel.calibration_toml_path
+            recording_processing_parameter_model.recording_info_model.calibration_toml_path = self._calibration_control_panel.calibration_toml_path
         else:
-            rec.recording_info_model.calibration_toml_path = self._calibration_control_panel.open_load_camera_calibration_toml_dialog()
+            recording_processing_parameter_model.recording_info_model.calibration_toml_path = self._calibration_control_panel.open_load_camera_calibration_toml_dialog()
 
-        if not rec.recording_info_model.calibration_toml_path:
+        if not recording_processing_parameter_model.recording_info_model.calibration_toml_path:
             logger.error(
                 "No calibration TOML selected - Processing will fail at the '3d triangulation' step (but it will get through the 'Tracking things in 2d images' step).")
 
-        return rec
+        return recording_processing_parameter_model
 
-    def _create_new_skip_this_step_parameter(self):
+
+    def _create_new_skip_this_step_parameter(self, skip_step_name: str):
         parameter = Parameter.create(
-            name="Skip this step?",
+            name=skip_step_name,
             type="bool",
             value=False,
             tip="If you have already run this step, you can skip it." "re-running it will overwrite the existing data.",
@@ -170,19 +176,23 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         return parameter
 
-    def disable_this_parameter_group(self, parameter, changes):
-        logger.debug(f"TODO - disable parameter group when 'skip this step?' is checked")
-        pass
-        # skip_this_step_bool = parameter.value()
-        # parameter_group = parameter.parent()
-        # for child in parameter_group.children():
-        #     if child.name() != "Skip this step?":
-        #         logger.debug(f"Disabling {child.name()}")
-        #         child.setOpts(enabled=not skip_this_step_bool)
+    def disable_this_parameter_group(self, parameter):
+        skip_this_step_bool = parameter.value()
+        parameter_group = parameter.parent()
+        for child in parameter_group.children():
+            if child.name().split(" ")[0] != "Skip":
+                logger.debug(f"{'Enabling' if not skip_this_step_bool else 'Disabling'} {child.name()} in processing pipeline") 
+                self.set_parameter_enabled(child, not skip_this_step_bool)
+
+    def set_parameter_enabled(self, parameter, enabled_bool):
+        parameter.setOpts(enabled=enabled_bool)
+        if parameter.hasChildren():
+            for child in parameter.children():
+                self.set_parameter_enabled(child, enabled_bool)
 
     def _launch_process_motion_capture_data_thread_worker(self):
         logger.debug("Launching process motion capture data process")
-        session_parameter_model = self._extract_session_parameter_model_from_parameter_tree()
+        session_parameter_model = self._create_session_parameter_model()
         session_parameter_model.recording_info_model = self._get_active_recording_info()
 
         if session_parameter_model.recording_info_model is None:

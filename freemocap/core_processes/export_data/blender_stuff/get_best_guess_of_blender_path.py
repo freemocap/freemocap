@@ -35,6 +35,21 @@ def get_best_guess_of_blender_path():
             )
             return None
 
+    if platform.system() == "Darwin":
+
+        blender_app_path = Path("/Applications/Blender.app")
+        
+        if blender_app_path.exists():
+            logger.info(f"Mac machine detected - guessing that `blender` is installed at: {str(blender_app_path)}")
+
+            blender_exe_path = blender_app_path / "Contents/MacOS/Blender"
+            return str(blender_exe_path)
+        else:
+            logger.warning(
+                f"Could not find Blender executable in the applications folder. Please located it manually (or install Blender, if it isn't installed)."
+            )
+            return None
+
     else:
-        logger.info(f"Non-Windows machine detected - TODO - Test how this works on Mac/Linux")
+        logger.info(f"Non-Windows/Mac machine detected - TODO - Test how this works on Linux")
         return None

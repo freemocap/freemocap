@@ -351,6 +351,8 @@ class FreemocapMainWindow(QMainWindow):
         logger.info(f"New active recording selected: {recording_info_model.path}")
 
         # self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
+        self._pipedream_pings.update_pings_dict(key=recording_info_model.name,
+                                                value=self._active_recording_info_widget.active_recording_info.status_check)
 
         path = Path(recording_info_model.path)
         path.mkdir(parents=True, exist_ok=True)
@@ -498,7 +500,8 @@ class FreemocapMainWindow(QMainWindow):
         logger.info("Main window `closeEvent` detected")
 
         self._pipedream_pings.update_pings_dict(key="gui_closed", value=True)
-        self._pipedream_pings.update_pings_dict(key="active recording status on close", value=self._active_recording_info_widget.active_recording_info.status_check)
+        self._pipedream_pings.update_pings_dict(key="active recording status on close",
+                                                value=self._active_recording_info_widget.active_recording_info.status_check)
         self._pipedream_pings.send_pipedream_ping()
 
         remove_empty_directories(get_recording_session_folder_path())

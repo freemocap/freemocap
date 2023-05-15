@@ -68,7 +68,7 @@ keywords = [
 
 #dynamic = ["dependencies"]
 dependencies = [
-    "skellycam==2023.2.1076",
+    "skellycam",
     "skelly_viewer",
     'mediapipe; platform_system != "Darwin" or platform_machine != "arm64"',
     'mediapipe-silicon; platform_system == "Darwin" and platform_machine == "arm64"',
@@ -78,7 +78,7 @@ dependencies = [
     "libsass",
     "papermill==2.4.0",
 ]
-requires-python = ">=3.8, <3.11"
+requires-python = ">=3.8"
 
 dynamic = ["version", "description"]
 
@@ -91,7 +91,7 @@ Documentation = "https://freemocap.readthedocs.io/en/latest/"
 Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]
-current_version = "v1.0.5-rc"
+current_version = "v1.0.12-rc"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

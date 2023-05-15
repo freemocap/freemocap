@@ -1,6 +1,9 @@
 import logging
 from pathlib import Path
-from typing import Union, Dict
+from typing import Union, Dict, Any
+
+import numpy as np
+import toml
 
 from freemocap.system.paths_and_files_names import (
     CENTER_OF_MASS_FOLDER_NAME,
@@ -60,6 +63,7 @@ class RecordingInfoModel:
     @property
     def calibration_toml_path(self) -> str:
         return self._calibration_toml_path
+
     @calibration_toml_path.setter
     def calibration_toml_path(self, path: Union[Path, str]):
         self._calibration_toml_path = str(path)
@@ -145,13 +149,19 @@ class RecordingFolderStatusChecker:
         self.recording_info_model = recording_info_model
 
     @property
-    def status_check(self) -> Dict[str, bool]:
+    def status_check(self) -> Dict[str, Union[bool, str, float]]:
         return {
             'synchronized_videos_status_check': self.check_synchronized_videos_status(),
             'data2d_status_check': self.check_data2d_status(),
             'data3d_status_check': self.check_data3d_status(),
             'center_of_mass_data_status_check': self.check_center_of_mass_data_status(),
-            'blender_file_status_check': self.check_blender_file_status(), }
+            'blender_file_status_check': self.check_blender_file_status(),
+            'video_and_camera_info': {
+                'number_of_synchronized_videos': self.get_number_of_mp4s_in_synched_videos_directory(),
+                'number_of_frames_in_videos': self.get_number_of_frames_in_videos(),
+                # 'camera_rotation_and_translation': self.get_camera_rotation_and_translation_from_calibration_toml()
+            }
+        }
 
     def check_synchronized_videos_status(self) -> bool:
         try:
@@ -199,3 +209,33 @@ class RecordingFolderStatusChecker:
 
     def check_calibration_toml_status(self) -> bool:
         return Path(self.recording_info_model.calibration_toml_path).is_file()
+
+    def get_number_of_mp4s_in_synched_videos_directory(self) -> float:
+        synchronized_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path)
+        video_count = 0.0
+
+        if not synchronized_directory_path.exists():
+            return video_count
+
+        for file in synchronized_directory_path.iterdir():
+            if file.is_file() and file.suffix.lower() == '.mp4':
+                video_count += 1
+
+        logger.info(f"Number of `.mp4`'s in {self.recording_info_model.synchronized_videos_folder_path}: {video_count}")
+        return video_count
+
+    def get_number_of_frames_in_videos(self):
+        timestamps_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path) / "timestamps"
+
+        if not timestamps_directory_path.exists():
+            return "No 'timestamps' directory found"
+
+        if timestamps_directory_path.exists() :
+            frame_counts = {}
+
+            for npy_file in timestamps_directory_path.iterdir():
+                if npy_file.is_file() and npy_file.suffix.lower() == '.npy':
+                    video_npy = np.load(str(npy_file))
+                    frame_counts[npy_file.name] = str(len(video_npy)-1)
+
+            return frame_counts

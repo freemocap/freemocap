@@ -32,6 +32,10 @@ def remove_3d_data_with_high_reprojection_error(
     data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
     data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
 ):
+
+    return data3d_numFrames_numTrackedPoints_XYZ
+    # TODO - Fix this function (it was causing overfiltering when combined with the anipose calibration confidence thresholding)
+
     logger.info("Removing 3D data with high reprojection error")
     mean_reprojection_error_per_frame = np.nanmean(
         data3d_numFrames_numTrackedPoints_reprojectionError,

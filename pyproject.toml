@@ -76,6 +76,7 @@ dependencies = [
     "toml",
     "aniposelib",
     "libsass",
+    "papermill==2.4.0",
 ]
 requires-python = ">=3.8, <3.11"
 

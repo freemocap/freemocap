@@ -37,8 +37,6 @@ class CameraControllerGroupBox(QGroupBox):
         # self._layout.setSpacing(0)
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-
-
         motion_capture_recording_options_layout = self._create_mocap_recording_option_layout()
         self._layout.addLayout(motion_capture_recording_options_layout)
 
@@ -79,6 +77,11 @@ class CameraControllerGroupBox(QGroupBox):
         self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
         self._auto_process_videos_checkbox.setChecked(True)
         hbox.addWidget(self._auto_process_videos_checkbox)
+
+        self._generate_jupyter_notebook_checkbox = QCheckBox('Generate Jupyter Notebook')
+        self._generate_jupyter_notebook_checkbox.setChecked(True)
+        hbox.addWidget(self._generate_jupyter_notebook_checkbox)
+
         self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
         self._auto_open_in_blender_checkbox.setChecked(True)
         hbox.addWidget(self._auto_open_in_blender_checkbox)
@@ -119,6 +122,10 @@ class CameraControllerGroupBox(QGroupBox):
     @property
     def auto_open_in_blender_checked(self) -> bool:
         return self._auto_open_in_blender_checkbox.isChecked()
+
+    @property
+    def generate_jupyter_notebook_checked(self) -> bool:
+        return self._generate_jupyter_notebook_checkbox.isChecked()
 
     @property
     def charuco_square_size(self) -> float:

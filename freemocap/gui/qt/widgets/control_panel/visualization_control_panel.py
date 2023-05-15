@@ -27,6 +27,9 @@ class VisualizationControlPanel(QWidget):
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
+        self._generate_jupyter_notebook = QPushButton("Generate Jupyter Notebook")
+        self._layout.addWidget(self._generate_jupyter_notebook)
+
         groupbox = QGroupBox("Export to Blender", parent=self)
         self._layout.addWidget(groupbox)
         vbox = QVBoxLayout()
@@ -64,6 +67,10 @@ class VisualizationControlPanel(QWidget):
     @property
     def export_to_blender_button(self):
         return self._export_to_blender_button
+
+    @property
+    def generate_jupyter_notebook_button(self):
+        return self._generate_jupyter_notebook
 
     @property
     def open_in_blender_automatically_box_is_checked(self):

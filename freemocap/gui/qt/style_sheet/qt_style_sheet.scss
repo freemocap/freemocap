@@ -5,12 +5,14 @@ $laser-red: #d95158;
 $disabled-laser-red: #8c5454;
 $freemocap-green: #365d5f;
 $freemocap-dark-green: #254342;
-$button-blue: #29394a;
-$disabled-button-blue: #687e90;
+$heading: #29394a;
+$primary-button: #961d39;
+$secondary-button: #29394a;
+$disabled-button: #bec2d3;
 $tree-primary: #7983b1;
 $tree-secondary: #a3b1ed;
-$plain-white: white;
-
+$plain-white: #f5f5f7;
+$plain-black: #1d1d1f;
 
 * {
     font-family: "Dosis", sans-serif;
@@ -23,13 +25,8 @@ QGroupBox {
     border-radius: 4px;
     margin-top: 10px;
     font-weight: bold;
-}
-QGroupBox{
     background-color: $skelly-bone-blue;
 }
-//QGroupBox[calibration_videos_radio_button_checked=true] {
-//    background-color: $laser-red;
-//}
 
 QStatusBar {
     color: $freemocap-green;
@@ -69,22 +66,24 @@ QTabBar::tab:selected {
 }
 
 QPushButton {
-    font-weight: bold;
     border-radius: 4px;
-    border: 2px solid $button-blue;
-    background-color: $button-blue;
+    border: 2px solid darken($secondary-button, 5%);
+    background-color: $secondary-button;
     color: $plain-white;
 }
 
-
 QPushButton:disabled {
-    background-color: $tree-primary;
-    border: 1px solid $tree-primary;
-    color: $skelly-bone-blue;
+    background-color: $disabled-button;
+    border: 1px solid darken($disabled-button, 5%);
+    color: $plain-black;
 }
 
 QPushButton:hover {
     border: 3px solid $plain-white;
+}
+
+QPushButton:pressed {
+    background-color: darken($secondary-button, 20%);
 }
 
 QPushButton#start_recording_button {
@@ -104,6 +103,10 @@ QPushButton#stop_recording_button:enabled {
     border: 3px solid $laser-red;
 }
 
+QPushButton#process_motion_capture_button {
+    font-size: 18px;
+    background-color: $primary-button;
+}
 
 WelcomeScreenButton {
     border: 2px solid $dark-charcoal;
@@ -114,16 +117,18 @@ WelcomeScreenButton {
     padding: 10px;
 }
 
-
 WelcomeScreenButton[recommended_next = true] {
     background-color: $laser-red;
     color: $plain-white;
 }
 
-
 QLabel {
     font-size: 14px;
     color: $dark-charcoal;
+
+    QTreeView & {
+        color: $plain-black;
+  }
 }
 
 QLabel:disabled {
@@ -131,28 +136,26 @@ QLabel:disabled {
 }
 
 QLineEdit {
-    border: 1px solid $button-blue;
+    border: 1px solid $heading;
     border-radius: 4px;
     padding: 0 8px;
     color: $dark-charcoal;
-
+    background-color: $plain-white;
 }
 QLineEdit:disabled {
     color: $dark-charcoal;
-    background-color: $button-blue;
+    background-color: $disabled-button;
 }
 
 QTreeView {
     background-color: $tree-primary;
-    alternate-background-color: $tree-secondary;
-    color: $plain-white;
-    font-weight: bold;
+    color: $plain-black;
     font-family: "Roboto", sans-serif;
     font-size: 12px;
 }
 
 QTreeView::item:has-children {
-    background-color: $button-blue;
+    background-color: $heading;
     color: $plain-white;
 }
 
@@ -168,4 +171,13 @@ LogViewWidget {
     font-family: "Roboto", sans-serif;
     font-size: 12px;
     padding: 8px;
+}
+
+
+QDialog {
+    background-color: $cadet-skelly;
+}
+
+QListWidget {
+    background-color: $skelly-bone-blue;
 }

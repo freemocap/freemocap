@@ -77,6 +77,7 @@ dependencies = [
     "aniposelib",
     "libsass",
     "papermill==2.4.0",
+    "ipykernel==6.23.1",
 ]
 requires-python = ">=3.8"
 

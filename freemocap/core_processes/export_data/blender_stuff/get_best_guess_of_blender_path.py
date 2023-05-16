@@ -17,7 +17,7 @@ def guess_blender_exe_path_from_path(base_path: Union[str, Path]) -> Path:
 def get_best_guess_of_blender_path():
     if platform.system() == "Windows":
 
-        base_path = Path("C:\Program Files\Blender Foundation")
+        base_path = Path(r"C:\Program Files\Blender Foundation")
         blender_exe_path = guess_blender_exe_path_from_path(base_path)
 
         if blender_exe_path is not None:

@@ -61,6 +61,7 @@ QPushButton:hover {
 QPushButton:pressed {
   background-color: #53d4dc; }
 
+
 QPushButton#start_recording_button {
   font-size: 18px;
   background-color: #d95158;
@@ -76,6 +77,7 @@ QPushButton#stop_recording_button:enabled {
   /*font-size: 24px;*/
   border: 3px solid #d95158; }
 
+
 QPushButton#process_motion_capture_button,
 QPushButton#export_to_blender_button {
   font-size: 18px;
@@ -90,6 +92,7 @@ WelcomeScreenButton {
   border: 2px solid #333333;
   background-color: #67bcc0;
   color: #1d1d1f;
+
   font-size: 24px;
   border-radius: 20px;
   padding: 10px; }
@@ -103,6 +106,7 @@ WelcomeScreenButton[recommended_next=true] {
 
 WelcomeScreenButton[recommended_next=true]:hover {
   border: 2px solid #a1232a; }
+
 
 QLabel {
   font-size: 14px;

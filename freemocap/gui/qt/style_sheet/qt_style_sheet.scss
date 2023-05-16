@@ -21,7 +21,6 @@ $plain-black: #1d1d1f;
 $divider-color: #bdbdbd;
 $disabled-line-edit: #e0e0e0;
 
-
 * {
     font-family: "Dosis", sans-serif;
     font-size: 14px;
@@ -91,6 +90,10 @@ QPushButton:disabled {
 QPushButton:hover {
     border: 2px solid $plain-black;
     background-color: $primary-button;
+}
+
+QPushButton:pressed {
+    background-color: darken($secondary-button, 20%);
 }
 
 QPushButton:pressed {

@@ -1,17 +1,17 @@
+import pytest
+import numpy as np
 from pathlib import Path
 from typing import Union
-
-import numpy as np
 
 from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import (
     get_number_of_frames_of_videos_in_a_folder,
 )
 
-
-def test_mediapipe_3d_data_shape(
-    synchronized_videos_folder: Union[str, Path],
-    mediapipe_3d_data_npy_path: Union[str, Path],
-    medipipe_reprojection_error_data_npy_path: Union[str, Path],
+@pytest.mark.usefixtures("synchronized_video_folder_path", "raw_skeleton_npy_file_path", "reprojection_error_file_name")
+def test_mediapipe_skeleton_data_shape(
+    synchronized_video_folder_path: Union[str, Path],
+    raw_skeleton_npy_file_path: Union[str, Path],
+    reprojection_error_file_name: Union[str, Path],
 ):
     """
     test that the `mediapipe 3d detection` process worked correctly by checking:
@@ -23,31 +23,31 @@ def test_mediapipe_3d_data_shape(
     """
 
     assert Path(
-        mediapipe_3d_data_npy_path
-    ).is_file(), f"3d skeleton data file does not exist at {mediapipe_3d_data_npy_path}"
+        raw_skeleton_npy_file_path
+    ).is_file(), f"3d skeleton data file does not exist at {raw_skeleton_npy_file_path}"
 
-    skel3d_frame_marker_xyz = np.load(mediapipe_3d_data_npy_path)
+    skel3d_frame_marker_xyz = np.load(raw_skeleton_npy_file_path)
 
     assert (
         len(skel3d_frame_marker_xyz.shape) == 3
-    ), f"3d skeleton data file should have 3 dimensions -  {mediapipe_3d_data_npy_path}"
+    ), f"3d skeleton data file should have 3 dimensions -  {raw_skeleton_npy_file_path}"
 
     assert Path(
-        medipipe_reprojection_error_data_npy_path
-    ).is_file(), f"3d skeleton reprojection error data file does not exist at {medipipe_reprojection_error_data_npy_path}"
+        reprojection_error_file_name
+    ).is_file(), f"3d skeleton reprojection error data file does not exist at {reprojection_error_file_name}"
 
     skeleton_reprojection_error_fr_mar = np.load(
-        medipipe_reprojection_error_data_npy_path
+        reprojection_error_file_name
     )
 
     assert (
         len(skeleton_reprojection_error_fr_mar.shape) == 2
-    ), f"3d skeleton reprojection error data file should have 2 dimensions {medipipe_reprojection_error_data_npy_path}"
+    ), f"3d skeleton reprojection error data file should have 2 dimensions {reprojection_error_file_name}"
 
-    frame_count = get_number_of_frames_of_videos_in_a_folder(synchronized_videos_folder)
+    frame_count = get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path)
     assert (
         len(set(frame_count)) == 1
-    ), f"Videos in {synchronized_videos_folder} have different frame counts: {frame_count}"
+    ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_count}"
 
     number_of_frames = frame_count[0]
 
@@ -58,6 +58,5 @@ def test_mediapipe_3d_data_shape(
 
     assert (
         skel3d_frame_marker_xyz.shape[2] == 3
-    ), f"3d skeleton data file does not have 3 dimensions for X,Y,Z at {mediapipe_3d_data_npy_path}"
+    ), f"3d skeleton data file does not have 3 dimensions for X,Y,Z at {raw_skeleton_npy_file_path}"
 
-    return True

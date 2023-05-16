@@ -35,7 +35,8 @@ QTabBar::tab {
   font-weight: bolder;
   font-size: 16px; }
 
-QTabBar::tab:selected {
+QTabBar::tab:selected,
+QTabBar::tab:hover {
   background: #424242;
   color: #f5f5f7;
   border-color: #1d1d1f; }

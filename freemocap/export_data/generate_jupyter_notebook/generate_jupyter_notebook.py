@@ -5,11 +5,12 @@ from pathlib import Path
 
 
 def generate_jupyter_notebook(path_to_recording:Union[str,Path]):
-    path_to_this_directory = Path(__file__).parent/ 'freemocap_data_visuals_template.ipynb'
-    path_to_output_notebook = Path(path_to_recording) / 'freemocap_data_visualizations.ipynb'
+    recording_name = Path(path_to_recording).name
+    path_to_template_notebook = Path(__file__).parent/ 'freemocap_template.ipynb'
+    path_to_output_notebook = Path(path_to_recording) / f"{recording_name}.ipynb}"
 
     return pm.execute_notebook(
-        input_path = path_to_this_directory,
+        input_path = path_to_template_notebook,
         output_path = path_to_output_notebook,
         parameters=dict(path_to_recording= path_to_recording)
     )   

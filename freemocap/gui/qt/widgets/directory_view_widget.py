@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget, QPus
 from qtpy import QtGui
 
 from freemocap.system.paths_and_files_names import get_recording_session_folder_path
-from freemocap.system.start_file import open_file
+from freemocap.system.open_file import open_file
 
 logger = logging.getLogger(__name__)
 

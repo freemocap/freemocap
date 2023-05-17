@@ -65,7 +65,7 @@ from freemocap.system.paths_and_files_names import (
     get_recording_session_folder_path,
 )
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
-from freemocap.system.start_file import open_file
+from freemocap.system.open_file import open_file
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
 EXIT_CODE_REBOOT = -123456789

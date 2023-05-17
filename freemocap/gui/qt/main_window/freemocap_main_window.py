@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QMainWindow,
     QFileDialog,
-    QTabWidget, QWidget, QHBoxLayout, )
+    QWidget, QHBoxLayout, )
 from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
@@ -19,12 +19,12 @@ from skellycam import (
 )
 from tqdm import tqdm
 
-from freemocap.core_processes.export_data.blender_stuff.export_to_blender import (
+from freemocap.export_data.blender_stuff.export_to_blender import (
     export_to_blender,
 )
-from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import \
+from freemocap.export_data.blender_stuff.get_best_guess_of_blender_path import \
     get_best_guess_of_blender_path
-from freemocap.core_processes.export_data.generate_jupyter_notebook.notebook_generator import generate_jupyter_notebook
+from freemocap.export_data import generate_jupyter_notebook
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
@@ -63,9 +63,6 @@ from freemocap.system.paths_and_files_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
     get_blender_file_path,
     get_recording_session_folder_path,
-    DIRECTORY_EMOJI_STRING,
-    GEAR_EMOJI_STRING,
-    COOL_EMOJI_STRING,
 )
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.start_file import open_file

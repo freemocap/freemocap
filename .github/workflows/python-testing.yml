@@ -3,8 +3,6 @@ name: Freemocap Tests
 on:
   pull_request:
     branches: [ main, philip/automate-end-to-end-testing ]
-    paths:
-      - freemocap
 
 jobs:
   build:

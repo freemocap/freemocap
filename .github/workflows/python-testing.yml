@@ -23,7 +23,7 @@ jobs:
           pip install -e .
       - name: Replace Opencv with Headless
         run: |
-          pip uninstall opencv-contrib-python
+          pip uninstall -y opencv-contrib-python
           pip install opencv-contrib-python-headless
       - name: Run Tests with Pytest
         run: |

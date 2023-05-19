@@ -2,7 +2,7 @@ name: Freemocap Tests
 
 on:
   pull_request:
-    branches: [ main, philip/automate-end-to-end-testing ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -21,6 +21,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+      - name: Replace Opencv with Headless
+        run: |
+          pip uninstall opencv-contrib-python
+          pip install opencv-contrib-python-headless
       - name: Run Tests with Pytest
         run: |
           pip install pytest

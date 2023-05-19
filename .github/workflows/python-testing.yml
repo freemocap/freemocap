@@ -2,7 +2,7 @@ name: Freemocap Tests
 
 on:
   pull_request:
-    branches: [ main, philip/automate-end-to-end-testing ]
+    branches: [ main ]
 
 jobs:
   build:

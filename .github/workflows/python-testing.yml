@@ -3,6 +3,8 @@ name: Freemocap Tests
 on:
   pull_request:
     branches: [ main ]
+    paths: 
+      - 'freemocap/**'
 
 jobs:
   build:

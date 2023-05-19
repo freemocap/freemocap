@@ -1,5 +1,6 @@
 import io
 import logging
+from typing import Union
 
 import requests
 import zipfile
@@ -46,61 +47,61 @@ def load_sample_data(sample_data_zip_file_url: str = FIGSHARE_ZIP_FILE_URL) -> s
         logger.error(f"Failed to unzip the file: {e}")
 
 
-def find_output_data_folder_path(recording_folder_path: Path) -> Path:
-    for subfolder_path in recording_folder_path.iterdir():
+def find_output_data_folder_path(recording_folder_path: Union[str,Path])->str:
+    for subfolder_path in Path(recording_folder_path).iterdir():
         if subfolder_path.name == OUTPUT_DATA_FOLDER_NAME:
-            return subfolder_path
+            return str(subfolder_path)
 
     raise Exception(f"Could not find a data folder in path {str(recording_folder_path)}")
 
 
-def find_synchronized_videos_folder_path(recording_folder_path: Path) -> Path:
-    for subfolder_path in recording_folder_path.iterdir():
+def find_synchronized_videos_folder_path(recording_folder_path: Union[str, Path]) -> str:
+    for subfolder_path in Path(recording_folder_path).iterdir():
         if subfolder_path.name == SYNCHRONIZED_VIDEOS_FOLDER_NAME:
-            return subfolder_path
+            return str(subfolder_path)
 
     raise Exception(f"Could not find a videos folder in path {str(recording_folder_path)}")
 
 
-def find_raw_skeleton_npy_file_name(data_folder_name: Path) -> Path:
-    raw_data_subfolder_path = data_folder_name / RAW_DATA_FOLDER_NAME
+def find_raw_skeleton_npy_file_name(data_folder_name: Union[str,Path])->str:
+    raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
         if RAW_MEDIAPIPE_3D_NPY_FILE_NAME in raw_data_npy_path_list:
-            return raw_data_subfolder_path / RAW_MEDIAPIPE_3D_NPY_FILE_NAME
+            return str(raw_data_subfolder_path / RAW_MEDIAPIPE_3D_NPY_FILE_NAME)
 
     raise Exception(f"Could not find a skeleton NPY file in path {str(data_folder_name)}")
 
 
-def find_total_body_center_of_mass_file_name(data_folder_name: Path) -> Path:
-    center_of_mass_subfolder_path = data_folder_name / CENTER_OF_MASS_FOLDER_NAME
+def find_total_body_center_of_mass_file_name(data_folder_name: Union[str,Path])->str:
+    center_of_mass_subfolder_path = Path(data_folder_name) / CENTER_OF_MASS_FOLDER_NAME
     if center_of_mass_subfolder_path.exists:
         center_of_mass_npy_path_list = [path.name for path in center_of_mass_subfolder_path.glob("*.npy")]
 
         if TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME in center_of_mass_npy_path_list:
-            return center_of_mass_subfolder_path / TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME
+            return str(center_of_mass_subfolder_path / TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
 
     raise Exception(f"Could not find a total body center of mass npy file in path {str(data_folder_name)}")
 
 
-def find_image_tracking_data_file_name(data_folder_name: Path) -> Path:
-    raw_data_subfolder_path = data_folder_name / RAW_DATA_FOLDER_NAME
+def find_image_tracking_data_file_name(data_folder_name: Union[str,Path])->str:
+    raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
 
         if MEDIAPIPE_2D_NPY_FILE_NAME in raw_data_npy_path_list:
-            return raw_data_subfolder_path / MEDIAPIPE_2D_NPY_FILE_NAME
+            return str(raw_data_subfolder_path / MEDIAPIPE_2D_NPY_FILE_NAME)
 
     raise Exception(f"Could not find a 2d data file in path {str(data_folder_name)}")
 
 
-def find_reprojection_error_file_name(data_folder_name: Path) -> Path:
-    raw_data_subfolder_path = data_folder_name / RAW_DATA_FOLDER_NAME
+def find_reprojection_error_file_name(data_folder_name: Union[str,Path])->str:
+    raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
 
         if MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME in raw_data_npy_path_list:
-            return raw_data_subfolder_path / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
+            return str(raw_data_subfolder_path / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME)
 
     raise Exception(f"Could not find reprojection error data file in path {str(data_folder_name)}")
 

@@ -24,7 +24,7 @@ from freemocap.export_data.blender_stuff.export_to_blender import (
 )
 from freemocap.export_data.blender_stuff.get_best_guess_of_blender_path import \
     get_best_guess_of_blender_path
-from freemocap.export_data import generate_jupyter_notebook
+from freemocap.export_data.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher

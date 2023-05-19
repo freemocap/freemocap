@@ -78,6 +78,7 @@ dependencies = [
     "libsass",
     "papermill==2.4.0",
     "ipykernel==6.23.1",
+    "plotly==5.14.1"
 ]
 requires-python = ">=3.8"
 

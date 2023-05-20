@@ -58,7 +58,7 @@ freemocap
 ``` 
 
 3. A GUI should pop up that looks like this
-![image](https://user-images.githubusercontent.com/15314521/225373100-4121af75-21cc-4256-a131-6ba242446c8e.png)
+<img width="1457" alt="image" src="https://github.com/freemocap/freemocap/assets/15314521/90ef7e7b-48f3-4f46-8d4a-5b5bcc3254b3">
 
 4. Have fun! It might break!  Work in Progress lol 
 

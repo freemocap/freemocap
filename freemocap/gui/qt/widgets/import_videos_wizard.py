@@ -20,7 +20,7 @@ no_files_found_string = "No '.mp4' video files found! \n \n Note - We only look 
 logger = logging.getLogger(__name__)
 
 class ImportVideosWizard(QDialog):
-    folder_to_save_videos_to_selected = pyqtSignal(list, str)
+    folder_to_save_videos_to_selected = pyqtSignal(list, str, bool)
     def __init__(self,
                  import_videos_path: Union[str, Path],
                  parent=None):
@@ -116,12 +116,15 @@ class ImportVideosWizard(QDialog):
 
     def _handle_continue_button_clicked(self, event):
         if self._synchronize_videos_checkbox.isChecked():
-            newly_synchronized_video_path = synchronize_videos_from_audio(raw_video_folder_path=Path(self.import_videos_path))
+            newly_synchronized_video_path = synchronize_videos_from_audio(
+                raw_video_folder_path=Path(self.import_videos_path), 
+                synchronized_video_folder_path=Path(self._get_folder_videos_will_be_saved_to()))
             self._video_file_paths = [str(path) for path in get_video_paths(path_to_video_folder=newly_synchronized_video_path)]
-
+       
         self.folder_to_save_videos_to_selected.emit(
             self._video_file_paths,
-            self._get_folder_videos_will_be_saved_to())
+            self._get_folder_videos_will_be_saved_to(),
+            self._synchronize_videos_checkbox.isChecked())
         self.accept()
 
     def _handle_synchronize_checkbox_toggled(self, event):

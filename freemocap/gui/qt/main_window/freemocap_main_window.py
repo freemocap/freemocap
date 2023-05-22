@@ -449,14 +449,19 @@ class FreemocapMainWindow(QMainWindow):
         text = self._import_videos_window.exec()
 
 
-    @pyqtSlot(list, str)
-    def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str):
+    @pyqtSlot(list, str, bool)
+    def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str, synchronization_bool: bool):
 
         folder_to_save_videos = Path(folder_to_save_videos)
         folder_to_save_videos.mkdir(parents=True, exist_ok=True)
 
         if len(video_paths) == 0:
             logger.error("No videos to import!")
+            return
+        
+        if synchronization_bool:
+            self._active_recording_info_widget.set_active_recording(
+                recording_folder_path=Path(folder_to_save_videos).parent)
             return
 
         for video_path in tqdm(video_paths,

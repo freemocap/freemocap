@@ -501,7 +501,10 @@ class FreemocapMainWindow(QMainWindow):
                                                 value=self._active_recording_info_widget.active_recording_info.status_check)
         self._pipedream_pings.send_pipedream_ping()
 
-        remove_empty_directories(get_recording_session_folder_path())
+        try:
+            remove_empty_directories(get_recording_session_folder_path())
+        except Exception as e:
+            logger.error(f"Error while removing empty directories: {e}")
 
         try:
             self._skellycam_widget.close()

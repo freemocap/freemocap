@@ -173,19 +173,25 @@ class MediaPipeSkeletonDetector:
 
             success, image = video_capture_object.read()
 
-        annotated_video_path = output_data_folder_path.parent / ANNOTATED_VIDEOS_FOLDER_NAME
-        annotated_video_path.mkdir(exist_ok=True, parents=True)
-        annotated_video_name = synchronized_video_file_path.stem + "_mediapipe.mp4"
-        annotated_video_save_path = annotated_video_path / annotated_video_name
+        try:
 
-        video_recorder = VideoRecorder()
+            annotated_video_path = output_data_folder_path.parent.parent / ANNOTATED_VIDEOS_FOLDER_NAME
+            annotated_video_path.mkdir(exist_ok=True, parents=True)
+            annotated_video_name = synchronized_video_file_path.stem + "_mediapipe.mp4"
+            annotated_video_save_path = annotated_video_path / annotated_video_name
 
-        logger.info(f"Saving mediapipe annotated video to : {annotated_video_save_path}")
-        video_recorder.save_image_list_to_disk(
-            image_list=video_annotated_images_list,
-            path_to_save_video_file=annotated_video_save_path,
-            frames_per_second=video_framerate,
-        )
+            logger.info(f"Saving mediapipe annotated video to : {annotated_video_save_path}")
+
+            video_recorder = VideoRecorder()
+
+            video_recorder.save_image_list_to_disk(
+                image_list=video_annotated_images_list,
+                path_to_save_video_file=annotated_video_save_path,
+                frames_per_second=video_framerate,
+            )
+        except Exception as e:
+            logger.error(f"Failed to save annotated video to disk: {e}")
+            raise e
 
         camera_mediapipe_2d_single_camera_npy_arrays = list_of_mediapipe_results_to_npy_arrays(
             video_mediapipe_results_list,

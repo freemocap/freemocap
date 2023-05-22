@@ -35,6 +35,7 @@ class VisualizationControlPanel(QWidget):
         groupbox.setLayout(vbox)
 
         self._export_to_blender_button = QPushButton("Export to Blender")
+        self.export_to_blender_button.setObjectName("export_to_blender_button")
         groupbox.layout().addWidget(self._export_to_blender_button)
 
         self._open_in_blender_automatically_checkbox = QCheckBox("Open in Blender automatically")

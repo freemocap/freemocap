@@ -195,3 +195,11 @@ def process_recording_folder(
         file_name="mediapipe_names_and_connections_dict.json",
         dictionary=mediapipe_names_and_connections_dict,
     )
+
+    recording_info_dict = rec.dict(exclude={'recording_info_model'})
+
+    save_dictionary_to_json(
+        save_path=rec.recording_info_model.output_data_folder_path,
+        file_name="recording_parameter_dict.json",
+        dictionary=recording_info_dict,
+    )

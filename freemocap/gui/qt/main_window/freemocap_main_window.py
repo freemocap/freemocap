@@ -178,11 +178,12 @@ class FreemocapMainWindow(QMainWindow):
 
     def _handle_processing_finished_signal(self):
         logger.info("Processing finished")
-        if self._controller_group_box.generate_jupyter_notebook_checked and not self._kill_thread_event.is_set():
-            self._generate_jupyter_notebook()
         if self._controller_group_box.auto_open_in_blender_checked and not self._kill_thread_event.is_set():
             logger.info("'Auto process videos' checkbox is checked - triggering 'Create Blender Scene'")
             self._export_active_recording_to_blender()
+        if self._controller_group_box.generate_jupyter_notebook_checked and not self._kill_thread_event.is_set():
+            self._generate_jupyter_notebook()
+
 
 
     def handle_start_new_session_action(self):

@@ -13,6 +13,7 @@ from freemocap.core_processes.post_process_skeleton_data.process_single_camera_s
 from freemocap.system.paths_and_files_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
+    RECORDING_PARAMETER_DICT_JSON_FILE_NAME,
 )
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
@@ -200,6 +201,6 @@ def process_recording_folder(
 
     save_dictionary_to_json(
         save_path=rec.recording_info_model.output_data_folder_path,
-        file_name="recording_parameter_dict.json",
+        file_name=RECORDING_PARAMETER_DICT_JSON_FILE_NAME,
         dictionary=recording_info_dict,
     )

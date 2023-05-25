@@ -7,9 +7,10 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QVBoxLayout,
-    QWidget,
+    QWidget, QHBoxLayout,
 )
 
+import freemocap
 from freemocap.gui.qt.actions_and_menus.actions import (
     CREATE_NEW_RECORDING_ACTION_NAME,
     LOAD_MOST_RECENT_RECORDING_ACTION_NAME,
@@ -67,19 +68,58 @@ class HomeWidget(QWidget):
         self._import_videos_button.clicked.connect(actions.import_videos_action.trigger)
         self._layout.addWidget(self._import_videos_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self._layout.addStretch(1)
+        # self._layout.addStretch(1)
 
-        send_pings_string = "Send anonymous usage information"
-        self._send_pings_checkbox = QCheckBox(send_pings_string)
-        self._send_pings_checkbox.setChecked(True)
-        self._layout.addWidget(self._send_pings_checkbox, alignment=Qt.AlignmentFlag.AlignCenter)
+        self._create_user_info_consent_checkbox()
 
-        privacy_policy_link_string = '<a href="https://freemocap.readthedocs.io/en/latest/privacy_policy/" style="color: #333333;">Click here to view our privacy policy</a>'
-        self._privacy_policy_link = QLabel(privacy_policy_link_string)
-        self._privacy_policy_link.setOpenExternalLinks(True)
-        self._layout.addWidget(self._privacy_policy_link, alignment=Qt.AlignmentFlag.AlignCenter)
+        self._add_code_and_docs_links()
 
         self.style().polish(self)
+
+    def _add_code_and_docs_links(self):
+        hbox = QHBoxLayout()
+        self._layout.addLayout(hbox)
+        hbox.addStretch(1)
+        privacy_policy_link_string = '<a href="https://freemocap.readthedocs.io/en/latest/privacy_policy/" style="color: #333333;">privacy policy</a>'
+        privacy_policy_link_label = QLabel(privacy_policy_link_string)
+        privacy_policy_link_label.setOpenExternalLinks(True)
+        hbox.addWidget(privacy_policy_link_label)
+        source_code_label = f'<a href="https://github.com/freemocap/freemocap" style="color: #333333;">code</a>'
+        source_code_label = QLabel(source_code_label)
+        source_code_label.setOpenExternalLinks(True)
+        hbox.addWidget(source_code_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        # vbox.addWidget(QLabel("|"))
+        docs_string = '<a href="https://freemocap.readthedocs.io/en/latest/" style="color: #333333;">docs</a>'
+        docs_string = QLabel(docs_string)
+        docs_string.setOpenExternalLinks(True)
+        hbox.addWidget(docs_string, alignment=Qt.AlignmentFlag.AlignCenter)
+        hbox.addStretch(1)
+
+        version_label = QLabel(f"{freemocap.__version__}")
+        version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        version_label.setStyleSheet("font-size: 12px;color: #777777")
+        hbox.addWidget(version_label)
+
+
+    def _create_user_info_consent_checkbox(self):
+
+        hbox = QHBoxLayout()
+        self._layout.addLayout(hbox)
+        hbox.addStretch(1)
+        self._send_pings_checkbox = QCheckBox("Send anonymous usage information")
+        self._send_pings_checkbox.setChecked(True)
+        hbox.addWidget(self._send_pings_checkbox)
+
+
+
+
+
+        hbox.addStretch(1)
+
+    @property
+    def consent_to_send_usage_information(self):
+        return self._send_pings_checkbox.isChecked()
+
 
     def _welcome_to_freemocap_title(self):
         # TO DO - this shouldn't be part of the `camera_view_panel` - it should be its own thing that gets swapped out on session start

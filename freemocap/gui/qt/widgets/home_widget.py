@@ -73,8 +73,17 @@ class HomeWidget(QWidget):
         self._create_user_info_consent_checkbox()
 
         self._add_code_and_docs_links()
+        self._make_version_label()
 
         self.style().polish(self)
+
+    def _make_version_label(self):
+        hbox = QHBoxLayout()
+        self._layout.addLayout(hbox)
+        version_label = QLabel(f"{freemocap.__version__}")
+        version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        version_label.setStyleSheet("font-size: 14px;color: #777777")
+        hbox.addWidget(version_label)
 
     def _add_code_and_docs_links(self):
         hbox = QHBoxLayout()
@@ -95,10 +104,7 @@ class HomeWidget(QWidget):
         hbox.addWidget(docs_string, alignment=Qt.AlignmentFlag.AlignCenter)
         hbox.addStretch(1)
 
-        version_label = QLabel(f"{freemocap.__version__}")
-        version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
-        version_label.setStyleSheet("font-size: 12px;color: #777777")
-        hbox.addWidget(version_label)
+
 
 
     def _create_user_info_consent_checkbox(self):

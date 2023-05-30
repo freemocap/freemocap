@@ -7,6 +7,8 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_fo
     process_recording_folder,
 )
 from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
+from freemocap.system.paths_and_files_names import RECORDING_PARAMETER_DICT_JSON_FILE_NAME
+from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +28,19 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
     def work_done(self):
         return self._work_done
 
-    def _emit_in_progress_data(self, message: str):
-        self.in_progress.emit(message)
-
     def run(self):
         logger.info(
             f"Beginning processing of motion capture data with parameters: {self._session_processing_parameters.__dict__}"
         )
         self._kill_event.clear()
+
+        recording_info_dict = self._session_processing_parameters.dict(exclude={'recording_info_model'})
+
+        save_dictionary_to_json(
+            save_path=self._session_processing_parameters.recording_info_model.output_data_folder_path,
+            file_name=RECORDING_PARAMETER_DICT_JSON_FILE_NAME,
+            dictionary=recording_info_dict,
+        )
 
         process_recording_folder(
             recording_processing_parameter_model=self._session_processing_parameters,

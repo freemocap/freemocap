@@ -20,14 +20,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         super().__init__()
         self._session_processing_parameters = session_processing_parameters
         self._kill_event = kill_event
-
-
-    @property
-    def work_done(self):
-        return self._work_done
-
-    def _emit_in_progress_data(self, message: str):
-        self.in_progress.emit(message)
+        self._process = multiprocessing.Process(target=process_recording_folder, args=(self._session_processing_parameters, self._kill_event))
 
     def run(self):
         logger.info(
@@ -35,15 +28,13 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         )
         self._kill_event.clear()
 
-        process_recording_folder(
-            recording_processing_parameter_model=self._session_processing_parameters,
-            kill_event=self._kill_event,
-        )
+        try:
+            self._process.start()
+            self._process.join()
+        except Exception as e:
+            logger.error(f"Error processing motion capture data: {e}")
+
 
         logger.info("Finished processing session folder!")
 
         self.finished.emit()
-        self._work_done = True
-
-    def kill(self):
-        self.terminate()

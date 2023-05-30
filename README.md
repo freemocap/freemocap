@@ -2,8 +2,8 @@
     <img src="https://raw.githubusercontent.com/freemocap/freemocap/main/assets/logo/freemocap-logo-black-border.svg" height="64" alt="Project Logo">
 </p>
 
-<h3 align="center">freemocap</h3>
-<p align="center">📝 The FreeMoCap Project: A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture system and platform for decentralized scientific research, education, and training</p>
+<h3 align="center">The FreeMoCap Project</h3>
+<h4 align="center"> A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture system and platform for decentralized scientific research, education, and training</h2>
 
 
 <p align="center">
@@ -49,13 +49,13 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 
 1. Install software via [pip](https://pypi.org/project/freemocap/1.0.0rc0/):
 ```
-pip install freemocap~=1.0.0rc0
+pip install freemocap~=1.0.12rc0
 ```
 
 2. Launch the GUI by entering the command:
 ```
 freemocap
-```
+``` 
 
 3. A GUI should pop up that looks like this
 <img width="1457" alt="image" src="https://github.com/freemocap/freemocap/assets/15314521/90ef7e7b-48f3-4f46-8d4a-5b5bcc3254b3">

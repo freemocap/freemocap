@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QMainWindow,
     QFileDialog,
-    QTabWidget, QWidget, QHBoxLayout, )
+    QWidget, QHBoxLayout, )
 from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
@@ -19,11 +19,12 @@ from skellycam import (
 )
 from tqdm import tqdm
 
-from freemocap.core_processes.export_data.blender_stuff.export_to_blender import (
+from freemocap.export_data.blender_stuff.export_to_blender import (
     export_to_blender,
 )
-from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import \
+from freemocap.export_data.blender_stuff.get_best_guess_of_blender_path import \
     get_best_guess_of_blender_path
+from freemocap.export_data.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
@@ -44,17 +45,19 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_mot
 )
 from freemocap.gui.qt.widgets.control_panel.visualization_control_panel import VisualizationControlPanel
 from freemocap.gui.qt.widgets.directory_view_widget import DirectoryViewWidget
-from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
-from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.home_widget import (
     HomeWidget,
 )
+from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
+from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
 )
 from freemocap.parameter_info_models.recording_processing_parameter_models import (
     RecordingProcessingParameterModel,
 )
+# reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
+from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_files_names import (
     get_scss_stylesheet_path,
     get_css_stylesheet_path,
@@ -62,12 +65,7 @@ from freemocap.system.paths_and_files_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
     get_blender_file_path,
     get_recording_session_folder_path,
-    DIRECTORY_EMOJI_STRING,
-    GEAR_EMOJI_STRING,
-    COOL_EMOJI_STRING,
 )
-# reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
-from freemocap.system.start_file import open_file
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
 EXIT_CODE_REBOOT = -123456789
@@ -88,7 +86,7 @@ class FreemocapMainWindow(QMainWindow):
 
         self.setGeometry(100, 100, 1280, 720)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
-        self.setWindowTitle("freemocap \U0001F480 \U00002728")
+        self.setWindowTitle(f"freemocap \U0001F480 \U00002728")
 
         dummy_widget = QWidget()
         self._layout = QHBoxLayout()
@@ -183,6 +181,10 @@ class FreemocapMainWindow(QMainWindow):
         if self._controller_group_box.auto_open_in_blender_checked and not self._kill_thread_event.is_set():
             logger.info("'Auto process videos' checkbox is checked - triggering 'Create Blender Scene'")
             self._export_active_recording_to_blender()
+        if self._controller_group_box.generate_jupyter_notebook_checked and not self._kill_thread_event.is_set():
+            self._generate_jupyter_notebook()
+
+
 
     def handle_start_new_session_action(self):
         # self._central_tab_widget.set_welcome_tab_enabled(True)
@@ -297,6 +299,11 @@ class FreemocapMainWindow(QMainWindow):
             self._export_active_recording_to_blender
         )
 
+        self._visualization_control_panel.generate_jupyter_notebook_button.clicked.connect(
+            self._generate_jupyter_notebook
+        )
+
+
         return ControlPanelWidget(
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
             # calibration_control_panel=self._calibration_control_panel,
@@ -329,6 +336,14 @@ class FreemocapMainWindow(QMainWindow):
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
             else:
                 logger.error("Blender file does not exist! Did something go wrong in the `export_to_blender` call above?")
+
+    def _generate_jupyter_notebook(self):
+        logger.info("Exporting active recording to a Jupyter notebook...")
+        recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
+        # TODO: Need to include jupyter notebook in recording files that we keep track of (2023-05-15)
+        generate_jupyter_notebook(
+            path_to_recording=recording_path
+        )
 
     def _handle_new_active_recording_selected(self, recording_info_model: RecordingInfoModel):
         logger.info(f"New active recording selected: {recording_info_model.path}")
@@ -482,12 +497,16 @@ class FreemocapMainWindow(QMainWindow):
     def closeEvent(self, a0) -> None:
         logger.info("Main window `closeEvent` detected")
 
-        self._pipedream_pings.update_pings_dict(key="gui_closed", value=True)
-        self._pipedream_pings.update_pings_dict(key="active recording status on close",
-                                                value=self._active_recording_info_widget.active_recording_info.status_check)
-        self._pipedream_pings.send_pipedream_ping()
+        if self._home_widget.consent_to_send_usage_information:
+            self._pipedream_pings.update_pings_dict(key="gui_closed", value=True)
+            self._pipedream_pings.update_pings_dict(key="active recording status on close",
+                                                    value=self._active_recording_info_widget.active_recording_info.status_check)
+            self._pipedream_pings.send_pipedream_ping()
 
-        remove_empty_directories(get_recording_session_folder_path())
+        try:
+            remove_empty_directories(get_recording_session_folder_path())
+        except Exception as e:
+            logger.error(f"Error while removing empty directories: {e}")
 
         try:
             self._skellycam_widget.close()

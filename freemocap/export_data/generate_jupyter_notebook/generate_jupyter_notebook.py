@@ -16,7 +16,7 @@ def generate_jupyter_notebook(path_to_recording: Union[str, Path]):
     success =  pm.execute_notebook(
         input_path=path_to_template_notebook,
         output_path=path_to_output_notebook,
-        parameters=dict(path_to_recording=path_to_recording)
+        parameters=dict(path_to_recording=str(path_to_recording))
     )
 
 

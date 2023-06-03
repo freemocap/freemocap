@@ -8,6 +8,7 @@ from freemocap.export_data.generate_jupyter_notebook.generate_jupyter_notebook i
 from freemocap.parameter_info_models.recording_info_model import RecordingInfoModel
 from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
 from freemocap.system.paths_and_files_names import get_blender_file_path
+from freemocap.utilities.get_video_paths import get_video_paths
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,10 @@ def process_recording_headless(
     if path_to_camera_calibration_toml:
         rec.recording_info_model.calibration_toml_path = Path(path_to_camera_calibration_toml)
     else:
-        # TODO - Check if there are more than one video in the sync folder and if so, raise an error
-        logger.warning("No camera calibration toml file provided. May cause an error with multicamera recordings.")
+        number_of_videos = len(get_video_paths(rec.recording_info_model.synchronized_videos_folder_path))
+        if number_of_videos > 1:
+            raise ValueError(f"There are {number_of_videos} videos. Must provide a calibration toml file for multicamera recordings.")
+
 
     logger.info("Starting core processing pipeline...")
     process_recording_folder(recording_processing_parameter_model=rec)

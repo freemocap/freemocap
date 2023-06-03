@@ -7,12 +7,11 @@ from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtWidgets import QVBoxLayout, QListWidget, QLabel, QFormLayout, QLineEdit, \
     QTreeView, QPushButton, QDialog, QCheckBox, QHBoxLayout
 
-from freemocap.system.paths_and_files_names import get_recording_session_folder_path, SYNCHRONIZED_VIDEOS_FOLDER_NAME
-from freemocap.system.start_file import open_file
-from freemocap.utilities.get_video_paths import get_video_paths
-
-
 from skelly_synchronize.skelly_synchronize import synchronize_videos_from_audio
+
+from freemocap.system.paths_and_files_names import get_recording_session_folder_path, SYNCHRONIZED_VIDEOS_FOLDER_NAME
+from freemocap.utilities.get_video_paths import get_video_paths
+from freemocap.system.open_file import open_file
 
 no_files_found_string = "No '.mp4' video files found! \n \n Note - We only look for `.mp4` files (for now). If your videos are a different format, convert them to `mp4` via online tools like `www.cloudconvert.com`, or softwares like `HandBrake`, `ffmpeg` or any video editing software"
 

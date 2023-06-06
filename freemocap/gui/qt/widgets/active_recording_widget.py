@@ -3,13 +3,14 @@ from pathlib import Path
 from typing import Union
 
 from PyQt6.QtCore import pyqtSignal, QFileSystemWatcher
-from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget, QPushButton
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
 )
-from freemocap.system.paths_and_files_names import get_most_recent_recording_path
+from freemocap.system.paths_and_files_names import get_most_recent_recording_path, FIGSHARE_ZIP_FILE_URL
+from freemocap.tests.utilities.load_sample_data import load_sample_data
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,10 @@ class ActiveRecordingInfoWidget(QWidget):
         super().__init__(parent=parent)
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
+
+        self._download_sample_data_button = QPushButton("Download sample data")
+        self._download_sample_data_button.clicked.connect(self.download_sample_data)
+        self._layout.addWidget(self._download_sample_data_button)
 
         self._active_recording_info = None
         self._directory_watcher = self._create_directory_watcher()
@@ -73,6 +78,11 @@ class ActiveRecordingInfoWidget(QWidget):
     def update_parameter_tree(self):
         logger.info("Updating Parameter Tree")
         self._active_recording_view_widget.setup_parameter_tree(self.active_recording_info)
+
+    def download_sample_data(self):
+        logger.info("Downloading sample data")
+        sample_data_path = load_sample_data(sample_data_zip_file_url=FIGSHARE_ZIP_FILE_URL)
+        self.set_active_recording(recording_folder_path=sample_data_path)
 
     def _update_file_watch_path(self, folder_to_watch: Union[str, Path]):
         logger.debug(f"Updating file watch path to: {folder_to_watch}")

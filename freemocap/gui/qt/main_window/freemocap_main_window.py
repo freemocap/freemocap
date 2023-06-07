@@ -50,6 +50,10 @@ from freemocap.gui.qt.widgets.home_widget import (
 )
 from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
+from freemocap.gui.qt.utilities.save_and_load_gui_state import (
+    GuiState,
+    load_gui_state,
+)
 from freemocap.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
 )
@@ -65,6 +69,7 @@ from freemocap.system.paths_and_files_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
     get_blender_file_path,
     get_recording_session_folder_path,
+    get_gui_state_json_path
 )
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
@@ -97,6 +102,13 @@ class FreemocapMainWindow(QMainWindow):
 
         self._freemocap_data_folder_path = freemocap_data_folder_path
         self._pipedream_pings = pipedream_pings
+
+        try:
+            self._gui_state = load_gui_state(get_gui_state_json_path())
+            logger.info("Successfully loaded previous settings")
+        except:
+            logger.info("Failed to find previous GUI settings, using default settings")
+            self._gui_state = GuiState()
 
         self._kill_thread_event = multiprocessing.Event()
 
@@ -216,7 +228,7 @@ class FreemocapMainWindow(QMainWindow):
 
     def _create_central_tab_widget(self):
 
-        self._home_widget = HomeWidget(actions=self._actions, parent=self)
+        self._home_widget = HomeWidget(actions=self._actions, gui_state=self._gui_state, parent=self)
 
         self._skellycam_widget = SkellyCamWidget(
             self._create_new_synchronized_videos_folder,

@@ -244,7 +244,9 @@ class FreemocapMainWindow(QMainWindow):
         )
 
         self._controller_group_box = CameraControllerGroupBox(
-            skellycam_controller=self._skellycam_controller_widget, parent=self
+            skellycam_controller=self._skellycam_controller_widget, 
+            gui_state=self._gui_state,
+            parent=self
         )
 
         self._skelly_viewer_widget = SkellyViewer()
@@ -299,6 +301,7 @@ class FreemocapMainWindow(QMainWindow):
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             recording_processing_parameters=RecordingProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
+            gui_state=self._gui_state,
             kill_thread_event=self._kill_thread_event,
         )
         self._process_motion_capture_data_panel.processing_finished_signal.connect(

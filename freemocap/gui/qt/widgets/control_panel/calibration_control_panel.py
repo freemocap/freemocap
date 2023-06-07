@@ -17,13 +17,12 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLayout, )
 
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
-    default_charuco_square_size_mm,
-)
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
 from freemocap.system.paths_and_files_names import (
+    get_gui_state_json_path,
     get_last_successful_calibration_toml_path,
 )
 
@@ -31,9 +30,14 @@ logger = logging.getLogger(__name__)
 
 
 class CalibrationControlPanel(QWidget):
-    def __init__(self, get_active_recording_info_callable: Callable, kill_thread_event: threading.Event, parent=None):
+    def __init__(self, 
+                 get_active_recording_info_callable: Callable, 
+                 kill_thread_event: threading.Event, 
+                 gui_state: GuiState,
+                 parent=None):
 
         super().__init__(parent=parent)
+        self.gui_state = gui_state
         self._has_a_toml_path = False
         self._calibration_toml_path = None
         self._kill_thread_event = kill_thread_event
@@ -248,13 +252,22 @@ class CalibrationControlPanel(QWidget):
         self._charuco_square_size_label = QLabel("Charuco square size (mm)")
         self._charuco_square_size_label.setStyleSheet("QLabel { font-size: 12px;  }")
 
-        self._charuco_square_size_line_edit.setText(str(default_charuco_square_size_mm))
+        self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
+        self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
         charuco_square_size_form_layout.addRow(self._charuco_square_size_label, self._charuco_square_size_line_edit)
         charuco_square_size_form_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
         return charuco_square_size_form_layout
+    
+    def _on_charuco_square_size_line_edit_changed(self):
+        self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        save_gui_state(
+            gui_state=self.gui_state,
+            file_pathstring=get_gui_state_json_path()
+        )
+
 
     def calibrate_from_active_recording(self, charuco_square_size_mm: float = None):
 

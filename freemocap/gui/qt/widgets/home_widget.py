@@ -122,9 +122,7 @@ class HomeWidget(QWidget):
         self._layout.addLayout(hbox)
         hbox.addStretch(1)
         self._send_pings_checkbox = QCheckBox("Send anonymous usage information")
-        saved_user_pings_state = self.gui_state.send_user_pings
-        logger.error(f"\n\n {saved_user_pings_state} \n\n")
-        self._send_pings_checkbox.setChecked(saved_user_pings_state)
+        self._send_pings_checkbox.setChecked(self.gui_state.send_user_pings)
         self._send_pings_checkbox.stateChanged.connect(self._on_send_pings_checkbox_changed)
         hbox.addWidget(self._send_pings_checkbox)
 
@@ -139,7 +137,6 @@ class HomeWidget(QWidget):
         save_gui_state(
             gui_state=self.gui_state, 
             file_pathstring=get_gui_state_json_path())
-        logger.info("gui state saved!")
 
     def _welcome_to_freemocap_title(self):
         # TO DO - this shouldn't be part of the `camera_view_panel` - it should be its own thing that gets swapped out on session start

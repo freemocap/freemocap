@@ -7,6 +7,7 @@ from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
 from pyqtgraph.parametertree import Parameter, ParameterTree
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
@@ -36,6 +37,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
             recording_processing_parameters: RecordingProcessingParameterModel,
             get_active_recording_info: Callable,
             kill_thread_event: threading.Event,
+            gui_state: GuiState,
             parent=None,
     ):
         super().__init__(parent=parent)
@@ -57,6 +59,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._calibration_control_panel = CalibrationControlPanel(
             get_active_recording_info_callable=self._get_active_recording_info,
             kill_thread_event=self._kill_thread_event,
+            gui_state=gui_state,
             parent=self,
         )
         vbox.addWidget(self._calibration_control_panel)

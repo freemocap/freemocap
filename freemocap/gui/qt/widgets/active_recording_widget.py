@@ -9,7 +9,7 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 from freemocap.parameter_info_models.recording_info_model import (
     RecordingInfoModel,
 )
-from freemocap.system.paths_and_files_names import get_most_recent_recording_path, FIGSHARE_ZIP_FILE_URL
+from freemocap.system.paths_and_files_names import get_most_recent_recording_path, FIGSHARE_TEST_DATA_ZIP_FILE_URL
 from freemocap.tests.utilities.load_sample_data import load_sample_data
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ class ActiveRecordingInfoWidget(QWidget):
 
     def download_sample_data(self):
         logger.info("Downloading sample data")
-        sample_data_path = load_sample_data(sample_data_zip_file_url=FIGSHARE_ZIP_FILE_URL)
+        sample_data_path = load_sample_data(sample_data_zip_file_url=FIGSHARE_TEST_DATA_ZIP_FILE_URL)
         self.set_active_recording(recording_folder_path=sample_data_path)
 
     def _update_file_watch_path(self, folder_to_watch: Union[str, Path]):

@@ -25,6 +25,7 @@ CENTER_OF_MASS_FOLDER_NAME = "center_of_mass"
 # file names
 MOST_RECENT_RECORDING_TOML_FILENAME = "most_recent_recording.toml"
 LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME = "last_successful_calibration.toml"
+GUI_STATE_JSON_FILENAME = "gui_state.json"
 MEDIAPIPE_2D_NPY_FILE_NAME = "mediapipe2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
 MEDIAPIPE_BODY_WORLD_FILE_NAME = "mediapipeBodyWorld_numCams_numFrames_numTrackedPoints_XYZ.npy"
 MEDIAPIPE_3D_NPY_FILE_NAME = "mediaPipeSkel_3d_body_hands_face.npy"
@@ -182,6 +183,9 @@ def get_scss_stylesheet_path():
 
 def get_most_recent_recording_toml_path():
     return str(Path(get_logs_info_and_settings_folder_path()) / MOST_RECENT_RECORDING_TOML_FILENAME)
+
+def get_gui_state_json_path():
+    return str(Path(get_logs_info_and_settings_folder_path()) / GUI_STATE_JSON_FILENAME)
 
 
 def get_most_recent_recording_path(subfolder_str: str = None):

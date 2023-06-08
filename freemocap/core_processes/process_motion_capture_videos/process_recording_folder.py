@@ -65,15 +65,16 @@ def process_recording_folder(
             f"Could not find synchronized_videos folder at {rec.recording_info_model.synchronized_videos_folder_path}"
         )
 
-    
-    logger.info("Detecting 2d skeletons...")
+
     if rec.mediapipe_parameters_model.skip_2d_image_tracking:
+        logger.info(f"Skipping 2d skeleton detection and loading data from: {rec.recording_info_model.mediapipe_2d_data_npy_file_path}")
         try: 
             mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = np.load(rec.recording_info_model.mediapipe_2d_data_npy_file_path)
         except Exception as e:
             logger.error("Failed to load 2D data, cannot continue processing")
             return
     else:
+        logger.info("Detecting 2d skeletons...")
         # 2d skeleton detection
         mediapipe_skeleton_detector = MediaPipeSkeletonDetector(
             parameter_model=rec.mediapipe_parameters_model,
@@ -96,15 +97,15 @@ def process_recording_folder(
     except AssertionError as error_message:
             logger.error(error_message)
 
-    # spoof 3D data if single camera
-    if mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
 
+    if mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
+        # spoof 3D data if single camera
         (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
             input_image_data_frame_marker_xyz=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ[0],
             raw_data_folder_path=Path(rec.recording_info_model.raw_data_folder_path))
-
     else:
         if rec.anipose_triangulate_3d_parameters_model.skip_3d_triangulation:
+            logger.info(f"Skipping 3d triangulation and loading data from: {rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path}")
             raw_skel3d_frame_marker_xyz = np.load(rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path)
             skeleton_reprojection_error_fr_mar = np.load(rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path)
         else:
@@ -129,14 +130,14 @@ def process_recording_folder(
     if kill_event is not None and kill_event.is_set():
         return
 
-        try:
-            assert test_mediapipe_skeleton_data_shape(
-                synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
-                raw_skeleton_npy_file_path=rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
-                reprojection_error_file_name=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
-            )
-        except AssertionError as error_message:
-            logger.error(error_message)
+    try:
+        assert test_mediapipe_skeleton_data_shape(
+            synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
+            raw_skeleton_npy_file_path=rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
+            reprojection_error_file_name=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
+        )
+    except AssertionError as error_message:
+        logger.error(error_message)
 
 
     #rotate so skeleton is closer to 'vertical' in a z-up reference frame

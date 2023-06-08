@@ -4,7 +4,7 @@ from freemocap.tests.utilities.load_sample_data import (
     load_sample_data,
 )
 from freemocap.system.paths_and_filenames.path_getters import get_output_data_folder_path, \
-    get_synchronized_videos_folder_path, get_raw_skeleton_npy_file_name, get_total_body_center_of_mass_file_name, \
+    get_synchronized_videos_folder_path, get_raw_skeleton_npy_file_name, get_total_body_center_of_mass_file_path, \
     get_image_tracking_data_file_name, get_reprojection_error_file_name
 from freemocap.tests.utilities.process_recording_headless import process_recording_headless, find_calibration_toml_path
 
@@ -39,7 +39,7 @@ def raw_skeleton_npy_file_path():
 
 @pytest.fixture
 def total_body_center_of_mass_file_path():
-    return get_total_body_center_of_mass_file_name(get_output_data_folder_path(pytest.sample_session_folder_path))
+    return get_total_body_center_of_mass_file_path(get_output_data_folder_path(pytest.sample_session_folder_path))
 
 
 @pytest.fixture

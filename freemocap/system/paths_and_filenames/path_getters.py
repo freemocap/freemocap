@@ -10,7 +10,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import LOGS_INFO
     RECORDING_SESSIONS_FOLDER_NAME, MOST_RECENT_RECORDING_TOML_FILENAME, LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME, \
     OUTPUT_DATA_FOLDER_NAME, SYNCHRONIZED_VIDEOS_FOLDER_NAME, RAW_DATA_FOLDER_NAME, RAW_MEDIAPIPE_3D_NPY_FILE_NAME, \
     CENTER_OF_MASS_FOLDER_NAME, TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME, MEDIAPIPE_2D_NPY_FILE_NAME, \
-    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
+    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME, SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME
 
 
 def os_independent_home_dir():
@@ -33,8 +33,6 @@ def create_camera_calibration_file_name(recording_name: str):
 
 
 freemocap_data_folder_path = None
-
-
 def get_freemocap_data_folder_path(create_folder: bool = True):
     global freemocap_data_folder_path
 
@@ -216,15 +214,25 @@ def get_raw_skeleton_npy_file_name(data_folder_name: Union[str,Path])->str:
     raise Exception(f"Could not find a skeleton NPY file in path {str(data_folder_name)}")
 
 
-def get_total_body_center_of_mass_file_name(data_folder_name: Union[str,Path])->str:
-    center_of_mass_subfolder_path = Path(data_folder_name) / CENTER_OF_MASS_FOLDER_NAME
+def get_total_body_center_of_mass_file_path(output_data_folder: Union[str,Path])->str:
+    center_of_mass_subfolder_path = Path(output_data_folder) / CENTER_OF_MASS_FOLDER_NAME
     if center_of_mass_subfolder_path.exists:
         center_of_mass_npy_path_list = [path.name for path in center_of_mass_subfolder_path.glob("*.npy")]
 
         if TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME in center_of_mass_npy_path_list:
             return str(center_of_mass_subfolder_path / TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
 
-    raise Exception(f"Could not find a total body center of mass npy file in path {str(data_folder_name)}")
+    raise Exception(f"Could not find a total body center of mass npy file in path {str(output_data_folder)}")
+
+def get_segment_center_of_mass_file_path(output_data_folder: Union[str,Path])->str:
+    center_of_mass_subfolder_path = Path(output_data_folder) / CENTER_OF_MASS_FOLDER_NAME
+    if center_of_mass_subfolder_path.exists:
+        center_of_mass_npy_path_list = [path.name for path in center_of_mass_subfolder_path.glob("*.npy")]
+
+        if SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME in center_of_mass_npy_path_list:
+            return str(center_of_mass_subfolder_path / SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)
+
+    raise Exception(f"Could not find a total body center of mass npy file in path {str(output_data_folder)}")
 
 
 def get_image_tracking_data_file_name(data_folder_name: Union[str,Path])->str:

@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 from typing import Dict, Union
 
@@ -11,6 +12,7 @@ from freemocap.system.paths_and_filenames.path_getters import get_output_data_fo
     get_total_body_center_of_mass_file_path, get_segment_center_of_mass_file_path, get_sample_data_path
 
 
+logger  = logging.getLogger(__name__)
 class RecordingDataManager:
     """
     Manages operations related to processing dataframes containing body, hands, and face data.
@@ -27,6 +29,7 @@ class RecordingDataManager:
             include_face (bool): flag to include face data in the processing.
         """
         self.recording_folder_path = recording_folder_path
+        self._recording_name = Path(recording_folder_path).name
         self.include_hands = include_hands
         self.include_face = include_face
         self.output_folder_path = Path(get_output_data_folder_path(recording_folder_path))
@@ -41,7 +44,7 @@ class RecordingDataManager:
 
         self._load_data()
 
-    def run(self) -> Dict[int, Dict]:
+    def run(self, save_to_json:bool=True) -> Dict[int, Dict]:
         """
         Load all data, validate it, and create the recording_data_by_frame_number dictionary.
 
@@ -50,6 +53,8 @@ class RecordingDataManager:
         """
         self._load_data()
         self._create_recording_data_by_frame_number()
+        if save_to_json:
+            self._save_to_json()
         return self.recording_data_by_frame_number
 
     def _load_data(self):
@@ -167,6 +172,13 @@ class RecordingDataManager:
             if self.segment_center_of_mass_segment_xyz.shape[0] != self.numbers_of_frames:
                 raise ValueError(
                     "The number of frames in the segment center of mass data is different from the number of frames in the body dataframe.")
+
+    def _save_to_json(self):
+        json_file_path = self.output_folder_path / f"all_data.json"
+        logger.info(f"Saving recording data to {json_file_path}")
+        with open(json_file_path, 'w') as file:
+            json.dump(self.recording_data_by_frame_number, file, indent=4)
+
 
 if __name__ == '__main__':
     from pprint import pprint

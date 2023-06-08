@@ -174,7 +174,7 @@ class RecordingDataManager:
                     "The number of frames in the segment center of mass data is different from the number of frames in the body dataframe.")
 
     def _save_to_json(self):
-        json_file_path = self.output_folder_path / f"all_data.json"
+        json_file_path = self.output_folder_path / f"all_data_by_frame_number.json"
         logger.info(f"Saving recording data to {json_file_path}")
         with open(json_file_path, 'w') as file:
             json.dump(self.recording_data_by_frame_number, file, indent=4)

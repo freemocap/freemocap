@@ -10,7 +10,8 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import LOGS_INFO
     RECORDING_SESSIONS_FOLDER_NAME, MOST_RECENT_RECORDING_TOML_FILENAME, LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME, \
     OUTPUT_DATA_FOLDER_NAME, SYNCHRONIZED_VIDEOS_FOLDER_NAME, RAW_DATA_FOLDER_NAME, RAW_MEDIAPIPE_3D_NPY_FILE_NAME, \
     CENTER_OF_MASS_FOLDER_NAME, TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME, MEDIAPIPE_2D_NPY_FILE_NAME, \
-    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME, SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME
+    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME, SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME, \
+    FREEMOCAP_SAMPLE_DATA_RECORDING_NAME
 
 
 def os_independent_home_dir():
@@ -255,3 +256,6 @@ def get_reprojection_error_file_name(data_folder_name: Union[str,Path])->str:
             return str(raw_data_subfolder_path / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME)
 
     raise Exception(f"Could not find reprojection error data file in path {str(data_folder_name)}")
+
+def get_sample_data_path()->str:
+    return str(Path(get_recording_session_folder_path()) / FREEMOCAP_SAMPLE_DATA_RECORDING_NAME)

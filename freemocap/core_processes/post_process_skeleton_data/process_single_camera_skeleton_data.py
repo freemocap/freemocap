@@ -5,7 +5,7 @@ from typing import Union
 import numpy as np
 
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import save_mediapipe_3d_data_to_npy
-from freemocap.utilities.project_3d_data_to_z_plane import project_3d_data_to_z_plane
+from freemocap.utilities.geometry.project_3d_data_to_z_plane import project_3d_data_to_z_plane
 
 logger = logging.getLogger(__name__)
 

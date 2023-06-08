@@ -10,7 +10,7 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.medi
 )
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import \
     process_single_camera_skeleton_data
-from freemocap.system.paths_and_files_names import (
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
 )
@@ -39,7 +39,7 @@ from freemocap.tests.test_image_tracking_data_shape import (
     test_image_tracking_data_shape,
 )
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
-from freemocap.utilities.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
+from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 logger = logging.getLogger(__name__)

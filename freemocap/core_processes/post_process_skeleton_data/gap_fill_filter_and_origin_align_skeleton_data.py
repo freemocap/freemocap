@@ -11,7 +11,7 @@ from scipy import signal
 
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import \
     NUMBER_OF_MEDIAPIPE_BODY_MARKERS
-from freemocap.system.paths_and_files_names import (
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
     CENTER_OF_MASS_FOLDER_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,

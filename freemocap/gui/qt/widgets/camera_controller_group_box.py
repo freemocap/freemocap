@@ -14,7 +14,8 @@ from skellycam import SkellyCamControllerWidget
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
     default_charuco_square_size_mm,
 )
-from freemocap.system.paths_and_files_names import create_new_default_recording_name, create_new_recording_folder_path
+from freemocap.system.paths_and_filenames.path_getters import create_new_recording_folder_path, \
+    create_new_default_recording_name
 
 
 class RecordingNameGenerator:

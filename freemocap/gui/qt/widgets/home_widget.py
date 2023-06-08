@@ -18,7 +18,7 @@ from freemocap.gui.qt.actions_and_menus.actions import (
     IMPORT_VIDEOS_ACTION_NAME,
     Actions,
 )
-from freemocap.system.paths_and_files_names import PATH_TO_FREEMOCAP_LOGO_SVG, SPARKLES_EMOJI_STRING
+from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 
 logger = logging.getLogger(__name__)
 

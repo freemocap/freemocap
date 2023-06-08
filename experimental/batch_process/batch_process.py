@@ -6,7 +6,8 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_fo
 from freemocap.export_data.blender_stuff.export_to_blender import export_to_blender
 from freemocap.parameter_info_models.recording_info_model import RecordingInfoModel
 from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
-from freemocap.system.paths_and_files_names import get_blender_file_path
+from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
+
 
 def process_folder_of_session_folders(
     path_to_folder_of_session_folders: Union[str, Path], 

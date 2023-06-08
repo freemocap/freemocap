@@ -8,7 +8,6 @@ from skellycam import SkellyCamWidget
 from freemocap.gui.qt.widgets.home_widget import (
     HomeWidget,
 )
-from freemocap.system.paths_and_files_names import CAMERA_WITH_FLASH_EMOJI_STRING, EYES_EMOJI_STRING
 
 logger = logging.getLogger(__name__)
 

@@ -58,14 +58,11 @@ from freemocap.parameter_info_models.recording_processing_parameter_models impor
 )
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
-from freemocap.system.paths_and_files_names import (
-    get_scss_stylesheet_path,
-    get_css_stylesheet_path,
-    get_most_recent_recording_path,
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
-    get_blender_file_path,
-    get_recording_session_folder_path,
 )
+from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path, \
+    get_css_stylesheet_path, get_scss_stylesheet_path, get_most_recent_recording_path, get_blender_file_path
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
 EXIT_CODE_REBOOT = -123456789

@@ -23,9 +23,7 @@ from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_c
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
-from freemocap.system.paths_and_files_names import (
-    get_last_successful_calibration_toml_path,
-)
+from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
 
 logger = logging.getLogger(__name__)
 

@@ -3,9 +3,7 @@ import logging
 import toml
 
 from freemocap.parameter_info_models.recording_info_model import RecordingInfoModel
-from freemocap.system.paths_and_files_names import (
-    get_most_recent_recording_toml_path,
-)
+from freemocap.system.paths_and_filenames.path_getters import get_most_recent_recording_toml_path
 
 logger = logging.getLogger(__name__)
 

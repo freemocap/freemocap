@@ -1,11 +1,10 @@
 import logging
 from pathlib import Path
-from typing import Union, Dict, Any
+from typing import Union, Dict
 
 import numpy as np
-import toml
 
-from freemocap.system.paths_and_files_names import (
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
     CENTER_OF_MASS_FOLDER_NAME,
     MEDIAPIPE_2D_NPY_FILE_NAME,
     RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
@@ -14,10 +13,9 @@ from freemocap.system.paths_and_files_names import (
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
-    get_blender_file_path,
     ANNOTATED_VIDEOS_FOLDER_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME, create_camera_calibration_file_name,
-)
+    MEDIAPIPE_3D_NPY_FILE_NAME, )
+from freemocap.system.paths_and_filenames.path_getters import create_camera_calibration_file_name, get_blender_file_path
 from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import (

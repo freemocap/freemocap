@@ -65,8 +65,10 @@ from freemocap.system.paths_and_files_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
     get_blender_file_path,
     get_recording_session_folder_path,
+    FIGSHARE_SAMPLE_DATA_ZIP_FILE_URL
 )
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
+from freemocap.tests.utilities.load_sample_data import load_sample_data
 
 EXIT_CODE_REBOOT = -123456789
 
@@ -463,6 +465,10 @@ class FreemocapMainWindow(QMainWindow):
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
         text = self._import_videos_window.exec()
 
+    def download_sample_data(self):
+        logger.info("Downloading sample data")
+        sample_data_path = load_sample_data(sample_data_zip_file_url=FIGSHARE_SAMPLE_DATA_ZIP_FILE_URL)
+        self._active_recording_info_widget.set_active_recording(recording_folder_path=sample_data_path)
 
     @pyqtSlot(list, str)
     def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str):

@@ -15,7 +15,7 @@ from freemocap.utilities.download_sample_data import get_sample_data_path
 logger = logging.getLogger(__name__)
 
 
-class RecordingDataManager:
+class RecordingDataSaver:
     """
     Manages operations related to processing dataframes containing body, hands, and face data.
     """
@@ -294,5 +294,5 @@ class RecordingDataManager:
 
 
 if __name__ == '__main__':
-    recording_data_manager = RecordingDataManager(recording_folder_path=get_sample_data_path())
-    recording_data_by_frame_number = recording_data_manager.run()
+    recording_data_saver = RecordingDataSaver(recording_folder_path=get_sample_data_path())
+    recording_data_by_frame_number = recording_data_saver.run()

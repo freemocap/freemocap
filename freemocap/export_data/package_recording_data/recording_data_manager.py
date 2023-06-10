@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Union, Any
 
 import numpy as np
 import pandas as pd
@@ -35,8 +35,8 @@ class RecordingDataManager:
         self.include_hands = include_hands
         self.include_face = include_face
         self.output_folder_path = Path(get_output_data_folder_path(self.recording_folder_path))
-        self.recording_data_by_frame_number = {}
 
+        self.recording_data_by_frame_number = None
         self.number_of_frames = None
         self.body_dataframe = None
         self.right_hand_dataframe = None
@@ -55,13 +55,11 @@ class RecordingDataManager:
             Dict[int, Dict]: a dictionary containing the processed data, indexed by frame number.
         """
         self._load_data()
-        self._create_recording_data_by_frame_number()
+        self._get_data_by_frame_number()
         if save_to_json:
             self._save_to_json()
         if save_to_csv:
             self._save_to_csv()
-
-        return self.recording_data_by_frame_number
 
     def _load_data(self):
         self._load_data_frames()
@@ -78,8 +76,6 @@ class RecordingDataManager:
             self.left_hand_dataframe = self._load_dataframe("mediapipe_left_hand_3d_xyz.csv")
         if self.include_face:
             self.face_dataframe = self._load_dataframe("mediapipe_face_3d_xyz.csv")
-
-
 
     def _load_dataframe(self, filename):
         return pd.read_csv(self.output_folder_path / filename)
@@ -118,50 +114,66 @@ class RecordingDataManager:
         with open(self.output_folder_path / "mediapipe_skeleton_segment_lengths.json", 'r') as file:
             self.segment_lengths = json.loads(file.read())
 
-    def _create_recording_data_by_frame_number(self):
-        """
-        Create a dictionary of dataframes indexed by frame number.
-        """
-        self.recording_data_by_frame_number['segment_lengths'] = self.segment_lengths
-        self.recording_data_by_frame_number['names_and_connections'] = self.names_and_connections
-
+    def _get_data_by_frame_number(self):
+        self.recording_data_by_frame_number = []
         for frame_number in range(len(self.body_dataframe)):
-            self.recording_data_by_frame_number[frame_number] = {
-                "center_of_mass": {"full_body": {}, "segments": {}},
+            self.recording_data_by_frame_number.append(self._process_frame_data(frame_number))
+
+    def _get_empty_frame_dictionary(self) -> Dict[Any, Any]:
+        return {"center_of_mass": {"full_body_com": {}, "segment_coms": {}},
                 "body": {},
                 "hands": {"right": {}, "left": {}},
                 "face": {},
-            }
-            self._process_dataframe(self.body_dataframe.iloc[frame_number], "body", frame_number)
-            if self.include_hands:
-                self._process_dataframe(self.right_hand_dataframe.iloc[frame_number], "hands", frame_number, "right")
-                self._process_dataframe(self.left_hand_dataframe.iloc[frame_number], "hands", frame_number, "left")
-            if self.include_face:
-                self._process_dataframe(self.face_dataframe.iloc[frame_number], "face", frame_number)
+                }
 
-            self.recording_data_by_frame_number[frame_number]['center_of_mass']['full_body'] = {f"{dimension}": value
-                                                                                                for
-                                                                                                dimension, value in
-                                                                                                zip(["x", "y", "z"],
-                                                                                                    self.center_of_mass_xyz[
-                                                                                                    frame_number, :])}
+    def _process_frame_data(self, frame_number: int):
+        """
+        Process data for a given frame number.
+        """
+        frame_data = self._get_empty_frame_dictionary()
+        frame_data["body"] = self._process_dataframe(data_frame=self.body_dataframe.iloc[frame_number])
 
-            for segment_number, segment_name in enumerate(BODY_SEGMENT_NAMES):
-                segment_xyz = self.segment_center_of_mass_segment_xyz[frame_number, segment_number, :]
-                self.recording_data_by_frame_number[frame_number]['center_of_mass']['segments'][segment_name] = {
-                    f"{dimension}": value for dimension, value in zip(["x", "y", "z"], list(segment_xyz))}
+        if self.include_hands:
+            frame_data["hands"]["right"] = self._process_dataframe(
+                data_frame=self.right_hand_dataframe.iloc[frame_number], hand_side="right")
+            frame_data["hands"]["left"] = self._process_dataframe(
+                data_frame=self.left_hand_dataframe.iloc[frame_number], hand_side="left")
 
-    def _process_dataframe(self, data_frame, body_part: str, frame_number: int, hand_side: str = None):
+        if self.include_face:
+            frame_data["face"] = self._process_dataframe(self.face_dataframe.iloc[frame_number])
+
+        frame_data["center_of_mass"] = self._get_center_of_mass_data(frame_number)
+
+        return frame_data
+
+    def _get_center_of_mass_data(self, frame_number: int):
+        """
+        Calculate the center of mass for a given frame number.
+        """
+
+        full_body_com = {'full_body_com': {f"{dimension}": value for dimension, value in
+                                           zip(["x", "y", "z"], self.center_of_mass_xyz[frame_number, :])}}
+
+        segment_coms = {}
+        for segment_number, segment_name in enumerate(BODY_SEGMENT_NAMES):
+            segment_coms[segment_name] = {f"{dimension}": value for dimension, value in
+                                          zip(["x", "y", "z"],
+                                              self.segment_center_of_mass_segment_xyz[frame_number, segment_number, :])}
+
+        return {"full_body_com": full_body_com,
+                "segment_coms": segment_coms}
+
+    def _process_dataframe(self, data_frame, hand_side: str = None) -> Dict[str, Any]:
         """
         Process a single row from a dataframe and add it to the recording_data_by_frame_number dictionary.
 
         Args:
             data_frame (DataFrame): the dataframe to process.
-            body_part (str): the body part this dataframe pertains to (body, hands, or face).
-            frame_number (int): the frame number this data pertains to.
             hand_side (str, optional): if body_part is 'hands', this specifies which hand ('right' or 'left').
         """
-        for column_name in data_frame.index:
+        frame_data = {}
+        column_names = list(data_frame.index)
+        for column_name in column_names:
             point_name = column_name[:-2]  # e.g. "nose" or "left_knee" or whatever
             dimension = column_name[-1]  # e.g. "x" or "y" or "z"
 
@@ -173,67 +185,112 @@ class RecordingDataManager:
                 if split[0] == "hand":
                     split.pop(0)
                 point_name = "_".join(split)
+                frame_data[hand_side] = {}
 
-                self.recording_data_by_frame_number[frame_number][body_part][hand_side].setdefault(point_name, {})[
-                    dimension] = data_frame[column_name]
-            else:
-                self.recording_data_by_frame_number[frame_number][body_part].setdefault(point_name, {})[dimension] = \
-                    data_frame[column_name]
+            frame_data.setdefault(point_name, {})[dimension] = data_frame[column_name]
 
+        return frame_data
 
     def _save_to_json(self):
+        dict_to_save = {}
+        dict_to_save['data_by_frame'] = [
+            {frame_number: frame_data for frame_number, frame_data in enumerate(self.recording_data_by_frame_number)}]
+        dict_to_save['info'] = self._get_info_dict()
+
         json_file_path = self.recording_folder_path / f"{self._recording_name}_by_frame.json"
         logger.info(f"Saving recording data to {json_file_path}")
         with open(json_file_path, 'w') as file:
-            json.dump(self.recording_data_by_frame_number, file, indent=4)
+            json.dump(dict_to_save, file, indent=4)
 
     def _save_to_csv(self):
         data_for_dataframe = []
 
-        for frame_number in self.recording_data_by_frame_number.keys():
-            if isinstance(frame_number, int):  # Skip 'segment_lengths' and 'names_and_connections' entries
-                frame_data_row = {}
-
-                body_parts = list(self.recording_data_by_frame_number[frame_number].keys())
-                com_index = body_parts.index('center_of_mass')
-                com_name = body_parts.pop(com_index)
-                body_parts.insert(0, com_name)
-
-                # Flatten each frame's dictionary
-                for body_part_key, body_part_dict in self.recording_data_by_frame_number[frame_number].items():
-
-                    if body_part_key == "center_of_mass":
-                        for sub_dict_key, sub_dict in self.recording_data_by_frame_number[frame_number][
-                            body_part_key].items():
-                            if sub_dict_key == "full_body":
-                                for dimension, value in sub_dict.items():
-                                    frame_data_row[f"{body_part_key}.{sub_dict_key}.{dimension}"] = value
-                            elif sub_dict_key == "segment":
-                                for segment_name in sub_dict.keys():
-                                    for dimension, value in sub_dict[segment_name].items():
-                                        frame_data_row[f"{body_part_key}.{segment_name}.{dimension}"] = value
-                    elif body_part_key == "hands":
-                        for hand_side in body_part_dict.keys():
-                            for point_name in body_part_dict[
-                                hand_side].keys():
-                                for dimension, value in \
-                                        body_part_dict[hand_side][
-                                            point_name].items():
-                                    frame_data_row[f"{body_part_key}.{hand_side}.{point_name}.{dimension}"] = value
-                    else:
-                        for point_name in body_part_dict.keys():
-
-                            for dimension, value in body_part_dict[
-                                point_name].items():
-                                frame_data_row[f"{body_part_key}.{point_name}.{dimension}"] = value
-
-                data_for_dataframe.append(frame_data_row)
+        for frame_data in self.recording_data_by_frame_number:
+            data_for_dataframe.append(self._generate_frame_data_row(frame_data))
 
         # Create DataFrame and save to csv
         df = pd.DataFrame(data_for_dataframe)
         csv_file_path = self.recording_folder_path / f"{self._recording_name}_by_trajectory.csv"
         df.to_csv(csv_file_path, index=False)
         logger.info(f"Saved recording data to {csv_file_path}")
+
+    def _generate_frame_data_row(self, frame_data: Dict[str, Any]) -> Dict:
+        """
+        Generate a data row for a given frame number.
+        """
+        frame_data_row = {}
+
+        body_parts = list(frame_data.keys())
+
+        # put center of mass first for clandestine biomechical education porpoises
+        com_index = body_parts.index('center_of_mass')
+        com_name = body_parts.pop(com_index)
+        body_parts.insert(0, com_name)
+
+        # Flatten each frame's dictionary
+        for body_part_key, body_part_dict in frame_data.items():
+            if body_part_key == "center_of_mass":
+                frame_data_row.update(self._process_center_of_mass_data(body_part_dict))
+            elif body_part_key == "body":
+                frame_data_row.update(self._process_body_data(body_part_dict))
+            elif body_part_key == "hands":
+                frame_data_row.update(self._process_hand_data(body_part_dict))
+            elif body_part_key == "face":
+                frame_data_row.update(self._process_face_data(body_part_dict))
+            else:
+                raise ValueError(f"Unknown body part: {body_part_key}")
+
+        return frame_data_row
+
+    def _process_center_of_mass_data(self, frame_data_dict: Dict[str, Any]) -> Dict:
+        """
+        Process center of mass data for the CSV export.
+        """
+        frame_data_row = {}
+        for sub_dict_key, sub_dict in frame_data_dict.items():
+            if sub_dict_key == "full_body_com":
+                for dimension, value in sub_dict[sub_dict_key].items():
+                    frame_data_row[f"center_of_mass.{sub_dict_key}.{dimension}"] = value
+            elif sub_dict_key == "segment_coms":
+                for segment_name in sub_dict.keys():
+                    for dimension, value in sub_dict[segment_name].items():
+                        frame_data_row[f"center_of_mass.{sub_dict_key}.{segment_name}.{dimension}"] = value
+        return frame_data_row
+
+    def _process_hand_data(self, body_part_dict: Dict) -> Dict:
+        """
+        Process hand data for the CSV export.
+        """
+        frame_data_row = {}
+        for hand_side in body_part_dict.keys():
+            for point_name in body_part_dict[hand_side].keys():
+                for dimension, value in body_part_dict[hand_side][point_name].items():
+                    frame_data_row[f"hands.{hand_side}.{point_name}.{dimension}"] = value
+        return frame_data_row
+
+    def _process_face_data(self, face_data_dict: Dict) -> Dict:
+        """
+        Process face parts' data for the CSV export.
+        """
+        frame_data_row = {}
+        for point_name in face_data_dict.keys():
+            for dimension, value in face_data_dict[point_name].items():
+                frame_data_row[f"face.{point_name}.{dimension}"] = value
+        return frame_data_row
+
+    def _process_body_data(self, body_data_dict: Dict) -> Dict:
+        """
+        Process body parts' data for the CSV export.
+        """
+        frame_data_row = {}
+        for point_name in body_data_dict.keys():
+            for dimension, value in body_data_dict[point_name].items():
+                frame_data_row[f"body.{point_name}.{dimension}"] = value
+        return frame_data_row
+
+    def _get_info_dict(self):
+        return {'segment_lengths': self.segment_lengths,
+                'names_and_connections': self.names_and_connections}
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ from freemocap.export_data.generate_jupyter_notebook.generate_jupyter_notebook i
 from freemocap.parameter_info_models.recording_info_model import RecordingInfoModel
 from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
 from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
-
+from freemocap.utilities.get_video_paths import get_video_paths
 
 logger = logging.getLogger(__name__)
 

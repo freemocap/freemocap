@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 from typing import Union
 
-from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import (
+from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
     get_number_of_frames_of_videos_in_a_folder,
 )
 from freemocap.utilities.get_video_paths import get_video_paths

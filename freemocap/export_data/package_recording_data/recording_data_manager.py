@@ -37,6 +37,7 @@ class RecordingDataManager:
         self.output_folder_path = Path(get_output_data_folder_path(self.recording_folder_path))
         self.recording_data_by_frame_number = {}
 
+        self.number_of_frames = None
         self.body_dataframe = None
         self.right_hand_dataframe = None
         self.left_hand_dataframe = None
@@ -70,19 +71,35 @@ class RecordingDataManager:
         self._validate_data()
 
     def _load_data_frames(self):
-        """
-        Load body, hands, and face dataframes from csv files in the output_folder_path.
-        """
-
-        self.body_dataframe = pd.read_csv(self.output_folder_path / "mediapipe_body_3d_xyz.csv")
-        self.numbers_of_frames = len(self.body_dataframe)
+        self.body_dataframe = self._load_dataframe("mediapipe_body_3d_xyz.csv")
+        self.number_of_frames = len(self.body_dataframe)
         if self.include_hands:
-            self.right_hand_dataframe = pd.read_csv(self.output_folder_path / "mediapipe_right_hand_3d_xyz.csv")
-
-            self.left_hand_dataframe = pd.read_csv(self.output_folder_path / "mediapipe_left_hand_3d_xyz.csv")
-
+            self.right_hand_dataframe = self._load_dataframe("mediapipe_right_hand_3d_xyz.csv")
+            self.left_hand_dataframe = self._load_dataframe("mediapipe_left_hand_3d_xyz.csv")
         if self.include_face:
-            self.face_dataframe = pd.read_csv(self.output_folder_path / "mediapipe_face_3d_xyz.csv")
+            self.face_dataframe = self._load_dataframe("mediapipe_face_3d_xyz.csv")
+
+
+
+    def _load_dataframe(self, filename):
+        return pd.read_csv(self.output_folder_path / filename)
+
+    def _validate_data(self):
+        self._validate_dataframe(self.right_hand_dataframe, 'right hand')
+        self._validate_dataframe(self.left_hand_dataframe, 'left hand')
+        self._validate_dataframe(self.face_dataframe, 'face')
+        self._validate_numpy_array(self.center_of_mass_xyz, 'center of mass')
+        self._validate_numpy_array(self.segment_center_of_mass_segment_xyz, 'segment center of mass')
+
+    def _validate_dataframe(self, df, df_name):
+        if df is not None and len(df) != self.number_of_frames:
+            raise ValueError(
+                f"The number of frames in the {df_name} dataframe is different from the number of frames in the body dataframe.")
+
+    def _validate_numpy_array(self, np_array, np_array_name):
+        if np_array is not None and np_array.shape[0] != self.number_of_frames:
+            raise ValueError(
+                f"The number of frames in the {np_array_name} data is different from the number of frames in the body dataframe.")
 
     def _load_center_of_mass_data(self):
         """
@@ -163,27 +180,6 @@ class RecordingDataManager:
                 self.recording_data_by_frame_number[frame_number][body_part].setdefault(point_name, {})[dimension] = \
                     data_frame[column_name]
 
-    def _validate_data(self):
-        if self.right_hand_dataframe is not None:
-            if len(self.right_hand_dataframe) != self.numbers_of_frames:
-                raise ValueError(
-                    "The number of frames in the right hand dataframe is different from the number of frames in the body dataframe.")
-        if self.left_hand_dataframe is not None:
-            if len(self.left_hand_dataframe) != self.numbers_of_frames:
-                raise ValueError(
-                    "The number of frames in the left hand dataframe is different from the number of frames in the body dataframe.")
-        if self.face_dataframe is not None:
-            if len(self.face_dataframe) != self.numbers_of_frames:
-                raise ValueError(
-                    "The number of frames in the face dataframe is different from the number of frames in the body dataframe.")
-        if self.center_of_mass_xyz is not None:
-            if self.center_of_mass_xyz.shape[0] != self.numbers_of_frames:
-                raise ValueError(
-                    "The number of frames in the center of mass data is different from the number of frames in the body dataframe.")
-        if self.segment_center_of_mass_segment_xyz is not None:
-            if self.segment_center_of_mass_segment_xyz.shape[0] != self.numbers_of_frames:
-                raise ValueError(
-                    "The number of frames in the segment center of mass data is different from the number of frames in the body dataframe.")
 
     def _save_to_json(self):
         json_file_path = self.recording_folder_path / f"{self._recording_name}_by_frame.json"

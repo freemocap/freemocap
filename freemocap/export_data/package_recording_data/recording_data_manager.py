@@ -9,10 +9,12 @@ import pandas as pd
 from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import \
     BODY_SEGMENT_NAMES
 from freemocap.system.paths_and_filenames.path_getters import get_output_data_folder_path, \
-    get_total_body_center_of_mass_file_path, get_segment_center_of_mass_file_path, get_sample_data_path
+    get_total_body_center_of_mass_file_path, get_segment_center_of_mass_file_path
+from freemocap.utilities.download_sample_data import get_sample_data_path
+
+logger = logging.getLogger(__name__)
 
 
-logger  = logging.getLogger(__name__)
 class RecordingDataManager:
     """
     Manages operations related to processing dataframes containing body, hands, and face data.
@@ -28,11 +30,11 @@ class RecordingDataManager:
             include_hands (bool): flag to include hands data in the processing.
             include_face (bool): flag to include face data in the processing.
         """
-        self.recording_folder_path = recording_folder_path
-        self._recording_name = Path(recording_folder_path).name
+        self.recording_folder_path = Path(recording_folder_path)
+        self._recording_name = self.recording_folder_path.name
         self.include_hands = include_hands
         self.include_face = include_face
-        self.output_folder_path = Path(get_output_data_folder_path(recording_folder_path))
+        self.output_folder_path = Path(get_output_data_folder_path(self.recording_folder_path))
         self.recording_data_by_frame_number = {}
 
         self.body_dataframe = None
@@ -44,7 +46,7 @@ class RecordingDataManager:
 
         self._load_data()
 
-    def run(self, save_to_json:bool=True) -> Dict[int, Dict]:
+    def run(self, save_to_json: bool = True, save_to_csv: bool = True) -> Dict[int, Dict]:
         """
         Load all data, validate it, and create the recording_data_by_frame_number dictionary.
 
@@ -55,6 +57,9 @@ class RecordingDataManager:
         self._create_recording_data_by_frame_number()
         if save_to_json:
             self._save_to_json()
+        if save_to_csv:
+            self._save_to_csv()
+
         return self.recording_data_by_frame_number
 
     def _load_data(self):
@@ -105,11 +110,10 @@ class RecordingDataManager:
 
         for frame_number in range(len(self.body_dataframe)):
             self.recording_data_by_frame_number[frame_number] = {
+                "center_of_mass": {"full_body": {}, "segments": {}},
                 "body": {},
                 "hands": {"right": {}, "left": {}},
                 "face": {},
-                "total_body_center_of_mass": {},
-                "segment_centers_of_mass": {},
             }
             self._process_dataframe(self.body_dataframe.iloc[frame_number], "body", frame_number)
             if self.include_hands:
@@ -118,17 +122,17 @@ class RecordingDataManager:
             if self.include_face:
                 self._process_dataframe(self.face_dataframe.iloc[frame_number], "face", frame_number)
 
-            self.recording_data_by_frame_number[frame_number]['total_body_center_of_mass'] = {f"{dimension}": value for
-                                                                                   dimension, value in
-                                                                                   zip(["x", "y", "z"],
-                                                                                       self.center_of_mass_xyz[
-                                                                                       frame_number, :])}
+            self.recording_data_by_frame_number[frame_number]['center_of_mass']['full_body'] = {f"{dimension}": value
+                                                                                                for
+                                                                                                dimension, value in
+                                                                                                zip(["x", "y", "z"],
+                                                                                                    self.center_of_mass_xyz[
+                                                                                                    frame_number, :])}
 
             for segment_number, segment_name in enumerate(BODY_SEGMENT_NAMES):
                 segment_xyz = self.segment_center_of_mass_segment_xyz[frame_number, segment_number, :]
-                self.recording_data_by_frame_number[frame_number]['segment_centers_of_mass'][segment_name] = {
+                self.recording_data_by_frame_number[frame_number]['center_of_mass']['segments'][segment_name] = {
                     f"{dimension}": value for dimension, value in zip(["x", "y", "z"], list(segment_xyz))}
-
 
     def _process_dataframe(self, data_frame, body_part: str, frame_number: int, hand_side: str = None):
         """
@@ -145,6 +149,14 @@ class RecordingDataManager:
             dimension = column_name[-1]  # e.g. "x" or "y" or "z"
 
             if hand_side:
+                # remove redundant naming from hand points (e.g. "right_hand_thumb_1" -> "thumb_1")
+                split = point_name.split("_")
+                if split[0] == hand_side:
+                    split.pop(0)
+                if split[0] == "hand":
+                    split.pop(0)
+                point_name = "_".join(split)
+
                 self.recording_data_by_frame_number[frame_number][body_part][hand_side].setdefault(point_name, {})[
                     dimension] = data_frame[column_name]
             else:
@@ -174,14 +186,60 @@ class RecordingDataManager:
                     "The number of frames in the segment center of mass data is different from the number of frames in the body dataframe.")
 
     def _save_to_json(self):
-        json_file_path = self.output_folder_path / f"all_data_by_frame_number.json"
+        json_file_path = self.recording_folder_path / f"{self._recording_name}_by_frame.json"
         logger.info(f"Saving recording data to {json_file_path}")
         with open(json_file_path, 'w') as file:
             json.dump(self.recording_data_by_frame_number, file, indent=4)
 
+    def _save_to_csv(self):
+        data_for_dataframe = []
+
+        for frame_number in self.recording_data_by_frame_number.keys():
+            if isinstance(frame_number, int):  # Skip 'segment_lengths' and 'names_and_connections' entries
+                frame_data_row = {}
+
+                body_parts = list(self.recording_data_by_frame_number[frame_number].keys())
+                com_index = body_parts.index('center_of_mass')
+                com_name = body_parts.pop(com_index)
+                body_parts.insert(0, com_name)
+
+                # Flatten each frame's dictionary
+                for body_part_key, body_part_dict in self.recording_data_by_frame_number[frame_number].items():
+
+                    if body_part_key == "center_of_mass":
+                        for sub_dict_key, sub_dict in self.recording_data_by_frame_number[frame_number][
+                            body_part_key].items():
+                            if sub_dict_key == "full_body":
+                                for dimension, value in sub_dict.items():
+                                    frame_data_row[f"{body_part_key}.{sub_dict_key}.{dimension}"] = value
+                            elif sub_dict_key == "segment":
+                                for segment_name in sub_dict.keys():
+                                    for dimension, value in sub_dict[segment_name].items():
+                                        frame_data_row[f"{body_part_key}.{segment_name}.{dimension}"] = value
+                    elif body_part_key == "hands":
+                        for hand_side in body_part_dict.keys():
+                            for point_name in body_part_dict[
+                                hand_side].keys():
+                                for dimension, value in \
+                                        body_part_dict[hand_side][
+                                            point_name].items():
+                                    frame_data_row[f"{body_part_key}.{hand_side}.{point_name}.{dimension}"] = value
+                    else:
+                        for point_name in body_part_dict.keys():
+
+                            for dimension, value in body_part_dict[
+                                point_name].items():
+                                frame_data_row[f"{body_part_key}.{point_name}.{dimension}"] = value
+
+                data_for_dataframe.append(frame_data_row)
+
+        # Create DataFrame and save to csv
+        df = pd.DataFrame(data_for_dataframe)
+        csv_file_path = self.recording_folder_path / f"{self._recording_name}_by_trajectory.csv"
+        df.to_csv(csv_file_path, index=False)
+        logger.info(f"Saved recording data to {csv_file_path}")
+
 
 if __name__ == '__main__':
-    from pprint import pprint
     recording_data_manager = RecordingDataManager(recording_folder_path=get_sample_data_path())
     recording_data_by_frame_number = recording_data_manager.run()
-    pprint(recording_data_by_frame_number)

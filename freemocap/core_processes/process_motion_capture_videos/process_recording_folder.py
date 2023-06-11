@@ -48,6 +48,7 @@ logger = logging.getLogger(__name__)
 def process_recording_folder(
         recording_processing_parameter_model: RecordingProcessingParameterModel,
         kill_event: multiprocessing.Event = None,
+        use_tqdm: bool = True,
 ):
     """
 
@@ -78,6 +79,7 @@ def process_recording_folder(
         # 2d skeleton detection
         mediapipe_skeleton_detector = MediaPipeSkeletonDetector(
             parameter_model=rec.mediapipe_parameters_model,
+            use_tqdm=use_tqdm,
         )
 
         mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = mediapipe_skeleton_detector.process_folder_full_of_videos(

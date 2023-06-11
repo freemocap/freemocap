@@ -13,7 +13,9 @@ def pytest_sessionstart():
     pytest.sample_session_folder_path = download_sample_data()
     calibration_toml_path = find_calibration_toml_path(pytest.sample_session_folder_path)
     process_recording_headless(
-        recording_path=pytest.sample_session_folder_path, path_to_camera_calibration_toml=calibration_toml_path
+        recording_path=pytest.sample_session_folder_path,
+        path_to_camera_calibration_toml=calibration_toml_path,
+        use_tqdm=False,
     )
 
 

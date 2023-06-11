@@ -1,24 +1,23 @@
 import logging
-from dataclasses import dataclass
 import multiprocessing
 from pathlib import Path
-from typing import Any, List, Union, Callable
+from typing import List, Union, Callable
 
 import cv2
 import mediapipe as mp
 import numpy as np
-from skellycam.detection.models.frame_payload import FramePayload
 from skellycam.opencv.video_recorder.video_recorder import VideoRecorder
 from tqdm import tqdm
 
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_data_models import \
     Mediapipe2dNumpyArrays
-from freemocap.system.paths_and_filenames.file_and_folder_names import MEDIAPIPE_2D_NPY_FILE_NAME, ANNOTATED_VIDEOS_FOLDER_NAME, \
-    MEDIAPIPE_BODY_WORLD_FILE_NAME
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_tracked_point_names_dict,
 )
 from freemocap.parameter_info_models.recording_processing_parameter_models import MediapipeParametersModel
+from freemocap.system.paths_and_filenames.file_and_folder_names import MEDIAPIPE_2D_NPY_FILE_NAME, \
+    ANNOTATED_VIDEOS_FOLDER_NAME, \
+    MEDIAPIPE_BODY_WORLD_FILE_NAME
 from freemocap.utilities.get_video_paths import get_video_paths
 
 logger = logging.getLogger(__name__)
@@ -36,8 +35,10 @@ class MediaPipeSkeletonDetector:
     def __init__(
             self,
             parameter_model=MediapipeParametersModel(),
+            use_tqdm: bool = True,
     ):
         self._parameter_model = parameter_model
+        self._use_tqdm = use_tqdm
         self._mediapipe_payload_list = []
 
         self._mediapipe_tracked_point_names_dict = mediapipe_tracked_point_names_dict
@@ -67,7 +68,8 @@ class MediaPipeSkeletonDetector:
             output_data_folder_path: Path,
             mediapipe_parameters_model: MediapipeParametersModel,
             annotate_image: Callable,
-            list_of_mediapipe_results_to_npy_arrays: Callable, ):
+            list_of_mediapipe_results_to_npy_arrays: Callable,
+            use_tqdm: bool = True,):
 
         logger.info(f"Running `mediapipe` skeleton detection on video: {str(synchronized_video_file_path)}")
 
@@ -90,14 +92,18 @@ class MediaPipeSkeletonDetector:
 
         number_of_frames = int(video_capture_object.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        for frame_number in tqdm(
+        if use_tqdm:
+            iterator = tqdm(
                 range(number_of_frames),
                 desc=f"mediapiping video: {synchronized_video_file_path.name}",
                 total=number_of_frames,
                 colour="magenta",
                 unit="frames",
-                dynamic_ncols=True,
-        ):
+                dynamic_ncols=True, )
+        else:
+            iterator = range(number_of_frames)
+
+        for frame_number in iterator:
             if not success or image is None:
                 logger.error(f"Failed to load an image from: {str(synchronized_video_file_path)}")
                 raise Exception
@@ -170,10 +176,10 @@ class MediaPipeSkeletonDetector:
                       self._parameter_model,
                       self._annotate_image,
                       self._list_of_mediapipe_results_to_npy_arrays,
+                    self._use_tqdm,
                       ) for video_path in
                      video_paths]
             mediapipe2d_single_camera_npy_arrays_list = pool.starmap(self.process_single_video, tasks)
-
 
         all_cameras_data2d_list = [
             m2d.all_data2d_nFrames_nTrackedPts_XY for m2d in mediapipe2d_single_camera_npy_arrays_list

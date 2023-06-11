@@ -21,6 +21,7 @@ def process_recording_headless(
         path_to_blender_executable: Optional[Union[str, Path]] = get_best_guess_of_blender_path(),
         recording_processing_parameter_model: Optional[
             RecordingProcessingParameterModel] = RecordingProcessingParameterModel(),
+        use_tqdm: bool = True,
 ):
     rec = recording_processing_parameter_model
 
@@ -42,7 +43,8 @@ def process_recording_headless(
                 f"There are {number_of_videos} videos. Must provide a calibration toml file for multicamera recordings.")
 
     logger.info("Starting core processing pipeline...")
-    process_recording_folder(recording_processing_parameter_model=rec)
+    process_recording_folder(recording_processing_parameter_model=rec,
+                             use_tqdm=use_tqdm)
 
     logger.info("Generating jupyter notebook...")
     generate_jupyter_notebook(path_to_recording=recording_path)

@@ -92,7 +92,7 @@ def process_recording_folder(
     try:
         assert test_image_tracking_data_shape(
             synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
-            image_tracking_data_file_name=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
+            image_tracking_data_file_path=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
         )
     except AssertionError as error_message:
             logger.error(error_message)
@@ -134,7 +134,7 @@ def process_recording_folder(
         assert test_mediapipe_skeleton_data_shape(
             synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
             raw_skeleton_npy_file_path=rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path,
-            reprojection_error_file_name=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
+            reprojection_error_file_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
         )
     except AssertionError as error_message:
         logger.error(error_message)
@@ -161,7 +161,7 @@ def process_recording_folder(
         test_mediapipe_skeleton_data_shape(
             synchronized_video_folder_path=rec.recording_info_model.synchronized_videos_folder_path,
             raw_skeleton_npy_file_path=rec.recording_info_model.mediapipe_3d_data_npy_file_path,
-            reprojection_error_file_name=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
+            reprojection_error_file_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
         )
     except AssertionError as error_message:
         logger.error(error_message)

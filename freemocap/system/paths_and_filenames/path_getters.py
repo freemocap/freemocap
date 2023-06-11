@@ -246,7 +246,7 @@ def get_image_tracking_data_file_name(data_folder_name: Union[str,Path])->str:
     raise Exception(f"Could not find a 2d data file in path {str(data_folder_name)}")
 
 
-def get_reprojection_error_file_name(data_folder_name: Union[str,Path])->str:
+def get_reprojection_error_file_path(data_folder_name: Union[str,Path])->str:
     raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
@@ -255,4 +255,6 @@ def get_reprojection_error_file_name(data_folder_name: Union[str,Path])->str:
             return str(raw_data_subfolder_path / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME)
 
     raise Exception(f"Could not find reprojection error data file in path {str(data_folder_name)}")
+
+
 

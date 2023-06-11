@@ -115,9 +115,9 @@ class RecordingDataSaver:
             self.segment_lengths = json.loads(file.read())
 
     def _get_data_by_frame_number(self):
-        self.recording_data_by_frame_number = []
+        self.recording_data_by_frame_number = {}
         for frame_number in range(len(self.body_dataframe)):
-            self.recording_data_by_frame_number.append(self._process_frame_data(frame_number))
+            self.recording_data_by_frame_number[frame_number] = self._process_frame_data(frame_number)
 
     def _get_empty_frame_dictionary(self) -> Dict[Any, Any]:
         return {"center_of_mass": {"full_body_com": {}, "segment_coms": {}},
@@ -187,14 +187,17 @@ class RecordingDataSaver:
                 point_name = "_".join(split)
                 frame_data[hand_side] = {}
 
-            frame_data.setdefault(point_name, {})[dimension] = data_frame[column_name]
+            value = data_frame[column_name]
+            if pd.isna(value):  # Check if value is NaN
+                value = None  # Replace NaN with None which is valid in JSON
+
+            frame_data.setdefault(point_name, {})[dimension] = value
 
         return frame_data
 
     def _save_to_json(self):
         dict_to_save = {}
-        dict_to_save['data_by_frame'] = [
-            {frame_number: frame_data for frame_number, frame_data in enumerate(self.recording_data_by_frame_number)}]
+        dict_to_save['data_by_frame'] = self.recording_data_by_frame_number
         dict_to_save['info'] = self._get_info_dict()
 
         json_file_path = self.recording_folder_path / f"{self._recording_name}_by_frame.json"
@@ -205,7 +208,7 @@ class RecordingDataSaver:
     def _save_to_csv(self):
         data_for_dataframe = []
 
-        for frame_data in self.recording_data_by_frame_number:
+        for frame_data in self.recording_data_by_frame_number.values():
             data_for_dataframe.append(self._generate_frame_data_row(frame_data))
 
         # Create DataFrame and save to csv

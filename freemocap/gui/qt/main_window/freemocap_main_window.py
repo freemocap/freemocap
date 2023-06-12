@@ -56,6 +56,8 @@ from freemocap.parameter_info_models.recording_info_model import (
 from freemocap.parameter_info_models.recording_processing_parameter_models import (
     RecordingProcessingParameterModel,
 )
+from freemocap.system.logging.configure_logging import get_logging_handlers
+from freemocap.system.logging.log_handler import LogHandler
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_files_names import (
@@ -67,6 +69,7 @@ from freemocap.system.paths_and_files_names import (
     get_recording_session_folder_path,
 )
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
+from freemocap import log_handler
 
 EXIT_CODE_REBOOT = -123456789
 
@@ -143,7 +146,7 @@ class FreemocapMainWindow(QMainWindow):
         # )
         # jupyter_console_dock_widget.setWidget(self._jupyter_console_widget)
 
-        self._log_view_widget = LogViewWidget(parent=self)
+        self._log_view_widget = LogViewWidget(parent=self, log_handler=log_handler)
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
         log_view_dock_widget.setWidget(self._log_view_widget)

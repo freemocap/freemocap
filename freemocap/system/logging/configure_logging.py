@@ -2,6 +2,7 @@ import logging
 import logging.handlers
 import sys
 from logging.config import dictConfig
+from freemocap.system.logging.log_handler import LogHandler
 
 from freemocap.system.paths_and_files_names import get_log_file_path
 
@@ -27,19 +28,48 @@ def get_logging_handlers():
     file_handler.setFormatter(default_logging_formatter)
     file_handler.setLevel(logging.DEBUG)
 
-    return [console_handler, file_handler]
+    log_handler = LogHandler()
+    log_handler.setFormatter(default_logging_formatter)
 
+    return [console_handler, file_handler, log_handler]
+
+
+# def configure_logging():
+#     print(f"Setting up freemocap logging  {__file__}")
+
+#     if len(logging.getLogger().handlers) == 0:
+#         handlers = get_logging_handlers()
+#         for handler in handlers:
+#             if not handler in logging.getLogger("").handlers:
+#                 logging.getLogger("").handlers.append(handler)
+            
+#             if isinstance(handler, LogHandler):
+#                 logging.getLogger().addHandler(handler)
+
+#         logging.root.setLevel(logging.DEBUG)
+#     else:
+#         logger = logging.getLogger(__name__)
+#         logger.info("Logging already configured")
 
 def configure_logging():
     print(f"Setting up freemocap logging  {__file__}")
 
-    if len(logging.getLogger().handlers) == 0:
-        handlers = get_logging_handlers()
-        for handler in handlers:
-            if not handler in logging.getLogger("").handlers:
-                logging.getLogger("").handlers.append(handler)
+    # Clear existing handlers
+    logging.getLogger().handlers = []
 
-        logging.root.setLevel(logging.DEBUG)
-    else:
-        logger = logging.getLogger(__name__)
-        logger.info("Logging already configured")
+    # Configure custom handlers
+    handlers = get_logging_handlers()
+    log_handler = None
+    for handler in handlers:
+        if not handler in logging.getLogger("").handlers:
+            logging.getLogger("").handlers.append(handler)
+
+        if isinstance(handler, LogHandler):
+            log_handler = handler
+
+    logging.root.setLevel(logging.DEBUG)
+
+    logger = logging.getLogger(__name__)
+    logger.info("Logging configured")
+
+    return log_handler

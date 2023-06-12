@@ -10,6 +10,7 @@ __repo_url__ = f"https://github.com/freemocap/{__package_name__}/"
 __repo_issues_url__ = f"{__repo_url__}issues"
 
 import sys
+import logging
 from pathlib import Path
 
 base_package_path = Path(__file__).parent.parent
@@ -18,8 +19,7 @@ sys.path.insert(0, str(base_package_path))  # add par
 
 from freemocap.system.logging.configure_logging import configure_logging
 
-configure_logging()
-import logging
+log_handler = configure_logging()
 
 logger = logging.getLogger(__name__)
 logger.info(f"Initializing {__package_name__} package, version: {__version__}, from file: {__file__}")

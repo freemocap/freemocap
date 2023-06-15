@@ -43,11 +43,11 @@ class ImportVideosWizard(QDialog):
         self._form_layout = QFormLayout()
         self._layout.addLayout(self._form_layout)
 
-        self._synchronize_videos_checkbox = QCheckBox("Synchronize videos by audio cross-correlation")
+        self._synchronize_videos_checkbox = QCheckBox("Synchronize videos by audio cross-correlation.")
         self._synchronize_videos_checkbox.toggled.connect(self._handle_synchronize_checkbox_toggled)
 
         synchronization_message = QLabel(
-            "Videos must have exactly the same video frame rates and audio sample rates to be synchronized."
+            "(Videos must have exactly the same video frame rates and audio sample rates to be synchronized.)"
         )
 
         synchronization_layout = QHBoxLayout()

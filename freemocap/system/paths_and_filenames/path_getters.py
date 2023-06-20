@@ -132,11 +132,11 @@ def get_logs_info_and_settings_folder_path(create_folder: bool = True):
 def get_css_stylesheet_path():
     # return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "ElegantDark.qss")
     # return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "FunkyTown.qss")
-    return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.css")
+    return str(Path(__file__).parent.parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.css")
 
 
 def get_scss_stylesheet_path():
-    return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.scss")
+    return str(Path(__file__).parent.parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.scss")
 
 
 def get_most_recent_recording_toml_path():

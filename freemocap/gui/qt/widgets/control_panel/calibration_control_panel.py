@@ -40,7 +40,6 @@ class CalibrationControlPanel(QWidget):
         self.parent = parent
 
         self._anipose_calibration_frame_worker = None
-        self._user_selected_calibration_toml_path_str = None
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
@@ -96,8 +95,7 @@ class CalibrationControlPanel(QWidget):
 
         if toml_path is None:
             if self._load_calibration_from_file_radio_button.isChecked():
-                if self._user_selected_calibration_toml_path_str is not None:
-                    toml_path = self._user_selected_calibration_toml_path_str
+                toml_path = self.calibration_toml_path
 
             elif self._use_most_recent_calibration_radio_button.isChecked():
                 toml_path = get_last_successful_calibration_toml_path()

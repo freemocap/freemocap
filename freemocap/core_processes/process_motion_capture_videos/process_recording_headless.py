@@ -6,8 +6,8 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_fo
 from freemocap.export_data.blender_stuff.export_to_blender import export_to_blender
 from freemocap.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 from freemocap.export_data.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
-from freemocap.parameter_info_models.recording_info_model import RecordingInfoModel
-from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
+from freemocap.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.recording_models.post_processing_parameter_models import PostProcessingParameterModel
 from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
 from freemocap.utilities.download_sample_data import get_sample_data_path
 from freemocap.utilities.get_video_paths import get_video_paths
@@ -20,7 +20,7 @@ def process_recording_headless(
         path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
         path_to_blender_executable: Optional[Union[str, Path]] = get_best_guess_of_blender_path(),
         recording_processing_parameter_model: Optional[
-            RecordingProcessingParameterModel] = RecordingProcessingParameterModel(),
+            PostProcessingParameterModel] = PostProcessingParameterModel(),
         use_tqdm: bool = True,
 ):
     rec = recording_processing_parameter_model

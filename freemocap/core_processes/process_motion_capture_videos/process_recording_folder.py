@@ -33,7 +33,7 @@ from freemocap.core_processes.post_process_skeleton_data.estimate_skeleton_segme
 from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import (
     gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass,
 )
-from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
+from freemocap.recording_models.post_processing_parameter_models import PostProcessingParameterModel
 
 from freemocap.tests.test_image_tracking_data_shape import (
     test_image_tracking_data_shape,
@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 
 def process_recording_folder(
-        recording_processing_parameter_model: RecordingProcessingParameterModel,
+        recording_processing_parameter_model: PostProcessingParameterModel,
         kill_event: multiprocessing.Event = None,
         use_tqdm: bool = True,
 ):
@@ -54,7 +54,7 @@ def process_recording_folder(
 
     Parameters
     ----------
-    recording_processing_parameter_model : RecordingProcessingParameterModel
+    recording_processing_parameter_model : PostProcessingParameterModel
         RecordingProcessingParameterModel object (contains all the paths and parameters necessary to process a session folder
 
     """

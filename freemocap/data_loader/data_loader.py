@@ -15,7 +15,7 @@ from freemocap.utilities.download_sample_data import get_sample_data_path
 logger = logging.getLogger(__name__)
 
 
-class RecordingDataSaver:
+class DataLoader:
     """
     Manages operations related to processing dataframes containing body, hands, and face data.
     """
@@ -47,7 +47,7 @@ class RecordingDataSaver:
 
         self._load_data()
 
-    def run(self, save_to_json: bool = True, save_to_csv: bool = True) -> Dict[int, Dict]:
+    def save_all(self, save_to_json: bool = True, save_to_csv: bool = True) -> Dict[int, Dict]:
         """
         Load all data, validate it, and create the recording_data_by_frame_number dictionary.
 
@@ -57,9 +57,9 @@ class RecordingDataSaver:
         self._load_data()
         self._get_data_by_frame_number()
         if save_to_json:
-            self._save_to_json()
+            self.save_to_json()
         if save_to_csv:
-            self._save_to_csv()
+            self.save_to_csv()
 
     def _load_data(self):
         self._load_data_frames()
@@ -195,17 +195,19 @@ class RecordingDataSaver:
 
         return frame_data
 
-    def _save_to_json(self):
+    def save_to_json(self, save_path:Union[str, Path]=None):
         dict_to_save = {}
         dict_to_save['data_by_frame'] = self.recording_data_by_frame_number
         dict_to_save['info'] = self._get_info_dict()
 
-        json_file_path = self.recording_folder_path / f"{self._recording_name}_by_frame.json"
-        logger.info(f"Saving recording data to {json_file_path}")
-        with open(json_file_path, 'w') as file:
+        if save_path is None:
+            save_path = self.recording_folder_path / f"{self._recording_name}_by_frame.json"
+
+        logger.info(f"Saving recording data to {save_path}")
+        with open(save_path, 'w') as file:
             json.dump(dict_to_save, file, indent=4)
 
-    def _save_to_csv(self):
+    def save_to_csv(self, save_path:Union[str, Path]=None):
         data_for_dataframe = []
 
         for frame_data in self.recording_data_by_frame_number.values():
@@ -213,9 +215,12 @@ class RecordingDataSaver:
 
         # Create DataFrame and save to csv
         df = pd.DataFrame(data_for_dataframe)
-        csv_file_path = self.recording_folder_path / f"{self._recording_name}_by_trajectory.csv"
-        df.to_csv(csv_file_path, index=False)
-        logger.info(f"Saved recording data to {csv_file_path}")
+
+        if save_path is None:
+            save_path = self.recording_folder_path / f"{self._recording_name}_by_trajectory.csv"
+
+        df.to_csv(save_path, index=False)
+        logger.info(f"Saved recording data to {save_path}")
 
     def _generate_frame_data_row(self, frame_data: Dict[str, Any]) -> Dict:
         """
@@ -297,5 +302,5 @@ class RecordingDataSaver:
 
 
 if __name__ == '__main__':
-    recording_data_saver = RecordingDataSaver(recording_folder_path=get_sample_data_path())
-    recording_data_by_frame_number = recording_data_saver.run()
+    recording_data_saver = DataLoader(recording_folder_path=get_sample_data_path())
+    recording_data_by_frame_number = recording_data_saver.save_all()

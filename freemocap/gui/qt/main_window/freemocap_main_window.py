@@ -50,11 +50,11 @@ from freemocap.gui.qt.widgets.home_widget import (
 )
 from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
-from freemocap.parameter_info_models.recording_info_model import (
+from freemocap.recording_models.recording_info_model import (
     RecordingInfoModel,
 )
-from freemocap.parameter_info_models.recording_processing_parameter_models import (
-    RecordingProcessingParameterModel,
+from freemocap.recording_models.post_processing_parameter_models import (
+    PostProcessingParameterModel,
 )
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
@@ -282,7 +282,7 @@ class FreemocapMainWindow(QMainWindow):
         # )
 
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
-            recording_processing_parameters=RecordingProcessingParameterModel(),
+            recording_processing_parameters=PostProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
             kill_thread_event=self._kill_thread_event,
         )

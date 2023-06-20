@@ -68,7 +68,9 @@ from freemocap.system.paths_and_files_names import (
     FIGSHARE_SAMPLE_DATA_ZIP_FILE_URL
 )
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
-from freemocap.tests.utilities.load_sample_data import load_sample_data
+from freemocap.gui.qt.workers.download_sample_data_thread_worker import (
+    DownloadSampleDataThreadWorker
+)
 
 EXIT_CODE_REBOOT = -123456789
 
@@ -467,8 +469,15 @@ class FreemocapMainWindow(QMainWindow):
 
     def download_sample_data(self):
         logger.info("Downloading sample data")
-        sample_data_path = load_sample_data(sample_data_zip_file_url=FIGSHARE_SAMPLE_DATA_ZIP_FILE_URL)
-        self._active_recording_info_widget.set_active_recording(recording_folder_path=sample_data_path)
+        self.download_sample_data_thread_worker = DownloadSampleDataThreadWorker(kill_thread_event=self._kill_thread_event)
+        self.download_sample_data_thread_worker.start()
+        self.download_sample_data_thread_worker.finished.connect(self._handle_download_sample_data_finished)
+
+    def _handle_download_sample_data_finished(self):
+        logger.info("Setting sample data as active recording... ")
+        self._active_recording_info_widget.set_active_recording(
+            recording_folder_path=self.download_sample_data_thread_worker.sample_data_path
+        )
 
     @pyqtSlot(list, str)
     def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str):

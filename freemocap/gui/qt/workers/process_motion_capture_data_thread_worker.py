@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal, QThread
 
@@ -33,6 +34,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         self._kill_event.clear()
 
         recording_info_dict = self._session_processing_parameters.dict(exclude={'recording_info_model'})
+        Path(self._session_processing_parameters.recording_info_model.output_data_folder_path).mkdir(parents=True, exist_ok=True)
 
         save_dictionary_to_json(
             save_path=self._session_processing_parameters.recording_info_model.output_data_folder_path,

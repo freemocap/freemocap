@@ -458,6 +458,16 @@ class FreemocapMainWindow(QMainWindow):
         self._active_recording_info_widget.set_active_recording(recording_folder_path=user_selected_directory)
         self._central_tab_widget.setCurrentIndex(2)
 
+    def reset_to_default_gui_settings(self):
+        self._gui_state = GuiState()
+
+        self._home_widget._send_pings_checkbox.setChecked(self._gui_state.send_user_pings)
+        self._controller_group_box._auto_process_videos_checkbox.setChecked(self._gui_state.auto_process_videos_on_save)
+        self._controller_group_box._generate_jupyter_notebook_checkbox.setChecked(self._gui_state.generate_jupyter_notebook)
+        self._controller_group_box._auto_open_in_blender_checkbox.setChecked(self._gui_state.auto_open_in_blender)
+        self._controller_group_box._charuco_square_size_line_edit.setText(str(self._gui_state.charuco_square_size))
+        self._process_motion_capture_data_panel._calibration_control_panel._charuco_square_size_line_edit.setText(str(self._gui_state.charuco_square_size))
+
     def open_import_videos_dialog(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
         logger.info("Opening `Import Videos` dialog... ")

@@ -8,19 +8,21 @@ import pandas as pd
 
 from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import \
     BODY_SEGMENT_NAMES
+from freemocap.system.paths_and_filenames.file_and_folder_names import MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME, \
+    MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME, MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME, \
+    MEDIAPIPE_FACE_3D_DATAFRAME_CSV_FILE_NAME
 from freemocap.system.paths_and_filenames.path_getters import get_output_data_folder_path, \
-    get_total_body_center_of_mass_file_path, get_segment_center_of_mass_file_path
+    get_total_body_center_of_mass_file_path, get_segment_center_of_mass_file_path, get_full_npy_file_path
 from freemocap.utilities.download_sample_data import get_sample_data_path
 
 logger = logging.getLogger(__name__)
 
 
-class DataLoader:
-    """
-    Manages operations related to processing dataframes containing body, hands, and face data.
-    """
+class DataSaver:
 
-    def __init__(self, recording_folder_path: Union[Path, str], include_hands: bool = True,
+    def __init__(self,
+                 recording_folder_path: Union[Path, str],
+                 include_hands: bool = True,
                  include_face: bool = True):
         """
         Initialize DataFrameManager with the given recording_folder_path.
@@ -47,7 +49,7 @@ class DataLoader:
 
         self._load_data()
 
-    def save_all(self, save_to_json: bool = True, save_to_csv: bool = True) -> Dict[int, Dict]:
+    def save_all(self) -> Dict[int, Dict]:
         """
         Load all data, validate it, and create the recording_data_by_frame_number dictionary.
 
@@ -56,26 +58,28 @@ class DataLoader:
         """
         self._load_data()
         self._get_data_by_frame_number()
-        if save_to_json:
-            self.save_to_json()
-        if save_to_csv:
-            self.save_to_csv()
+
+        self.save_to_json()
+        self.save_to_csv()
+        self.save_to_npy()
+
 
     def _load_data(self):
         self._load_data_frames()
+        self._load_full_npy_data()
         self._load_center_of_mass_data()
         self._load_segment_lengths()
         self._load_names_and_connections()
         self._validate_data()
 
     def _load_data_frames(self):
-        self.body_dataframe = self._load_dataframe("mediapipe_body_3d_xyz.csv")
+        self.body_dataframe = self._load_dataframe(MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME)
         self.number_of_frames = len(self.body_dataframe)
         if self.include_hands:
-            self.right_hand_dataframe = self._load_dataframe("mediapipe_right_hand_3d_xyz.csv")
-            self.left_hand_dataframe = self._load_dataframe("mediapipe_left_hand_3d_xyz.csv")
+            self.right_hand_dataframe = self._load_dataframe(MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
+            self.left_hand_dataframe = self._load_dataframe(MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
         if self.include_face:
-            self.face_dataframe = self._load_dataframe("mediapipe_face_3d_xyz.csv")
+            self.face_dataframe = self._load_dataframe(MEDIAPIPE_FACE_3D_DATAFRAME_CSV_FILE_NAME)
 
     def _load_dataframe(self, filename):
         return pd.read_csv(self.output_folder_path / filename)
@@ -106,6 +110,9 @@ class DataLoader:
         self.segment_center_of_mass_segment_xyz = np.load(
             get_segment_center_of_mass_file_path(output_data_folder=self.output_folder_path))
 
+
+    def _load_full_npy_data(self):
+        self.data_fr_id_xyz = get_full_npy_file_path(output_data_folder=self.output_folder_path)
     def _load_names_and_connections(self):
         with open(self.output_folder_path / "mediapipe_names_and_connections_dict.json", 'r') as file:
             self.names_and_connections = json.loads(file.read())
@@ -222,6 +229,13 @@ class DataLoader:
         df.to_csv(save_path, index=False)
         logger.info(f"Saved recording data to {save_path}")
 
+    def save_to_npy(self, save_path:Union[str, Path]=None):
+        if save_path is None:
+            save_path = self.recording_folder_path / f"{self._recording_name}_fr_id_xyz.npy"
+        np.save(save_path, self.data_fr_id_xyz)
+
+
+
     def _generate_frame_data_row(self, frame_data: Dict[str, Any]) -> Dict:
         """
         Generate a data row for a given frame number.
@@ -301,6 +315,7 @@ class DataLoader:
                 'names_and_connections': self.names_and_connections}
 
 
+
 if __name__ == '__main__':
-    recording_data_saver = DataLoader(recording_folder_path=get_sample_data_path())
+    recording_data_saver = DataSaver(recording_folder_path=get_sample_data_path())
     recording_data_by_frame_number = recording_data_saver.save_all()

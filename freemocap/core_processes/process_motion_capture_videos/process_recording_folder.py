@@ -10,6 +10,7 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.medi
 )
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import \
     process_single_camera_skeleton_data
+from freemocap.data_loader.data_saver import DataSaver
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
@@ -198,3 +199,8 @@ def process_recording_folder(
         file_name="mediapipe_names_and_connections_dict.json",
         dictionary=mediapipe_names_and_connections_dict,
     )
+
+    #TODO - move this data output method *above* the sloppy stuff above and deprecate the sloppy stuff (gracefully enough not to bork hypothetical users' workflows)
+    DataSaver(recording_folder_path=rec.recording_info_model.path).save_all()
+
+    logger.info(f"Done processing {rec.recording_info_model.path}")

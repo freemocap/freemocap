@@ -22,10 +22,15 @@ MOST_RECENT_RECORDING_TOML_FILENAME = "most_recent_recording.toml"
 LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME = "last_successful_calibration.toml"
 MEDIAPIPE_2D_NPY_FILE_NAME = "mediapipe2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
 MEDIAPIPE_BODY_WORLD_FILE_NAME = "mediapipeBodyWorld_numCams_numFrames_numTrackedPoints_XYZ.npy"
-MEDIAPIPE_3D_NPY_FILE_NAME = "mediaPipeSkel_3d_body_hands_face.npy"
+
 RAW_MEDIAPIPE_3D_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
 MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+
+MEDIAPIPE_3D_NPY_FILE_NAME = "mediaPipeSkel_3d_body_hands_face.npy"
 MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME = "mediapipe_body_3d_xyz.csv"
+MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME = "mediapipe_right_hand_3d_xyz.csv"
+MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME = "mediapipe_left_hand_3d_xyz.csv"
+MEDIAPIPE_FACE_3D_DATAFRAME_CSV_FILE_NAME = "mediapipe_face_3d_xyz.csv"
 
 
 TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"

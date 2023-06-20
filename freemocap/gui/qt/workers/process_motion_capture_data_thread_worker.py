@@ -7,6 +7,8 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_fo
     process_recording_folder,
 )
 from freemocap.parameter_info_models.recording_processing_parameter_models import RecordingProcessingParameterModel
+from freemocap.system.paths_and_files_names import RECORDING_PARAMETER_DICT_JSON_FILE_NAME
+from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,9 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         super().__init__()
         self._session_processing_parameters = session_processing_parameters
         self._kill_event = kill_event
+
         self._process = multiprocessing.Process(target=process_recording_folder, args=(self._session_processing_parameters, self._kill_event))
+
 
     def run(self):
         logger.info(
@@ -28,12 +32,19 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         )
         self._kill_event.clear()
 
+        recording_info_dict = self._session_processing_parameters.dict(exclude={'recording_info_model'})
+
+        save_dictionary_to_json(
+            save_path=self._session_processing_parameters.recording_info_model.output_data_folder_path,
+            file_name=RECORDING_PARAMETER_DICT_JSON_FILE_NAME,
+            dictionary=recording_info_dict,
+        )
+
         try:
             self._process.start()
             self._process.join()
         except Exception as e:
             logger.error(f"Error processing motion capture data: {e}")
-
 
         logger.info("Finished processing session folder!")
 

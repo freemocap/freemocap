@@ -64,6 +64,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path, \
     get_css_stylesheet_path, get_scss_stylesheet_path, get_most_recent_recording_path, get_blender_file_path
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
+from freemocap.utilities.remove_empty_directories import remove_empty_directories
 
 EXIT_CODE_REBOOT = -123456789
 
@@ -510,22 +511,6 @@ class FreemocapMainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Error while closing the viewer widget: {e}")
         super().closeEvent(a0)
-
-
-def remove_empty_directories(root_dir: Union[str, Path]):
-    """
-    Recursively remove empty directories from the root directory
-    :param root_dir: The root directory to start removing empty directories from
-    """
-    # logger.debug(f"Searching for empty directories in: {root_dir}")
-    for path in Path(root_dir).rglob("*"):
-        if path.is_dir() and not any(path.iterdir()):
-            logger.info(f"Removing empty directory: {path}")
-            path.rmdir()
-        elif path.is_dir() and any(path.iterdir()):
-            remove_empty_directories(path)
-        else:
-            continue
 
 
 if __name__ == "__main__":

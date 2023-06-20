@@ -50,11 +50,11 @@ from freemocap.gui.qt.widgets.home_widget import (
 )
 from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
-from freemocap.recording_models.recording_info_model import (
-    RecordingInfoModel,
-)
 from freemocap.recording_models.post_processing_parameter_models import (
     PostProcessingParameterModel,
+)
+from freemocap.recording_models.recording_info_model import (
+    RecordingInfoModel,
 )
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file

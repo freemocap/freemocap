@@ -1,6 +1,8 @@
-import sass
 from pathlib import Path
 from typing import Union
+
+import sass
+
 
 def compile_scss_to_css(scss_path: Union[str, Path], css_path: Union[str, Path]):
     with open(scss_path) as scss_file:

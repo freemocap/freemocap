@@ -1,11 +1,13 @@
-import pytest
-import numpy as np
 from pathlib import Path
 from typing import Union
+
+import numpy as np
+import pytest
 
 from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
     get_number_of_frames_of_videos_in_a_folder,
 )
+
 
 @pytest.mark.usefixtures("synchronized_video_folder_path", "raw_skeleton_npy_file_path", "reprojection_error_file_path")
 def test_mediapipe_skeleton_data_shape(

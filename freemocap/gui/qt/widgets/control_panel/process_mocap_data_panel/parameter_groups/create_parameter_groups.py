@@ -1,4 +1,4 @@
-from pyqtgraph.parametertree import Parameter, ParameterTree
+from pyqtgraph.parametertree import Parameter
 
 from freemocap.recording_models.post_processing_parameter_models import MediapipeParametersModel, \
     PostProcessingParameterModel, AniposeTriangulate3DParametersModel, PostProcessingParametersModel, \

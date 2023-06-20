@@ -10,9 +10,9 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
-    create_mediapipe_parameter_group, 
-    create_3d_triangulation_prarameter_group, 
-    create_post_processing_parameter_group, 
+    create_mediapipe_parameter_group,
+    create_3d_triangulation_prarameter_group,
+    create_post_processing_parameter_group,
     extract_parameter_model_from_parameter_tree,
     SKIP_2D_IMAGE_TRACKING_NAME,
     SKIP_3D_TRIANGULATION_NAME,

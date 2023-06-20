@@ -1,11 +1,13 @@
-import pytest
 from pathlib import Path
 from typing import Union
+
+import pytest
 
 from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
     get_number_of_frames_of_videos_in_a_folder,
 )
 from freemocap.utilities.get_video_paths import get_video_paths
+
 
 @pytest.mark.usefixtures("synchronized_video_folder_path")
 def test_synchronized_video_frame_counts(synchronized_video_folder_path: Union[Path, str]):

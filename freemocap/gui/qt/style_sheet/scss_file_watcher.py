@@ -4,6 +4,7 @@ from typing import Union
 
 from PyQt6 import QtCore
 from PyQt6.QtCore import pyqtSlot, QFileSystemWatcher
+
 from freemocap.gui.qt.style_sheet.compile_scss_to_css import compile_scss_to_css
 
 logger = logging.getLogger(__name__)

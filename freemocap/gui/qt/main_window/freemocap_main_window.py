@@ -62,7 +62,8 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
 )
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path, \
-    get_css_stylesheet_path, get_scss_stylesheet_path, get_most_recent_recording_path, get_blender_file_path
+    get_css_stylesheet_path, get_scss_stylesheet_path, get_most_recent_recording_path, get_blender_file_path, \
+    get_freemocap_data_folder_path
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 from freemocap.utilities.remove_empty_directories import remove_empty_directories
 
@@ -512,6 +513,10 @@ class FreemocapMainWindow(QMainWindow):
             logger.error(f"Error while closing the viewer widget: {e}")
         super().closeEvent(a0)
 
+        for process in multiprocessing.active_children():
+            logger.info(f"Terminating process: {process}")
+            process.terminate()
+
 
 if __name__ == "__main__":
     import sys
@@ -519,10 +524,10 @@ if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    main_window = FreemocapMainWindow(pipedream_pings=PipedreamPings())
+    main_window = FreemocapMainWindow(pipedream_pings=PipedreamPings(),
+                                      freemocap_data_folder_path=get_freemocap_data_folder_path(),
+                                        )
     main_window.show()
     app.exec()
-    for process in multiprocessing.active_children():
-        logger.info(f"Terminating process: {process}")
-        process.terminate()
+
     sys.exit()

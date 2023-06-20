@@ -55,7 +55,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._layout.addWidget(calibration_group_box)
 
         self._calibration_control_panel = CalibrationControlPanel(
-            get_active_recording_info_callable=self._get_active_recording_info,
+            get_active_recording_info=self._get_active_recording_info,
             kill_thread_event=self._kill_thread_event,
             parent=self,
         )

@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+import threading
 from typing import Union
 
 from PyQt6.QtCore import pyqtSignal
@@ -8,6 +9,7 @@ from PyQt6.QtWidgets import QVBoxLayout, QListWidget, QLabel, QFormLayout, QLine
     QTreeView, QPushButton, QDialog, QCheckBox, QHBoxLayout
 
 from skelly_synchronize.skelly_synchronize import synchronize_videos_from_audio
+from freemocap.gui.qt.workers.synchronize_videos_thread_worker import SynchronizeVideosThreadWorker
 
 from freemocap.system.paths_and_files_names import get_recording_session_folder_path, SYNCHRONIZED_VIDEOS_FOLDER_NAME
 from freemocap.utilities.get_video_paths import get_video_paths
@@ -22,8 +24,10 @@ class ImportVideosWizard(QDialog):
     folder_to_save_videos_to_selected = pyqtSignal(list, str, bool)
     def __init__(self,
                  import_videos_path: Union[str, Path],
+                 kill_thread_event: threading.Event,
                  parent=None):
         super().__init__(parent=parent)
+        self.kill_thread_event = kill_thread_event
 
         self.setWindowTitle("Import Videos")
 
@@ -115,10 +119,13 @@ class ImportVideosWizard(QDialog):
 
     def _handle_continue_button_clicked(self, event):
         if self._synchronize_videos_checkbox.isChecked():
-            newly_synchronized_video_path = synchronize_videos_from_audio(
-                raw_video_folder_path=Path(self.import_videos_path), 
-                synchronized_video_folder_path=Path(self._get_folder_videos_will_be_saved_to()))
-            self._video_file_paths = [str(path) for path in get_video_paths(path_to_video_folder=newly_synchronized_video_path)]
+            self.synchronize_videos_thread_worker = SynchronizeVideosThreadWorker(
+                raw_video_folder_path=Path(self.import_videos_path),
+                synchronized_video_folder_path=Path(self._get_folder_videos_will_be_saved_to()),
+                kill_thread_event=self.kill_thread_event
+            )
+            self.synchronize_videos_thread_worker.start()
+            self.synchronize_videos_thread_worker.finished.connect(self._handle_video_synchronization_finished)
        
         self.folder_to_save_videos_to_selected.emit(
             self._video_file_paths,
@@ -131,6 +138,12 @@ class ImportVideosWizard(QDialog):
             logger.info("Synchronize videos by audio selected, videos will be synchronized before importing")
         else:
             logger.info("Synchronize videos by audio deselected, videos will not be synchronized")
+
+    def _handle_video_synchronization_finished(self):
+        self._video_file_paths = [
+            str(path) 
+            for path in get_video_paths(path_to_video_folder=self.synchronize_videos_thread_worker.output_folder_path)
+        ]
         
 if __name__ == "__main__":
     # from PyQt6.QtWidgets import QApplication

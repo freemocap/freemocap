@@ -458,7 +458,7 @@ class FreemocapMainWindow(QMainWindow):
             return
 
         self._import_videos_window = ImportVideosWizard(parent=self,
-                                                        import_videos_path=import_videos_path,
+                                                        import_videos_path=import_videos_path,                                                 kill_thread_event=self._kill_thread_event,
                                                         )
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
         text = self._import_videos_window.exec()

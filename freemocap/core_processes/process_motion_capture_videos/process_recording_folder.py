@@ -67,11 +67,11 @@ def process_recording_folder(
             f"Could not find synchronized_videos folder at {rec.recording_info_model.synchronized_videos_folder_path}"
         )
 
-    
     logger.info("Detecting 2d skeletons...")
     if rec.mediapipe_parameters_model.skip_2d_image_tracking:
-        try: 
-            mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = np.load(rec.recording_info_model.mediapipe_2d_data_npy_file_path)
+        try:
+            mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = np.load(
+                rec.recording_info_model.mediapipe_2d_data_npy_file_path)
         except Exception as e:
             logger.error("Failed to load 2D data, cannot continue processing")
             return
@@ -96,7 +96,7 @@ def process_recording_folder(
             image_tracking_data_file_name=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
         )
     except AssertionError as error_message:
-            logger.error(error_message)
+        logger.error(error_message)
 
     # spoof 3D data if single camera
     if mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
@@ -108,7 +108,8 @@ def process_recording_folder(
     else:
         if rec.anipose_triangulate_3d_parameters_model.skip_3d_triangulation:
             raw_skel3d_frame_marker_xyz = np.load(rec.recording_info_model.raw_mediapipe_3d_data_npy_file_path)
-            skeleton_reprojection_error_fr_mar = np.load(rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path)
+            skeleton_reprojection_error_fr_mar = np.load(
+                rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path)
         else:
             logger.info("Triangulating 3d skeletons...")
 
@@ -140,9 +141,10 @@ def process_recording_folder(
     except AssertionError as error_message:
         logger.error(error_message)
 
-    post_process_data(recording_processing_parameter_model = recording_processing_parameter_model,
-                      raw_skel3d_frame_marker_xyz= raw_skel3d_frame_marker_xyz,
-                      path_to_folder_where_we_will_save_this_data=rec.recording_info_model.output_data_folder_path)
+    skel3d_frame_marker_xyz = post_process_data(
+        recording_processing_parameter_model=recording_processing_parameter_model,
+        raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
+        path_to_folder_where_we_will_save_this_data=rec.recording_info_model.output_data_folder_path)
 
     # #rotate so skeleton is closer to 'vertical' in a z-up reference frame
     # rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
@@ -169,7 +171,6 @@ def process_recording_folder(
         )
     except AssertionError as error_message:
         logger.error(error_message)
-
 
     logger.info("Breaking up big `npy` into smaller bits and converting to `csv`...")
     # break up big NPY and save out csv's

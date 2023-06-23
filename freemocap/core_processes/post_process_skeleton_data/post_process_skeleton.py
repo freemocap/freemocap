@@ -1,4 +1,3 @@
-
 import numpy as np
 from pathlib import Path
 
@@ -22,8 +21,6 @@ class PostProcessedDataHandler:
         self.filtered_skeleton_data = None
 
     def set_filtered_data(self, filtered_skeleton_data: np.ndarray):
-
-
         self.filtered_skeleton_data = filtered_skeleton_data
 
     def set_origin_aligned_data(self, origin_aligned_skeleton_data: np.ndarray):
@@ -33,10 +30,6 @@ class PostProcessedDataHandler:
 def handle_post_process_results(task_results: dict, save_path: str):
     filtered_skeleton_data = task_results[TASK_FILTERING]['result']
     origin_aligned_skeleton_data = task_results[TASK_SKELETON_ROTATION]['result']
-
-    # set the data
-    # data_handler.set_filtered_data(filtered_skeleton_data=filtered_skeleton_data)
-    # data_handler.set_origin_aligned_data(origin_aligned_skeleton_data=origin_aligned_skeleton_data)
 
     # save the data
     save_post_processed_data(processed_skel3d_frame_marker_xyz=origin_aligned_skeleton_data,
@@ -63,25 +56,23 @@ def adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filte
     return adjusted_settings
 
 
-def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings_dictionary: dict, save_path: str, on_done_function):
-
-    def handle_thread_finished(results,save_path):
+def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings_dictionary: dict, save_path: str,
+                               on_done_function):
+    def handle_thread_finished(results, save_path):
         handle_post_process_results(results, save_path)
         on_done_function(results[TASK_SKELETON_ROTATION]['result'])
 
-
     task_list = [TASK_INTERPOLATION, TASK_FILTERING, TASK_FINDING_GOOD_FRAME, TASK_SKELETON_ROTATION]
-    post_processed_data_handler = PostProcessedDataHandler()
+
     worker_thread = TaskWorkerThread(
         raw_skeleton_data=raw_skel3d_frame_marker_xyz,
         task_list=task_list,
-        settings=settings_dictionary,
+        settings=settzings_dictionary,
         all_tasks_finished_callback=lambda results: handle_thread_finished(results, save_path)
     )
     worker_thread.start()
     worker_thread.join()
 
-    return post_processed_data_handler
 
 def save_post_processed_data(processed_skel3d_frame_marker_xyz: np.ndarray,
                              path_to_folder_where_we_will_save_this_data):
@@ -97,10 +88,9 @@ def post_process_data(recording_processing_parameter_model, raw_skel3d_frame_mar
     filter_sampling_rate, filter_cutoff_frequency, filter_order = get_settings_from_parameter_tree(
         recording_processing_parameter_model)
     adjusted_settings = adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filter_order)
-    post_processed_data_handler = run_post_processing_worker(
+    run_post_processing_worker(
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
         settings_dictionary=adjusted_settings,
         save_path=path_to_folder_where_we_will_save_this_data,
-        on_done_function = on_done_function
+        on_done_function=on_done_function
     )
-    return post_processed_data_handler.origin_aligned_skeleton_data

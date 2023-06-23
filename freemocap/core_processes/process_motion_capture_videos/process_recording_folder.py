@@ -147,7 +147,6 @@ def process_recording_folder(
 
         def data_callback(self, processed_data):
             self.processed_data = processed_data
-            # You can also call any method or perform any action here with the processed_data
 
     post_processed_data_handler = PostProcessedDataHandler()
 

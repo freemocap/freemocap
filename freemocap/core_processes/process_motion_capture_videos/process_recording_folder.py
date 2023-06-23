@@ -141,11 +141,23 @@ def process_recording_folder(
     except AssertionError as error_message:
         logger.error(error_message)
 
+    class PostProcessedDataHandler:
+        def __init__(self):
+            self.processed_data = None
+
+        def data_callback(self, processed_data):
+            self.processed_data = processed_data
+            # You can also call any method or perform any action here with the processed_data
+
+    post_processed_data_handler = PostProcessedDataHandler()
+
     skel3d_frame_marker_xyz = post_process_data(
         recording_processing_parameter_model=recording_processing_parameter_model,
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
-        path_to_folder_where_we_will_save_this_data=rec.recording_info_model.output_data_folder_path)
+        path_to_folder_where_we_will_save_this_data=rec.recording_info_model.output_data_folder_path,
+        on_done_function=post_processed_data_handler.data_callback)
 
+    skel3d_frame_marker_xyz = post_processed_data_handler.processed_data
     # #rotate so skeleton is closer to 'vertical' in a z-up reference frame
     # rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
     #

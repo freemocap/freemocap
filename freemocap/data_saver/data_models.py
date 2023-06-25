@@ -1,27 +1,68 @@
-from ctypes import Union
-from typing import Optional, Dict, Any, get_origin, get_args
+import json
+import pprint
+from typing import List, Dict, Tuple
+from typing import Optional, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
+
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import \
+    mediapipe_skeleton_schema
+from freemocap.utilities.create_nested_dict_from_pydantic import create_nested_dict
+
 
 class Point(BaseModel):
+    name: Optional[str] = Field(None, description="The name of the point")
     x: Optional[float] = Field(None, description="The X-coordinate of the point")
     y: Optional[float] = Field(None, description="The Y-coordinate of the point")
     z: Optional[float] = Field(None, description="The Z-coordinate of the point")
+
+class TrackedPoint(Point):
+    confidence: Optional[float] = Field(None, description="The confidence of the point")
+    reprojection_error: Optional[float] = Field(None, description="The reprojection error of the point")
+
+class VirtualMarkerDefinition(BaseModel):
+    marker_names: List[str]
+    marker_weights: List[float]
+
+class Schema(BaseModel):
+    point_names: List[str] = Field(default_factory=list, description="The names of the tracked points that define this segment")
+    virtual_marker_definitions: Optional[Dict[str, VirtualMarkerDefinition]] = Field(default_factory=dict, description="The virtual markers that define this segment")
+    connections: List[Tuple[int, int]] = Field(default_factory=list, description="The connections between the tracked points")
+    parent: Optional[str] = Field(None, description="The name of the parent of this segment")
+
+
+
+class SkeletonSchema(BaseModel):
+    body:  Schema = Field(default_factory=Schema, description="The tracked points that define the body")
+    hands: Dict[str, Schema] = Field(default_factory=dict, description="The tracked points that define the hands: keys - (left, right)")
+    face: Schema = Field(default_factory=Schema, description="The tracked points that define the face")
+
+    def __init__(self, schema_dict: Dict[str, Dict[str, Any]]):
+        super().__init__()
+        self.body = Schema(**schema_dict["body"])
+        self.hands = {hand: Schema(**hand_schema) for hand, hand_schema in schema_dict["hands"].items()}
+        self.face = Schema(**schema_dict["face"])
+
+
+
+class SkeletonData(BaseModel):
+    tracked_points: Dict[str, TrackedPoint] = Field(default_factory=dict, description="The tracked points that define the skeleton")
+    skeleton_schema = SkeletonSchema(schema_dict=mediapipe_skeleton_schema)
+
+
 
 class Timestamps(BaseModel):
     mean: Optional[float] = Field(None, description="The mean timestamp for this frame")
     per_camera: Dict[str, Any] = Field(default_factory=dict, description="Timestamps for each camera on this frame (key is video name)")
 
-class CenterOfMassData(BaseModel):
-    full_body_com: Point = Field(default_factory=Point, description="The center of mass of the full body based on Winter 1995 anthropometric tables")
-    segment_coms: Dict[str, Point] = Field(default_factory=dict, description="The center of mass of each body segment")
 
 class FrameData(BaseModel):
-    center_of_mass: CenterOfMassData = Field(default_factory=CenterOfMassData, description="The center of mass data")
-    body: Dict[str, Point] = Field(default_factory=dict, description="Points representing body landmarks")
-    hands: Dict[str, Dict[str, Point]] = Field(default_factory=dict, description="Points representing hand landmarks for both hands (left and right)")
-    face: Dict[str, Point] = Field(default_factory=dict, description="Points representing facial landmarks")
 
+    tracked_points: Dict[str, TrackedPoint] = Field(default_factory=dict, description="The points being tracked")
+    schemas: Dict[str, BaseModel]= Field(default_factory=dict, description="The schemas for the tracked points")
+    @property
+    def tracked_point_names(self):
+        return self.tracked_points.keys()
 class FramePacket(BaseModel):
     timestamps: Timestamps = Field(default_factory=Timestamps, description="Timestamp data")
     data: FrameData = Field(default_factory=FrameData, description="Landmark data for the frame")
@@ -31,31 +72,13 @@ class InfoDict(BaseModel):
     names_and_connections: Dict[str, Any] = Field(default_factory=dict, description="The names and connections of the body landmarks")
 
 
-from typing import get_args, get_origin
-from pydantic import BaseModel, Field
-from typing import Union
-
-def print_model(model, indent=0):
-    print("  " * indent + model.__name__)
-    for name, field in model.__annotations__.items():
-        origin = get_origin(field)
-        args = get_args(field)
-
-        if origin is not None:
-            # for Optional[X], origin is Union and args is (X, type(None))
-            if origin is Union:
-                non_optional_args = [a for a in args if a is not type(None)]
-                if non_optional_args:
-                    field = non_optional_args[0]
-
-        if isinstance(field, type) and issubclass(field, BaseModel):
-            print_model(field, indent + 1)
-        else:
-            description = model.__fields__[name].field_info.description
-            print("  " * (indent + 1) + f"{name} ({field}): {description}")
-
-print_model(FramePacket)
-
-
 if __name__ == "__main__":
-    print_model(FramePacket)
+    # nested_dict = create_nested_dict(FramePacket)
+    # print(json.dumps(nested_dict, indent=4))
+
+    print("=====================================\n\n===============================")
+
+    skeleton_schema = SkeletonSchema(schema_dict=mediapipe_skeleton_schema)
+
+    pprint.pp(skeleton_schema.dict())
+

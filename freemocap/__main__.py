@@ -1,5 +1,6 @@
 # __main__.py
 import sys
+from multiprocessing import freeze_support
 from pathlib import Path
 
 
@@ -12,14 +13,7 @@ except Exception as e:
     from freemocap.gui.qt.freemocap_main import qt_gui_main
 
 
-def main():
-    qt_gui_main()
-
-
-if __name__ == "__main__":
-
-    print(f"Running `freemocap.__main__` from - {__file__}")
-
+def freemocap_main():
 
     # set up so you can change the taskbar icon - https://stackoverflow.com/a/74531530/14662833
     import ctypes
@@ -29,4 +23,14 @@ if __name__ == "__main__":
         myappid = f"{freemocap.__package_name__}_{freemocap.__version__}"  # arbitrary string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
-    main()
+    qt_gui_main()
+
+
+if __name__ == "__main__":
+    print("a")
+    freeze_support()
+    print("b")
+    print(f"Running `freemocap.__main__` from - {__file__}")
+
+    freemocap_main()
+    print("c")

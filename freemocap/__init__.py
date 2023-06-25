@@ -14,10 +14,10 @@ __repo_issues_url__ = f"{__repo_url__}issues"
 # if we're running from source, we need to add the parent directory to sys.path
 import sys
 from pathlib import Path
-
-base_package_path = Path(__file__).parent.parent
-print(f"adding base_package_path: {base_package_path} : to sys.path")
-sys.path.insert(0, str(base_package_path))  # add par
+#
+# base_package_path = Path(__file__).parent.parent
+# print(f"adding base_package_path: {base_package_path} : to sys.path")
+# sys.path.insert(0, str(base_package_path))  # add par
 
 from freemocap.system.logging.configure_logging import configure_logging
 configure_logging()
@@ -44,5 +44,5 @@ def RunMe(*args, **kwargs):
           "(NOTE  - this entry point will be removed eventually\n"
           "--------------------------------\n")
 
-    from freemocap.__main__ import main
-    main()
+    from freemocap.__main__ import freemocap_main
+    freemocap_main()

@@ -29,7 +29,7 @@ from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_ori
 )
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import \
     process_single_camera_skeleton_data
-from freemocap.data_loader.data_saver import DataSaver
+from freemocap.data_saver.data_saver import DataSaver
 from freemocap.recording_models.post_processing_parameter_models import PostProcessingParameterModel
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,

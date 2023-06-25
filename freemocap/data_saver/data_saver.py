@@ -63,8 +63,8 @@ class DataSaver:
         self.save_to_csv()
         self.save_to_npy()
 
-
     def _load_data(self):
+        self._load_timestamps()
         self._load_data_frames()
         self._load_full_npy_data()
         self._load_center_of_mass_data()
@@ -109,7 +109,6 @@ class DataSaver:
             get_total_body_center_of_mass_file_path(output_data_folder=self.output_folder_path))
         self.segment_center_of_mass_segment_xyz = np.load(
             get_segment_center_of_mass_file_path(output_data_folder=self.output_folder_path))
-
 
     def _load_full_npy_data(self):
         self.data_fr_id_xyz = get_full_npy_file_path(output_data_folder=self.output_folder_path)
@@ -234,8 +233,6 @@ class DataSaver:
             save_path = self.recording_folder_path / f"{self._recording_name}_fr_id_xyz.npy"
         np.save(save_path, self.data_fr_id_xyz)
 
-
-
     def _generate_frame_data_row(self, frame_data: Dict[str, Any]) -> Dict:
         """
         Generate a data row for a given frame number.
@@ -314,6 +311,8 @@ class DataSaver:
         return {'segment_lengths': self.segment_lengths,
                 'names_and_connections': self.names_and_connections}
 
+    def _load_timestamps(self):
+        pass
 
 
 if __name__ == '__main__':

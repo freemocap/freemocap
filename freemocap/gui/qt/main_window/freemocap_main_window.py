@@ -30,6 +30,7 @@ from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
 from freemocap.gui.qt.style_sheet.scss_file_watcher import SCSSFileWatcher
 from freemocap.gui.qt.style_sheet.set_css_style_sheet import apply_css_style_sheet
+from freemocap.gui.qt.utilities.copy_timestamps_folder import copy_directory_if_contains_timestamps
 from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
@@ -489,6 +490,15 @@ class FreemocapMainWindow(QMainWindow):
             logger.info(f"Copying video from {video_path} to {destination_path}")
 
             shutil.copy(video_path, destination_path)
+
+        timestamps_copied = copy_directory_if_contains_timestamps(source_dir=Path(video_paths[0]).parent,
+                                                                    destination_dir=folder_to_save_videos)
+
+        if timestamps_copied:
+            logger.info(f"Copied timestamps from {Path(video_paths[0]).parent} to {folder_to_save_videos}")
+        else:
+            logger.info(f"No timestamps found in {Path(video_paths[0]).parent}")
+
 
         self._active_recording_info_widget.set_active_recording(
             recording_folder_path=Path(folder_to_save_videos).parent)

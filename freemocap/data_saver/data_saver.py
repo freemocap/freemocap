@@ -1,21 +1,24 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Union, Any
+from typing import Union
 
 import numpy as np
 import pandas as pd
 
 from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import \
     BODY_SEGMENT_NAMES
+from freemocap.data_saver.data_models import FramePacket
 from freemocap.system.paths_and_filenames.file_and_folder_names import MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME, \
     MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME, MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME, \
     MEDIAPIPE_FACE_3D_DATAFRAME_CSV_FILE_NAME
 from freemocap.system.paths_and_filenames.path_getters import get_output_data_folder_path, \
-    get_total_body_center_of_mass_file_path, get_segment_center_of_mass_file_path, get_full_npy_file_path
-from freemocap.utilities.download_sample_data import get_sample_data_path
+    get_total_body_center_of_mass_file_path, get_segment_center_of_mass_file_path, get_full_npy_file_path, \
+    get_timestamps_directory
 
 logger = logging.getLogger(__name__)
+
+from typing import Any, Dict
 
 
 class DataSaver:
@@ -126,11 +129,8 @@ class DataSaver:
             self.recording_data_by_frame_number[frame_number] = self._process_frame_data(frame_number)
 
     def _get_empty_frame_dictionary(self) -> Dict[Any, Any]:
-        return {"center_of_mass": {"full_body_com": {}, "segment_coms": {}},
-                "body": {},
-                "hands": {"right": {}, "left": {}},
-                "face": {},
-                }
+        return FramePacket()
+
 
     def _process_frame_data(self, frame_number: int):
         """
@@ -312,9 +312,23 @@ class DataSaver:
                 'names_and_connections': self.names_and_connections}
 
     def _load_timestamps(self):
-        pass
+        timestamps_directory = get_timestamps_directory(recording_directory=self.recording_folder_path)
+        if timestamps_directory is None:
+            logger.warning("No timestamps directory found. Skipping timestamps loading.")
+            return
+
+        timestamps_by_camera = {}
+        for timestamps_npy in Path(timestamps_directory).glob("*.npy"):
+            camera_name = timestamps_npy.stem
+            timestamps_by_camera[camera_name] = np.load(timestamps_npy)
+
+        self._timestamps_by_camera = timestamps_by_camera
+        timestamps = [timestamps for timestamps in timestamps_by_camera.values()]
+        self._timestamps_mean_per_frame = np.nanmean(np.asarray(timestamps), axis=0)
+        f=9
 
 
 if __name__ == '__main__':
-    recording_data_saver = DataSaver(recording_folder_path=get_sample_data_path())
+    # recording_data_saver = DataSaver(recording_folder_path=get_sample_data_path())
+    recording_data_saver = DataSaver(recording_folder_path=r"C:\Users\jonma\freemocap_data\recording_sessions\session_2023-04-14_15_29_45\recording_15_47_37_gmt-4")
     recording_data_by_frame_number = recording_data_saver.save_all()

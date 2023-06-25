@@ -203,7 +203,11 @@ def get_synchronized_videos_folder_path(recording_folder_path: Union[str, Path])
 
     raise Exception(f"Could not find a videos folder in path {str(recording_folder_path)}")
 
-
+def get_timestamps_directory(recording_directory: Union[str,Path])->str:
+    synchronized_videos_path = get_synchronized_videos_folder_path(recording_folder_path=recording_directory)
+    if "timestamps" in [path.name for path in Path(synchronized_videos_path).iterdir()]:
+        return str(Path(synchronized_videos_path) / "timestamps")
+    logger.warning(f"Could not find timestamps directory in {synchronized_videos_path}")
 def get_raw_skeleton_npy_file_name(data_folder_name: Union[str,Path])->str:
     raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:

@@ -15,7 +15,6 @@ class Point(BaseModel):
     y: Optional[float] = Field(None, description="The Y-coordinate of the point")
     z: Optional[float] = Field(None, description="The Z-coordinate of the point")
 
-
 class VirtualMarkerDefinition(BaseModel):
     marker_names: List[str]
     marker_weights: List[float]
@@ -39,25 +38,39 @@ class SkeletonSchema(BaseModel):
         self.hands = {hand: Schema(**hand_schema) for hand, hand_schema in schema_dict["hands"].items()}
         self.face = Schema(**schema_dict["face"])
 
+    def to_dict(self):
+        d = {}
+        d["body"] = self.body.dict()
+        d["hands"] = {hand: hand_schema.dict() for hand, hand_schema in self.hands.items()}
+        d["face"] = self.face.dict()
+        return d
+
 
 class Timestamps(BaseModel):
+    # TODO - Add Unix time and ISO format stuff and whatnot
     mean: Optional[float] = Field(None, description="The mean timestamp for this frame")
-    per_camera: Dict[str, Any] = Field(default_factory=dict, description="Timestamps for each camera on this frame (key is video name)")
+    by_camera: Dict[str, Any] = Field(default_factory=dict, description="Timestamps for each camera on this frame (key is video name)")
 
 class FrameData(BaseModel):
     timestamps: Timestamps = Field(default_factory=Timestamps, description="Timestamp data")
     tracked_points: Dict[str, Point] = Field(default_factory=dict, description="The points being tracked")
     @property
     def tracked_point_names(self):
-        return self.tracked_points.keys()
+        return list(self.tracked_points.keys())
 
     @property
     def timestamp(self):
         return self.timestamps.mean
 
+    def to_dict(self):
+        d = {}
+        d["timestamps"] = self.timestamps.dict()
+        d["tracked_points"] = {name: point.dict() for name, point in self.tracked_points.items()}
+        return d
+
 class InfoDict(BaseModel):
     segment_lengths: Dict[str, Any] = Field(default_factory=dict, description="The lengths of the segments of the body")
-    schemas: Dict[str, BaseModel] = Field(default_factory=dict, description="The schemas for the tracked points")
+    schemas: List[BaseModel] = Field(default_factory=list, description="The schemas for the tracked points")
 
 
 if __name__ == "__main__":
@@ -68,5 +81,5 @@ if __name__ == "__main__":
 
     skeleton_schema = SkeletonSchema(schema_dict=mediapipe_skeleton_schema)
 
-    pprint.pp(skeleton_schema.dict())
+    pprint.pp(skeleton_schema.to_dict())
 

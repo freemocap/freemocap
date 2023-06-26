@@ -4,6 +4,7 @@ from typing import get_origin, get_args
 from pydantic import BaseModel
 
 
+
 def create_nested_dict(pydantic_model):
     if not issubclass(pydantic_model, BaseModel):
         return str(pydantic_model)
@@ -24,3 +25,10 @@ def create_nested_dict(pydantic_model):
         else:
             model_dict[name] = create_nested_dict(field)
     return model_dict
+
+if __name__ == "__main__":
+    from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import \
+        mediapipe_skeleton_schema
+    from freemocap.data_saver.data_models import SkeletonSchema
+    skeleton_schema = SkeletonSchema(schema_dict=mediapipe_skeleton_schema)
+    print(create_nested_dict(skeleton_schema))

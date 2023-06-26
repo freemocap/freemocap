@@ -6,9 +6,11 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import \
+    mediapipe_skeleton_schema
 from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import \
     BODY_SEGMENT_NAMES
-from freemocap.data_saver.data_models import FrameData, Timestamps,  Point
+from freemocap.data_saver.data_models import FrameData, Timestamps, Point, InfoDict, SkeletonSchema
 from freemocap.system.paths_and_filenames.file_and_folder_names import MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME, \
     MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME, MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME, \
     MEDIAPIPE_FACE_3D_DATAFRAME_CSV_FILE_NAME
@@ -42,10 +44,10 @@ class DataSaver:
                                        include_hands=include_hands,
                                        include_face=include_face)
 
-        self.recording_data_by_frame_number = None
+        self.recording_data_by_frame = None
         self.number_of_frames = None
 
-    def save_all(self) -> Dict[int, Dict]:
+    def save_all(self):
         """
         Load all data, validate it, and create the recording_data_by_frame_number dictionary.
 
@@ -53,21 +55,16 @@ class DataSaver:
             Dict[int, Dict]: a dictionary containing the processed data, indexed by frame number.
         """
 
-        self._get_data_by_frame_number()
+        self.recording_data_by_frame = self._data_loader.get_data_by_frame()
 
         self.save_to_json()
         self.save_to_csv()
         self.save_to_npy()
 
-    def _get_data_by_frame_number(self):
-        self.recording_data_by_frame_number = {}
-        for frame_number in range(len(self._data_loader.body_dataframe)):
-            self.recording_data_by_frame_number[frame_number] = self._data_loader.load_frame_data(frame_number)
-
     def save_to_json(self, save_path: Union[str, Path] = None):
         dict_to_save = {}
-        dict_to_save['data_by_frame'] = self.recording_data_by_frame_number
-        dict_to_save['info'] = self._get_info_dict()
+        dict_to_save['info'] = self._get_info_dict().dict()
+        dict_to_save['data_by_frame'] = self.recording_data_by_frame
 
         if save_path is None:
             save_path = self.recording_folder_path / f"{self._recording_name}_by_frame.json"
@@ -79,7 +76,7 @@ class DataSaver:
     def save_to_csv(self, save_path: Union[str, Path] = None):
         data_for_dataframe = []
 
-        for frame_data in self.recording_data_by_frame_number.values():
+        for frame_data in self.recording_data_by_frame.values():
             data_for_dataframe.append(self._generate_frame_data_row(frame_data))
 
         # Create DataFrame and save to csv
@@ -93,8 +90,9 @@ class DataSaver:
 
     def save_to_npy(self, save_path: Union[str, Path] = None):
         if save_path is None:
-            save_path = self.recording_folder_path / f"{self._recording_name}_fr_id_xyz.npy"
-        np.save(save_path, self.data_fr_id_xyz)
+            save_path = self.recording_folder_path / f"{self._recording_name}_frame_name_xyz.npy"
+        np.save(save_path, self._data_loader.data_frame_name_xyz)
+        logger.info(f"Saved recording data to {save_path}")
 
     def _generate_frame_data_row(self, frame_data: Dict[str, Any]) -> Dict:
         """
@@ -102,31 +100,21 @@ class DataSaver:
         """
         frame_data_row = {}
 
-        body_parts = list(frame_data.keys())
+        frame_data_row['timestamp'] = frame_data['timestamps']['mean']
+        frame_data_row['timestamp_by_camera'] = str(frame_data['timestamps']['by_camera'])
 
-        # put center of mass first for clandestine biomechical education porpoises
-        com_index = body_parts.index('center_of_mass')
-        com_name = body_parts.pop(com_index)
-        body_parts.insert(0, com_name)
-
-        # Flatten each frame's dictionary
-        for body_part_key, body_part_dict in frame_data.items():
-            if body_part_key == "center_of_mass":
-                frame_data_row.update(self._process_center_of_mass_data(body_part_dict))
-            elif body_part_key == "body":
-                frame_data_row.update(self._process_body_data(body_part_dict))
-            elif body_part_key == "hands":
-                frame_data_row.update(self._process_hand_data(body_part_dict))
-            elif body_part_key == "face":
-                frame_data_row.update(self._process_face_data(body_part_dict))
-            else:
-                raise ValueError(f"Unknown body part: {body_part_key}")
+        for key, tracked_point in frame_data['tracked_points'].items():
+            frame_data_row[f"{key}_x"] = tracked_point["x"]
+            frame_data_row[f"{key}_y"] = tracked_point["y"]
+            frame_data_row[f"{key}_z"] = tracked_point["z"]
 
         return frame_data_row
 
     def _get_info_dict(self):
-        return {'segment_lengths': self.segment_lengths,
-                'names_and_connections': self.names_and_connections}
+        return InfoDict(
+            segment_lengths=self._data_loader.segment_lengths,
+            schemas=[self._data_loader.skeleton_schema.dict()],
+        )
 
 
 class DataLoader:
@@ -151,6 +139,7 @@ class DataLoader:
         self._load_center_of_mass_data()
         self._load_segment_lengths()
         self._load_names_and_connections()
+        self._load_skeleton_schema()
         self._validate_data()
 
     def _load_data_frames(self):
@@ -191,7 +180,7 @@ class DataLoader:
         timestamps_by_camera = {}
         for timestamps_npy in Path(timestamps_directory).glob("*.npy"):
             camera_name = timestamps_npy.stem
-            timestamps_by_camera[camera_name] = np.load(timestamps_npy)
+            timestamps_by_camera[camera_name] = np.load(str(timestamps_npy))
 
         self._timestamps_by_camera = timestamps_by_camera
         timestamps = [timestamps for timestamps in timestamps_by_camera.values()]
@@ -207,7 +196,7 @@ class DataLoader:
             get_segment_center_of_mass_file_path(output_data_folder=self._output_folder_path))
 
     def _load_full_npy_data(self):
-        self.data_fr_id_xyz = get_full_npy_file_path(output_data_folder=self._output_folder_path)
+        self.data_frame_name_xyz = np.load(get_full_npy_file_path(output_data_folder=self._output_folder_path))
 
     def _load_names_and_connections(self):
         with open(self._output_folder_path / "mediapipe_names_and_connections_dict.json", 'r') as file:
@@ -227,11 +216,12 @@ class DataLoader:
                                      self._timestamps_by_camera.items()})
 
     def get_tracked_points(self, frame_number) -> Dict[str, Point]:
-        body_points = self._process_dataframe(self.body_dataframe.iloc[frame_number, :])
+
         right_hand_points = {}
         left_hand_points = {}
         face_points = {}
 
+        body_points = self._process_dataframe(self.body_dataframe.iloc[frame_number, :])
         center_of_mass_points = self._get_center_of_mass_data(frame_number)
 
         if self.include_hands:
@@ -263,7 +253,6 @@ class DataLoader:
                                           y=self.center_of_mass_xyz[frame_number, 1],
                                           z=self.center_of_mass_xyz[frame_number, 2])
 
-
         for segment_number, segment_name in enumerate(BODY_SEGMENT_NAMES):
             com_data[segment_name] = Point(x=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 0],
                                            y=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 1],
@@ -278,7 +267,7 @@ class DataLoader:
         Args:
             data_frame (DataFrame): the dataframe to process.
         """
-        frame_data = {}
+        tracked_points = {}
         column_names = list(data_frame.index)
         for column_name in column_names:
             point_name = column_name[:-2]  # e.g. "nose" or "left_knee" or whatever
@@ -288,11 +277,18 @@ class DataLoader:
             if pd.isna(value):  # Check if value is NaN
                 value = None  # Replace NaN with None which is valid in JSON
 
-            frame_data.setdefault(point_name, {})[dimension] = value
+            tracked_points.setdefault(point_name, {})[dimension] = value
 
-        return frame_data
+        return tracked_points
 
+    def get_data_by_frame(self):
+        recording_data_by_frame_number = {}
+        for frame_number in range(self.number_of_frames):
+            recording_data_by_frame_number[frame_number] = self.load_frame_data(frame_number).to_dict()
+        return recording_data_by_frame_number
 
+    def _load_skeleton_schema(self):
+        self.skeleton_schema = SkeletonSchema(schema_dict=mediapipe_skeleton_schema)
 
 
 if __name__ == '__main__':

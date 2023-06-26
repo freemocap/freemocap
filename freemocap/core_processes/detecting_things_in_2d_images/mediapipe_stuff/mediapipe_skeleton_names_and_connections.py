@@ -71,7 +71,8 @@ mediapipe_skeleton_schema = {
     "body": {
         "point_names": mediapipe_body_landmark_names,
         "connections": mediapipe_body_connections,
-        "virtual_marker_definitions": mediapipe_virtual_marker_definitions_dict
+        "virtual_marker_definitions": mediapipe_virtual_marker_definitions_dict,
+        "parent": "hips_center"
     },
     "hands": {
         "right": {

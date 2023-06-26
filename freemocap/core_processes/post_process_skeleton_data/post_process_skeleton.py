@@ -1,5 +1,6 @@
 import numpy as np
 from pathlib import Path
+import logging
 
 from freemocap.core_processes.post_process_skeleton_data.freemocap_utils.postprocessing_widgets.task_worker_thread \
     import TaskWorkerThread
@@ -14,7 +15,7 @@ from freemocap.core_processes.post_process_skeleton_data.freemocap_utils.constan
     PARAM_ORDER
 )
 
-
+logger = logging.getLogger(__name__)
 
 class PostProcessedDataHandler:
     def __init__(self):
@@ -26,6 +27,7 @@ class PostProcessedDataHandler:
 
 def save_array_to_file(array_to_save: np.ndarray, skeleton_file_name: str, path_to_folder_where_we_will_save_this_data: str):
     Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)
+    logger.info("Saving post-processed skeleton data")
     np.save(
         str(Path(path_to_folder_where_we_will_save_this_data) / skeleton_file_name),
         array_to_save,
@@ -65,12 +67,13 @@ def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings
 
     def handle_thread_finished(results,post_processed_data_handler:PostProcessedDataHandler):
         processed_skeleton = results[TASK_SKELETON_ROTATION]['result']
-
         post_processed_data_handler.data_callback(processed_skeleton =processed_skeleton)
 
     task_list = [TASK_INTERPOLATION, TASK_FILTERING, TASK_FINDING_GOOD_FRAME, TASK_SKELETON_ROTATION]
 
     post_processed_data_handler = PostProcessedDataHandler()
+
+    logger.info("Starting post-processing worker thread")
 
     worker_thread = TaskWorkerThread(
         raw_skeleton_data=raw_skel3d_frame_marker_xyz,

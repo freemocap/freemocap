@@ -25,8 +25,6 @@ class Schema(BaseModel):
     connections: List[Tuple[int, int]] = Field(default_factory=list, description="The connections between the tracked points")
     parent: Optional[str] = Field(None, description="The name of the parent of this segment")
 
-
-
 class SkeletonSchema(BaseModel):
     body:  Schema = Field(default_factory=Schema, description="The tracked points that define the body")
     hands: Dict[str, Schema] = Field(default_factory=dict, description="The tracked points that define the hands: keys - (left, right)")

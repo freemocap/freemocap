@@ -211,9 +211,12 @@ class DataLoader:
                          tracked_points=self.get_tracked_points(frame_number))
 
     def get_timestamps(self, frame_number):
-        return Timestamps(mean=self._timestamps_mean_per_frame[frame_number],
-                          by_camera={camera_name: timestamps[frame_number] for camera_name, timestamps in
-                                     self._timestamps_by_camera.items()})
+        try:
+            return Timestamps(mean=self._timestamps_mean_per_frame[frame_number],
+                              by_camera={camera_name: timestamps[frame_number] for camera_name, timestamps in
+                                         self._timestamps_by_camera.items()})
+        except AttributeError:
+            return Timestamps()
 
     def get_tracked_points(self, frame_number) -> Dict[str, Point]:
 

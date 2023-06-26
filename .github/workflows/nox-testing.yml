@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Set up PyQt dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libgl1 -y
       - name: Set up Python 3.x
         uses: wntrblm/nox@2022.8.7
         with:

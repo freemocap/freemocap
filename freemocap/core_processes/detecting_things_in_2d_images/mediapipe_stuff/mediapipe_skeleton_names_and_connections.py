@@ -6,12 +6,14 @@ mediapipe_body_connections = [connection for connection in mp_holistic.POSE_CONN
 
 mediapipe_hand_connections = [connection for connection in mp_holistic.HAND_CONNECTIONS]
 
+
 mediapipe_face_connections = [connection for connection in mp_holistic.FACEMESH_CONTOURS]
 
 mediapipe_body_landmark_names = [landmark.name.lower() for landmark in mp_holistic.PoseLandmark]
 NUMBER_OF_MEDIAPIPE_BODY_MARKERS = len(mediapipe_body_landmark_names)
 
 mediapipe_hand_landmark_names = [landmark.name.lower() for landmark in mp_holistic.HandLandmark]
+
 
 mediapipe_face_landmark_names = [
     "right_eye",

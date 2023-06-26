@@ -11,14 +11,10 @@ from freemocap.utilities.create_nested_dict_from_pydantic import create_nested_d
 
 
 class Point(BaseModel):
-    name: Optional[str] = Field(None, description="The name of the point")
     x: Optional[float] = Field(None, description="The X-coordinate of the point")
     y: Optional[float] = Field(None, description="The Y-coordinate of the point")
     z: Optional[float] = Field(None, description="The Z-coordinate of the point")
 
-class TrackedPoint(Point):
-    confidence: Optional[float] = Field(None, description="The confidence of the point")
-    reprojection_error: Optional[float] = Field(None, description="The reprojection error of the point")
 
 class VirtualMarkerDefinition(BaseModel):
     marker_names: List[str]
@@ -44,32 +40,24 @@ class SkeletonSchema(BaseModel):
         self.face = Schema(**schema_dict["face"])
 
 
-
-class SkeletonData(BaseModel):
-    tracked_points: Dict[str, TrackedPoint] = Field(default_factory=dict, description="The tracked points that define the skeleton")
-    skeleton_schema = SkeletonSchema(schema_dict=mediapipe_skeleton_schema)
-
-
-
 class Timestamps(BaseModel):
     mean: Optional[float] = Field(None, description="The mean timestamp for this frame")
     per_camera: Dict[str, Any] = Field(default_factory=dict, description="Timestamps for each camera on this frame (key is video name)")
 
-
 class FrameData(BaseModel):
-
-    tracked_points: Dict[str, TrackedPoint] = Field(default_factory=dict, description="The points being tracked")
-    schemas: Dict[str, BaseModel]= Field(default_factory=dict, description="The schemas for the tracked points")
+    timestamps: Timestamps = Field(default_factory=Timestamps, description="Timestamp data")
+    tracked_points: Dict[str, Point] = Field(default_factory=dict, description="The points being tracked")
     @property
     def tracked_point_names(self):
         return self.tracked_points.keys()
-class FramePacket(BaseModel):
-    timestamps: Timestamps = Field(default_factory=Timestamps, description="Timestamp data")
-    data: FrameData = Field(default_factory=FrameData, description="Landmark data for the frame")
+
+    @property
+    def timestamp(self):
+        return self.timestamps.mean
 
 class InfoDict(BaseModel):
     segment_lengths: Dict[str, Any] = Field(default_factory=dict, description="The lengths of the segments of the body")
-    names_and_connections: Dict[str, Any] = Field(default_factory=dict, description="The names and connections of the body landmarks")
+    schemas: Dict[str, BaseModel] = Field(default_factory=dict, description="The schemas for the tracked points")
 
 
 if __name__ == "__main__":

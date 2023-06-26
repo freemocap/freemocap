@@ -4,8 +4,6 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [ main ]
-    paths: 
-      - 'freemocap/**'
 
 jobs:
   build:

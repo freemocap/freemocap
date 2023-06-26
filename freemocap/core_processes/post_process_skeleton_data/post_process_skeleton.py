@@ -83,6 +83,7 @@ def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings
     )
     worker_thread.start()
     worker_thread.join()
+    logger.info("Done with gap filling, filtering, and aligning")
 
     return post_processed_data_handler.processed_skeleton
 

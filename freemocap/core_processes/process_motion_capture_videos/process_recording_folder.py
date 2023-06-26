@@ -8,7 +8,7 @@ import pandas as pd
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_names_and_connections_dict,
 )
-from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data
+from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data, save_array_to_file
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import \
     process_single_camera_skeleton_data
 from freemocap.system.paths_and_files_names import (
@@ -141,22 +141,13 @@ def process_recording_folder(
     except AssertionError as error_message:
         logger.error(error_message)
 
-    class PostProcessedDataHandler:
-        def __init__(self):
-            self.processed_data = None
-
-        def data_callback(self, processed_data):
-            self.processed_data = processed_data
-
-    post_processed_data_handler = PostProcessedDataHandler()
-
     skel3d_frame_marker_xyz = post_process_data(
         recording_processing_parameter_model=recording_processing_parameter_model,
-        raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
-        path_to_folder_where_we_will_save_this_data=rec.recording_info_model.output_data_folder_path,
-        on_done_function=post_processed_data_handler.data_callback)
+        raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz)
 
-    skel3d_frame_marker_xyz = post_processed_data_handler.processed_data
+    save_array_to_file(array_to_save=skel3d_frame_marker_xyz, skeleton_file_name="mediaPipeSkel_3d_body_hands_face.npy",
+                       path_to_folder_where_we_will_save_this_data=rec.recording_info_model.output_data_folder_path)
+
     # #rotate so skeleton is closer to 'vertical' in a z-up reference frame
     # rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
     #

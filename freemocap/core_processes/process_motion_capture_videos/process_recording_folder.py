@@ -8,6 +8,7 @@ import pandas as pd
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_names_and_connections_dict,
 )
+from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import run_center_of_mass_calculations
 from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data, save_array_to_file
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import \
     process_single_camera_skeleton_data
@@ -15,7 +16,11 @@ from freemocap.system.paths_and_files_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
     RECORDING_PARAMETER_DICT_JSON_FILE_NAME,
+    CENTER_OF_MASS_FOLDER_NAME,
+    SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
+    TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
 )
+
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
 )
@@ -147,8 +152,21 @@ def process_recording_folder(
         recording_processing_parameter_model=recording_processing_parameter_model,
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz)
 
+    path_to_folder_where_we_will_save_this_data = rec.recording_info_model.output_data_folder_path
+
+    logger.info("Saving post-processed data")
     save_array_to_file(array_to_save=skel3d_frame_marker_xyz, skeleton_file_name="mediaPipeSkel_3d_body_hands_face.npy",
-                       path_to_folder_where_we_will_save_this_data=rec.recording_info_model.output_data_folder_path)
+                       path_to_folder_where_we_will_save_this_data=path_to_folder_where_we_will_save_this_data)
+
+    segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ = run_center_of_mass_calculations(processed_skel3d_frame_marker_xyz=skel3d_frame_marker_xyz)
+
+    logger.info("Saving segment center of mass data")
+    save_array_to_file(array_to_save=segment_COM_frame_imgPoint_XYZ, skeleton_file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
+                       path_to_folder_where_we_will_save_this_data= Path(path_to_folder_where_we_will_save_this_data)/CENTER_OF_MASS_FOLDER_NAME)
+
+    logger.info("Saving total body center of mass data")
+    save_array_to_file(array_to_save=totalBodyCOM_frame_XYZ, skeleton_file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
+                       path_to_folder_where_we_will_save_this_data= Path(path_to_folder_where_we_will_save_this_data)/CENTER_OF_MASS_FOLDER_NAME)
 
     # #rotate so skeleton is closer to 'vertical' in a z-up reference frame
     # rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)

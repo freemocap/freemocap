@@ -141,6 +141,8 @@ def process_recording_folder(
     except AssertionError as error_message:
         logger.error(error_message)
 
+    logger.info("Gap-filling, butterworth filtering, origin aligning 3d skeletons, then calculating center of mass ...")
+
     skel3d_frame_marker_xyz = post_process_data(
         recording_processing_parameter_model=recording_processing_parameter_model,
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz)

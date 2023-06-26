@@ -15,25 +15,30 @@ from freemocap.core_processes.post_process_skeleton_data.freemocap_utils.constan
 )
 
 
+
 class PostProcessedDataHandler:
     def __init__(self):
-        self.origin_aligned_skeleton_data = None
-        self.filtered_skeleton_data = None
+        self.processed_skeleton = None
 
-    def set_filtered_data(self, filtered_skeleton_data: np.ndarray):
-        self.filtered_skeleton_data = filtered_skeleton_data
-
-    def set_origin_aligned_data(self, origin_aligned_skeleton_data: np.ndarray):
-        self.origin_aligned_skeleton_data = origin_aligned_skeleton_data
+    def data_callback(self, processed_skeleton):
+        self.processed_skeleton = processed_skeleton
 
 
-def handle_post_process_results(task_results: dict, save_path: str):
-    filtered_skeleton_data = task_results[TASK_FILTERING]['result']
-    origin_aligned_skeleton_data = task_results[TASK_SKELETON_ROTATION]['result']
+def save_array_to_file(array_to_save: np.ndarray, skeleton_file_name: str, path_to_folder_where_we_will_save_this_data: str):
+    Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)
+    np.save(
+        str(Path(path_to_folder_where_we_will_save_this_data) / skeleton_file_name),
+        array_to_save,
+    )
 
-    # save the data
-    save_post_processed_data(processed_skel3d_frame_marker_xyz=origin_aligned_skeleton_data,
-                             path_to_folder_where_we_will_save_this_data=save_path)
+
+# def handle_post_process_results(task_results: dict, save_path: str):
+#     filtered_skeleton_data = task_results[TASK_FILTERING]['result']
+#     origin_aligned_skeleton_data = task_results[TASK_SKELETON_ROTATION]['result']
+#
+#     # save the data
+#     save_post_processed_data(processed_skel3d_frame_marker_xyz=origin_aligned_skeleton_data,
+#                              path_to_folder_where_we_will_save_this_data=save_path)
 
 
 def get_settings_from_parameter_tree(recording_processing_parameter_model):
@@ -56,41 +61,43 @@ def adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filte
     return adjusted_settings
 
 
-def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings_dictionary: dict, save_path: str,
-                               on_done_function):
-    def handle_thread_finished(results, save_path):
-        handle_post_process_results(results, save_path)
-        on_done_function(results[TASK_SKELETON_ROTATION]['result'])
+def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings_dictionary: dict):
+
+    def handle_thread_finished(results,post_processed_data_handler:PostProcessedDataHandler):
+        processed_skeleton = results[TASK_SKELETON_ROTATION]['result']
+
+        post_processed_data_handler.data_callback(processed_skeleton =processed_skeleton)
 
     task_list = [TASK_INTERPOLATION, TASK_FILTERING, TASK_FINDING_GOOD_FRAME, TASK_SKELETON_ROTATION]
+
+    post_processed_data_handler = PostProcessedDataHandler()
 
     worker_thread = TaskWorkerThread(
         raw_skeleton_data=raw_skel3d_frame_marker_xyz,
         task_list=task_list,
-        settings=settzings_dictionary,
-        all_tasks_finished_callback=lambda results: handle_thread_finished(results, save_path)
+        settings=settings_dictionary,
+        all_tasks_finished_callback=lambda results: handle_thread_finished(results, post_processed_data_handler)
     )
     worker_thread.start()
     worker_thread.join()
 
+    return post_processed_data_handler.processed_skeleton
 
-def save_post_processed_data(processed_skel3d_frame_marker_xyz: np.ndarray,
-                             path_to_folder_where_we_will_save_this_data):
-    Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)
-    np.save(
-        str(Path(path_to_folder_where_we_will_save_this_data) / "mediaPipeSkel_3d_body_hands_face.npy"),
-        processed_skel3d_frame_marker_xyz,
-    )
+# def save_post_processed_data(processed_skel3d_frame_marker_xyz: np.ndarray,
+#                              path_to_folder_where_we_will_save_this_data):
+#     Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)
+#     np.save(
+#         str(Path(path_to_folder_where_we_will_save_this_data) / "mediaPipeSkel_3d_body_hands_face.npy"),
+#         processed_skel3d_frame_marker_xyz,
+#     )
 
 
-def post_process_data(recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray,
-                      path_to_folder_where_we_will_save_this_data, on_done_function=None):
+def post_process_data(recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray):
     filter_sampling_rate, filter_cutoff_frequency, filter_order = get_settings_from_parameter_tree(
         recording_processing_parameter_model)
     adjusted_settings = adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filter_order)
-    run_post_processing_worker(
+    processed_skeleton_array = run_post_processing_worker(
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
-        settings_dictionary=adjusted_settings,
-        save_path=path_to_folder_where_we_will_save_this_data,
-        on_done_function=on_done_function
-    )
+        settings_dictionary=adjusted_settings)
+
+    return processed_skeleton_array

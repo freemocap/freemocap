@@ -34,16 +34,6 @@ def save_array_to_file(array_to_save: np.ndarray, skeleton_file_name: str, path_
         array_to_save,
     )
 
-
-# def handle_post_process_results(task_results: dict, save_path: str):
-#     filtered_skeleton_data = task_results[TASK_FILTERING]['result']
-#     origin_aligned_skeleton_data = task_results[TASK_SKELETON_ROTATION]['result']
-#
-#     # save the data
-#     save_post_processed_data(processed_skel3d_frame_marker_xyz=origin_aligned_skeleton_data,
-#                              path_to_folder_where_we_will_save_this_data=save_path)
-
-
 def get_settings_from_parameter_tree(recording_processing_parameter_model):
     rec = recording_processing_parameter_model
 
@@ -87,15 +77,6 @@ def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings
     logger.info("Done with gap filling, filtering, and aligning")
 
     return post_processed_data_handler.processed_skeleton
-
-# def save_post_processed_data(processed_skel3d_frame_marker_xyz: np.ndarray,
-#                              path_to_folder_where_we_will_save_this_data):
-#     Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)
-#     np.save(
-#         str(Path(path_to_folder_where_we_will_save_this_data) / "mediaPipeSkel_3d_body_hands_face.npy"),
-#         processed_skel3d_frame_marker_xyz,
-#     )
-
 
 def post_process_data(recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray):
     filter_sampling_rate, filter_cutoff_frequency, filter_order = get_settings_from_parameter_tree(

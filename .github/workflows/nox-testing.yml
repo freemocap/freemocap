@@ -2,6 +2,10 @@ name: Nox Tests
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+    paths: 
+      - 'freemocap/**'
 
 jobs:
   build:

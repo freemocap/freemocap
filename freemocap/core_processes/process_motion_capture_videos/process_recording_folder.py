@@ -44,8 +44,6 @@ from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_sk
 from freemocap.utilities.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
-logger = logging.getLogger(__name__)
-
 def process_recording_folder(
         recording_processing_parameter_model: RecordingProcessingParameterModel,
         kill_event: multiprocessing.Event = None,
@@ -62,7 +60,8 @@ def process_recording_folder(
 
     if queue:
         logger = QueueLogger(queue)
-        print("We have a queue")
+    else:
+        logger = logging.getLogger(__name__)
     logger.info("Starting process_recording_folder")
         
     rec = recording_processing_parameter_model  # make it smol

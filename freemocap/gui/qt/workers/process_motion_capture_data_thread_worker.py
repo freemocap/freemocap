@@ -3,6 +3,7 @@ import multiprocessing
 from pathlib import Path
 import time
 
+
 from PyQt6.QtCore import pyqtSignal, QThread
 
 from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import (

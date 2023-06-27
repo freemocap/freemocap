@@ -10,6 +10,7 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.medi
 )
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import \
     process_single_camera_skeleton_data
+from freemocap.system.logging.queue_logger import QueueLogger
 from freemocap.system.paths_and_files_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
     RAW_DATA_FOLDER_NAME,
@@ -45,10 +46,10 @@ from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 logger = logging.getLogger(__name__)
 
-
 def process_recording_folder(
         recording_processing_parameter_model: RecordingProcessingParameterModel,
         kill_event: multiprocessing.Event = None,
+        queue: multiprocessing.Queue = None
 ):
     """
 
@@ -59,6 +60,11 @@ def process_recording_folder(
 
     """
 
+    if queue:
+        logger = QueueLogger(queue)
+        print("We have a queue")
+    logger.info("Starting process_recording_folder")
+        
     rec = recording_processing_parameter_model  # make it smol
 
     if not Path(rec.recording_info_model.synchronized_videos_folder_path).exists():

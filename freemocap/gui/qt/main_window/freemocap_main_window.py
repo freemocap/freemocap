@@ -2,7 +2,7 @@ import logging
 import multiprocessing
 import shutil
 from pathlib import Path
-from typing import Union, List
+from typing import Callable, Union, List
 
 from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QIcon
@@ -125,7 +125,15 @@ class FreemocapMainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._tools_dock_widget)
         # self._tools_dock_tab_widget = QTabWidget(self)
 
-        self._control_panel_widget = self._create_control_panel_widget()
+        self._log_view_widget = LogViewWidget(parent=self)
+        log_view_dock_widget = QDockWidget("Log View", self)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
+        log_view_dock_widget.setWidget(self._log_view_widget)
+        log_view_dock_widget.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetFloatable
+        )
+
+        self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
         self._tools_dock_widget.setWidget(self._control_panel_widget)
         # self._tools_dock_tab_widget.addTab(self._control_panel_widget, f"Control Panel")
         #
@@ -142,14 +150,6 @@ class FreemocapMainWindow(QMainWindow):
         #     Qt.DockWidgetArea.BottomDockWidgetArea, jupyter_console_dock_widget
         # )
         # jupyter_console_dock_widget.setWidget(self._jupyter_console_widget)
-
-        self._log_view_widget = LogViewWidget(parent=self)
-        log_view_dock_widget = QDockWidget("Log View", self)
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
-        log_view_dock_widget.setWidget(self._log_view_widget)
-        log_view_dock_widget.setFeatures(
-            QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetFloatable
-        )
 
     def _create_tools_dock_widget(self):
         tools_dock_widget = QDockWidget("Control Panel", self)
@@ -276,8 +276,7 @@ class FreemocapMainWindow(QMainWindow):
     #                    directory_view_widget=self._create_directory_view_widget(),
     #                    parent=self)
 
-    def _create_control_panel_widget(self):
-
+    def _create_control_panel_widget(self, log_update: Callable):
         self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(self._skellycam_widget)
 
         # self._calibration_control_panel = CalibrationControlPanel(
@@ -288,6 +287,7 @@ class FreemocapMainWindow(QMainWindow):
             recording_processing_parameters=RecordingProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
             kill_thread_event=self._kill_thread_event,
+            log_update=log_update
         )
         self._process_motion_capture_data_panel.processing_finished_signal.connect(
             self._handle_processing_finished_signal

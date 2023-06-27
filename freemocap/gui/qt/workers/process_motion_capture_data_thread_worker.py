@@ -1,5 +1,7 @@
 import logging
 import multiprocessing
+from pathlib import Path
+import time
 
 from PyQt6.QtCore import pyqtSignal, QThread
 
@@ -23,7 +25,10 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         self._session_processing_parameters = session_processing_parameters
         self._kill_event = kill_event
 
-        self._process = multiprocessing.Process(target=process_recording_folder, args=(self._session_processing_parameters, self._kill_event))
+        self._queue = multiprocessing.Queue()
+
+        self._process = multiprocessing.Process(target=process_recording_folder, 
+                                                args=(self._session_processing_parameters, self._kill_event, self._queue))
 
 
     def run(self):
@@ -33,6 +38,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         self._kill_event.clear()
 
         recording_info_dict = self._session_processing_parameters.dict(exclude={'recording_info_model'})
+        Path(self._session_processing_parameters.recording_info_model.output_data_folder_path).mkdir(parents=True, exist_ok=True)
 
         save_dictionary_to_json(
             save_path=self._session_processing_parameters.recording_info_model.output_data_folder_path,
@@ -42,7 +48,18 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
 
         try:
             self._process.start()
-            self._process.join()
+            while self._process.is_alive():
+                time.sleep(0.01)
+                if self._queue.empty():
+                    continue
+                else:
+                    message = self._queue.get()
+                    self.in_progress.emit(message)
+            
+            while not self._queue.empty():
+                message = self._queue.get()
+                self.in_progress.emit(message)
+
         except Exception as e:
             logger.error(f"Error processing motion capture data: {e}")
 

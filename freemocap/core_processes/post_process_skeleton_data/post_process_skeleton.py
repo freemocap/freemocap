@@ -4,18 +4,10 @@ import numpy as np
 from pathlib import Path
 import logging
 
-from freemocap.core_processes.post_process_skeleton_data.freemocap_utils.postprocessing_widgets.task_worker_thread \
-    import TaskWorkerThread
-from freemocap.core_processes.post_process_skeleton_data.freemocap_utils.config import default_settings
-from freemocap.core_processes.post_process_skeleton_data.freemocap_utils.constants import (
-    TASK_INTERPOLATION,
-    TASK_FILTERING,
-    TASK_FINDING_GOOD_FRAME,
-    TASK_SKELETON_ROTATION,
-    PARAM_CUTOFF_FREQUENCY,
-    PARAM_SAMPLING_RATE,
-    PARAM_ORDER
-)
+from skellyforge.freemocap_utils.config import default_settings
+from skellyforge.freemocap_utils.constants import TASK_FILTERING, PARAM_CUTOFF_FREQUENCY, PARAM_SAMPLING_RATE, \
+    PARAM_ORDER, TASK_SKELETON_ROTATION, TASK_INTERPOLATION, TASK_FINDING_GOOD_FRAME
+from skellyforge.freemocap_utils.postprocessing_widgets.task_worker_thread import TaskWorkerThread
 
 logger = logging.getLogger(__name__)
 

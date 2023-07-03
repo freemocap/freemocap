@@ -31,7 +31,7 @@ def get_best_guess_of_blender_path():
             return str(blender_exe_path)
         else:
             logger.warning(
-                f"Could not find `blender.exe` in the expected locations. Please located it manually (or install Blender, if it isn't installed)."
+                f"Could not find `blender.exe` in the expected locations. Please locate it manually (or install Blender, if it isn't installed)."
             )
             return None
 
@@ -46,17 +46,30 @@ def get_best_guess_of_blender_path():
             return str(blender_exe_path)
         else:
             logger.warning(
-                f"Could not find Blender executable in the applications folder. Please located it manually (or install Blender, if it isn't installed)."
+                f"Could not find Blender executable in the applications folder. Please locate it manually (or install Blender, if it isn't installed)."
             )
             return None
+        
+    if platform.system() == "Linux":
+        blender_path_list = [
+            Path("/usr/bin"),
+            Path("/usr/sbin"),
+            Path("/usr/local/bin"),
+            Path("/usr/local/sbin"),
+            Path("/bin"),
+            Path("/sbin")
+        ]
+        for path in blender_path_list:
+            blender_path = path / "blender"
+            if blender_path.exists():
+                logger.info(f"Linux machine detected - guessing that `blender` is installed at: {str(blender_path)}")
+
+                return str(blender_path)
+        
+        logger.info(f"Could not find Blender executable in bin. Please locate it manually (or install Blender, if it isn't installed).")
+        return None
 
     else:
-        blender_app_path = Path("/usr/bin/blender")
+        logger.info(f"Machine system not detected, please locate Blender path manually.")
+        return None
 
-        if blender_app_path.exists():
-            logger.info(f"Linux machine detected - guessing that `blender` is installed at: {str(blender_app_path)}")
-
-            return str(blender_app_path)
-        else:
-            logger.info(f"Could not find Blender executable in '/usr/bin'. Please located it manually (or install Blender, if it isn't installed).")
-            return None

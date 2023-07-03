@@ -70,6 +70,7 @@ keywords = [
 dependencies = [
     "skellycam",
     "skelly_viewer",
+    "skellyforge",
     "mediapipe==0.10.1",
     "opencv-contrib-python==4.6.0.66",
     "toml==0.10.2",

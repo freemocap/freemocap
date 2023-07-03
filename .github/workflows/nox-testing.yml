@@ -2,7 +2,7 @@ name: Nox Tests
 
 on:
   workflow_dispatch:
-    pull_request:
+  pull_request:
     branches: [ main ]
     paths: 
       - 'pyproject.toml'

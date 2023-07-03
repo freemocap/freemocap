@@ -474,27 +474,23 @@ class FreemocapMainWindow(QMainWindow):
             logger.error("No videos to import!")
             return
         
-        if synchronization_bool:
-            self._active_recording_info_widget.set_active_recording(
-                recording_folder_path=Path(folder_to_save_videos).parent)
-            return
+        if not synchronization_bool:
+            for video_path in tqdm(video_paths,
+                                desc="Importing videos...",
+                                colour=[255, 128, 0],
+                                unit="video",
+                                unit_scale=True,
+                                leave=False
+                                ):
 
-        for video_path in tqdm(video_paths,
-                               desc="Importing videos...",
-                               colour=[255, 128, 0],
-                               unit="video",
-                               unit_scale=True,
-                               leave=False
-                               ):
+                if not Path(video_path).exists():
+                    logger.error(f"{video_path} does not exist!")
+                    return
 
-            if not Path(video_path).exists():
-                logger.error(f"{video_path} does not exist!")
-                return
+                destination_path = folder_to_save_videos / Path(video_path).name
+                logger.info(f"Copying video from {video_path} to {destination_path}")
 
-            destination_path = folder_to_save_videos / Path(video_path).name
-            logger.info(f"Copying video from {video_path} to {destination_path}")
-
-            shutil.copy(video_path, destination_path)
+                shutil.copy(video_path, destination_path)
 
         self._active_recording_info_widget.set_active_recording(
             recording_folder_path=Path(folder_to_save_videos).parent)

@@ -70,15 +70,15 @@ keywords = [
 dependencies = [
     "skellycam",
     "skelly_viewer",
-    'mediapipe; platform_system != "Darwin" or platform_machine != "arm64"',
-    'mediapipe-silicon; platform_system == "Darwin" and platform_machine == "arm64"',
+    "mediapipe==0.10.1",
     "opencv-contrib-python==4.6.0.66",
-    "toml",
-    "aniposelib",
-    "libsass",
+    "toml==0.10.2",
+    "aniposelib==0.4.3",
+    "libsass==0.21.0",
     "papermill==2.4.0",
     "ipykernel==6.23.1",
-    "plotly==5.14.1"
+    "plotly==5.14.1",
+    "pydantic==1.*"
 ]
 requires-python = ">=3.8"
 

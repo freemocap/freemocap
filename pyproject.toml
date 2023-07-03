@@ -71,22 +71,22 @@ dependencies = [
     "skellycam",
     "skelly_viewer",
     "skelly_synchronize",
-    'mediapipe; platform_system != "Darwin" or platform_machine != "arm64"',
-    'mediapipe-silicon; platform_system == "Darwin" and platform_machine == "arm64"',
+    "mediapipe==0.10.1",
     "opencv-contrib-python==4.6.0.66",
     "toml==0.10.2",
     "aniposelib==0.4.3",
-    "libsass",
+    "libsass==0.21.0",
     "papermill==2.4.0",
     "ipykernel==6.23.1",
-    "plotly==5.14.1"
+    "plotly==5.14.1",
+    "pydantic==1.*"
 ]
 requires-python = ">=3.8"
 
 dynamic = ["version", "description"]
 
 [project.optional-dependencies]
-dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "flit"]
+dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit"]
 
 [project.urls]
 Homepage = "https://freemocap.org"
@@ -94,7 +94,7 @@ Documentation = "https://freemocap.readthedocs.io/en/latest/"
 Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]
-current_version = "v1.0.13-rc"
+current_version = "v1.0.14-rc"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

@@ -51,5 +51,12 @@ def get_best_guess_of_blender_path():
             return None
 
     else:
-        logger.info(f"Non-Windows/Mac machine detected - TODO - Test how this works on Linux")
-        return None
+        blender_app_path = Path("/usr/bin/blender")
+
+        if blender_app_path.exists():
+            logger.info(f"Linux machine detected - guessing that `blender` is installed at: {str(blender_app_path)}")
+
+            return str(blender_app_path)
+        else:
+            logger.info(f"Could not find Blender executable in '/usr/bin'. Please located it manually (or install Blender, if it isn't installed).")
+            return None

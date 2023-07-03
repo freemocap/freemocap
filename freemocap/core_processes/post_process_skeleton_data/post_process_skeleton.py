@@ -6,7 +6,7 @@ import logging
 
 from skellyforge.freemocap_utils.config import default_settings
 from skellyforge.freemocap_utils.constants import TASK_FILTERING, PARAM_CUTOFF_FREQUENCY, PARAM_SAMPLING_RATE, \
-    PARAM_ORDER, TASK_SKELETON_ROTATION, TASK_INTERPOLATION, TASK_FINDING_GOOD_FRAME
+    PARAM_ORDER, PARAM_ROTATE_DATA, TASK_SKELETON_ROTATION, TASK_INTERPOLATION, TASK_FINDING_GOOD_FRAME
 from skellyforge.freemocap_utils.postprocessing_widgets.task_worker_thread import TaskWorkerThread
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,7 @@ def adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filte
     adjusted_settings[TASK_FILTERING][PARAM_CUTOFF_FREQUENCY] = filter_cutoff_frequency
     adjusted_settings[TASK_FILTERING][PARAM_SAMPLING_RATE] = filter_sampling_rate
     adjusted_settings[TASK_FILTERING][PARAM_ORDER] = filter_order
+    adjusted_settings[TASK_SKELETON_ROTATION][PARAM_ROTATE_DATA] = False
 
     return adjusted_settings
 
@@ -49,7 +50,7 @@ def adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filte
 def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings_dictionary: dict):
 
     def handle_thread_finished(results,post_processed_data_handler:PostProcessedDataHandler):
-        processed_skeleton = results[TASK_SKELETON_ROTATION]['result']
+        processed_skeleton = results[TASK_FILTERING]['result']
         post_processed_data_handler.data_callback(processed_skeleton =processed_skeleton)
 
     task_list = [TASK_INTERPOLATION, TASK_FILTERING, TASK_FINDING_GOOD_FRAME, TASK_SKELETON_ROTATION]

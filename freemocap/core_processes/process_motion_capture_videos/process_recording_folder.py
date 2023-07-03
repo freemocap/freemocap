@@ -146,13 +146,18 @@ def process_recording_folder(
     except AssertionError as error_message:
         logger.error(error_message)
 
-    logger.info("Using SkellyForge Post-Processing...")
+    logger.info("Using SkellyForge Post-Processing to clean up data...")
+
+    rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
 
     skel3d_frame_marker_xyz = post_process_data(
         recording_processing_parameter_model=recording_processing_parameter_model,
-        raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz)
+        raw_skel3d_frame_marker_xyz= rotated_raw_skel3d_frame_marker_xyz)
 
     path_to_folder_where_we_will_save_this_data = rec.recording_info_model.output_data_folder_path
+
+
+
 
     logger.info("Saving post-processed data")
     save_array_to_file(array_to_save=skel3d_frame_marker_xyz, skeleton_file_name="mediaPipeSkel_3d_body_hands_face.npy",
@@ -168,8 +173,6 @@ def process_recording_folder(
     save_array_to_file(array_to_save=totalBodyCOM_frame_XYZ, skeleton_file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
                        path_to_folder_where_we_will_save_this_data= Path(path_to_folder_where_we_will_save_this_data)/CENTER_OF_MASS_FOLDER_NAME)
 
-    # #rotate so skeleton is closer to 'vertical' in a z-up reference frame
-    # rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
 
     try:
         test_mediapipe_skeleton_data_shape(

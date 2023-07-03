@@ -126,11 +126,11 @@ class ImportVideosWizard(QDialog):
             )
             self.synchronize_videos_thread_worker.start()
             self.synchronize_videos_thread_worker.finished.connect(self._handle_video_synchronization_finished)
-       
-        self.folder_to_save_videos_to_selected.emit(
-            self._video_file_paths,
-            self._get_folder_videos_will_be_saved_to(),
-            self._synchronize_videos_checkbox.isChecked())
+        else:
+            self.folder_to_save_videos_to_selected.emit(
+                self._video_file_paths,
+                self._get_folder_videos_will_be_saved_to(),
+                False)
         self.accept()
 
     def _handle_synchronize_checkbox_toggled(self, event):
@@ -144,6 +144,11 @@ class ImportVideosWizard(QDialog):
             str(path) 
             for path in get_video_paths(path_to_video_folder=self.synchronize_videos_thread_worker.output_folder_path)
         ]
+
+        self.folder_to_save_videos_to_selected.emit(
+                self._video_file_paths,
+                self._get_folder_videos_will_be_saved_to(),
+                True)
         
 if __name__ == "__main__":
     # from PyQt6.QtWidgets import QApplication

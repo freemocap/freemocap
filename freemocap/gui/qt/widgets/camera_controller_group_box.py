@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QCheckBox,
 )
-from skellycam import SkellyCamRecordButtons
+from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
     default_charuco_square_size_mm,
@@ -23,26 +23,41 @@ class RecordingNameGenerator:
 
 
 class CameraControllerGroupBox(QGroupBox):
-    def __init__(self, skellycam_controller: SkellyCamRecordButtons, parent=None):
+    def __init__(self, skellycam_widget: SkellyCamWidget, parent=None):
         super().__init__(parent=parent)
-        self._skellycam_controller = skellycam_controller
-        skellycam_controller.start_recording_button.setObjectName("start_recording_button")
-        skellycam_controller.stop_recording_button.setObjectName("stop_recording_button")
-
-        # self.setFlat(True)
+        self._skellycam_widget = skellycam_widget
+        self._skellycam_controller = SkellyCamControllerWidget(
+            camera_viewer_widget=skellycam_widget,
+            parent=self,
+        )
         self._layout = QHBoxLayout()
         self._layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.setLayout(self._layout)
 
-        self._layout.addWidget(self._skellycam_controller)
+        button_vbox = QVBoxLayout()
+        self._layout.addLayout(button_vbox)
+        self._start_recording_button = self._skellycam_controller.start_recording_button
+        self._stop_recording_button = self._skellycam_controller.stop_recording_button
+        self._start_recording_button.setObjectName("start_recording_button")
+        self._stop_recording_button.setObjectName("stop_recording_button")
+        self._start_recording_button.show()
+        self._start_recording_button.setEnabled(False)
+        self._stop_recording_button.show()
+        button_vbox.addWidget(self._start_recording_button)
+        button_vbox.addWidget(self._stop_recording_button)
 
+        self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
+
+
+        options_vbox = QVBoxLayout()
+        self._layout.addLayout(options_vbox)
         motion_capture_recording_options_layout = self._create_mocap_recording_option_layout()
-        self._layout.addLayout(motion_capture_recording_options_layout)
+        options_vbox.addLayout(motion_capture_recording_options_layout)
 
         calibration_recording_option_layout = self._create_calibration_recording_option_layout()
-        self._layout.addLayout(calibration_recording_option_layout)
+        options_vbox.addLayout(calibration_recording_option_layout)
 
-        self._layout.addLayout(self._create_videos_will_save_to_layout())
+        options_vbox.addLayout(self._create_videos_will_save_to_layout())
 
 
 
@@ -69,7 +84,7 @@ class CameraControllerGroupBox(QGroupBox):
 
 
         lag_note_label = QLabel("NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras. We are working on a fix which should be done 'soon' (written: 2023-04-05)")
-        lag_note_label.setStyleSheet("font-size: 12px;")
+        lag_note_label.setStyleSheet("font-size: 10px;")
         lag_note_label.setWordWrap(True)
         vbox.addWidget(lag_note_label)
 

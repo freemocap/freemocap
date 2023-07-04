@@ -68,14 +68,16 @@ QPushButton#start_recording_button {
   font-size: 14px;
   background-color: #d95158;
   border: 2px solid #1d1d1f;
-  padding: 2px;
-  border-radius: 10px; }
+  padding: 8px;
+  border-radius: 10px;
+  width: 250px; }
 
 QPushButton#start_recording_button:hover {
   border: 2px solid #cb2c34; }
 
 QPushButton#start_recording_button:disabled {
-  background-color: #8c5454; }
+  background-color: #8c7474;
+  color: #555555; }
 
 QPushButton#stop_recording_button {
   font-size: 14px;
@@ -88,6 +90,9 @@ QPushButton#stop_recording_button:enabled {
 QPushButton#stop_recording_button:hover {
   border: 3px solid #1d1d1f;
   background-color: #eeeeee; }
+
+QPushButton#stop_recording_button:disabled {
+  color: #555555; }
 
 QPushButton#process_motion_capture_button,
 QPushButton#export_to_blender_button {

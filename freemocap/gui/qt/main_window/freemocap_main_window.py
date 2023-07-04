@@ -14,8 +14,7 @@ from PyQt6.QtWidgets import (
 from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
-    SkellyCamWidget,
-    SkellyCamRecordButtons,
+    SkellyCamWidget, SkellyCamControllerWidget,
 )
 from tqdm import tqdm
 
@@ -226,13 +225,8 @@ class FreemocapMainWindow(QMainWindow):
             self._handle_videos_saved_to_this_folder_signal
         )
 
-        self._skellycam_record_buttons = SkellyCamRecordButtons(
-            self._skellycam_widget,
-            parent=self,
-        )
-
         self._controller_group_box = CameraControllerGroupBox(
-            skellycam_controller=self._skellycam_record_buttons, parent=self
+            skellycam_widget=self._skellycam_widget,
         )
 
         self._skelly_viewer_widget = SkellyViewer()

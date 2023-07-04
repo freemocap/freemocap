@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Union, List
 
 from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QIcon, QScreen
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
 from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
-    SkellyCamWidget, SkellyCamControllerWidget,
+    SkellyCamWidget,
 )
 from tqdm import tqdm
 
@@ -73,7 +73,7 @@ EXIT_CODE_REBOOT = -123456789
 logger = logging.getLogger(__name__)
 
 
-class FreemocapMainWindow(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(
             self,
             freemocap_data_folder_path: Union[str, Path],
@@ -81,7 +81,7 @@ class FreemocapMainWindow(QMainWindow):
             parent=None,
     ):
 
-        logger.info("Initializing QtGUIMainWindow")
+        logger.info("Initializing FreeMoCap MainWindow")
         super().__init__(parent=parent)
 
         self._size_main_window()
@@ -348,7 +348,6 @@ class FreemocapMainWindow(QMainWindow):
     def _generate_jupyter_notebook(self):
         logger.info("Exporting active recording to a Jupyter notebook...")
         recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
-        # TODO: Need to include jupyter notebook in recording files that we keep track of (2023-05-15)
         generate_jupyter_notebook(
             path_to_recording=recording_path
         )
@@ -542,9 +541,9 @@ if __name__ == "__main__":
 
 
     app = QApplication(sys.argv)
-    main_window = FreemocapMainWindow(pipedream_pings=PipedreamPings(),
-                                      freemocap_data_folder_path=get_freemocap_data_folder_path(),
-                                        )
+    main_window = MainWindow(pipedream_pings=PipedreamPings(),
+                             freemocap_data_folder_path=get_freemocap_data_folder_path(),
+                             )
     main_window.show()
     app.exec()
 

@@ -143,13 +143,7 @@ class HomeWidget(QWidget):
         freemocap_logo_label.sizePolicy().setVerticalStretch(1)
         self._layout.addWidget(freemocap_logo_label)
 
-        try:
-            with path('freemocap.assets', 'logo.svg') as logo_path:
-                freemocap_logo_pixmap = QPixmap(str(logo_path))
-
-            freemocap_logo_pixmap = freemocap_logo_pixmap.scaledToWidth(200)
-            freemocap_logo_label.setPixmap(freemocap_logo_pixmap)
-        except Exception as e:
-            logger.error(f"Error loading logo: {e}")
-
+        freemocap_logo_pixmap = QPixmap(PATH_TO_FREEMOCAP_LOGO_SVG)
+        freemocap_logo_pixmap = freemocap_logo_pixmap.scaledToWidth(200)
+        freemocap_logo_label.setPixmap(freemocap_logo_pixmap)
         freemocap_logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)

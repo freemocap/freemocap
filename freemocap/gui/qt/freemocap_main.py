@@ -6,7 +6,7 @@ from pathlib import Path
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 
-from freemocap.gui.qt.main_window.freemocap_main_window import FreemocapMainWindow, EXIT_CODE_REBOOT
+from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
 from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.system.paths_and_filenames.path_getters import get_freemocap_data_folder_path
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
@@ -32,8 +32,8 @@ def qt_gui_main():
     pipedream_pings = PipedreamPings()
 
     while True:
-        freemocap_main_window = FreemocapMainWindow(freemocap_data_folder_path=get_freemocap_data_folder_path(),
-                                                    pipedream_pings=pipedream_pings)
+        freemocap_main_window = MainWindow(freemocap_data_folder_path=get_freemocap_data_folder_path(),
+                                           pipedream_pings=pipedream_pings)
         freemocap_main_window.show()
         timer.timeout.connect(freemocap_main_window.update)
         error_code = app.exec()

@@ -41,7 +41,7 @@ FIGSHARE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/40293973"
 FREEMOCAP_SAMPLE_DATA_RECORDING_NAME = "freemocap_sample_data"
 
 # logo
-PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent.parent / "assets/logo/freemocap-logo-black-border.svg")
+PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent / "assets/logo/freemocap-logo-black-border.svg")
 
 # emoji strings
 SPARKLES_EMOJI_STRING = "\U00002728"

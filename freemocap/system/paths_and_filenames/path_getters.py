@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime
 from pathlib import Path
@@ -87,7 +88,6 @@ def create_new_default_recording_name():
 def session_time_tag_format():
     return "%Y-%m-%d_%H_%M_%S"
 
-
 def default_session_name(string_tag: str = None):
     if string_tag is not None:
         string_tag = f"_{string_tag}"
@@ -101,8 +101,6 @@ def default_session_name(string_tag: str = None):
 
 
 session_folder_path = None
-
-
 def create_new_session_folder():
     global session_folder_path
     if session_folder_path is None:

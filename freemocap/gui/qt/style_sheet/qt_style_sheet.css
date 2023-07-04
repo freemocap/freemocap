@@ -18,9 +18,11 @@ QMainWindow {
 
 QTabWidget::pane {
   border: 1px solid #f5f5f7;
-  top: 1px;
   background: #eeeeee;
   padding: 5px; }
+
+QTabWidget::pane::selection {
+  border-top: 1px solid #333333; }
 
 QTabBar::tab {
   border: 1px solid #1d1d1f;

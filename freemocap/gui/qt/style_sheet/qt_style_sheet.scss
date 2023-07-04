@@ -49,11 +49,12 @@ QMainWindow {
 
 QTabWidget::pane {
     border: 1px solid $plain-white;
-    top: 1px;
     background: $background;
     padding: 5px;
 }
-
+QTabWidget::pane::selection {
+    border-top: 1px solid $dark-charcoal;
+}
 QTabBar::tab {
     border: 1px solid $plain-black;
     padding: 5px;

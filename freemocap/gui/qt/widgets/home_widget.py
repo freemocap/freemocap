@@ -1,4 +1,5 @@
 import logging
+from importlib.resources import path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
@@ -128,7 +129,6 @@ class HomeWidget(QWidget):
 
 
     def _welcome_to_freemocap_title(self):
-        # TO DO - this shouldn't be part of the `camera_view_panel` - it should be its own thing that gets swapped out on session start
         logger.info("Creating `welcome to freemocap` layout")
 
         session_title_label = QLabel("Welcome  to  FreeMoCap!")
@@ -142,7 +142,14 @@ class HomeWidget(QWidget):
         freemocap_logo_label.sizePolicy().setHorizontalStretch(1)
         freemocap_logo_label.sizePolicy().setVerticalStretch(1)
         self._layout.addWidget(freemocap_logo_label)
-        freemocap_logo_pixmap = QPixmap(PATH_TO_FREEMOCAP_LOGO_SVG)
-        freemocap_logo_pixmap = freemocap_logo_pixmap.scaledToWidth(200)
-        freemocap_logo_label.setPixmap(freemocap_logo_pixmap)
+
+        try:
+            with path('freemocap.assets', 'logo.svg') as logo_path:
+                freemocap_logo_pixmap = QPixmap(str(logo_path))
+
+            freemocap_logo_pixmap = freemocap_logo_pixmap.scaledToWidth(200)
+            freemocap_logo_label.setPixmap(freemocap_logo_pixmap)
+        except Exception as e:
+            logger.error(f"Error loading logo: {e}")
+
         freemocap_logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)

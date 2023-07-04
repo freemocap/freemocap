@@ -154,7 +154,7 @@ class FreemocapMainWindow(QMainWindow):
 
     def _size_main_window(self, width_fraction:float=0.8, height_fraction:float=0.8):
         # Get screen size
-        screen = QApplication.primaryScreen().a
+        screen = QApplication.primaryScreen().availableGeometry()
         # Calculate width and height as a fraction of the screen size
 
         width = screen.width() * width_fraction

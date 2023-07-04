@@ -1,5 +1,4 @@
 import logging
-from importlib.resources import path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
@@ -81,9 +80,13 @@ class HomeWidget(QWidget):
     def _make_version_label(self):
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
-        version_label = QLabel(f"{freemocap.__version__}")
+        version_label_string = f'source:<a href="https://github.com/freemocap/freemocap" style="color: #777777;"> {freemocap.__version__}</a>'
+
+        version_label = QLabel(version_label_string)
         version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
-        version_label.setStyleSheet("font-size: 14px;color: #777777")
+        version_label.setStyleSheet("font-size: 12px;color: #777777")
+        version_label.setOpenExternalLinks(True)
+
         hbox.addWidget(version_label)
 
     def _add_code_and_docs_links(self):
@@ -94,39 +97,24 @@ class HomeWidget(QWidget):
         privacy_policy_link_label = QLabel(privacy_policy_link_string)
         privacy_policy_link_label.setOpenExternalLinks(True)
         hbox.addWidget(privacy_policy_link_label)
-        source_code_label = f'<a href="https://github.com/freemocap/freemocap" style="color: #333333;">code</a>'
-        source_code_label = QLabel(source_code_label)
-        source_code_label.setOpenExternalLinks(True)
-        hbox.addWidget(source_code_label, alignment=Qt.AlignmentFlag.AlignCenter)
-        # vbox.addWidget(QLabel("|"))
         docs_string = '<a href="https://freemocap.readthedocs.io/en/latest/" style="color: #333333;">docs</a>'
         docs_string = QLabel(docs_string)
         docs_string.setOpenExternalLinks(True)
         hbox.addWidget(docs_string, alignment=Qt.AlignmentFlag.AlignCenter)
         hbox.addStretch(1)
 
-
-
-
     def _create_user_info_consent_checkbox(self):
-
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
         hbox.addStretch(1)
         self._send_pings_checkbox = QCheckBox("Send anonymous usage information")
         self._send_pings_checkbox.setChecked(True)
         hbox.addWidget(self._send_pings_checkbox)
-
-
-
-
-
         hbox.addStretch(1)
 
     @property
     def consent_to_send_usage_information(self):
         return self._send_pings_checkbox.isChecked()
-
 
     def _welcome_to_freemocap_title(self):
         logger.info("Creating `welcome to freemocap` layout")

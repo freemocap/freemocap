@@ -27,10 +27,7 @@ def freemocap_main():
 
 
 if __name__ == "__main__":
-    print("a")
     freeze_support()
-    print("b")
     print(f"Running `freemocap.__main__` from - {__file__}")
 
     freemocap_main()
-    print("c")

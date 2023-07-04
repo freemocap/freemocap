@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QCheckBox,
 )
-from skellycam import SkellyCamControllerWidget
+from skellycam import SkellyCamRecordButtons
 
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
     default_charuco_square_size_mm,
@@ -23,20 +23,18 @@ class RecordingNameGenerator:
 
 
 class CameraControllerGroupBox(QGroupBox):
-    def __init__(self, skellycam_controller: SkellyCamControllerWidget, parent=None):
+    def __init__(self, skellycam_controller: SkellyCamRecordButtons, parent=None):
         super().__init__(parent=parent)
         self._skellycam_controller = skellycam_controller
         skellycam_controller.start_recording_button.setObjectName("start_recording_button")
         skellycam_controller.stop_recording_button.setObjectName("stop_recording_button")
 
         # self.setFlat(True)
-        self._layout = QVBoxLayout()
-        self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self._layout = QHBoxLayout()
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.setLayout(self._layout)
 
-        # self._layout.setContentsMargins(0, 0, 0, 0)
-        # self._layout.setSpacing(0)
-        self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self._layout.addWidget(self._skellycam_controller)
 
         motion_capture_recording_options_layout = self._create_mocap_recording_option_layout()
         self._layout.addLayout(motion_capture_recording_options_layout)
@@ -46,30 +44,33 @@ class CameraControllerGroupBox(QGroupBox):
 
         self._layout.addLayout(self._create_videos_will_save_to_layout())
 
-        self._layout.addWidget(self._skellycam_controller)
+
 
     def _create_videos_will_save_to_layout(self):
         vbox = QVBoxLayout()
 
         hbox = QHBoxLayout()
-        self._recording_string_tag_line_edit = QLineEdit(parent=self)
-        self._recording_string_tag_line_edit.setPlaceholderText("(Optional)")
+        hbox.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        vbox.addLayout(hbox)
+
+        videos_will_save_to_label = QLabel("Recording Path: ")
+        videos_will_save_to_label.setStyleSheet("font-size: 12px;")
+        hbox.addWidget(videos_will_save_to_label)
+        self._recording_path_label = QLabel(f"{self.get_new_recording_path()}")
+        self._recording_path_label.setStyleSheet("font-family: monospace; font-size: 12px;")
+        hbox.addWidget(self._recording_path_label)
 
         recording_string_tag_form_layout = QFormLayout(parent=self)
+        self._recording_string_tag_line_edit = QLineEdit(parent=self)
+        self._recording_string_tag_line_edit.setPlaceholderText("(Optional)")
         recording_string_tag_form_layout.addRow("Tag:", self._recording_string_tag_line_edit)
         hbox.addLayout(recording_string_tag_form_layout)
 
-        hbox.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        videos_will_save_to_label = QLabel("Videos will save to folder: ")
-        videos_will_save_to_label.setStyleSheet("font-size: 10px;")
-        hbox.addWidget(videos_will_save_to_label)
-        self._recording_path_label = QLabel(f"{self.get_new_recording_path()}")
-        self._recording_path_label.setStyleSheet("font-family: monospace; font-size: 10px;")
-        hbox.addWidget(self._recording_path_label)
 
-        vbox.addLayout(hbox)
 
-        lag_note_label = QLabel("NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras.\nWe are working on a fix which should be done 'soon' (written: 2023-04-05)")
+        lag_note_label = QLabel("NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras. We are working on a fix which should be done 'soon' (written: 2023-04-05)")
+        lag_note_label.setStyleSheet("font-size: 12px;")
+        lag_note_label.setWordWrap(True)
         vbox.addWidget(lag_note_label)
 
         return vbox

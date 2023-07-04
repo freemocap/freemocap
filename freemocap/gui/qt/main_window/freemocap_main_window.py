@@ -15,16 +15,16 @@ from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
     SkellyCamWidget,
-    SkellyCamControllerWidget,
+    SkellyCamRecordButtons,
 )
 from tqdm import tqdm
 
-from freemocap.export_data.blender_stuff.export_to_blender import (
+from freemocap.data_layer.export_data.blender_stuff.export_to_blender import (
     export_to_blender,
 )
-from freemocap.export_data.blender_stuff.get_best_guess_of_blender_path import \
-    get_best_guess_of_blender_path
-from freemocap.export_data.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
+from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
+
+from freemocap.data_layer.export_data.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
@@ -51,10 +51,10 @@ from freemocap.gui.qt.widgets.home_widget import (
 )
 from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
-from freemocap.recording_models.post_processing_parameter_models import (
+from freemocap.data_layer.recording_models.post_processing_parameter_models import (
     PostProcessingParameterModel,
 )
-from freemocap.recording_models.recording_info_model import (
+from freemocap.data_layer.recording_models.recording_info_model import (
     RecordingInfoModel,
 )
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
@@ -226,13 +226,13 @@ class FreemocapMainWindow(QMainWindow):
             self._handle_videos_saved_to_this_folder_signal
         )
 
-        self._skellycam_controller_widget = SkellyCamControllerWidget(
+        self._skellycam_record_buttons = SkellyCamRecordButtons(
             self._skellycam_widget,
             parent=self,
         )
 
         self._controller_group_box = CameraControllerGroupBox(
-            skellycam_controller=self._skellycam_controller_widget, parent=self
+            skellycam_controller=self._skellycam_record_buttons, parent=self
         )
 
         self._skelly_viewer_widget = SkellyViewer()
@@ -401,9 +401,7 @@ class FreemocapMainWindow(QMainWindow):
             )
 
 
-    def reboot_gui(self):
-        logger.info("Rebooting GUI... ")
-        get_qt_app().exit(EXIT_CODE_REBOOT)
+
 
     def kill_running_threads_and_processes(self):
         logger.info("Killing running threads and processes... ")
@@ -502,6 +500,9 @@ class FreemocapMainWindow(QMainWindow):
 
         self._active_recording_info_widget.set_active_recording(
             recording_folder_path=Path(folder_to_save_videos).parent)
+    def reboot_gui(self):
+        logger.info("Rebooting GUI... ")
+        get_qt_app().exit(EXIT_CODE_REBOOT)
 
     def closeEvent(self, a0) -> None:
         logger.info("Main window `closeEvent` detected")

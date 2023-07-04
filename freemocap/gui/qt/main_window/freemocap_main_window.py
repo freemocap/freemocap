@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Union, List
 
 from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QScreen
 from PyQt6.QtWidgets import (
+    QApplication,
     QDockWidget,
     QMainWindow,
     QFileDialog,
@@ -83,7 +84,8 @@ class FreemocapMainWindow(QMainWindow):
         logger.info("Initializing QtGUIMainWindow")
         super().__init__(parent=parent)
 
-        self.setGeometry(100, 100, 1280, 720)
+        self._size_main_window()
+
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
         self.setWindowTitle(f"freemocap \U0001F480 \U00002728")
 
@@ -149,6 +151,18 @@ class FreemocapMainWindow(QMainWindow):
         log_view_dock_widget.setFeatures(
             QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetFloatable
         )
+
+    def _size_main_window(self, width_fraction:float=0.8, height_fraction:float=0.8):
+        # Get screen size
+        screen = QApplication.primaryScreen().a
+        # Calculate width and height as a fraction of the screen size
+
+        width = screen.width() * width_fraction
+        height = screen.height() * height_fraction
+        # Position the window in the center of the screen
+        left = (screen.width() - width) / 2
+        top = (screen.height() - height) / 2
+        self.setGeometry(int(left), int(top), int(width), int(height))
 
     def _create_tools_dock_widget(self):
         tools_dock_widget = QDockWidget("Control Panel", self)
@@ -526,7 +540,6 @@ class FreemocapMainWindow(QMainWindow):
 if __name__ == "__main__":
     import sys
 
-    from PyQt6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
     main_window = FreemocapMainWindow(pipedream_pings=PipedreamPings(),

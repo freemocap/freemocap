@@ -14,9 +14,12 @@ from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
     default_charuco_square_size_mm,
 )
+from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
 from freemocap.system.paths_and_filenames.path_getters import create_new_recording_folder_path, \
     create_new_default_recording_name
 
+CALIBRATION_RECORDING_BUTTON_TEXT = "\U0001F534 \U0001F4D0 Start Calibration Recording"
+MOCAP_RECORDING_BUTTON_TEXT =  f"{SKULL_EMOJI_STRING} {SPARKLES_EMOJI_STRING} Start Motion Capture Recording"
 
 class RecordingNameGenerator:
     pass
@@ -38,6 +41,7 @@ class CameraControllerGroupBox(QGroupBox):
         self._layout.addLayout(button_vbox)
         self._start_recording_button = self._skellycam_controller.start_recording_button
         self._stop_recording_button = self._skellycam_controller.stop_recording_button
+        self._start_recording_button.setText(MOCAP_RECORDING_BUTTON_TEXT)
         self._start_recording_button.setObjectName("start_recording_button")
         self._stop_recording_button.setObjectName("stop_recording_button")
         self._start_recording_button.show()
@@ -187,7 +191,9 @@ class CameraControllerGroupBox(QGroupBox):
         if self._calibration_videos_radio_button.isChecked():
             self.setProperty("calibration_videos_radio_button_checked", True)
             self._skellycam_controller.set_calibration_recordings_button_label(True)
+            self._start_recording_button.setText(CALIBRATION_RECORDING_BUTTON_TEXT)
         else:
             self.setProperty("calibration_videos_radio_button_checked", False)
             self._skellycam_controller.set_calibration_recordings_button_label(False)
+            self._start_recording_button.setText(MOCAP_RECORDING_BUTTON_TEXT)
         self.style().polish(self)

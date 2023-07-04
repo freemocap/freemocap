@@ -6,7 +6,7 @@ from PyQt6.QtCore import pyqtSignal, QThread
 from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import (
     process_recording_folder,
 )
-from freemocap.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
 
 logger = logging.getLogger(__name__)
 

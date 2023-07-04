@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Optional, Union
 
 from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
-from freemocap.export_data.blender_stuff.export_to_blender import export_to_blender
-from freemocap.recording_models.post_processing_parameter_models import PostProcessingParameterModel
-from freemocap.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.data_layer.export_data.blender_stuff.export_to_blender import export_to_blender
+from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
 
 

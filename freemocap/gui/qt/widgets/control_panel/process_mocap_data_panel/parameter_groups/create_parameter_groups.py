@@ -1,6 +1,6 @@
 from pyqtgraph.parametertree import Parameter
 
-from freemocap.recording_models.post_processing_parameter_models import MediapipeParametersModel, \
+from freemocap.data_layer.recording_models.post_processing_parameter_models import MediapipeParametersModel, \
     PostProcessingParameterModel, AniposeTriangulate3DParametersModel, PostProcessingParametersModel, \
     ButterworthFilterParametersModel
 

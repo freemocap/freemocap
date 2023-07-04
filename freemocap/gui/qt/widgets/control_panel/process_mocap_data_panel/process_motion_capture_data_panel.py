@@ -21,7 +21,7 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
 )
-from freemocap.recording_models.post_processing_parameter_models import (
+from freemocap.data_layer.recording_models.post_processing_parameter_models import (
     PostProcessingParameterModel,
 )
 

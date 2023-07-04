@@ -65,10 +65,10 @@ QPushButton:pressed {
   background-color: #53d4dc; }
 
 QPushButton#start_recording_button {
-  font-size: 20px;
+  font-size: 14px;
   background-color: #d95158;
   border: 2px solid #1d1d1f;
-  padding: 6px;
+  padding: 2px;
   border-radius: 10px; }
 
 QPushButton#start_recording_button:hover {
@@ -78,7 +78,7 @@ QPushButton#start_recording_button:disabled {
   background-color: #8c5454; }
 
 QPushButton#stop_recording_button {
-  font-size: 18px;
+  font-size: 14px;
   background-color: #eeeeee; }
 
 QPushButton#stop_recording_button:enabled {

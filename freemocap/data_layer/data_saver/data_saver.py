@@ -10,7 +10,7 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.medi
     mediapipe_skeleton_schema
 from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import \
     BODY_SEGMENT_NAMES
-from freemocap.data_saver.data_models import FrameData, Timestamps, Point, InfoDict, SkeletonSchema
+from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, InfoDict, SkeletonSchema
 from freemocap.system.paths_and_filenames.file_and_folder_names import MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME, \
     MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME, MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME, \
     MEDIAPIPE_FACE_3D_DATAFRAME_CSV_FILE_NAME

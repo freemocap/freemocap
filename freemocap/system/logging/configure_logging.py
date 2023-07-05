@@ -24,7 +24,7 @@ def get_logging_handlers():
 
     # Setup File handler (from https://stackoverflow.com/a/24507130/14662833 )
 
-    file_handler = logging.FileHandler(get_log_file_path())
+    file_handler = logging.FileHandler(get_log_file_path(), encoding="utf-8")
     file_handler.setFormatter(default_logging_formatter)
     file_handler.setLevel(logging.DEBUG)
 
@@ -44,3 +44,6 @@ def configure_logging():
     else:
         logger = logging.getLogger(__name__)
         logger.info("Logging already configured")
+
+
+

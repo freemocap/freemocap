@@ -81,8 +81,9 @@ class MainWindow(QMainWindow):
             parent=None,
     ):
 
-        logger.info("Initializing FreeMoCap MainWindow")
         super().__init__(parent=parent)
+        self._log_view_widget = LogViewWidget(parent=self) #start this first so it will grab the setup logs
+        logger.info("Initializing FreeMoCap MainWindow")
 
         self._size_main_window()
 
@@ -144,13 +145,14 @@ class MainWindow(QMainWindow):
         # )
         # jupyter_console_dock_widget.setWidget(self._jupyter_console_widget)
 
-        self._log_view_widget = LogViewWidget(parent=self)
+
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
         log_view_dock_widget.setWidget(self._log_view_widget)
         log_view_dock_widget.setFeatures(
             QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetFloatable
         )
+        logger.info("Finished initializing FreeMoCap MainWindow")
 
     def _size_main_window(self, width_fraction:float=0.8, height_fraction:float=0.8):
         # Get screen size

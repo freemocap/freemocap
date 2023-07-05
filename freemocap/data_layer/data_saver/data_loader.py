@@ -8,7 +8,7 @@ import pandas as pd
 
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import \
     mediapipe_skeleton_schema
-from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_origin_align_skeleton_data import \
+from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import \
     BODY_SEGMENT_NAMES
 from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, SkeletonSchema
 from freemocap.system.paths_and_filenames.file_and_folder_names import MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME, \

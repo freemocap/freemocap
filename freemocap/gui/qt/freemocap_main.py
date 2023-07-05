@@ -6,6 +6,8 @@ from pathlib import Path
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
 from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
 from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.system.paths_and_filenames.path_getters import get_freemocap_data_folder_path
@@ -34,6 +36,8 @@ def qt_gui_main():
     while True:
         freemocap_main_window = MainWindow(freemocap_data_folder_path=get_freemocap_data_folder_path(),
                                            pipedream_pings=pipedream_pings)
+        logger.info("Showing main window - Ready to start!")
+        logger.info("Welcome to FreeMoCap 💀✨")
         freemocap_main_window.show()
         timer.timeout.connect(freemocap_main_window.update)
         error_code = app.exec()

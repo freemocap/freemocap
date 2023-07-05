@@ -5,7 +5,7 @@ from typing import Union
 
 import numpy as np
 
-from freemocap.system.paths_and_files_names import (
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
     RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
 )

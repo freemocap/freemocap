@@ -11,7 +11,7 @@ from scipy import signal
 
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import \
     NUMBER_OF_MEDIAPIPE_BODY_MARKERS
-from freemocap.system.paths_and_files_names import (
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
     CENTER_OF_MASS_FOLDER_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
@@ -811,7 +811,7 @@ def build_mediapipe_skeleton(mediapipe_pose_data, segment_dataframe, mediapipe_i
 # Winter, D.A. (2005) Biomechanics and Motor Control of Human Movement. 3rd Edition, John Wiley & Sons, Inc., Hoboken.
 
 
-segments = [
+BODY_SEGMENT_NAMES = [
     "head",
     "trunk",
     "right_upper_arm",
@@ -1063,7 +1063,7 @@ def gap_fill_filter_origin_align_3d_data_and_then_calculate_center_of_mass(
 
     # Calculate segment and total body COM
     anthropometric_info_dataframe = build_anthropometric_dataframe(
-        segments, joint_connections, segment_COM_lengths, segment_COM_percentages
+        BODY_SEGMENT_NAMES, joint_connections, segment_COM_lengths, segment_COM_percentages
     )
     skelcoordinates_frame_segment_joint_XYZ = build_mediapipe_skeleton(
         processed_skel3d_frame_marker_xyz,

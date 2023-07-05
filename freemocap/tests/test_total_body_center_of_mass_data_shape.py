@@ -1,11 +1,13 @@
-import pytest
-import numpy as np
 from pathlib import Path
 from typing import Union
 
-from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import (
+import numpy as np
+import pytest
+
+from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
     get_number_of_frames_of_videos_in_a_folder,
 )
+
 
 @pytest.mark.usefixtures("synchronized_video_folder_path", "total_body_center_of_mass_file_path")
 def test_total_body_center_of_mass_data_shape(

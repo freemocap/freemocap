@@ -87,6 +87,9 @@ dynamic = ["version", "description"]
 [project.optional-dependencies]
 dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit"]
 
+[project.packages]
+freemocap = { include = ["assets"] }
+
 [project.urls]
 Homepage = "https://freemocap.org"
 Documentation = "https://freemocap.readthedocs.io/en/latest/"

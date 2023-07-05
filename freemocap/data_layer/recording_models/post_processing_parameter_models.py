@@ -2,7 +2,7 @@ import logging
 
 from pydantic import BaseModel
 
-from freemocap.parameter_info_models.recording_info_model import (
+from freemocap.data_layer.recording_models.recording_info_model import (
     RecordingInfoModel,
 )
 
@@ -28,7 +28,6 @@ class ButterworthFilterParametersModel(BaseModel):
     cutoff_frequency: float = 7
     order: int = 4
 
-
 class PostProcessingParametersModel(BaseModel):
     framerate: float = 30.0
     butterworth_filter_parameters = ButterworthFilterParametersModel()
@@ -36,7 +35,7 @@ class PostProcessingParametersModel(BaseModel):
     skip_butterworth_filter: bool = False
 
 
-class RecordingProcessingParameterModel(BaseModel):
+class PostProcessingParameterModel(BaseModel):
     recording_info_model: RecordingInfoModel = None
     mediapipe_parameters_model: MediapipeParametersModel = MediapipeParametersModel()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel()

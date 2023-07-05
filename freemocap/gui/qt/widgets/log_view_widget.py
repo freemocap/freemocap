@@ -126,10 +126,10 @@ class LogViewWidget(QPlainTextEdit):
 
 
         if package+method not in code_path_colors:
-            method_colors[package+method] = get_next_color()
+            code_path_colors[package+method] = get_next_color()
 
 
-        r, g, b = method_colors[package+method]
+        r, g, b = code_path_colors[package+method]
         color_code_path = f"<span style='color:rgb({r},{g},{b});'>{code_path_str}</span>"
 
         r,g,b = (255, 255, 255)

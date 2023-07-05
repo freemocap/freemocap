@@ -15,8 +15,9 @@ def bright_color_generator():
 
         # increment hue
         hue += 0.1
-        if hue >= 1:  # hue wraps back to 0 when it reaches 1
-            hue = 0
+        # avoid red and blue areas by wrapping back to 0.2 when it reaches 0.6
+        if hue >= 0.6:  # hue wraps back to 0.2 when it reaches 0.6
+            hue = 0.2
 
 
 bright_colors = bright_color_generator()

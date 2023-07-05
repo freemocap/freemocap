@@ -109,7 +109,7 @@ class VisualizationControlPanel(QWidget):
             self,
             "Locate your Blender Executable",
             str(Path().home()),
-            "*.*",
+            "*",
         )
 
         if "blender" in path_selection[0]:

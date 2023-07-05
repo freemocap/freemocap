@@ -59,7 +59,7 @@ def process_recording_folder(
     """
 
     if queue:
-        logger = QueueLogger(queue)
+        logger = QueueLogger(queue=queue, default_logger=logging.getLogger(__name__))
     else:
         logger = logging.getLogger(__name__)
     logger.info("Starting process_recording_folder")

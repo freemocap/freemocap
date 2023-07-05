@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
             parent=None,
     ):
 
-cle        super().__init__(parent=parent)
+        super().__init__(parent=parent)
         self._log_view_widget = LogViewWidget(parent=self) #start this first so it will grab the setup logs
         logger.info("Initializing FreeMoCap MainWindow")
 

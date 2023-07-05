@@ -1,6 +1,5 @@
-from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtCore import QUrl
-
+from PyQt6.QtGui import QAction, QDesktopServices
 
 CREATE_NEW_RECORDING_ACTION_NAME = "New Recording"
 LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording"

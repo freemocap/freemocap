@@ -1,7 +1,7 @@
-from pyqtgraph.parametertree import Parameter, ParameterTree
+from pyqtgraph.parametertree import Parameter
 
-from freemocap.parameter_info_models.recording_processing_parameter_models import MediapipeParametersModel, \
-    RecordingProcessingParameterModel, AniposeTriangulate3DParametersModel, PostProcessingParametersModel, \
+from freemocap.data_layer.recording_models.post_processing_parameter_models import MediapipeParametersModel, \
+    PostProcessingParameterModel, AniposeTriangulate3DParametersModel, PostProcessingParametersModel, \
     ButterworthFilterParametersModel
 
 BUTTERWORTH_ORDER = "Order"
@@ -145,12 +145,12 @@ def create_post_processing_parameter_group(
 
 def extract_parameter_model_from_parameter_tree(
         parameter_object: Parameter,
-) -> RecordingProcessingParameterModel:
+) -> PostProcessingParameterModel:
     parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
 
     model_complexity_integer = get_integer_from_model_complexity(parameter_values_dictionary[MODEL_COMPLEXITY])
 
-    return RecordingProcessingParameterModel(
+    return PostProcessingParameterModel(
         mediapipe_parameters_model=MediapipeParametersModel(
             model_complexity=model_complexity_integer,
             min_detection_confidence=parameter_values_dictionary[MINIMUM_DETECTION_CONFIDENCE],

@@ -1,14 +1,13 @@
 import logging
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget, QLabel
 # from skelly_viewer import SkellyViewer
 from skellycam import SkellyCamWidget
 
 from freemocap.gui.qt.widgets.home_widget import (
     HomeWidget,
 )
-from freemocap.system.paths_and_files_names import CAMERA_WITH_FLASH_EMOJI_STRING, EYES_EMOJI_STRING
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +67,14 @@ class CentralTabWidget(QTabWidget):
         self._camera_view_layout.addWidget(self._camera_controller_widget)
 
         self._camera_view_layout.addWidget(self._skelly_cam_widget)
+
+        lag_note_label = QLabel("NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras. The frames are likely being being recorded properly, its just the viewer that is lagging. A fix is incoming soon!")
+        lag_note_label.setStyleSheet("font-size: 10px;")
+        lag_note_label.setWordWrap(True)
+        layout = QVBoxLayout()
+        layout.addWidget(lag_note_label)
+        layout.setAlignment(Qt.AlignmentFlag.AlignBottom)
+        self._camera_view_layout.addLayout(layout)
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):
         logger.info("Creating export_data tab")

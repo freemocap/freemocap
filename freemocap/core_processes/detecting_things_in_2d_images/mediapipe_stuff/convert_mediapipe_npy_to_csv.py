@@ -7,6 +7,9 @@ import numpy as np
 import pandas as pd
 from mediapipe.python.solutions import holistic as mp_holistic
 
+from freemocap.system.paths_and_filenames.file_and_folder_names import MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME, \
+    MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME, MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME
+
 logger = logging.getLogger(__name__)
 
 
@@ -159,7 +162,7 @@ def convert_mediapipe_npy_to_csv(
 
     body_dataframe = pd.DataFrame(body_flat, columns=body_3d_xyz_header)
     body_dataframe.to_csv(
-        str(Path(output_data_folder_path) / "mediapipe_body_3d_xyz.csv"), index=False
+        str(Path(output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME), index=False
     )
 
     right_hand_flat = right_hand_3d_xyz.reshape(
@@ -169,7 +172,7 @@ def convert_mediapipe_npy_to_csv(
         right_hand_flat, columns=right_hand_3d_xyz_header
     )
     right_hand_dataframe.to_csv(
-        str(Path(output_data_folder_path) / "mediapipe_right_hand_3d_xyz.csv"),
+        str(Path(output_data_folder_path) / MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
         index=False,
     )
 
@@ -178,7 +181,7 @@ def convert_mediapipe_npy_to_csv(
     )
     left_hand_dataframe = pd.DataFrame(left_hand_flat, columns=left_hand_3d_xyz_header)
     left_hand_dataframe.to_csv(
-        str(Path(output_data_folder_path) / "mediapipe_left_hand_3d_xyz.csv"),
+        str(Path(output_data_folder_path) / MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
         index=False,
     )
 
@@ -332,7 +335,7 @@ def convert_mediapipe_npy_to_csv(
 
     body_dataframe = pd.DataFrame(body_flat, columns=body_3d_xyz_header)
     body_dataframe.to_csv(
-        str(Path(output_data_folder_path) / "mediapipe_body_3d_xyz.csv"), index=False
+        str(Path(output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME), index=False
     )
 
     right_hand_flat = right_hand_3d_xyz.reshape(
@@ -342,7 +345,7 @@ def convert_mediapipe_npy_to_csv(
         right_hand_flat, columns=right_hand_3d_xyz_header
     )
     right_hand_dataframe.to_csv(
-        str(Path(output_data_folder_path) / "mediapipe_right_hand_3d_xyz.csv"),
+        str(Path(output_data_folder_path) / MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
         index=False,
     )
 
@@ -351,7 +354,7 @@ def convert_mediapipe_npy_to_csv(
     )
     left_hand_dataframe = pd.DataFrame(left_hand_flat, columns=left_hand_3d_xyz_header)
     left_hand_dataframe.to_csv(
-        str(Path(output_data_folder_path) / "mediapipe_left_hand_3d_xyz.csv"),
+        str(Path(output_data_folder_path) / MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
         index=False,
     )
 

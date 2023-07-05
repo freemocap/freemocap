@@ -47,7 +47,6 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         except Exception as e:
             logger.error(f"Error processing motion capture data: {e}")
 
-
         logger.info("Finished processing session folder!")
 
         self.finished.emit()

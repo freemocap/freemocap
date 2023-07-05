@@ -8,6 +8,7 @@ from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_pa
 from freemocap.data_layer.export_data.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
 from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
 from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
 from freemocap.utilities.download_sample_data import get_sample_data_path
 from freemocap.utilities.get_video_paths import get_video_paths
@@ -50,7 +51,7 @@ def process_recording_headless(
 
     save_dictionary_to_json(
         save_path=rec.recording_info_model.output_data_folder_path,
-        file_name=RECORDING_PARAMETER_DICT_JSON_FILE_NAME,
+        file_name=RECORDING_PARAMETERS_JSON_FILE_NAME,
         dictionary=recording_info_dict,
     )
 

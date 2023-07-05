@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
-from typing import Callable
 
+from PyQt6 import QtWidgets, QtGui
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QGroupBox,
@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QLabel,
     QRadioButton,
-    QCheckBox,
+    QCheckBox, QFrame,
 )
 from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
@@ -23,9 +23,11 @@ from freemocap.system.paths_and_filenames.path_getters import create_new_recordi
     create_new_default_recording_name
 
 CALIBRATION_RECORDING_BUTTON_TEXT = "\U0001F534 \U0001F4D0 Start Calibration Recording"
-MOCAP_RECORDING_BUTTON_TEXT =  f"{SKULL_EMOJI_STRING} {SPARKLES_EMOJI_STRING} Start Motion Capture Recording"
+MOCAP_RECORDING_BUTTON_TEXT = f"{SKULL_EMOJI_STRING} {SPARKLES_EMOJI_STRING} Start Motion Capture Recording"
 
 logger = logging.getLogger(__name__)
+
+
 
 
 
@@ -38,7 +40,7 @@ class CameraControllerGroupBox(QGroupBox):
             camera_viewer_widget=skellycam_widget,
             parent=self,
         )
-        self._skellycam_controller.check_recording_type=self.check_recording_type,
+        self._skellycam_controller.check_recording_type = self.check_recording_type,
 
         self._layout = QHBoxLayout()
         self._layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -52,6 +54,7 @@ class CameraControllerGroupBox(QGroupBox):
         self._mocap_videos_radio_button.toggled.connect(self._set_record_button_text)
         self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
         self._stop_recording_button.clicked.connect(self._set_record_button_text)
+
     @property
     def mocap_videos_radio_button_checked(self) -> bool:
         return self._mocap_videos_radio_button.isChecked()
@@ -76,7 +79,7 @@ class CameraControllerGroupBox(QGroupBox):
     def charuco_square_size(self) -> float:
         return float(self._charuco_square_size_line_edit.text())
 
-    def check_recording_type(self   ):
+    def check_recording_type(self):
         if self._mocap_videos_radio_button.isChecked():
             return "mocap"
         elif self._calibration_videos_radio_button.isChecked():
@@ -158,7 +161,6 @@ class CameraControllerGroupBox(QGroupBox):
         recording_path_full = self.get_new_recording_path()
         recording_name = Path(recording_path_full).stem
 
-
         recording_name_hbox = QHBoxLayout()
         vbox.addLayout(recording_name_hbox)
         recording_name_key_label = QLabel("Recording Name: ")
@@ -187,9 +189,6 @@ class CameraControllerGroupBox(QGroupBox):
 
         return vbox
 
-
-
-
     def get_new_recording_path(self):
         return create_new_recording_folder_path(recording_name=self._get_recording_name())
 
@@ -217,7 +216,6 @@ class CameraControllerGroupBox(QGroupBox):
             return name
         else:
             return f"{name}__{self._get_recording_name_string_tag()}"
-
 
     def _set_record_button_text(self):
         if self._calibration_videos_radio_button.isChecked():

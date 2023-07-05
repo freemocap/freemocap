@@ -8,6 +8,7 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_fo
     process_recording_folder,
 )
 from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
 
         save_dictionary_to_json(
             save_path=self._session_processing_parameters.recording_info_model.output_data_folder_path,
-            file_name=RECORDING_PARAMETER_DICT_JSON_FILE_NAME,
+            file_name=RECORDING_PARAMETERS_JSON_FILE_NAME,
             dictionary=recording_info_dict,
         )
 

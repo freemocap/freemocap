@@ -32,10 +32,10 @@ MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME = "mediapipe_right_hand_3d_xyz.c
 MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME = "mediapipe_left_hand_3d_xyz.csv"
 MEDIAPIPE_FACE_3D_DATAFRAME_CSV_FILE_NAME = "mediapipe_face_3d_xyz.csv"
 
-
 TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
 SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
 
+RECORDING_PARAMETERS_JSON_FILE_NAME = "recording_parameters.json"
 # Figshare info
 FIGSHARE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/40293973"
 FREEMOCAP_SAMPLE_DATA_RECORDING_NAME = "freemocap_sample_data"

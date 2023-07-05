@@ -6,8 +6,8 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_fo
 from freemocap.data_layer.export_data.blender_stuff.export_to_blender import export_to_blender
 from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
-from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path, \
-    RECORDING_PARAMETER_DICT_JSON_FILE_NAME
+from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
+from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 
@@ -64,7 +64,7 @@ def process_recording_without_gui(
 
     save_dictionary_to_json(
         save_path=rec.recording_info_model.output_data_folder_path,
-        file_name=RECORDING_PARAMETER_DICT_JSON_FILE_NAME,
+        file_name=RECORDING_PARAMETERS_JSON_FILE_NAME,
         dictionary=recording_info_dict,
     )
 

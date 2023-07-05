@@ -29,28 +29,40 @@ from freemocap.core_processes.post_process_skeleton_data.gap_fill_filter_and_ori
 )
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import \
     process_single_camera_skeleton_data
-
+from freemocap.data_layer.data_saver.data_saver import DataSaver
+from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.system.logging.queue_logger import QueueLogger
+from freemocap.system.paths_and_filenames.file_and_folder_names import RAW_DATA_FOLDER_NAME, \
+    MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME
 
 from freemocap.tests.test_image_tracking_data_shape import (
     test_image_tracking_data_shape,
 )
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
+from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 
 def process_recording_folder(
         recording_processing_parameter_model: PostProcessingParameterModel,
         kill_event: multiprocessing.Event = None,
+        queue: multiprocessing.Queue = None,
         use_tqdm: bool = True,
 ):
     """
 
     Parameters
     ----------
-    recording_processing_parameter_model : PostProcessingParameterModel
+    recording_processing_parameter_model : RecordingProcessingParameterModel
         RecordingProcessingParameterModel object (contains all the paths and parameters necessary to process a session folder
 
     """
+
+    if queue:
+        logger = QueueLogger(queue)
+    else:
+        logger = logging.getLogger(__name__)
+    logger.info("Starting process_recording_folder")
 
     rec = recording_processing_parameter_model  # make it smol
 
@@ -136,7 +148,7 @@ def process_recording_folder(
 
 
     #rotate so skeleton is closer to 'vertical' in a z-up reference frame
-    rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz) 
+    rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
 
 
     logger.info("Gap-filling, butterworth filtering, origin aligning 3d skeletons, then calculating center of mass ...")

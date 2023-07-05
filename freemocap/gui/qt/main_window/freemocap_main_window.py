@@ -19,9 +19,12 @@ from skellycam import (
 )
 from tqdm import tqdm
 
-from freemocap.export_data.blender_stuff.export_to_blender import export_to_blender
-from freemocap.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-from freemocap.export_data.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
+from freemocap.data_layer.export_data.blender_stuff.export_to_blender import export_to_blender
+from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
+from freemocap.data_layer.export_data.generate_jupyter_notebook.generate_jupyter_notebook import \
+    generate_jupyter_notebook
+from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
@@ -47,18 +50,11 @@ from freemocap.gui.qt.widgets.home_widget import (
 )
 from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
-from freemocap.parameter_info_models.recording_info_model import RecordingInfoModel
-
-# reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
-from freemocap.system.paths_and_files_names import (
-    get_scss_stylesheet_path,
-    get_css_stylesheet_path,
-    get_most_recent_recording_path,
-    PATH_TO_FREEMOCAP_LOGO_SVG,
-    get_blender_file_path,
-    get_recording_session_folder_path,
-)
+from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
+from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path, \
+    get_css_stylesheet_path, get_scss_stylesheet_path, get_blender_file_path, get_most_recent_recording_path
+
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
 EXIT_CODE_REBOOT = -123456789
@@ -66,16 +62,17 @@ EXIT_CODE_REBOOT = -123456789
 logger = logging.getLogger(__name__)
 
 
-class FreemocapMainWindow(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(
             self,
             freemocap_data_folder_path: Union[str, Path],
             pipedream_pings: PipedreamPings,
             parent=None,
     ):
-
-        logger.info("Initializing QtGUIMainWindow")
         super().__init__(parent=parent)
+        self._log_view_widget = LogViewWidget(parent=self)
+        logger.info("Initializing QtGUIMainWindow")
+
 
         self.setGeometry(100, 100, 1280, 720)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
@@ -118,7 +115,7 @@ class FreemocapMainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._tools_dock_widget)
         # self._tools_dock_tab_widget = QTabWidget(self)
 
-        self._control_panel_widget = self._create_control_panel_widget()
+        self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
         self._tools_dock_widget.setWidget(self._control_panel_widget)
         # self._tools_dock_tab_widget.addTab(self._control_panel_widget, f"Control Panel")
         #
@@ -136,7 +133,6 @@ class FreemocapMainWindow(QMainWindow):
         # )
         # jupyter_console_dock_widget.setWidget(self._jupyter_console_widget)
 
-        self._log_view_widget = LogViewWidget(parent=self)
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
         log_view_dock_widget.setWidget(self._log_view_widget)
@@ -275,6 +271,7 @@ class FreemocapMainWindow(QMainWindow):
             recording_processing_parameters=PostProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
             kill_thread_event=self._kill_thread_event,
+            log_update=self._log_view_widget.add_log,
         )
         self._process_motion_capture_data_panel.processing_finished_signal.connect(
             self._handle_processing_finished_signal
@@ -524,7 +521,7 @@ if __name__ == "__main__":
     from PyQt6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    main_window = FreemocapMainWindow(pipedream_pings=PipedreamPings())
+    main_window = MainWindow(pipedream_pings=PipedreamPings())
     main_window.show()
     app.exec()
     for process in multiprocessing.active_children():

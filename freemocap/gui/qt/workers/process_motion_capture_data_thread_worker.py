@@ -28,15 +28,15 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
 
     def run(self):
         logger.info(
-            f"Beginning processing of motion capture data with parameters: {self._session_processing_parameters.__dict__}"
+            f"Beginning processing of motion capture data with parameters: {self._post_processing_parameters.__dict__}"
         )
         self._kill_event.clear()
 
-        recording_info_dict = self._session_processing_parameters.dict(exclude={'recording_info_model'})
-        Path(self._session_processing_parameters.recording_info_model.output_data_folder_path).mkdir(parents=True, exist_ok=True)
+        recording_info_dict = self._post_processing_parameters.dict(exclude={'recording_info_model'})
+        Path(self._post_processing_parameters.recording_info_model.output_data_folder_path).mkdir(parents=True, exist_ok=True)
 
         save_dictionary_to_json(
-            save_path=self._session_processing_parameters.recording_info_model.output_data_folder_path,
+            save_path=self._post_processing_parameters.recording_info_model.output_data_folder_path,
             file_name=RECORDING_PARAMETERS_JSON_FILE_NAME,
             dictionary=recording_info_dict,
         )
@@ -46,7 +46,6 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
             self._process.join()
         except Exception as e:
             logger.error(f"Error processing motion capture data: {e}")
-
 
         logger.info("Finished processing session folder!")
 

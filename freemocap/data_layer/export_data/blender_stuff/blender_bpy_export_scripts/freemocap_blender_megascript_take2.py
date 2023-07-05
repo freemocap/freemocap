@@ -9,7 +9,6 @@ import addon_utils
 import bpy
 import numpy as np
 
-
 print("Running script to create Blender file from freemocap session data: " + __file__)
 
 logger = logging.getLogger(__name__)

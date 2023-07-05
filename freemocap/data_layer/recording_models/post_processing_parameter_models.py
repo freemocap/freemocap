@@ -28,9 +28,10 @@ class ButterworthFilterParametersModel(BaseModel):
     cutoff_frequency: float = 7
     order: int = 4
 
+
 class PostProcessingParametersModel(BaseModel):
     framerate: float = 30.0
-    butterworth_filter_parameters = ButterworthFilterParametersModel()
+    butterworth_filter_parameters: ButterworthFilterParametersModel = ButterworthFilterParametersModel()
     max_gap_to_fill: int = 10
     skip_butterworth_filter: bool = False
 

@@ -1,18 +1,19 @@
-import pytest
-import numpy as np
 from pathlib import Path
 from typing import Union
 
-from freemocap.tests.utilities.get_number_of_frames_of_videos_in_a_folder import (
+import numpy as np
+import pytest
+
+from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
     get_number_of_frames_of_videos_in_a_folder,
 )
 from freemocap.utilities.get_video_paths import get_video_paths
 
 
-@pytest.mark.usefixtures("synchronized_video_folder_path", "image_tracking_data_file_name")
+@pytest.mark.usefixtures("synchronized_video_folder_path", "image_tracking_data_file_path")
 def test_image_tracking_data_shape(
     synchronized_video_folder_path: Union[str, Path],
-    image_tracking_data_file_name: Union[str, Path],
+        image_tracking_data_file_path,
 ):
     """
     test that the `mediapipe 2d detection` process worked correctly by checking:
@@ -23,15 +24,15 @@ def test_image_tracking_data_shape(
     TODO - check number of tracked points vs 'expected' number of tracked points
     """
 
-    assert Path(image_tracking_data_file_name).is_file(), f"{image_tracking_data_file_name} is not a file"
+    assert Path(image_tracking_data_file_path).is_file(), f"{image_tracking_data_file_path} is not a file"
 
-    image_tracking_data = np.load(image_tracking_data_file_name)
+    image_tracking_data = np.load(image_tracking_data_file_path)
 
     list_of_video_paths = get_video_paths(Path(synchronized_video_folder_path))
     number_of_videos = len(list_of_video_paths)
     assert (
         image_tracking_data.shape[0] == number_of_videos
-    ), f"Number of videos in {image_tracking_data_file_name} does not match number of videos in synchronized videos folder"
+    ), f"Number of videos in {image_tracking_data_file_path} does not match number of videos in synchronized videos folder"
 
     frame_count = get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path)
 
@@ -40,7 +41,7 @@ def test_image_tracking_data_shape(
     ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_count}"
     assert (
         image_tracking_data.shape[1] == frame_count[0]
-    ), f"Number of frames in {image_tracking_data_file_name} does not match number of frames of videos in {synchronized_video_folder_path}"
+    ), f"Number of frames in {image_tracking_data_file_path} does not match number of frames of videos in {synchronized_video_folder_path}"
 
     # TODO - check number of tracked points vs 'expected' number of tracked points
 

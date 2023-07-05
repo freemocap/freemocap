@@ -11,10 +11,8 @@ from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibrat
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
 )
-from freemocap.system.paths_and_files_names import (
-    get_calibrations_folder_path,
-    get_last_successful_calibration_toml_path, create_camera_calibration_file_name,
-)
+from freemocap.system.paths_and_filenames.path_getters import create_camera_calibration_file_name, \
+    get_calibrations_folder_path, get_last_successful_calibration_toml_path
 from freemocap.utilities.get_video_paths import get_video_paths
 
 logger = logging.getLogger(__name__)

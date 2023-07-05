@@ -1,9 +1,8 @@
 # from -https://gist.github.com/peace098beat/db8ef7161508e6500ebe?permalink_comment_id=3542714#gistcomment-3542714
 
-from PyQt6.QtWidgets import QMainWindow, QApplication
-
-
 import sys
+
+from PyQt6.QtWidgets import QMainWindow, QApplication
 
 
 class MainWidget(QMainWindow):

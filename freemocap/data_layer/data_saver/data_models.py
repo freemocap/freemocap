@@ -16,8 +16,15 @@ class Point(BaseModel):
     z: Optional[float] = Field(None, description="The Z-coordinate of the point")
 
 class VirtualMarkerDefinition(BaseModel):
-    marker_names: List[str]
-    marker_weights: List[float]
+    marker_names: List[str] = Field(default_factory=list, description="The names of the markers that define this virtual marker")
+    marker_weights: List[float] = Field(default_factory=list, description="The weights of the markers that define this virtual marker, must sum to 1")
+
+    @root_validator
+    def check_weights(cls, values):
+        marker_weights = values.get("marker_weights")
+        if sum(marker_weights) != 1:
+            raise ValueError(f"Marker weights must sum to 1, got {marker_weights}")
+        return values
 
 class Schema(BaseModel):
     point_names: List[str] = Field(default_factory=list, description="The names of the tracked points that define this segment")

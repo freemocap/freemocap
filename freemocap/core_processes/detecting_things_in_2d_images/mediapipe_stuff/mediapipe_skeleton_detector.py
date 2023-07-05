@@ -74,7 +74,7 @@ class MediaPipeSkeletonDetector:
         logger.info(f"Running `mediapipe` skeleton detection on video: {str(synchronized_video_file_path)}")
 
         holistic_tracker = mp_holistic.Holistic(
-            mediapipe_model_complexity=mediapipe_parameters_model.mediapipe_model_complexity,
+            model_complexity=mediapipe_parameters_model.mediapipe_model_complexity,
             min_detection_confidence=mediapipe_parameters_model.min_detection_confidence,
             min_tracking_confidence=mediapipe_parameters_model.min_tracking_confidence,
         )

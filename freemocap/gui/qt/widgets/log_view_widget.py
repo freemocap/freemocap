@@ -84,7 +84,7 @@ class LogViewWidget(QPlainTextEdit):
         self.show_code_path_info = True
         self._logging_queue_listener.start()
 
-    def add_log(self, record):
+    def add_log(self, record: logging.LogRecord):
         level = record.levelname.ljust(7)  # 7 characters long, right padded with spaces
         timestamp = f"[{record.asctime}.{record.msecs:04.0f}]".ljust(24)  # 24 characters long
         process_id_str = f"{record.process}".rjust(6)  # 5 characters long, left padded with spaces

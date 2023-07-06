@@ -77,7 +77,7 @@ def process_recording_folder(
         try: 
             mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = np.load(rec.recording_info_model.mediapipe_2d_data_npy_file_path)
         except Exception as e:
-            logger.error("Failed to load 2D data, cannot continue processing")
+            logger.error("Failed to load 2D data, cannot continue processing", exc_info=True)
             return
     else:
         # 2d skeleton detection
@@ -100,7 +100,7 @@ def process_recording_folder(
             image_tracking_data_file_name=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
         )
     except AssertionError as error_message:
-            logger.error(str(error_message))
+            logger.error(str(error_message), exc_info=True)
 
     # spoof 3D data if single camera
     if mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
@@ -142,7 +142,7 @@ def process_recording_folder(
             reprojection_error_file_name=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
         )
     except AssertionError as error_message:
-        logger.error(str(error_message))
+        logger.error(str(error_message), exc_info=True)
 
 
     #rotate so skeleton is closer to 'vertical' in a z-up reference frame
@@ -169,7 +169,7 @@ def process_recording_folder(
             reprojection_error_file_name=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
         )
     except AssertionError as error_message:
-        logger.error(str(error_message))
+        logger.error(str(error_message), exc_info=True)
 
 
     logger.info("Breaking up big `npy` into smaller bits and converting to `csv`...")

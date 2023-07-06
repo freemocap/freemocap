@@ -23,8 +23,12 @@ from freemocap.data_layer.export_data.blender_stuff.export_to_blender import exp
 from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 from freemocap.data_layer.export_data.generate_jupyter_notebook.generate_jupyter_notebook import \
     generate_jupyter_notebook
-from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
-from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.data_layer.recording_models.post_processing_parameter_models import (
+    PostProcessingParameterModel,
+)
+from freemocap.data_layer.recording_models.recording_info_model import (
+    RecordingInfoModel,
+)
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
@@ -50,6 +54,8 @@ from freemocap.gui.qt.widgets.home_widget import (
 )
 from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
+
+# reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path, \
@@ -70,8 +76,8 @@ class MainWindow(QMainWindow):
             parent=None,
     ):
         super().__init__(parent=parent)
-        self._log_view_widget = LogViewWidget(parent=self)
-        logger.info("Initializing QtGUIMainWindow")
+        self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
+        logger.info("Initializing FreeMoCap MainWindow")
 
 
         self.setGeometry(100, 100, 1280, 720)
@@ -139,6 +145,19 @@ class MainWindow(QMainWindow):
         log_view_dock_widget.setFeatures(
             QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetFloatable
         )
+        logger.info("Finished initializing FreeMoCap MainWindow")
+
+    def _size_main_window(self, width_fraction: float = 0.8, height_fraction: float = 0.8):
+        # Get screen size
+        screen = QApplication.primaryScreen().availableGeometry()
+        # Calculate width and height as a fraction of the screen size
+
+        width = screen.width() * width_fraction
+        height = screen.height() * height_fraction
+        # Position the window in the center of the screen
+        left = (screen.width() - width) / 2
+        top = (screen.height() - height) / 2
+        self.setGeometry(int(left), int(top), int(width), int(height))
 
     def _create_tools_dock_widget(self):
         tools_dock_widget = QDockWidget("Control Panel", self)
@@ -173,8 +192,6 @@ class MainWindow(QMainWindow):
         if self._controller_group_box.generate_jupyter_notebook_checked and not self._kill_thread_event.is_set():
             self._generate_jupyter_notebook()
 
-
-
     def handle_start_new_session_action(self):
         # self._central_tab_widget.set_welcome_tab_enabled(True)
         self._central_tab_widget.set_camera_view_tab_enabled(True)
@@ -193,7 +210,8 @@ class MainWindow(QMainWindow):
 
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
-        scss_file_watcher = SCSSFileWatcher(path_to_scss_file=get_scss_stylesheet_path(), path_to_css_file=get_css_stylesheet_path(), parent=self)
+        scss_file_watcher = SCSSFileWatcher(path_to_scss_file=get_scss_stylesheet_path(),
+                                            path_to_css_file=get_css_stylesheet_path(), parent=self)
         css_file_watcher = CSSFileWatcher(path_to_css_file=get_css_stylesheet_path(), parent=self)
         return css_file_watcher
 
@@ -287,7 +305,6 @@ class MainWindow(QMainWindow):
             self._generate_jupyter_notebook
         )
 
-
         return ControlPanelWidget(
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
             # calibration_control_panel=self._calibration_control_panel,
@@ -319,7 +336,8 @@ class MainWindow(QMainWindow):
             if Path(self._active_recording_info_widget.active_recording_info.blender_file_path).exists():
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
             else:
-                logger.error("Blender file does not exist! Did something go wrong in the `export_to_blender` call above?")
+                logger.error(
+                    "Blender file does not exist! Did something go wrong in the `export_to_blender` call above?")
 
     def _generate_jupyter_notebook(self):
         logger.info("Exporting active recording to a Jupyter notebook...")
@@ -359,19 +377,15 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(e)
 
-
-
         update_most_recent_recording_toml(recording_info_model=recording_info_model)
 
     def _update_skelly_viewer_widget(self):
         active_recording_info = self._active_recording_info_widget.active_recording_info
 
-
         if active_recording_info.data3d_status_check:
             self._skelly_viewer_widget.load_skeleton_data(
                 mediapipe_skeleton_npy_path=active_recording_info.mediapipe_3d_data_npy_file_path
             )
-
 
         if active_recording_info.data2d_status_check:
             self._skelly_viewer_widget.generate_video_display(
@@ -383,11 +397,6 @@ class MainWindow(QMainWindow):
             self._skelly_viewer_widget.generate_video_display(
                 video_folder_path=active_recording_info.synchronized_videos_folder_path
             )
-
-
-    def reboot_gui(self):
-        logger.info("Rebooting GUI... ")
-        get_qt_app().exit(EXIT_CODE_REBOOT)
 
     def kill_running_threads_and_processes(self):
         logger.info("Killing running threads and processes... ")
@@ -447,7 +456,6 @@ class MainWindow(QMainWindow):
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
         text = self._import_videos_window.exec()
 
-
     @pyqtSlot(list, str)
     def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str):
 
@@ -475,8 +483,20 @@ class MainWindow(QMainWindow):
 
             shutil.copy(video_path, destination_path)
 
+        timestamps_copied = copy_directory_if_contains_timestamps(source_dir=Path(video_paths[0]).parent,
+                                                                  destination_dir=folder_to_save_videos)
+
+        if timestamps_copied:
+            logger.info(f"Copied timestamps from {Path(video_paths[0]).parent} to {folder_to_save_videos}")
+        else:
+            logger.info(f"No timestamps found in {Path(video_paths[0]).parent}")
+
         self._active_recording_info_widget.set_active_recording(
             recording_folder_path=Path(folder_to_save_videos).parent)
+
+    def reboot_gui(self):
+        logger.info("Rebooting GUI... ")
+        get_qt_app().exit(EXIT_CODE_REBOOT)
 
     def closeEvent(self, a0) -> None:
         logger.info("Main window `closeEvent` detected")
@@ -517,8 +537,6 @@ def remove_empty_directories(root_dir: Union[str, Path]):
 
 if __name__ == "__main__":
     import sys
-
-    from PyQt6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
     main_window = MainWindow(pipedream_pings=PipedreamPings())

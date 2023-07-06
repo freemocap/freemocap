@@ -18,6 +18,6 @@ if __name__ == "__main__":
           "--------------------------------\n"
           "--------------------------------\n")
 
-    from freemocap.__main__ import freemocap_main
+    from freemocap.__main__ import main
 
-    freemocap_main()
+    main()

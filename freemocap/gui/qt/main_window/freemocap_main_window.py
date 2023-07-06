@@ -271,7 +271,7 @@ class MainWindow(QMainWindow):
             recording_processing_parameters=PostProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
             kill_thread_event=self._kill_thread_event,
-            log_update=self._log_view_widget.add_log,
+            log_update=log_update,
         )
         self._process_motion_capture_data_panel.processing_finished_signal.connect(
             self._handle_processing_finished_signal

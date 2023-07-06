@@ -10,7 +10,7 @@ from typing import Union
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
     mediapipe_names_and_connections_dict,
 )
-from freemocap.system.paths_and_files_names import OUTPUT_DATA_FOLDER_NAME
+from freemocap.system.paths_and_filenames.file_and_folder_names import OUTPUT_DATA_FOLDER_NAME
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 logger = logging.getLogger(__name__)

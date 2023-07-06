@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class ProcessMotionCaptureDataThreadWorker(QThread):
     finished = pyqtSignal()
-    in_progress = pyqtSignal(str)
+    in_progress = pyqtSignal(object)
 
     def __init__(self, post_processing_parameters: PostProcessingParameterModel,
                  kill_event: multiprocessing.Event, parent=None):
@@ -56,12 +56,14 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
                 if self._queue.empty():
                     continue
                 else:
-                    message = self._queue.get()
-                    self.in_progress.emit(message)
+                    record = self._queue.get()
+                    print(f"message: {record.msg}")
+                    self.in_progress.emit(record)
 
             while not self._queue.empty():
-                message = self._queue.get()
-                self.in_progress.emit(message)
+                record = self._queue.get()
+                print(f"message: {record.msg}")
+                self.in_progress.emit(record)
 
         except Exception as e:
             logger.error(f"Error processing motion capture data: {str(e)}")

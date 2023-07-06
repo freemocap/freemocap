@@ -6,7 +6,7 @@ from typing import Union, Dict, Any
 import numpy as np
 import pandas as pd
 
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import \
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import \
     mediapipe_skeleton_schema
 from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import \
     BODY_SEGMENT_NAMES

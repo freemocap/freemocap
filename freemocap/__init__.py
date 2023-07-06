@@ -2,7 +2,7 @@
 
 __author__ = """Skelly FreeMoCap"""
 __email__ = "info@freemocap.org"
-__version__ = "v1.0.15-rc"
+__version__ = "v1.0.16-rc"
 __description__ = "A free and open source markerless motion capture system for everyone 💀✨"
 
 __package_name__ = "freemocap"
@@ -44,5 +44,5 @@ def RunMe(*args, **kwargs):
           "(NOTE  - this entry point will be removed eventually\n"
           "--------------------------------\n")
 
-    from freemocap.__main__ import freemocap_main
-    freemocap_main()
+    from freemocap.__main__ import main
+    main()

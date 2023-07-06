@@ -15,11 +15,15 @@ class PostProcessedDataHandler:
     def __init__(self):
         self.processed_skeleton = None
 
-    def data_callback(self, processed_skeleton):
+    def data_callback(self, processed_skeleton: np.ndarray):
         self.processed_skeleton = processed_skeleton
 
 
-def save_array_to_file(array_to_save: np.ndarray, skeleton_file_name: str, path_to_folder_where_we_will_save_this_data: Union[str,Path]):
+def save_skeleton_array_to_npy(array_to_save: np.ndarray,
+                               skeleton_file_name: str,
+                               path_to_folder_where_we_will_save_this_data: Union[str,Path]):
+    if not skeleton_file_name.endswith(".npy"):
+        skeleton_file_name += ".npy"
     Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)
     np.save(
         str(Path(path_to_folder_where_we_will_save_this_data) / skeleton_file_name),

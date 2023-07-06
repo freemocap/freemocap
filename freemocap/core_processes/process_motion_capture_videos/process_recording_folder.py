@@ -17,7 +17,7 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.conv
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
     mediapipe_names_and_connections_dict,
 )
 from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import run_center_of_mass_calculations
@@ -26,7 +26,7 @@ from freemocap.core_processes.post_process_skeleton_data.estimate_skeleton_segme
     mediapipe_skeleton_segment_definitions,
 )
 from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data, \
-    save_array_to_file
+    save_skeleton_array_to_npy
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import \
     process_single_camera_skeleton_data
 from freemocap.data_layer.data_saver.data_saver import DataSaver
@@ -156,18 +156,18 @@ def process_recording_folder(
 
 
     logger.info("Saving post-processed data")
-    save_array_to_file(array_to_save=skel3d_frame_marker_xyz, skeleton_file_name="mediaPipeSkel_3d_body_hands_face.npy",
-                       path_to_folder_where_we_will_save_this_data=path_to_folder_where_we_will_save_this_data)
+    save_skeleton_array_to_npy(array_to_save=skel3d_frame_marker_xyz, skeleton_file_name="mediaPipeSkel_3d_body_hands_face.npy",
+                               path_to_folder_where_we_will_save_this_data=path_to_folder_where_we_will_save_this_data)
 
     segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ = run_center_of_mass_calculations(processed_skel3d_frame_marker_xyz=skel3d_frame_marker_xyz)
 
     logger.info("Saving segment center of mass data")
-    save_array_to_file(array_to_save=segment_COM_frame_imgPoint_XYZ, skeleton_file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
-                       path_to_folder_where_we_will_save_this_data= Path(path_to_folder_where_we_will_save_this_data)/CENTER_OF_MASS_FOLDER_NAME)
+    save_skeleton_array_to_npy(array_to_save=segment_COM_frame_imgPoint_XYZ, skeleton_file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
+                               path_to_folder_where_we_will_save_this_data= Path(path_to_folder_where_we_will_save_this_data)/CENTER_OF_MASS_FOLDER_NAME)
 
     logger.info("Saving total body center of mass data")
-    save_array_to_file(array_to_save=totalBodyCOM_frame_XYZ, skeleton_file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-                       path_to_folder_where_we_will_save_this_data= Path(path_to_folder_where_we_will_save_this_data)/CENTER_OF_MASS_FOLDER_NAME)
+    save_skeleton_array_to_npy(array_to_save=totalBodyCOM_frame_XYZ, skeleton_file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
+                               path_to_folder_where_we_will_save_this_data= Path(path_to_folder_where_we_will_save_this_data)/CENTER_OF_MASS_FOLDER_NAME)
 
 
     try:

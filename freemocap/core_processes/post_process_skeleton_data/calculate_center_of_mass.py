@@ -1,45 +1,62 @@
+import logging
+from typing import List
+
 import numpy as np
 import pandas as pd
 from rich.progress import track
-import logging
+
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import \
+    mediapipe_body_landmark_names
 
 logger = logging.getLogger(__name__)
 
-mediapipe_landmark_names = [
-    "nose",
-    "left_eye_inner",
-    "left_eye",
-    "left_eye_outer",
-    "right_eye_inner",
-    "right_eye",
-    "right_eye_outer",
-    "left_ear",
-    "right_ear",
-    "mouth_left",
-    "mouth_right",
-    "left_shoulder",
-    "right_shoulder",
-    "left_elbow",
-    "right_elbow",
-    "left_wrist",
-    "right_wrist",
-    "left_pinky",
-    "right_pinky",
-    "left_index",
-    "right_index",
-    "left_thumb",
-    "right_thumb",
-    "left_hip",
-    "right_hip",
-    "left_knee",
-    "right_knee",
-    "left_ankle",
-    "right_ankle",
-    "left_heel",
-    "right_heel",
-    "left_foot_index",
-    "right_foot_index",
-]
+
+def mediapipe_body_names_match_expected(mediapipe_body_landmark_names: List[str]) -> bool:
+    """
+    Check if the mediapipe folks have changed their landmark names. If they have, then this function may need to be updated.
+
+    Args:
+        mediapipe_body_landmark_names: List of strings, each string is the name of a mediapipe landmark.
+
+    Returns:
+        bool: True if the mediapipe landmark names are as expected, False otherwise.
+    """
+    expected_mediapipe_body_landmark_names = [
+        "nose",
+        "left_eye_inner",
+        "left_eye",
+        "left_eye_outer",
+        "right_eye_inner",
+        "right_eye",
+        "right_eye_outer",
+        "left_ear",
+        "right_ear",
+        "mouth_left",
+        "mouth_right",
+        "left_shoulder",
+        "right_shoulder",
+        "left_elbow",
+        "right_elbow",
+        "left_wrist",
+        "right_wrist",
+        "left_pinky",
+        "right_pinky",
+        "left_index",
+        "right_index",
+        "left_thumb",
+        "right_thumb",
+        "left_hip",
+        "right_hip",
+        "left_knee",
+        "right_knee",
+        "left_ankle",
+        "right_ankle",
+        "left_heel",
+        "right_heel",
+        "left_foot_index",
+        "right_foot_index",
+    ]
+    return mediapipe_body_landmark_names == expected_mediapipe_body_landmark_names
 
 
 def return_indices_of_joints(list_of_indices, list_of_joint_names):
@@ -178,7 +195,7 @@ def build_mediapipe_skeleton(mediapipe_pose_data, segment_dataframe, mediapipe_i
 # Winter, D.A. (2005) Biomechanics and Motor Control of Human Movement. 3rd Edition, John Wiley & Sons, Inc., Hoboken.
 
 
-BODY_SEGMENT_NAMES  = [
+BODY_SEGMENT_NAMES = [
     "head",
     "trunk",
     "right_upper_arm",
@@ -364,14 +381,18 @@ def calculate_center_of_mass(
         totalBodyCOM_frame_XYZ,
     )
 
-def run_center_of_mass_calculations(processed_skel3d_frame_marker_xyz:np.ndarray):
+
+def run_center_of_mass_calculations(processed_skel3d_frame_marker_xyz: np.ndarray):
     anthropometric_info_dataframe = build_anthropometric_dataframe(
-        BODY_SEGMENT_NAMES , joint_connections, segment_COM_lengths, segment_COM_percentages
+        BODY_SEGMENT_NAMES, joint_connections, segment_COM_lengths, segment_COM_percentages
     )
+    if not mediapipe_body_names_match_expected(mediapipe_body_landmark_names):
+        raise ValueError("Mediapipe body landmark names do not match expected names - Perhaps they altered the names in a new version? This code will need to be updated")
+
     skelcoordinates_frame_segment_joint_XYZ = build_mediapipe_skeleton(
         processed_skel3d_frame_marker_xyz,
         anthropometric_info_dataframe,
-        mediapipe_landmark_names,
+        mediapipe_body_landmark_names,
     )
     (segment_COM_frame_dict, segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ,) = calculate_center_of_mass(
         processed_skel3d_frame_marker_xyz,
@@ -380,4 +401,3 @@ def run_center_of_mass_calculations(processed_skel3d_frame_marker_xyz:np.ndarray
     )
 
     return segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ
-

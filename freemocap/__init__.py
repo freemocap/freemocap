@@ -44,5 +44,5 @@ def RunMe(*args, **kwargs):
           "(NOTE  - this entry point will be removed eventually\n"
           "--------------------------------\n")
 
-    from freemocap.__main__ import freemocap_main
-    freemocap_main()
+    from freemocap.__main__ import main
+    main()

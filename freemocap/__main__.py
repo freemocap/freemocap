@@ -13,7 +13,7 @@ except Exception as e:
     from freemocap.gui.qt.freemocap_main import qt_gui_main
 
 
-def freemocap_main():
+def main():
 
     # set up so you can change the taskbar icon - https://stackoverflow.com/a/74531530/14662833
     import ctypes
@@ -30,4 +30,4 @@ if __name__ == "__main__":
     freeze_support()
     print(f"Running `freemocap.__main__` from - {__file__}")
 
-    freemocap_main()
+    main()

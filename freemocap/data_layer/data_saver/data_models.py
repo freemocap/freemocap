@@ -1,13 +1,11 @@
-import json
 import pprint
 from typing import List, Dict, Tuple
 from typing import Optional, Any
 
 from pydantic import BaseModel, Field, root_validator
 
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import \
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import \
     mediapipe_skeleton_schema
-from freemocap.utilities.create_nested_dict_from_pydantic import create_nested_dict
 
 
 class Point(BaseModel):

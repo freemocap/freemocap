@@ -7,7 +7,7 @@ from typing import Union
 #     r"C:\Users\jonma\Blender Foundation\stable\blender-3.1.0-windows-x64\blender.exe"
 # )
 # blender_exe_path = r"C:\Users\jonma\Blender Foundation\Blender 3.1\blender.exe"
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
     mediapipe_names_and_connections_dict,
 )
 from freemocap.system.paths_and_filenames.file_and_folder_names import OUTPUT_DATA_FOLDER_NAME

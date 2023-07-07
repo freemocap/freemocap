@@ -9,9 +9,9 @@ import numpy as np
 from skellycam.opencv.video_recorder.video_recorder import VideoRecorder
 from tqdm import tqdm
 
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_data_models import \
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_dataclasses import \
     Mediapipe2dNumpyArrays
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_names_and_connections import (
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
     mediapipe_tracked_point_names_dict,
 )
 from freemocap.data_layer.recording_models.post_processing_parameter_models import MediapipeParametersModel

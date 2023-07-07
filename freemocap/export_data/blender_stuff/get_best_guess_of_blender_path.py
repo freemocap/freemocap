@@ -57,7 +57,8 @@ def get_best_guess_of_blender_path():
             Path("/usr/local/bin"),
             Path("/usr/local/sbin"),
             Path("/bin"),
-            Path("/sbin")
+            Path("/sbin"),
+            Path("/snap/bin"),
         ]
         for path in blender_path_list:
             blender_path = path / "blender"

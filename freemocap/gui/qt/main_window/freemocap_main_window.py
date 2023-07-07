@@ -34,6 +34,7 @@ from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
 from freemocap.gui.qt.style_sheet.scss_file_watcher import SCSSFileWatcher
 from freemocap.gui.qt.style_sheet.set_css_style_sheet import apply_css_style_sheet
+from freemocap.gui.qt.utilities.copy_timestamps_folder import copy_directory_if_contains_timestamps
 from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,

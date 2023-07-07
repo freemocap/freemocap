@@ -2,12 +2,12 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from freemocap.export_data.blender_stuff.call_blender_subprocess_methods import (
+from freemocap.data_layer.export_data.blender_stuff.call_blender_subprocess_methods import (
     call_blender_subprocess_megascript_take2,
     call_blender_subprocess_cgtinker,
     call_blender_subprocess_alpha_megascript,
 )
-from freemocap.export_data.blender_stuff.get_best_guess_of_blender_path import (
+from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import (
     get_best_guess_of_blender_path,
 )
 

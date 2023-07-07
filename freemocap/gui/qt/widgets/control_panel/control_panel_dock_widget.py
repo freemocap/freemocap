@@ -10,14 +10,6 @@ from skellycam import SkellyCamParameterTreeWidget
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
-from freemocap.system.paths_and_files_names import (
-    HAMMER_AND_WRENCH_EMOJI_STRING,
-    CAMERA_WITH_FLASH_EMOJI_STRING,
-    THREE_HEARTS_EMOJI_STRING,
-    ROBOT_EMOJI_STRING,
-    WIND_EMOJI_STRING,
-    SPARKLES_EMOJI_STRING,
-)
 
 
 class ControlPanelDockWidget(QDockWidget):

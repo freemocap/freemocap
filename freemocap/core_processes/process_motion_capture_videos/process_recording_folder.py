@@ -31,7 +31,7 @@ from freemocap.core_processes.post_process_skeleton_data.process_single_camera_s
     process_single_camera_skeleton_data
 from freemocap.data_layer.data_saver.data_saver import DataSaver
 from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
-from freemocap.system.logging.queue_logger import QueueLogger
+from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.paths_and_filenames.file_and_folder_names import RAW_DATA_FOLDER_NAME, \
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME
 
@@ -43,6 +43,7 @@ from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rota
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 
+logger = logging.getLogger(__name__)
 
 def process_recording_folder(
         recording_processing_parameter_model: PostProcessingParameterModel,
@@ -60,14 +61,9 @@ def process_recording_folder(
     """
 
     if queue:
-        # logger = QueueLogger(queue=queue, default_logger=logging.getLogger(__name__))
-        logger = logging.getLogger(__name__)
-        handler = QueueLogger(queue)
+        handler = DirectQueueHandler(queue)
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
         logger.addHandler(handler)
-    else:
-        logger = logging.getLogger(__name__)
-    logger.info("Starting process_recording_folder")
 
     rec = recording_processing_parameter_model  # make it smol
 

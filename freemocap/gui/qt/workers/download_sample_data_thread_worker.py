@@ -1,12 +1,10 @@
 import logging
 import threading
-from pathlib import Path
-from typing import Union
 
 from PyQt6.QtCore import pyqtSignal, QThread
 
-from freemocap.tests.utilities.load_sample_data import load_sample_data
-from freemocap.system.paths_and_files_names import FIGSHARE_SAMPLE_DATA_ZIP_FILE_URL
+from freemocap.utilities.download_sample_data import download_sample_data
+from freemocap.system.paths_and_filenames.file_and_folder_names import FIGSHARE_SAMPLE_DATA_ZIP_FILE_URL
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +36,7 @@ class DownloadSampleDataThreadWorker(QThread):
         logger.info("Downloading sample data")
 
         try:
-            self.sample_data_path = load_sample_data(sample_data_zip_file_url=FIGSHARE_SAMPLE_DATA_ZIP_FILE_URL)
+            self.sample_data_path = download_sample_data(sample_data_zip_file_url=FIGSHARE_SAMPLE_DATA_ZIP_FILE_URL)
 
 
         except Exception as e:

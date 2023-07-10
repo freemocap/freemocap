@@ -41,5 +41,3 @@ class CharucoBoardDefinition:
         self.number_of_charuco_corners = (self.number_of_squares_width - 1) * (
                 self.number_of_squares_height - 1
         )
-
-default_charuco_square_size_mm = 39

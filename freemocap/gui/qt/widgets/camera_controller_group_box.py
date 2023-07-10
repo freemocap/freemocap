@@ -16,9 +16,6 @@ from PyQt6.QtWidgets import (
 from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
-    default_charuco_square_size_mm
-)
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
 from freemocap.system.paths_and_filenames.path_getters import create_new_recording_folder_path, \
     create_new_default_recording_name, get_gui_state_json_path

@@ -8,9 +8,6 @@ class GuiState(BaseModel):
     generate_jupyter_notebook: bool = True
     auto_open_in_blender: bool = True
     charuco_square_size: float = 39
-    # blender_export_method: str
-
-    # camera_settings:???
 
 
 def save_gui_state(gui_state: GuiState, file_pathstring: str = None):

@@ -1,4 +1,3 @@
-import logging
 import time
 from datetime import datetime
 from pathlib import Path
@@ -6,59 +5,13 @@ from typing import Union
 
 import toml
 
-import freemocap
-
-logger = logging.getLogger(__name__)
-
-# directory names
-BASE_FREEMOCAP_DATA_FOLDER_NAME = "freemocap_data"
-RECORDING_SESSIONS_FOLDER_NAME = "recording_sessions"
-CALIBRATIONS_FOLDER_NAME = "calibrations"
-LOGS_INFO_AND_SETTINGS_FOLDER_NAME = "logs_info_and_settings"
-LOG_FILE_FOLDER_NAME = "logs"
-OUTPUT_DATA_FOLDER_NAME = "output_data"
-SYNCHRONIZED_VIDEOS_FOLDER_NAME = "synchronized_videos"
-ANNOTATED_VIDEOS_FOLDER_NAME = "annotated_videos"
-RAW_DATA_FOLDER_NAME = "raw_data"
-CENTER_OF_MASS_FOLDER_NAME = "center_of_mass"
-
-# file names
-MOST_RECENT_RECORDING_TOML_FILENAME = "most_recent_recording.toml"
-LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME = "last_successful_calibration.toml"
-GUI_STATE_JSON_FILENAME = "gui_state.json"
-MEDIAPIPE_2D_NPY_FILE_NAME = "mediapipe2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
-MEDIAPIPE_BODY_WORLD_FILE_NAME = "mediapipeBodyWorld_numCams_numFrames_numTrackedPoints_XYZ.npy"
-MEDIAPIPE_3D_NPY_FILE_NAME = "mediaPipeSkel_3d_body_hands_face.npy"
-RAW_MEDIAPIPE_3D_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
-MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
-MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME = "mediapipe_body_3d_xyz.csv"
-RECORDING_PARAMETER_DICT_JSON_FILE_NAME = "recording_parameter_dict.json"
-
-SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
-
-TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
-
-# Figshare info
-FIGSHARE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/40293973"
-FIGSHARE_SAMPLE_DATA_FILE_NAME = "freemocap_sample_data"
-
-# logo
-PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent.parent / "assets/logo/freemocap-logo-black-border.svg")
-
-# emoji strings
-SPARKLES_EMOJI_STRING = "\U00002728"
-DIZZY_EMOJI_STRING = "\U0001F4AB"
-EYES_EMOJI_STRING = "\U0001F440"
-SKULL_EMOJI_STRING = "\U0001F480"
-CAMERA_WITH_FLASH_EMOJI_STRING = "\U0001F4F8"
-HAMMER_AND_WRENCH_EMOJI_STRING = "\U0001F6E0"
-ROBOT_EMOJI_STRING = "\U0001F916"
-THREE_HEARTS_EMOJI_STRING = "\U0001F495"
-WIND_EMOJI_STRING = "\U0001F32C"
-GEAR_EMOJI_STRING = "\U00002699"
-FOLDER_EMOJI_STRING = "\U0001F4C1"
-DIRECTORY_EMOJI_STRING = "\U0001F4C1"
-COOL_EMOJI_STRING = "\U0001F60E"
+from freemocap.system.paths_and_filenames.file_and_folder_names import LOGS_INFO_AND_SETTINGS_FOLDER_NAME, \
+    LOG_FILE_FOLDER_NAME, BASE_FREEMOCAP_DATA_FOLDER_NAME, CALIBRATIONS_FOLDER_NAME, logger, \
+    RECORDING_SESSIONS_FOLDER_NAME, MOST_RECENT_RECORDING_TOML_FILENAME, LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME, \
+    OUTPUT_DATA_FOLDER_NAME, SYNCHRONIZED_VIDEOS_FOLDER_NAME, RAW_DATA_FOLDER_NAME, RAW_MEDIAPIPE_3D_NPY_FILE_NAME, \
+    CENTER_OF_MASS_FOLDER_NAME, TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME, MEDIAPIPE_2D_NPY_FILE_NAME, \
+    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME, SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME, MEDIAPIPE_3D_NPY_FILE_NAME, \
+    GUI_STATE_JSON_FILENAME
 
 
 def os_independent_home_dir():
@@ -134,6 +87,7 @@ def create_new_default_recording_name():
 
 def session_time_tag_format():
     return "%Y-%m-%d_%H_%M_%S"
+
 def default_session_name(string_tag: str = None):
     if string_tag is not None:
         string_tag = f"_{string_tag}"
@@ -176,11 +130,12 @@ def get_logs_info_and_settings_folder_path(create_folder: bool = True):
 def get_css_stylesheet_path():
     # return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "ElegantDark.qss")
     # return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "FunkyTown.qss")
-    return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.css")
+    return str(Path(__file__).parent.parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.css")
 
 
 def get_scss_stylesheet_path():
-    return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.scss")
+    return str(Path(__file__).parent.parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.scss")
+
 
 def get_most_recent_recording_toml_path():
     return str(Path(get_logs_info_and_settings_folder_path()) / MOST_RECENT_RECORDING_TOML_FILENAME)
@@ -232,3 +187,81 @@ def get_blender_file_name(recording_name: str):
 
 def get_blender_file_path(recording_folder_path: Union[Path,str]):
     return str(Path(recording_folder_path) / get_blender_file_name(recording_name=Path(recording_folder_path).name))
+
+
+def get_output_data_folder_path(recording_folder_path: Union[str,Path])->str:
+    for subfolder_path in Path(recording_folder_path).iterdir():
+        if subfolder_path.name == OUTPUT_DATA_FOLDER_NAME:
+            return str(subfolder_path)
+
+    raise Exception(f"Could not find a data folder in path {str(recording_folder_path)}")
+
+
+def get_synchronized_videos_folder_path(recording_folder_path: Union[str, Path]) -> str:
+    for subfolder_path in Path(recording_folder_path).iterdir():
+        if subfolder_path.name == SYNCHRONIZED_VIDEOS_FOLDER_NAME:
+            return str(subfolder_path)
+
+    raise Exception(f"Could not find a videos folder in path {str(recording_folder_path)}")
+
+def get_timestamps_directory(recording_directory: Union[str,Path])->str:
+    synchronized_videos_path = get_synchronized_videos_folder_path(recording_folder_path=recording_directory)
+    if "timestamps" in [path.name for path in Path(synchronized_videos_path).iterdir()]:
+        return str(Path(synchronized_videos_path) / "timestamps")
+    logger.warning(f"Could not find timestamps directory in {synchronized_videos_path}")
+def get_raw_skeleton_npy_file_name(data_folder_name: Union[str,Path])->str:
+    raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
+    if raw_data_subfolder_path.exists:
+        raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
+        if RAW_MEDIAPIPE_3D_NPY_FILE_NAME in raw_data_npy_path_list:
+            return str(raw_data_subfolder_path / RAW_MEDIAPIPE_3D_NPY_FILE_NAME)
+
+    raise Exception(f"Could not find a skeleton NPY file in path {str(data_folder_name)}")
+
+def get_full_npy_file_path(output_data_folder: Union[str,Path])->str:
+    path = Path(output_data_folder) / MEDIAPIPE_3D_NPY_FILE_NAME
+    return str(path)
+def get_total_body_center_of_mass_file_path(output_data_folder: Union[str,Path])->str:
+    center_of_mass_subfolder_path = Path(output_data_folder) / CENTER_OF_MASS_FOLDER_NAME
+    if center_of_mass_subfolder_path.exists:
+        center_of_mass_npy_path_list = [path.name for path in center_of_mass_subfolder_path.glob("*.npy")]
+
+        if TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME in center_of_mass_npy_path_list:
+            return str(center_of_mass_subfolder_path / TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
+
+    raise Exception(f"Could not find a total body center of mass npy file in path {str(output_data_folder)}")
+
+def get_segment_center_of_mass_file_path(output_data_folder: Union[str,Path])->str:
+    center_of_mass_subfolder_path = Path(output_data_folder) / CENTER_OF_MASS_FOLDER_NAME
+    if center_of_mass_subfolder_path.exists:
+        center_of_mass_npy_path_list = [path.name for path in center_of_mass_subfolder_path.glob("*.npy")]
+
+        if SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME in center_of_mass_npy_path_list:
+            return str(center_of_mass_subfolder_path / SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)
+
+    raise Exception(f"Could not find a total body center of mass npy file in path {str(output_data_folder)}")
+
+
+def get_image_tracking_data_file_name(data_folder_name: Union[str,Path])->str:
+    raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
+    if raw_data_subfolder_path.exists:
+        raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
+
+        if MEDIAPIPE_2D_NPY_FILE_NAME in raw_data_npy_path_list:
+            return str(raw_data_subfolder_path / MEDIAPIPE_2D_NPY_FILE_NAME)
+
+    raise Exception(f"Could not find a 2d data file in path {str(data_folder_name)}")
+
+
+def get_reprojection_error_file_path(data_folder_name: Union[str,Path])->str:
+    raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
+    if raw_data_subfolder_path.exists:
+        raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
+
+        if MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME in raw_data_npy_path_list:
+            return str(raw_data_subfolder_path / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME)
+
+    raise Exception(f"Could not find reprojection error data file in path {str(data_folder_name)}")
+
+
+

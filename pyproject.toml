@@ -70,6 +70,7 @@ keywords = [
 dependencies = [
     "skellycam",
     "skelly_viewer",
+    "skellyforge",
     "mediapipe==0.10.1",
     "opencv-contrib-python==4.6.0.66",
     "toml==0.10.2",
@@ -87,13 +88,16 @@ dynamic = ["version", "description"]
 [project.optional-dependencies]
 dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit"]
 
+[project.packages]
+freemocap = { include = ["assets"] }
+
 [project.urls]
 Homepage = "https://freemocap.org"
 Documentation = "https://freemocap.readthedocs.io/en/latest/"
 Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]
-current_version = "v1.0.14-rc"
+current_version = "v1.0.16-rc"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

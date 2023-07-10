@@ -7,9 +7,7 @@ from typing import Union
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
-from freemocap.system.paths_and_files_names import (
-    get_last_successful_calibration_toml_path,
-)
+from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
 
 logger = logging.getLogger(__name__)
 

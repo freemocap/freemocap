@@ -4,7 +4,8 @@ $cadet-skelly: cadetblue;
 $freemocap-green: #365d5f;
 $freemocap-dark-green: #254342;
 $laser-red: #d95158;
-$disabled-laser-red: #8c5454;
+$recording-button-red: #ce7076;
+$disabled-laser-red: #8c7474;
 $background: #eeeeee;
 $dark-background: #e0e0e0;
 $accent-background: #f5f5f5;
@@ -13,6 +14,7 @@ $active-element: #424242;
 $primary-button: #67bcc0;
 $secondary-button: #a8e9ed;
 $disabled-button: #9e9e9e;
+$disabled-text: #555555;
 $tree-primary: #eeeeee;
 $tree-secondary: #e0e0e0;
 $tree-selected: #f6e0f5;
@@ -33,7 +35,9 @@ QGroupBox {
     margin-top: 10px;
     font-weight: bold;
     background-color: $accent-background;
+
 }
+
 
 QStatusBar {
     color: $plain-black;
@@ -45,11 +49,12 @@ QMainWindow {
 
 QTabWidget::pane {
     border: 1px solid $plain-white;
-    top: 1px;
     background: $background;
     padding: 5px;
 }
-
+QTabWidget::pane::selection {
+    border-top: 1px solid $dark-charcoal;
+}
 QTabBar::tab {
     border: 1px solid $plain-black;
     padding: 5px;
@@ -101,21 +106,23 @@ QPushButton:pressed {
 }
 
 QPushButton#start_recording_button {
-    font-size: 20px;
-    background-color: $laser-red;
-    border: 2px solid $plain-black;
-    padding: 6px;
+    font-size: 16px;
+    background-color: $recording-button-red;
+    border: 2px solid $dark-charcoal;
+    padding: 10px;
     border-radius: 10px;
+    width:250px;
 }
 QPushButton#start_recording_button:hover {
     border: 2px solid darken($laser-red, 10%);
 }
 QPushButton#start_recording_button:disabled {
     background-color: $disabled-laser-red;
+    color: $disabled-text;
 }
 
 QPushButton#stop_recording_button {
-    font-size: 18px;
+    font-size: 14px;
     background-color: $background;
 }
 QPushButton#stop_recording_button:enabled {
@@ -126,7 +133,9 @@ QPushButton#stop_recording_button:hover {
     border: 3px solid $plain-black;
     background-color: $background;
 }
-
+QPushButton#stop_recording_button:disabled {
+    color: $disabled-text;
+}
 QPushButton#process_motion_capture_button,
 QPushButton#export_to_blender_button {
     font-size: 18px;

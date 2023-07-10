@@ -22,8 +22,9 @@ from freemocap.gui.qt.utilities.save_and_load_gui_state import (
     GuiState,
     save_gui_state
 )
-from freemocap.system.paths_and_files_names import (
-    PATH_TO_FREEMOCAP_LOGO_SVG, 
+
+from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
+from freemocap.system.paths_and_filenames.path_getters import (
     get_gui_state_json_path
 )
 
@@ -89,9 +90,13 @@ class HomeWidget(QWidget):
     def _make_version_label(self):
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
-        version_label = QLabel(f"{freemocap.__version__}")
+        version_label_string = f'source:<a href="https://github.com/freemocap/freemocap" style="color: #777777;"> {freemocap.__version__}</a>'
+
+        version_label = QLabel(version_label_string)
         version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
-        version_label.setStyleSheet("font-size: 14px;color: #777777")
+        version_label.setStyleSheet("font-size: 12px;color: #777777")
+        version_label.setOpenExternalLinks(True)
+
         hbox.addWidget(version_label)
 
     def _add_code_and_docs_links(self):
@@ -102,22 +107,13 @@ class HomeWidget(QWidget):
         privacy_policy_link_label = QLabel(privacy_policy_link_string)
         privacy_policy_link_label.setOpenExternalLinks(True)
         hbox.addWidget(privacy_policy_link_label)
-        source_code_label = f'<a href="https://github.com/freemocap/freemocap" style="color: #333333;">code</a>'
-        source_code_label = QLabel(source_code_label)
-        source_code_label.setOpenExternalLinks(True)
-        hbox.addWidget(source_code_label, alignment=Qt.AlignmentFlag.AlignCenter)
-        # vbox.addWidget(QLabel("|"))
         docs_string = '<a href="https://freemocap.readthedocs.io/en/latest/" style="color: #333333;">docs</a>'
         docs_string = QLabel(docs_string)
         docs_string.setOpenExternalLinks(True)
         hbox.addWidget(docs_string, alignment=Qt.AlignmentFlag.AlignCenter)
         hbox.addStretch(1)
 
-
-
-
     def _create_user_info_consent_checkbox(self):
-
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
         hbox.addStretch(1)
@@ -139,7 +135,6 @@ class HomeWidget(QWidget):
             file_pathstring=get_gui_state_json_path())
 
     def _welcome_to_freemocap_title(self):
-        # TO DO - this shouldn't be part of the `camera_view_panel` - it should be its own thing that gets swapped out on session start
         logger.info("Creating `welcome to freemocap` layout")
 
         session_title_label = QLabel("Welcome  to  FreeMoCap!")
@@ -153,6 +148,7 @@ class HomeWidget(QWidget):
         freemocap_logo_label.sizePolicy().setHorizontalStretch(1)
         freemocap_logo_label.sizePolicy().setVerticalStretch(1)
         self._layout.addWidget(freemocap_logo_label)
+
         freemocap_logo_pixmap = QPixmap(PATH_TO_FREEMOCAP_LOGO_SVG)
         freemocap_logo_pixmap = freemocap_logo_pixmap.scaledToWidth(200)
         freemocap_logo_label.setPixmap(freemocap_logo_pixmap)

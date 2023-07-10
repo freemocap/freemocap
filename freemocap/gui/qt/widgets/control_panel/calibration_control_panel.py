@@ -21,17 +21,15 @@ from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gu
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
-from freemocap.system.paths_and_files_names import (
-    get_gui_state_json_path,
-    get_last_successful_calibration_toml_path,
-)
+
+from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path, get_last_successful_calibration_toml_path
 
 logger = logging.getLogger(__name__)
 
 
 class CalibrationControlPanel(QWidget):
     def __init__(self, 
-                 get_active_recording_info_callable: Callable, 
+                 get_active_recording_info: Callable, 
                  kill_thread_event: threading.Event, 
                  gui_state: GuiState,
                  parent=None):
@@ -42,14 +40,16 @@ class CalibrationControlPanel(QWidget):
         self._calibration_toml_path = None
         self._kill_thread_event = kill_thread_event
 
-        self._get_active_recording_info_callable = get_active_recording_info_callable
         self.parent = parent
-
-        self._anipose_calibration_frame_worker = None
-        self._user_selected_calibration_toml_path_str = None
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
+
+        self._calibration_toml_path = None
+        self._kill_thread_event = kill_thread_event
+
+        self._anipose_calibration_frame_worker = None
+        self._user_selected_toml_path = None
 
         self._selected_calibration_toml_label = QLabel("")
         self._selected_calibration_toml_label.setWordWrap(True)
@@ -90,7 +90,7 @@ class CalibrationControlPanel(QWidget):
         radio_button_push_button_layout.addWidget(self._load_calibration_from_file_radio_button)
         self._load_calibration_from_file_radio_button.toggled.connect(self._handle_load_calibration_from_file_toggled)
 
-        self._load_calibration_toml_dialog_button = QPushButton("Load Camera Calibration TOML...")
+        self._load_calibration_toml_dialog_button = QPushButton("Load TOML...")
         radio_button_push_button_layout.addWidget(self._load_calibration_toml_dialog_button)
         # self._load_calibration_toml_dialog_button.setStyleSheet("font-size: 10pt;")
         self._load_calibration_toml_dialog_button.clicked.connect(self.open_load_camera_calibration_toml_dialog)
@@ -99,27 +99,27 @@ class CalibrationControlPanel(QWidget):
         return vbox_layout
 
     def update_calibration_toml_path(self, toml_path: str = None):
+
         if toml_path is None:
             if self._load_calibration_from_file_radio_button.isChecked():
-                if self._user_selected_calibration_toml_path_str is not None:
-                    toml_path = self._user_selected_calibration_toml_path_str
+                if self._user_selected_toml_path is not None:
+                    toml_path = self._user_selected_toml_path
+                else:
+                    toml_path = self._check_active_recording_for_calibration_toml()
+
             elif self._use_most_recent_calibration_radio_button.isChecked():
                 toml_path = get_last_successful_calibration_toml_path()
+
             elif self._calibrate_from_active_recording_radio_button.isChecked():
-                active_recording_info = self._get_active_recording_info_callable()
-                if active_recording_info.calibration_toml_check:
-                    toml_path = active_recording_info.calibration_toml_path
-            else:
-                active_rec = self._get_active_recording_info_callable()
-                if active_rec is not None:
-                    if active_rec.calibration_toml_check:
-                        toml_path = self._get_active_recording_info_callable().calibration_toml_path
-                        self._load_calibration_from_file_radio_button.setChecked(True)
-                    else:
-                        toml_path = get_last_successful_calibration_toml_path()
-                        self._use_most_recent_calibration_radio_button.setChecked(True)
+                toml_path = self._check_active_recording_for_calibration_toml()
 
-
+            else: #no button checked -> initialize
+                toml_path = self._check_active_recording_for_calibration_toml()
+                if toml_path is not None:
+                    self._load_calibration_from_file_radio_button.setChecked(True)
+                else:
+                    toml_path = get_last_successful_calibration_toml_path()
+                    self._use_most_recent_calibration_radio_button.setChecked(True)
 
         self._calibration_toml_path = toml_path
 
@@ -141,7 +141,7 @@ class CalibrationControlPanel(QWidget):
             self._handle_calibrate_from_active_recording_toggled
         )
 
-        self._calibrate_from_active_recording_button = QPushButton("Calibrate from Videos")
+        self._calibrate_from_active_recording_button = QPushButton("Run calibration...")
         hbox.addWidget(self._calibrate_from_active_recording_button)
 
         self._calibrate_from_active_recording_button.setEnabled(False)
@@ -167,14 +167,14 @@ class CalibrationControlPanel(QWidget):
         return self._use_most_recent_calibration_radio_button
 
     def update_calibrate_from_active_recording_button_text(self):
-        active_recording_info = self._get_active_recording_info_callable()
+        active_recording_info = self._get_active_recording_info()
         if active_recording_info is None:
             active_path_str = f"- No active recording selected -"
         else:
             if not active_recording_info.synchronized_videos_status_check:
                 active_path_str = f"Recording: {active_recording_info.name} has no synchronized videos!"
             else:
-                active_path_str = f"Calibrate from Recording: {self._get_active_recording_info_callable().name}"
+                active_path_str = f"Calibrate from Recording: {self._get_active_recording_info().name}"
 
         self._calibrate_from_active_recording_button.setToolTip(active_path_str)
         self.update_calibration_toml_path()
@@ -196,7 +196,7 @@ class CalibrationControlPanel(QWidget):
         self.update_calibration_toml_path()
 
     def _handle_calibrate_from_active_recording_toggled(self, checked):
-        active_recording_info = self._get_active_recording_info_callable()
+        active_recording_info = self._get_active_recording_info()
         self.update_calibrate_from_active_recording_button_text()
         self.update_calibration_toml_path()
 
@@ -225,15 +225,15 @@ class CalibrationControlPanel(QWidget):
         calibration_toml_path_selection = dialog.getOpenFileName(
             self,
             "Select 'toml' containing camera calibration info",
-            str(self._get_active_recording_info_callable().path),
+            str(self._get_active_recording_info().path),
             "Camera Calibration TOML (*.toml)",
         )
         if len(calibration_toml_path_selection) > 0:
-            self._user_selected_calibration_toml_path_str = calibration_toml_path_selection[0]
-            logger.info(f"User selected camera calibration toml path:{self._user_selected_calibration_toml_path_str}")
-            self._show_selected_calibration_toml_path(self._user_selected_calibration_toml_path_str)
-            self.update_calibration_toml_path(toml_path=self._user_selected_calibration_toml_path_str)
-            return self.calibration_toml_path
+            self._user_selected_toml_path = calibration_toml_path_selection[0]
+            logger.info(f"User selected camera calibration toml path:{self._user_selected_toml_path}")
+            self._show_selected_calibration_toml_path(self._user_selected_toml_path)
+            self.update_calibration_toml_path(toml_path=self._user_selected_toml_path)
+            return self._user_selected_toml_path
 
 
     def _show_selected_calibration_toml_path(self, calibration_toml_path_str: str):
@@ -274,7 +274,7 @@ class CalibrationControlPanel(QWidget):
         if not charuco_square_size_mm:
             charuco_square_size_mm = float(self._charuco_square_size_line_edit.text())
 
-        active_recording_info = self._get_active_recording_info_callable()
+        active_recording_info = self._get_active_recording_info()
         if active_recording_info is None:
             logger.error("Cannot calibrate from active recording - no active recording selected")
             return
@@ -299,6 +299,12 @@ class CalibrationControlPanel(QWidget):
         self._anipose_calibration_frame_worker.start()
 
         self._anipose_calibration_frame_worker.finished.connect(self.update_calibration_toml_path)
+
+    def _check_active_recording_for_calibration_toml(self):
+        active_rec = self._get_active_recording_info()
+        if active_rec is not None:
+            if active_rec.calibration_toml_check:
+                return self._get_active_recording_info().calibration_toml_path
 
 
 if __name__ == "__main__":

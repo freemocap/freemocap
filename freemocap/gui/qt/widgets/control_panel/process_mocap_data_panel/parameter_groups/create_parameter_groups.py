@@ -1,7 +1,7 @@
-from pyqtgraph.parametertree import Parameter, ParameterTree
+from pyqtgraph.parametertree import Parameter
 
-from freemocap.parameter_info_models.recording_processing_parameter_models import MediapipeParametersModel, \
-    RecordingProcessingParameterModel, AniposeTriangulate3DParametersModel, PostProcessingParametersModel, \
+from freemocap.data_layer.recording_models.post_processing_parameter_models import MediapipeParametersModel, \
+    PostProcessingParameterModel, AniposeTriangulate3DParametersModel, PostProcessingParametersModel, \
     ButterworthFilterParametersModel
 
 BUTTERWORTH_ORDER = "Order"
@@ -24,7 +24,7 @@ MINIUMUM_TRACKING_CONFIDENCE = "Minimum Tracking Confidence"
 
 MINIMUM_DETECTION_CONFIDENCE = "Minimum Detection Confidence"
 
-MODEL_COMPLEXITY = "Model Complexity"
+MEDIAPIPE_MODEL_COMPLEXITY = "Model Complexity"
 
 MEDIAPIPE_TREE_NAME = "Mediapipe"
 
@@ -38,7 +38,7 @@ SKIP_BUTTERWORTH_FILTER_NAME = "Skip butterworth filter?"
 def create_mediapipe_parameter_group(
         parameter_model: MediapipeParametersModel = MediapipeParametersModel(),
 ) -> Parameter:
-    model_complexity_list = [
+    mediapipe_model_complexity_list = [
         "0 (Fastest/Least accurate)",
         "1 (Middle ground)",
         "2 (Slowest/Most accurate)",
@@ -48,12 +48,12 @@ def create_mediapipe_parameter_group(
         type="group",
         children=[
             dict(
-                name=MODEL_COMPLEXITY,
+                name=MEDIAPIPE_MODEL_COMPLEXITY,
                 type="list",
-                limits=model_complexity_list,
-                value=model_complexity_list[parameter_model.model_complexity],
+                limits=mediapipe_model_complexity_list,
+                value=mediapipe_model_complexity_list[parameter_model.mediapipe_model_complexity],
                 tip="Which Mediapipe model to use - higher complexity is slower but more accurate. "
-                    "Variable name in `mediapipe` code: `model_complexity`",
+                    "Variable name in `mediapipe` code: `mediapipe_model_complexity`",
             ),
             dict(
                 name=MINIMUM_DETECTION_CONFIDENCE,
@@ -145,14 +145,14 @@ def create_post_processing_parameter_group(
 
 def extract_parameter_model_from_parameter_tree(
         parameter_object: Parameter,
-) -> RecordingProcessingParameterModel:
+) -> PostProcessingParameterModel:
     parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
 
-    model_complexity_integer = get_integer_from_model_complexity(parameter_values_dictionary[MODEL_COMPLEXITY])
+    mediapipe_model_complexity_integer = get_integer_from_mediapipe_model_complexity(parameter_values_dictionary[MEDIAPIPE_MODEL_COMPLEXITY])
 
-    return RecordingProcessingParameterModel(
+    return PostProcessingParameterModel(
         mediapipe_parameters_model=MediapipeParametersModel(
-            model_complexity=model_complexity_integer,
+            mediapipe_model_complexity=mediapipe_model_complexity_integer,
             min_detection_confidence=parameter_values_dictionary[MINIMUM_DETECTION_CONFIDENCE],
             min_tracking_confidence=parameter_values_dictionary[MINIUMUM_TRACKING_CONFIDENCE],
             static_image_mode=parameter_values_dictionary[STATIC_IMAGE_MODE],
@@ -174,13 +174,13 @@ def extract_parameter_model_from_parameter_tree(
             )
         )
 
-def get_integer_from_model_complexity(model_complexity_value: str):
-    model_complexity_dictionary = {
+def get_integer_from_mediapipe_model_complexity(mediapipe_model_complexity_value: str):
+    mediapipe_model_complexity_dictionary = {
         "0 (Fastest/Least accurate)": 0,
         "1 (Middle ground)": 1,
         "2 (Slowest/Most accurate)": 2,
     }
-    return model_complexity_dictionary[model_complexity_value]
+    return mediapipe_model_complexity_dictionary[mediapipe_model_complexity_value]
 
 def extract_processing_parameter_model_from_tree(parameter_object, value_dictionary: dict=None):
     if value_dictionary is None:

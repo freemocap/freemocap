@@ -3,7 +3,7 @@ import logging.handlers
 import sys
 from logging.config import dictConfig
 
-from freemocap.system.paths_and_files_names import get_log_file_path
+from freemocap.system.paths_and_filenames.path_getters import get_log_file_path
 
 DEFAULT_LOGGING = {"version": 1, "disable_existing_loggers": False}
 
@@ -13,6 +13,7 @@ format_string = "[%(asctime)s.%(msecs)04d] [%(levelname)8s] [%(name)s] [%(funcNa
 
 default_logging_formatter = logging.Formatter(fmt=format_string, datefmt="%Y-%m-%d %H:%M:%S")
 
+# logging.basicConfig(level=logging.WARNING)
 
 def get_logging_handlers():
     dictConfig(DEFAULT_LOGGING)
@@ -23,7 +24,7 @@ def get_logging_handlers():
 
     # Setup File handler (from https://stackoverflow.com/a/24507130/14662833 )
 
-    file_handler = logging.FileHandler(get_log_file_path())
+    file_handler = logging.FileHandler(get_log_file_path(), encoding="utf-8")
     file_handler.setFormatter(default_logging_formatter)
     file_handler.setLevel(logging.DEBUG)
 
@@ -43,3 +44,6 @@ def configure_logging():
     else:
         logger = logging.getLogger(__name__)
         logger.info("Logging already configured")
+
+
+

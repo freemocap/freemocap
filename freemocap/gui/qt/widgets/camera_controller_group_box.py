@@ -63,6 +63,7 @@ class CameraControllerGroupBox(QGroupBox):
         self._auto_process_videos_checkbox.toggled.connect(self._on_auto_process_videos_checkbox_changed)
         self._generate_jupyter_notebook_checkbox.toggled.connect(self._on_generate_jupyter_notebook_checkbox_changed)
         self._auto_open_in_blender_checkbox.toggled.connect(self._on_auto_open_in_blender_checkbox_changed)
+        self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
 
 
     @property
@@ -108,15 +109,15 @@ class CameraControllerGroupBox(QGroupBox):
         self._mocap_videos_radio_button.setChecked(True)
         hbox.addWidget(QLabel(" - "))
         self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
-        self._auto_process_videos_checkbox.setChecked(True)
+        self._auto_process_videos_checkbox.setChecked(self.gui_state.auto_process_videos_on_save)
         hbox.addWidget(self._auto_process_videos_checkbox)
 
         self._generate_jupyter_notebook_checkbox = QCheckBox('Generate Jupyter Notebook')
-        self._generate_jupyter_notebook_checkbox.setChecked(True)
+        self._generate_jupyter_notebook_checkbox.setChecked(self.gui_state.generate_jupyter_notebook)
         hbox.addWidget(self._generate_jupyter_notebook_checkbox)
 
         self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
-        self._auto_open_in_blender_checkbox.setChecked(True)
+        self._auto_open_in_blender_checkbox.setChecked(self.gui_state.auto_open_in_blender)
         hbox.addWidget(self._auto_open_in_blender_checkbox)
         return hbox
 
@@ -131,7 +132,7 @@ class CameraControllerGroupBox(QGroupBox):
         hbox.addWidget(QLabel("Charuco square size (mm)", parent=self))
         self._charuco_square_size_line_edit = QLineEdit(parent=self)
         self._charuco_square_size_line_edit.setFixedWidth(100)
-        self._charuco_square_size_line_edit.setText(str(default_charuco_square_size_mm))
+        self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )

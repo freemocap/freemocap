@@ -38,6 +38,7 @@ class CalibrationControlPanel(QWidget):
         self.gui_state = gui_state
         self._has_a_toml_path = False
         self._calibration_toml_path = None
+        self._get_active_recording_info = get_active_recording_info
         self._kill_thread_event = kill_thread_event
 
         self.parent = parent

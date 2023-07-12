@@ -13,8 +13,8 @@ from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.system.paths_and_filenames.path_getters import get_freemocap_data_folder_path
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
-repo = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(repo))
+# repo = Path(__file__).parent.parent.parent.parent
+# sys.path.insert(0, str(repo))
 
 logger = logging.getLogger(__name__)
 

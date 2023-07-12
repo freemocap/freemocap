@@ -14,15 +14,16 @@ __repo_issues_url__ = f"{__repo_url__}issues"
 # if we're running from source, we need to add the parent directory to sys.path
 import sys
 from pathlib import Path
+
 #
 # base_package_path = Path(__file__).parent.parent
 # print(f"adding base_package_path: {base_package_path} : to sys.path")
 # sys.path.insert(0, str(base_package_path))  # add par
 
+from freemocap.gui.qt.freemocap_main import qt_gui_main
 from freemocap.system.logging.configure_logging import configure_logging
 configure_logging()
 import logging
-
 logger = logging.getLogger(__name__)
 logger.info(f"Initializing {__package_name__} package, version: {__version__}, from file: {__file__}")
 

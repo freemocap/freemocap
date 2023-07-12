@@ -1,1 +1,2 @@
-pyinstaller --name="freemocap"  --windowed  --onefile .\RUN_ME.py
+#pyinstaller --name="freemocap"  --windowed  --onefile ../freemocap/__main__.py
+pyinstaller freemocap.spec

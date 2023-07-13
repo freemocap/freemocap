@@ -1,11 +1,10 @@
 import logging
 from pathlib import Path
-from typing import Union, Dict, Any
+from typing import Union, Dict
 
 import numpy as np
-import toml
 
-from freemocap.system.paths_and_files_names import (
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
     CENTER_OF_MASS_FOLDER_NAME,
     MEDIAPIPE_2D_NPY_FILE_NAME,
     RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
@@ -14,18 +13,13 @@ from freemocap.system.paths_and_files_names import (
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
-    get_blender_file_path,
     ANNOTATED_VIDEOS_FOLDER_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME, create_camera_calibration_file_name,
-)
+    MEDIAPIPE_3D_NPY_FILE_NAME, )
+from freemocap.system.paths_and_filenames.path_getters import create_camera_calibration_file_name, get_blender_file_path
 from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
-from freemocap.tests.test_synchronized_video_frame_counts import (
-    test_synchronized_video_frame_counts,
-)
-from freemocap.tests.test_total_body_center_of_mass_data_shape import (
-    test_total_body_center_of_mass_data_shape,
-)
+from freemocap.tests.test_synchronized_video_frame_counts import test_synchronized_video_frame_counts
+from freemocap.tests.test_total_body_center_of_mass_data_shape import test_total_body_center_of_mass_data_shape
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +137,9 @@ class RecordingInfoModel:
         return self._recording_folder_status_checker.check_center_of_mass_data_status()
 
 
+
+
+
 class RecordingFolderStatusChecker:
     def __init__(self, recording_info_model: RecordingInfoModel):
 
@@ -175,7 +172,7 @@ class RecordingFolderStatusChecker:
         try:
             test_image_tracking_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
-                image_tracking_data_file_name=self.recording_info_model.mediapipe_2d_data_npy_file_path,
+                image_tracking_data_file_path=self.recording_info_model.mediapipe_2d_data_npy_file_path,
             )
 
             return True
@@ -187,7 +184,7 @@ class RecordingFolderStatusChecker:
             test_mediapipe_skeleton_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
                 raw_skeleton_npy_file_path=self.recording_info_model.mediapipe_3d_data_npy_file_path,
-                reprojection_error_file_name=self.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
+                reprojection_error_file_path=self.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
             )
             return True
         except AssertionError as e:

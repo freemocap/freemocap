@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union
 
 import papermill as pm
+
 logging.getLogger('papermill').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 

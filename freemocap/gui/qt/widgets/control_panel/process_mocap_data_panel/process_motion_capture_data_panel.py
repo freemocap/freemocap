@@ -10,9 +10,9 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
-    create_mediapipe_parameter_group, 
-    create_3d_triangulation_prarameter_group, 
-    create_post_processing_parameter_group, 
+    create_mediapipe_parameter_group,
+    create_3d_triangulation_prarameter_group,
+    create_post_processing_parameter_group,
     extract_parameter_model_from_parameter_tree,
     SKIP_2D_IMAGE_TRACKING_NAME,
     SKIP_3D_TRIANGULATION_NAME,
@@ -21,8 +21,8 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
 )
-from freemocap.parameter_info_models.recording_processing_parameter_models import (
-    RecordingProcessingParameterModel,
+from freemocap.data_layer.recording_models.post_processing_parameter_models import (
+    PostProcessingParameterModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def __init__(
             self,
-            recording_processing_parameters: RecordingProcessingParameterModel,
+            recording_processing_parameters: PostProcessingParameterModel,
             get_active_recording_info: Callable,
             kill_thread_event: threading.Event,
             parent=None,
@@ -55,7 +55,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._layout.addWidget(calibration_group_box)
 
         self._calibration_control_panel = CalibrationControlPanel(
-            get_active_recording_info_callable=self._get_active_recording_info,
+            get_active_recording_info=self._get_active_recording_info,
             kill_thread_event=self._kill_thread_event,
             parent=self,
         )
@@ -94,7 +94,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def _add_parameters_to_parameter_tree_widget(
             self,
             parameter_tree_widget: ParameterTree,
-            session_processing_parameter_model: RecordingProcessingParameterModel,
+            session_processing_parameter_model: PostProcessingParameterModel,
     ):
         parameter_group = self._convert_session_processing_parameter_model_to_parameter_group(
             session_processing_parameter_model
@@ -105,7 +105,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _convert_session_processing_parameter_model_to_parameter_group(
             self,
-            session_processing_parameter_model: RecordingProcessingParameterModel,
+            session_processing_parameter_model: PostProcessingParameterModel,
     ):
 
         return Parameter.create(
@@ -149,7 +149,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _create_session_parameter_model(
             self,
-    ) -> RecordingProcessingParameterModel:
+    ) -> PostProcessingParameterModel:
         recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(parameter_object=self._parameter_group)
         recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
 

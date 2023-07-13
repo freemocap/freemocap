@@ -45,7 +45,8 @@ class SynchronizeVideosThreadWorker(QThread):
         try:
             self.output_folder_path = synchronize_videos_from_audio(
                 raw_video_folder_path=self._raw_video_folder_path,
-                synchronized_video_folder_path=self._synchronized_video_folder_path
+                synchronized_video_folder_path=self._synchronized_video_folder_path,
+                create_debug_plots_bool=False
             )
 
         except Exception as e:

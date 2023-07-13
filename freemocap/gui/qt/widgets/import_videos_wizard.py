@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 import threading
 from typing import Union
+from skelly_synchronize import create_debug_plots
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QFileSystemModel
@@ -144,6 +145,8 @@ class ImportVideosWizard(QDialog):
             str(path) 
             for path in get_video_paths(path_to_video_folder=self.synchronize_videos_thread_worker.output_folder_path)
         ]
+
+        create_debug_plots(synchronized_video_folder_path=self.synchronize_videos_thread_worker.output_folder_path)
 
         self.folder_to_save_videos_to_selected.emit(
                 self._video_file_paths,

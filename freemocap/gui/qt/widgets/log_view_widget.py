@@ -26,6 +26,7 @@ process_colors = {}
 thread_colors = {}
 code_path_colors = {}
 
+
 class LoggingQueueListener(QThread):
     log_message_signal = QtCore.pyqtSignal(object)
 
@@ -46,8 +47,6 @@ class LoggingQueueListener(QThread):
                 if record is None:
                     break
 
-
-
                 self.log_message_signal.emit(record)
         except Exception as e:
             self.close()
@@ -62,7 +61,6 @@ class LogViewWidget(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-
         self.setReadOnly(True)
 
         self._logging_queue = multiprocessing.Queue(-1)
@@ -75,8 +73,8 @@ class LogViewWidget(QPlainTextEdit):
             logging_queue=self._logging_queue, exit_event=self._exit_event
         )
         self._logging_queue_listener.log_message_signal.connect(self.add_log)
-        self.timestamp_color_generator = rgb_color_generator((50, 255, 255), (255, 50, 255), phase_increment=.2)
-        self.log_message_color_generator = rgb_color_generator((128, 255, 100), (100, 255, 255), phase_increment=.7)
+        self.timestamp_color_generator = rgb_color_generator((50, 255, 255), (255, 50, 255), phase_increment=0.2)
+        self.log_message_color_generator = rgb_color_generator((128, 255, 100), (100, 255, 255), phase_increment=0.7)
         self.show_colors = True
         self.show_code_path_info = True
         self._logging_queue_listener.start()
@@ -90,8 +88,6 @@ class LogViewWidget(QPlainTextEdit):
         message_content = full_message.split("||||")[-1].strip()
         code_path_str = full_message.split("||||")[0].strip()
         package, method, line = code_path_str.split(":")
-
-
 
         # Set color for the level
         r, g, b = level_colors.get(level.strip(), (255, 255, 255))
@@ -121,20 +117,19 @@ class LogViewWidget(QPlainTextEdit):
 
         # Choose a color for the message using the log_message_color_generator
 
+        if package + method not in code_path_colors:
+            code_path_colors[package + method] = get_next_color()
 
-        if package+method not in code_path_colors:
-            code_path_colors[package+method] = get_next_color()
-
-
-        r, g, b = code_path_colors[package+method]
+        r, g, b = code_path_colors[package + method]
         color_code_path = f"<span style='color:rgb({r},{g},{b});'>{code_path_str}</span>"
 
-        r,g,b = (255, 255, 255)
+        r, g, b = (255, 255, 255)
         color_message = f"<span style='color:rgb({r},{g},{b});'>{message_content}</span>"
 
-
         # Combine colored parts
-        colored_log_entry = f"{color_timestamp}[{color_level}] {color_process_id_thread_id} {color_code_path} ::: {color_message}"
+        colored_log_entry = (
+            f"{color_timestamp}[{color_level}] {color_process_id_thread_id} {color_code_path} ::: {color_message}"
+        )
         self.appendHtml(colored_log_entry)
 
     def closeEvent(self, event):

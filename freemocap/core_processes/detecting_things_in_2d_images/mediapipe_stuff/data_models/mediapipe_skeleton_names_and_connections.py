@@ -1,7 +1,6 @@
 from mediapipe.python.solutions import holistic as mp_holistic
 
 
-
 mediapipe_body_connections = [connection for connection in mp_holistic.POSE_CONNECTIONS]
 
 mediapipe_hand_connections = [connection for connection in mp_holistic.HAND_CONNECTIONS]
@@ -72,7 +71,7 @@ mediapipe_skeleton_schema = {
         "point_names": mediapipe_body_landmark_names,
         "connections": mediapipe_body_connections,
         "virtual_marker_definitions": mediapipe_virtual_marker_definitions_dict,
-        "parent": "hips_center"
+        "parent": "hips_center",
     },
     "hands": {
         "right": {
@@ -90,11 +89,12 @@ mediapipe_skeleton_schema = {
         "point_names": mediapipe_face_landmark_names,
         "connections": mediapipe_face_connections,
         "parent": "nose",
-    }
+    },
 }
 
 if __name__ == "__main__":
     import pprint
+
     #
     # print("mediapipe_body_connections:")
     # pprint.pp(mediapipe_tracked_point_names_dict)

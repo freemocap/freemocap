@@ -14,7 +14,8 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
     ANNOTATED_VIDEOS_FOLDER_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME, )
+    MEDIAPIPE_3D_NPY_FILE_NAME,
+)
 from freemocap.system.paths_and_filenames.path_getters import create_camera_calibration_file_name, get_blender_file_path
 from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
@@ -26,19 +27,24 @@ logger = logging.getLogger(__name__)
 
 class RecordingInfoModel:
     def __init__(
-            self,
-            recording_folder_path: Union[Path, str],
+        self,
+        recording_folder_path: Union[Path, str],
     ):
-        if any([Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME,
+        if any(
+            [
+                Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME,
                 Path(recording_folder_path).name == ANNOTATED_VIDEOS_FOLDER_NAME,
-                Path(recording_folder_path).name == OUTPUT_DATA_FOLDER_NAME]):
+                Path(recording_folder_path).name == OUTPUT_DATA_FOLDER_NAME,
+            ]
+        ):
             recording_folder_path = Path(recording_folder_path).parent
 
         self._path = Path(recording_folder_path)
         self._name = self._path.name
 
         self._calibration_toml_path = str(
-            Path(self._path) / create_camera_calibration_file_name(recording_name=self._name))
+            Path(self._path) / create_camera_calibration_file_name(recording_name=self._name)
+        )
 
         self._recording_folder_status_checker = RecordingFolderStatusChecker(recording_info_model=self)
 
@@ -137,27 +143,23 @@ class RecordingInfoModel:
         return self._recording_folder_status_checker.check_center_of_mass_data_status()
 
 
-
-
-
 class RecordingFolderStatusChecker:
     def __init__(self, recording_info_model: RecordingInfoModel):
-
         self.recording_info_model = recording_info_model
 
     @property
     def status_check(self) -> Dict[str, Union[bool, str, float]]:
         return {
-            'synchronized_videos_status_check': self.check_synchronized_videos_status(),
-            'data2d_status_check': self.check_data2d_status(),
-            'data3d_status_check': self.check_data3d_status(),
-            'center_of_mass_data_status_check': self.check_center_of_mass_data_status(),
-            'blender_file_status_check': self.check_blender_file_status(),
-            'video_and_camera_info': {
-                'number_of_synchronized_videos': self.get_number_of_mp4s_in_synched_videos_directory(),
-                'number_of_frames_in_videos': self.get_number_of_frames_in_videos(),
+            "synchronized_videos_status_check": self.check_synchronized_videos_status(),
+            "data2d_status_check": self.check_data2d_status(),
+            "data3d_status_check": self.check_data3d_status(),
+            "center_of_mass_data_status_check": self.check_center_of_mass_data_status(),
+            "blender_file_status_check": self.check_blender_file_status(),
+            "video_and_camera_info": {
+                "number_of_synchronized_videos": self.get_number_of_mp4s_in_synched_videos_directory(),
+                "number_of_frames_in_videos": self.get_number_of_frames_in_videos(),
                 # 'camera_rotation_and_translation': self.get_camera_rotation_and_translation_from_calibration_toml()
-            }
+            },
         }
 
     def check_synchronized_videos_status(self) -> bool:
@@ -168,7 +170,6 @@ class RecordingFolderStatusChecker:
             return False
 
     def check_data2d_status(self) -> bool:
-
         try:
             test_image_tracking_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
@@ -188,7 +189,6 @@ class RecordingFolderStatusChecker:
             )
             return True
         except AssertionError as e:
-
             return False
 
     def check_center_of_mass_data_status(self) -> bool:
@@ -215,7 +215,7 @@ class RecordingFolderStatusChecker:
             return video_count
 
         for file in synchronized_directory_path.iterdir():
-            if file.is_file() and file.suffix.lower() == '.mp4':
+            if file.is_file() and file.suffix.lower() == ".mp4":
                 video_count += 1
 
         logger.info(f"Number of `.mp4`'s in {self.recording_info_model.synchronized_videos_folder_path}: {video_count}")
@@ -227,12 +227,12 @@ class RecordingFolderStatusChecker:
         if not timestamps_directory_path.exists():
             return "No 'timestamps' directory found"
 
-        if timestamps_directory_path.exists() :
+        if timestamps_directory_path.exists():
             frame_counts = {}
 
             for npy_file in timestamps_directory_path.iterdir():
-                if npy_file.is_file() and npy_file.suffix.lower() == '.npy':
+                if npy_file.is_file() and npy_file.suffix.lower() == ".npy":
                     video_npy = np.load(str(npy_file))
-                    frame_counts[npy_file.name] = str(len(video_npy)-1)
+                    frame_counts[npy_file.name] = str(len(video_npy) - 1)
 
             return frame_counts

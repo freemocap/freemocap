@@ -63,10 +63,14 @@ class Actions:
 
         # Help
         self.open_docs_action = QAction(OPEN_DOCS_ACTION_NAME, parent=freemocap_main_window)
-        self.open_docs_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://freemocap.readthedocs.io/en/latest/")))
-        
+        self.open_docs_action.triggered.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://freemocap.readthedocs.io/en/latest/"))
+        )
+
         self.freemocap_foundation_action = QAction(FREEMOCAP_FOUNDATION_ACTION_NAME, parent=freemocap_main_window)
-        self.freemocap_foundation_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://freemocap.org/about-us.html")))
+        self.freemocap_foundation_action.triggered.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://freemocap.org/about-us.html"))
+        )
 
         # # Navigation
         # show_camera_control_panel_action = QAction("&1 - Show Camera Control Panel", parent=main_window)
@@ -82,6 +86,8 @@ class Actions:
         #
         # Support
         self.donate_action = QAction(DONATE_ACTION_NAME, parent=freemocap_main_window)
-        self.donate_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://freemocap.org/about-us.html#donate")))
+        self.donate_action.triggered.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://freemocap.org/about-us.html#donate"))
+        )
         # self.send_usage_statistics_action = QAction("Send &User Statistics", parent=freemocap_main_window)
         # self.user_survey_action = QAction("&User Survey", parent=freemocap_main_window)

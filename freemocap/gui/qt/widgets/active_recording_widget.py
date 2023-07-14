@@ -84,7 +84,6 @@ class ActiveRecordingInfoWidget(QWidget):
         self._directory_watcher.addPath(folder_to_watch)
 
     def _create_directory_watcher(self):
-
         directory_watcher = QFileSystemWatcher()
         directory_watcher.fileChanged.connect(self._handle_directory_changed)
         directory_watcher.directoryChanged.connect(self._handle_directory_changed)

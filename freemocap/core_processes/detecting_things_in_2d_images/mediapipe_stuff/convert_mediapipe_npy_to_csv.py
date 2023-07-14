@@ -7,8 +7,11 @@ import numpy as np
 import pandas as pd
 from mediapipe.python.solutions import holistic as mp_holistic
 
-from freemocap.system.paths_and_filenames.file_and_folder_names import MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME, \
-    MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME, MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
+    MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
+    MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
+    MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +25,8 @@ def convert_mediapipe_npy_to_csv(
     )
 
     # %%
-    mediapipe_pose_landmark_names = [
-        landmark.name.lower() for landmark in mp_holistic.PoseLandmark
-    ]
-    mediapipe_hand_landmark_names = [
-        landmark.name.lower() for landmark in mp_holistic.HandLandmark
-    ]
+    mediapipe_pose_landmark_names = [landmark.name.lower() for landmark in mp_holistic.PoseLandmark]
+    mediapipe_hand_landmark_names = [landmark.name.lower() for landmark in mp_holistic.HandLandmark]
     # face_landmark_names = [landmark.name.lower() for landmark in mp_holistic.PoseLandmark] #gonna have the clever for the face
     # logger.info(f"Body tracked point names: {mediapipe_pose_landmark_names}")
     # logger.info(mediapipe_hand_landmark_names)
@@ -45,9 +44,7 @@ def convert_mediapipe_npy_to_csv(
     last_right_hand_marker_index = number_of_body_points + number_of_hand_points - 1
 
     first_left_hand_marker_index = last_right_hand_marker_index + 1
-    last_left_hand_marker_index = (
-        last_right_hand_marker_index + 1 + number_of_hand_points - 1
-    )
+    last_left_hand_marker_index = last_right_hand_marker_index + 1 + number_of_hand_points - 1
 
     first_face_marker_index = last_left_hand_marker_index + 1
     last_face_marker_index = mediapipe_3d_frame_trackedPoint_xyz.shape[1]
@@ -81,18 +78,14 @@ def convert_mediapipe_npy_to_csv(
     # )
 
     # %%
-    body_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
-        :, first_body_marker_index : last_body_marker_index + 1, :
-    ]
+    body_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_body_marker_index : last_body_marker_index + 1, :]
     right_hand_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
         :, first_right_hand_marker_index : last_right_hand_marker_index + 1, :
     ]
     left_hand_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
         :, first_left_hand_marker_index : last_left_hand_marker_index + 1, :
     ]
-    face_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
-        :, first_face_marker_index : last_face_marker_index + 1, :
-    ]
+    face_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_face_marker_index : last_face_marker_index + 1, :]
 
     # logger.info(f"body 3d xyz shape: {body_3d_xyz.shape}")
     # logger.info(f"right hand 3d xyz shape: {right_hand_3d_xyz.shape}")
@@ -101,9 +94,7 @@ def convert_mediapipe_npy_to_csv(
 
     # %%
     # save broken up npy files
-    np.save(
-        str(Path(output_data_folder_path) / "mediapipe_body_3d_xyz.npy"), body_3d_xyz
-    )
+    np.save(str(Path(output_data_folder_path) / "mediapipe_body_3d_xyz.npy"), body_3d_xyz)
     np.save(
         str(Path(output_data_folder_path) / "mediapipe_right_hand_3d_xyz.npy"),
         right_hand_3d_xyz,
@@ -112,9 +103,7 @@ def convert_mediapipe_npy_to_csv(
         str(Path(output_data_folder_path) / "mediapipe_left_hand_3d_xyz.npy"),
         left_hand_3d_xyz,
     )
-    np.save(
-        str(Path(output_data_folder_path) / "mediapipe_face_3d_xyz.npy"), face_3d_xyz
-    )
+    np.save(str(Path(output_data_folder_path) / "mediapipe_face_3d_xyz.npy"), face_3d_xyz)
 
     # %%
     # create pandas data frame headers
@@ -161,24 +150,16 @@ def convert_mediapipe_npy_to_csv(
     body_flat = body_3d_xyz.reshape(number_of_frames, number_of_body_points * 3)
 
     body_dataframe = pd.DataFrame(body_flat, columns=body_3d_xyz_header)
-    body_dataframe.to_csv(
-        str(Path(output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME), index=False
-    )
+    body_dataframe.to_csv(str(Path(output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME), index=False)
 
-    right_hand_flat = right_hand_3d_xyz.reshape(
-        number_of_frames, number_of_hand_points * 3
-    )
-    right_hand_dataframe = pd.DataFrame(
-        right_hand_flat, columns=right_hand_3d_xyz_header
-    )
+    right_hand_flat = right_hand_3d_xyz.reshape(number_of_frames, number_of_hand_points * 3)
+    right_hand_dataframe = pd.DataFrame(right_hand_flat, columns=right_hand_3d_xyz_header)
     right_hand_dataframe.to_csv(
         str(Path(output_data_folder_path) / MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
         index=False,
     )
 
-    left_hand_flat = left_hand_3d_xyz.reshape(
-        number_of_frames, number_of_hand_points * 3
-    )
+    left_hand_flat = left_hand_3d_xyz.reshape(number_of_frames, number_of_hand_points * 3)
     left_hand_dataframe = pd.DataFrame(left_hand_flat, columns=left_hand_3d_xyz_header)
     left_hand_dataframe.to_csv(
         str(Path(output_data_folder_path) / MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
@@ -187,19 +168,13 @@ def convert_mediapipe_npy_to_csv(
 
     face_flat = face_3d_xyz.reshape(number_of_frames, number_of_face_points * 3)
     face_dataframe = pd.DataFrame(face_flat, columns=face_3d_xyz_header)
-    face_dataframe.to_csv(
-        str(Path(output_data_folder_path) / "mediapipe_face_3d_xyz.csv"), index=False
-    )
+    face_dataframe.to_csv(str(Path(output_data_folder_path) / "mediapipe_face_3d_xyz.csv"), index=False)
 
     # %%
 
     # %%
-    mediapipe_pose_landmark_names = [
-        landmark.name.lower() for landmark in mp_holistic.PoseLandmark
-    ]
-    mediapipe_hand_landmark_names = [
-        landmark.name.lower() for landmark in mp_holistic.HandLandmark
-    ]
+    mediapipe_pose_landmark_names = [landmark.name.lower() for landmark in mp_holistic.PoseLandmark]
+    mediapipe_hand_landmark_names = [landmark.name.lower() for landmark in mp_holistic.HandLandmark]
     # face_landmark_names = [landmark.name.lower() for landmark in mp_holistic.PoseLandmark] #gonna have the clever for the face
 
     # logger.debug(f"Body tracked point names: {mediapipe_pose_landmark_names}")
@@ -218,9 +193,7 @@ def convert_mediapipe_npy_to_csv(
     last_right_hand_marker_index = number_of_body_points + number_of_hand_points - 1
 
     first_left_hand_marker_index = last_right_hand_marker_index + 1
-    last_left_hand_marker_index = (
-        last_right_hand_marker_index + 1 + number_of_hand_points - 1
-    )
+    last_left_hand_marker_index = last_right_hand_marker_index + 1 + number_of_hand_points - 1
 
     first_face_marker_index = last_left_hand_marker_index + 1
     last_face_marker_index = mediapipe_3d_frame_trackedPoint_xyz.shape[1]
@@ -254,18 +227,14 @@ def convert_mediapipe_npy_to_csv(
     # )
 
     # %%
-    body_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
-        :, first_body_marker_index : last_body_marker_index + 1, :
-    ]
+    body_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_body_marker_index : last_body_marker_index + 1, :]
     right_hand_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
         :, first_right_hand_marker_index : last_right_hand_marker_index + 1, :
     ]
     left_hand_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
         :, first_left_hand_marker_index : last_left_hand_marker_index + 1, :
     ]
-    face_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
-        :, first_face_marker_index : last_face_marker_index + 1, :
-    ]
+    face_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_face_marker_index : last_face_marker_index + 1, :]
 
     logger.debug(f"body 3d xyz shape: {body_3d_xyz.shape}")
     logger.debug(f"right hand 3d xyz shape: {right_hand_3d_xyz.shape}")
@@ -274,9 +243,7 @@ def convert_mediapipe_npy_to_csv(
 
     # %%
     # save broken up npy files
-    np.save(
-        str(Path(output_data_folder_path) / "mediapipe_body_3d_xyz.npy"), body_3d_xyz
-    )
+    np.save(str(Path(output_data_folder_path) / "mediapipe_body_3d_xyz.npy"), body_3d_xyz)
     np.save(
         str(Path(output_data_folder_path) / "mediapipe_right_hand_3d_xyz.npy"),
         right_hand_3d_xyz,
@@ -285,9 +252,7 @@ def convert_mediapipe_npy_to_csv(
         str(Path(output_data_folder_path) / "mediapipe_left_hand_3d_xyz.npy"),
         left_hand_3d_xyz,
     )
-    np.save(
-        str(Path(output_data_folder_path) / "mediapipe_face_3d_xyz.npy"), face_3d_xyz
-    )
+    np.save(str(Path(output_data_folder_path) / "mediapipe_face_3d_xyz.npy"), face_3d_xyz)
 
     # %%
     # create pandas data frame headers
@@ -334,24 +299,16 @@ def convert_mediapipe_npy_to_csv(
     body_flat = body_3d_xyz.reshape(number_of_frames, number_of_body_points * 3)
 
     body_dataframe = pd.DataFrame(body_flat, columns=body_3d_xyz_header)
-    body_dataframe.to_csv(
-        str(Path(output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME), index=False
-    )
+    body_dataframe.to_csv(str(Path(output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME), index=False)
 
-    right_hand_flat = right_hand_3d_xyz.reshape(
-        number_of_frames, number_of_hand_points * 3
-    )
-    right_hand_dataframe = pd.DataFrame(
-        right_hand_flat, columns=right_hand_3d_xyz_header
-    )
+    right_hand_flat = right_hand_3d_xyz.reshape(number_of_frames, number_of_hand_points * 3)
+    right_hand_dataframe = pd.DataFrame(right_hand_flat, columns=right_hand_3d_xyz_header)
     right_hand_dataframe.to_csv(
         str(Path(output_data_folder_path) / MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
         index=False,
     )
 
-    left_hand_flat = left_hand_3d_xyz.reshape(
-        number_of_frames, number_of_hand_points * 3
-    )
+    left_hand_flat = left_hand_3d_xyz.reshape(number_of_frames, number_of_hand_points * 3)
     left_hand_dataframe = pd.DataFrame(left_hand_flat, columns=left_hand_3d_xyz_header)
     left_hand_dataframe.to_csv(
         str(Path(output_data_folder_path) / MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
@@ -360,9 +317,7 @@ def convert_mediapipe_npy_to_csv(
 
     face_flat = face_3d_xyz.reshape(number_of_frames, number_of_face_points * 3)
     face_dataframe = pd.DataFrame(face_flat, columns=face_3d_xyz_header)
-    face_dataframe.to_csv(
-        str(Path(output_data_folder_path) / "mediapipe_face_3d_xyz.csv"), index=False
-    )
+    face_dataframe.to_csv(str(Path(output_data_folder_path) / "mediapipe_face_3d_xyz.csv"), index=False)
 
     logger.info("Done saving out `csv` and broken up `npy` files")
 
@@ -371,10 +326,6 @@ if __name__ == "__main__":
     mediapipe_3d_frame_trackedPoint_xyz = np.load(
         r"C:\Users\jonma\freemocap_data\session_10-15-2022-09_50_10\output_data\post_processed_data\mediaPipeSkel_3d_origin_aligned.npy"
     )
-    output_data_folder_path = (
-        r"C:\Users\jonma\freemocap_data\session_10-15-2022-09_50_10\output_data"
-    )
+    output_data_folder_path = r"C:\Users\jonma\freemocap_data\session_10-15-2022-09_50_10\output_data"
 
-    convert_mediapipe_npy_to_csv(
-        mediapipe_3d_frame_trackedPoint_xyz, output_data_folder_path
-    )
+    convert_mediapipe_npy_to_csv(mediapipe_3d_frame_trackedPoint_xyz, output_data_folder_path)

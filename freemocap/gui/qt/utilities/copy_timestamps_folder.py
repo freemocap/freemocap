@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Union
 
 logger = logging.getLogger(__name__)
+
+
 def copy_directory_if_contains_timestamps(source_dir: Union[Path, str], destination_dir: Union[Path, str]) -> bool:
     source_path = Path(source_dir)
     destination_path = Path(destination_dir)
@@ -17,7 +19,6 @@ def copy_directory_if_contains_timestamps(source_dir: Union[Path, str], destinat
     if not timestamps_path.exists():
         logger.info(f"{source_dir} does not contain a 'timestamps' directory or file.")
         return False
-
 
     # Create the destination directory if it doesn't exist
     destination_path.mkdir(parents=True, exist_ok=True)

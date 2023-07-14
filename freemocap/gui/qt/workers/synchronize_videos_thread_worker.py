@@ -21,9 +21,7 @@ class SynchronizeVideosThreadWorker(QThread):
         kill_thread_event: threading.Event,
     ):
         super().__init__()
-        logger.info(
-            f"Initializing Synchronize Videos Thread Worker"
-        )
+        logger.info(f"Initializing Synchronize Videos Thread Worker")
         self._kill_thread_event = kill_thread_event
         self._raw_video_folder_path = raw_video_folder_path
         self._synchronized_video_folder_path = synchronized_video_folder_path
@@ -46,7 +44,7 @@ class SynchronizeVideosThreadWorker(QThread):
             self.output_folder_path = synchronize_videos_from_audio(
                 raw_video_folder_path=self._raw_video_folder_path,
                 synchronized_video_folder_path=self._synchronized_video_folder_path,
-                create_debug_plots_bool=False
+                create_debug_plots_bool=False,
             )
 
         except Exception as e:
@@ -57,4 +55,3 @@ class SynchronizeVideosThreadWorker(QThread):
         self._work_done = True
 
         logger.info("Synchronizing Videos Complete")
-

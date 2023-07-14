@@ -2,6 +2,7 @@ import logging
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget, QLabel
+
 # from skelly_viewer import SkellyViewer
 from skellycam import SkellyCamWidget
 
@@ -68,7 +69,9 @@ class CentralTabWidget(QTabWidget):
 
         self._camera_view_layout.addWidget(self._skelly_cam_widget)
 
-        lag_note_label = QLabel("NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras. The frames are likely being being recorded properly, its just the viewer that is lagging. A fix is incoming soon!")
+        lag_note_label = QLabel(
+            "NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras. The frames are likely being being recorded properly, its just the viewer that is lagging. A fix is incoming soon!"
+        )
         lag_note_label.setStyleSheet("font-size: 10px;")
         lag_note_label.setWordWrap(True)
         layout = QVBoxLayout()
@@ -88,4 +91,3 @@ class CentralTabWidget(QTabWidget):
     def _create_active_recording_info_tab(self, tab_widget: QTabWidget):
         logger.info("Creating active recording info tab")
         tab_widget.addTab(self._active_recording_info_widget, f"Active Recording Info")
-

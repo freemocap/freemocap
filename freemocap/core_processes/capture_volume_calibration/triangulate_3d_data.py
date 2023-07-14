@@ -32,7 +32,6 @@ def remove_3d_data_with_high_reprojection_error(
     data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
     data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
 ):
-
     return data3d_numFrames_numTrackedPoints_XYZ
     # TODO - Fix this function (it was causing overfiltering when combined with the anipose calibration confidence thresholding)
 
@@ -83,9 +82,8 @@ def triangulate_3d_data(
     output_data_folder_path: Union[str, Path],
     mediapipe_confidence_cutoff_threshold: float,
     use_triangulate_ransac: bool = False,
-    kill_event : multiprocessing.Event = None,
+    kill_event: multiprocessing.Event = None,
 ):
-
     number_of_cameras = mediapipe_2d_data.shape[0]
     number_of_frames = mediapipe_2d_data.shape[1]
     number_of_tracked_points = mediapipe_2d_data.shape[2]

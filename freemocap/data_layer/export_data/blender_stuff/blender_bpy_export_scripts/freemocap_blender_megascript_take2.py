@@ -21,11 +21,12 @@ logger = logging.getLogger(__name__)
 ###############################################################
 
 
-def main(recording_path: Union[str, Path],
-         blender_file_save_path: Union[str, Path],
-         mediapipe_empty_names: Dict[str, List[str]],
-         create_rig: bool = True,
-         ):
+def main(
+    recording_path: Union[str, Path],
+    blender_file_save_path: Union[str, Path],
+    mediapipe_empty_names: Dict[str, List[str]],
+    create_rig: bool = True,
+):
     ###%% clear the scene - Scorch the earth \o/
     print("Clearing scene...")
     try:
@@ -50,7 +51,9 @@ def main(recording_path: Union[str, Path],
         path_to_face_npy = path_to_data_arrays_folder / "mediapipe_face_3d_xyz.npy"
 
         path_to_center_of_mass_npy = path_to_data_arrays_folder / "center_of_mass" / "total_body_center_of_mass_xyz.npy"
-        path_to_body_segment_centers_npy = path_to_data_arrays_folder / "center_of_mass" / "segmentCOM_frame_joint_xyz.npy"
+        path_to_body_segment_centers_npy = (
+            path_to_data_arrays_folder / "center_of_mass" / "segmentCOM_frame_joint_xyz.npy"
+        )
 
         mediapipe_body_fr_mar_xyz = np.load(str(path_to_body_npy)) / 1000  # load and convert to meters
         mediapipe_right_hand_fr_mar_xyz = np.load(str(path_to_right_hand_npy)) / 1000
@@ -62,7 +65,7 @@ def main(recording_path: Union[str, Path],
 
         # load reprojection error
         path_to_reprojection_error_npy = (
-                path_to_data_arrays_folder / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+            path_to_data_arrays_folder / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
         )
         mediapipe_reprojection_error_fr_mar = np.load(str(path_to_reprojection_error_npy))
 
@@ -105,10 +108,12 @@ def main(recording_path: Union[str, Path],
     ############################
     ### Load mocap data as empty markers
 
-    print("_________________________\n"
-          "__________________________\n"
-          "Loading freemocap trajectory data as empty markers..."
-          "_________________________\n")
+    print(
+        "_________________________\n"
+        "__________________________\n"
+        "Loading freemocap trajectory data as empty markers..."
+        "_________________________\n"
+    )
 
     mediapipe_body_trajectory_names = [empty_name for empty_name in mediapipe_empty_names["body"]]
 
@@ -117,8 +122,7 @@ def main(recording_path: Union[str, Path],
     # mediapipe_face_trajectory_names = [f"face_{number}:{empty_name}" for number, empty_name in
     #                                    face_contour_marker_indices]
 
-    try: #load as much of the data as you can, but if there's an error keep going
-
+    try:  # load as much of the data as you can, but if there's an error keep going
         # create empty markers for body
         body_empty_scale = 0.03
         for marker_number in range(mediapipe_body_fr_mar_xyz.shape[1]):
@@ -133,7 +137,7 @@ def main(recording_path: Union[str, Path],
             )
 
         # create empty markers for right hand
-        hand_empty_scale  = body_empty_scale * 0.5
+        hand_empty_scale = body_empty_scale * 0.5
         for marker_number in range(mediapipe_right_hand_fr_mar_xyz.shape[1]):
             trajectory_name = mediapipe_right_hand_trajectory_names[marker_number]
             trajectory_fr_xyz = mediapipe_right_hand_fr_mar_xyz[:, marker_number, :]
@@ -173,12 +177,12 @@ def main(recording_path: Union[str, Path],
         # create empty markers for full body center of mass
         full_body_center_of_mass_empty_scale = body_empty_scale * 1.5
         create_keyframed_empty_from_3d_trajectory_data(
-                trajectory_fr_xyz=center_of_mass_fr_xyz,
-                trajectory_name=FULL_BODY_CENTER_OF_MASS_NAME,
-                parent_origin=freemocap_origin_axes,
-                empty_scale=full_body_center_of_mass_empty_scale,
-                empty_type="SPHERE",
-            )
+            trajectory_fr_xyz=center_of_mass_fr_xyz,
+            trajectory_name=FULL_BODY_CENTER_OF_MASS_NAME,
+            parent_origin=freemocap_origin_axes,
+            empty_scale=full_body_center_of_mass_empty_scale,
+            empty_type="SPHERE",
+        )
 
         # # create empty markers for face
         # face_empty_scale = 0.005
@@ -202,9 +206,7 @@ def main(recording_path: Union[str, Path],
 
     #######################################################################
     # %% create virtual markers
-    print("_________________________\n"
-          "-------------------------\n"
-          "Creating virtual markers...")
+    print("_________________________\n" "-------------------------\n" "Creating virtual markers...")
 
     # verify that the virtual marker definition dictionary is valid
     test_virtual_marker_definitions(mediapipe_virtual_marker_definitions_dict)
@@ -217,7 +219,8 @@ def main(recording_path: Union[str, Path],
         print(
             f"Calculating virtual marker trajectory: {virtual_marker_name} \n"
             f"Component trajectories: {component_trajectory_names} \n"
-            f" weights: {trajectory_weights}\n")
+            f" weights: {trajectory_weights}\n"
+        )
 
         virtual_marker_xyz = calculate_virtual_marker_trajectory(
             trajectory_3d_frame_marker_xyz=mediapipe_body_fr_mar_xyz,
@@ -239,14 +242,14 @@ def main(recording_path: Union[str, Path],
 
     #######################################################################
     # put sphere meshes on empty markers for visualization
-    try: # try to create sphere meshes on empty markers, if it fails, print the error and continue
+    try:  # try to create sphere meshes on empty markers, if it fails, print the error and continue
         # body
         put_sphere_meshes_on_empties(
             empty_names_list=mediapipe_body_trajectory_names,
             parent_object=freemocap_origin_axes,
-            sphere_scale=body_empty_scale*0.8,
+            sphere_scale=body_empty_scale * 0.8,
             marker_type="body",
-            color = '#33FF66'
+            color="#33FF66",
         )
 
         # create_stick_meshes_between_emtpies(
@@ -260,17 +263,17 @@ def main(recording_path: Union[str, Path],
         put_sphere_meshes_on_empties(
             empty_names_list=mediapipe_right_hand_trajectory_names,
             parent_object=freemocap_origin_axes,
-            sphere_scale=hand_empty_scale*0.8,
+            sphere_scale=hand_empty_scale * 0.8,
             marker_type="right_hand",
-            color='#FF0000'
+            color="#FF0000",
         )
 
         put_sphere_meshes_on_empties(
             empty_names_list=mediapipe_left_hand_trajectory_names,
             parent_object=freemocap_origin_axes,
-            sphere_scale=hand_empty_scale*0.8,
+            sphere_scale=hand_empty_scale * 0.8,
             marker_type="left_hand",
-            color='#0000FF'
+            color="#0000FF",
         )
 
         # # face
@@ -283,20 +286,18 @@ def main(recording_path: Union[str, Path],
         put_sphere_meshes_on_empties(
             empty_names_list=BODY_SEGMENT_NAMES,
             parent_object=freemocap_origin_axes,
-            sphere_scale=body_segment_center_empty_scale*0.8,
+            sphere_scale=body_segment_center_empty_scale * 0.8,
             marker_type="body_segment_center",
-            color='#CCCC00'
-
+            color="#CCCC00",
         )
 
         put_sphere_meshes_on_empties(
             empty_names_list=[FULL_BODY_CENTER_OF_MASS_NAME],
             parent_object=freemocap_origin_axes,
-            sphere_scale=body_empty_scale*1.25,
+            sphere_scale=body_empty_scale * 1.25,
             marker_type="center_of_mass",
-            color='#FF00FF',
+            color="#FF00FF",
             emission_strength=30,
-
         )
     except Exception as e:
         print(f"Error creating sphere meshes on empties: {e}")
@@ -352,17 +353,15 @@ def main(recording_path: Union[str, Path],
             human_metarig = bpy.context.editable_objects[-1]
             human_metarig.data.display_type = "WIRE"
 
-
             ##################
             ### Scale armature
 
             bpy.ops.object.mode_set(mode="EDIT")
 
             for (
-                    segment_name,
-                    rigify_bones_list,
+                segment_name,
+                rigify_bones_list,
             ) in rigify_bone_to_skeleton_segment_name_correspondance.items():
-
                 for rigify_bone_name in rigify_bones_list:
                     median_segment_length = skeleton_segment_lengths_dict[segment_name]["median"]
                     median_segment_length *= 0.001  # scale to meters
@@ -373,19 +372,21 @@ def main(recording_path: Union[str, Path],
                     print(f"setting {rigify_bone_name} length to: {segment_length:.3f} m")
                     human_metarig.data.edit_bones[rigify_bone_name].length = segment_length
 
-            delete_bones = ["pelvis.L",
-                            "pelvis.R",
-                            "breast.L",
-                            "breast.R",
-                            "heel.02.L",
-                            "heel.02.R",
-                            "toe.L",
-                            "toe.R", ]
+            delete_bones = [
+                "pelvis.L",
+                "pelvis.R",
+                "breast.L",
+                "breast.R",
+                "heel.02.L",
+                "heel.02.R",
+                "toe.L",
+                "toe.R",
+            ]
 
             for bone in delete_bones:
                 human_metarig.data.edit_bones.remove(human_metarig.data.edit_bones[bone])
 
-            extra_scale_bones = {"spine.005": .2}
+            extra_scale_bones = {"spine.005": 0.2}
 
             for bone, scale in extra_scale_bones.items():
                 human_metarig.data.edit_bones[bone].length *= scale
@@ -411,7 +412,6 @@ def main(recording_path: Union[str, Path],
                 "____________________________________________________________________________",
             )
 
-
         except Exception as e:
             print("Error creating rig!! (You might need to manually activate the `rigify` addon in Blender)")
             print(e)
@@ -432,7 +432,6 @@ def main(recording_path: Union[str, Path],
     # human_metarig.hide_set = True
     bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
 
-
     print(
         "____________________________________________________________________________\n",
         "____________________________________________________________________________\n",
@@ -450,8 +449,8 @@ def add_videos_to_scene(videos_path: Union[Path, str], parent_object: bpy.types.
     number_of_videos = len(list(get_video_paths(videos_path)))
     print(f"Found {number_of_videos} videos in {videos_path}")
     for (
-            video_number,
-            video_path,
+        video_number,
+        video_path,
     ) in enumerate(get_video_paths(videos_path)):
         print(f"Adding video: {video_path.name} to scene")
 
@@ -479,11 +478,11 @@ def add_videos_to_scene(videos_path: Union[Path, str], parent_object: bpy.types.
 
 
 def create_keyframed_empty_from_3d_trajectory_data(
-        trajectory_fr_xyz: np.ndarray,
-        trajectory_name: str,
-        parent_origin: bpy.types.Object = None,
-        empty_scale: float = 0.1,
-        empty_type: str = "PLAIN_AXES",
+    trajectory_fr_xyz: np.ndarray,
+    trajectory_name: str,
+    parent_origin: bpy.types.Object = None,
+    empty_scale: float = 0.1,
+    empty_type: str = "PLAIN_AXES",
 ):
     """
     Create a key framed empty from 3d trajectory data
@@ -507,10 +506,11 @@ def create_keyframed_empty_from_3d_trajectory_data(
         empty_object.keyframe_insert(data_path="location", frame=frame_number)
 
 
-
-def create_material(name: str = "Generic",
-                    color: Union[str, Tuple, List] = "#00FFFF",
-                    emission_strength: float = 1.0,):
+def create_material(
+    name: str = "Generic",
+    color: Union[str, Tuple, List] = "#00FFFF",
+    emission_strength: float = 1.0,
+):
     """
     Create a material with the given name and color, with a strong emission.
 
@@ -527,10 +527,10 @@ def create_material(name: str = "Generic",
     nodes.clear()
 
     # Create necessary nodes
-    output = nodes.new(type='ShaderNodeOutputMaterial')
-    emission = nodes.new(type='ShaderNodeEmission')
-    bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
-    mix = nodes.new(type='ShaderNodeMixShader')
+    output = nodes.new(type="ShaderNodeOutputMaterial")
+    emission = nodes.new(type="ShaderNodeEmission")
+    bsdf = nodes.new(type="ShaderNodeBsdfPrincipled")
+    mix = nodes.new(type="ShaderNodeMixShader")
 
     # Set the locations
     output.location = (300, 0)
@@ -545,7 +545,7 @@ def create_material(name: str = "Generic",
 
     # Convert color from hex to RGB
     if isinstance(color, str) and color.startswith("#"):
-        color_rgb = [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)] # skips the "#" and separates R, G, and B
+        color_rgb = [int(color[i : i + 2], 16) / 255 for i in (1, 3, 5)]  # skips the "#" and separates R, G, and B
     elif isinstance(color, list) or isinstance(color, tuple):
         color_rgb = color
 
@@ -558,15 +558,15 @@ def create_material(name: str = "Generic",
 
     return material
 
-def put_sphere_meshes_on_empties(
 
-        empty_names_list: list,
-        parent_object: bpy.types.Object,
-        sphere_scale: float = 0.02,
-        material: Union[bpy.types.Material, str] = None,
-        color: str = "#00FFFF",
-        marker_type: str = "generic",
-        emission_strength: float = 1.0,
+def put_sphere_meshes_on_empties(
+    empty_names_list: list,
+    parent_object: bpy.types.Object,
+    sphere_scale: float = 0.02,
+    material: Union[bpy.types.Material, str] = None,
+    color: str = "#00FFFF",
+    marker_type: str = "generic",
+    emission_strength: float = 1.0,
 ):
     """
     Put uv sphere meshes on the empties in `empty_names_list` with a scale of `sphere_scale`.
@@ -578,10 +578,11 @@ def put_sphere_meshes_on_empties(
     """
     # If material is None, create a default material
     if material is None:
-        material = create_material(color=color,
-                                   name=marker_type,
-                                   emission_strength=emission_strength,
-                                   )
+        material = create_material(
+            color=color,
+            name=marker_type,
+            emission_strength=emission_strength,
+        )
 
     # Ensure the provided material is a bpy.types.Material object
     assert isinstance(material, bpy.types.Material), "Material must be a bpy.types.Material object or a color string"
@@ -596,10 +597,13 @@ def put_sphere_meshes_on_empties(
         constraint = sphere.constraints.new(type="COPY_LOCATION")
         constraint.target = bpy.data.objects[empty_name]
 
-def create_stick_meshes_between_emtpies(body_frame_marker_xyz: np.ndarray,
-                                        empty_names: List[str],
-                                        body_connections: Dict[int, int],
-                                        parent_object: bpy.types.Object, ):
+
+def create_stick_meshes_between_emtpies(
+    body_frame_marker_xyz: np.ndarray,
+    empty_names: List[str],
+    body_connections: Dict[int, int],
+    parent_object: bpy.types.Object,
+):
     """make cylinder meshes between the empties as defined in `body_connections`"""
     for origin_marker_index, target_marker_index in body_connections.items():
         origin_marker_name = empty_names[origin_marker_index]
@@ -619,36 +623,40 @@ def create_stick_meshes_between_emtpies(body_frame_marker_xyz: np.ndarray,
 
         for frame_number in range(body_frame_marker_xyz.shape[0]):
             distance_between_markers = np.linalg.norm(
-                body_frame_marker_xyz[frame_number, origin_marker_index, :] -
-                body_frame_marker_xyz[frame_number, target_marker_index, :]
+                body_frame_marker_xyz[frame_number, origin_marker_index, :]
+                - body_frame_marker_xyz[frame_number, target_marker_index, :]
             )
             stick.scale = [1, 1, distance_between_markers]
             stick.keyframe_insert(data_path="scale", frame=frame_number)
 
 
-def create_stick_mesh(vertices: int = 12,
-                      radius: float = 0.02,
-                      depth: float = 1.0,
-                      location=(0, 0, 0),
-                      rotation=(0, 0, 0),
-                      scale=(1, 1, 1),
-                      end_fill_type='TRIFAN',
-                      enter_editmode=False,
-                      align='WORLD'):
-    bpy.ops.mesh.primitive_cylinder_add(radius=radius,
-                                        depth=depth,
-                                        vertices=vertices,
-                                        location=location,
-                                        rotation=rotation,
-                                        scale=scale,
-                                        end_fill_type=end_fill_type,
-                                        enter_editmode=enter_editmode,
-                                        align=align)
+def create_stick_mesh(
+    vertices: int = 12,
+    radius: float = 0.02,
+    depth: float = 1.0,
+    location=(0, 0, 0),
+    rotation=(0, 0, 0),
+    scale=(1, 1, 1),
+    end_fill_type="TRIFAN",
+    enter_editmode=False,
+    align="WORLD",
+):
+    bpy.ops.mesh.primitive_cylinder_add(
+        radius=radius,
+        depth=depth,
+        vertices=vertices,
+        location=location,
+        rotation=rotation,
+        scale=scale,
+        end_fill_type=end_fill_type,
+        enter_editmode=enter_editmode,
+        align=align,
+    )
     # give 3dcursor new coordinates
     bpy.context.scene.cursor.location = (0.0, 0.0, -0.5)
 
     # set the origin on the current object to the 3dcursor location
-    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
     return bpy.context.editable_objects[-1]
 
 
@@ -657,8 +665,8 @@ def apply_constraints_to_bone(bone_name: str, bone_constraint_dict: dict, armatu
     Apply constraints to a bone (that exists in `armature_rig` based on a dictionary of constraints
     """
     for (
-            constraint_name,
-            constrain_parameters_dict,
+        constraint_name,
+        constrain_parameters_dict,
     ) in bone_constraint_dict.items():
         constraint_name = constraint_name.split(".")[
             0
@@ -673,7 +681,6 @@ def apply_constraints_to_bone(bone_name: str, bone_constraint_dict: dict, armatu
 
         # generic constraint settings
         if "target" in constrain_parameters_dict:
-
             if constrain_parameters_dict["target"] == "armature":
                 constraint.target = armature_rig
                 constraint.subtarget = constrain_parameters_dict["subtarget"]
@@ -712,22 +719,22 @@ def test_virtual_marker_definitions(virtual_marker_definitions_dict: dict):
     """
 
     for (
-            virtual_marker_name,
-            virtual_marker_definition,
+        virtual_marker_name,
+        virtual_marker_definition,
     ) in virtual_marker_definitions_dict.items():
         assert len(virtual_marker_definition["marker_names"]) == len(
             virtual_marker_definition["marker_weights"]
         ), f"marker_names and marker_weights must be the same length for virtual marker {virtual_marker_name}"
         assert (
-                sum(virtual_marker_definition["marker_weights"]) == 1
+            sum(virtual_marker_definition["marker_weights"]) == 1
         ), f"marker_weights must sum to 1 for virtual marker {virtual_marker_name}"
 
 
 def calculate_virtual_marker_trajectory(
-        trajectory_3d_frame_marker_xyz: np.ndarray,
-        all_trajectory_names: list,
-        component_trajectory_names: List,
-        trajectory_weights: List,
+    trajectory_3d_frame_marker_xyz: np.ndarray,
+    all_trajectory_names: list,
+    component_trajectory_names: List,
+    trajectory_weights: List,
 ) -> np.ndarray:
     """
     Create a virtual marker from a set of component markers. A 'Virtual Marker' is a 'fake' marker created by combining the data from 'real' (measured) marker/trajectory data
@@ -739,14 +746,16 @@ def calculate_virtual_marker_trajectory(
 
     # double check that the weights scale to one, otherwise this function will return screwy results
     assert np.sum(trajectory_weights) == 1, "Error - Trajectory_weights must sum to 1!"
-    assert len(component_trajectory_names) == len(trajectory_weights), \
-        "Error - component_trajectory_names and trajectory_weights must be the same length!"
+    assert len(component_trajectory_names) == len(
+        trajectory_weights
+    ), "Error - component_trajectory_names and trajectory_weights must be the same length!"
     virtual_marker_xyz = np.zeros((trajectory_3d_frame_marker_xyz.shape[0], 3))
 
     for trajectory_name, weight in zip(component_trajectory_names, trajectory_weights):
         # pull out the trajectory data for this component trajectory and scale by it's `weight`
         component_trajectory_xyz = copy(
-            trajectory_3d_frame_marker_xyz[:, all_trajectory_names.index(trajectory_name), :] * weight)
+            trajectory_3d_frame_marker_xyz[:, all_trajectory_names.index(trajectory_name), :] * weight
+        )
 
         # add it to the virtual marker
         virtual_marker_xyz += component_trajectory_xyz
@@ -754,12 +763,14 @@ def calculate_virtual_marker_trajectory(
     return virtual_marker_xyz
 
 
-def creating_stick_figure_mesh_from_bone_dictionary(trajectory_frame_marker_xyz: np.ndarray,
-                                                    body_connections: Dict[int, int]):
+def creating_stick_figure_mesh_from_bone_dictionary(
+    trajectory_frame_marker_xyz: np.ndarray, body_connections: Dict[int, int]
+):
     print("creating_stick_figure_mesh_from_bone_dictionary")
 
     assert (
-                len(trajectory_frame_marker_xyz.shape) == 3), "trajectory_frame_marker_xyz must have three axes - [frame, marker, xyz] (e.g. skeleton data from a single frame"
+        len(trajectory_frame_marker_xyz.shape) == 3
+    ), "trajectory_frame_marker_xyz must have three axes - [frame, marker, xyz] (e.g. skeleton data from a single frame"
     mesh = bpy.data.meshes.new("stick_figure_mesh")
 
     init_zero_vertices = np.zeros((trajectory_frame_marker_xyz.shape[1], 3))
@@ -772,9 +783,9 @@ def creating_stick_figure_mesh_from_bone_dictionary(trajectory_frame_marker_xyz:
     mesh.validate(verbose=True)
     mesh.update()
 
-    skin_radius = .025
+    skin_radius = 0.025
     print(f"Skinning stick figure mesh with radius {skin_radius}...")
-    bpy.data.objects['stick_figure_mesh'].modifiers.new('stick_figure_mesh_skin', 'SKIN')
+    bpy.data.objects["stick_figure_mesh"].modifiers.new("stick_figure_mesh_skin", "SKIN")
     bpy.ops.transform.skin_resize(value=(skin_radius, skin_radius, skin_radius))
 
     for frame_number in range(trajectory_frame_marker_xyz.shape[0]):
@@ -782,6 +793,7 @@ def creating_stick_figure_mesh_from_bone_dictionary(trajectory_frame_marker_xyz:
             vertex.co = trajectory_frame_marker_xyz[frame_number, vertex.index, :]
             vertex.keyframe_insert(data_path="co", frame=frame_number)  # keyframe the vertex location
         mesh.update()
+
 
 def get_video_paths(path_to_video_folder: Path) -> list:
     """Search the folder for 'mp4' files (case insensitive) and return them as a list"""
@@ -804,118 +816,244 @@ def get_unique_list(list: list) -> list:
 
 mediapipe_empty_names = {
     # generated by: freemocap/core_processes/detecting_things_in_2d_images/mediapipe_stuff/mediapipe_skeleton_names_and_connections.py
-    'body': ['nose',
-             'left_eye_inner',
-             'left_eye',
-             'left_eye_outer',
-             'right_eye_inner',
-             'right_eye',
-             'right_eye_outer',
-             'left_ear',
-             'right_ear',
-             'mouth_left',
-             'mouth_right',
-             'left_shoulder',
-             'right_shoulder',
-             'left_elbow',
-             'right_elbow',
-             'left_wrist',
-             'right_wrist',
-             'left_pinky',
-             'right_pinky',
-             'left_index',
-             'right_index',
-             'left_thumb',
-             'right_thumb',
-             'left_hip',
-             'right_hip',
-             'left_knee',
-             'right_knee',
-             'left_ankle',
-             'right_ankle',
-             'left_heel',
-             'right_heel',
-             'left_foot_index',
-             'right_foot_index'],
-    'hand': ['wrist',
-             'thumb_cmc',
-             'thumb_mcp',
-             'thumb_ip',
-             'thumb_tip',
-             'index_finger_mcp',
-             'index_finger_pip',
-             'index_finger_dip',
-             'index_finger_tip',
-             'middle_finger_mcp',
-             'middle_finger_pip',
-             'middle_finger_dip',
-             'middle_finger_tip',
-             'ring_finger_mcp',
-             'ring_finger_pip',
-             'ring_finger_dip',
-             'ring_finger_tip',
-             'pinky_mcp',
-             'pinky_pip',
-             'pinky_dip',
-             'pinky_tip'],
-
-    'face': ['right_eye',
-             'left_eye',
-             'nose_tip',
-             'mouth_center',
-             'right_ear_tragion',
-             'left_ear_tragion']}
+    "body": [
+        "nose",
+        "left_eye_inner",
+        "left_eye",
+        "left_eye_outer",
+        "right_eye_inner",
+        "right_eye",
+        "right_eye_outer",
+        "left_ear",
+        "right_ear",
+        "mouth_left",
+        "mouth_right",
+        "left_shoulder",
+        "right_shoulder",
+        "left_elbow",
+        "right_elbow",
+        "left_wrist",
+        "right_wrist",
+        "left_pinky",
+        "right_pinky",
+        "left_index",
+        "right_index",
+        "left_thumb",
+        "right_thumb",
+        "left_hip",
+        "right_hip",
+        "left_knee",
+        "right_knee",
+        "left_ankle",
+        "right_ankle",
+        "left_heel",
+        "right_heel",
+        "left_foot_index",
+        "right_foot_index",
+    ],
+    "hand": [
+        "wrist",
+        "thumb_cmc",
+        "thumb_mcp",
+        "thumb_ip",
+        "thumb_tip",
+        "index_finger_mcp",
+        "index_finger_pip",
+        "index_finger_dip",
+        "index_finger_tip",
+        "middle_finger_mcp",
+        "middle_finger_pip",
+        "middle_finger_dip",
+        "middle_finger_tip",
+        "ring_finger_mcp",
+        "ring_finger_pip",
+        "ring_finger_dip",
+        "ring_finger_tip",
+        "pinky_mcp",
+        "pinky_pip",
+        "pinky_dip",
+        "pinky_tip",
+    ],
+    "face": ["right_eye", "left_eye", "nose_tip", "mouth_center", "right_ear_tragion", "left_ear_tragion"],
+}
 
 # NOTE - numbers refer to the index of the name in the relevant list above
-body_connections = {15: 19,
-                    16: 18,
-                    18: 20,
-                    3: 7,
-                    14: 16,
-                    23: 24,
-                    28: 32,
-                    11: 12,
-                    27: 29,
-                    6: 8,
-                    24: 26,
-                    4: 5,
-                    5: 6,
-                    29: 31,
-                    12: 14,
-                    0: 4,
-                    9: 10,
-                    1: 2,
-                    30: 32,
-                    25: 27,
-                    26: 28,
-                    17: 19,
-                    2: 3,
-                    13: 15}
+body_connections = {
+    15: 19,
+    16: 18,
+    18: 20,
+    3: 7,
+    14: 16,
+    23: 24,
+    28: 32,
+    11: 12,
+    27: 29,
+    6: 8,
+    24: 26,
+    4: 5,
+    5: 6,
+    29: 31,
+    12: 14,
+    0: 4,
+    9: 10,
+    1: 2,
+    30: 32,
+    25: 27,
+    26: 28,
+    17: 19,
+    2: 3,
+    13: 15,
+}
 
-hand_connections = {3: 4,
-                    0: 1,
-                    17: 18,
-                    13: 17,
-                    18: 19,
-                    5: 9,
-                    14: 15,
-                    9: 13,
-                    1: 2,
-                    10: 11,
-                    19: 20,
-                    6: 7,
-                    15: 16,
-                    2: 3,
-                    11: 12,
-                    7: 8}
+hand_connections = {
+    3: 4,
+    0: 1,
+    17: 18,
+    13: 17,
+    18: 19,
+    5: 9,
+    14: 15,
+    9: 13,
+    1: 2,
+    10: 11,
+    19: 20,
+    6: 7,
+    15: 16,
+    2: 3,
+    11: 12,
+    7: 8,
+}
 # boy howdy mediapipe did not make it easy to get this info...
-face_contour_marker_indices = [0, 7, 10, 13, 14, 17, 21, 33, 37, 39, 40, 46, 52, 53, 54, 55, 58, 61, 63, 65, 66, 67, 70,
-                               78, 80, 81, 82, 84, 87, 88, 91, 93, 95, 103, 105, 107, 109, 127, 132, 133, 136, 144, 145,
-                               146, 148, 149, 150, 152, 153, 154, 155, 157, 158, 159, 160, 161, 162, 163, 172, 173, 176,
-                               178, 181, 185, 191, 234, 246, 249, 251, 263, 267, 269, 270, 276, 282, 283, 284, 285, 288,
-                               291, 293, 295, 296, 297, 300, 308, 310, 311, 312, 314, 317, 318, 321, 323, 324, 332, 334,
-                               336, 338, 356, 361, 362, 365, 373, 374, 375, 377, 378, 379, 380, 381, 382, 384, 385, 386,
-                               387, 388, 389, 390, 397, 398, 400, 402, 405, 409, 415, 454, 466]
+face_contour_marker_indices = [
+    0,
+    7,
+    10,
+    13,
+    14,
+    17,
+    21,
+    33,
+    37,
+    39,
+    40,
+    46,
+    52,
+    53,
+    54,
+    55,
+    58,
+    61,
+    63,
+    65,
+    66,
+    67,
+    70,
+    78,
+    80,
+    81,
+    82,
+    84,
+    87,
+    88,
+    91,
+    93,
+    95,
+    103,
+    105,
+    107,
+    109,
+    127,
+    132,
+    133,
+    136,
+    144,
+    145,
+    146,
+    148,
+    149,
+    150,
+    152,
+    153,
+    154,
+    155,
+    157,
+    158,
+    159,
+    160,
+    161,
+    162,
+    163,
+    172,
+    173,
+    176,
+    178,
+    181,
+    185,
+    191,
+    234,
+    246,
+    249,
+    251,
+    263,
+    267,
+    269,
+    270,
+    276,
+    282,
+    283,
+    284,
+    285,
+    288,
+    291,
+    293,
+    295,
+    296,
+    297,
+    300,
+    308,
+    310,
+    311,
+    312,
+    314,
+    317,
+    318,
+    321,
+    323,
+    324,
+    332,
+    334,
+    336,
+    338,
+    356,
+    361,
+    362,
+    365,
+    373,
+    374,
+    375,
+    377,
+    378,
+    379,
+    380,
+    381,
+    382,
+    384,
+    385,
+    386,
+    387,
+    388,
+    389,
+    390,
+    397,
+    398,
+    400,
+    402,
+    405,
+    409,
+    415,
+    454,
+    466,
+]
 
 mediapipe_virtual_marker_definitions_dict = {
     "head_center": {
@@ -1054,12 +1192,13 @@ BODY_SEGMENT_NAMES = [
 ]
 
 
-FULL_BODY_CENTER_OF_MASS_NAME = "_full_body_center_of_mass" #leading underscore to make it easier to find in the outliner
+FULL_BODY_CENTER_OF_MASS_NAME = (
+    "_full_body_center_of_mass"  # leading underscore to make it easier to find in the outliner
+)
 
 print(f"__name__: {__name__}")
 
 if __name__ == "__main__" or __name__ == "<run_path>":
-
     # this is the part that actually runs the script
     argv = sys.argv
     create_rig_input = True
@@ -1069,7 +1208,7 @@ if __name__ == "__main__" or __name__ == "<run_path>":
         # Session path
         # get session path as command line argument
         print(f"Received command line arguments: {argv}")
-        argv = argv[argv.index("--") + 1:]
+        argv = argv[argv.index("--") + 1 :]
 
         recording_path_input = Path(argv[0])
         blender_file_save_path_input = Path(argv[1])
@@ -1078,7 +1217,6 @@ if __name__ == "__main__" or __name__ == "<run_path>":
         print(f"There was a problem loading command line arguments: {e}. Using hardcoded values instead.")
 
         if len(argv) == 0:
-
             ####
             # Change the path below (`recording_path_input`) to the path to your recording session folder
             ####
@@ -1088,11 +1226,15 @@ if __name__ == "__main__" or __name__ == "<run_path>":
             blender_file_save_path_input = Path(recording_path_input) / f"{Path(recording_path_input).name}_.blend"
             create_rig = True
 
-    print(f"recording_path_input: {recording_path_input}, \n"
-          f"blender_file_save_path_input: {blender_file_save_path_input}, \n"
-          f"create_rig_input: {create_rig_input}")
+    print(
+        f"recording_path_input: {recording_path_input}, \n"
+        f"blender_file_save_path_input: {blender_file_save_path_input}, \n"
+        f"create_rig_input: {create_rig_input}"
+    )
 
-    main(recording_path=recording_path_input,
-         blender_file_save_path=blender_file_save_path_input,
-         mediapipe_empty_names=mediapipe_empty_names,
-         create_rig=create_rig_input,)
+    main(
+        recording_path=recording_path_input,
+        blender_file_save_path=blender_file_save_path_input,
+        mediapipe_empty_names=mediapipe_empty_names,
+        create_rig=create_rig_input,
+    )

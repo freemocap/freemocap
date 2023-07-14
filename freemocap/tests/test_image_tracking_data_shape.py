@@ -13,7 +13,7 @@ from freemocap.utilities.get_video_paths import get_video_paths
 @pytest.mark.usefixtures("synchronized_video_folder_path", "image_tracking_data_file_path")
 def test_image_tracking_data_shape(
     synchronized_video_folder_path: Union[str, Path],
-        image_tracking_data_file_path,
+    image_tracking_data_file_path,
 ):
     """
     test that the `mediapipe 2d detection` process worked correctly by checking:
@@ -45,5 +45,6 @@ def test_image_tracking_data_shape(
 
     # TODO - check number of tracked points vs 'expected' number of tracked points
 
-    assert image_tracking_data.shape[3] == 3, f"Data has {image_tracking_data.shape[3]} dimensions, expected 3 dimensions"
-
+    assert (
+        image_tracking_data.shape[3] == 3
+    ), f"Data has {image_tracking_data.shape[3]} dimensions, expected 3 dimensions"

@@ -48,8 +48,6 @@ class AniposeCalibrationThreadWorker(QThread):
         logger.info("Beginning Anipose calibration with Charuco Square Size (mm): {}".format(self._charuco_square_size))
 
         try:
-
-
             run_anipose_capture_volume_calibration(
                 charuco_board_definition=self._charuco_board_definition,
                 charuco_square_size=self._charuco_square_size,
@@ -57,8 +55,6 @@ class AniposeCalibrationThreadWorker(QThread):
                 pin_camera_0_to_origin=True,
                 progress_callback=self._emit_in_progress_data,
             )
-
-
 
         except Exception as e:
             logger.exception("something went wrong in the anipose calibration")
@@ -68,4 +64,3 @@ class AniposeCalibrationThreadWorker(QThread):
         self._work_done = True
 
         logger.info("Anipose Calibration Complete")
-

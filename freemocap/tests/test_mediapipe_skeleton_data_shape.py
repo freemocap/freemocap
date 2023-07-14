@@ -13,7 +13,7 @@ from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
 def test_mediapipe_skeleton_data_shape(
     synchronized_video_folder_path: Union[str, Path],
     raw_skeleton_npy_file_path: Union[str, Path],
-        reprojection_error_file_path,
+    reprojection_error_file_path,
 ):
     """
     test that the `mediapipe 3d detection` process worked correctly by checking:
@@ -38,9 +38,7 @@ def test_mediapipe_skeleton_data_shape(
         reprojection_error_file_path
     ).is_file(), f"3d skeleton reprojection error data file does not exist at {reprojection_error_file_path}"
 
-    skeleton_reprojection_error_fr_mar = np.load(
-        reprojection_error_file_path
-    )
+    skeleton_reprojection_error_fr_mar = np.load(reprojection_error_file_path)
 
     assert (
         len(skeleton_reprojection_error_fr_mar.shape) == 2
@@ -61,4 +59,3 @@ def test_mediapipe_skeleton_data_shape(
     assert (
         skel3d_frame_marker_xyz.shape[2] == 3
     ), f"3d skeleton data file does not have 3 dimensions for X,Y,Z at {raw_skeleton_npy_file_path}"
-

@@ -13,6 +13,7 @@ bpy.ops.preferences.addon_enable(module="rigify")
 
 #######################################################################
 
+
 def get_video_paths(path_to_video_folder: Path) -> list:
     """Search the folder for 'mp4' files (case insensitive) and return them as a list"""
 
@@ -30,6 +31,7 @@ def get_unique_list(list: list) -> list:
     [unique_list.append(clip) for clip in list if clip not in unique_list]
 
     return unique_list
+
 
 try:
     ##% Session path
@@ -1541,7 +1543,6 @@ try:
             tail_name = this_bone_dict[1]["tail"]
 
             try:
-
                 head_index = mediapipe_tracked_point_names.index(head_name)
                 tail_index = mediapipe_tracked_point_names.index(tail_name)
 

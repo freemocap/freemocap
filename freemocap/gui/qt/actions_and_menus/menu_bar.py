@@ -44,7 +44,7 @@ class MenuBar(QMenuBar):
         #
         # support menu
         support_menu = self.addMenu("&Support the Freemocap Project")
-   
+
         support_menu.addAction(actions.donate_action)
         # support_menu.addAction(actions.send_usage_statistics_action)
         # support_menu.addAction(actions.user_survey_action)

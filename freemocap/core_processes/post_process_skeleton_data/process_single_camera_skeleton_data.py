@@ -10,19 +10,21 @@ from freemocap.utilities.geometry.project_3d_data_to_z_plane import project_3d_d
 logger = logging.getLogger(__name__)
 
 
-def process_single_camera_skeleton_data(input_image_data_frame_marker_xyz: np.ndarray,
-                                        raw_data_folder_path: Union[str, Path],
-                                        project_to_z_plane: bool = True) -> [np.ndarray, np.ndarray]:
-
+def process_single_camera_skeleton_data(
+    input_image_data_frame_marker_xyz: np.ndarray,
+    raw_data_folder_path: Union[str, Path],
+    project_to_z_plane: bool = True,
+) -> [np.ndarray, np.ndarray]:
     if project_to_z_plane:
-
-        logger.info("Single camera detected - "
-                    "Altering image-derived 3d data to resemble multi-camera reconstructed data.")
+        logger.info(
+            "Single camera detected - " "Altering image-derived 3d data to resemble multi-camera reconstructed data."
+        )
 
         skeleton_reprojection_error_fr_mar = np.zeros(input_image_data_frame_marker_xyz.shape[0:2])
 
         raw_skel3d_frame_marker_xyz = project_3d_data_to_z_plane(
-            skel3d_frame_marker_xyz=input_image_data_frame_marker_xyz)
+            skel3d_frame_marker_xyz=input_image_data_frame_marker_xyz
+        )
 
         save_mediapipe_3d_data_to_npy(
             data3d_numFrames_numTrackedPoints_XYZ=raw_skel3d_frame_marker_xyz,

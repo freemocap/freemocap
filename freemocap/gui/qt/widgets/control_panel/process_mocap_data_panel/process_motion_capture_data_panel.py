@@ -37,6 +37,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
             recording_processing_parameters: PostProcessingParameterModel,
             get_active_recording_info: Callable,
             kill_thread_event: threading.Event,
+            log_update: Callable,
             gui_state: GuiState,
             parent=None,
     ):
@@ -44,9 +45,10 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         self._kill_thread_event = kill_thread_event
         self._get_active_recording_info = get_active_recording_info
+        self._log_update = log_update
         self._recording_processing_parameter_model = recording_processing_parameters
         self._recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
-
+        
         self._layout = QVBoxLayout()
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.setLayout(self._layout)
@@ -209,6 +211,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(session_parameter_model,
                                                                                                kill_event=self._kill_thread_event)
+        self._process_motion_capture_data_thread_worker.in_progress.connect(self._log_update)
         self._process_motion_capture_data_thread_worker.start()
 
         self._process_motion_capture_data_thread_worker.finished.connect(self._handle_finished_signal)

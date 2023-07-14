@@ -55,6 +55,7 @@ class ImportVideosWizard(QDialog):
         synchronization_message = QLabel(
             "(Videos must have exactly the same video frame rates and audio sample rates to be synchronized.)"
         )
+        synchronization_message.setWordWrap(True)
 
         synchronization_layout = QHBoxLayout()
 

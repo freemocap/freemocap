@@ -109,10 +109,10 @@ class VisualizationControlPanel(QWidget):
             self,
             "Locate your Blender Executable",
             str(Path().home()),
-            "*.*",
+            "*",
         )
 
-        if "blender." in path_selection[0]:
+        if "blender" in path_selection[0]:
             self._blender_executable_path = path_selection[0]
         elif "Blender.app" in path_selection[0]:
             self._blender_executable_path = path_selection[0] + "/Contents/MacOS/Blender"  # executable is buried on mac

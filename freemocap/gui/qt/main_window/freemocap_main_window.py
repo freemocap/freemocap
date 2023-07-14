@@ -55,14 +55,34 @@ from freemocap.gui.qt.widgets.home_widget import (
 )
 from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
-
+from freemocap.gui.qt.utilities.save_and_load_gui_state import (
+    GuiState,
+    load_gui_state,
+)
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
-from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
+    PATH_TO_FREEMOCAP_LOGO_SVG,
+    FIGSHARE_SAMPLE_ZIP_FILE_URL
+)
+from freemocap.system.paths_and_filenames.path_getters import (
+    get_blender_file_path,
+    get_recording_session_folder_path,
+)
+from freemocap.system.paths_and_filenames.path_getters import (
+    get_blender_file_path,
+    get_recording_session_folder_path,
+    get_gui_state_json_path
+)
+
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path, \
     get_css_stylesheet_path, get_scss_stylesheet_path, get_blender_file_path, get_most_recent_recording_path
 
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
+from freemocap.gui.qt.workers.download_sample_data_thread_worker import (
+    DownloadSampleDataThreadWorker
+)
+from freemocap.utilities.remove_empty_directories import remove_empty_directories
 
 EXIT_CODE_REBOOT = -123456789
 
@@ -94,6 +114,13 @@ class MainWindow(QMainWindow):
 
         self._freemocap_data_folder_path = freemocap_data_folder_path
         self._pipedream_pings = pipedream_pings
+
+        try:
+            self._gui_state = load_gui_state(get_gui_state_json_path())
+            logger.info("Successfully loaded previous settings")
+        except:
+            logger.info("Failed to find previous GUI settings, using default settings")
+            self._gui_state = GuiState()
 
         self._kill_thread_event = multiprocessing.Event()
 
@@ -224,7 +251,7 @@ class MainWindow(QMainWindow):
 
     def _create_central_tab_widget(self):
 
-        self._home_widget = HomeWidget(actions=self._actions, parent=self)
+        self._home_widget = HomeWidget(actions=self._actions, gui_state=self._gui_state, parent=self)
 
         self._skellycam_widget = SkellyCamWidget(
             self._create_new_synchronized_videos_folder,
@@ -236,6 +263,8 @@ class MainWindow(QMainWindow):
 
         self._controller_group_box = CameraControllerGroupBox(
             skellycam_widget=self._skellycam_widget,
+            gui_state=self._gui_state,
+            parent=self
         )
 
         self._skelly_viewer_widget = SkellyViewer()
@@ -289,6 +318,7 @@ class MainWindow(QMainWindow):
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             recording_processing_parameters=PostProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
+            gui_state=self._gui_state,
             kill_thread_event=self._kill_thread_event,
             log_update=log_update,
         )
@@ -437,6 +467,16 @@ class MainWindow(QMainWindow):
         self._active_recording_info_widget.set_active_recording(recording_folder_path=user_selected_directory)
         self._central_tab_widget.setCurrentIndex(2)
 
+    def reset_to_default_gui_settings(self):
+        self._gui_state = GuiState()
+
+        self._home_widget._send_pings_checkbox.setChecked(self._gui_state.send_user_pings)
+        self._controller_group_box._auto_process_videos_checkbox.setChecked(self._gui_state.auto_process_videos_on_save)
+        self._controller_group_box._generate_jupyter_notebook_checkbox.setChecked(self._gui_state.generate_jupyter_notebook)
+        self._controller_group_box._auto_open_in_blender_checkbox.setChecked(self._gui_state.auto_open_in_blender)
+        self._controller_group_box._charuco_square_size_line_edit.setText(str(self._gui_state.charuco_square_size))
+        self._process_motion_capture_data_panel._calibration_control_panel._charuco_square_size_line_edit.setText(str(self._gui_state.charuco_square_size))
+
     def open_import_videos_dialog(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
         logger.info("Opening `Import Videos` dialog... ")
@@ -456,6 +496,18 @@ class MainWindow(QMainWindow):
                                                         )
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
         text = self._import_videos_window.exec()
+
+    def download_sample_data(self):
+        logger.info("Downloading sample data")
+        self.download_sample_data_thread_worker = DownloadSampleDataThreadWorker(kill_thread_event=self._kill_thread_event, parent=self)
+        self.download_sample_data_thread_worker.start()
+        self.download_sample_data_thread_worker.finished.connect(self._handle_download_sample_data_finished)
+
+    def _handle_download_sample_data_finished(self):
+        logger.info("Setting sample data as active recording... ")
+        self._active_recording_info_widget.set_active_recording(
+            recording_folder_path=self.download_sample_data_thread_worker.sample_data_path
+        )
 
     @pyqtSlot(list, str)
     def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str):

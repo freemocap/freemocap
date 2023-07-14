@@ -5,6 +5,8 @@ CREATE_NEW_RECORDING_ACTION_NAME = "New Recording"
 LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording"
 LOAD_RECORDING_ACTION_NAME = "Load Recording"
 IMPORT_VIDEOS_ACTION_NAME = "Import Videos"
+DOWNLOAD_SAMPLE_DATA_ACTION_NAME = "Download Sample Data"
+RESET_TO_DEFAULTS_ACTION_NAME = "Reset to Default GUI Settings"
 KILL_THREADS_AND_PROCESSES_ACTION_NAME = "Kill Threads and Processes"
 REBOOT_GUI_ACTION_NAME = "Reboot GUI"
 EXIT_ACTION_NAME = "Exit"
@@ -37,6 +39,11 @@ class Actions:
         self.import_videos_action = QAction(IMPORT_VIDEOS_ACTION_NAME, parent=freemocap_main_window)
         self.import_videos_action.setShortcut("Ctrl+I")
         self.import_videos_action.triggered.connect(freemocap_main_window.open_import_videos_dialog)
+
+        self.download_sample_data_action = QAction(DOWNLOAD_SAMPLE_DATA_ACTION_NAME, parent=freemocap_main_window)
+        self.download_sample_data_action.triggered.connect(freemocap_main_window.download_sample_data)
+        self.reset_to_defaults_action = QAction(RESET_TO_DEFAULTS_ACTION_NAME, parent=freemocap_main_window)
+        self.reset_to_defaults_action.triggered.connect(freemocap_main_window.reset_to_default_gui_settings)
 
         self.reboot_gui_action = QAction(REBOOT_GUI_ACTION_NAME, parent=freemocap_main_window)
         self.reboot_gui_action.setShortcut("Ctrl+R")

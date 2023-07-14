@@ -71,6 +71,7 @@ dependencies = [
     "skellycam",
     "skelly_viewer",
     "skellyforge",
+    "skelly_synchronize",
     "mediapipe",
     "opencv-contrib-python==4.6.0.66",
     "toml==0.10.2",

@@ -29,6 +29,11 @@ $disabled-line-edit: #e0e0e0;
     color: $dark-charcoal;
 }
 
+QObject {
+    color: $plain-black;
+    background-color: $plain-white;
+}
+
 QGroupBox {
     border: 1px solid $divider-color;
     border-radius: 4px;

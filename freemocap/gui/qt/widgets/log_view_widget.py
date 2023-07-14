@@ -9,12 +9,9 @@ from PyQt6.QtCore import QThread
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit
 
 from freemocap.gui.qt.utilities.colors import get_next_color, rgb_color_generator
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
 
 logger = logging.getLogger(__name__)
-
-log_view_logging_format_string = (
-    "[%(asctime)s.%(msecs)04d] [%(levelname)4s] [%(name)s] [Process:%(process)d Thread:%(thread)d] ::::: [%(name)s:%(funcName)s():%(lineno)s] |||| %(message)s."
-)
 
 log_view_logging_formatter = logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S")
 
@@ -84,7 +81,7 @@ class LogViewWidget(QPlainTextEdit):
         self.show_code_path_info = True
         self._logging_queue_listener.start()
 
-    def add_log(self, record):
+    def add_log(self, record: logging.LogRecord):
         level = record.levelname.ljust(7)  # 7 characters long, right padded with spaces
         timestamp = f"[{record.asctime}.{record.msecs:04.0f}]".ljust(24)  # 24 characters long
         process_id_str = f"{record.process}".rjust(6)  # 5 characters long, left padded with spaces

@@ -471,7 +471,7 @@ class MainWindow(QMainWindow):
 
     def download_sample_data(self):
         logger.info("Downloading sample data")
-        self.download_sample_data_thread_worker = DownloadSampleDataThreadWorker(kill_thread_event=self._kill_thread_event)
+        self.download_sample_data_thread_worker = DownloadSampleDataThreadWorker(kill_thread_event=self._kill_thread_event, parent=self)
         self.download_sample_data_thread_worker.start()
         self.download_sample_data_thread_worker.finished.connect(self._handle_download_sample_data_finished)
 

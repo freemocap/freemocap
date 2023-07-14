@@ -16,8 +16,9 @@ class DownloadSampleDataThreadWorker(QThread):
     def __init__(
         self,
         kill_thread_event: threading.Event,
+        parent=None
     ):
-        super().__init__()
+        super().__init__(parent=parent)
         logger.info(
             f"Initializing download sample data thread worker"
         )

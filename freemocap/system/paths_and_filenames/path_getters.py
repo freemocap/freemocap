@@ -1,4 +1,3 @@
-import logging
 import time
 from datetime import datetime
 from pathlib import Path
@@ -11,7 +10,8 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import LOGS_INFO
     RECORDING_SESSIONS_FOLDER_NAME, MOST_RECENT_RECORDING_TOML_FILENAME, LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME, \
     OUTPUT_DATA_FOLDER_NAME, SYNCHRONIZED_VIDEOS_FOLDER_NAME, RAW_DATA_FOLDER_NAME, RAW_MEDIAPIPE_3D_NPY_FILE_NAME, \
     CENTER_OF_MASS_FOLDER_NAME, TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME, MEDIAPIPE_2D_NPY_FILE_NAME, \
-    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME, SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME, MEDIAPIPE_3D_NPY_FILE_NAME
+    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME, SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME, MEDIAPIPE_3D_NPY_FILE_NAME, \
+    GUI_STATE_JSON_FILENAME
 
 
 def os_independent_home_dir():
@@ -139,6 +139,9 @@ def get_scss_stylesheet_path():
 
 def get_most_recent_recording_toml_path():
     return str(Path(get_logs_info_and_settings_folder_path()) / MOST_RECENT_RECORDING_TOML_FILENAME)
+
+def get_gui_state_json_path():
+    return str(Path(get_logs_info_and_settings_folder_path()) / GUI_STATE_JSON_FILENAME)
 
 
 def get_most_recent_recording_path(subfolder_str: str = None):

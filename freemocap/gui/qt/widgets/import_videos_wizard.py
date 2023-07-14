@@ -9,7 +9,6 @@ from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtWidgets import QVBoxLayout, QListWidget, QLabel, QFormLayout, QLineEdit, \
     QTreeView, QPushButton, QDialog, QCheckBox, QHBoxLayout
 
-from skelly_synchronize.skelly_synchronize import synchronize_videos_from_audio
 from freemocap.gui.qt.workers.synchronize_videos_thread_worker import SynchronizeVideosThreadWorker
 
 from freemocap.utilities.get_video_paths import get_video_paths

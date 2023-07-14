@@ -20,6 +20,7 @@ CENTER_OF_MASS_FOLDER_NAME = "center_of_mass"
 # file names
 MOST_RECENT_RECORDING_TOML_FILENAME = "most_recent_recording.toml"
 LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME = "last_successful_calibration.toml"
+GUI_STATE_JSON_FILENAME = "gui_state.json"
 MEDIAPIPE_2D_NPY_FILE_NAME = "mediapipe2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
 MEDIAPIPE_BODY_WORLD_FILE_NAME = "mediapipeBodyWorld_numCams_numFrames_numTrackedPoints_XYZ.npy"
 
@@ -36,9 +37,11 @@ TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
 SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
 
 RECORDING_PARAMETERS_JSON_FILE_NAME = "recording_parameters.json"
+
 # Figshare info
-FIGSHARE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/40293973"
-FREEMOCAP_SAMPLE_DATA_RECORDING_NAME = "freemocap_sample_data"
+FIGSHARE_TEST_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/40293973"
+FREEMOCAP_TEST_DATA_RECORDING_NAME = "freemocap_sample_data"
+FIGSHARE_SAMPLE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/41368323"
 
 # logo
 PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent / "assets/logo/freemocap-logo-black-border.svg")

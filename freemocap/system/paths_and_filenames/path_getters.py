@@ -6,13 +6,27 @@ from typing import Union
 import toml
 
 
-from freemocap.system.paths_and_filenames.file_and_folder_names import LOGS_INFO_AND_SETTINGS_FOLDER_NAME, \
-    LOG_FILE_FOLDER_NAME, BASE_FREEMOCAP_DATA_FOLDER_NAME, CALIBRATIONS_FOLDER_NAME, logger, \
-    RECORDING_SESSIONS_FOLDER_NAME, MOST_RECENT_RECORDING_TOML_FILENAME, LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME, \
-    OUTPUT_DATA_FOLDER_NAME, SYNCHRONIZED_VIDEOS_FOLDER_NAME, RAW_DATA_FOLDER_NAME, RAW_MEDIAPIPE_3D_NPY_FILE_NAME, \
-    CENTER_OF_MASS_FOLDER_NAME, TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME, MEDIAPIPE_2D_NPY_FILE_NAME, \
-    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME, SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME, MEDIAPIPE_3D_NPY_FILE_NAME, \
-    GUI_STATE_JSON_FILENAME
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
+    LOGS_INFO_AND_SETTINGS_FOLDER_NAME,
+    LOG_FILE_FOLDER_NAME,
+    BASE_FREEMOCAP_DATA_FOLDER_NAME,
+    CALIBRATIONS_FOLDER_NAME,
+    logger,
+    RECORDING_SESSIONS_FOLDER_NAME,
+    MOST_RECENT_RECORDING_TOML_FILENAME,
+    LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME,
+    OUTPUT_DATA_FOLDER_NAME,
+    SYNCHRONIZED_VIDEOS_FOLDER_NAME,
+    RAW_DATA_FOLDER_NAME,
+    RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
+    CENTER_OF_MASS_FOLDER_NAME,
+    TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
+    MEDIAPIPE_2D_NPY_FILE_NAME,
+    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
+    SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
+    MEDIAPIPE_3D_NPY_FILE_NAME,
+    GUI_STATE_JSON_FILENAME,
+)
 
 
 def os_independent_home_dir():
@@ -35,6 +49,8 @@ def create_camera_calibration_file_name(recording_name: str):
 
 
 freemocap_data_folder_path = None
+
+
 def get_freemocap_data_folder_path(create_folder: bool = True):
     global freemocap_data_folder_path
 
@@ -57,7 +73,6 @@ def get_calibrations_folder_path(create_folder: bool = True):
 
 
 def create_new_recording_folder_path(recording_name: str):
-
     recording_folder_path = Path(create_new_session_folder()) / recording_name
 
     return str(recording_folder_path)
@@ -89,6 +104,7 @@ def create_new_default_recording_name():
 def session_time_tag_format():
     return "%Y-%m-%d_%H_%M_%S"
 
+
 def default_session_name(string_tag: str = None):
     if string_tag is not None:
         string_tag = f"_{string_tag}"
@@ -102,6 +118,8 @@ def default_session_name(string_tag: str = None):
 
 
 session_folder_path = None
+
+
 def create_new_session_folder():
     global session_folder_path
     if session_folder_path is None:
@@ -141,6 +159,7 @@ def get_scss_stylesheet_path():
 def get_most_recent_recording_toml_path():
     return str(Path(get_logs_info_and_settings_folder_path()) / MOST_RECENT_RECORDING_TOML_FILENAME)
 
+
 def get_gui_state_json_path():
     return str(Path(get_logs_info_and_settings_folder_path()) / GUI_STATE_JSON_FILENAME)
 
@@ -166,7 +185,6 @@ def get_most_recent_recording_path(subfolder_str: str = None):
         return str(sub_folder_path)
 
     else:
-
         return str(most_recent_recording_path)
 
 
@@ -186,11 +204,11 @@ def get_blender_file_name(recording_name: str):
     return f"{recording_name}.blend"
 
 
-def get_blender_file_path(recording_folder_path: Union[Path,str]):
+def get_blender_file_path(recording_folder_path: Union[Path, str]):
     return str(Path(recording_folder_path) / get_blender_file_name(recording_name=Path(recording_folder_path).name))
 
 
-def get_output_data_folder_path(recording_folder_path: Union[str,Path])->str:
+def get_output_data_folder_path(recording_folder_path: Union[str, Path]) -> str:
     for subfolder_path in Path(recording_folder_path).iterdir():
         if subfolder_path.name == OUTPUT_DATA_FOLDER_NAME:
             return str(subfolder_path)
@@ -205,12 +223,15 @@ def get_synchronized_videos_folder_path(recording_folder_path: Union[str, Path])
 
     raise Exception(f"Could not find a videos folder in path {str(recording_folder_path)}")
 
-def get_timestamps_directory(recording_directory: Union[str,Path])->str:
+
+def get_timestamps_directory(recording_directory: Union[str, Path]) -> str:
     synchronized_videos_path = get_synchronized_videos_folder_path(recording_folder_path=recording_directory)
     if "timestamps" in [path.name for path in Path(synchronized_videos_path).iterdir()]:
         return str(Path(synchronized_videos_path) / "timestamps")
     logger.warning(f"Could not find timestamps directory in {synchronized_videos_path}")
-def get_raw_skeleton_npy_file_name(data_folder_name: Union[str,Path])->str:
+
+
+def get_raw_skeleton_npy_file_name(data_folder_name: Union[str, Path]) -> str:
     raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
@@ -219,10 +240,13 @@ def get_raw_skeleton_npy_file_name(data_folder_name: Union[str,Path])->str:
 
     raise Exception(f"Could not find a skeleton NPY file in path {str(data_folder_name)}")
 
-def get_full_npy_file_path(output_data_folder: Union[str,Path])->str:
+
+def get_full_npy_file_path(output_data_folder: Union[str, Path]) -> str:
     path = Path(output_data_folder) / MEDIAPIPE_3D_NPY_FILE_NAME
     return str(path)
-def get_total_body_center_of_mass_file_path(output_data_folder: Union[str,Path])->str:
+
+
+def get_total_body_center_of_mass_file_path(output_data_folder: Union[str, Path]) -> str:
     center_of_mass_subfolder_path = Path(output_data_folder) / CENTER_OF_MASS_FOLDER_NAME
     if center_of_mass_subfolder_path.exists:
         center_of_mass_npy_path_list = [path.name for path in center_of_mass_subfolder_path.glob("*.npy")]
@@ -232,7 +256,8 @@ def get_total_body_center_of_mass_file_path(output_data_folder: Union[str,Path])
 
     raise Exception(f"Could not find a total body center of mass npy file in path {str(output_data_folder)}")
 
-def get_segment_center_of_mass_file_path(output_data_folder: Union[str,Path])->str:
+
+def get_segment_center_of_mass_file_path(output_data_folder: Union[str, Path]) -> str:
     center_of_mass_subfolder_path = Path(output_data_folder) / CENTER_OF_MASS_FOLDER_NAME
     if center_of_mass_subfolder_path.exists:
         center_of_mass_npy_path_list = [path.name for path in center_of_mass_subfolder_path.glob("*.npy")]
@@ -243,7 +268,7 @@ def get_segment_center_of_mass_file_path(output_data_folder: Union[str,Path])->s
     raise Exception(f"Could not find a total body center of mass npy file in path {str(output_data_folder)}")
 
 
-def get_image_tracking_data_file_name(data_folder_name: Union[str,Path])->str:
+def get_image_tracking_data_file_name(data_folder_name: Union[str, Path]) -> str:
     raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
@@ -254,7 +279,7 @@ def get_image_tracking_data_file_name(data_folder_name: Union[str,Path])->str:
     raise Exception(f"Could not find a 2d data file in path {str(data_folder_name)}")
 
 
-def get_reprojection_error_file_path(data_folder_name: Union[str,Path])->str:
+def get_reprojection_error_file_path(data_folder_name: Union[str, Path]) -> str:
     raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
@@ -263,6 +288,3 @@ def get_reprojection_error_file_path(data_folder_name: Union[str,Path])->str:
             return str(raw_data_subfolder_path / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME)
 
     raise Exception(f"Could not find reprojection error data file in path {str(data_folder_name)}")
-
-
-

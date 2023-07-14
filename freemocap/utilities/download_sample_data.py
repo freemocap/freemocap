@@ -7,15 +7,15 @@ import requests
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     FREEMOCAP_TEST_DATA_RECORDING_NAME,
-    FIGSHARE_TEST_ZIP_FILE_URL
+    FIGSHARE_TEST_ZIP_FILE_URL,
 )
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path
 
 logger = logging.getLogger(__name__)
 
-def get_sample_data_path(download_if_needed:bool=True)->str:
 
-    sample_data_path =  str(Path(get_recording_session_folder_path()) / FREEMOCAP_TEST_DATA_RECORDING_NAME)
+def get_sample_data_path(download_if_needed: bool = True) -> str:
+    sample_data_path = str(Path(get_recording_session_folder_path()) / FREEMOCAP_TEST_DATA_RECORDING_NAME)
     if not Path(sample_data_path).exists():
         if download_if_needed:
             download_sample_data()

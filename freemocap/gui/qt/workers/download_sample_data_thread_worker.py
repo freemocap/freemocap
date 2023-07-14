@@ -13,15 +13,9 @@ class DownloadSampleDataThreadWorker(QThread):
     finished = pyqtSignal()
     in_progress = pyqtSignal(str)
 
-    def __init__(
-        self,
-        kill_thread_event: threading.Event,
-        parent=None
-    ):
+    def __init__(self, kill_thread_event: threading.Event, parent=None):
         super().__init__(parent=parent)
-        logger.info(
-            f"Initializing download sample data thread worker"
-        )
+        logger.info(f"Initializing download sample data thread worker")
         self._kill_thread_event = kill_thread_event
 
         self._work_done = False
@@ -39,7 +33,6 @@ class DownloadSampleDataThreadWorker(QThread):
         try:
             self.sample_data_path = download_sample_data(sample_data_zip_file_url=FIGSHARE_SAMPLE_ZIP_FILE_URL)
 
-
         except Exception as e:
             logger.exception("Something went wrong while downloading sample data")
             logger.exception(e)
@@ -48,4 +41,3 @@ class DownloadSampleDataThreadWorker(QThread):
         self._work_done = True
 
         logger.info("Sample data successfully downloaded")
-

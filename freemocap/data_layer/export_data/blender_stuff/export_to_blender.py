@@ -20,7 +20,6 @@ def export_to_blender(
     blender_exe_path: Union[str, Path],
     method: str = "megascript_take2",
 ):
-
     logger.info(
         f"Exporting session data to a Blender scene at: {str(blender_file_path)} using Blender executable at {str(blender_exe_path)}"
     )
@@ -48,8 +47,5 @@ def export_to_blender(
 
 
 if __name__ == "__main__":
-
     recording_path = r"D:\Dropbox\FreeMoCapProject\FreeMocap_Data\old\sesh_2022-09-19_16_16_50_in_class_jsm"
-    export_to_blender(recording_path,
-                      recording_path,
-                      get_best_guess_of_blender_path())
+    export_to_blender(recording_path, recording_path, get_best_guess_of_blender_path())

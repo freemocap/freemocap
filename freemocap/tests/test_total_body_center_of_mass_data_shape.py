@@ -14,7 +14,6 @@ def test_total_body_center_of_mass_data_shape(
     synchronized_video_folder_path: Union[str, Path],
     total_body_center_of_mass_file_path: Union[str, Path],
 ):
-
     assert Path(
         total_body_center_of_mass_file_path
     ).is_file(), f"No file found at {total_body_center_of_mass_file_path}"
@@ -35,4 +34,3 @@ def test_total_body_center_of_mass_data_shape(
     assert (
         total_body_center_of_mass_fr_xyz.shape[1] == 3
     ), f"`total_body_center_of_mass_fr_xyz.shape[1]` should have 3 dimensions (X,Y,Z) "
-

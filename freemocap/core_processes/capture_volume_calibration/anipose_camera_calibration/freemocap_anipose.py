@@ -200,7 +200,6 @@ class Camera:
         name=None,
         extra_dist=False,
     ):
-
         self.set_camera_matrix(matrix)
         self.set_distortions(dist)
         self.set_size(size)
@@ -499,7 +498,7 @@ class CameraGroup:
 
         return out
 
-    def triangulate(self, points, undistort=True, progress=False, kill_event:multiprocessing.Event=None):
+    def triangulate(self, points, undistort=True, progress=False, kill_event: multiprocessing.Event = None):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
 
@@ -548,7 +547,15 @@ class CameraGroup:
 
         return out
 
-    def triangulate_possible(self, points, undistort=True, min_cams=2, progress=False, threshold=0.5, kill_event:multiprocessing.Event=None):
+    def triangulate_possible(
+        self,
+        points,
+        undistort=True,
+        min_cams=2,
+        progress=False,
+        threshold=0.5,
+        kill_event: multiprocessing.Event = None,
+    ):
         """Given an CxNxPx2 array, this returns an Nx3 array of points
         by triangulating all possible points and picking the ones with
         best reprojection error
@@ -636,7 +643,9 @@ class CameraGroup:
         # return out, picked_vals, points_2d, errors #original code from OG anipose
         return out  # simplify output so that `triangulate_ransac` can be used exactly the same way as `triangulate`
 
-    def triangulate_ransac(self, points, undistort=True, min_cams=2, progress=False, kill_event:multiprocessing.Event=None):
+    def triangulate_ransac(
+        self, points, undistort=True, min_cams=2, progress=False, kill_event: multiprocessing.Event = None
+    ):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
 
@@ -650,7 +659,9 @@ class CameraGroup:
 
         points_ransac = points.reshape(n_cams, n_points, 1, 2)
 
-        return self.triangulate_possible(points_ransac, undistort=undistort, min_cams=min_cams, progress=progress, kill_event=kill_event)
+        return self.triangulate_possible(
+            points_ransac, undistort=undistort, min_cams=min_cams, progress=progress, kill_event=kill_event
+        )
 
     @jit(parallel=True, forceobj=True)
     def reprojection_error(self, p3ds, p2ds, mean=False):

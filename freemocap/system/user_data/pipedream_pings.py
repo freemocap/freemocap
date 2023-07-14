@@ -7,11 +7,12 @@ logger = logging.getLogger(__name__)
 
 
 class PipedreamPings:
-    def __init__(self, ):
+    def __init__(
+        self,
+    ):
         self._pipedream_url = "https://eowipinr6rcpbo0.m.pipedream.net"
         self._pings_dict = {}
-        self.update_pings_dict(key="session_uuid",
-                               value=str(uuid.uuid4()))
+        self.update_pings_dict(key="session_uuid", value=str(uuid.uuid4()))
 
     def update_pings_dict(self, key, value):
         self._pings_dict[key] = value

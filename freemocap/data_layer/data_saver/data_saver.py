@@ -15,11 +15,7 @@ from typing import Any, Dict
 
 
 class DataSaver:
-
-    def __init__(self,
-                 recording_folder_path: Union[Path, str],
-                 include_hands: bool = True,
-                 include_face: bool = True):
+    def __init__(self, recording_folder_path: Union[Path, str], include_hands: bool = True, include_face: bool = True):
         """
         Initialize DataFrameManager with the given recording_folder_path.
 
@@ -31,9 +27,9 @@ class DataSaver:
         self.recording_folder_path = Path(recording_folder_path)
         self._recording_name = self.recording_folder_path.name
 
-        self._data_loader = DataLoader(recording_folder_path=self.recording_folder_path,
-                                       include_hands=include_hands,
-                                       include_face=include_face)
+        self._data_loader = DataLoader(
+            recording_folder_path=self.recording_folder_path, include_hands=include_hands, include_face=include_face
+        )
 
         self.recording_data_by_frame = None
         self.number_of_frames = None
@@ -54,15 +50,15 @@ class DataSaver:
 
     def save_to_json(self, save_path: Union[str, Path] = None):
         dict_to_save = {}
-        dict_to_save['info'] = self._get_info_dict().dict()
-        dict_to_save['data_by_frame'] = self.recording_data_by_frame
+        dict_to_save["info"] = self._get_info_dict().dict()
+        dict_to_save["data_by_frame"] = self.recording_data_by_frame
 
         if save_path is None:
             save_path = Path(self.recording_folder_path) / f"{self._recording_name}_by_frame.json"
 
         logger.info(f"Saving recording data to {save_path}")
 
-        save_path.write_text(json.dumps(dict_to_save, indent=4), encoding='utf-8')
+        save_path.write_text(json.dumps(dict_to_save, indent=4), encoding="utf-8")
 
     def save_to_csv(self, save_path: Union[str, Path] = None):
         data_for_dataframe = []
@@ -91,10 +87,10 @@ class DataSaver:
         """
         frame_data_row = {}
 
-        frame_data_row['timestamp'] = frame_data['timestamps']['mean']
-        frame_data_row['timestamp_by_camera'] = str(frame_data['timestamps']['by_camera'])
+        frame_data_row["timestamp"] = frame_data["timestamps"]["mean"]
+        frame_data_row["timestamp_by_camera"] = str(frame_data["timestamps"]["by_camera"])
 
-        for key, tracked_point in frame_data['tracked_points'].items():
+        for key, tracked_point in frame_data["tracked_points"].items():
             frame_data_row[f"{key}_x"] = tracked_point["x"]
             frame_data_row[f"{key}_y"] = tracked_point["y"]
             frame_data_row[f"{key}_z"] = tracked_point["z"]
@@ -108,8 +104,9 @@ class DataSaver:
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # recording_data_saver = DataSaver(recording_folder_path=get_sample_data_path())
     recording_data_saver = DataSaver(
-        recording_folder_path=r"C:\Users\jonma\freemocap_data\recording_sessions\session_2023-04-14_15_29_45\recording_15_47_37_gmt-4")
+        recording_folder_path=r"C:\Users\jonma\freemocap_data\recording_sessions\session_2023-04-14_15_29_45\recording_15_47_37_gmt-4"
+    )
     recording_data_by_frame_number = recording_data_saver.save_all()

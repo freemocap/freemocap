@@ -11,18 +11,22 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QMainWindow,
     QFileDialog,
-    QWidget, QHBoxLayout, )
+    QWidget,
+    QHBoxLayout,
+)
 from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
-    SkellyCamWidget, SkellyCamControllerWidget,
+    SkellyCamWidget,
+    SkellyCamControllerWidget,
 )
 from tqdm import tqdm
 
 from freemocap.data_layer.export_data.blender_stuff.export_to_blender import export_to_blender
 from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-from freemocap.data_layer.export_data.generate_jupyter_notebook.generate_jupyter_notebook import \
-    generate_jupyter_notebook
+from freemocap.data_layer.export_data.generate_jupyter_notebook.generate_jupyter_notebook import (
+    generate_jupyter_notebook,
+)
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
     PostProcessingParameterModel,
 )
@@ -62,11 +66,12 @@ from freemocap.gui.qt.utilities.save_and_load_gui_state import (
     GuiState,
     load_gui_state,
 )
+
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
-    FIGSHARE_SAMPLE_ZIP_FILE_URL
+    FIGSHARE_SAMPLE_ZIP_FILE_URL,
 )
 from freemocap.system.paths_and_filenames.path_getters import (
     get_blender_file_path,
@@ -75,16 +80,19 @@ from freemocap.system.paths_and_filenames.path_getters import (
 from freemocap.system.paths_and_filenames.path_getters import (
     get_blender_file_path,
     get_recording_session_folder_path,
-    get_gui_state_json_path
+    get_gui_state_json_path,
 )
 
-from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path, \
-    get_css_stylesheet_path, get_scss_stylesheet_path, get_blender_file_path, get_most_recent_recording_path
+from freemocap.system.paths_and_filenames.path_getters import (
+    get_recording_session_folder_path,
+    get_css_stylesheet_path,
+    get_scss_stylesheet_path,
+    get_blender_file_path,
+    get_most_recent_recording_path,
+)
 
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
-from freemocap.gui.qt.workers.download_sample_data_thread_worker import (
-    DownloadSampleDataThreadWorker
-)
+from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadSampleDataThreadWorker
 from freemocap.utilities.remove_empty_directories import remove_empty_directories
 
 EXIT_CODE_REBOOT = -123456789
@@ -94,15 +102,14 @@ logger = logging.getLogger(__name__)
 
 class MainWindow(QMainWindow):
     def __init__(
-            self,
-            freemocap_data_folder_path: Union[str, Path],
-            pipedream_pings: PipedreamPings,
-            parent=None,
+        self,
+        freemocap_data_folder_path: Union[str, Path],
+        pipedream_pings: PipedreamPings,
+        parent=None,
     ):
         super().__init__(parent=parent)
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
         logger.info("Initializing FreeMoCap MainWindow")
-
 
         self.setGeometry(100, 100, 1280, 720)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
@@ -143,7 +150,8 @@ class MainWindow(QMainWindow):
         self.setMenuBar(self._menu_bar)
 
         self.statusBar().showMessage(
-            "Watch the terminal output for status updates, we're working on integrating better status updates into the GUI")
+            "Watch the terminal output for status updates, we're working on integrating better status updates into the GUI"
+        )
 
         self._central_tab_widget = self._create_central_tab_widget()
         self.setCentralWidget(self._central_tab_widget)
@@ -204,8 +212,8 @@ class MainWindow(QMainWindow):
         self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
         if (
-                self._controller_group_box.auto_process_videos_checked
-                and self._controller_group_box.mocap_videos_radio_button_checked
+            self._controller_group_box.auto_process_videos_checked
+            and self._controller_group_box.mocap_videos_radio_button_checked
         ):
             logger.info("'Auto process videos' checkbox is checked - triggering 'Process Motion Capture Data' button")
             self._process_motion_capture_data_panel.process_motion_capture_data_button.click()
@@ -241,8 +249,9 @@ class MainWindow(QMainWindow):
 
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
-        scss_file_watcher = SCSSFileWatcher(path_to_scss_file=get_scss_stylesheet_path(),
-                                            path_to_css_file=get_css_stylesheet_path(), parent=self)
+        scss_file_watcher = SCSSFileWatcher(
+            path_to_scss_file=get_scss_stylesheet_path(), path_to_css_file=get_css_stylesheet_path(), parent=self
+        )
         css_file_watcher = CSSFileWatcher(path_to_css_file=get_css_stylesheet_path(), parent=self)
         return css_file_watcher
 
@@ -253,7 +262,6 @@ class MainWindow(QMainWindow):
         return self._active_recording_info_widget.active_recording_info.synchronized_videos_folder_path
 
     def _create_central_tab_widget(self):
-
         self._home_widget = HomeWidget(actions=self._actions, gui_state=self._gui_state, parent=self)
 
         self._skellycam_widget = SkellyCamWidget(
@@ -265,9 +273,7 @@ class MainWindow(QMainWindow):
         )
 
         self._controller_group_box = CameraControllerGroupBox(
-            skellycam_widget=self._skellycam_widget,
-            gui_state=self._gui_state,
-            parent=self
+            skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
         )
 
         self._skelly_viewer_widget = SkellyViewer()
@@ -279,7 +285,7 @@ class MainWindow(QMainWindow):
             welcome_to_freemocap_widget=self._home_widget,
             skelly_viewer_widget=self._skelly_viewer_widget,
             directory_view_widget=self._directory_view_widget,
-            active_recording_info_widget=self._active_recording_info_widget
+            active_recording_info_widget=self._active_recording_info_widget,
         )
 
         center_tab_widget.set_welcome_tab_enabled(True)
@@ -329,8 +335,9 @@ class MainWindow(QMainWindow):
             self._handle_processing_finished_signal
         )
 
-        self._visualization_control_panel = VisualizationControlPanel(parent=self,
-                                                                      blender_executable_path=get_best_guess_of_blender_path())
+        self._visualization_control_panel = VisualizationControlPanel(
+            parent=self, blender_executable_path=get_best_guess_of_blender_path()
+        )
         self._visualization_control_panel.export_to_blender_button.clicked.connect(
             self._export_active_recording_to_blender
         )
@@ -364,29 +371,29 @@ class MainWindow(QMainWindow):
         )
 
         if (
-                self._controller_group_box.auto_open_in_blender_checked
-                # or self._visualization_control_panel.open_in_blender_automatically_box_is_checked
+            self._controller_group_box.auto_open_in_blender_checked
+            # or self._visualization_control_panel.open_in_blender_automatically_box_is_checked
         ):
             if Path(self._active_recording_info_widget.active_recording_info.blender_file_path).exists():
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
             else:
                 logger.error(
-                    "Blender file does not exist! Did something go wrong in the `export_to_blender` call above?")
+                    "Blender file does not exist! Did something go wrong in the `export_to_blender` call above?"
+                )
 
     def _generate_jupyter_notebook(self):
         logger.info("Exporting active recording to a Jupyter notebook...")
         recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
         # TODO: Need to include jupyter notebook in recording files that we keep track of (2023-05-15)
-        generate_jupyter_notebook(
-            path_to_recording=recording_path
-        )
+        generate_jupyter_notebook(path_to_recording=recording_path)
 
     def _handle_new_active_recording_selected(self, recording_info_model: RecordingInfoModel):
         logger.info(f"New active recording selected: {recording_info_model.path}")
 
         # self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
-        self._pipedream_pings.update_pings_dict(key=recording_info_model.name,
-                                                value=self._active_recording_info_widget.active_recording_info.status_check)
+        self._pipedream_pings.update_pings_dict(
+            key=recording_info_model.name, value=self._active_recording_info_widget.active_recording_info.status_check
+        )
 
         path = Path(recording_info_model.path)
         path.mkdir(parents=True, exist_ok=True)
@@ -425,7 +432,6 @@ class MainWindow(QMainWindow):
             self._skelly_viewer_widget.generate_video_display(
                 video_folder_path=active_recording_info.annotated_videos_folder_path
             )
-
 
         elif active_recording_info.synchronized_videos_status_check:
             self._skelly_viewer_widget.generate_video_display(
@@ -475,10 +481,14 @@ class MainWindow(QMainWindow):
 
         self._home_widget._send_pings_checkbox.setChecked(self._gui_state.send_user_pings)
         self._controller_group_box._auto_process_videos_checkbox.setChecked(self._gui_state.auto_process_videos_on_save)
-        self._controller_group_box._generate_jupyter_notebook_checkbox.setChecked(self._gui_state.generate_jupyter_notebook)
+        self._controller_group_box._generate_jupyter_notebook_checkbox.setChecked(
+            self._gui_state.generate_jupyter_notebook
+        )
         self._controller_group_box._auto_open_in_blender_checkbox.setChecked(self._gui_state.auto_open_in_blender)
         self._controller_group_box._charuco_square_size_line_edit.setText(str(self._gui_state.charuco_square_size))
-        self._process_motion_capture_data_panel._calibration_control_panel._charuco_square_size_line_edit.setText(str(self._gui_state.charuco_square_size))
+        self._process_motion_capture_data_panel._calibration_control_panel._charuco_square_size_line_edit.setText(
+            str(self._gui_state.charuco_square_size)
+        )
 
     def open_import_videos_dialog(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
@@ -494,15 +504,19 @@ class MainWindow(QMainWindow):
             logger.info("User cancelled `Import Videos` dialog")
             return
 
-        self._import_videos_window = ImportVideosWizard(parent=self,
-                                                        import_videos_path=import_videos_path,                                                 kill_thread_event=self._kill_thread_event,
-                                                        )
+        self._import_videos_window = ImportVideosWizard(
+            parent=self,
+            import_videos_path=import_videos_path,
+            kill_thread_event=self._kill_thread_event,
+        )
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
         text = self._import_videos_window.exec()
 
     def download_sample_data(self):
         logger.info("Downloading sample data")
-        self.download_sample_data_thread_worker = DownloadSampleDataThreadWorker(kill_thread_event=self._kill_thread_event, parent=self)
+        self.download_sample_data_thread_worker = DownloadSampleDataThreadWorker(
+            kill_thread_event=self._kill_thread_event, parent=self
+        )
         self.download_sample_data_thread_worker.start()
         self.download_sample_data_thread_worker.finished.connect(self._handle_download_sample_data_finished)
 
@@ -514,23 +528,22 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(list, str, bool)
     def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str, synchronization_bool: bool):
-
         folder_to_save_videos = Path(folder_to_save_videos)
         folder_to_save_videos.mkdir(parents=True, exist_ok=True)
 
         if len(video_paths) == 0:
             logger.error("No videos to import!")
             return
-        
-        if not synchronization_bool:
-            for video_path in tqdm(video_paths,
-                                desc="Importing videos...",
-                                colour=[255, 128, 0],
-                                unit="video",
-                                unit_scale=True,
-                                leave=False
-                                ):
 
+        if not synchronization_bool:
+            for video_path in tqdm(
+                video_paths,
+                desc="Importing videos...",
+                colour=[255, 128, 0],
+                unit="video",
+                unit_scale=True,
+                leave=False,
+            ):
                 if not Path(video_path).exists():
                     logger.error(f"{video_path} does not exist!")
                     return
@@ -540,8 +553,9 @@ class MainWindow(QMainWindow):
 
                 shutil.copy(video_path, destination_path)
 
-        timestamps_copied = copy_directory_if_contains_timestamps(source_dir=Path(video_paths[0]).parent,
-                                                                  destination_dir=folder_to_save_videos)
+        timestamps_copied = copy_directory_if_contains_timestamps(
+            source_dir=Path(video_paths[0]).parent, destination_dir=folder_to_save_videos
+        )
 
         if timestamps_copied:
             logger.info(f"Copied timestamps from {Path(video_paths[0]).parent} to {folder_to_save_videos}")
@@ -549,7 +563,8 @@ class MainWindow(QMainWindow):
             logger.info(f"No timestamps found in {Path(video_paths[0]).parent}")
 
         self._active_recording_info_widget.set_active_recording(
-            recording_folder_path=Path(folder_to_save_videos).parent)
+            recording_folder_path=Path(folder_to_save_videos).parent
+        )
 
     def reboot_gui(self):
         logger.info("Rebooting GUI... ")
@@ -560,8 +575,10 @@ class MainWindow(QMainWindow):
 
         if self._home_widget.consent_to_send_usage_information:
             self._pipedream_pings.update_pings_dict(key="gui_closed", value=True)
-            self._pipedream_pings.update_pings_dict(key="active recording status on close",
-                                                    value=self._active_recording_info_widget.active_recording_info.status_check)
+            self._pipedream_pings.update_pings_dict(
+                key="active recording status on close",
+                value=self._active_recording_info_widget.active_recording_info.status_check,
+            )
             self._pipedream_pings.send_pipedream_ping()
 
         try:

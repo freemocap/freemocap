@@ -31,6 +31,7 @@ from freemocap.core_processes.post_process_skeleton_data.process_single_camera_s
     process_single_camera_skeleton_data
 from freemocap.data_layer.data_saver.data_saver import DataSaver
 from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.paths_and_filenames.file_and_folder_names import RAW_DATA_FOLDER_NAME, \
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME, CENTER_OF_MASS_FOLDER_NAME, TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME, \
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME
@@ -40,23 +41,29 @@ from freemocap.tests.test_image_tracking_data_shape import (
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
 from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
 
 logger = logging.getLogger(__name__)
-
 
 def process_recording_folder(
         recording_processing_parameter_model: PostProcessingParameterModel,
         kill_event: multiprocessing.Event = None,
+        queue: multiprocessing.Queue = None,
         use_tqdm: bool = True,
 ):
     """
 
     Parameters
     ----------
-    recording_processing_parameter_model : PostProcessingParameterModel
+    recording_processing_parameter_model : RecordingProcessingParameterModel
         RecordingProcessingParameterModel object (contains all the paths and parameters necessary to process a session folder
 
     """
+
+    if queue:
+        handler = DirectQueueHandler(queue)
+        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
+        logger.addHandler(handler)
 
     rec = recording_processing_parameter_model  # make it smol
 
@@ -71,7 +78,7 @@ def process_recording_folder(
         try:
             mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = np.load(rec.recording_info_model.mediapipe_2d_data_npy_file_path)
         except Exception as e:
-            logger.error("Failed to load 2D data, cannot continue processing")
+            logger.error("Failed to load 2D data, cannot continue processing", exc_info=True)
             return
     else:
         logger.info("Detecting 2d skeletons...")
@@ -96,7 +103,7 @@ def process_recording_folder(
             image_tracking_data_file_path=rec.recording_info_model.mediapipe_2d_data_npy_file_path,
         )
     except AssertionError as error_message:
-        logger.error(error_message)
+        logger.error(error_message, exc_info=True)
 
     # spoof 3D data if single camera
     if mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
@@ -140,9 +147,10 @@ def process_recording_folder(
             reprojection_error_file_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
         )
     except AssertionError as error_message:
-        logger.error(error_message)
+        logger.error(error_message, exc_info=True)
 
     logger.info("Using SkellyForge Post-Processing to clean up data...")
+
 
     rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
 
@@ -177,7 +185,7 @@ def process_recording_folder(
             reprojection_error_file_path=rec.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
         )
     except AssertionError as error_message:
-        logger.error(error_message)
+        logger.error(error_message, exc_info=True)
 
     logger.info("Breaking up big `npy` into smaller bits and converting to `csv`...")
     # break up big NPY and save out csv's

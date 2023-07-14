@@ -57,6 +57,10 @@ from freemocap.gui.qt.widgets.home_widget import (
 )
 from freemocap.gui.qt.widgets.import_videos_window import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
+from freemocap.gui.qt.utilities.save_and_load_gui_state import (
+    GuiState,
+    load_gui_state,
+)
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -67,6 +71,12 @@ from freemocap.system.paths_and_filenames.path_getters import (
     get_blender_file_path,
     get_recording_session_folder_path,
 )
+from freemocap.system.paths_and_filenames.path_getters import (
+    get_blender_file_path,
+    get_recording_session_folder_path,
+    get_gui_state_json_path
+)
+
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path, \
     get_css_stylesheet_path, get_scss_stylesheet_path, get_most_recent_recording_path, get_blender_file_path, \
     get_freemocap_data_folder_path
@@ -107,6 +117,13 @@ class MainWindow(QMainWindow):
 
         self._freemocap_data_folder_path = freemocap_data_folder_path
         self._pipedream_pings = pipedream_pings
+
+        try:
+            self._gui_state = load_gui_state(get_gui_state_json_path())
+            logger.info("Successfully loaded previous settings")
+        except:
+            logger.info("Failed to find previous GUI settings, using default settings")
+            self._gui_state = GuiState()
 
         self._kill_thread_event = multiprocessing.Event()
 
@@ -237,7 +254,7 @@ class MainWindow(QMainWindow):
 
     def _create_central_tab_widget(self):
 
-        self._home_widget = HomeWidget(actions=self._actions, parent=self)
+        self._home_widget = HomeWidget(actions=self._actions, gui_state=self._gui_state, parent=self)
 
         self._skellycam_widget = SkellyCamWidget(
             self._create_new_synchronized_videos_folder,
@@ -249,6 +266,8 @@ class MainWindow(QMainWindow):
 
         self._controller_group_box = CameraControllerGroupBox(
             skellycam_widget=self._skellycam_widget,
+            gui_state=self._gui_state,
+            parent=self
         )
 
         self._skelly_viewer_widget = SkellyViewer()
@@ -303,6 +322,7 @@ class MainWindow(QMainWindow):
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             recording_processing_parameters=PostProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
+            gui_state=self._gui_state,
             kill_thread_event=self._kill_thread_event,
         )
         self._process_motion_capture_data_panel.processing_finished_signal.connect(
@@ -448,6 +468,16 @@ class MainWindow(QMainWindow):
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=user_selected_directory)
         self._central_tab_widget.setCurrentIndex(2)
+
+    def reset_to_default_gui_settings(self):
+        self._gui_state = GuiState()
+
+        self._home_widget._send_pings_checkbox.setChecked(self._gui_state.send_user_pings)
+        self._controller_group_box._auto_process_videos_checkbox.setChecked(self._gui_state.auto_process_videos_on_save)
+        self._controller_group_box._generate_jupyter_notebook_checkbox.setChecked(self._gui_state.generate_jupyter_notebook)
+        self._controller_group_box._auto_open_in_blender_checkbox.setChecked(self._gui_state.auto_open_in_blender)
+        self._controller_group_box._charuco_square_size_line_edit.setText(str(self._gui_state.charuco_square_size))
+        self._process_motion_capture_data_panel._calibration_control_panel._charuco_square_size_line_edit.setText(str(self._gui_state.charuco_square_size))
 
     def open_import_videos_dialog(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s

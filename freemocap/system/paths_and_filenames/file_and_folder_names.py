@@ -20,6 +20,7 @@ CENTER_OF_MASS_FOLDER_NAME = "center_of_mass"
 # file names
 MOST_RECENT_RECORDING_TOML_FILENAME = "most_recent_recording.toml"
 LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME = "last_successful_calibration.toml"
+GUI_STATE_JSON_FILENAME = "gui_state.json"
 MEDIAPIPE_2D_NPY_FILE_NAME = "mediapipe2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
 MEDIAPIPE_BODY_WORLD_FILE_NAME = "mediapipeBodyWorld_numCams_numFrames_numTrackedPoints_XYZ.npy"
 

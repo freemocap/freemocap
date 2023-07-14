@@ -65,6 +65,11 @@ from freemocap.gui.qt.utilities.save_and_load_gui_state import (
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
+    FIGSHARE_SAMPLE_ZIP_FILE_URL
+)
+from freemocap.system.paths_and_filenames.path_getters import (
+    get_blender_file_path,
+    get_recording_session_folder_path,
 )
 from freemocap.system.paths_and_filenames.path_getters import (
     get_blender_file_path,
@@ -76,6 +81,9 @@ from freemocap.system.paths_and_filenames.path_getters import get_recording_sess
     get_css_stylesheet_path, get_scss_stylesheet_path, get_most_recent_recording_path, get_blender_file_path, \
     get_freemocap_data_folder_path
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
+from freemocap.gui.qt.workers.download_sample_data_thread_worker import (
+    DownloadSampleDataThreadWorker
+)
 from freemocap.utilities.remove_empty_directories import remove_empty_directories
 
 EXIT_CODE_REBOOT = -123456789
@@ -490,6 +498,18 @@ class MainWindow(QMainWindow):
                                                         )
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
         text = self._import_videos_window.exec()
+
+    def download_sample_data(self):
+        logger.info("Downloading sample data")
+        self.download_sample_data_thread_worker = DownloadSampleDataThreadWorker(kill_thread_event=self._kill_thread_event, parent=self)
+        self.download_sample_data_thread_worker.start()
+        self.download_sample_data_thread_worker.finished.connect(self._handle_download_sample_data_finished)
+
+    def _handle_download_sample_data_finished(self):
+        logger.info("Setting sample data as active recording... ")
+        self._active_recording_info_widget.set_active_recording(
+            recording_folder_path=self.download_sample_data_thread_worker.sample_data_path
+        )
 
     @pyqtSlot(list, str)
     def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str):

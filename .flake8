@@ -1,0 +1,17 @@
+[flake8]
+
+per-file-ignores = ./freemocap/tests/*:S101
+
+max-line-length = 88
+
+extend-ignore = W503, E501, E402, S404, S603, S607
+# W503: Linebreak before binary operator
+# E501: Line too long
+# E402: Modulo level import not at top of file
+# S404: Consider possible security implications associated with the subprocess module.
+# S603: S603 subprocess call - check for execution of untrusted input.
+# S607 Starting a process with a partial executable path
+
+select = B,C,E,F,S,W
+
+max-complexity = 10

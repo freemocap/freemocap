@@ -15,7 +15,7 @@ def create_nested_dict(pydantic_model):
             args = get_args(field)
             if type(None) in args:
                 # Remove 'None' type from Union type
-                args = tuple(arg for arg in args if arg is not type(None))
+                args = tuple(arg for arg in args if arg is not type(None))  # noqa: E721
             if len(args) == 1:
                 field = args[0]
                 origin = get_origin(field)

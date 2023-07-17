@@ -113,7 +113,7 @@ class MainWindow(QMainWindow):
 
         self.setGeometry(100, 100, 1280, 720)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
-        self.setWindowTitle(f"freemocap \U0001F480 \U00002728")
+        self.setWindowTitle("freemocap \U0001F480 \U00002728")
 
         dummy_widget = QWidget()
         self._layout = QHBoxLayout()
@@ -452,7 +452,7 @@ class MainWindow(QMainWindow):
         most_recent_recording_path = get_most_recent_recording_path()
 
         if most_recent_recording_path is None:
-            logger.error(f"`get_most_recent_recording_path()` return `None`!")
+            logger.error("`get_most_recent_recording_path()` return `None`!")
             return
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())

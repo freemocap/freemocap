@@ -25,7 +25,7 @@ class SCSSFileWatcher(QFileSystemWatcher):
 
         try:
             compile_scss_to_css(self.path_to_scss_file, self.path_to_css_file)
-            logger.info(f"SCSS compilation finished")
+            logger.info("SCSS compilation finished")
         except Exception as e:
             logger.error(f"Error in SCSS compilation: {e}")
 

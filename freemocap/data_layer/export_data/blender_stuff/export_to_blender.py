@@ -43,7 +43,7 @@ def export_to_blender(
             blender_exe_path=blender_exe_path,
         )
 
-    logger.info(f"blender subprocess finished")
+    logger.info("blender subprocess finished")
 
 
 if __name__ == "__main__":

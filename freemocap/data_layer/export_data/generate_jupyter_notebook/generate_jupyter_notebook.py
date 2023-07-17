@@ -1,10 +1,8 @@
 import logging
+import json
 from pathlib import Path
 from typing import Union
 
-import papermill as pm
-
-logging.getLogger("papermill").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
@@ -13,14 +11,15 @@ def generate_jupyter_notebook(path_to_recording: Union[str, Path]):
     path_to_template_notebook = Path(__file__).parent / "freemocap_template.ipynb"
     path_to_output_notebook = Path(path_to_recording) / f"{recording_name}.ipynb"
 
-    logger.info(f"Jupyter notebook generated at {path_to_output_notebook}")
-    success = pm.execute_notebook(
-        input_path=path_to_template_notebook,
-        output_path=path_to_output_notebook,
-        parameters=dict(path_to_recording=str(path_to_recording)),
-    )
+    with open(path_to_template_notebook, "r") as file:
+        template_notebook = json.load(file)
+
+    template_notebook["cells"][3]["source"] = [f'path_to_recording = "{str(path_to_recording)}"']
+
+    with open(path_to_output_notebook, "w") as file:
+        json.dump(template_notebook, file)
 
 
 if __name__ == "__main__":
-    path_to_recording = r"C:\Users\aaron\FreeMocap_Data\recording_sessions\recording_15_19_00_gmt-4__brit_baseline"
+    path_to_recording = r"PATH/TO/RECORDING/FOLDER"
     generate_jupyter_notebook(path_to_recording)

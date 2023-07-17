@@ -71,7 +71,6 @@ from freemocap.gui.qt.utilities.save_and_load_gui_state import (
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
-    FIGSHARE_SAMPLE_ZIP_FILE_URL,
 )
 from freemocap.system.paths_and_filenames.path_getters import (
     get_blender_file_path,
@@ -128,7 +127,7 @@ class MainWindow(QMainWindow):
         try:
             self._gui_state = load_gui_state(get_gui_state_json_path())
             logger.info("Successfully loaded previous settings")
-        except:
+        except Exception:
             logger.info("Failed to find previous GUI settings, using default settings")
             self._gui_state = GuiState()
 
@@ -249,7 +248,7 @@ class MainWindow(QMainWindow):
 
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
-        scss_file_watcher = SCSSFileWatcher(
+        SCSSFileWatcher(
             path_to_scss_file=get_scss_stylesheet_path(), path_to_css_file=get_css_stylesheet_path(), parent=self
         )
         css_file_watcher = CSSFileWatcher(path_to_css_file=get_css_stylesheet_path(), parent=self)
@@ -510,7 +509,7 @@ class MainWindow(QMainWindow):
             kill_thread_event=self._kill_thread_event,
         )
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
-        text = self._import_videos_window.exec()
+        self._import_videos_window.exec()
 
     def download_sample_data(self):
         logger.info("Downloading sample data")

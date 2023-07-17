@@ -14,7 +14,7 @@ def generate_jupyter_notebook(path_to_recording: Union[str, Path]):
     path_to_output_notebook = Path(path_to_recording) / f"{recording_name}.ipynb"
 
     logger.info(f"Jupyter notebook generated at {path_to_output_notebook}")
-    success = pm.execute_notebook(
+    pm.execute_notebook(
         input_path=path_to_template_notebook,
         output_path=path_to_output_notebook,
         parameters=dict(path_to_recording=str(path_to_recording)),

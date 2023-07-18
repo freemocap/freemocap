@@ -6,16 +6,16 @@ from pathlib import Path
 import requests
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
-    FREEMOCAP_SAMPLE_DATA_RECORDING_NAME,
-    FIGSHARE_ZIP_FILE_URL,
+    FREEMOCAP_TEST_DATA_RECORDING_NAME,
+    FIGSHARE_TEST_ZIP_FILE_URL,
 )
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path
 
 logger = logging.getLogger(__name__)
 
-def get_sample_data_path(download_if_needed:bool=True)->str:
 
-    sample_data_path =  str(Path(get_recording_session_folder_path()) / FREEMOCAP_SAMPLE_DATA_RECORDING_NAME)
+def get_sample_data_path(download_if_needed: bool = True) -> str:
+    sample_data_path = str(Path(get_recording_session_folder_path()) / FREEMOCAP_TEST_DATA_RECORDING_NAME)
     if not Path(sample_data_path).exists():
         if download_if_needed:
             download_sample_data()
@@ -25,20 +25,20 @@ def get_sample_data_path(download_if_needed:bool=True)->str:
     return sample_data_path
 
 
-def download_sample_data(sample_data_zip_file_url: str = FIGSHARE_ZIP_FILE_URL) -> str:
+def download_sample_data(sample_data_zip_file_url: str = FIGSHARE_TEST_ZIP_FILE_URL) -> str:
     try:
         logger.info(f"Downloading sample data from {sample_data_zip_file_url}...")
 
         recording_session_folder_path = Path(get_recording_session_folder_path())
         recording_session_folder_path.mkdir(parents=True, exist_ok=True)
 
-        r = requests.get(FIGSHARE_ZIP_FILE_URL, stream=True)
+        r = requests.get(sample_data_zip_file_url, stream=True)
         r.raise_for_status()  # Check if request was successful
 
         z = zipfile.ZipFile(io.BytesIO(r.content))
         z.extractall(recording_session_folder_path)
 
-        figshare_sample_data_path = recording_session_folder_path / FREEMOCAP_SAMPLE_DATA_RECORDING_NAME
+        figshare_sample_data_path = recording_session_folder_path / FREEMOCAP_TEST_DATA_RECORDING_NAME
         logger.info(f"Sample data extracted to {str(figshare_sample_data_path)}")
         return str(figshare_sample_data_path)
 

@@ -9,6 +9,7 @@ from freemocap.gui.qt.style_sheet.compile_scss_to_css import compile_scss_to_css
 
 logger = logging.getLogger(__name__)
 
+
 class SCSSFileWatcher(QFileSystemWatcher):
     def __init__(self, path_to_scss_file: Union[str, Path], path_to_css_file: Union[str, Path], parent=None):
         super().__init__(parent)
@@ -28,9 +29,13 @@ class SCSSFileWatcher(QFileSystemWatcher):
         except Exception as e:
             logger.error(f"Error in SCSS compilation: {e}")
 
+
 if __name__ == "__main__":
     app = QtCore.QCoreApplication([])
-    qt_file_system_watcher = SCSSFileWatcher(path_to_scss_file=Path(__file__).parent / "qt_style_sheet.scss", path_to_css_file=Path(__file__).parent / "qt_style_sheet.css")
+    qt_file_system_watcher = SCSSFileWatcher(
+        path_to_scss_file=Path(__file__).parent / "qt_style_sheet.scss",
+        path_to_css_file=Path(__file__).parent / "qt_style_sheet.css",
+    )
     print(f"watching directories - {qt_file_system_watcher.directories()})")
     print(f"watching files - {qt_file_system_watcher.files()})")
     app.exec()

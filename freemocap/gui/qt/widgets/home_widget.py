@@ -7,7 +7,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QVBoxLayout,
-    QWidget, QHBoxLayout,
+    QWidget,
+    QHBoxLayout,
 )
 
 import freemocap
@@ -18,7 +19,10 @@ from freemocap.gui.qt.actions_and_menus.actions import (
     IMPORT_VIDEOS_ACTION_NAME,
     Actions,
 )
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
+from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +35,10 @@ class WelcomeScreenButton(QPushButton):
 
 
 class HomeWidget(QWidget):
-    def __init__(self, actions: Actions, parent: QWidget = None):
+    def __init__(self, actions: Actions, gui_state: GuiState, parent: QWidget = None):
         super().__init__(parent=parent)
+
+        self.gui_state = gui_state
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
@@ -47,16 +53,12 @@ class HomeWidget(QWidget):
         self._welcome_to_freemocap_title_widget = self._welcome_to_freemocap_title()
         self._layout.addWidget(self._welcome_to_freemocap_title_widget)
 
-        self._create_new_session_button = WelcomeScreenButton(
-            f"{CREATE_NEW_RECORDING_ACTION_NAME}"
-        )
+        self._create_new_session_button = WelcomeScreenButton(f"{CREATE_NEW_RECORDING_ACTION_NAME}")
         self._create_new_session_button.clicked.connect(actions.create_new_recording_action.trigger)
         self._layout.addWidget(self._create_new_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
         self._create_new_session_button.setProperty("recommended_next", True)
 
-        self._load_most_recent_session_button = WelcomeScreenButton(
-            f"{LOAD_MOST_RECENT_RECORDING_ACTION_NAME}"
-        )
+        self._load_most_recent_session_button = WelcomeScreenButton(f"{LOAD_MOST_RECENT_RECORDING_ACTION_NAME}")
         # self._load_most_recent_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
         # self._layout.addWidget(self._load_most_recent_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
         #
@@ -108,13 +110,19 @@ class HomeWidget(QWidget):
         self._layout.addLayout(hbox)
         hbox.addStretch(1)
         self._send_pings_checkbox = QCheckBox("Send anonymous usage information")
-        self._send_pings_checkbox.setChecked(True)
+        self._send_pings_checkbox.setChecked(self.gui_state.send_user_pings)
+        self._send_pings_checkbox.stateChanged.connect(self._on_send_pings_checkbox_changed)
         hbox.addWidget(self._send_pings_checkbox)
+
         hbox.addStretch(1)
 
     @property
     def consent_to_send_usage_information(self):
         return self._send_pings_checkbox.isChecked()
+
+    def _on_send_pings_checkbox_changed(self):
+        self.gui_state.send_user_pings = self._send_pings_checkbox.isChecked()
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
     def _welcome_to_freemocap_title(self):
         logger.info("Creating `welcome to freemocap` layout")

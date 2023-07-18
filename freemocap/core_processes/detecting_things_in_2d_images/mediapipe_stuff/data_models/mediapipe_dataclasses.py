@@ -6,6 +6,8 @@ import numpy as np
 from skellycam.detection.models.frame_payload import FramePayload
 
 logger = logging.getLogger(__name__)
+
+
 @dataclass
 class Mediapipe2dNumpyArrays:
     body_frameNumber_trackedPointNumber_XYZ: np.ndarray = None

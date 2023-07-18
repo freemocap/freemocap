@@ -15,23 +15,33 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QHBoxLayout,
-    QLayout, )
-
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
-    default_charuco_square_size_mm,
+    QLayout,
 )
+
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
-from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
+
+from freemocap.system.paths_and_filenames.path_getters import (
+    get_gui_state_json_path,
+    get_last_successful_calibration_toml_path,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class CalibrationControlPanel(QWidget):
-    def __init__(self, get_active_recording_info: Callable, kill_thread_event: threading.Event, parent=None):
+    def __init__(
+        self, get_active_recording_info: Callable, kill_thread_event: threading.Event, gui_state: GuiState, parent=None
+    ):
         super().__init__(parent=parent)
+        self.gui_state = gui_state
+        self._has_a_toml_path = False
+        self._calibration_toml_path = None
         self._get_active_recording_info = get_active_recording_info
+        self._kill_thread_event = kill_thread_event
+
         self.parent = parent
 
         self._layout = QVBoxLayout()
@@ -91,7 +101,6 @@ class CalibrationControlPanel(QWidget):
         return vbox_layout
 
     def update_calibration_toml_path(self, toml_path: str = None):
-
         if toml_path is None:
             if self._load_calibration_from_file_radio_button.isChecked():
                 if self._user_selected_toml_path is not None:
@@ -105,7 +114,7 @@ class CalibrationControlPanel(QWidget):
             elif self._calibrate_from_active_recording_radio_button.isChecked():
                 toml_path = self._check_active_recording_for_calibration_toml()
 
-            else: #no button checked -> initialize
+            else:  # no button checked -> initialize
                 toml_path = self._check_active_recording_for_calibration_toml()
                 if toml_path is not None:
                     self._load_calibration_from_file_radio_button.setChecked(True)
@@ -119,7 +128,7 @@ class CalibrationControlPanel(QWidget):
             logger.info(f"Setting calibration TOML path: {self._calibration_toml_path}")
             self._show_selected_calibration_toml_path(self._calibration_toml_path)
         else:
-            self._show_selected_calibration_toml_path('-Calibration File Not Found-')
+            self._show_selected_calibration_toml_path("-Calibration File Not Found-")
 
     def _add_calibrate_from_active_recording_radio_button(self):
         vbox = QVBoxLayout()
@@ -149,7 +158,6 @@ class CalibrationControlPanel(QWidget):
         return vbox
 
     def _create_use_most_recent_calibration_radio_button(self):
-
         self._use_most_recent_calibration_radio_button = QRadioButton(f"Use most recent calibration")
 
         self._use_most_recent_calibration_radio_button.toggled.connect(self._handle_use_most_recent_calibration_toggled)
@@ -227,7 +235,6 @@ class CalibrationControlPanel(QWidget):
             self.update_calibration_toml_path(toml_path=self._user_selected_toml_path)
             return self._user_selected_toml_path
 
-
     def _show_selected_calibration_toml_path(self, calibration_toml_path_str: str):
         self._calibration_toml_path = calibration_toml_path_str
         path = calibration_toml_path_str.replace(os.sep, "/ ")
@@ -244,16 +251,20 @@ class CalibrationControlPanel(QWidget):
         self._charuco_square_size_label = QLabel("Charuco square size (mm)")
         self._charuco_square_size_label.setStyleSheet("QLabel { font-size: 12px;  }")
 
-        self._charuco_square_size_line_edit.setText(str(default_charuco_square_size_mm))
+        self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
+        self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
         charuco_square_size_form_layout.addRow(self._charuco_square_size_label, self._charuco_square_size_line_edit)
         charuco_square_size_form_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
         return charuco_square_size_form_layout
 
-    def calibrate_from_active_recording(self, charuco_square_size_mm: float = None):
+    def _on_charuco_square_size_line_edit_changed(self):
+        self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
+    def calibrate_from_active_recording(self, charuco_square_size_mm: float = None):
         if not charuco_square_size_mm:
             charuco_square_size_mm = float(self._charuco_square_size_line_edit.text())
 

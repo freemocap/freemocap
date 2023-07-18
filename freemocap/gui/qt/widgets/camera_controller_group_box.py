@@ -11,16 +11,18 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QLabel,
     QRadioButton,
-    QCheckBox, QFrame,
+    QCheckBox,
+    QFrame,
 )
 from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.default_charuco_square_size import (
-    default_charuco_square_size_mm,
-)
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
-from freemocap.system.paths_and_filenames.path_getters import create_new_recording_folder_path, \
-    create_new_default_recording_name
+from freemocap.system.paths_and_filenames.path_getters import (
+    create_new_recording_folder_path,
+    create_new_default_recording_name,
+    get_gui_state_json_path,
+)
 
 CALIBRATION_RECORDING_BUTTON_TEXT = "\U0001F534 \U0001F4D0 Start Calibration Recording"
 MOCAP_RECORDING_BUTTON_TEXT = f"{SKULL_EMOJI_STRING} {SPARKLES_EMOJI_STRING} Start Motion Capture Recording"
@@ -28,11 +30,8 @@ MOCAP_RECORDING_BUTTON_TEXT = f"{SKULL_EMOJI_STRING} {SPARKLES_EMOJI_STRING} Sta
 logger = logging.getLogger(__name__)
 
 
-
-
-
 class CameraControllerGroupBox(QGroupBox):
-    def __init__(self, skellycam_widget: SkellyCamWidget, parent=None):
+    def __init__(self, skellycam_widget: SkellyCamWidget, gui_state: GuiState, parent=None):
         super().__init__(parent=parent)
         self.setStyleSheet("font-size: 12px;")
         self._skellycam_widget = skellycam_widget
@@ -40,10 +39,13 @@ class CameraControllerGroupBox(QGroupBox):
             camera_viewer_widget=skellycam_widget,
             parent=self,
         )
-        self._skellycam_controller.check_recording_type = self.check_recording_type,
+        self._skellycam_controller.check_recording_type = (self.check_recording_type,)
+
+        self.gui_state = gui_state
 
         self._layout = QHBoxLayout()
         self._layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
         self.setLayout(self._layout)
 
         self._layout.addLayout(self._make_record_button_layout())
@@ -54,6 +56,11 @@ class CameraControllerGroupBox(QGroupBox):
         self._mocap_videos_radio_button.toggled.connect(self._set_record_button_text)
         self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
         self._stop_recording_button.clicked.connect(self._set_record_button_text)
+
+        self._auto_process_videos_checkbox.toggled.connect(self._on_auto_process_videos_checkbox_changed)
+        self._generate_jupyter_notebook_checkbox.toggled.connect(self._on_generate_jupyter_notebook_checkbox_changed)
+        self._auto_open_in_blender_checkbox.toggled.connect(self._on_auto_open_in_blender_checkbox_changed)
+        self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
 
     @property
     def mocap_videos_radio_button_checked(self) -> bool:
@@ -98,15 +105,15 @@ class CameraControllerGroupBox(QGroupBox):
         self._mocap_videos_radio_button.setChecked(True)
         hbox.addWidget(QLabel(" - "))
         self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
-        self._auto_process_videos_checkbox.setChecked(True)
+        self._auto_process_videos_checkbox.setChecked(self.gui_state.auto_process_videos_on_save)
         hbox.addWidget(self._auto_process_videos_checkbox)
 
-        self._generate_jupyter_notebook_checkbox = QCheckBox('Generate Jupyter Notebook')
-        self._generate_jupyter_notebook_checkbox.setChecked(True)
+        self._generate_jupyter_notebook_checkbox = QCheckBox("Generate Jupyter Notebook")
+        self._generate_jupyter_notebook_checkbox.setChecked(self.gui_state.generate_jupyter_notebook)
         hbox.addWidget(self._generate_jupyter_notebook_checkbox)
 
         self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
-        self._auto_open_in_blender_checkbox.setChecked(True)
+        self._auto_open_in_blender_checkbox.setChecked(self.gui_state.auto_open_in_blender)
         hbox.addWidget(self._auto_open_in_blender_checkbox)
         return hbox
 
@@ -121,7 +128,7 @@ class CameraControllerGroupBox(QGroupBox):
         hbox.addWidget(QLabel("Charuco square size (mm)", parent=self))
         self._charuco_square_size_line_edit = QLineEdit(parent=self)
         self._charuco_square_size_line_edit.setFixedWidth(100)
-        self._charuco_square_size_line_edit.setText(str(default_charuco_square_size_mm))
+        self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
@@ -225,3 +232,19 @@ class CameraControllerGroupBox(QGroupBox):
             self.setProperty("calibration_videos_radio_button_checked", False)
             self._start_recording_button.setText(MOCAP_RECORDING_BUTTON_TEXT)
         self.style().polish(self)
+
+    def _on_auto_process_videos_checkbox_changed(self):
+        self.gui_state.auto_process_videos_on_save = self._auto_process_videos_checkbox.isChecked()
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+
+    def _on_generate_jupyter_notebook_checkbox_changed(self):
+        self.gui_state.generate_jupyter_notebook = self._generate_jupyter_notebook_checkbox.isChecked()
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+
+    def _on_auto_open_in_blender_checkbox_changed(self):
+        self.gui_state.auto_open_in_blender = self._auto_open_in_blender_checkbox.isChecked()
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+
+    def _on_charuco_square_size_line_edit_changed(self):
+        self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())

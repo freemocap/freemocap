@@ -38,6 +38,4 @@ class CharucoBoardDefinition:
                 dictionary=self.aruco_marker_dict,
             )
 
-        self.number_of_charuco_corners = (self.number_of_squares_width - 1) * (
-                self.number_of_squares_height - 1
-        )
+        self.number_of_charuco_corners = (self.number_of_squares_width - 1) * (self.number_of_squares_height - 1)

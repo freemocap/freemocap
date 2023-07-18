@@ -71,6 +71,7 @@ dependencies = [
     "skellycam",
     "skelly_viewer",
     "skellyforge",
+    "skelly_synchronize",
     "mediapipe",
     "opencv-contrib-python==4.6.0.66",
     "toml==0.10.2",
@@ -97,7 +98,7 @@ Documentation = "https://freemocap.readthedocs.io/en/latest/"
 Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]
-current_version = "v1.0.16-rc"
+current_version = "v1.0.17-rc"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

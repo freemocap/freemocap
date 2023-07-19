@@ -4,6 +4,7 @@ import pytest
 from freemocap.utilities.geometry.project_3d_data_to_z_plane import project_3d_data_to_z_plane
 from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 
+
 def test_rotate_by_90_degrees_around_x_axis():
     # test single point
     raw_skel3d_frame_marker_xyz = np.array([[[1, 2, 3]]])
@@ -24,6 +25,7 @@ def test_rotate_by_90_degrees_around_x_axis():
     raw_skel3d_frame_marker_xyz = np.array([[[0, 0, 0], [0, 0, 0], [0, 0, 0]]])
     expected_result = np.array([[[0, 0, 0], [0, 0, 0], [0, 0, 0]]])
     assert np.allclose(rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz), expected_result)
+
 
 def test_project_3d_data_to_z_plane():
     # test simple case

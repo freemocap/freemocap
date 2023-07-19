@@ -5,8 +5,14 @@ exclude =
     ./freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/anipose_camera_calibrator.py
     ./freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
     ./.nox
-    
-per-file-ignores = ./freemocap/tests/*:S101
+
+per-file-ignores = 
+    ./freemocap/tests/*:S101
+    ./freemocap/core_processes/detecting_things_in_2d_images/mediapipe_stuff/convert_mediapipe_npy_to_csv.py:E203
+    ./experimental/batch_process/batch_process.py:E226
+# S101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+# E203: whitespace before ':' (PEP8 says this doesn't apply to slicing)
+# E226: missing whitespace around arithmetic operator (file slashes misread as arithmetic)
 
 max-line-length = 88
 

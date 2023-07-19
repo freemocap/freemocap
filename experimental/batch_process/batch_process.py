@@ -44,7 +44,7 @@ def process_folder_of_session_folders(
             )
 
     logging.info("Done!")
- 
+
 
 def process_recording_without_gui(
     recording_path: Union[str, Path],
@@ -95,4 +95,3 @@ if __name__ == "__main__":
         path_to_camera_calibration_toml=path_to_camera_calibration_toml,
         path_to_blender_executable=path_to_blender_executable,
     )
-    

@@ -14,9 +14,10 @@ We use github to host code, to track issues and feature requests, as well as acc
 Pull requests are the best way to propose changes to the codebase (we use [Github Flow](https://docs.github.com/en/get-started/quickstart/github-flow)). We actively welcome your pull requests:
 
 1. Fork the repo and create your branch from `main`.
+2. Download the development dependencies with `pip install -e '.[dev]'`.
 2. If you've added code that should be tested, add tests.
 3. If you've changed APIs, update the documentation.
-4. Ensure the test suite passes.
+4. Ensure the test suite passes by running `pytest freemocap/tests`.
 5. Make sure your code lints.
 6. Issue that pull request!
 
@@ -47,6 +48,7 @@ People *love* thorough bug reports. The likelihood that the community and/or mai
 > **DISCLAIMER:** These are the guidelines we expect all pull requests from contibuters to follow. If your PR does not follow these guidelines, we may ask you to make some changes before we can review it.
 
 - Any code that comes through a PR should be covered with tests
+- Make sure the tests pass locally by running `pytest freemcap/tests`
 - Those test must pass our Github Actions workflow before they may be merged
 - Any UI changes should include a small video of the working application with the change included
 

@@ -1,5 +1,11 @@
 [flake8]
 
+exclude = 
+    ./freemocap/data_layer/export_data/blender_stuff/blender_bpy_export_scripts/*
+    ./freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/anipose_camera_calibrator.py
+    ./freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
+    ./.nox
+    
 per-file-ignores = ./freemocap/tests/*:S101
 
 max-line-length = 88

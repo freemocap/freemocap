@@ -213,7 +213,7 @@ class MediaPipeSkeletonDetector:
         number_of_tracked_points = all_cameras_data2d_list[0].shape[1]
         number_of_spatial_dimensions = all_cameras_data2d_list[0].shape[2]
 
-        number_of_body_points = all_cameras_pose_world_data_list[0].shape[1]
+        number_of_body_points = all_cameras_pose_world_data_list[0].shape[1] # noqa
 
         data2d_numCams_numFrames_numTrackedPts_XY = np.empty(
             (

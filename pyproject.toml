@@ -87,7 +87,7 @@ requires-python = ">=3.8"
 dynamic = ["version", "description"]
 
 [project.optional-dependencies]
-dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit"]
+dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit", "flake8"]
 
 [project.packages]
 freemocap = { include = ["assets"] }

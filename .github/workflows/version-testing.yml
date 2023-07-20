@@ -1,4 +1,4 @@
-name: Nox Tests
+name: Version Testing with Nox
 
 on:
   workflow_dispatch:

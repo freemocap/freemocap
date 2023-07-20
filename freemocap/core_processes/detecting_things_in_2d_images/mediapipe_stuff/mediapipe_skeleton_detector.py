@@ -1,7 +1,7 @@
 import logging
 import multiprocessing
 from pathlib import Path
-from typing import List, Union, Callable
+from typing import List, Optional, Union, Callable
 
 import cv2
 import mediapipe as mp
@@ -37,9 +37,12 @@ face_drawing_spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
 class MediaPipeSkeletonDetector:
     def __init__(
         self,
-        parameter_model=MediapipeParametersModel(),
+        parameter_model: Optional[MediapipeParametersModel] = None,
         use_tqdm: bool = True,
     ):
+        if parameter_model is None:
+            parameter_model = MediapipeParametersModel()
+
         self._parameter_model = parameter_model
         self._use_tqdm = use_tqdm
         self._mediapipe_payload_list = []
@@ -107,7 +110,7 @@ class MediaPipeSkeletonDetector:
         else:
             iterator = range(number_of_frames)
 
-        for frame_number in iterator:
+        for _frame_number in iterator:
             if not success or image is None:
                 logger.error(f"Failed to load an image from: {str(synchronized_video_file_path)}")
                 raise Exception

@@ -22,10 +22,15 @@ logger = logging.getLogger(__name__)
 def process_recording_headless(
     recording_path: Union[str, Path],
     path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
-    path_to_blender_executable: Optional[Union[str, Path]] = get_best_guess_of_blender_path(),
-    recording_processing_parameter_model: Optional[PostProcessingParameterModel] = PostProcessingParameterModel(),
+    path_to_blender_executable: Optional[Union[str, Path]] = None,
+    recording_processing_parameter_model: Optional[PostProcessingParameterModel] = None,
     use_tqdm: bool = True,
 ):
+    if path_to_blender_executable is None:
+        path_to_blender_executable = get_best_guess_of_blender_path()
+    if recording_processing_parameter_model is None:
+        recording_processing_parameter_model = PostProcessingParameterModel()
+
     rec = recording_processing_parameter_model
 
     logger.info(

@@ -95,10 +95,10 @@ def triangulate_3d_data(
         )
         raise Exception
 
-    mediapipe_2d_data = threshold_by_confidence(
-        mediapipe_2d_data=mediapipe_2d_data,
-        mediapipe_confidence_cutoff_threshold=mediapipe_confidence_cutoff_threshold,
-    )
+    # mediapipe_2d_data = threshold_by_confidence(
+    #     mediapipe_2d_data=mediapipe_2d_data,
+    #     mediapipe_confidence_cutoff_threshold=mediapipe_confidence_cutoff_threshold,
+    # )
 
     # reshape data to collapse across 'frames' so it becomes [number_of_cameras,
     # number_of_2d_points(numFrames*numPoints), XY]

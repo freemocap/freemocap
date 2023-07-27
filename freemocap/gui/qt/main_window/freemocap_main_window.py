@@ -66,6 +66,7 @@ from freemocap.gui.qt.utilities.save_and_load_gui_state import (
     GuiState,
     load_gui_state,
 )
+from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
@@ -511,6 +512,17 @@ class MainWindow(QMainWindow):
         )
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
         text = self._import_videos_window.exec()
+
+    def open_welcome_screen_dialog(self):
+        logger.info("Opening `Welcome to Freemocap` dialog... ")
+
+        self._welcome_screen_dialog = WelcomeScreenDialog(
+            gui_state = self._gui_state,
+            kill_thread_event=self._kill_thread_event, 
+            parent=self
+        )
+
+        self._welcome_screen_dialog.exec()
 
     def download_sample_data(self):
         logger.info("Downloading sample data")

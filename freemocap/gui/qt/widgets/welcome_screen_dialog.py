@@ -45,6 +45,11 @@ class WelcomeScreenDialog(QDialog):
         multi_camera_doc_link.setOpenExternalLinks(True)
         self._layout.addWidget(multi_camera_doc_link)
 
+        sample_data_text = "You can also download sample data from the File Menu to try processing a session and see what the output looks like."
+        sample_data_label = QLabel(sample_data_text)
+        sample_data_label.setWordWrap(True)
+        self._layout.addWidget(sample_data_label, 1)
+
         button_box = QHBoxLayout()
 
         self._dont_show_again_checkbox = QCheckBox("Don't show this again")

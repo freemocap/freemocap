@@ -28,4 +28,3 @@ if __name__ == "__main__":
     # path_to_recording = r"PATH/TO/RECORDING/FOLDER" #specify path to a specific recording here (other wise it will just download sample data)
 
     generate_jupyter_notebook(path_to_recording)
-

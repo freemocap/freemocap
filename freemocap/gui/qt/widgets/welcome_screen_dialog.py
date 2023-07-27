@@ -47,7 +47,7 @@ class WelcomeScreenDialog(QDialog):
 
         button_box = QHBoxLayout()
 
-        self._dont_show_again_checkbox = QCheckBox("Don't show me this again")
+        self._dont_show_again_checkbox = QCheckBox("Don't show this again")
         self._dont_show_again_checkbox.setChecked(False)
         self._dont_show_again_checkbox.stateChanged.connect(self._dont_show_again_checkbox_changed)
         button_box.addWidget(self._dont_show_again_checkbox)

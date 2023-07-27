@@ -43,7 +43,6 @@ QGroupBox {
 
 }
 
-
 QStatusBar {
     color: $plain-black;
 }
@@ -73,7 +72,6 @@ QTabBar::tab {
     font-weight: bolder;
     font-size: 16px;
 }
-
 
 QTabBar::tab:selected,
 QTabBar::tab:hover {
@@ -178,6 +176,7 @@ WelcomeScreenButton[recommended_next = true]:hover {
 QLabel {
     font-size: 14px;
     color: $dark-charcoal;
+    
 
     QTreeView & {
         color: $plain-black;
@@ -229,7 +228,7 @@ LogViewWidget {
 }
 
 QDialog {
-    background-color: $background;
+    background-color: $accent-background;
 }
 
 QListWidget {

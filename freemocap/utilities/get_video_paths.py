@@ -16,6 +16,6 @@ def get_video_paths(path_to_video_folder: Union[str, Path]) -> list:
 def get_unique_list(list: list) -> list:
     """Return a list of the unique elements from input list"""
     unique_list = []
-    [unique_list.append(clip) for clip in list if clip not in unique_list]
+    [unique_list.append(element) for element in list if element not in unique_list]
 
     return unique_list

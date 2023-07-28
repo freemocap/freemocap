@@ -183,7 +183,6 @@ def build_mediapipe_skeleton(mediapipe_pose_data, segment_dataframe, mediapipe_i
                 ]
 
         mediapipe_frame_segment_joint_XYZ.append(mediapipe_pose_skeleton_coordinates)
-        f = 2
 
     return mediapipe_frame_segment_joint_XYZ
 
@@ -322,7 +321,6 @@ def calculate_total_body_COM(segment_conn_len_perc_dataframe, segment_COM_frame_
 
         totalBodyCOM_frame_XYZ[frame, :] = this_frame_total_body_COM
 
-    f = 2
     return totalBodyCOM_frame_XYZ
 
 

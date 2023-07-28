@@ -40,7 +40,7 @@ def configure_logging():
     if len(logging.getLogger().handlers) == 0:
         handlers = get_logging_handlers()
         for handler in handlers:
-            if not handler in logging.getLogger("").handlers:
+            if handler not in logging.getLogger("").handlers:
                 logging.getLogger("").handlers.append(handler)
 
         logging.root.setLevel(logging.DEBUG)

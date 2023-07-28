@@ -65,7 +65,7 @@ def call_blender_subprocess_cgtinker(
     if blender_process.returncode == 0:
         print("Blender returned an error:")
         print(blender_process.stderr.read().decode())
-    logger.info(f"Done with blender stuff :D")
+    logger.info("Done with blender stuff :D")
 
 
 def call_blender_subprocess_alpha_megascript(
@@ -116,7 +116,7 @@ def call_blender_subprocess_alpha_megascript(
     if blender_process.returncode == 0:
         print("Blender returned an error:")
         print(blender_process.stderr.read().decode())
-    logger.info(f"Done with blender stuff :D")
+    logger.info("Done with blender stuff :D")
 
 
 def call_blender_subprocess_megascript_take2(
@@ -170,4 +170,4 @@ def call_blender_subprocess_megascript_take2(
     if blender_process.returncode == 0:
         print("Blender returned an error:")
         print(blender_process.stderr.read().decode())
-    logger.info(f"Done with blender stuff :D")
+    logger.info("Done with blender stuff :D")

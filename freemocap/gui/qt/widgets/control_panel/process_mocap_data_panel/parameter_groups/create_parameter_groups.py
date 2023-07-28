@@ -40,8 +40,11 @@ SKIP_BUTTERWORTH_FILTER_NAME = "Skip butterworth filter?"
 
 
 def create_mediapipe_parameter_group(
-    parameter_model: MediapipeParametersModel = MediapipeParametersModel(),
+    parameter_model: MediapipeParametersModel = None,
 ) -> Parameter:
+    if parameter_model is None:
+        parameter_model = MediapipeParametersModel()
+
     mediapipe_model_complexity_list = [
         "0 (Fastest/Least accurate)",
         "1 (Middle ground)",
@@ -91,8 +94,11 @@ def create_mediapipe_parameter_group(
 
 
 def create_3d_triangulation_prarameter_group(
-    parameter_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel(),
+    parameter_model: AniposeTriangulate3DParametersModel = None,
 ) -> Parameter:
+    if parameter_model is None:
+        parameter_model = AniposeTriangulate3DParametersModel()
+
     return Parameter.create(
         name=ANIPOSE_TREE_NAME,
         type="group",
@@ -117,8 +123,11 @@ def create_3d_triangulation_prarameter_group(
 
 
 def create_post_processing_parameter_group(
-    parameter_model: PostProcessingParametersModel = PostProcessingParametersModel(),
+    parameter_model: PostProcessingParametersModel = None,
 ) -> Parameter:
+    if parameter_model is None:
+        parameter_model = PostProcessingParametersModel()
+
     return Parameter.create(
         name=BUTTERWORTH_FILTER_TREE_NAME,
         type="group",

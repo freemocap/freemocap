@@ -177,7 +177,7 @@ class RecordingFolderStatusChecker:
             )
 
             return True
-        except AssertionError as e:
+        except AssertionError:
             return False
 
     def check_data3d_status(self) -> bool:
@@ -188,7 +188,7 @@ class RecordingFolderStatusChecker:
                 reprojection_error_file_path=self.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
             )
             return True
-        except AssertionError as e:
+        except AssertionError:
             return False
 
     def check_center_of_mass_data_status(self) -> bool:
@@ -198,7 +198,7 @@ class RecordingFolderStatusChecker:
                 total_body_center_of_mass_file_path=self.recording_info_model.total_body_center_of_mass_npy_file_path,
             )
             return True
-        except AssertionError as e:
+        except AssertionError:
             return False
 
     def check_blender_file_status(self) -> bool:

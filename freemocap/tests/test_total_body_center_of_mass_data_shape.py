@@ -33,4 +33,4 @@ def test_total_body_center_of_mass_data_shape(
 
     assert (
         total_body_center_of_mass_fr_xyz.shape[1] == 3
-    ), f"`total_body_center_of_mass_fr_xyz.shape[1]` should have 3 dimensions (X,Y,Z) "
+    ), "`total_body_center_of_mass_fr_xyz.shape[1]` should have 3 dimensions (X,Y,Z) "

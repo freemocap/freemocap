@@ -32,7 +32,7 @@ def download_sample_data(sample_data_zip_file_url: str = FIGSHARE_TEST_ZIP_FILE_
         recording_session_folder_path = Path(get_recording_session_folder_path())
         recording_session_folder_path.mkdir(parents=True, exist_ok=True)
 
-        r = requests.get(sample_data_zip_file_url, stream=True)
+        r = requests.get(sample_data_zip_file_url, stream=True, timeout=(5, 60))
         r.raise_for_status()  # Check if request was successful
 
         z = zipfile.ZipFile(io.BytesIO(r.content))

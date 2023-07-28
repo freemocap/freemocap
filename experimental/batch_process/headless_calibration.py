@@ -19,7 +19,7 @@ def headless_calibration(
         charuco_board_object=charuco_board_object,
         charuco_square_size=charuco_square_size,
         calibration_videos_folder_path=path_to_folder_of_calibration_videos,
-        progress_callback=lambda *args, **kwargs: None, # the empty callable is needed, otherwise calibration will cause an error
+        progress_callback=lambda *args, **kwargs: None,  # the empty callable is needed, otherwise calibration will cause an error
     )
 
     anipose_camera_calibrator.calibrate_camera_capture_volume(pin_camera_0_to_origin=pin_camera_0_to_origin)

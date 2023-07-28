@@ -18,7 +18,6 @@ from skelly_viewer import SkellyViewer
 from skellycam import (
     SkellyCamParameterTreeWidget,
     SkellyCamWidget,
-    SkellyCamControllerWidget,
 )
 from tqdm import tqdm
 
@@ -59,9 +58,6 @@ from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.home_widget import (
     HomeWidget,
 )
-
-from freemocap.gui.qt.widgets.import_videos_wizard import ImportVideosWizard
-from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.utilities.save_and_load_gui_state import (
     GuiState,
     load_gui_state,
@@ -72,26 +68,15 @@ from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     PATH_TO_FREEMOCAP_LOGO_SVG,
-    FIGSHARE_SAMPLE_ZIP_FILE_URL,
 )
-from freemocap.system.paths_and_filenames.path_getters import (
-    get_blender_file_path,
-    get_recording_session_folder_path,
-)
-from freemocap.system.paths_and_filenames.path_getters import (
-    get_blender_file_path,
-    get_recording_session_folder_path,
-    get_gui_state_json_path,
-)
-
 from freemocap.system.paths_and_filenames.path_getters import (
     get_recording_session_folder_path,
     get_css_stylesheet_path,
     get_scss_stylesheet_path,
     get_blender_file_path,
     get_most_recent_recording_path,
+    get_gui_state_json_path,
 )
-
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadSampleDataThreadWorker
 from freemocap.utilities.remove_empty_directories import remove_empty_directories
@@ -114,7 +99,7 @@ class MainWindow(QMainWindow):
 
         self.setGeometry(100, 100, 1280, 720)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
-        self.setWindowTitle(f"freemocap \U0001F480 \U00002728")
+        self.setWindowTitle("freemocap \U0001F480 \U00002728")
 
         dummy_widget = QWidget()
         self._layout = QHBoxLayout()
@@ -129,7 +114,7 @@ class MainWindow(QMainWindow):
         try:
             self._gui_state = load_gui_state(get_gui_state_json_path())
             logger.info("Successfully loaded previous settings")
-        except:
+        except Exception:
             logger.info("Failed to find previous GUI settings, using default settings")
             self._gui_state = GuiState()
 
@@ -250,7 +235,7 @@ class MainWindow(QMainWindow):
 
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
-        scss_file_watcher = SCSSFileWatcher(
+        SCSSFileWatcher(
             path_to_scss_file=get_scss_stylesheet_path(), path_to_css_file=get_css_stylesheet_path(), parent=self
         )
         css_file_watcher = CSSFileWatcher(path_to_css_file=get_css_stylesheet_path(), parent=self)
@@ -453,7 +438,7 @@ class MainWindow(QMainWindow):
         most_recent_recording_path = get_most_recent_recording_path()
 
         if most_recent_recording_path is None:
-            logger.error(f"`get_most_recent_recording_path()` return `None`!")
+            logger.error("`get_most_recent_recording_path()` return `None`!")
             return
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())
@@ -511,7 +496,7 @@ class MainWindow(QMainWindow):
             kill_thread_event=self._kill_thread_event,
         )
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
-        text = self._import_videos_window.exec()
+        self._import_videos_window.exec()
 
     def open_welcome_screen_dialog(self):
         logger.info("Opening `Welcome to Freemocap` dialog... ")
@@ -603,22 +588,6 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Error while closing the viewer widget: {e}")
         super().closeEvent(a0)
-
-
-def remove_empty_directories(root_dir: Union[str, Path]):
-    """
-    Recursively remove empty directories from the root directory
-    :param root_dir: The root directory to start removing empty directories from
-    """
-    # logger.debug(f"Searching for empty directories in: {root_dir}")
-    for path in Path(root_dir).rglob("*"):
-        if path.is_dir() and not any(path.iterdir()):
-            logger.info(f"Removing empty directory: {path}")
-            path.rmdir()
-        elif path.is_dir() and any(path.iterdir()):
-            remove_empty_directories(path)
-        else:
-            continue
 
 
 if __name__ == "__main__":

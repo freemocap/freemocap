@@ -348,7 +348,7 @@ def main(
 
             ######################
             ### Create Rigify human meta-rig
-            print(f"Creating `rigify human meta-rig`")
+            print("Creating `rigify human meta-rig`")
             bpy.ops.object.armature_human_metarig_add()
             human_metarig = bpy.context.editable_objects[-1]
             human_metarig.data.display_type = "WIRE"

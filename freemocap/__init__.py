@@ -11,8 +11,8 @@ __repo_issues_url__ = f"{__repo_url__}issues"
 
 
 # if we're running from source, we need to add the parent directory to sys.path
-import sys
-from pathlib import Path
+# import sys
+# from pathlib import Path
 
 #
 # base_package_path = Path(__file__).parent.parent

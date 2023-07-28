@@ -23,7 +23,7 @@ from tqdm import tqdm
 
 from freemocap.data_layer.export_data.blender_stuff.export_to_blender import export_to_blender
 from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-from freemocap.data_layer.export_data.generate_jupyter_notebook.generate_jupyter_notebook import (
+from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import (
     generate_jupyter_notebook,
 )
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
@@ -502,8 +502,8 @@ class MainWindow(QMainWindow):
         logger.info("Opening `Welcome to Freemocap` dialog... ")
 
         self._welcome_screen_dialog = WelcomeScreenDialog(
-            gui_state = self._gui_state,
-            kill_thread_event=self._kill_thread_event, 
+            gui_state=self._gui_state,
+            kill_thread_event=self._kill_thread_event,
             parent=self
         )
 

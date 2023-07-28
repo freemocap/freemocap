@@ -197,7 +197,9 @@ def get_last_successful_calibration_name():
     if not Path(path).exists():
         logger.error(f"{LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME} not found at {path}!!")
         return None
-    toml_dict = toml.load(path)
+    # toml_dict = toml.load(path)
+
+    # TODO: this function appears unfinished, and is currently unused. Either we need to parse the TOML or remove this.
 
 
 def get_blender_file_name(recording_name: str):

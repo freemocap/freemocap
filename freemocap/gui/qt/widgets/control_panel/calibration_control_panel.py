@@ -158,7 +158,7 @@ class CalibrationControlPanel(QWidget):
         return vbox
 
     def _create_use_most_recent_calibration_radio_button(self):
-        self._use_most_recent_calibration_radio_button = QRadioButton(f"Use most recent calibration")
+        self._use_most_recent_calibration_radio_button = QRadioButton("Use most recent calibration")
 
         self._use_most_recent_calibration_radio_button.toggled.connect(self._handle_use_most_recent_calibration_toggled)
 
@@ -169,7 +169,7 @@ class CalibrationControlPanel(QWidget):
     def update_calibrate_from_active_recording_button_text(self):
         active_recording_info = self._get_active_recording_info()
         if active_recording_info is None:
-            active_path_str = f"- No active recording selected -"
+            active_path_str = "- No active recording selected -"
         else:
             if not active_recording_info.synchronized_videos_status_check:
                 active_path_str = f"Recording: {active_recording_info.name} has no synchronized videos!"

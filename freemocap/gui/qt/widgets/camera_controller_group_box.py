@@ -1,7 +1,5 @@
 import logging
 from pathlib import Path
-
-from PyQt6 import QtWidgets, QtGui
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QGroupBox,
@@ -12,7 +10,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QRadioButton,
     QCheckBox,
-    QFrame,
 )
 from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
@@ -210,7 +207,7 @@ class CameraControllerGroupBox(QGroupBox):
             tag = tag.replace("  ", " ")
             tag = tag.replace(" ", "_")
             return tag
-        except:
+        except Exception:
             return ""
 
     def _get_recording_name(self):

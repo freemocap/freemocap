@@ -47,7 +47,7 @@ def qt_gui_main():
         freemocap_main_window.close()
 
         if not error_code == EXIT_CODE_REBOOT:
-            print(f"Thank you for using freemocap \U0001F480 \U00002764 \U00002728")
+            print("Thank you for using freemocap \U0001F480 \U00002764 \U00002728")
             break
 
         logger.info("`main` exited with the 'reboot' code, so let's reboot!")

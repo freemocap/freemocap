@@ -24,12 +24,15 @@ class AniposeCalibrationThreadWorker(QThread):
         calibration_videos_folder_path: Union[str, Path],
         charuco_square_size: Union[int, float],
         kill_thread_event: threading.Event,
-        charuco_board_definition: CharucoBoardDefinition = CharucoBoardDefinition(),
+        charuco_board_definition: CharucoBoardDefinition = None,
     ):
         super().__init__()
         logger.info(
             f"Initializing Anipose Calibration Thread Worker for videos in path {calibration_videos_folder_path}"
         )
+        if charuco_board_definition is None:
+            charuco_board_definition = CharucoBoardDefinition()
+
         self._kill_thread_event = kill_thread_event
         self._charuco_board_definition = charuco_board_definition
         self._charuco_square_size = charuco_square_size

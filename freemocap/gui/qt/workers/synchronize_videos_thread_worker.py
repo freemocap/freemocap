@@ -1,7 +1,6 @@
 import logging
 import threading
 from pathlib import Path
-from typing import Union
 
 from PyQt6.QtCore import pyqtSignal, QThread
 
@@ -21,7 +20,7 @@ class SynchronizeVideosThreadWorker(QThread):
         kill_thread_event: threading.Event,
     ):
         super().__init__()
-        logger.info(f"Initializing Synchronize Videos Thread Worker")
+        logger.info("Initializing Synchronize Videos Thread Worker")
         self._kill_thread_event = kill_thread_event
         self._raw_video_folder_path = raw_video_folder_path
         self._synchronized_video_folder_path = synchronized_video_folder_path

@@ -48,11 +48,11 @@ class ControlPanelWidget(QWidget):
 
         self._tab_widget.addTab(
             camera_configuration_parameter_tree_widget,
-            f"Camera Configuration",
+            "Camera Configuration",
         )
         # self._tool_box.addTab(calibration_control_panel, "Capture Volume Calibration")
-        self._tab_widget.addTab(process_motion_capture_data_panel, f"Process Data")
-        self._tab_widget.addTab(visualize_data_widget, f"Export Data")
+        self._tab_widget.addTab(process_motion_capture_data_panel, "Process Data")
+        self._tab_widget.addTab(visualize_data_widget, "Export Data")
 
         self._tab_widget.setProperty("control_panel_tabs", True)
         self.style().polish(self._tab_widget)

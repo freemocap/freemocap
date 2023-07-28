@@ -49,6 +49,7 @@ class LoggingQueueListener(QThread):
 
                 self.log_message_signal.emit(record)
         except Exception as e:
+            logger.exception(e)
             self.close()
 
     def close(self):

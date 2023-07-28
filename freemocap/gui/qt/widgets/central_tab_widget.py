@@ -61,7 +61,7 @@ class CentralTabWidget(QTabWidget):
         self._camera_view_layout = QVBoxLayout()
         self._camera_view_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         dummy_widget.setLayout(self._camera_view_layout)
-        tab_widget.addTab(dummy_widget, f"Cameras")
+        tab_widget.addTab(dummy_widget, "Cameras")
         # tab_widget.setToolTip(skellycam.__repo_url__)
 
         # self._qt_multi_camera_viewer_widget.resize(1280, 720)
@@ -81,13 +81,13 @@ class CentralTabWidget(QTabWidget):
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):
         logger.info("Creating export_data tab")
-        tab_widget.addTab(self._skelly_viewer_widget, f"Data Viewer")
+        tab_widget.addTab(self._skelly_viewer_widget, "Data Viewer")
         # tab_widget.setToolTip(skelly_viewer.__repo_url__)
 
     def _create_directory_view_tab(self, tab_widget: QTabWidget):
         logger.info("Creating directory view tab")
-        tab_widget.addTab(self._directory_view_widget, f"Directory View")
+        tab_widget.addTab(self._directory_view_widget, "Directory View")
 
     def _create_active_recording_info_tab(self, tab_widget: QTabWidget):
         logger.info("Creating active recording info tab")
-        tab_widget.addTab(self._active_recording_info_widget, f"Active Recording Info")
+        tab_widget.addTab(self._active_recording_info_widget, "Active Recording Info")

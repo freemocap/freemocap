@@ -23,7 +23,7 @@ from tqdm import tqdm
 
 from freemocap.data_layer.export_data.blender_stuff.export_to_blender import export_to_blender
 from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-from freemocap.data_layer.export_data.generate_jupyter_notebook.generate_jupyter_notebook import (
+from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import (
     generate_jupyter_notebook,
 )
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
@@ -62,6 +62,7 @@ from freemocap.gui.qt.utilities.save_and_load_gui_state import (
     GuiState,
     load_gui_state,
 )
+from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
@@ -496,6 +497,17 @@ class MainWindow(QMainWindow):
         )
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
         self._import_videos_window.exec()
+
+    def open_welcome_screen_dialog(self):
+        logger.info("Opening `Welcome to Freemocap` dialog... ")
+
+        self._welcome_screen_dialog = WelcomeScreenDialog(
+            gui_state=self._gui_state,
+            kill_thread_event=self._kill_thread_event,
+            parent=self
+        )
+
+        self._welcome_screen_dialog.exec()
 
     def download_sample_data(self):
         logger.info("Downloading sample data")

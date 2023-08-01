@@ -62,6 +62,8 @@ def process_recording_without_gui(
 
     recording_info_dict = rec.dict(exclude={'recording_info_model'})
 
+    Path(rec.recording_info_model.output_data_folder_path).mkdir(parents=True, exist_ok=True)
+
     save_dictionary_to_json(
         save_path=rec.recording_info_model.output_data_folder_path,
         file_name=RECORDING_PARAMETERS_JSON_FILE_NAME,

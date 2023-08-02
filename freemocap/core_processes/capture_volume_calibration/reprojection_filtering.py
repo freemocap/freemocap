@@ -27,6 +27,7 @@ def filter_by_reprojection_error(
     output_data_folder_path: Union[str, Path],
     use_triangulate_ransac: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
+
     # create combinations of cameras with 1 camera removed
     total_cameras = mediapipe_2d_data.shape[0]
     num_cameras_to_remove = 1
@@ -40,6 +41,9 @@ def filter_by_reprojection_error(
     logger.info(
         f"Found {len(frames_above_threshold)} frames with reprojection error above threshold of {reprojection_error_threshold} mm"
     )
+
+    #remove unused Z values for triangulate function
+    mediapipe_2d_data = mediapipe_2d_data[:, :, :, :2]
 
     while len(frames_above_threshold) > 0:
         # if we've checked all combinations with n cameras removed, start checking with n+1 removed
@@ -117,10 +121,9 @@ def set_unincluded_data_to_nans(
     frames_with_reprojection_error: np.ndarray,
     cameras_to_remove: list[int],
 ) -> np.ndarray:
-    data_to_reproject = np.take(mediapipe_2d_data[:, :, :, :2], frames_with_reprojection_error, axis=1)
+    data_to_reproject = np.take(mediapipe_2d_data, frames_with_reprojection_error, axis=1)
     for camera_to_remove in cameras_to_remove:
         data_to_reproject[camera_to_remove, :, :, :] = np.nan
     return data_to_reproject
-
 
 

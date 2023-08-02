@@ -156,7 +156,6 @@ def process_recording_folder(
                 anipose_calibration_object=anipose_calibration_object,
                 mediapipe_2d_data=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
                 output_data_folder_path=rec.recording_info_model.raw_data_folder_path,
-                mediapipe_confidence_cutoff_threshold=rec.anipose_triangulate_3d_parameters_model.confidence_threshold_cutoff,
                 use_triangulate_ransac=rec.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
                 kill_event=kill_event,
             )

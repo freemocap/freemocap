@@ -65,7 +65,6 @@ def triangulate_3d_data(
     anipose_calibration_object,
     mediapipe_2d_data: np.ndarray,
     output_data_folder_path: Union[str, Path],
-    mediapipe_confidence_cutoff_threshold: float,
     use_triangulate_ransac: bool = False,
     kill_event: multiprocessing.Event = None,
 ):

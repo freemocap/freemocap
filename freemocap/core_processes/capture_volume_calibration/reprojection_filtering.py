@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Tuple, Union
 import numpy as np
-import plotly.express as px
+from matplotlib import pyplot as plt
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
@@ -27,6 +27,13 @@ def filter_by_reprojection_error(
     output_data_folder_path: Union[str, Path],
     use_triangulate_ransac: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    # create before plot for debugging
+    plot_reprojection_error(
+        reprojection_error_frame_marker=reprojection_error_frame_marker,
+        reprojection_error_threshold=reprojection_error_threshold,
+        output_folder_path=output_data_folder_path,
+        after_filtering=False
+    )
 
     # create combinations of cameras with 1 camera removed
     total_cameras = mediapipe_2d_data.shape[0]
@@ -54,13 +61,11 @@ def filter_by_reprojection_error(
         # pick a combination of cameras to rerun with
         cameras_to_remove = camera_combinations.pop()
 
-        # don't triangulate with less that 2 cameras
+        # don't triangulate with less than 2 cameras
         if len(cameras_to_remove) > total_cameras - 2:
             logging.info(
                 f"There are still {len(frames_above_threshold)} frames with reprojection error above threshold with all camera combinations, converting data for those frames to NaNs"
             )
-            # turn 3d data to nans? or 2d to nans and then triangulate?
-            # going with 3d to nans for now
             raw_skel3d_frame_marker_xyz[frames_above_threshold, :, :] = np.nan
             reprojection_error_frame_marker[frames_above_threshold, :] = np.nan
             break
@@ -71,7 +76,6 @@ def filter_by_reprojection_error(
             frames_with_reprojection_error=frames_above_threshold,
             cameras_to_remove=cameras_to_remove,
         )
-        print(data_to_reproject.shape)
 
         retriangulated_data, new_reprojection_error = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
@@ -98,6 +102,13 @@ def filter_by_reprojection_error(
         )
         logging.info(f"There are now {len(frames_above_threshold)} frames with reprojection error above threshold")
 
+    plot_reprojection_error(
+        reprojection_error_frame_marker=reprojection_error_frame_marker,
+        reprojection_error_threshold=reprojection_error_threshold,
+        output_folder_path=output_data_folder_path,
+        after_filtering=True
+    )
+
     return (raw_skel3d_frame_marker_xyz, reprojection_error_frame_marker)
 
 
@@ -120,9 +131,28 @@ def set_unincluded_data_to_nans(
     frames_with_reprojection_error: np.ndarray,
     cameras_to_remove: list[int],
 ) -> np.ndarray:
-    data_to_reproject = np.take(mediapipe_2d_data, frames_with_reprojection_error, axis=1)
-    for camera_to_remove in cameras_to_remove:
-        data_to_reproject[camera_to_remove, :, :, :] = np.nan
+    data_to_reproject = mediapipe_2d_data[:,frames_with_reprojection_error, :, :]
+    data_to_reproject[cameras_to_remove, :, :, :] = np.nan
     return data_to_reproject
 
-
+def plot_reprojection_error(
+    reprojection_error_frame_marker: np.ndarray,
+    reprojection_error_threshold: float,
+    output_folder_path: Union[str, Path],
+    after_filtering: bool = False,
+) -> None:
+    title = "Mean Reprojection Error Per Frame"
+    file_name = "debug_reprojection_error_filtering.png"
+    output_filepath = Path(output_folder_path) / file_name
+    mean_reprojection_error_per_frame = np.nanmean(
+        reprojection_error_frame_marker,
+        axis=1,
+    )
+    plt.plot(mean_reprojection_error_per_frame)
+    if after_filtering:
+        plt.xlabel("Frame")
+        plt.ylabel("Mean Reprojection Error Across Markers (mm)")
+        plt.hlines(y=reprojection_error_threshold, xmin=0, xmax=len(mean_reprojection_error_per_frame), color="red")
+        plt.title(title)
+        logger.info(f"Saving debug plots to: {output_filepath}")
+        plt.savefig(output_filepath, dpi = 300)

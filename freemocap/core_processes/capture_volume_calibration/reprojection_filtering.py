@@ -41,7 +41,7 @@ def filter_by_reprojection_error(
     logger.info(
         f"Found {len(frames_above_threshold)} frames with reprojection error above threshold of {reprojection_error_threshold} mm"
     )
-
+    
     #remove unused Z values for triangulate function
     mediapipe_2d_data = mediapipe_2d_data[:, :, :, :2]
 
@@ -77,7 +77,6 @@ def filter_by_reprojection_error(
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=data_to_reproject,
             output_data_folder_path=output_data_folder_path,
-            mediapipe_confidence_cutoff_threshold=0.7,
             use_triangulate_ransac=use_triangulate_ransac,
         )
 

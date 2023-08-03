@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 class GuiState(BaseModel):
     send_user_pings: bool = True
+    show_welcome_screen: bool = True
     auto_process_videos_on_save: bool = True
     generate_jupyter_notebook: bool = True
     auto_open_in_blender: bool = True

@@ -9,7 +9,7 @@ class CharucoBoardDefinition:
     try:
         # to make compatible across opencv 4.6 and 4.7
         aruco_marker_dict: Dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
-    except:
+    except Exception:
         aruco_marker_dict: Dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
 
     # number_of_squares_width: int = 5
@@ -29,7 +29,7 @@ class CharucoBoardDefinition:
                 self.aruco_marker_length_proportional,
                 self.aruco_marker_dict,
             )
-        except:
+        except Exception:
             # opencv 4.7
             self.charuco_board = cv2.aruco.CharucoBoard(
                 size=[self.number_of_squares_width, self.number_of_squares_height],

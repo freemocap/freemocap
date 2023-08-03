@@ -91,6 +91,7 @@ def process_recording_folder(
                 rec.recording_info_model.mediapipe_2d_data_npy_file_path
             )
         except Exception as e:
+            logger.error(e)
             logger.error("Failed to load 2D data, cannot continue processing", exc_info=True)
             return
     else:

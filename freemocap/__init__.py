@@ -2,7 +2,7 @@
 
 __author__ = """Skelly FreeMoCap"""
 __email__ = "info@freemocap.org"
-__version__ = "v1.0.17-rc"
+__version__ = "v1.0.18-rc"
 __description__ = "A free and open source markerless motion capture system for everyone 💀✨"
 
 __package_name__ = "freemocap"
@@ -11,8 +11,8 @@ __repo_issues_url__ = f"{__repo_url__}issues"
 
 
 # if we're running from source, we need to add the parent directory to sys.path
-import sys
-from pathlib import Path
+# import sys
+# from pathlib import Path
 
 #
 # base_package_path = Path(__file__).parent.parent

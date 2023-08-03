@@ -27,4 +27,5 @@ class PipedreamPings:
         requests.post(
             self._pipedream_url,
             json=self._pings_dict,
+            timeout=(5, 60)
         )

@@ -41,13 +41,15 @@ def qt_gui_main():
         logger.info("Showing main window - Ready to start!")
         logger.info("Welcome to FreeMoCap 💀✨")
         freemocap_main_window.show()
+        if freemocap_main_window._gui_state.show_welcome_screen:
+            freemocap_main_window.open_welcome_screen_dialog()
         timer.timeout.connect(freemocap_main_window.update)
         error_code = app.exec()
         logger.info(f"`main` exited with error code: {error_code}")
         freemocap_main_window.close()
 
         if not error_code == EXIT_CODE_REBOOT:
-            print(f"Thank you for using freemocap \U0001F480 \U00002764 \U00002728")
+            print("Thank you for using freemocap \U0001F480 \U00002764 \U00002728")
             break
 
         logger.info("`main` exited with the 'reboot' code, so let's reboot!")

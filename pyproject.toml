@@ -77,7 +77,6 @@ dependencies = [
     "toml==0.10.2",
     "aniposelib==0.4.3",
     "libsass==0.21.0",
-    "papermill==2.4.0",
     "ipykernel==6.23.1",
     "plotly==5.14.1",
     "pydantic==1.*"
@@ -87,7 +86,7 @@ requires-python = ">=3.8"
 dynamic = ["version", "description"]
 
 [project.optional-dependencies]
-dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit"]
+dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit", "flake8"]
 
 [project.packages]
 freemocap = { include = ["assets"] }
@@ -98,7 +97,7 @@ Documentation = "https://freemocap.readthedocs.io/en/latest/"
 Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]
-current_version = "v1.0.17-rc"
+current_version = "v1.0.18-rc"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

@@ -161,23 +161,29 @@ def process_recording_folder(
                 use_triangulate_ransac=rec.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
                 kill_event=kill_event,
             )
-            (
-                reprojection_filtered_skel3d_frame_marker_xyz,
-                reprojection_filtered_skeleton_reprojection_error_fr_mar,
-            ) = filter_by_reprojection_error(
-                reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
-                reprojection_error_threshold=rec.anipose_triangulate_3d_parameters_model.confidence_threshold_cutoff,
-                mediapipe_2d_data=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
-                raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
-                anipose_calibration_object=anipose_calibration_object,
-                output_data_folder_path=rec.recording_info_model.raw_data_folder_path,
-                use_triangulate_ransac=rec.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
-            )
-            save_mediapipe_3d_data_to_npy(
-                data3d_numFrames_numTrackedPoints_XYZ=reprojection_filtered_skel3d_frame_marker_xyz,
-                data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_fr_mar,
-                path_to_folder_where_data_will_be_saved=rec.recording_info_model.raw_data_folder_path,
-            )
+            if rec.anipose_triangulate_3d_parameters_model.skip_reprojection_error_filtering:
+                logger.info("Skipping filtering of 3d triangulation...")
+                reprojection_filtered_skel3d_frame_marker_xyz = raw_skel3d_frame_marker_xyz
+                reprojection_filtered_skeleton_reprojection_error_fr_mar = skeleton_reprojection_error_fr_mar
+            else:
+                logger.info("Filtering 3d triangulation...")
+                (
+                    reprojection_filtered_skel3d_frame_marker_xyz,
+                    reprojection_filtered_skeleton_reprojection_error_fr_mar,
+                ) = filter_by_reprojection_error(
+                    reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
+                    reprojection_error_threshold=rec.anipose_triangulate_3d_parameters_model.reprojection_error_threshold_cutoff,
+                    mediapipe_2d_data=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
+                    raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
+                    anipose_calibration_object=anipose_calibration_object,
+                    output_data_folder_path=rec.recording_info_model.raw_data_folder_path,
+                    use_triangulate_ransac=rec.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
+                )
+                save_mediapipe_3d_data_to_npy(
+                    data3d_numFrames_numTrackedPoints_XYZ=reprojection_filtered_skel3d_frame_marker_xyz,
+                    data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_fr_mar,
+                    path_to_folder_where_data_will_be_saved=rec.recording_info_model.raw_data_folder_path,
+                )
 
     if kill_event is not None and kill_event.is_set():
         return

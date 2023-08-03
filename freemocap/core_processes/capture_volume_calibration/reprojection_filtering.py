@@ -5,15 +5,11 @@ from typing import Tuple, Union
 import numpy as np
 from matplotlib import pyplot as plt
 
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
-    load_anipose_calibration_toml_from_path,
-)
-
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import (
     save_mediapipe_3d_data_to_npy,
     triangulate_3d_data,
 )
-from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import save_skeleton_array_to_npy
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +44,8 @@ def filter_by_reprojection_error(
     logger.info(
         f"Found {len(frames_above_threshold)} frames with reprojection error above threshold of {reprojection_error_threshold} mm"
     )
-    
-    #remove unused Z values for triangulate function
+
+    # remove unused Z values for triangulate function
     mediapipe_2d_data = mediapipe_2d_data[:, :, :, :2]
 
     while len(frames_above_threshold) > 0:
@@ -126,14 +122,16 @@ def find_frames_with_reprojection_error_above_limit(
         if reprojection_error > reprojection_error_threshold
     ]
 
+
 def set_unincluded_data_to_nans(
     mediapipe_2d_data: np.ndarray,
     frames_with_reprojection_error: np.ndarray,
     cameras_to_remove: list[int],
 ) -> np.ndarray:
-    data_to_reproject = mediapipe_2d_data[:,frames_with_reprojection_error, :, :]
+    data_to_reproject = mediapipe_2d_data[:, frames_with_reprojection_error, :, :]
     data_to_reproject[cameras_to_remove, :, :, :] = np.nan
     return data_to_reproject
+
 
 def plot_reprojection_error(
     reprojection_error_frame_marker: np.ndarray,
@@ -155,4 +153,4 @@ def plot_reprojection_error(
         plt.hlines(y=reprojection_error_threshold, xmin=0, xmax=len(mean_reprojection_error_per_frame), color="red")
         plt.title(title)
         logger.info(f"Saving debug plots to: {output_filepath}")
-        plt.savefig(output_filepath, dpi = 300)
+        plt.savefig(output_filepath, dpi=300)

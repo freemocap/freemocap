@@ -12,13 +12,19 @@ BUTTERWORTH_ORDER = "Order"
 
 BUTTERWORTH_CUTOFF_FREQUENCY = "Cutoff Frequency"
 
-POST_PROCESSING_FRAME_RATE = "framerate"
+POST_PROCESSING_FRAME_RATE = "Framerate"
 
 BUTTERWORTH_FILTER_TREE_NAME = "Butterworth Filter"
 
 USE_RANSAC_METHOD = "Use RANSAC Method"
 
 ANIPOSE_CONFIDENCE_CUTOFF = "Confidence Threshold Cut-off"
+
+REPROJECTION_ERROR_FILTERING_TREE_NAME = "Reprojection Error Filtering"
+
+SKIP_REPROJECTION_ERROR_FILTERING = "Skip Reprojection Error Filtering"
+
+REPROJECTION_ERROR_FILTER_THRESHOLD = "Reprojection Error Filter Threshold"
 
 ANIPOSE_TREE_NAME = "Anipose Triangulation"
 
@@ -112,6 +118,24 @@ def create_3d_triangulation_prarameter_group(
                 tip="If true, use `anipose`'s `triangulate_ransac` method instead of the default `triangulate_simple` method. "
                 "NOTE - Much slower than the 'simple' method, but might be more accurate and better at rejecting bad camera views. Needs more testing and evaluation to see if it's worth it. ",
             ),
+            dict(
+                name=REPROJECTION_ERROR_FILTERING_TREE_NAME,
+                type="group",
+                children=[
+                    dict(
+                        name=SKIP_REPROJECTION_ERROR_FILTERING,
+                        type="bool",
+                        value=parameter_model.skip_reprojection_error_filtering,
+                        tip="If true, skip filtering of reprojection error."
+                    ),
+                    dict(
+                        name=REPROJECTION_ERROR_FILTER_THRESHOLD,
+                        type="float",
+                        value=parameter_model.reprojection_error_threshold_cutoff,
+                        tip="The maximum reprojection error allowed in the data."
+                    )
+                ]
+            )
         ],
     )
 
@@ -165,6 +189,8 @@ def extract_parameter_model_from_parameter_tree(
             skip_2d_image_tracking=parameter_values_dictionary[SKIP_2D_IMAGE_TRACKING_NAME],
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
+            skip_reprojection_error_filtering=parameter_values_dictionary[SKIP_REPROJECTION_ERROR_FILTERING],
+            reprojection_error_threshold_cutoff=parameter_values_dictionary[REPROJECTION_ERROR_FILTER_THRESHOLD],
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
             skip_3d_triangulation=parameter_values_dictionary[SKIP_3D_TRIANGULATION_NAME],

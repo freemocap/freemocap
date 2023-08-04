@@ -146,11 +146,14 @@ def plot_reprojection_error(
         reprojection_error_frame_marker,
         axis=1,
     )
-    plt.plot(mean_reprojection_error_per_frame)
     if after_filtering:
+        plt.plot(mean_reprojection_error_per_frame, color="orange", alpha=0.9, label="Data After Filtering")
         plt.xlabel("Frame")
         plt.ylabel("Mean Reprojection Error Across Markers (mm)")
-        plt.hlines(y=reprojection_error_threshold, xmin=0, xmax=len(mean_reprojection_error_per_frame), color="red")
+        plt.hlines(y=reprojection_error_threshold, xmin=0, xmax=len(mean_reprojection_error_per_frame), color="red", label="Cutoff Threshold")
         plt.title(title)
+        plt.legend(loc="upper right")
         logger.info(f"Saving debug plots to: {output_filepath}")
         plt.savefig(output_filepath, dpi=300)
+    else:
+        plt.plot(mean_reprojection_error_per_frame, color="blue", label="Data Before Filtering")

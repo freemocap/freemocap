@@ -82,7 +82,6 @@ def filter_by_reprojection_error(
         retriangulated_data_frame_marker_xyz, new_reprojection_error = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=data_to_reproject_camera_frame_marker_xy,
-            output_data_folder_path=output_data_folder_path,
             use_triangulate_ransac=use_triangulate_ransac,
         )
 
@@ -98,8 +97,8 @@ def filter_by_reprojection_error(
         logging.debug(f"There are now {len(frame_numbers_to_be_retriangulated)} frames with reprojection error above threshold")
 
     plot_reprojection_error(
-        reprojection_error_frame_marker=reprojection_error_frame_marker,
-        reprojection_error_threshold=bodyReprojErr_frame_marker,
+        reprojection_error_frame_marker=bodyReprojErr_frame_marker,
+        reprojection_error_threshold=reprojection_error_threshold,
         output_folder_path=output_data_folder_path,
         after_filtering=True
     )
@@ -153,6 +152,7 @@ def plot_reprojection_error(
         plt.plot(mean_reprojection_error_per_frame, color="orange", alpha=0.9, label="Data After Filtering")
         plt.xlabel("Frame")
         plt.ylabel("Mean Reprojection Error Across Markers (mm)")
+        plt.ylim(0, 2*reprojection_error_threshold)
         plt.hlines(y=reprojection_error_threshold, xmin=0, xmax=len(mean_reprojection_error_per_frame), color="red", label="Cutoff Threshold")
         plt.title(title)
         plt.legend(loc="upper right")

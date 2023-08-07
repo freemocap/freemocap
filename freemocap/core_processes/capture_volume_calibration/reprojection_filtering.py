@@ -8,8 +8,6 @@ from matplotlib import pyplot as plt
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import (
     triangulate_3d_data,
 )
-from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import \
-    save_mediapipe_3d_data_to_npy
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import \
     NUMBER_OF_MEDIAPIPE_BODY_MARKERS
 
@@ -52,7 +50,6 @@ def filter_by_reprojection_error(
     logger.info(
         f"Found {len(frame_numbers_to_be_retriangulated)} frames with reprojection error above threshold of {reprojection_error_threshold} mm"
     )
-
 
     while len(frame_numbers_to_be_retriangulated) > 0:
         # if we've checked all combinations with n cameras removed, start checking with n+1 removed
@@ -152,7 +149,7 @@ def plot_reprojection_error(
         plt.plot(mean_reprojection_error_per_frame, color="orange", alpha=0.9, label="Data After Filtering")
         plt.xlabel("Frame")
         plt.ylabel("Mean Reprojection Error Across Markers (mm)")
-        plt.ylim(0, 2*reprojection_error_threshold)
+        plt.ylim(0, 2 * reprojection_error_threshold)
         plt.hlines(y=reprojection_error_threshold, xmin=0, xmax=len(mean_reprojection_error_per_frame), color="red", label="Cutoff Threshold")
         plt.title(title)
         plt.legend(loc="upper right")
@@ -160,4 +157,3 @@ def plot_reprojection_error(
         plt.savefig(output_filepath, dpi=300)
     else:
         plt.plot(mean_reprojection_error_per_frame, color="blue", label="Data Before Filtering")
-

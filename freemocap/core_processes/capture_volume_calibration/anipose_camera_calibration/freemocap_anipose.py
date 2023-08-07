@@ -664,28 +664,28 @@ class CameraGroup:
         )
 
     @jit(parallel=True, forceobj=True)
-    def reprojection_error(self, p3ds, p2ds, mean=False):
+    def reprojection_error(self, points_3d, points_2d, mean=False):
         """Given an Nx3 array of 3D points and an CxNx2 array of 2D points,
         where N is the number of points and C is the number of cameras,
         this returns an CxNx2 array of errors.
         Optionally mean=True, this averages the errors and returns array of length N of errors"""
 
         one_point = False
-        if len(p3ds.shape) == 1 and len(p2ds.shape) == 2:
-            p3ds = p3ds.reshape(1, 3)
-            p2ds = p2ds.reshape(-1, 1, 2)
+        if len(points_3d.shape) == 1 and len(points_2d.shape) == 2:
+            points_3d = points_3d.reshape(1, 3)
+            points_2d = points_2d.reshape(-1, 1, 2)
             one_point = True
 
-        n_cams, n_points, _ = p2ds.shape
-        assert p3ds.shape == (
+        n_cams, n_points, _ = points_2d.shape
+        assert points_3d.shape == (
             n_points,
             3,
-        ), "shapes of 2D and 3D points are not consistent: " "2D={}, 3D={}".format(p2ds.shape, p3ds.shape)
+        ), "shapes of 2D and 3D points are not consistent: " "2D={}, 3D={}".format(points_2d.shape, points_3d.shape)
 
         errors = np.empty((n_cams, n_points, 2))
 
-        for cnum, cam in enumerate(self.cameras):
-            errors[cnum] = cam.single_camera_reprojection_error(p3ds, p2ds[cnum])
+        for camera_number, cam in enumerate(self.cameras):
+            errors[camera_number] = cam.single_camera_reprojection_error(points_3d, points_2d[camera_number])
 
         if mean:
             errors_norm = np.linalg.norm(errors, axis=2)

@@ -1,21 +1,15 @@
 import logging
 import multiprocessing
 from pathlib import Path
-from typing import Union
 
 import numpy as np
-
-from freemocap.system.paths_and_filenames.file_and_folder_names import (
-    RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
-    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
-)
 
 logger = logging.getLogger(__name__)
 
 
 def remove_3d_data_with_high_reprojection_error(
-    data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
-    data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
+        data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
+        data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
 ):
     return data3d_numFrames_numTrackedPoints_XYZ
     # TODO - Fix this function (it was causing overfiltering when combined with the anipose calibration confidence thresholding)
@@ -43,13 +37,13 @@ def remove_3d_data_with_high_reprojection_error(
     # replace points with high reprojection error with `np.nan`
     data3d_numFrames_numTrackedPoints_XYZ[
         data3d_numFrames_numTrackedPoints_reprojectionError > error_threshold
-    ] = np.nan
+        ] = np.nan
 
     number_of_nans_after_thresholding = np.sum(np.isnan(data3d_numFrames_numTrackedPoints_XYZ))
     percentage_of_nans_removed = (
-        (number_of_nans_before_thresholding - number_of_nans_after_thresholding)
-        / number_of_nans_before_thresholding
-        * 100
+            (number_of_nans_before_thresholding - number_of_nans_after_thresholding)
+            / number_of_nans_before_thresholding
+            * 100
     )
 
     logger.info(f"Removing points with reprojection error > {error_threshold:.3f}")
@@ -62,11 +56,10 @@ def remove_3d_data_with_high_reprojection_error(
 
 
 def triangulate_3d_data(
-    anipose_calibration_object,
-    mediapipe_2d_data: np.ndarray,
-    output_data_folder_path: Union[str, Path],
-    use_triangulate_ransac: bool = False,
-    kill_event: multiprocessing.Event = None,
+        anipose_calibration_object,
+        mediapipe_2d_data: np.ndarray,
+        use_triangulate_ransac: bool = False,
+        kill_event: multiprocessing.Event = None,
 ):
     number_of_cameras = mediapipe_2d_data.shape[0]
     number_of_frames = mediapipe_2d_data.shape[1]
@@ -113,39 +106,9 @@ def triangulate_3d_data(
         data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_error_data3d_numFrames_numTrackedPoints,
     )
 
-    save_mediapipe_3d_data_to_npy(
-        data3d_numFrames_numTrackedPoints_XYZ=spatial_data3d_numFrames_numTrackedPoints_XYZ,
-        data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_error_data3d_numFrames_numTrackedPoints,
-        path_to_folder_where_data_will_be_saved=output_data_folder_path,
-    )
-    # TODO - don't output multiple variables, make this a dataclass/BAG pattern or something
     return (
         spatial_data3d_numFrames_numTrackedPoints_XYZ,
         reprojection_error_data3d_numFrames_numTrackedPoints,
-    )
-
-
-def save_mediapipe_3d_data_to_npy(
-    data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
-    data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
-    path_to_folder_where_data_will_be_saved: Union[str, Path],
-):
-    path_to_folder_where_data_will_be_saved = Path(path_to_folder_where_data_will_be_saved)
-    Path(path_to_folder_where_data_will_be_saved).mkdir(parents=True, exist_ok=True)  # save spatial XYZ data
-    mediapipe_3dData_save_path = path_to_folder_where_data_will_be_saved / RAW_MEDIAPIPE_3D_NPY_FILE_NAME
-
-    logger.info(f"saving: {mediapipe_3dData_save_path}")
-    np.save(str(mediapipe_3dData_save_path), data3d_numFrames_numTrackedPoints_XYZ)
-
-    # save reprojection error
-    mediapipe_reprojection_error_save_path = (
-        path_to_folder_where_data_will_be_saved / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
-    )
-
-    logger.info(f"saving: {mediapipe_reprojection_error_save_path}")
-    np.save(
-        str(mediapipe_reprojection_error_save_path),
-        data3d_numFrames_numTrackedPoints_reprojectionError,
     )
 
 

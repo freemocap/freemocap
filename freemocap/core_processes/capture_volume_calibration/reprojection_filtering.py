@@ -8,33 +8,35 @@ from matplotlib import pyplot as plt
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import (
     triangulate_3d_data,
 )
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import \
-    NUMBER_OF_MEDIAPIPE_BODY_MARKERS
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
+    NUMBER_OF_MEDIAPIPE_BODY_MARKERS,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def filter_by_reprojection_error(
     reprojection_error_frame_marker: np.ndarray,
-    reprojection_error_threshold: float,
+    reprojection_error_confidence_threshold: float,
     mediapipe_2d_data: np.ndarray,
     raw_skel3d_frame_marker_xyz: np.ndarray,
     anipose_calibration_object,
     output_data_folder_path: Union[str, Path],
     use_triangulate_ransac: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
-
     body2d_camera_frame_marker_xy = mediapipe_2d_data[:, :, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS, :2]
     bodyReprojErr_frame_marker = reprojection_error_frame_marker[:, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS]
 
     filtered_skel3d_frame_marker_xyz = raw_skel3d_frame_marker_xyz.copy()
+
+    reprojection_error_threshold = np.nanpercentile(bodyReprojErr_frame_marker, reprojection_error_confidence_threshold)
 
     # create before plot for debugging
     plot_reprojection_error(
         reprojection_error_frame_marker=bodyReprojErr_frame_marker,
         reprojection_error_threshold=reprojection_error_threshold,
         output_folder_path=output_data_folder_path,
-        after_filtering=False
+        after_filtering=False,
     )
 
     # create combinations of cameras with 1 camera removed
@@ -85,19 +87,23 @@ def filter_by_reprojection_error(
         logging.debug("Putting retriangulated data back into full session data")
         bodyReprojErr_frame_marker[frame_numbers_to_be_retriangulated, :] = new_reprojection_error
 
-        filtered_skel3d_frame_marker_xyz[frame_numbers_to_be_retriangulated, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS, :] = retriangulated_data_frame_marker_xyz
+        filtered_skel3d_frame_marker_xyz[
+            frame_numbers_to_be_retriangulated, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS, :
+        ] = retriangulated_data_frame_marker_xyz
 
         frame_numbers_to_be_retriangulated = find_frames_with_reprojection_error_above_limit(
             reprojection_error_threshold=reprojection_error_threshold,
             reprojection_error_frames_markers=bodyReprojErr_frame_marker,
         )
-        logging.debug(f"There are now {len(frame_numbers_to_be_retriangulated)} frames with reprojection error above threshold")
+        logging.debug(
+            f"There are now {len(frame_numbers_to_be_retriangulated)} frames with reprojection error above threshold"
+        )
 
     plot_reprojection_error(
         reprojection_error_frame_marker=bodyReprojErr_frame_marker,
         reprojection_error_threshold=reprojection_error_threshold,
         output_folder_path=output_data_folder_path,
-        after_filtering=True
+        after_filtering=True,
     )
 
     filtered_reprojection_error_frame_marker = reprojection_error_frame_marker.copy()
@@ -137,7 +143,6 @@ def plot_reprojection_error(
     output_folder_path: Union[str, Path],
     after_filtering: bool = False,
 ) -> None:
-
     title = "Mean Reprojection Error Per Frame"
     file_name = "debug_reprojection_error_filtering.png"
     output_filepath = Path(output_folder_path) / file_name
@@ -150,7 +155,13 @@ def plot_reprojection_error(
         plt.xlabel("Frame")
         plt.ylabel("Mean Reprojection Error Across Markers (mm)")
         plt.ylim(0, 2 * reprojection_error_threshold)
-        plt.hlines(y=reprojection_error_threshold, xmin=0, xmax=len(mean_reprojection_error_per_frame), color="red", label="Cutoff Threshold")
+        plt.hlines(
+            y=reprojection_error_threshold,
+            xmin=0,
+            xmax=len(mean_reprojection_error_per_frame),
+            color="red",
+            label="Cutoff Threshold",
+        )
         plt.title(title)
         plt.legend(loc="upper right")
         logger.info(f"Saving debug plots to: {output_filepath}")

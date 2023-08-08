@@ -29,10 +29,10 @@ def filter_by_reprojection_error(
 
     filtered_skel3d_frame_marker_xyz = raw_skel3d_frame_marker_xyz.copy()
 
-    if reprojection_error_threshold > 100:
-        reprojection_error_threshold = 100
-    if reprojection_error_threshold < 0:
-        reprojection_error_threshold = 0
+    if reprojection_error_confidence_threshold > 100:
+        reprojection_error_confidence_threshold = 100
+    if reprojection_error_confidence_threshold < 0:
+        reprojection_error_confidence_threshold = 0
 
     reprojection_error_threshold = np.nanpercentile(bodyReprojErr_frame_marker, reprojection_error_confidence_threshold)
 

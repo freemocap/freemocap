@@ -137,7 +137,7 @@ def create_3d_triangulation_prarameter_group(
                     dict(
                         name=REPROJECTION_ERROR_FILTER_THRESHOLD,
                         type="float",
-                        value=parameter_model.reprojection_error_threshold_cutoff,
+                        value=parameter_model.reprojection_error_confidence_cutoff,
                         tip="The maximum reprojection error allowed in the data."
                     )
                 ]
@@ -199,7 +199,7 @@ def extract_parameter_model_from_parameter_tree(
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
             skip_reprojection_error_filtering=parameter_values_dictionary[SKIP_REPROJECTION_ERROR_FILTERING],
-            reprojection_error_threshold_cutoff=parameter_values_dictionary[REPROJECTION_ERROR_FILTER_THRESHOLD],
+            reprojection_error_confidence_cutoff=parameter_values_dictionary[REPROJECTION_ERROR_FILTER_THRESHOLD],
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
             skip_3d_triangulation=parameter_values_dictionary[SKIP_3D_TRIANGULATION_NAME],

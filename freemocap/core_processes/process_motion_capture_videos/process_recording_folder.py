@@ -181,7 +181,7 @@ def process_recording_folder(
                     reprojection_filtered_skeleton_reprojection_error_fr_mar,
                 ) = filter_by_reprojection_error(
                     reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
-                    reprojection_error_threshold=rec.anipose_triangulate_3d_parameters_model.reprojection_error_threshold_cutoff,
+                    reprojection_error_confidence_threshold=rec.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
                     mediapipe_2d_data=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
                     raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
                     anipose_calibration_object=anipose_calibration_object,

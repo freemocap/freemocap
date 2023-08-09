@@ -103,7 +103,7 @@ python -m freemocap
 A GUI should pop up! 
 
 
-## Documentation and Knowledge Base (NOTE - no docs exist for the version of the GUI on the `main` branch yet - these docs refer to the `Alpha` release
+## Documentation and Knowledge Base
 
 Documentation for this software is currently pretty thin... but we're woking on it!
 

@@ -61,15 +61,14 @@ def filter_by_reprojection_error(
 
     while len(frame_numbers_to_be_retriangulated) > 0:
         # if we've checked all combinations with n cameras removed, start checking with n+1 removed
-        if len(camera_combinations) == total_cameras - minimum_cameras_to_reproject:
+        if not camera_combinations:
             num_cameras_to_remove += 1
             camera_combinations = list(itertools.combinations(camera_list, num_cameras_to_remove))
 
         # pick a combination of cameras to rerun with
         cameras_to_remove = camera_combinations.pop()
 
-        # don't triangulate with less than 2 cameras
-        if len(cameras_to_remove) > total_cameras - 2:
+        if len(cameras_to_remove) > total_cameras - minimum_cameras_to_reproject:
             logging.debug(
                 f"There are still {len(frame_numbers_to_be_retriangulated)} frames with reprojection error above threshold with all camera combinations, converting data for those frames to NaNs"
             )

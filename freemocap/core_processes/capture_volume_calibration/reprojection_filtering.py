@@ -23,6 +23,7 @@ def filter_by_reprojection_error(
     anipose_calibration_object,
     output_data_folder_path: Union[str, Path],
     use_triangulate_ransac: bool = False,
+    minimum_cameras_to_reproject: int = 2,
 ) -> Tuple[np.ndarray, np.ndarray]:
     body2d_camera_frame_marker_xy = mediapipe_2d_data[:, :, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS, :2]
     bodyReprojErr_frame_marker = reprojection_error_frame_marker[:, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS]
@@ -60,7 +61,7 @@ def filter_by_reprojection_error(
 
     while len(frame_numbers_to_be_retriangulated) > 0:
         # if we've checked all combinations with n cameras removed, start checking with n+1 removed
-        if len(camera_combinations) == total_cameras - 2:
+        if len(camera_combinations) == total_cameras - minimum_cameras_to_reproject:
             num_cameras_to_remove += 1
             camera_combinations = list(itertools.combinations(camera_list, num_cameras_to_remove))
 

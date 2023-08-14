@@ -157,6 +157,7 @@ def process_recording_folder(
             (
                 raw_skel3d_frame_marker_xyz,
                 skeleton_reprojection_error_fr_mar,
+                skeleton_reprojection_error_cam_fr_mar,
             ) = triangulate_3d_data(
                 anipose_calibration_object=anipose_calibration_object,
                 mediapipe_2d_data=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
@@ -166,6 +167,7 @@ def process_recording_folder(
             save_mediapipe_3d_data_to_npy(
                 data3d_numFrames_numTrackedPoints_XYZ=raw_skel3d_frame_marker_xyz,
                 data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
+                data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,
                 path_to_folder_where_data_will_be_saved=rec.recording_info_model.raw_data_folder_path,
                 processing_level="raw",
             )
@@ -191,6 +193,7 @@ def process_recording_folder(
                 save_mediapipe_3d_data_to_npy(
                     data3d_numFrames_numTrackedPoints_XYZ=reprojection_filtered_skel3d_frame_marker_xyz,
                     data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_fr_mar,
+                    data3d_numCams_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_fr_mar,
                     path_to_folder_where_data_will_be_saved=rec.recording_info_model.raw_data_folder_path,
                     processing_level="reprojection_filtered",
                 )

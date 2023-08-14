@@ -83,14 +83,18 @@ def filter_by_reprojection_error(
             cameras_to_remove=cameras_to_remove,
         )
 
-        retriangulated_data_frame_marker_xyz, new_reprojection_error = triangulate_3d_data(
+        (
+            retriangulated_data_frame_marker_xyz,
+            new_reprojection_error_flat,
+            new_reprojError_cam_frame_marker,
+        ) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=data_to_reproject_camera_frame_marker_xy,
             use_triangulate_ransac=use_triangulate_ransac,
         )
 
         logging.debug("Putting retriangulated data back into full session data")
-        bodyReprojErr_frame_marker[frame_numbers_to_be_retriangulated, :] = new_reprojection_error
+        bodyReprojErr_frame_marker[frame_numbers_to_be_retriangulated, :] = new_reprojection_error_flat
 
         filtered_skel3d_frame_marker_xyz[
             frame_numbers_to_be_retriangulated, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS, :

@@ -123,13 +123,13 @@ def set_unincluded_data_to_nans(
     mediapipe_2d_data: np.ndarray,
     frames_with_reprojection_error: list,
     markers_with_reprojection_error: list,
-    cameras_to_remove: list[int],
+    cameras_to_remove: list[list[int]],
 ) -> np.ndarray:
     data_to_reproject = mediapipe_2d_data.copy()
     for camera, frame, marker in zip(
         cameras_to_remove, frames_with_reprojection_error, markers_with_reprojection_error
     ):
-        data_to_reproject[camera, frame, marker, :] = np.nan
+        data_to_reproject[camera[0], frame, marker, :] = np.nan
     return data_to_reproject
 
 

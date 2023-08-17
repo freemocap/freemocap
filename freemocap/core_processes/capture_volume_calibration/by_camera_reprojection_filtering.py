@@ -45,18 +45,13 @@ def filter_by_reprojection_error(
 
     indices_above_threshold = np.nonzero(bodyReprojErr_camera_frame_marker > reprojection_error_threshold)
 
-    frame_marker_set = set()
-    for frame, marker in zip(
-        indices_above_threshold[1], indices_above_threshold[2]
-    ):
-        frame_marker_set.add((frame, marker))
+    unique_frame_marker_list = get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
+    logger.info(f"number of frame/marker combos with reprojection error above threshold: {len(unique_frame_marker_list)}")
 
-    frame_marker_list = list(frame_marker_set)
-    logger.info(f"number of frame/marker combos with reprojection error above threshold: {len(frame_marker_list)}")
-
+    # this can be "while len(unique_frame_marker_list) > 0..."
     (cameras_to_remove, frames_to_reproject, markers_to_reproject) = get_camera_frame_marker_lists_to_reproject(
         reprojError_cam_frame_marker=bodyReprojErr_camera_frame_marker,
-        frame_marker_list=frame_marker_list,
+        frame_marker_list=unique_frame_marker_list,
     )
 
     data_to_reproject_camera_frame_marker_xy = set_unincluded_data_to_nans(
@@ -83,6 +78,11 @@ def filter_by_reprojection_error(
         after_filtering=True,
     )
 
+    indices_above_threshold = np.nonzero(new_reprojError_cam_frame_marker > reprojection_error_threshold)
+
+    unique_frame_marker_list = get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
+    logger.info(f"number of frame/marker combos with reprojection error above threshold after filtering: {len(unique_frame_marker_list)}")
+
     # put retriangulated data back in place
     filtered_skel3d_frame_marker_xyz = raw_skel3d_frame_marker_xyz.copy()
     filtered_skel3d_frame_marker_xyz[:, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS, :] = retriangulated_data_frame_marker_xyz
@@ -99,6 +99,11 @@ def filter_by_reprojection_error(
         filtered_reprojection_error_camera_frame_marker,
     )
 
+
+def get_unique_frame_marker_list(
+    indices_above_threshold: np.ndarray,
+) -> list:
+    return list(set(zip(indices_above_threshold[1], indices_above_threshold[2])))
 
 def get_camera_frame_marker_lists_to_reproject(
     reprojError_cam_frame_marker: np.ndarray, frame_marker_list: list

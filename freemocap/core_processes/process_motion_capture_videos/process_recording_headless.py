@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 from pathlib import Path
 from typing import Optional, Union
 
@@ -62,7 +63,8 @@ def process_recording_headless(
     )
 
     logger.info("Starting core processing pipeline...")
-    process_recording_folder(recording_processing_parameter_model=rec, use_tqdm=use_tqdm)
+    process_recording_folder(recording_processing_parameter_model=rec,
+                             use_tqdm=use_tqdm)
 
     logger.info("Generating jupyter notebook...")
     generate_jupyter_notebook(path_to_recording=recording_path)

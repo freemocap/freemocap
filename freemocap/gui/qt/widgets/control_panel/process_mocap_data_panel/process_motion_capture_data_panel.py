@@ -7,8 +7,11 @@ from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
 from pyqtgraph.parametertree import Parameter, ParameterTree
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 
+from freemocap.data_layer.recording_models.post_processing_parameter_models import (
+    PostProcessingParameterModel,
+)
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
     create_mediapipe_parameter_group,
@@ -18,12 +21,10 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
     SKIP_2D_IMAGE_TRACKING_NAME,
     SKIP_3D_TRIANGULATION_NAME,
     SKIP_BUTTERWORTH_FILTER_NAME,
+    USE_MULTIPROCESSING_PARAMETER_NAME,
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
-)
-from freemocap.data_layer.recording_models.post_processing_parameter_models import (
-    PostProcessingParameterModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     type="group",
                     children=[
                         self._create_new_skip_this_step_parameter(skip_step_name=SKIP_2D_IMAGE_TRACKING_NAME),
+                        self._create_use_multiprocessing_parameter(),
                         create_mediapipe_parameter_group(session_processing_parameter_model.mediapipe_parameters_model),
                     ],
                     tip="Methods for tracking 2d points in images (e.g. mediapipe, deeplabcut(TODO), openpose(TODO), etc ...)",
@@ -184,6 +186,15 @@ class ProcessMotionCaptureDataPanel(QWidget):
         )
         parameter.sigValueChanged.connect(self.disable_this_parameter_group)
 
+        return parameter
+
+    def _create_use_multiprocessing_parameter(self):
+        parameter = Parameter.create(
+            name=USE_MULTIPROCESSING_PARAMETER_NAME,
+            type="bool",
+            value=True,
+            tip="If your computer has issues processing larger videos, you can try disabling multiprocessing to process each video serially.",
+        )
         return parameter
 
     def disable_this_parameter_group(self, parameter):

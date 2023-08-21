@@ -99,7 +99,7 @@ def main(
     ##############################
     # %% Set start and end frames
 
-    start_frame = 1
+    start_frame = 0
     end_frame = number_of_frames
 
     bpy.context.scene.frame_start = start_frame
@@ -425,6 +425,7 @@ def main(
 
     # save .blend file
     bpy.ops.object.mode_set(mode="OBJECT")
+
     bpy.ops.wm.save_as_mainfile(filepath=str(blender_file_save_path))
     print(f"Saved .blend file to: {blender_file_save_path}")
 

@@ -19,13 +19,12 @@ def filter_by_reprojection_error(
     mediapipe_2d_data: np.ndarray,
     raw_skel3d_frame_marker_xyz: np.ndarray,
     anipose_calibration_object,
-    output_data_folder_path: Union[str, Path],
     use_triangulate_ransac: bool = False,
     minimum_cameras_to_reproject: int = 2,
 ) -> Tuple[np.ndarray, np.ndarray]:
     total_cameras = mediapipe_2d_data.shape[0]
     num_cameras_to_remove = 1
-    minimum_cameras_to_reproject = 1
+
     if total_cameras <= minimum_cameras_to_reproject:
         logger.warning(
             f"Not enough cameras to filter by reprojection error. There are {total_cameras} cameras, but minimum number of cameras is {minimum_cameras_to_reproject}. Returning unfiltered data."
@@ -80,15 +79,11 @@ def filter_by_reprojection_error(
         )
 
         indices_above_threshold = np.nonzero(new_reprojError_cam_frame_marker > reprojection_error_threshold)
-        print(f"type of indices_above_threshold: {type(indices_above_threshold)}")
-        print(f"indices_above_threshold: {indices_above_threshold}")
+
         unique_frame_marker_list = get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
         logger.info(f"number of frame/marker combos with reprojection error above threshold after filtering: {len(unique_frame_marker_list)}")
-        print(unique_frame_marker_list)
-        num_cameras_to_remove += 1
 
-        for frame_marker in unique_frame_marker_list:
-            print(reprojection_error_camera_frame_marker[:,frame_marker[0],frame_marker[1]])
+        num_cameras_to_remove += 1
 
         cameras_to_remove, frames_to_reproject, markers_to_reproject = get_camera_frame_marker_lists_to_reproject(
             reprojError_cam_frame_marker=new_reprojError_cam_frame_marker,
@@ -104,6 +99,10 @@ def filter_by_reprojection_error(
         )
 
     # nan remaining data above threshold
+    if len(unique_frame_marker_list) > 0:
+        logger.info(f"Out of cameras to remove, setting {len(unique_frame_marker_list)} points with reprojection error above threshold to NaNs")
+        for frame_marker in unique_frame_marker_list:
+            retriangulated_data_frame_marker_xyz[frame_marker[0], frame_marker[1], :] = np.nan
 
     # put retriangulated data back in place
     filtered_skel3d_frame_marker_xyz = raw_skel3d_frame_marker_xyz.copy()

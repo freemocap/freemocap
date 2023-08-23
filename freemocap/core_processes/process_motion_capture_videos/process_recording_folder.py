@@ -189,7 +189,6 @@ def process_recording_folder(
                     mediapipe_2d_data=mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
                     raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
                     anipose_calibration_object=anipose_calibration_object,
-                    output_data_folder_path=rec.recording_info_model.raw_data_folder_path,
                     use_triangulate_ransac=rec.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
                 )
                 save_mediapipe_3d_data_to_npy(

@@ -24,7 +24,9 @@ REPROJECTION_ERROR_FILTERING_TREE_NAME = "Reprojection Error Filtering"
 
 SKIP_REPROJECTION_ERROR_FILTERING = "Skip Reprojection Error Filtering"
 
-REPROJECTION_ERROR_FILTER_THRESHOLD = "Reprojection Error Filter Threshold"
+REPROJECTION_ERROR_FILTER_THRESHOLD = "Reprojection Error Filter Threshold (%)"
+
+MINIMUM_CAMERAS_TO_REPROJECT = "Minimum Cameras to Reproject"
 
 ANIPOSE_TREE_NAME = "Anipose Triangulation"
 
@@ -132,16 +134,22 @@ def create_3d_triangulation_prarameter_group(
                         name=SKIP_REPROJECTION_ERROR_FILTERING,
                         type="bool",
                         value=parameter_model.skip_reprojection_error_filtering,
-                        tip="If true, skip filtering of reprojection error."
+                        tip="If true, skip filtering of reprojection error.",
                     ),
                     dict(
                         name=REPROJECTION_ERROR_FILTER_THRESHOLD,
                         type="float",
                         value=parameter_model.reprojection_error_confidence_cutoff,
-                        tip="The maximum reprojection error allowed in the data."
-                    )
-                ]
-            )
+                        tip="The maximum reprojection error allowed in the data.",
+                    ),
+                    dict(
+                        name=MINIMUM_CAMERAS_TO_REPROJECT,
+                        type="int",
+                        value=parameter_model.minimum_cameras_to_reproject,
+                        tip="The minimum number of cameras to reproject during retriangulation.",
+                    ),
+                ],
+            ),
         ],
     )
 

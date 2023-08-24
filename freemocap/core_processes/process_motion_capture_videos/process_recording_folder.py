@@ -190,6 +190,7 @@ def process_recording_folder(
                     raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
                     anipose_calibration_object=anipose_calibration_object,
                     use_triangulate_ransac=rec.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
+                    minimum_cameras_to_reproject=rec.anipose_triangulate_3d_parameters_model.minimum_cameras_to_reproject,
                 )
                 save_mediapipe_3d_data_to_npy(
                     data3d_numFrames_numTrackedPoints_XYZ=reprojection_filtered_skel3d_frame_marker_xyz,

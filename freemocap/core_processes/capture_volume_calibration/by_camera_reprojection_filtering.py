@@ -38,10 +38,7 @@ def filter_by_reprojection_error(
     body2d_camera_frame_marker_xy = mediapipe_2d_data[:, :, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS, :2]
     bodyReprojErr_camera_frame_marker = reprojection_error_camera_frame_marker[:, :, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS]
 
-    if reprojection_error_confidence_threshold > 100:
-        reprojection_error_confidence_threshold = 100
-    if reprojection_error_confidence_threshold < 0:
-        reprojection_error_confidence_threshold = 0
+    reprojection_error_confidence_threshold = min(max(reprojection_error_confidence_threshold, 0), 100)
 
     reprojection_error_threshold = np.nanpercentile(
         bodyReprojErr_camera_frame_marker, reprojection_error_confidence_threshold
@@ -130,6 +127,16 @@ def get_unique_frame_marker_list(
 def get_camera_frame_marker_lists_to_reproject(
     reprojError_cam_frame_marker: np.ndarray, frame_marker_list: list, num_cameras_to_remove: int,
 ) -> Tuple[list, list, list]:
+    """
+    Generate the lists of cameras, frames, and markers to reproject based on the given input.
+    Find the cameras with the worst reprojection errors for the given frames and markers.
+    Args:
+        reprojError_cam_frame_marker (np.ndarray): The array containing the reprojection errors for each camera, frame, and marker.
+        frame_marker_list (list): The list of tuples containing the frame and marker indices.
+        num_cameras_to_remove (int): The number of cameras to remove.
+    Returns:
+        Tuple[list, list, list]: A tuple containing the lists of cameras to remove, frames to reproject, and markers to reproject.
+    """
     cameras_to_remove = []
     frames_to_reproject = []
     markers_to_reproject = []
@@ -137,7 +144,7 @@ def get_camera_frame_marker_lists_to_reproject(
         frames_to_reproject.append(frame)
         markers_to_reproject.append(marker)
         max_indices = reprojError_cam_frame_marker[:, frame, marker].argsort()[::-1][:num_cameras_to_remove]
-        cameras_to_remove.append(max_indices)
+        cameras_to_remove.append(list(max_indices))
     return (cameras_to_remove, frames_to_reproject, markers_to_reproject)
 
 

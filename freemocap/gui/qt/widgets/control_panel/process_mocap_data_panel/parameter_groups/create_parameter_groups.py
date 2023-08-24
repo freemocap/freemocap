@@ -208,6 +208,7 @@ def extract_parameter_model_from_parameter_tree(
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
             skip_reprojection_error_filtering=parameter_values_dictionary[SKIP_REPROJECTION_ERROR_FILTERING],
             reprojection_error_confidence_cutoff=parameter_values_dictionary[REPROJECTION_ERROR_FILTER_THRESHOLD],
+            minimum_cameras_to_reproject=parameter_values_dictionary[MINIMUM_CAMERAS_TO_REPROJECT],
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
             skip_3d_triangulation=parameter_values_dictionary[SKIP_3D_TRIANGULATION_NAME],

@@ -47,7 +47,9 @@ def filter_by_reprojection_error(
     indices_above_threshold = np.nonzero(bodyReprojErr_camera_frame_marker > reprojection_error_threshold)
 
     unique_frame_marker_list = get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
-    logger.info(f"number of frame/marker combos with reprojection error above threshold: {len(unique_frame_marker_list)}")
+    logger.info(
+        f"number of frame/marker combos with reprojection error above threshold: {len(unique_frame_marker_list)}"
+    )
 
     cameras_to_remove, frames_to_reproject, markers_to_reproject = get_camera_frame_marker_lists_to_reproject(
         reprojError_cam_frame_marker=bodyReprojErr_camera_frame_marker,
@@ -63,7 +65,6 @@ def filter_by_reprojection_error(
     )
 
     while len(unique_frame_marker_list) > 0 and total_cameras - num_cameras_to_remove >= minimum_cameras_to_reproject:
-
         logger.info("Retriangulating data")
         (
             retriangulated_data_frame_marker_xyz,
@@ -78,7 +79,9 @@ def filter_by_reprojection_error(
         indices_above_threshold = np.nonzero(new_reprojError_cam_frame_marker > reprojection_error_threshold)
 
         unique_frame_marker_list = get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
-        logger.info(f"number of frame/marker combos with reprojection error above threshold after filtering: {len(unique_frame_marker_list)}")
+        logger.info(
+            f"number of frame/marker combos with reprojection error above threshold after filtering: {len(unique_frame_marker_list)}"
+        )
 
         num_cameras_to_remove += 1
 
@@ -97,7 +100,9 @@ def filter_by_reprojection_error(
 
     # nan remaining data above threshold
     if len(unique_frame_marker_list) > 0:
-        logger.info(f"Out of cameras to remove, setting {len(unique_frame_marker_list)} points with reprojection error above threshold to NaNs")
+        logger.info(
+            f"Out of cameras to remove, setting {len(unique_frame_marker_list)} points with reprojection error above threshold to NaNs"
+        )
         for frame_marker in unique_frame_marker_list:
             retriangulated_data_frame_marker_xyz[frame_marker[0], frame_marker[1], :] = np.nan
 
@@ -109,7 +114,9 @@ def filter_by_reprojection_error(
     filtered_reprojection_error_frame_marker[:, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS] = new_reprojection_error_flat
 
     filtered_reprojection_error_camera_frame_marker = reprojection_error_camera_frame_marker.copy()
-    filtered_reprojection_error_camera_frame_marker[:, :, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS] = new_reprojError_cam_frame_marker
+    filtered_reprojection_error_camera_frame_marker[
+        :, :, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS
+    ] = new_reprojError_cam_frame_marker
 
     return (
         filtered_skel3d_frame_marker_xyz,
@@ -125,7 +132,9 @@ def get_unique_frame_marker_list(
 
 
 def get_camera_frame_marker_lists_to_reproject(
-    reprojError_cam_frame_marker: np.ndarray, frame_marker_list: list, num_cameras_to_remove: int,
+    reprojError_cam_frame_marker: np.ndarray,
+    frame_marker_list: list,
+    num_cameras_to_remove: int,
 ) -> Tuple[list, list, list]:
     """
     Generate the lists of cameras, frames, and markers to reproject based on the given input.
@@ -164,33 +173,35 @@ def set_unincluded_data_to_nans(
 
 
 def plot_reprojection_error(
-    reprojection_error_frame_marker: np.ndarray,
+    raw_reprojection_error_frame_marker: np.ndarray,
+    filtered_reprojection_error_frame_marker: np.ndarray,
     reprojection_error_threshold: float,
     output_folder_path: Union[str, Path],
-    after_filtering: bool = False,
 ) -> None:
     title = "Mean Reprojection Error Per Frame"
     file_name = "debug_reprojection_error_filtering.png"
     output_filepath = Path(output_folder_path) / file_name
-    mean_reprojection_error_per_frame = np.nanmean(
-        reprojection_error_frame_marker,
+    raw_mean_reprojection_error_per_frame = np.nanmean(
+        raw_reprojection_error_frame_marker,
         axis=1,
     )
-    if after_filtering:
-        plt.plot(mean_reprojection_error_per_frame, color="orange", alpha=0.9, label="Data After Filtering")
-        plt.xlabel("Frame")
-        plt.ylabel("Mean Reprojection Error Across Markers (mm)")
-        plt.ylim(0, 2 * reprojection_error_threshold)
-        plt.hlines(
-            y=reprojection_error_threshold,
-            xmin=0,
-            xmax=len(mean_reprojection_error_per_frame),
-            color="red",
-            label="Cutoff Threshold",
-        )
-        plt.title(title)
-        plt.legend(loc="upper right")
-        logger.info(f"Saving debug plots to: {output_filepath}")
-        plt.savefig(output_filepath, dpi=300)
-    else:
-        plt.plot(mean_reprojection_error_per_frame, color="blue", label="Data Before Filtering")
+    filtered_mean_reprojection_error_per_frame = np.nanmean(
+        filtered_reprojection_error_frame_marker,
+        axis=1,
+    )
+    plt.plot(raw_mean_reprojection_error_per_frame, color="blue", label="Data Before Filtering")
+    plt.plot(filtered_mean_reprojection_error_per_frame, color="orange", alpha=0.9, label="Data After Filtering")
+    plt.xlabel("Frame")
+    plt.ylabel("Mean Reprojection Error Across Markers (mm)")
+    plt.ylim(0, 2 * reprojection_error_threshold)
+    plt.hlines(
+        y=reprojection_error_threshold,
+        xmin=0,
+        xmax=len(raw_mean_reprojection_error_per_frame),
+        color="red",
+        label="Cutoff Threshold",
+    )
+    plt.title(title)
+    plt.legend(loc="upper right")
+    logger.info(f"Saving debug plots to: {output_filepath}")
+    plt.savefig(output_filepath, dpi=300)

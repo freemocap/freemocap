@@ -8,7 +8,10 @@ import pandas as pd
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
 )
-from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import filter_by_reprojection_error
+from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import (
+    filter_by_reprojection_error,
+    plot_reprojection_error,
+)
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import (
     triangulate_3d_data,
 )
@@ -181,7 +184,7 @@ def process_recording_folder(
                 (
                     reprojection_filtered_skel3d_frame_marker_xyz,
                     reprojection_filtered_skeleton_reprojection_error_fr_mar,
-                    reprojection_filtered_skeleton_reprojection_error_cam_fr_mar
+                    reprojection_filtered_skeleton_reprojection_error_cam_fr_mar,
                 ) = filter_by_reprojection_error(
                     reprojection_error_camera_frame_marker=skeleton_reprojection_error_cam_fr_mar,
                     reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
@@ -198,6 +201,12 @@ def process_recording_folder(
                     data3d_numCams_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_cam_fr_mar,
                     path_to_folder_where_data_will_be_saved=rec.recording_info_model.raw_data_folder_path,
                     processing_level="reprojection_filtered",
+                )
+                plot_reprojection_error(
+                    raw_reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
+                    filtered_reprojection_error_frame_marker=reprojection_filtered_skeleton_reprojection_error_fr_mar,
+                    reprojection_error_threshold=np.nanpercentile(skeleton_reprojection_error_cam_fr_mar, rec.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff),
+                    output_folder_path=rec.recording_info_model.raw_data_folder_path,
                 )
 
     if kill_event is not None and kill_event.is_set():

@@ -1,7 +1,7 @@
 import logging
 import multiprocessing
 from pathlib import Path
-from typing import List, Optional, Union, Callable
+from typing import List, Optional, Union, Callable, Tuple
 
 import cv2
 import mediapipe as mp
@@ -36,9 +36,9 @@ face_drawing_spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
 
 class MediaPipeSkeletonDetector:
     def __init__(
-        self,
-        parameter_model: Optional[MediapipeParametersModel] = None,
-        use_tqdm: bool = True,
+            self,
+            parameter_model: Optional[MediapipeParametersModel] = None,
+            use_tqdm: bool = True,
     ):
         if parameter_model is None:
             parameter_model = MediapipeParametersModel()
@@ -62,20 +62,57 @@ class MediaPipeSkeletonDetector:
         self.number_of_face_tracked_points = mp.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
 
         self.number_of_tracked_points_total = (
-            self.number_of_body_tracked_points
-            + self.number_of_left_hand_tracked_points
-            + self.number_of_right_hand_tracked_points
-            + self.number_of_face_tracked_points
+                self.number_of_body_tracked_points
+                + self.number_of_left_hand_tracked_points
+                + self.number_of_right_hand_tracked_points
+                + self.number_of_face_tracked_points
         )
+
+    def process_folder_full_of_videos(
+            self,
+            path_to_folder_of_videos_to_process: Union[Path, str],
+            output_data_folder_path: Union[str, Path],
+            kill_event: multiprocessing.Event=None,
+            use_multiprocessing: bool = True,
+    ) -> Union[np.ndarray, None]:
+
+        path_to_folder_of_videos_to_process = Path(path_to_folder_of_videos_to_process)
+        logger.info(f"processing videos from: {path_to_folder_of_videos_to_process}")
+
+        tasks = self._create_video_processing_tasks(output_data_folder_path=output_data_folder_path,
+                                                    path_to_folder_of_videos_to_process=path_to_folder_of_videos_to_process,
+                                                    )
+
+        if use_multiprocessing:
+            with multiprocessing.Pool() as pool:
+                mediapipe2d_single_camera_npy_arrays_list = pool.starmap(self.process_single_video, tasks)
+        else:
+            mediapipe2d_single_camera_npy_arrays_list = []
+            for task in tasks:
+                if kill_event is not None:
+                    if kill_event.is_set():
+                        break
+                mediapipe2d_single_camera_npy_arrays_list.append(self.process_single_video(*task))
+
+
+        body_world_numCams_numFrames_numTrackedPts_XYZ, data2d_numCams_numFrames_numTrackedPts_XY = self._build_output_numpy_array(
+            mediapipe2d_single_camera_npy_arrays_list)
+
+        self._save_mediapipe2d_data_to_npy(
+            data2d_numCams_numFrames_numTrackedPts_XY=data2d_numCams_numFrames_numTrackedPts_XY,
+            body_world_numCams_numFrames_numTrackedPts_XYZ=body_world_numCams_numFrames_numTrackedPts_XYZ,
+            output_data_folder_path=Path(output_data_folder_path),
+        )
+        return data2d_numCams_numFrames_numTrackedPts_XY
 
     @staticmethod
     def process_single_video(
-        synchronized_video_file_path: Path,
-        output_data_folder_path: Path,
-        mediapipe_parameters_model: MediapipeParametersModel,
-        annotate_image: Callable,
-        list_of_mediapipe_results_to_npy_arrays: Callable,
-        use_tqdm: bool = True,
+            synchronized_video_file_path: Path,
+            output_data_folder_path: Path,
+            mediapipe_parameters_model: MediapipeParametersModel,
+            annotate_image: Callable,
+            list_of_mediapipe_results_to_npy_arrays: Callable,
+            use_tqdm: bool = True,
     ):
         logger.info(f"Running `mediapipe` skeleton detection on video: {str(synchronized_video_file_path)}")
 
@@ -128,7 +165,7 @@ class MediaPipeSkeletonDetector:
             confidence_threshold = 0.5
 
             threshold_mask = (
-                mediapipe_single_frame_npy_data.body_frameNumber_trackedPointNumber_confidence < confidence_threshold
+                    mediapipe_single_frame_npy_data.body_frameNumber_trackedPointNumber_confidence < confidence_threshold
             )
             mediapipe_single_frame_npy_data.body_frameNumber_trackedPointNumber_XYZ[threshold_mask, :] = np.nan
 
@@ -137,6 +174,7 @@ class MediaPipeSkeletonDetector:
             video_annotated_images_list.append(annotated_image)
 
             success, image = video_capture_object.read()
+
 
         try:
             annotated_video_path = output_data_folder_path.parent.parent / ANNOTATED_VIDEOS_FOLDER_NAME
@@ -166,58 +204,27 @@ class MediaPipeSkeletonDetector:
         # return the numpy array for this video
         return camera_mediapipe_2d_single_camera_npy_arrays
 
-    def process_folder_full_of_videos(
-        self,
-        path_to_folder_of_videos_to_process: Union[Path, str],
-        output_data_folder_path: Union[str, Path],
-        save_annotated_videos: bool = True,
-        kill_event: multiprocessing.Event = None,
-    ) -> Union[np.ndarray, None]:
-        path_to_folder_of_videos_to_process = Path(path_to_folder_of_videos_to_process)
-        logger.info(f"processing videos from: {path_to_folder_of_videos_to_process}")
-
-        with multiprocessing.Pool() as pool:
-            video_paths = get_video_paths(path_to_folder_of_videos_to_process)
-            tasks = [
-                (
-                    video_path,
-                    output_data_folder_path,
-                    self._parameter_model,
-                    self._annotate_image,
-                    self._list_of_mediapipe_results_to_npy_arrays,
-                    self._use_tqdm,
-                )
-                for video_path in video_paths
-            ]
-            mediapipe2d_single_camera_npy_arrays_list = pool.starmap(self.process_single_video, tasks)
-
+    def _build_output_numpy_array(self, mediapipe2d_single_camera_npy_arrays_list):
         all_cameras_data2d_list = [
             m2d.all_data2d_nFrames_nTrackedPts_XY for m2d in mediapipe2d_single_camera_npy_arrays_list
         ]
-
         all_cameras_pose_world_data_list = [
             m2d.body_world_frameNumber_trackedPointNumber_XYZ for m2d in mediapipe2d_single_camera_npy_arrays_list
         ]
-
         all_cameras_right_hand_world_data_list = [
             m2d.rightHand_frameNumber_trackedPointNumber_XYZ for m2d in mediapipe2d_single_camera_npy_arrays_list
         ]
-
         all_cameras_left_hand_world_data_list = [
             m2d.leftHand_frameNumber_trackedPointNumber_XYZ for m2d in mediapipe2d_single_camera_npy_arrays_list
         ]
-
         all_cameras_face_world_data_list = [
             m2d.face_frameNumber_trackedPointNumber_XYZ for m2d in mediapipe2d_single_camera_npy_arrays_list
         ]
-
         number_of_cameras = len(all_cameras_data2d_list)
         number_of_frames = all_cameras_data2d_list[0].shape[0]
         number_of_tracked_points = all_cameras_data2d_list[0].shape[1]
         number_of_spatial_dimensions = all_cameras_data2d_list[0].shape[2]
-
-        number_of_body_points = all_cameras_pose_world_data_list[0].shape[1] # noqa
-
+        number_of_body_points = all_cameras_pose_world_data_list[0].shape[1]  # noqa
         data2d_numCams_numFrames_numTrackedPts_XY = np.empty(
             (
                 number_of_cameras,
@@ -226,7 +233,6 @@ class MediaPipeSkeletonDetector:
                 number_of_spatial_dimensions,
             )
         )
-
         body_world_numCams_numFrames_numTrackedPts_XYZ = np.empty(
             (
                 number_of_cameras,
@@ -235,7 +241,6 @@ class MediaPipeSkeletonDetector:
                 number_of_spatial_dimensions,
             )
         )
-
         for cam_num in range(number_of_cameras):
             data2d_numCams_numFrames_numTrackedPts_XY[cam_num, :, :, :] = all_cameras_data2d_list[cam_num]
 
@@ -252,19 +257,32 @@ class MediaPipeSkeletonDetector:
                 f"The shape of body_world_numCams_numFrames_numTrackedPts_XYZ is "
                 f"{body_world_numCams_numFrames_numTrackedPts_XYZ.shape}"
             )
+        return body_world_numCams_numFrames_numTrackedPts_XYZ, data2d_numCams_numFrames_numTrackedPts_XY
 
-        self._save_mediapipe2d_data_to_npy(
-            data2d_numCams_numFrames_numTrackedPts_XY=data2d_numCams_numFrames_numTrackedPts_XY,
-            body_world_numCams_numFrames_numTrackedPts_XYZ=body_world_numCams_numFrames_numTrackedPts_XYZ,
-            output_data_folder_path=Path(output_data_folder_path),
-        )
-        return data2d_numCams_numFrames_numTrackedPts_XY
+    def _create_video_processing_tasks(self,
+                                       output_data_folder_path: Union[str, Path],
+                                       path_to_folder_of_videos_to_process: Union[Path, str],
+                                       ) -> List[Tuple]:
+        video_paths = get_video_paths(path_to_folder_of_videos_to_process)
+        tasks = [
+            (
+                video_path,
+                output_data_folder_path,
+                self._parameter_model,
+                self._annotate_image,
+                self._list_of_mediapipe_results_to_npy_arrays,
+                self._use_tqdm,
+            )
+
+            for video_path in video_paths
+        ]
+        return tasks
 
     def _save_mediapipe2d_data_to_npy(
-        self,
-        data2d_numCams_numFrames_numTrackedPts_XY: np.ndarray,
-        body_world_numCams_numFrames_numTrackedPts_XYZ: np.ndarray,
-        output_data_folder_path: Union[str, Path],
+            self,
+            data2d_numCams_numFrames_numTrackedPts_XY: np.ndarray,
+            body_world_numCams_numFrames_numTrackedPts_XYZ: np.ndarray,
+            output_data_folder_path: Union[str, Path],
     ):
         mediapipe_2dData_save_path = Path(output_data_folder_path) / MEDIAPIPE_2D_NPY_FILE_NAME
         mediapipe_2dData_save_path.parent.mkdir(exist_ok=True, parents=True)
@@ -316,10 +334,10 @@ class MediaPipeSkeletonDetector:
         return image
 
     def _list_of_mediapipe_results_to_npy_arrays(
-        self,
-        mediapipe_results_list: List,
-        image_width: Union[int, float],
-        image_height: Union[int, float],
+            self,
+            mediapipe_results_list: List,
+            image_width: Union[int, float],
+            image_height: Union[int, float],
     ) -> Mediapipe2dNumpyArrays:
         number_of_frames = len(mediapipe_results_list)
         number_of_spatial_dimensions = 3  # this will be 2d XY pixel data, with mediapipe's estimate of Z
@@ -385,14 +403,14 @@ class MediaPipeSkeletonDetector:
             if frame_results.pose_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.pose_landmarks.landmark):
                     body_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
-                        landmark_data.x * image_width
+                            landmark_data.x * image_width
                     )
                     body_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
-                        landmark_data.y * image_height
+                            landmark_data.y * image_height
                     )
                     body_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
-                        landmark_data.z
-                        * image_width
+                            landmark_data.z
+                            * image_width
                         # z is on roughly the same scale as x, according to mediapipe docs
                     )
                     body_frameNumber_trackedPointNumber_confidence[
@@ -401,52 +419,52 @@ class MediaPipeSkeletonDetector:
 
                 for landmark_number, landmark_data in enumerate(frame_results.pose_world_landmarks.landmark):
                     body_world_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
-                        landmark_data.x * image_width
+                            landmark_data.x * image_width
                     )
                     body_world_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
-                        landmark_data.y * image_height
+                            landmark_data.y * image_height
                     )
                     body_world_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
-                        landmark_data.z * image_width
+                            landmark_data.z * image_width
                     )
 
             # get Right Hand data
             if frame_results.right_hand_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.right_hand_landmarks.landmark):
                     rightHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
-                        landmark_data.x * image_width
+                            landmark_data.x * image_width
                     )
                     rightHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
-                        landmark_data.y * image_height
+                            landmark_data.y * image_height
                     )
                     rightHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
-                        landmark_data.z * image_width
+                            landmark_data.z * image_width
                     )
 
             # get Left Hand data
             if frame_results.left_hand_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.left_hand_landmarks.landmark):
                     leftHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
-                        landmark_data.x * image_width
+                            landmark_data.x * image_width
                     )
                     leftHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
-                        landmark_data.y * image_height
+                            landmark_data.y * image_height
                     )
                     leftHand_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
-                        landmark_data.z * image_width
+                            landmark_data.z * image_width
                     )
 
             # get Face data
             if frame_results.face_landmarks is not None:
                 for landmark_number, landmark_data in enumerate(frame_results.face_landmarks.landmark):
                     face_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 0] = (
-                        landmark_data.x * image_width
+                            landmark_data.x * image_width
                     )
                     face_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 1] = (
-                        landmark_data.y * image_height
+                            landmark_data.y * image_height
                     )
                     face_frameNumber_trackedPointNumber_XYZ[frame_number, landmark_number, 2] = (
-                        landmark_data.z * image_width
+                            landmark_data.z * image_width
                     )
 
             # check if all tracked points are visible on this frame

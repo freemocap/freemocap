@@ -14,11 +14,11 @@ from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data imp
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
     convert_mediapipe_npy_to_csv,
 )
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_detector import (
-    MediaPipeSkeletonDetector,
-)
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
     mediapipe_names_and_connections_dict,
+)
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_detector import (
+    MediaPipeSkeletonDetector,
 )
 from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import run_center_of_mass_calculations
 from freemocap.core_processes.post_process_skeleton_data.estimate_skeleton_segment_lengths import (
@@ -34,6 +34,7 @@ from freemocap.core_processes.post_process_skeleton_data.process_single_camera_s
 )
 from freemocap.data_layer.data_saver.data_saver import DataSaver
 from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     RAW_DATA_FOLDER_NAME,
@@ -48,16 +49,15 @@ from freemocap.tests.test_image_tracking_data_shape import (
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
 from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
-from freemocap.system.logging.configure_logging import log_view_logging_format_string
 
 logger = logging.getLogger(__name__)
 
 
 def process_recording_folder(
-    recording_processing_parameter_model: PostProcessingParameterModel,
-    kill_event: multiprocessing.Event = None,
-    queue: multiprocessing.Queue = None,
-    use_tqdm: bool = True,
+        recording_processing_parameter_model: PostProcessingParameterModel,
+        kill_event: multiprocessing.Event=None,
+        queue: multiprocessing.Queue = None,
+        use_tqdm: bool = True,
 ):
     """
 
@@ -102,9 +102,10 @@ def process_recording_folder(
 
         mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = (
             mediapipe_skeleton_detector.process_folder_full_of_videos(
-                rec.recording_info_model.synchronized_videos_folder_path,
-                Path(rec.recording_info_model.output_data_folder_path) / RAW_DATA_FOLDER_NAME,
+                path_to_folder_of_videos_to_process=rec.recording_info_model.synchronized_videos_folder_path,
+                output_data_folder_path=Path(rec.recording_info_model.output_data_folder_path) / RAW_DATA_FOLDER_NAME,
                 kill_event=kill_event,
+                use_multiprocessing=rec.mediapipe_parameters_model.use_multiprocessing,
             )
         )
 
@@ -201,7 +202,7 @@ def process_recording_folder(
         array_to_save=segment_COM_frame_imgPoint_XYZ,
         skeleton_file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
         path_to_folder_where_we_will_save_this_data=Path(path_to_folder_where_we_will_save_this_data)
-        / CENTER_OF_MASS_FOLDER_NAME,
+                                                    / CENTER_OF_MASS_FOLDER_NAME,
     )
 
     logger.info("Saving total body center of mass data")
@@ -209,7 +210,7 @@ def process_recording_folder(
         array_to_save=totalBodyCOM_frame_XYZ,
         skeleton_file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
         path_to_folder_where_we_will_save_this_data=Path(path_to_folder_where_we_will_save_this_data)
-        / CENTER_OF_MASS_FOLDER_NAME,
+                                                    / CENTER_OF_MASS_FOLDER_NAME,
     )
 
     try:
@@ -229,7 +230,7 @@ def process_recording_folder(
     )
 
     path_to_skeleton_body_csv = (
-        Path(rec.recording_info_model.output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME
+            Path(rec.recording_info_model.output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME
     )
     skeleton_dataframe = pd.read_csv(path_to_skeleton_body_csv)
 

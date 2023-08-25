@@ -8,6 +8,7 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
     ButterworthFilterParametersModel,
 )
 
+
 BUTTERWORTH_ORDER = "Order"
 
 BUTTERWORTH_CUTOFF_FREQUENCY = "Cutoff Frequency"
@@ -37,6 +38,8 @@ SKIP_2D_IMAGE_TRACKING_NAME = "Skip 2d image tracking?"
 SKIP_3D_TRIANGULATION_NAME = "Skip 3d triangulation?"
 
 SKIP_BUTTERWORTH_FILTER_NAME = "Skip butterworth filter?"
+
+USE_MULTIPROCESSING_PARAMETER_NAME = "Use Multiprocessing"
 
 
 def create_mediapipe_parameter_group(
@@ -172,6 +175,7 @@ def extract_parameter_model_from_parameter_tree(
             min_tracking_confidence=parameter_values_dictionary[MINIUMUM_TRACKING_CONFIDENCE],
             static_image_mode=parameter_values_dictionary[STATIC_IMAGE_MODE],
             skip_2d_image_tracking=parameter_values_dictionary[SKIP_2D_IMAGE_TRACKING_NAME],
+            use_multiprocessing=parameter_values_dictionary[USE_MULTIPROCESSING_PARAMETER_NAME],
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],

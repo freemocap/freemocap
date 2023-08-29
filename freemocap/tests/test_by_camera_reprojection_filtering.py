@@ -1,8 +1,8 @@
 import numpy as np
 
 from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import (
-    get_camera_frame_marker_lists_to_reproject,
-    set_unincluded_data_to_nans,
+    _get_camera_frame_marker_lists_to_reproject,
+    _set_unincluded_data_to_nans,
 )
 
 
@@ -15,7 +15,7 @@ def test_get_camera_frame_marker_lists_to_reproject():
     num_cameras_to_remove = 1
     expected_output = ([[2], [1]], [0, 1], [1, 2])
     assert (
-        get_camera_frame_marker_lists_to_reproject(
+        _get_camera_frame_marker_lists_to_reproject(
             reprojError_cam_frame_marker, frame_marker_list, num_cameras_to_remove
         )
         == expected_output
@@ -25,7 +25,7 @@ def test_get_camera_frame_marker_lists_to_reproject():
     num_cameras_to_remove = 2
     expected_output = ([[2, 0], [1, 2]], [0, 1], [1, 2])
     assert (
-        get_camera_frame_marker_lists_to_reproject(
+        _get_camera_frame_marker_lists_to_reproject(
             reprojError_cam_frame_marker, frame_marker_list, num_cameras_to_remove
         )
         == expected_output
@@ -35,7 +35,7 @@ def test_get_camera_frame_marker_lists_to_reproject():
     num_cameras_to_remove = 3
     expected_output = ([[2, 0, 1], [1, 2, 0]], [0, 1], [1, 2])
     assert (
-        get_camera_frame_marker_lists_to_reproject(
+        _get_camera_frame_marker_lists_to_reproject(
             reprojError_cam_frame_marker, frame_marker_list, num_cameras_to_remove
         )
         == expected_output
@@ -46,7 +46,7 @@ def test_get_camera_frame_marker_lists_to_reproject():
     # should just return all of the camera sorted by max reprojection error, no need to error
     expected_output = ([[2, 0, 1], [1, 2, 0]], [0, 1], [1, 2])
     assert (
-        get_camera_frame_marker_lists_to_reproject(
+        _get_camera_frame_marker_lists_to_reproject(
             reprojError_cam_frame_marker, frame_marker_list, num_cameras_to_remove
         )
         == expected_output
@@ -56,7 +56,7 @@ def test_get_camera_frame_marker_lists_to_reproject():
     num_cameras_to_remove = 2
     expected_output = ([], [], [])
     assert (
-        get_camera_frame_marker_lists_to_reproject(
+        _get_camera_frame_marker_lists_to_reproject(
             reprojError_cam_frame_marker, frame_marker_list, num_cameras_to_remove
         )
         == expected_output
@@ -69,7 +69,7 @@ def test_set_unincluded_data_to_nans():
     frames_with_reprojection_error = [1, 2]
     markers_with_reprojection_error = [3, 4]
     cameras_to_remove = [[0, 1], [2, 3]]
-    result = set_unincluded_data_to_nans(data, frames_with_reprojection_error, markers_with_reprojection_error, cameras_to_remove)
+    result = _set_unincluded_data_to_nans(data, frames_with_reprojection_error, markers_with_reprojection_error, cameras_to_remove)
     for cameras, frame, marker in zip(cameras_to_remove, frames_with_reprojection_error, markers_with_reprojection_error):
         for camera in cameras:
             np.testing.assert_array_equal(result[camera, frame, marker, :], np.full((2,), np.nan))
@@ -80,7 +80,7 @@ def test_set_unincluded_data_to_nans():
     markers_with_reprojection_error = [3, 4]
     cameras_to_remove = [[0, 1], [2, 3]]
     original_data = data.copy()
-    result = set_unincluded_data_to_nans(data, frames_with_reprojection_error, markers_with_reprojection_error, cameras_to_remove)
+    result = _set_unincluded_data_to_nans(data, frames_with_reprojection_error, markers_with_reprojection_error, cameras_to_remove)
     mask = np.ones(data.shape, dtype=bool)
     for cameras, frame, marker in zip(cameras_to_remove, frames_with_reprojection_error, markers_with_reprojection_error):
         for camera in cameras:

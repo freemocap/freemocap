@@ -23,7 +23,6 @@ def filter_by_reprojection_error(
     minimum_cameras_to_reproject: int = 3,
 ) -> Tuple[np.ndarray, np.ndarray]:
     total_cameras = mediapipe_2d_data.shape[0]
-    total_frame_marker_combos = raw_skel3d_frame_marker_xyz.shape[0] * raw_skel3d_frame_marker_xyz.shape[1]
     num_cameras_to_remove = 1
 
     if total_cameras <= minimum_cameras_to_reproject:
@@ -42,27 +41,15 @@ def filter_by_reprojection_error(
     reprojection_error_confidence_threshold = min(max(reprojection_error_confidence_threshold, 0), 100)
 
     reprojection_error_threshold = np.nanpercentile(
-        bodyReprojErr_camera_frame_marker, reprojection_error_confidence_threshold
-    )
+        np.nanmean(bodyReprojErr_camera_frame_marker, axis=0), reprojection_error_confidence_threshold, method="weibull"
+    ) # TODO: try running this on reprojection_error_frame_marker with body points pulled out, rather than with cameras included
+    logger.info(f"Using reprojection error threshold of {reprojection_error_threshold}")
 
-    indices_above_threshold = np.nonzero(bodyReprojErr_camera_frame_marker > reprojection_error_threshold)
-
-    unique_frame_marker_list = _get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
-    logger.info(
-        f"number of frame/marker combos with reprojection error above threshold: {len(unique_frame_marker_list)} ({len(unique_frame_marker_list)/total_frame_marker_combos * 100} percent of total)"
-    ) # TODO: add a percentage here
-
-    cameras_to_remove, frames_to_reproject, markers_to_reproject = _get_camera_frame_marker_lists_to_reproject(
-        reprojError_cam_frame_marker=bodyReprojErr_camera_frame_marker,
-        frame_marker_list=unique_frame_marker_list,
+    data_to_reproject_camera_frame_marker_xy, unique_frame_marker_list = _get_data_to_reproject(
         num_cameras_to_remove=num_cameras_to_remove,
-    )
-
-    data_to_reproject_camera_frame_marker_xy = _set_unincluded_data_to_nans(
-        mediapipe_2d_data=body2d_camera_frame_marker_xy,
-        frames_with_reprojection_error=frames_to_reproject,
-        markers_with_reprojection_error=markers_to_reproject,
-        cameras_to_remove=cameras_to_remove,
+        reprojection_error_threshold=reprojection_error_threshold,
+        reprojError_cam_frame_marker=bodyReprojErr_camera_frame_marker,
+        input_2d_data_camera_frame_marker_xy=body2d_camera_frame_marker_xy,
     )
 
     while len(unique_frame_marker_list) > 0 and total_cameras - num_cameras_to_remove >= minimum_cameras_to_reproject:
@@ -77,35 +64,17 @@ def filter_by_reprojection_error(
             use_triangulate_ransac=use_triangulate_ransac,
         )
 
-        indices_above_threshold = np.nonzero(new_reprojError_cam_frame_marker > reprojection_error_threshold)
-
-        unique_frame_marker_list = _get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
-        logger.info(
-            f"number of frame/marker combos with reprojection error above threshold after filtering: {len(unique_frame_marker_list)} ({len(unique_frame_marker_list)/total_frame_marker_combos * 100} percent of total)"
-        )
-
         num_cameras_to_remove += 1
 
-        cameras_to_remove, frames_to_reproject, markers_to_reproject = _get_camera_frame_marker_lists_to_reproject(
-            reprojError_cam_frame_marker=new_reprojError_cam_frame_marker,
-            frame_marker_list=unique_frame_marker_list,
+        data_to_reproject_camera_frame_marker_xy, unique_frame_marker_list = _get_data_to_reproject(
             num_cameras_to_remove=num_cameras_to_remove,
-        )
-
-        data_to_reproject_camera_frame_marker_xy = _set_unincluded_data_to_nans(
-            mediapipe_2d_data=data_to_reproject_camera_frame_marker_xy,
-            frames_with_reprojection_error=frames_to_reproject,
-            markers_with_reprojection_error=markers_to_reproject,
-            cameras_to_remove=cameras_to_remove,
+            reprojection_error_threshold=reprojection_error_threshold,
+            reprojError_cam_frame_marker=new_reprojError_cam_frame_marker,
+            input_2d_data_camera_frame_marker_xy=data_to_reproject_camera_frame_marker_xy,
         )
 
     # nan remaining data above threshold
-    if len(unique_frame_marker_list) > 0:
-        logger.info(
-            f"Out of cameras to remove, setting {len(unique_frame_marker_list)} points with reprojection error above threshold to NaNs"
-        )
-        for frame_marker in unique_frame_marker_list:
-            retriangulated_data_frame_marker_xyz[frame_marker[0], frame_marker[1], :] = np.nan
+    _nan_data_above_threshold(unique_frame_marker_list, retriangulated_data_frame_marker_xyz)
 
     # put retriangulated data back in place
     filtered_skel3d_frame_marker_xyz = raw_skel3d_frame_marker_xyz.copy()
@@ -124,6 +93,46 @@ def filter_by_reprojection_error(
         filtered_reprojection_error_frame_marker,
         filtered_reprojection_error_camera_frame_marker,
     )
+
+
+def _nan_data_above_threshold(unique_frame_marker_list: list, retriangulated_data_frame_marker_xyz: np.ndarray) -> None:
+    if len(unique_frame_marker_list) > 0:
+        logger.info(
+            f"Out of cameras to remove, setting {len(unique_frame_marker_list)} points with reprojection error above threshold to NaNs"
+        )
+        for frame_marker in unique_frame_marker_list:
+            retriangulated_data_frame_marker_xyz[frame_marker[0], frame_marker[1], :] = np.nan
+
+
+def _get_data_to_reproject(
+    num_cameras_to_remove: int,
+    reprojection_error_threshold: float,
+    reprojError_cam_frame_marker: np.ndarray,
+    input_2d_data_camera_frame_marker_xy: np.ndarray,
+) -> tuple[np.ndarray, list]:
+    indices_above_threshold = np.nonzero(reprojError_cam_frame_marker > reprojection_error_threshold)
+    logger.info(f"SHAPE OF INDICES ABOVE THRESHOLD: {indices_above_threshold[0].shape}")
+
+    total_frame_marker_combos = input_2d_data_camera_frame_marker_xy.shape[1] * input_2d_data_camera_frame_marker_xy.shape[2]
+    unique_frame_marker_list = _get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
+    logger.info(
+        f"number of frame/marker combos with reprojection error above threshold: {len(unique_frame_marker_list)} ({len(unique_frame_marker_list)/total_frame_marker_combos * 100:.1f} percent of total)"
+    )
+
+    cameras_to_remove, frames_to_reproject, markers_to_reproject = _get_camera_frame_marker_lists_to_reproject(
+        reprojError_cam_frame_marker=reprojError_cam_frame_marker,
+        frame_marker_list=unique_frame_marker_list,
+        num_cameras_to_remove=num_cameras_to_remove,
+    )
+
+    data_to_reproject_camera_frame_marker_xy = _set_unincluded_data_to_nans(
+        input_2d_data=input_2d_data_camera_frame_marker_xy,
+        frames_with_reprojection_error=frames_to_reproject,
+        markers_with_reprojection_error=markers_to_reproject,
+        cameras_to_remove=cameras_to_remove,
+    )
+
+    return (data_to_reproject_camera_frame_marker_xy, unique_frame_marker_list)
 
 
 def _get_unique_frame_marker_list(
@@ -159,12 +168,12 @@ def _get_camera_frame_marker_lists_to_reproject(
 
 
 def _set_unincluded_data_to_nans(
-    mediapipe_2d_data: np.ndarray,
+    input_2d_data: np.ndarray,
     frames_with_reprojection_error: list,
     markers_with_reprojection_error: list,
     cameras_to_remove: list[list[int]],
 ) -> np.ndarray:
-    data_to_reproject = mediapipe_2d_data.copy()
+    data_to_reproject = input_2d_data.copy()
     for list_of_cameras, frame, marker in zip(
         cameras_to_remove, frames_with_reprojection_error, markers_with_reprojection_error
     ):

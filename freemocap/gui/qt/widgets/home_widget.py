@@ -1,5 +1,7 @@
 import logging
+from typing import Union
 
+import requests
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
@@ -10,6 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
 )
+from packaging import version
 
 import freemocap
 from freemocap.gui.qt.actions_and_menus.actions import (
@@ -20,7 +23,6 @@ from freemocap.gui.qt.actions_and_menus.actions import (
     Actions,
 )
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
-
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
@@ -74,7 +76,7 @@ class HomeWidget(QWidget):
 
         self._create_user_info_consent_checkbox()
 
-        self._add_code_and_docs_links()
+        self._add_text_links()
         self._make_version_label()
 
         self.style().polish(self)
@@ -83,15 +85,48 @@ class HomeWidget(QWidget):
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
         version_label_string = f'source:<a href="https://github.com/freemocap/freemocap" style="color: #777777;"> {freemocap.__version__}</a>'
+        latest_version = self.check_for_latest_version().split('rc')[0]
+        current_version = freemocap.__version__.strip('v').split('-')[0]
 
+        if latest_version is None:
+            version_label_string += " (X)"
+            tooltip_string = " (`new version check` failed!)"
+        elif latest_version != current_version or True:
+            version_label_string += " (update available!)"
+            tooltip_string = (f"New version {latest_version} available!\n"
+                               f" upgrade to latest version by entering the command \n\n"
+                               f" ```\npip install freemocap --upgrade --pre\n``` "
+                               f"\n\ninto the terminal you used to launch this program (with your `(freemocap-env)` environment activated)")
+        else:
+            tooltip_string = f"Your version of freemocap ({freemocap.__version__}) is up to date! (latest: {self.check_for_latest_version()})"
         version_label = QLabel(version_label_string)
         version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         version_label.setStyleSheet("font-size: 12px;color: #777777")
         version_label.setOpenExternalLinks(True)
+        version_label.setToolTip(tooltip_string)
 
         hbox.addWidget(version_label)
 
-    def _add_code_and_docs_links(self):
+    def check_for_latest_version(self) -> Union[str, None]:
+        response = requests.get(f'https://pypi.org/pypi/{freemocap.__package_name__}/json')
+        if response.status_code != 200:
+            logger.error(f"Failed to check for latest version of {freemocap.__package_name__}")
+            return None
+
+        versions = response.json()['releases'].keys()
+
+        pre_releases = [v for v in versions if 'a' in v or 'b' in v or 'rc' in v]
+        if pre_releases:
+            pre_releases.sort(key=version.parse)
+
+        versions = list(versions)
+        versions.sort(key=version.parse)
+        all_versions = pre_releases + versions
+        all_versions.sort(key=version.parse)
+
+        return all_versions[-1] if all_versions else None
+
+    def _add_text_links(self):
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
         hbox.addStretch(1)
@@ -103,6 +138,15 @@ class HomeWidget(QWidget):
         docs_string = QLabel(docs_string)
         docs_string.setOpenExternalLinks(True)
         hbox.addWidget(docs_string, alignment=Qt.AlignmentFlag.AlignCenter)
+        feedback_string = '<a href="https://forms.gle/AguGxQAJGXxaJbXdA" style="color: #333333;">feedback</a>'
+        feedback_string = QLabel(feedback_string)
+        feedback_string.setOpenExternalLinks(True)
+        hbox.addWidget(feedback_string, alignment=Qt.AlignmentFlag.AlignRight)
+        donate_string = f'<a href="https://freemocap.org/about-us.html#donate" style="color: #333333;">donate &lt;3</a>'
+        donate_string = QLabel(donate_string)
+        donate_string.setOpenExternalLinks(True)
+        hbox.addWidget(donate_string, alignment=Qt.AlignmentFlag.AlignRight)
+
         hbox.addStretch(1)
 
     def _create_user_info_consent_checkbox(self):

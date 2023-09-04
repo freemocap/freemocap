@@ -85,18 +85,20 @@ class HomeWidget(QWidget):
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
         version_label_string = f'source:<a href="https://github.com/freemocap/freemocap" style="color: #777777;"> {freemocap.__version__}</a>'
-        latest_version = self.check_for_latest_version().split('rc')[0]
-        current_version = freemocap.__version__.strip('v').split('-')[0]
+        latest_version = self.check_for_latest_version().split("rc")[0]
+        current_version = freemocap.__version__.strip("v").split("-")[0]
 
         if latest_version is None:
             version_label_string += " (X)"
             tooltip_string = " (`new version check` failed!)"
         elif latest_version != current_version or True:
             version_label_string += " (update available!)"
-            tooltip_string = (f"New version {latest_version} available!\n"
-                               f" upgrade to latest version by entering the command \n\n"
-                               f" ```\npip install freemocap --upgrade --pre\n``` "
-                               f"\n\ninto the terminal you used to launch this program (with your `(freemocap-env)` environment activated)")
+            tooltip_string = (
+                f"New version {latest_version} available!\n"
+                f" upgrade to latest version by entering the command \n\n"
+                f" ```\npip install freemocap --upgrade --pre\n``` "
+                f"\n\ninto the terminal you used to launch this program (with your `(freemocap-env)` environment activated)"
+            )
         else:
             tooltip_string = f"Your version of freemocap ({freemocap.__version__}) is up to date! (latest: {self.check_for_latest_version()})"
         version_label = QLabel(version_label_string)
@@ -108,14 +110,14 @@ class HomeWidget(QWidget):
         hbox.addWidget(version_label)
 
     def check_for_latest_version(self) -> Union[str, None]:
-        response = requests.get(f'https://pypi.org/pypi/{freemocap.__package_name__}/json')
+        response = requests.get(f"https://pypi.org/pypi/{freemocap.__package_name__}/json")
         if response.status_code != 200:
             logger.error(f"Failed to check for latest version of {freemocap.__package_name__}")
             return None
 
-        versions = response.json()['releases'].keys()
+        versions = response.json()["releases"].keys()
 
-        pre_releases = [v for v in versions if 'a' in v or 'b' in v or 'rc' in v]
+        pre_releases = [v for v in versions if "a" in v or "b" in v or "rc" in v]
         if pre_releases:
             pre_releases.sort(key=version.parse)
 
@@ -142,7 +144,7 @@ class HomeWidget(QWidget):
         feedback_string = QLabel(feedback_string)
         feedback_string.setOpenExternalLinks(True)
         hbox.addWidget(feedback_string, alignment=Qt.AlignmentFlag.AlignRight)
-        donate_string = f'<a href="https://freemocap.org/about-us.html#donate" style="color: #333333;">donate &lt;3</a>'
+        donate_string = '<a href="https://freemocap.org/about-us.html#donate" style="color: #333333;">donate &lt;3</a>'
         donate_string = QLabel(donate_string)
         donate_string.setOpenExternalLinks(True)
         hbox.addWidget(donate_string, alignment=Qt.AlignmentFlag.AlignRight)

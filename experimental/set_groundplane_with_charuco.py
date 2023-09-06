@@ -122,6 +122,16 @@ def rotate_skeleton_data(skeleton_data: np.ndarray, rotation_matrix: np.ndarray)
 
     return rotated_skeleton_data
 
+def compose_transformation_vectors(charuco_to_camera_rvec: np.ndarray, charuco_to_camera_tvec: np.ndarray, camera_to_world_rvec: np.ndarray, camera_to_world_tvec: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    #TODO: decide if this is worth a separate function for clarity - writing it down now to remember it.
+    composed_rvec, composed_tvec = cv2.composeRT(
+        rvec1=charuco_to_camera_rvec,
+        tvec1=charuco_to_camera_tvec,
+        rvec2=camera_to_world_rvec,
+        tvec2=camera_to_world_tvec,
+    )
+    return composed_rvec, composed_tvec
+
 
 if __name__ == "__main__":
     camera_matrix = np.array(

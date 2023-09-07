@@ -205,7 +205,13 @@ class RecordingFolderStatusChecker:
         return Path(self.recording_info_model.blender_file_path).is_file()
 
     def check_calibration_toml_status(self) -> bool:
-        return Path(self.recording_info_model.calibration_toml_path).is_file()
+        toml_status = Path(self.recording_info_model.calibration_toml_path).is_file()
+        if not toml_status:
+            logger.info(
+                "No calibration file found with session name, checking for other calibration files in recording session"
+            )
+            toml_status = self.check_for_calibration_toml_with_different_name()
+        return toml_status
 
     def get_number_of_mp4s_in_synched_videos_directory(self) -> float:
         synchronized_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path)
@@ -236,3 +242,11 @@ class RecordingFolderStatusChecker:
                     frame_counts[npy_file.name] = str(len(video_npy) - 1)
 
             return frame_counts
+
+    def check_for_calibration_toml_with_different_name(self) -> bool:
+        for file in Path(self.recording_info_model.path).iterdir():
+            if file.is_file() and file.name.endswith("camera_calibration.toml"):
+                self.recording_info_model.calibration_toml_path = str(file)
+                logger.info(f"Found calibration file at: {self.recording_info_model.calibration_toml_path}")
+                return True
+        return False

@@ -106,9 +106,10 @@ def process_recording_folder(
 
         mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = (
             mediapipe_skeleton_detector.process_folder_full_of_videos(
-                rec.recording_info_model.synchronized_videos_folder_path,
-                Path(rec.recording_info_model.output_data_folder_path) / RAW_DATA_FOLDER_NAME,
+                path_to_folder_of_videos_to_process=rec.recording_info_model.synchronized_videos_folder_path,
+                output_data_folder_path=Path(rec.recording_info_model.output_data_folder_path) / RAW_DATA_FOLDER_NAME,
                 kill_event=kill_event,
+                use_multiprocessing=rec.mediapipe_parameters_model.use_multiprocessing,
             )
         )
 

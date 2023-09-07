@@ -15,6 +15,7 @@ class MediapipeParametersModel(BaseModel):
     min_tracking_confidence: float = 0.5
     static_image_mode: bool = False
     skip_2d_image_tracking: bool = False
+    use_multiprocessing: bool = False
 
 
 class AniposeTriangulate3DParametersModel(BaseModel):

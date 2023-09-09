@@ -80,7 +80,8 @@ dependencies = [
     "ipykernel==6.23.1",
     "plotly==5.14.1",
     "pydantic==1.*",
-    "packaging"
+    "packaging",
+    "gradio"
 ]
 requires-python = ">=3.8"
 

@@ -2,7 +2,7 @@ import gradio as gr
 from freemocap_web.core import mocap
 
 
-def greet(video_input):
+def mocap_hook(video_input):
     moc = mocap(video_input)
     blender = moc.to_blender()
     return blender
@@ -17,8 +17,8 @@ if __name__ == '__main__':
                 width=288,
                 height=512)
             with gr.Column():
-                greet_btn = gr.Button("Mocap")
-                out_put = gr.File()
-                greet_btn.click(fn=greet, inputs=video, outputs=out_put, api_name="greet")
+                mocap_button = gr.Button("Mocap")
+                output = gr.File()
+                mocap_button.click(fn=mocap_hook, inputs=video, outputs=output)
 
     demo.launch()

@@ -65,5 +65,3 @@ class Config:
                 skip_butterworth_filter=False),
             arbitrary_types_allowed=True,
             use_tqdm=True)
-
-

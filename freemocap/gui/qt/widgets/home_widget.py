@@ -110,7 +110,7 @@ class HomeWidget(QWidget):
         hbox.addWidget(version_label)
 
     def check_for_latest_version(self) -> Union[str, None]:
-        response = requests.get(f"https://pypi.org/pypi/{freemocap.__package_name__}/json")
+        response = requests.get(f"https://pypi.org/pypi/{freemocap.__package_name__}/json", timeout=(5, 60))
         if response.status_code != 200:
             logger.error(f"Failed to check for latest version of {freemocap.__package_name__}")
             return None

@@ -132,7 +132,7 @@ class HomeWidget(QWidget):
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
         hbox.addStretch(1)
-        privacy_policy_link_string = '<a href="https://freemocap.readthedocs.io/en/latest/privacy_policy/" style="color: #333333;">privacy policy</a>'
+        privacy_policy_link_string = '<a href="https://freemocap.readthedocs.io/en/latest/community/privacy_policy/" style="color: #333333;">privacy policy</a>'
         privacy_policy_link_label = QLabel(privacy_policy_link_string)
         privacy_policy_link_label.setOpenExternalLinks(True)
         hbox.addWidget(privacy_policy_link_label)

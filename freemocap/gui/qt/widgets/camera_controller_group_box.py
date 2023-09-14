@@ -132,7 +132,7 @@ class CameraControllerGroupBox(QGroupBox):
         )
         hbox.addWidget(self._charuco_square_size_line_edit)
 
-        self._annotate_charuco_checkbox = QCheckBox("Display Charuco while Recording")
+        self._annotate_charuco_checkbox = QCheckBox("Display Charuco Overlay")
         self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_images)
         hbox.addWidget(self._annotate_charuco_checkbox)
         hbox.addStretch()

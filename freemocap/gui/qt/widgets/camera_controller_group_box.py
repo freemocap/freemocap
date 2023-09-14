@@ -134,6 +134,7 @@ class CameraControllerGroupBox(QGroupBox):
 
         self._annotate_charuco_checkbox = QCheckBox("Display Charuco Overlay")
         self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_images)
+        self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
         hbox.addWidget(self._annotate_charuco_checkbox)
         hbox.addStretch()
         return hbox

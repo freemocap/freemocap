@@ -110,7 +110,7 @@ class HomeWidget(QWidget):
         hbox.addWidget(version_label)
 
     def check_for_latest_version(self) -> Union[str, None]:
-        response = requests.get(f"https://pypi.org/pypi/{freemocap.__package_name__}/json")
+        response = requests.get(f"https://pypi.org/pypi/{freemocap.__package_name__}/json", timeout=(5, 60))
         if response.status_code != 200:
             logger.error(f"Failed to check for latest version of {freemocap.__package_name__}")
             return None
@@ -132,7 +132,7 @@ class HomeWidget(QWidget):
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
         hbox.addStretch(1)
-        privacy_policy_link_string = '<a href="https://freemocap.readthedocs.io/en/latest/privacy_policy/" style="color: #333333;">privacy policy</a>'
+        privacy_policy_link_string = '<a href="https://freemocap.readthedocs.io/en/latest/community/privacy_policy/" style="color: #333333;">privacy policy</a>'
         privacy_policy_link_label = QLabel(privacy_policy_link_string)
         privacy_policy_link_label.setOpenExternalLinks(True)
         hbox.addWidget(privacy_policy_link_label)

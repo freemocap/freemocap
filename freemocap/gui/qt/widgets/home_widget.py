@@ -92,7 +92,7 @@ class HomeWidget(QWidget):
         if latest_version is None:
             version_label_string += " (X)"
             tooltip_string = " (`new version check` failed!)"
-        elif latest_version != current_version or True:
+        elif latest_version != current_version:
             version_label_string += " (update available!)"
             tooltip_string = (
                 f"New version {latest_version} available!\n"

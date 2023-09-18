@@ -73,7 +73,7 @@ dependencies = [
     "skellyforge",
     "skelly_synchronize",
     "mediapipe",
-    "opencv-contrib-python==4.6.0.66",
+    "opencv-contrib-python==4.8.*",
     "toml==0.10.2",
     "aniposelib==0.4.3",
     "libsass==0.21.0",

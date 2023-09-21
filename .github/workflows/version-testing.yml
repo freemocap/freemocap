@@ -22,4 +22,4 @@ jobs:
           sudo apt-get install libegl1-mesa
       - name: Run noxfile
         run: |
-          nox
+          nox --session test coverage

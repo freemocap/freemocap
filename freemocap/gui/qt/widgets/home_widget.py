@@ -23,6 +23,7 @@ from freemocap.gui.qt.actions_and_menus.actions import (
     Actions,
 )
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
@@ -91,7 +92,7 @@ class HomeWidget(QWidget):
         if latest_version is None:
             version_label_string += " (X)"
             tooltip_string = " (`new version check` failed!)"
-        elif latest_version != current_version or True:
+        elif latest_version != current_version:
             version_label_string += " (update available!)"
             tooltip_string = (
                 f"New version {latest_version} available!\n"

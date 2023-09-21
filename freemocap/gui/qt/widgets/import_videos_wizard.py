@@ -133,22 +133,21 @@ class ImportVideosWizard(QDialog):
         self._synchronization_method_buttons.addButton(self._cross_correlation_radio_button)
         self._synchronization_method_buttons.addButton(self._brightness_contrast_radio_button)
 
-        extension_layout = QHBoxLayout()
-        synch_button_layout = QVBoxLayout()
+        extension_layout = QVBoxLayout()
+        synch_button_layout = QHBoxLayout()
         synch_button_layout.addWidget(QLabel("Choose synchronization method:"))
         synch_button_layout.addWidget(self._cross_correlation_radio_button)
         synch_button_layout.addWidget(self._brightness_contrast_radio_button)
 
-        synch_info_layout = QVBoxLayout()
         synchronization_message = QLabel(
             " - Videos must have exactly the same video frame rates to be synchronized.\n\n - For audio cross correlation, audio tracks must have the same sample rate.\n"
         )
         synchronization_message.setWordWrap(True)
-        synch_info_layout.addWidget(synchronization_message)
 
         line_edit_layout = QHBoxLayout()
         self.brightness_contrast_threshold_line_edit = QLineEdit("Brightness Contrast Threshold:")
         self.brightness_contrast_threshold_line_edit.setText("1000")
+        self.brightness_contrast_threshold_line_edit.setEnabled(False)
 
         brightness_validator = QDoubleValidator()
         brightness_validator.setBottom(1)
@@ -156,10 +155,11 @@ class ImportVideosWizard(QDialog):
 
         line_edit_layout.addWidget(QLabel("Brightness Contrast Threshold:"))
         line_edit_layout.addWidget(self.brightness_contrast_threshold_line_edit)
-        synch_info_layout.addLayout(line_edit_layout)
+        line_edit_layout.addWidget(QLabel("   Only applies to brightness contrast detection"))
 
         extension_layout.addLayout(synch_button_layout)
-        extension_layout.addLayout(synch_info_layout)
+        extension_layout.addWidget(synchronization_message)
+        extension_layout.addLayout(line_edit_layout)
 
         synchronization_extension.setLayout(extension_layout)
 
@@ -203,6 +203,9 @@ class ImportVideosWizard(QDialog):
     def _handle_brightness_contrast_radio_button_toggled(self, event):
         if self._brightness_contrast_radio_button.isChecked():
             self.synchronization_method = "brightness"
+            self.brightness_contrast_threshold_line_edit.setEnabled(True)
+        else:
+            self.brightness_contrast_threshold_line_edit.setEnabled(False)
 
     def _handle_video_synchronization_finished(self):
         self._video_file_paths = [

@@ -2,12 +2,13 @@ import logging
 from pathlib import Path
 import threading
 from typing import Union
-from skelly_synchronize import create_debug_plots
+from skelly_synchronize import create_audio_debug_plots, create_brightness_debug_plots
 
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QFileSystemModel
+from PyQt6.QtGui import QFileSystemModel, QDoubleValidator
 from PyQt6.QtWidgets import (
     QVBoxLayout,
+    QHBoxLayout,
     QListWidget,
     QLabel,
     QFormLayout,
@@ -16,7 +17,9 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QDialog,
     QCheckBox,
-    QHBoxLayout,
+    QButtonGroup,
+    QRadioButton,
+    QWidget,
 )
 
 from freemocap.gui.qt.workers.synchronize_videos_thread_worker import SynchronizeVideosThreadWorker
@@ -57,20 +60,14 @@ class ImportVideosWizard(QDialog):
         self._form_layout = QFormLayout()
         self._layout.addLayout(self._form_layout)
 
-        self._synchronize_videos_checkbox = QCheckBox("Synchronize videos by audio cross-correlation.")
+        self._synchronize_videos_checkbox = QCheckBox()
         self._synchronize_videos_checkbox.toggled.connect(self._handle_synchronize_checkbox_toggled)
 
-        synchronization_message = QLabel(
-            "(Videos must have exactly the same video frame rates and audio sample rates to be synchronized.)"
-        )
-        synchronization_message.setWordWrap(True)
+        self.synchronization_extension = self._create_synchronization_extension()
 
-        synchronization_layout = QHBoxLayout()
+        self._layout.addWidget(self.synchronization_extension)
 
-        synchronization_layout.addWidget(self._synchronize_videos_checkbox)
-        synchronization_layout.addWidget(synchronization_message)
-
-        self._form_layout.addRow("Synchronize videos:", synchronization_layout)
+        self._form_layout.addRow("Synchronize videos:", self._synchronize_videos_checkbox)
 
         self._folder_name = f"import_{Path(import_videos_path).name}"
         self._folder_name_line_edit = QLineEdit(parent=self)
@@ -122,6 +119,54 @@ class ImportVideosWizard(QDialog):
             list_view.addItems(self._video_file_paths)
         return list_view
 
+    def _create_synchronization_extension(self):
+        synchronization_extension = QWidget()
+
+        self._synchronization_method_buttons = QButtonGroup(self)
+        self._cross_correlation_radio_button = QRadioButton("Audio Cross Correlation")
+        self._cross_correlation_radio_button.setChecked(True)
+        self.synchronization_method = "audio"
+        self._brightness_contrast_radio_button = QRadioButton("Brightness Contrast Detection")
+
+        self._cross_correlation_radio_button.toggled.connect(self._handle_cross_correlation_radio_button_toggled)
+        self._brightness_contrast_radio_button.toggled.connect(self._handle_brightness_contrast_radio_button_toggled)
+        self._synchronization_method_buttons.addButton(self._cross_correlation_radio_button)
+        self._synchronization_method_buttons.addButton(self._brightness_contrast_radio_button)
+
+        extension_layout = QHBoxLayout()
+        synch_button_layout = QVBoxLayout()
+        synch_button_layout.addWidget(QLabel("Choose synchronization method:"))
+        synch_button_layout.addWidget(self._cross_correlation_radio_button)
+        synch_button_layout.addWidget(self._brightness_contrast_radio_button)
+
+        synch_info_layout = QVBoxLayout()
+        synchronization_message = QLabel(
+            " - Videos must have exactly the same video frame rates to be synchronized.\n\n - For audio cross correlation, audio tracks must have the same sample rate.\n"
+        )
+        synchronization_message.setWordWrap(True)
+        synch_info_layout.addWidget(synchronization_message)
+
+        line_edit_layout = QHBoxLayout()
+        self.brightness_contrast_threshold_line_edit = QLineEdit("Brightness Contrast Threshold:")
+        self.brightness_contrast_threshold_line_edit.setText("1000")
+
+        brightness_validator = QDoubleValidator()
+        brightness_validator.setBottom(1)
+        self.brightness_contrast_threshold_line_edit.setValidator(brightness_validator)
+
+        line_edit_layout.addWidget(QLabel("Brightness Contrast Threshold:"))
+        line_edit_layout.addWidget(self.brightness_contrast_threshold_line_edit)
+        synch_info_layout.addLayout(line_edit_layout)
+
+        extension_layout.addLayout(synch_button_layout)
+        extension_layout.addLayout(synch_info_layout)
+
+        synchronization_extension.setLayout(extension_layout)
+
+        synchronization_extension.hide()
+
+        return synchronization_extension
+
     def _handle_folder_name_line_edit_changed(self, event):
         self._folder_name = self._folder_name_line_edit.text()
         self._folder_where_videos_will_be_saved_to_label.setText(self._get_folder_videos_will_be_saved_to())
@@ -132,6 +177,8 @@ class ImportVideosWizard(QDialog):
                 raw_video_folder_path=Path(self.import_videos_path),
                 synchronized_video_folder_path=Path(self._get_folder_videos_will_be_saved_to()),
                 kill_thread_event=self.kill_thread_event,
+                synchronization_method=self.synchronization_method,
+                brightness_contrast_threshold=float(self.brightness_contrast_threshold_line_edit.text()),
             )
             self.synchronize_videos_thread_worker.start()
             self.synchronize_videos_thread_worker.finished.connect(self._handle_video_synchronization_finished)
@@ -143,18 +190,34 @@ class ImportVideosWizard(QDialog):
 
     def _handle_synchronize_checkbox_toggled(self, event):
         if self._synchronize_videos_checkbox.isChecked():
-            logger.info("Synchronize videos by audio selected, videos will be synchronized before importing")
+            logger.info("Synchronize videos selected, videos will be synchronized before importing")
+            self.synchronization_extension.setVisible(True)
         else:
-            logger.info("Synchronize videos by audio deselected, videos will not be synchronized")
+            logger.info("Synchronize videos deselected, videos will not be synchronized")
+            self.synchronization_extension.setVisible(False)
+
+    def _handle_cross_correlation_radio_button_toggled(self, event):
+        if self._cross_correlation_radio_button.isChecked():
+            self.synchronization_method = "audio"
+
+    def _handle_brightness_contrast_radio_button_toggled(self, event):
+        if self._brightness_contrast_radio_button.isChecked():
+            self.synchronization_method = "brightness"
 
     def _handle_video_synchronization_finished(self):
         self._video_file_paths = [
             str(path)
             for path in get_video_paths(path_to_video_folder=self.synchronize_videos_thread_worker.output_folder_path)
         ]
-
-        create_debug_plots(synchronized_video_folder_path=self.synchronize_videos_thread_worker.output_folder_path)
-
+        if self.synchronization_method == "audio":
+            create_audio_debug_plots(
+                synchronized_video_folder_path=self.synchronize_videos_thread_worker.output_folder_path
+            )
+        if self.synchronization_method == "brightness":
+            create_brightness_debug_plots(
+                raw_video_folder_path=self.import_videos_path,
+                synchronized_video_folder_path=self.synchronize_videos_thread_worker.output_folder_path,
+            )
         self.folder_to_save_videos_to_selected.emit(
             self._video_file_paths, self._get_folder_videos_will_be_saved_to(), True
         )

@@ -8,12 +8,13 @@ from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_b
 )
 
 
-def get_rotation_vector_from_charuco(
+def get_pose_vectors_from_charuco(
     image: np.ndarray,
     charuco_board_definition: CharucoBoardDefinition,
     camera_matrix: np.ndarray,
     distortion_coefficients: np.ndarray,
-) -> np.ndarray:
+    display_image: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
     charuco_board = charuco_board_definition.charuco_board
     charuco_detector = cv2.aruco.CharucoDetector(charuco_board)
 
@@ -36,15 +37,15 @@ def get_rotation_vector_from_charuco(
                 "deformed or incorrect camera parameters are used."
             )
             print(error_inst.err)
+    if display_image:
+        try:
+            cv2.imshow("image", image)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        except:
+            print("couldn't display image")
 
-    try:
-        cv2.imshow("image", image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-    except:
-        print("couldn't display image")
-
-    return rvec
+    return (rvec, tvec)
 
 
 def create_vector(point1, point2):
@@ -75,6 +76,8 @@ def calculate_rotation_matrix(vector1, vector2):
     # based on the code found here: https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d"""
 
     identity_matrix = np.identity(3)
+    print(vector1.shape)
+    print(vector2.shape)
     vector_cross_product = np.cross(vector1, vector2)
     vector_dot_product = np.dot(vector1, vector2)
     skew_symmetric_cross_product = calculate_skewed_symmetric_cross_product(vector_cross_product)
@@ -124,25 +127,27 @@ def rotate_skeleton_data(skeleton_data: np.ndarray, rotation_matrix: np.ndarray)
 
 def compose_transformation_vectors(charuco_to_camera_rvec: np.ndarray, charuco_to_camera_tvec: np.ndarray, camera_to_world_rvec: np.ndarray, camera_to_world_tvec: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     #TODO: decide if this is worth a separate function for clarity - writing it down now to remember it.
-    composed_rvec, composed_tvec = cv2.composeRT(
+    results_tuple = cv2.composeRT(
         rvec1=charuco_to_camera_rvec,
         tvec1=charuco_to_camera_tvec,
         rvec2=camera_to_world_rvec,
         tvec2=camera_to_world_tvec,
     )
-    return composed_rvec, composed_tvec
+    composed_rvec = results_tuple[0]
+    composed_tvec = results_tuple[1]
+    return (composed_rvec, composed_tvec)
 
 
 if __name__ == "__main__":
-    camera_matrix = np.array(
-        [
-            [1.53194096e03, 0.00000000e00, 1.01721388e03],
-            [0.00000000e00, 1.54691324e03, 5.36380836e02],
-            [0.00000000e00, 0.00000000e00, 1.00000000e00],
-        ]
-    )
-    distortion_coefficients = np.array([[0.06806131, 0.03550422, 0.00044959, -0.00328774, -0.26919549]])
-    image_pathstring = "/Users/philipqueen/Downloads/webcam_charuco_test_2.jpeg"
+    # camera_matrix = np.array(
+    #     [
+    #         [1.53194096e03, 0.00000000e00, 1.01721388e03],
+    #         [0.00000000e00, 1.54691324e03, 5.36380836e02],
+    #         [0.00000000e00, 0.00000000e00, 1.00000000e00],
+    #     ]
+    # )
+    # distortion_coefficients = np.array([[0.06806131, 0.03550422, 0.00044959, -0.00328774, -0.26919549]])
+    # image_pathstring = "/Users/philipqueen/Downloads/webcam_charuco_test_2.jpeg"
 
     # camera_matrix = np.array(
     #     [ [ 902.0875074058669, 0.0, 359.5,], [ 0.0, 902.0875074058669, 639.5,], [ 0.0, 0.0, 1.0,],]
@@ -152,15 +157,47 @@ if __name__ == "__main__":
     # )
     # image_pathstring = "/Users/philipqueen/Downloads/sample_data_charuco_test_2.png"
 
-    image = cv2.imread(image_pathstring)
+    camera_matrix = np.array(
+        [ 
+            [ 988.6919145044521, 0.0, 359.5], 
+            [ 0.0, 988.6919145044521, 639.5], 
+            [ 0.0, 0.0, 1.0]
+        ]
+    )
+    distortion_coefficients = np.array(
+        [ -0.37224112582568564, 0.0, 0.0, 0.0, 0.0]
+    )
+
+    # image = cv2.imread(image_pathstring)
+    video_pathstring = "/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/synchronized_videos/Camera_000_synchronized.mp4"
+    video_cap = cv2.VideoCapture(video_pathstring)
+    ret, image = video_cap.read()
 
     charuco_definition = CharucoBoardDefinition()
 
-    rotation_matrix = get_rotation_vector_from_charuco(
+    rotation_vector, translation_vector = get_pose_vectors_from_charuco(
         image=image,
         charuco_board_definition=charuco_definition,
         camera_matrix=camera_matrix,
         distortion_coefficients=distortion_coefficients,
     )
 
-    print(rotation_matrix)
+    print(f"charuco to camera rotation_vector: {rotation_vector}")
+
+    existing_camera_rotation_vector = np.array([ -0.0016504390437047031, -0.012523687082989227, -0.02173159848480954])
+    existing_camera_translation_vector = np.array([ 0.0, 0.0, 0.0])
+
+    combined_rotation_vector, combined_translation_vector = compose_transformation_vectors(
+        charuco_to_camera_rvec=rotation_vector,
+        charuco_to_camera_tvec=translation_vector,
+        camera_to_world_rvec=existing_camera_rotation_vector,
+        camera_to_world_tvec=existing_camera_translation_vector,
+    )
+
+    print(f"combined_rotation_vector: {combined_rotation_vector}")
+
+    flattened_combined_rotation_vector = combined_rotation_vector.flatten()
+
+    rotation_matrix = create_rotation_matrix_from_rotation_vector(flattened_combined_rotation_vector)
+
+    print(f"rotation_matrix: {rotation_matrix}")

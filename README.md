@@ -49,6 +49,8 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 
 1. Install software via [pip](https://pypi.org/project/freemocap/1.0.0rc0/):
 ```
+git clone https://github.com/freemocap/freemocap
+cd freemocap
 pip install --pre freemocap
 ```
 

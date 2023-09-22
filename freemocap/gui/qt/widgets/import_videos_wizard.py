@@ -65,9 +65,8 @@ class ImportVideosWizard(QDialog):
 
         self.synchronization_extension = self._create_synchronization_extension()
 
-        self._layout.addWidget(self.synchronization_extension)
-
         self._form_layout.addRow("Synchronize videos:", self._synchronize_videos_checkbox)
+        self._form_layout.addRow(self.synchronization_extension)
 
         self._folder_name = f"import_{Path(import_videos_path).name}"
         self._folder_name_line_edit = QLineEdit(parent=self)

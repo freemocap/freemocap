@@ -42,7 +42,7 @@ def filter_by_reprojection_error(
 
     reprojection_error_threshold = np.nanpercentile(
         np.nanmean(bodyReprojErr_camera_frame_marker, axis=0), reprojection_error_confidence_threshold, method="weibull"
-    ) # TODO: try running this on reprojection_error_frame_marker with body points pulled out, rather than with cameras included
+    )  # TODO: try running this on reprojection_error_frame_marker with body points pulled out, rather than with cameras included
     logger.info(f"Using reprojection error threshold of {reprojection_error_threshold}")
 
     data_to_reproject_camera_frame_marker_xy, unique_frame_marker_list = _get_data_to_reproject(

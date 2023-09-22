@@ -25,7 +25,9 @@ REPROJECTION_ERROR_FILTERING_TREE_NAME = "Reprojection Error Filtering"
 
 SKIP_REPROJECTION_ERROR_FILTERING = "Skip Reprojection Error Filtering"
 
-REPROJECTION_ERROR_FILTER_THRESHOLD = "Reprojection Error Filter Threshold"
+REPROJECTION_ERROR_FILTER_THRESHOLD = "Reprojection Error Filter Threshold (%)"
+
+MINIMUM_CAMERAS_TO_REPROJECT = "Minimum Cameras to Reproject"
 
 ANIPOSE_TREE_NAME = "Anipose Triangulation"
 
@@ -135,16 +137,22 @@ def create_3d_triangulation_prarameter_group(
                         name=SKIP_REPROJECTION_ERROR_FILTERING,
                         type="bool",
                         value=parameter_model.skip_reprojection_error_filtering,
-                        tip="If true, skip filtering of reprojection error."
+                        tip="If true, skip filtering of reprojection error.",
                     ),
                     dict(
                         name=REPROJECTION_ERROR_FILTER_THRESHOLD,
                         type="float",
                         value=parameter_model.reprojection_error_confidence_cutoff,
-                        tip="The maximum reprojection error allowed in the data."
-                    )
-                ]
-            )
+                        tip="The maximum reprojection error allowed in the data.",
+                    ),
+                    dict(
+                        name=MINIMUM_CAMERAS_TO_REPROJECT,
+                        type="int",
+                        value=parameter_model.minimum_cameras_to_reproject,
+                        tip="The minimum number of cameras to reproject during retriangulation.",
+                    ),
+                ],
+            ),
         ],
     )
 
@@ -204,6 +212,7 @@ def extract_parameter_model_from_parameter_tree(
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
             skip_reprojection_error_filtering=parameter_values_dictionary[SKIP_REPROJECTION_ERROR_FILTERING],
             reprojection_error_confidence_cutoff=parameter_values_dictionary[REPROJECTION_ERROR_FILTER_THRESHOLD],
+            minimum_cameras_to_reproject=parameter_values_dictionary[MINIMUM_CAMERAS_TO_REPROJECT],
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
             skip_3d_triangulation=parameter_values_dictionary[SKIP_3D_TRIANGULATION_NAME],

@@ -118,7 +118,7 @@ def filter_by_reprojection_error(
     filtered_reprojection_error_frame_marker = reprojection_error_frame_marker.copy()
     filtered_reprojection_error_frame_marker[:, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS] = bodyReprojErr_frame_marker
 
-    return (filtered_skel3d_frame_marker_xyz, filtered_reprojection_error_frame_marker)
+    return (filtered_skel3d_frame_marker_xyz, filtered_reprojection_error_frame_marker, new_reprojError_cam_frame_marker)
 
 
 def find_frames_with_reprojection_error_above_limit(

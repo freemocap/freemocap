@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Union
 
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_camera_calibrator import (
+from freemocap.backend.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_camera_calibrator import (
     AniposeCameraCalibrator,
 )
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
+from freemocap.backend.core_processes import (
     CharucoBoardDefinition,
 )
 

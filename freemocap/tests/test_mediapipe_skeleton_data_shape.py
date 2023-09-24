@@ -4,7 +4,7 @@ from typing import Union
 import numpy as np
 import pytest
 
-from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
+from freemocap.backend.utilities.get_number_of_frames_of_videos_in_a_folder import (
     get_number_of_frames_of_videos_in_a_folder,
 )
 

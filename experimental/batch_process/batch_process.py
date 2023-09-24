@@ -2,13 +2,13 @@ import logging
 from pathlib import Path
 from typing import Optional, Union
 
-from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
-from freemocap.data_layer.export_data.blender_stuff.export_to_blender import export_to_blender
-from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
-from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.backend.core_processes import process_recording_folder
+from freemocap.backend.data_layer.export_data.blender_stuff.export_to_blender import export_to_blender
+from freemocap.backend.data_layer import PostProcessingParameterModel
+from freemocap.backend.data_layer import RecordingInfoModel
 from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
 from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
-from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
+from freemocap.backend.utilities import save_dictionary_to_json
 
 
 def process_folder_of_session_folders(

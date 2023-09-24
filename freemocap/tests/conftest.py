@@ -1,6 +1,6 @@
 import pytest
 
-from freemocap.core_processes.process_motion_capture_videos.process_recording_headless import (
+from freemocap.backend.core_processes import (
     process_recording_headless,
     find_calibration_toml_path,
 )
@@ -12,7 +12,7 @@ from freemocap.system.paths_and_filenames.path_getters import (
     get_image_tracking_data_file_name,
     get_reprojection_error_file_path,
 )
-from freemocap.utilities.download_sample_data import (
+from freemocap.backend.utilities import (
     download_sample_data,
 )
 

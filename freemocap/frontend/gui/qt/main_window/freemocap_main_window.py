@@ -502,9 +502,7 @@ class MainWindow(QMainWindow):
         logger.info("Opening `Welcome to Freemocap` dialog... ")
 
         self._welcome_screen_dialog = WelcomeScreenDialog(
-            gui_state=self._gui_state,
-            kill_thread_event=self._kill_thread_event,
-            parent=self
+            gui_state=self._gui_state, kill_thread_event=self._kill_thread_event, parent=self
         )
 
         self._welcome_screen_dialog.exec()

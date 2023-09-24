@@ -26,9 +26,7 @@ def headless_calibration(
 
 
 if __name__ == "__main__":
-    path_to_folder_of_calibration_videos = Path(
-        "/PATH/TO/CALIBRATION/VIDEOS"
-    )
+    path_to_folder_of_calibration_videos = Path("/PATH/TO/CALIBRATION/VIDEOS")
     charuco_square_size = 110  # size of a black square on your charuco board in mm
 
     headless_calibration(

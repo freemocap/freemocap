@@ -5,7 +5,6 @@ from typing import Union
 
 import toml
 
-
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     LOGS_INFO_AND_SETTINGS_FOLDER_NAME,
     LOG_FILE_FOLDER_NAME,
@@ -25,7 +24,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     MEDIAPIPE_3D_NPY_FILE_NAME,
-    GUI_STATE_JSON_FILENAME,
+    GUI_STATE_JSON_FILENAME, FREEMOCAP_TEST_DATA_RECORDING_NAME, FREEMOCAP_SAMPLE_DATA_RECORDING_NAME,
 )
 
 
@@ -149,7 +148,7 @@ def get_logs_info_and_settings_folder_path(create_folder: bool = True):
 def get_css_stylesheet_path():
     # return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "ElegantDark.qss")
     # return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "FunkyTown.qss")
-    return str(Path(__file__).parent.parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.css")
+    return str(Path(__file__).parent.parent.parent / "frontend" / "gui" / "qt" / "style_sheet" / "qt_style_sheet.css")
 
 
 def get_scss_stylesheet_path():
@@ -290,3 +289,11 @@ def get_reprojection_error_file_path(data_folder_name: Union[str, Path]) -> str:
             return str(raw_data_subfolder_path / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME)
 
     raise Exception(f"Could not find reprojection error data file in path {str(data_folder_name)}")
+
+
+def get_test_data_path() -> str:
+    return str(Path(get_recording_session_folder_path()) / FREEMOCAP_TEST_DATA_RECORDING_NAME)
+
+
+def get_sample_data_path() -> str:
+    return str(Path(get_recording_session_folder_path()) / FREEMOCAP_SAMPLE_DATA_RECORDING_NAME)

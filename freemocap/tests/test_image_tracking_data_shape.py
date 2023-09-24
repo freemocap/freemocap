@@ -7,7 +7,7 @@ import pytest
 from freemocap.backend.utilities.get_number_of_frames_of_videos_in_a_folder import (
     get_number_of_frames_of_videos_in_a_folder,
 )
-from freemocap.backend.utilities import get_video_paths
+from freemocap.backend.utilities.get_video_paths import get_video_paths
 
 
 @pytest.mark.usefixtures("synchronized_video_folder_path", "image_tracking_data_file_path")

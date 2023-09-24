@@ -39,9 +39,11 @@ SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
 RECORDING_PARAMETERS_JSON_FILE_NAME = "recording_parameters.json"
 
 # Figshare info
-FIGSHARE_TEST_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/40293973"
-FREEMOCAP_TEST_DATA_RECORDING_NAME = "freemocap_sample_data"
-FIGSHARE_SAMPLE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/41368323"
+FREEMOCAP_TEST_DATA_RECORDING_NAME = "freemocap_test_data"
+FIGSHARE_TEST_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/42440664" #"https://figshare.com/ndownloader/files/40293973"
+
+FREEMOCAP_SAMPLE_DATA_RECORDING_NAME = "freemocap_sample_data"
+FIGSHARE_SAMPLE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/42440757"
 
 # logo
 PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent / "assets/logo/freemocap-logo-black-border.svg")

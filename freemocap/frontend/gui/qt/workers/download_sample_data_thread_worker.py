@@ -3,7 +3,7 @@ import threading
 
 from PyQt6.QtCore import pyqtSignal, QThread
 
-from freemocap.backend.utilities.download_sample_data import download_sample_data
+from freemocap.backend.utilities.download_figshare_data import download_figshare_data, download_sample_data
 from freemocap.system.paths_and_filenames.file_and_folder_names import FIGSHARE_SAMPLE_ZIP_FILE_URL
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,8 @@ class DownloadSampleDataThreadWorker(QThread):
         logger.info("Downloading sample data")
 
         try:
-            self.sample_data_path = download_sample_data(sample_data_zip_file_url=FIGSHARE_SAMPLE_ZIP_FILE_URL)
+            self.sample_data_path = download_sample_data()
+
 
         except Exception as e:
             logger.exception("Something went wrong while downloading sample data")

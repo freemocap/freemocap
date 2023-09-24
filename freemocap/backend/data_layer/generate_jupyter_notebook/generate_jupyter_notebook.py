@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Union
 
-from freemocap.backend.utilities.download_sample_data import get_sample_data_path
+from freemocap.system.paths_and_filenames.path_getters import get_sample_data_path
 
 logger = logging.getLogger(__name__)
 

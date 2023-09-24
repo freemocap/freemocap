@@ -9,8 +9,7 @@ from freemocap.backend.data_layer.export_data.blender_stuff.get_best_guess_of_bl
 from freemocap.backend.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
 from freemocap.backend.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
-from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
-from freemocap.backend.utilities.download_sample_data import get_sample_data_path
+from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path, get_sample_data_path
 from freemocap.backend.utilities.get_video_paths import get_video_paths
 from freemocap.backend.utilities.save_dictionary_to_json import save_dictionary_to_json
 

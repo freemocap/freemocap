@@ -1,5 +1,3 @@
-from pathlib import Path
-from typing import Dict
 import cv2
 import numpy as np
 
@@ -43,7 +41,7 @@ def get_pose_vectors_from_charuco(
             cv2.waitKey(0)
             cv2.destroyAllWindows()
         except:
-            print("couldn't display image")
+            print("Couldn't display image")
 
     return (rvec, tvec)
 
@@ -117,25 +115,41 @@ def create_rotation_matrix_from_rotation_vector(rotation_vector: np.ndarray) -> 
     return calculate_rotation_matrix(unit_rotation_vector, origin_normal_unit_vector)
 
 
-def rotate_skeleton_data(skeleton_data: np.ndarray, rotation_matrix: np.ndarray) -> np.ndarray:
-    rotated_skeleton_data = np.zeros(skeleton_data.shape)
-
-    for frame in range(rotated_skeleton_data.shape[0]):  # rotate the skeleton on each frame
-        rotated_skeleton_data[frame, :, :] = rotate_skeleton_frame(skeleton_data[frame, :, :], rotation_matrix)
-
-    return rotated_skeleton_data
-
-def compose_transformation_vectors(charuco_to_camera_rvec: np.ndarray, charuco_to_camera_tvec: np.ndarray, camera_to_world_rvec: np.ndarray, camera_to_world_tvec: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    #TODO: decide if this is worth a separate function for clarity - writing it down now to remember it.
+def compose_transformation_vectors(
+    charuco_to_camera_rvec: np.ndarray,
+    charuco_to_camera_tvec: np.ndarray,
+    camera_to_world_rvec: np.ndarray,
+    camera_to_world_tvec: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
     results_tuple = cv2.composeRT(
         rvec1=charuco_to_camera_rvec,
         tvec1=charuco_to_camera_tvec,
         rvec2=camera_to_world_rvec,
         tvec2=camera_to_world_tvec,
     )
-    composed_rvec = results_tuple[0]
-    composed_tvec = results_tuple[1]
+    composed_rvec = results_tuple[0].flatten()
+    composed_tvec = results_tuple[1].flatten()
     return (composed_rvec, composed_tvec)
+
+
+def rotate_skeleton_with_matrix(rotation_matrix: np.ndarray, original_skeleton_np_array: np.ndarray) -> np.ndarray:
+    """
+    Rotate the entire skeleton with given rotation matrix.
+
+        Input:
+            Rotation matrix: Rotation matrix describing the desired rotation
+            Original skeleton data: The freemocap data you want to rotate
+        Output:
+            rotated_skeleton_data: A numpy data array of your rotated skeleton
+
+    """
+    rotated_skeleton_data_array = np.zeros(original_skeleton_np_array.shape)
+    for frame in range(original_skeleton_np_array.shape[0]):
+        rotated_skeleton_data_array[frame, :, :] = rotate_skeleton_frame(
+            original_skeleton_np_array[frame, :, :], rotation_matrix
+        )
+
+    return rotated_skeleton_data_array
 
 
 if __name__ == "__main__":
@@ -157,16 +171,8 @@ if __name__ == "__main__":
     # )
     # image_pathstring = "/Users/philipqueen/Downloads/sample_data_charuco_test_2.png"
 
-    camera_matrix = np.array(
-        [ 
-            [ 988.6919145044521, 0.0, 359.5], 
-            [ 0.0, 988.6919145044521, 639.5], 
-            [ 0.0, 0.0, 1.0]
-        ]
-    )
-    distortion_coefficients = np.array(
-        [ -0.37224112582568564, 0.0, 0.0, 0.0, 0.0]
-    )
+    camera_matrix = np.array([[988.6919145044521, 0.0, 359.5], [0.0, 988.6919145044521, 639.5], [0.0, 0.0, 1.0]])
+    distortion_coefficients = np.array([-0.37224112582568564, 0.0, 0.0, 0.0, 0.0])
 
     # image = cv2.imread(image_pathstring)
     video_pathstring = "/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/synchronized_videos/Camera_000_synchronized.mp4"
@@ -184,8 +190,8 @@ if __name__ == "__main__":
 
     print(f"charuco to camera rotation_vector: {rotation_vector}")
 
-    existing_camera_rotation_vector = np.array([ -0.0016504390437047031, -0.012523687082989227, -0.02173159848480954])
-    existing_camera_translation_vector = np.array([ 0.0, 0.0, 0.0])
+    existing_camera_rotation_vector = np.array([-0.0016504390437047031, -0.012523687082989227, -0.02173159848480954])
+    existing_camera_translation_vector = np.array([0.0, 0.0, 0.0])
 
     combined_rotation_vector, combined_translation_vector = compose_transformation_vectors(
         charuco_to_camera_rvec=rotation_vector,
@@ -195,9 +201,25 @@ if __name__ == "__main__":
     )
 
     print(f"combined_rotation_vector: {combined_rotation_vector}")
+    print(f"combined_translation_vector: {combined_translation_vector}")
 
     flattened_combined_rotation_vector = combined_rotation_vector.flatten()
 
+    # from here on is skellyforge stuff
     rotation_matrix = create_rotation_matrix_from_rotation_vector(flattened_combined_rotation_vector)
 
     print(f"rotation_matrix: {rotation_matrix}")
+
+    raw_skeleton_datapath = "/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/output_data/mediaPipeSkel_3d_body_hands_face.npy"
+    raw_skeleton_data = np.load(raw_skeleton_datapath)
+    print(f"raw_skeleton_data shape: {raw_skeleton_data.shape}")
+
+    rotated_skeleton_data = rotate_skeleton_with_matrix(
+        rotation_matrix=rotation_matrix, original_skeleton_np_array=raw_skeleton_data
+    )
+    print(f"rotated_skeleton_data shape: {rotated_skeleton_data.shape}")
+
+    translated_rotated_skeleton_data = rotated_skeleton_data + combined_translation_vector
+    print(f"translated_rotated_skeleton_data shape: {translated_rotated_skeleton_data.shape}")
+
+    np.save("/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/output_data/mediaPipeSkel_3d_body_hands_face_rotated.npy", rotated_skeleton_data)

@@ -4,6 +4,8 @@ import shutil
 from pathlib import Path
 from typing import Union
 
+import toml
+
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
@@ -56,3 +58,7 @@ def load_calibration_from_session_id(
     except Exception as e:
         logger.error(f"Failed to load anipose calibration info from {str(session_calibration_file_path)}")
         raise e
+    
+def load_calibration_as_dict(calibration_toml_file_path: Union[str, Path]):
+    return toml.load(str(calibration_toml_file_path))
+    

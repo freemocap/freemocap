@@ -6,6 +6,11 @@ block_cipher = None
 import sys
 import os
 
+def get_mediapipe_path():
+    import mediapipe
+    mediapipe_path = mediapipe.__path__[0]
+    return mediapipe_path
+
 a = Analysis(
     ['../freemocap/__main__.py'],
     pathex=[],
@@ -22,6 +27,10 @@ a = Analysis(
     noarchive=True,
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+mediapipe_tree = Tree(get_mediapipe_path(), prefix='mediapipe', excludes=["*.pyc"])
+a.datas += mediapipe_tree
+a.binaries = filter(lambda x: 'mediapipe' not in x[0], a.binaries)
 
 exe = EXE(
     pyz,
@@ -47,6 +56,6 @@ exe = EXE(
 app = BUNDLE(
     exe,
     name='freemocap.app',
-    icon=None,
+    icon='../freemocap/assets/logo/freemocap_skelly_logo.ico',
     bundle_identifier=None,
 )

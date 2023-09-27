@@ -104,7 +104,7 @@ def create_mediapipe_parameter_group(
     )
 
 
-def create_3d_triangulation_prarameter_group(
+def create_3d_triangulation_parameter_group(
     parameter_model: AniposeTriangulate3DParametersModel = None,
 ) -> Parameter:
     if parameter_model is None:

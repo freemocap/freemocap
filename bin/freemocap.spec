@@ -6,6 +6,8 @@ block_cipher = None
 import sys
 import os
 
+from freemocap import __version__ as package_version
+
 def get_mediapipe_path():
     import mediapipe
     mediapipe_path = mediapipe.__path__[0]
@@ -61,4 +63,12 @@ app = BUNDLE(
     name='freemocap.app',
     icon='../freemocap/assets/logo/freemocap_skelly_logo.ico',
     bundle_identifier=None,
+    info_plist={
+      'CFBundleName': 'FreeMoCap',
+      'CFBundleDisplayName': 'FreeMoCap',
+      'CFBundleVersion': package_version,
+      'CFBundleShortVersionString': package_version,
+      'NSPrincipalClass': 'NSApplication',
+      'NSAppleScriptEnabled': False,
+    },
 )

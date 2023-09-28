@@ -16,7 +16,7 @@ a = Analysis(
     pathex=['../freemocap'],
     binaries=[],
     datas=[('../freemocap/gui/qt/style_sheet/qt_style_sheet.css','freemocap/gui/qt/style_sheet'),
-                    ('../freemocap/assets/logo/freemocap-logo-black-border.svg', 'freemocap/assets/logo/freemocap-logo-black-border.svg'),
+                    ('../freemocap/assets/logo/freemocap-logo-black-border.svg', 'freemocap/assets/logo'),
                     ('../freemocap/data_layer/export_data/blender_stuff/blender_bpy_export_scripts/', 'freemocap/data_layer/export_data/blender_stuff/blender_bpy_export_scripts/'),
                     ('../freemocap/data_layer/generate_jupyter_notebook/', 'freemocap/data_layer/generate_jupyter_notebook/')],
     hiddenimports=[],

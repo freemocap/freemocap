@@ -48,7 +48,7 @@ exe = EXE(
     debug=True,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
@@ -70,5 +70,9 @@ app = BUNDLE(
       'CFBundleShortVersionString': package_version,
       'NSPrincipalClass': 'NSApplication',
       'NSAppleScriptEnabled': False,
+      'NSCameraUsageDescription': 'Webcam can be opened by user to capture recordings for motion capture',
+      'LSEnvironment': {
+            'PATH': '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin',
+        }
     },
 )

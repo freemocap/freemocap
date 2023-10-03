@@ -16,7 +16,6 @@ from packaging import version
 import freemocap
 from freemocap.gui.qt.actions_and_menus.actions import (
     CREATE_NEW_RECORDING_ACTION_NAME,
-    LOAD_MOST_RECENT_RECORDING_ACTION_NAME,
     LOAD_RECORDING_ACTION_NAME,
     IMPORT_VIDEOS_ACTION_NAME,
     Actions,

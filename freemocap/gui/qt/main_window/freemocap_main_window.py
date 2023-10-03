@@ -181,7 +181,7 @@ class MainWindow(QMainWindow):
         height = screen.height() * height_fraction
         self.setFixedSize(int(width), int(height))
         self.setMinimumSize(1280, 720)
-        self.setMaximumSize(int(width*2), int(height*2))
+        self.setMaximumSize(int(width * 2), int(height * 2))
 
     def _create_tools_dock_widget(self):
         tools_dock_widget = QDockWidget("Control Panel", self)

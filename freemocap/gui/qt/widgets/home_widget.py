@@ -46,6 +46,8 @@ class HomeWidget(QWidget):
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
+        self._layout.setContentsMargins(0, 0, 0, 0)
+
         self.sizePolicy().setHorizontalStretch(1)
         self.sizePolicy().setVerticalStretch(1)
 
@@ -173,6 +175,6 @@ class HomeWidget(QWidget):
         return session_title_label
 
     def _add_freemocap_logo(self):
-        freemocap_logo_label = ImageWidget(image_path=PATH_TO_FREEMOCAP_LOGO_SVG)
+        freemocap_logo_label = ImageWidget(image_path=PATH_TO_FREEMOCAP_LOGO_SVG, scaling_factor=0.88)
         self._layout.addWidget(freemocap_logo_label)
         freemocap_logo_label.raise_()

@@ -3,7 +3,6 @@ from typing import Union
 
 import requests
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
     QLabel,
@@ -23,6 +22,7 @@ from freemocap.gui.qt.actions_and_menus.actions import (
     Actions,
 )
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+from freemocap.gui.qt.widgets.image_widget import ImageWidget
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
@@ -49,8 +49,6 @@ class HomeWidget(QWidget):
         self.sizePolicy().setHorizontalStretch(1)
         self.sizePolicy().setVerticalStretch(1)
 
-        self._layout.addStretch(1)
-
         self._add_freemocap_logo()
 
         self._welcome_to_freemocap_title_widget = self._welcome_to_freemocap_title()
@@ -61,10 +59,6 @@ class HomeWidget(QWidget):
         self._layout.addWidget(self._create_new_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
         self._create_new_session_button.setProperty("recommended_next", True)
 
-        self._load_most_recent_session_button = WelcomeScreenButton(f"{LOAD_MOST_RECENT_RECORDING_ACTION_NAME}")
-        # self._load_most_recent_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
-        # self._layout.addWidget(self._load_most_recent_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        #
         self._load_existing_session_button = WelcomeScreenButton(f"{LOAD_RECORDING_ACTION_NAME}")
         self._load_existing_session_button.clicked.connect(actions.load_existing_recording_action.trigger)
         self._layout.addWidget(self._load_existing_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -72,8 +66,6 @@ class HomeWidget(QWidget):
         self._import_videos_button = WelcomeScreenButton(f"{IMPORT_VIDEOS_ACTION_NAME}")
         self._import_videos_button.clicked.connect(actions.import_videos_action.trigger)
         self._layout.addWidget(self._import_videos_button, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # self._layout.addStretch(1)
 
         self._create_user_info_consent_checkbox()
 
@@ -181,12 +173,6 @@ class HomeWidget(QWidget):
         return session_title_label
 
     def _add_freemocap_logo(self):
-        freemocap_logo_label = QLabel(self)
-        freemocap_logo_label.sizePolicy().setHorizontalStretch(1)
-        freemocap_logo_label.sizePolicy().setVerticalStretch(1)
+        freemocap_logo_label = ImageWidget(image_path=PATH_TO_FREEMOCAP_LOGO_SVG)
         self._layout.addWidget(freemocap_logo_label)
-
-        freemocap_logo_pixmap = QPixmap(PATH_TO_FREEMOCAP_LOGO_SVG)
-        freemocap_logo_pixmap = freemocap_logo_pixmap.scaledToWidth(200)
-        freemocap_logo_label.setPixmap(freemocap_logo_pixmap)
-        freemocap_logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        freemocap_logo_label.raise_()

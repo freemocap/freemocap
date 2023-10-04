@@ -71,15 +71,16 @@ dependencies = [
     "skellycam",
     "skelly_viewer",
     "skellyforge",
-    "skelly_synchronize",
+    "skelly_synchronize>=2023.9.1026",
     "mediapipe",
-    "opencv-contrib-python==4.6.0.66",
+    "opencv-contrib-python==4.8.*",
     "toml==0.10.2",
     "aniposelib==0.4.3",
     "libsass==0.21.0",
     "ipykernel==6.23.1",
     "plotly==5.14.1",
-    "pydantic==1.*"
+    "pydantic==1.*",
+    "packaging"
 ]
 requires-python = ">=3.8"
 

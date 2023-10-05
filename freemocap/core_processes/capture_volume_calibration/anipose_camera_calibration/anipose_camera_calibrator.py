@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Callable, Union
 
 import numpy as np
-from aniposelib.boards import CharucoBoard as AniposeCharucoBoard
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
@@ -59,7 +58,7 @@ class AniposeCameraCalibrator:
         )
         self._anipose_camera_group_object.metadata["date_time_calibrated"] = str(np.datetime64("now"))
 
-        self._anipose_charuco_board = AniposeCharucoBoard(
+        self._anipose_charuco_board = freemocap_anipose.AniposeCharucoBoard(
             self._charuco_board_object.number_of_squares_width,
             self._charuco_board_object.number_of_squares_height,
             square_length=self._charuco_square_size,  # mm

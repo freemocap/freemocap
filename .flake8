@@ -1,10 +1,12 @@
 [flake8]
-
+root = ./freemocap
 exclude = 
     ./freemocap/data_layer/export_data/blender_stuff/blender_bpy_export_scripts/*
     ./freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/anipose_camera_calibrator.py
     ./freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
     ./.nox
+    ./.venv
+    ./venv
 
 per-file-ignores = 
     ./freemocap/core_processes/process_motion_capture_videos/process_recording_folder.py:C901

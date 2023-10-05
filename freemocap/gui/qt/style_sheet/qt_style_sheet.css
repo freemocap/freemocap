@@ -116,7 +116,8 @@ WelcomeScreenButton {
   color: #1d1d1f;
   font-size: 24px;
   border-radius: 20px;
-  padding: 10px; }
+  padding: 10px;
+  min-height: auto; }
 
 WelcomeScreenButton:hover {
   border: 2px solid #398588; }

@@ -1,0 +1,33 @@
+name: 'Build'
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2019
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          # Optional - x64 or x86 architecture, defaults to x64
+          architecture: 'x64'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pyinstaller --upgrade
+
+      - name: Build
+        run: |
+          pyinstaller bin/freemocap.spec
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Freemocap
+          path: dist/*

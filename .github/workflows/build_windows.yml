@@ -33,5 +33,5 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: Freemocap
-          path: dist/windows/*
+          name: freemocap
+          path: dist/*

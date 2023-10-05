@@ -22,9 +22,15 @@ def process_folder_of_session_folders(
 
     for session_folder_path in list_of_session_folders:
         logging.info(f"Looking in {session_folder_path} for recording folders")
-        list_of_recording_folders = [f for f in session_folder_path.iterdir() if f.is_dir() and (f/'synchronized_videos').exists() and any((f/'synchronized_videos').iterdir())]
+        list_of_recording_folders = [
+            f
+            for f in session_folder_path.iterdir()
+            if f.is_dir() and (f / "synchronized_videos").exists() and any((f / "synchronized_videos").iterdir())
+        ]
 
-        calibration_files = [toml_file for sesh in list_of_recording_folders for toml_file in list(sesh.glob("*calibration.toml"))]
+        calibration_files = [
+            toml_file for sesh in list_of_recording_folders for toml_file in list(sesh.glob("*calibration.toml"))
+        ]
 
         for recording_folder_path in list_of_recording_folders:
             logging.info("Looking for calibration toml")
@@ -60,7 +66,7 @@ def process_recording_without_gui(
     else:
         logging.warning("No camera calibration toml file provided. May cause an error with multicamera recordings.")
 
-    recording_info_dict = rec.dict(exclude={'recording_info_model'})
+    recording_info_dict = rec.dict(exclude={"recording_info_model"})
 
     Path(rec.recording_info_model.output_data_folder_path).mkdir(parents=True, exist_ok=True)
 

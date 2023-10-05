@@ -4,8 +4,9 @@
 import itertools
 import logging
 import multiprocessing
+import queue
 import time
-from collections import defaultdict
+from collections import defaultdict, Counter
 from copy import copy
 
 import cv2
@@ -16,12 +17,16 @@ from aniposelib.boards import (
     extract_rtvecs,
     get_video_params,
     merge_rows,
+    CharucoBoard
 )
-from aniposelib.utils import get_connections, get_initial_extrinsics, get_rtvec, make_M
+from aniposelib.utils import get_rtvec, make_M
 from numba import jit
 from scipy import optimize
 from scipy import signal
 from scipy.sparse import dok_matrix
+from scipy.linalg import inv as inverse
+from scipy.cluster.hierarchy import linkage, fcluster
+from scipy.cluster.vq import whiten
 from tqdm import trange
 
 numba_logger = logging.getLogger("numba")
@@ -187,6 +192,174 @@ def transform_points(points, rvecs, tvecs):
     rotated = cos_theta * points + sin_theta * np.cross(v, points) + dot * (1 - cos_theta) * v
 
     return rotated + tvecs
+
+def get_connections(xs, cam_names=None, both=True):
+    n_cams = xs.shape[0]
+    n_points = xs.shape[1]
+
+    if cam_names is None:
+        cam_names = np.arange(n_cams)
+
+    connections = defaultdict(int)
+
+    for rnum in range(n_points):
+        ixs = np.where(~np.isnan(xs[:, rnum, 0]))[0]
+        keys = [cam_names[ix] for ix in ixs]
+        for i in range(len(keys)):
+            for j in range(i+1, len(keys)):
+                a = keys[i]
+                b = keys[j]
+                connections[(a,b)] += 1
+                if both:
+                    connections[(b,a)] += 1
+
+    return connections
+
+
+def get_calibration_graph(rtvecs, cam_names=None):
+    n_cams = rtvecs.shape[0]
+    n_points = rtvecs.shape[1]
+
+    if cam_names is None:
+        cam_names = np.arange(n_cams)
+
+    connections = get_connections(rtvecs, np.arange(n_cams))
+
+    components = dict(zip(np.arange(n_cams), range(n_cams)))
+    edges = set(connections.items())
+
+    graph = defaultdict(list)
+
+    for edgenum in range(n_cams-1):
+        if len(edges) == 0:
+            component_names = dict()
+            for k,v in list(components.items()):
+                component_names[cam_names[k]] = v
+            raise ValueError("""
+Could not build calibration graph.
+Some group of cameras could not be paired by simultaneous calibration board detections.
+Check which cameras have different group numbers below to see the missing edges.
+{}""".format(component_names))
+
+        (a, b), weight = max(edges, key=lambda x: x[1])
+        graph[a].append(b)
+        graph[b].append(a)
+
+        match = components[a]
+        replace = components[b]
+        for k, v in components.items():
+            if match == v:
+                components[k] = replace
+
+        for e in edges.copy():
+            (a,b), w = e
+            if components[a] == components[b]:
+                edges.remove(e)
+
+    return graph
+
+def find_calibration_pairs(graph, source=None):
+    pairs = []
+    explored = set()
+
+    if source is None:
+        source = sorted(graph.keys())[0]
+
+    q = queue.deque()
+    q.append(source)
+
+    while len(q) > 0:
+        item = q.pop()
+        explored.add(item)
+
+        for new in graph[item]:
+            if new not in explored:
+                q.append(new)
+                pairs.append( (item, new) )
+    return pairs
+
+def compute_camera_matrices(rtvecs, pairs):
+    extrinsics = dict()
+    source = pairs[0][0]
+    extrinsics[source] = np.identity(4)
+    for (a,b) in pairs:
+        ext = get_transform(rtvecs, b, a)
+        extrinsics[b] = np.matmul(ext, extrinsics[a])
+    return extrinsics
+
+def get_transform(rtvecs, left, right):
+    L = []
+    for dix in range(rtvecs.shape[1]):
+        d = rtvecs[:, dix]
+        good = ~np.isnan(d[:, 0])
+
+        if good[left] and good[right]:
+            M_left = make_M(d[left, 0:3], d[left, 3:6])
+            M_right = make_M(d[right, 0:3], d[right, 3:6])
+            M = np.matmul(M_left, inverse(M_right))
+            L.append(M)
+    L_best = select_matrices(L)
+    M_mean = mean_transform(L_best)
+    # M_mean = mean_transform_robust(L, M_mean, error=0.5)
+    # M_mean = mean_transform_robust(L, M_mean, error=0.2)
+    M_mean = mean_transform_robust(L, M_mean, error=0.1)
+    return M_mean
+
+def get_most_common(vals):
+    Z = linkage(whiten(vals), 'ward')
+    n_clust = max(len(vals)/10, 3)
+    clusts = fcluster(Z, t=n_clust, criterion='maxclust')
+    cc = Counter(clusts[clusts >= 0])
+    most = cc.most_common(n=1)
+    top = most[0][0]
+    good = clusts == top
+    return good
+
+def select_matrices(Ms):
+    Ms = np.array(Ms)
+    rvecs = [cv2.Rodrigues(M[:3,:3])[0][:, 0] for M in Ms]
+    tvecs = np.array([M[:3, 3] for M in Ms])
+    best = get_most_common(np.hstack([rvecs, tvecs]))
+    Ms_best = Ms[best]
+    return Ms_best
+
+
+def mean_transform(M_list):
+    rvecs = [cv2.Rodrigues(M[:3,:3])[0][:, 0] for M in M_list]
+    tvecs = [M[:3, 3] for M in M_list]
+
+    rvec = np.mean(rvecs, axis=0)
+    tvec = np.mean(tvecs, axis=0)
+
+    return make_M(rvec, tvec)
+
+def mean_transform_robust(M_list, approx=None, error=0.3):
+    if approx is None:
+        M_list_robust = M_list
+    else:
+        M_list_robust = []
+        for M in M_list:
+            rot_error = (M - approx)[:3,:3]
+            m = np.max(np.abs(rot_error))
+            if m < error:
+                M_list_robust.append(M)
+    return mean_transform(M_list_robust)
+
+def get_initial_extrinsics(rtvecs, cam_names=None):
+    graph = get_calibration_graph(rtvecs, cam_names)
+    pairs = find_calibration_pairs(graph, source=0)
+    extrinsics = compute_camera_matrices(rtvecs, pairs)
+
+    n_cams = rtvecs.shape[0]
+    rvecs = []
+    tvecs = []
+    for cnum in range(n_cams):
+        rvec, tvec = get_rtvec(extrinsics[cnum])
+        rvecs.append(rvec)
+        tvecs.append(tvec)
+    rvecs = np.array(rvecs)
+    tvecs = np.array(tvecs)
+    return rvecs, tvecs
 
 
 class Camera:
@@ -1034,7 +1207,7 @@ class CameraGroup:
                     cam_id = np.random.choice(cam_ids_possible)
                     M_cam = self.cameras[cam_id].get_extrinsics_mat()
                     M_board_cam = make_M(rvecs_all[cam_id, point_id], tvecs_all[cam_id, point_id])
-                    M_board = np.matmul(np.linalg.inv(M_cam), M_board_cam)
+                    M_board = np.matmul(inverse(M_cam), M_board_cam)
                     rvec, tvec = get_rtvec(M_board)
                     rvecs[board_num] = rvec
                     tvecs[board_num] = tvec
@@ -1759,3 +1932,155 @@ class CameraGroup:
     def resize_cameras(self, scale):
         for cam in self.cameras:
             cam.resize_camera(scale)
+
+class AniposeCharucoBoard(CharucoBoard):
+    def __init__(self,
+                 squaresX,
+                 squaresY,
+                 square_length,
+                 marker_length,
+                 marker_bits=4,
+                 dict_size=50,
+                 aruco_dict=None,
+                 manually_verify=False):
+        self.squaresX = squaresX
+        self.squaresY = squaresY
+        self.square_length = square_length
+        self.marker_length = marker_length
+        self.manually_verify = manually_verify
+
+        ARUCO_DICTS = {
+            (4, 50): cv2.aruco.DICT_4X4_50,
+            (5, 50): cv2.aruco.DICT_5X5_50,
+            (6, 50): cv2.aruco.DICT_6X6_50,
+            (7, 50): cv2.aruco.DICT_7X7_50,
+            (4, 100): cv2.aruco.DICT_4X4_100,
+            (5, 100): cv2.aruco.DICT_5X5_100,
+            (6, 100): cv2.aruco.DICT_6X6_100,
+            (7, 100): cv2.aruco.DICT_7X7_100,
+            (4, 250): cv2.aruco.DICT_4X4_250,
+            (5, 250): cv2.aruco.DICT_5X5_250,
+            (6, 250): cv2.aruco.DICT_6X6_250,
+            (7, 250): cv2.aruco.DICT_7X7_250,
+            (4, 1000): cv2.aruco.DICT_4X4_1000,
+            (5, 1000): cv2.aruco.DICT_5X5_1000,
+            (6, 1000): cv2.aruco.DICT_6X6_1000,
+            (7, 1000): cv2.aruco.DICT_7X7_1000
+        }
+
+        dkey = (marker_bits, dict_size)
+        self.dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICTS[dkey])
+
+        self.board = cv2.aruco.CharucoBoard(
+            size=[squaresX, squaresY],
+            squareLength=square_length, 
+            markerLength=marker_length,
+            dictionary=self.dictionary)
+
+        total_size = (squaresX - 1) * (squaresY - 1)
+
+        objp = np.zeros((total_size, 3), np.float64)
+        objp[:, :2] = np.mgrid[0:(squaresX - 1), 0:(squaresY - 1)].T.reshape(
+            -1, 2)
+        objp *= square_length
+        self.objPoints = objp
+
+        self.empty_detection = np.zeros((total_size, 1, 2)) * np.nan
+        self.total_size = total_size
+
+    def detect_markers(self, image, camera=None, refine=True):
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = image
+
+        params = cv2.aruco.DetectorParameters()
+        params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_CONTOUR
+        params.adaptiveThreshWinSizeMin = 100
+        params.adaptiveThreshWinSizeMax = 700
+        params.adaptiveThreshWinSizeStep = 50
+        params.adaptiveThreshConstant = 0
+
+        try:
+            corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(
+                gray, self.dictionary, parameters=params) 
+        except Exception:
+            ids = None
+
+
+        if ids is None:
+            return [], []
+
+        if camera is None:
+            K = D = None
+        else:
+            K = camera.get_camera_matrix()
+            D = camera.get_distortions()
+
+        if refine:
+            detectedCorners, detectedIds, rejectedCorners, recoveredIdxs = \
+                cv2.aruco.refineDetectedMarkers(gray, self.board, corners, ids,
+                                            rejectedImgPoints,
+                                            K, D,
+                                            parameters=params)
+        else:
+            detectedCorners, detectedIds = corners, ids
+
+        return detectedCorners, detectedIds
+    
+    def detect_image(self, image, camera=None):
+
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = image
+
+        corners, ids = self.detect_markers(image, camera, refine=True)
+        if len(corners) > 0:
+            ret, detectedCorners, detectedIds = cv2.aruco.interpolateCornersCharuco(
+                corners, ids, gray, self.board)
+            if detectedIds is None:
+                detectedCorners = detectedIds = np.float64([])
+        else:
+            detectedCorners = detectedIds = np.float64([])
+
+        if len(detectedCorners) > 0 \
+            and self.manually_verify \
+            and not self.manually_verify_board_detection(gray, detectedCorners, detectedIds):
+            detectedCorners = detectedIds = np.float64([])
+
+        return detectedCorners, detectedIds
+    
+    def manually_verify_board_detection(self, image, corners, ids=None):
+
+        height, width = image.shape[:2]
+        image = cv2.aruco.drawDetectedCornersCharuco(image, corners, ids)
+        cv2.putText(image, '(a) Accept (d) Reject', (int(width/1.35), int(height/16)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255, 1, cv2.LINE_AA)
+        cv2.imshow('verify_detection', image)
+        while 1:
+            key = cv2.waitKey(0) & 0xFF
+            if key == ord('a'):
+                cv2.putText(image, 'Accepted!', (int(width/2.5), int(height/1.05)), cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2, cv2.LINE_AA)
+                cv2.imshow('verify_detection', image)
+                cv2.waitKey(100)
+                return True
+            elif key == ord('d'):
+                cv2.putText(image, 'Rejected!', (int(width/2.5), int(height/1.05)), cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2, cv2.LINE_AA)
+                cv2.imshow('verify_detection', image)
+                cv2.waitKey(100)
+                return False
+            
+    def estimate_pose_points(self, camera, corners, ids):
+        if corners is None or ids is None or len(corners) < 5:
+            return None, None
+
+        n_corners = corners.size // 2
+        corners = np.reshape(corners, (n_corners, 1, 2))
+
+        K = camera.get_camera_matrix()
+        D = camera.get_distortions()
+
+        ret, rvec, tvec = cv2.aruco.estimatePoseCharucoBoard(
+            corners, ids, self.board, K, D, None, None)
+
+        return rvec, tvec

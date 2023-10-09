@@ -86,7 +86,9 @@ class HomeWidget(QWidget):
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
         version_label_string = f'source:<a href="https://github.com/freemocap/freemocap" style="color: #777777;"> {freemocap.__version__}</a>'
-        latest_version = self.check_for_latest_version().split("rc")[0]
+        latest_version = self.check_for_latest_version()
+        if latest_version is not None:
+            latest_version = latest_version.split("rc")[0]
         current_version = freemocap.__version__.strip("v").split("-")[0]
 
         if latest_version is None:
@@ -111,8 +113,9 @@ class HomeWidget(QWidget):
         hbox.addWidget(version_label)
 
     def check_for_latest_version(self) -> Union[str, None]:
-        response = requests.get(f"https://pypi.org/pypi/{freemocap.__package_name__}/json", timeout=(5, 60))
-        if response.status_code != 200:
+        try:
+            response = requests.get(f"https://pypi.org/pypi/{freemocap.__package_name__}/json", timeout=(5, 60))
+        except requests.RequestException:
             logger.error(f"Failed to check for latest version of {freemocap.__package_name__}")
             return None
 

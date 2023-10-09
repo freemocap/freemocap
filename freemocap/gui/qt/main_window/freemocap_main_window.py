@@ -515,10 +515,11 @@ class MainWindow(QMainWindow):
         self.download_sample_data_thread_worker.finished.connect(self._handle_download_sample_data_finished)
 
     def _handle_download_sample_data_finished(self):
-        logger.info("Setting sample data as active recording... ")
-        self._active_recording_info_widget.set_active_recording(
-            recording_folder_path=self.download_sample_data_thread_worker.sample_data_path
-        )
+        if self.download_sample_data_thread_worker.success:
+            logger.info("Setting sample data as active recording... ")
+            self._active_recording_info_widget.set_active_recording(
+                recording_folder_path=self.download_sample_data_thread_worker.sample_data_path
+            )
 
     @pyqtSlot(list, str, bool)
     def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str, synchronization_bool: bool):

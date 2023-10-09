@@ -44,8 +44,10 @@ def download_sample_data(sample_data_zip_file_url: str = FIGSHARE_TEST_ZIP_FILE_
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Request failed: {e}")
+        raise e
     except zipfile.BadZipFile as e:
         logger.error(f"Failed to unzip the file: {e}")
+        raise e
 
 
 if __name__ == "__main__":

@@ -32,12 +32,12 @@ class DownloadSampleDataThreadWorker(QThread):
 
         try:
             self.sample_data_path = download_sample_data(sample_data_zip_file_url=FIGSHARE_SAMPLE_ZIP_FILE_URL)
+            self.success = True
+            logger.info("Sample data successfully downloaded")
 
         except Exception as e:
-            logger.exception("Something went wrong while downloading sample data")
-            logger.exception(e)
+            self.success = False
+            logger.error("Something went wrong while downloading sample data")
 
         self.finished.emit()
         self._work_done = True
-
-        logger.info("Sample data successfully downloaded")

@@ -35,7 +35,7 @@ class DownloadSampleDataThreadWorker(QThread):
             self.success = True
             logger.info("Sample data successfully downloaded")
 
-        except Exception as e:
+        except Exception as e: # noqa
             self.success = False
             logger.error("Something went wrong while downloading sample data")
 

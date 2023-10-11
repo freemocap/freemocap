@@ -1,10 +1,10 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Tuple, Union
 import cv2
 import numpy as np
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import load_calibration_as_dict
 
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import load_calibration_as_dict
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
 )
@@ -46,13 +46,23 @@ def get_pose_vectors_from_charuco(
 
     return (rvec, tvec)
 
+def get_camera_matrix_and_distortions_from_toml(
+    calibration_toml_path: Union[str, Path],
+    camera_name: str,   
+) -> Tuple[np.ndarray, np.ndarray]:
+    calibration_dict = load_calibration_as_dict(calibration_toml_file_path=calibration_toml_path)
+    camera_matrix = np.asarray(calibration_dict[camera_name]["matrix"])
+    distortion_coefficients = np.asarray(calibration_dict[camera_name]["distortions"])
+
+    return (camera_matrix, distortion_coefficients)
+
 def get_camera_transformation_vectors_from_toml(
     calibration_toml_path: Union[str, Path],
     camera_name: str,
-) -> tuple(np.ndarray, np.ndarray):
+) -> Tuple[np.ndarray, np.ndarray]:
     calibration_dict = load_calibration_as_dict(calibration_toml_file_path=calibration_toml_path)
-    rotation_vector = calibration_dict[camera_name]["rotation"]
-    translation_vector = calibration_dict[camera_name]["translation"]
+    rotation_vector = np.asarray(calibration_dict[camera_name]["rotation"])
+    translation_vector = np.asarray(calibration_dict[camera_name]["translation"])
 
     return (rotation_vector, translation_vector)
 

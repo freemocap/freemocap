@@ -179,4 +179,3 @@ class HomeWidget(QWidget):
     def _add_freemocap_logo(self):
         freemocap_logo_label = ImageWidget(image_path=PATH_TO_FREEMOCAP_LOGO_SVG, scaling_factor=0.88)
         self._layout.addWidget(freemocap_logo_label)
-        freemocap_logo_label.raise_()

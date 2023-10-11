@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
         logger.info("Initializing FreeMoCap MainWindow")
 
-        self.setGeometry(100, 100, 1280, 720)
+        self._size_main_window(width_fraction=1, height_fraction=0.95)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
         self.setWindowTitle("freemocap \U0001F480 \U00002728")
 
@@ -179,10 +179,9 @@ class MainWindow(QMainWindow):
 
         width = screen.width() * width_fraction
         height = screen.height() * height_fraction
-        # Position the window in the center of the screen
-        left = (screen.width() - width) / 2
-        top = (screen.height() - height) / 2
-        self.setGeometry(int(left), int(top), int(width), int(height))
+        self.setFixedSize(int(width), int(height))
+        self.setMinimumSize(1280, 720)
+        self.setMaximumSize(int(width * 2), int(height * 2))
 
     def _create_tools_dock_widget(self):
         tools_dock_widget = QDockWidget("Control Panel", self)

@@ -58,7 +58,7 @@ def load_calibration_from_session_id(
     except Exception as e:
         logger.error(f"Failed to load anipose calibration info from {str(session_calibration_file_path)}")
         raise e
-    
+
+
 def load_calibration_as_dict(calibration_toml_file_path: Union[str, Path]):
     return toml.load(str(calibration_toml_file_path))
-    

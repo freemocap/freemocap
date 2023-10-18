@@ -3,8 +3,11 @@ from pathlib import Path
 from typing import Tuple, Union
 import cv2
 import numpy as np
+import toml
 
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import load_calibration_as_dict
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
+    load_calibration_as_dict,
+)
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
 )
@@ -41,20 +44,22 @@ def get_pose_vectors_from_charuco(
             cv2.imshow("image", image)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
-        except:
+        except cv2.error:
             logger.warning("Couldn't display image")
 
     return (rvec, tvec)
 
+
 def get_camera_matrix_and_distortions_from_toml(
     calibration_toml_path: Union[str, Path],
-    camera_name: str,   
+    camera_name: str,
 ) -> Tuple[np.ndarray, np.ndarray]:
     calibration_dict = load_calibration_as_dict(calibration_toml_file_path=calibration_toml_path)
     camera_matrix = np.asarray(calibration_dict[camera_name]["matrix"])
     distortion_coefficients = np.asarray(calibration_dict[camera_name]["distortions"])
 
     return (camera_matrix, distortion_coefficients)
+
 
 def get_camera_transformation_vectors_from_toml(
     calibration_toml_path: Union[str, Path],
@@ -65,6 +70,22 @@ def get_camera_transformation_vectors_from_toml(
     translation_vector = np.asarray(calibration_dict[camera_name]["translation"])
 
     return (rotation_vector, translation_vector)
+
+
+def add_groundplane_vectors_to_calibration_toml(
+    calibration_toml_path: Union[str, Path],
+    groundplane_rotation_vector: np.ndarray,
+    groundplane_translation_vector: np.ndarray,
+) -> None:
+    calibration_dict = load_calibration_as_dict(calibration_toml_file_path=calibration_toml_path)
+    calibration_dict["groundplane"] = {}
+    calibration_dict["groundplane"]["rotation"] = groundplane_rotation_vector.tolist()
+    calibration_dict["groundplane"]["translation"] = groundplane_translation_vector.tolist()
+
+    logger.info("Adding groundplane vectors to calibration toml")
+    with open(str(calibration_toml_path), "w") as f:
+        toml.dump(calibration_dict, f)
+
 
 def compose_transformation_vectors(
     charuco_to_camera_rvec: np.ndarray,
@@ -82,4 +103,46 @@ def compose_transformation_vectors(
     composed_tvec = results_tuple[1].flatten()
     return (composed_rvec, composed_tvec)
 
-#TODO: pass composed vectors from here to skellyforge rotation function, should be only inputs
+
+def find_groundplane_vector(
+    calibration_toml_path: Union[str, Path],
+    camera_name: str,
+    video_pathstring: Union[str, Path],
+) -> np.ndarray:
+    charuco_board_definition = CharucoBoardDefinition()
+
+    camera_matrix, distortion_coefficients = get_camera_matrix_and_distortions_from_toml(
+        calibration_toml_path=calibration_toml_path, camera_name=camera_name
+    )
+
+    video_cap = cv2.VideoCapture(str(video_pathstring))
+    ret, image = video_cap.read()
+
+    if not ret:
+        raise RuntimeError("Couldn't load video")
+
+    rotation_vector, translation_vector = get_pose_vectors_from_charuco(
+        image=image,
+        charuco_board_definition=charuco_board_definition,
+        camera_matrix=camera_matrix,
+        distortion_coefficients=distortion_coefficients,
+    )
+
+    existing_camera_rotation_vector, existing_camera_translation_vector = get_camera_transformation_vectors_from_toml(
+        calibration_toml_path=calibration_toml_path, camera_name=camera_name
+    )
+
+    combined_rotation_vector, combined_translation_vector = compose_transformation_vectors(
+        charuco_to_camera_rvec=rotation_vector,
+        charuco_to_camera_tvec=translation_vector,
+        camera_to_world_rvec=existing_camera_rotation_vector,
+        camera_to_world_tvec=existing_camera_translation_vector,
+    )
+
+    add_groundplane_vectors_to_calibration_toml(
+        calibration_toml_path=calibration_toml_path,
+        groundplane_rotation_vector=combined_rotation_vector,
+        groundplane_translation_vector=combined_translation_vector,
+    )
+
+    return combined_rotation_vector

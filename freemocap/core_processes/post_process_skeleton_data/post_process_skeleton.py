@@ -11,6 +11,7 @@ from skellyforge.freemocap_utils.constants import (
     PARAM_SAMPLING_RATE,
     PARAM_ORDER,
     PARAM_ROTATE_DATA,
+    #PARAM_GROUNDPLANE_VECTOR,
     TASK_SKELETON_ROTATION,
     TASK_INTERPOLATION,
     TASK_FINDING_GOOD_FRAME,
@@ -89,6 +90,7 @@ def post_process_data(recording_processing_parameter_model, raw_skel3d_frame_mar
     filter_sampling_rate, filter_cutoff_frequency, filter_order = get_settings_from_parameter_tree(
         recording_processing_parameter_model
     )
+    # TODO: Handle rotation parameters
     adjusted_settings = adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filter_order)
     processed_skeleton_array = run_post_processing_worker(
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz, settings_dictionary=adjusted_settings

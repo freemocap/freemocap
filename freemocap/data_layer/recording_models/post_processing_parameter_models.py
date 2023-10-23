@@ -6,6 +6,10 @@ from freemocap.data_layer.recording_models.recording_info_model import (
     RecordingInfoModel,
 )
 
+from skellyforge.freemocap_utils.constants import (
+    ROTATE_METHOD_X,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,11 +34,17 @@ class ButterworthFilterParametersModel(BaseModel):
     order: int = 4
 
 
+class RotationParametersModel(BaseModel):
+    rotate_data: bool = False,
+    rotation_method: str = ROTATE_METHOD_X,
+    groundplane_vector: str = None
+
 class PostProcessingParametersModel(BaseModel):
     framerate: float = 30.0
     butterworth_filter_parameters: ButterworthFilterParametersModel = ButterworthFilterParametersModel()
     max_gap_to_fill: int = 10
     skip_butterworth_filter: bool = False
+    rotation_parameters: RotationParametersModel = RotationParametersModel()
 
 
 class PostProcessingParameterModel(BaseModel):

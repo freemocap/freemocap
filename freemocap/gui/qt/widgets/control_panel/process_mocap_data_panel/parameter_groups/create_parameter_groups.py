@@ -6,6 +6,7 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
     AniposeTriangulate3DParametersModel,
     PostProcessingParametersModel,
     ButterworthFilterParametersModel,
+    RotationParametersModel,
 )
 
 
@@ -16,6 +17,14 @@ BUTTERWORTH_CUTOFF_FREQUENCY = "Cutoff Frequency"
 POST_PROCESSING_FRAME_RATE = "framerate"
 
 BUTTERWORTH_FILTER_TREE_NAME = "Butterworth Filter"
+
+ROTATE_DATA_BOOL = "Rotate Data?"
+
+ROTATION_METHOD = "Rotation Method"
+
+GROUNDPLANE_VECTOR = "Ground Plane Vector"
+
+ROTATION_TREE_NAME = "Data Rotation"
 
 USE_RANSAC_METHOD = "Use RANSAC Method"
 
@@ -125,7 +134,7 @@ def create_3d_triangulation_prarameter_group(
     )
 
 
-def create_post_processing_parameter_group(
+def create_butterworth_parameter_group(
     parameter_model: PostProcessingParametersModel = None,
 ) -> Parameter:
     if parameter_model is None:
@@ -156,6 +165,39 @@ def create_post_processing_parameter_group(
             ),
         ],
         tip="Low-pass, zero-lag, Butterworth filter to remove high frequency oscillations/noise from the data. ",
+    )
+
+
+def create_rotation_parameter_group(
+    parameter_model: PostProcessingParametersModel = None,
+) -> Parameter:
+    if parameter_model is None:
+        parameter_model = PostProcessingParametersModel()
+
+    return Parameter.create(
+        name=ROTATION_TREE_NAME,
+        type="group",
+        children=[
+            dict(
+                name=ROTATE_DATA_BOOL,
+                type="bool",
+                value=parameter_model.rotation_parameters.rotate_data,
+                tip="If true, the data will be rotated by the rotation_method.",
+            ),
+            dict(
+                name=ROTATION_METHOD,
+                type="str", # TODO: should this be an enum?
+                value=parameter_model.rotation_parameters.rotation_method,
+                tip="The method used to rotate the data."
+            ),
+            dict(
+                name=GROUNDPLANE_VECTOR,
+                type="str", # TODO: should this be an ndarray?
+                value=parameter_model.rotation_parameters.groundplane_vector,
+                tip="The vector used to rotate the data."
+            ),
+        ],
+        tip="Rotate data"
     )
 
 
@@ -190,6 +232,11 @@ def extract_parameter_model_from_parameter_tree(
                 order=parameter_values_dictionary[BUTTERWORTH_ORDER],
             ),
             skip_butterworth_filter=parameter_values_dictionary[SKIP_BUTTERWORTH_FILTER_NAME],
+            rotation_parameters=RotationParametersModel(
+                rotate_data=parameter_values_dictionary[ROTATE_DATA_BOOL],
+                rotation_method=parameter_values_dictionary[ROTATION_METHOD],
+                groundplane_vector=parameter_values_dictionary[GROUNDPLANE_VECTOR],
+            )
         ),
     )
 

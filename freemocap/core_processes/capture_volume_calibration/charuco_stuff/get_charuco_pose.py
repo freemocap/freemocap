@@ -39,6 +39,7 @@ def get_pose_vectors_from_charuco(
                 cv2.drawFrameAxes(image, camera_matrix, distortion_coefficients, rvec, tvec, 5)
         except cv2.error as error_inst:
             logger.error(error_inst.err)
+            raise error_inst
     if display_image:
         try:
             cv2.imshow("image", image)
@@ -126,7 +127,10 @@ def find_groundplane_vector(
         charuco_board_definition=charuco_board_definition,
         camera_matrix=camera_matrix,
         distortion_coefficients=distortion_coefficients,
+        display_image=True,
     )
+
+    logger.info(f"charuco to camera axes rotation vector: {rotation_vector}")
 
     existing_camera_rotation_vector, existing_camera_translation_vector = get_camera_transformation_vectors_from_toml(
         calibration_toml_path=calibration_toml_path, camera_name=camera_name
@@ -139,10 +143,25 @@ def find_groundplane_vector(
         camera_to_world_tvec=existing_camera_translation_vector,
     )
 
+    logger.info(f"charuco to world axes rotation vector: {combined_rotation_vector}")
+
     add_groundplane_vectors_to_calibration_toml(
         calibration_toml_path=calibration_toml_path,
         groundplane_rotation_vector=combined_rotation_vector,
         groundplane_translation_vector=combined_translation_vector,
     )
 
+    logger.info("Added groundplane vectors to calibration toml")
+
     return combined_rotation_vector
+
+if __name__ == "__main__":
+    camera_name = "cam_0"
+    calibration_toml_path = "/Users/philipqueen/freemocap_data/recording_sessions/aaron_ground_charuco_test/recording_14_22_03_gmt-4_calibration/recording_14_22_03_gmt-4_calibration_camera_calibration.toml"
+    video_path = "/Users/philipqueen/freemocap_data/recording_sessions/aaron_ground_charuco_test/recording_14_23_11_gmt-4/synchronized_videos/Camera_000_synchronized.mp4"
+
+    find_groundplane_vector(
+        calibration_toml_path=calibration_toml_path,
+        camera_name=camera_name,
+        video_pathstring=video_path,
+    )

@@ -4,6 +4,10 @@ import numpy as np
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
 )
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.get_charuco_pose import (
+    get_camera_matrix_and_distortions_from_toml,
+    get_camera_transformation_vectors_from_toml,
+)
 
 
 def get_pose_vectors_from_charuco(
@@ -153,29 +157,14 @@ def rotate_skeleton_with_matrix(rotation_matrix: np.ndarray, original_skeleton_n
 
 
 if __name__ == "__main__":
-    # camera_matrix = np.array(
-    #     [
-    #         [1.53194096e03, 0.00000000e00, 1.01721388e03],
-    #         [0.00000000e00, 1.54691324e03, 5.36380836e02],
-    #         [0.00000000e00, 0.00000000e00, 1.00000000e00],
-    #     ]
-    # )
-    # distortion_coefficients = np.array([[0.06806131, 0.03550422, 0.00044959, -0.00328774, -0.26919549]])
-    # image_pathstring = "/Users/philipqueen/Downloads/webcam_charuco_test_2.jpeg"
+    camera_name = "cam_1"
+    calibration_toml_path = "/Users/philipqueen/freemocap_data/recording_sessions/aaron_ground_charuco_test/recording_14_22_03_gmt-4_calibration/recording_14_22_03_gmt-4_calibration_camera_calibration.toml"
 
-    # camera_matrix = np.array(
-    #     [ [ 902.0875074058669, 0.0, 359.5,], [ 0.0, 902.0875074058669, 639.5,], [ 0.0, 0.0, 1.0,],]
-    # )
-    # distortion_coefficients = np.array(
-    #     [ -0.29507044707574875, 0.0, 0.0, 0.0, 0.0,]
-    # )
-    # image_pathstring = "/Users/philipqueen/Downloads/sample_data_charuco_test_2.png"
+    camera_matrix, distortion_coefficients = get_camera_matrix_and_distortions_from_toml(
+        calibration_toml_path=calibration_toml_path, camera_name=camera_name
+    )
 
-    camera_matrix = np.array([[988.6919145044521, 0.0, 359.5], [0.0, 988.6919145044521, 639.5], [0.0, 0.0, 1.0]])
-    distortion_coefficients = np.array([-0.37224112582568564, 0.0, 0.0, 0.0, 0.0])
-
-    # image = cv2.imread(image_pathstring)
-    video_pathstring = "/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/synchronized_videos/Camera_000_synchronized.mp4"
+    video_pathstring = "/Users/philipqueen/freemocap_data/recording_sessions/aaron_ground_charuco_test/recording_14_23_11_gmt-4/synchronized_videos/Camera_000_synchronized.mp4"
     video_cap = cv2.VideoCapture(video_pathstring)
     ret, image = video_cap.read()
 
@@ -186,12 +175,24 @@ if __name__ == "__main__":
         charuco_board_definition=charuco_definition,
         camera_matrix=camera_matrix,
         distortion_coefficients=distortion_coefficients,
+        display_image=True,
     )
+
+    image = cv2.drawFrameAxes(image, camera_matrix, distortion_coefficients, rotation_vector, translation_vector, 1)
+    cv2.imshow("Image with world coordinate system", image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+    rvec_back, _ = cv2.Rodrigues(rotation_matrix)
+    print("Original rotation vector: ", rotation_vector)
+    print("Rotation vector after conversion back and forth: ", rvec_back)
 
     print(f"charuco to camera rotation_vector: {rotation_vector}")
 
-    existing_camera_rotation_vector = np.array([-0.0016504390437047031, -0.012523687082989227, -0.02173159848480954])
-    existing_camera_translation_vector = np.array([0.0, 0.0, 0.0])
+    existing_camera_rotation_vector, existing_camera_translation_vector = get_camera_transformation_vectors_from_toml(
+        calibration_toml_path=calibration_toml_path, camera_name=camera_name
+    )
 
     combined_rotation_vector, combined_translation_vector = compose_transformation_vectors(
         charuco_to_camera_rvec=rotation_vector,
@@ -206,20 +207,20 @@ if __name__ == "__main__":
     flattened_combined_rotation_vector = combined_rotation_vector.flatten()
 
     # from here on is skellyforge stuff
-    rotation_matrix = create_rotation_matrix_from_rotation_vector(flattened_combined_rotation_vector)
+    # rotation_matrix = create_rotation_matrix_from_rotation_vector(flattened_combined_rotation_vector)
 
-    print(f"rotation_matrix: {rotation_matrix}")
+    # print(f"rotation_matrix: {rotation_matrix}")
 
-    raw_skeleton_datapath = "/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/output_data/mediaPipeSkel_3d_body_hands_face.npy"
-    raw_skeleton_data = np.load(raw_skeleton_datapath)
-    print(f"raw_skeleton_data shape: {raw_skeleton_data.shape}")
+    # raw_skeleton_datapath = "/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/output_data/mediaPipeSkel_3d_body_hands_face.npy"
+    # raw_skeleton_data = np.load(raw_skeleton_datapath)
+    # print(f"raw_skeleton_data shape: {raw_skeleton_data.shape}")
 
-    rotated_skeleton_data = rotate_skeleton_with_matrix(
-        rotation_matrix=rotation_matrix, original_skeleton_np_array=raw_skeleton_data
-    )
-    print(f"rotated_skeleton_data shape: {rotated_skeleton_data.shape}")
+    # rotated_skeleton_data = rotate_skeleton_with_matrix(
+    #     rotation_matrix=rotation_matrix, original_skeleton_np_array=raw_skeleton_data
+    # )
+    # print(f"rotated_skeleton_data shape: {rotated_skeleton_data.shape}")
 
-    translated_rotated_skeleton_data = rotated_skeleton_data + combined_translation_vector
-    print(f"translated_rotated_skeleton_data shape: {translated_rotated_skeleton_data.shape}")
+    # translated_rotated_skeleton_data = rotated_skeleton_data + combined_translation_vector
+    # print(f"translated_rotated_skeleton_data shape: {translated_rotated_skeleton_data.shape}")
 
-    np.save("/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/output_data/mediaPipeSkel_3d_body_hands_face_rotated.npy", rotated_skeleton_data)
+    # np.save("/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/output_data/mediaPipeSkel_3d_body_hands_face_rotated.npy", rotated_skeleton_data)

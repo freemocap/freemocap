@@ -2,11 +2,10 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from freemocap.data_layer.export_data.blender_stuff.call_blender_subprocess_methods import (
-    call_blender_subprocess_megascript_take2,
-    call_blender_subprocess_cgtinker,
-    call_blender_subprocess_alpha_megascript,
-)
+from freemocap.data_layer.export_data.blender_stuff.blender_subprocess_calls.call_blender_subprocess_methods import \
+    call_blender_subprocess_megascript_take2, call_blender_subprocess_alpha_megascript, call_blender_subprocess_cgtinker
+from freemocap.data_layer.export_data.blender_stuff.blender_subprocess_calls.run_ajc_addon_main import \
+    call_blender_subprocess_ajc_addon
 from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import (
     get_best_guess_of_blender_path,
 )
@@ -18,13 +17,20 @@ def export_to_blender(
     recording_folder_path: Union[str, Path],
     blender_file_path: Union[str, Path],
     blender_exe_path: Union[str, Path],
-    method: str = "megascript_take2",
+    method: str = "ajc27_blender_addon",
 ):
     logger.info(
         f"Exporting session data to a Blender scene at: {str(blender_file_path)} using Blender executable at {str(blender_exe_path)}"
     )
 
-    if method == "megascript_take2":
+    if method == "ajc27_blender_addon":
+        call_blender_subprocess_ajc_addon(
+            recording_folder_path=recording_folder_path,
+            blender_file_path=blender_file_path,
+            blender_exe_path=blender_exe_path,
+        )
+
+    elif method == "megascript_take2":
         call_blender_subprocess_megascript_take2(
             recording_folder_path=recording_folder_path,
             blender_file_path=blender_file_path,

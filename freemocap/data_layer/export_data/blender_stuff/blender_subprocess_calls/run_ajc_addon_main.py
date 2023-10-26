@@ -1,14 +1,18 @@
+import inspect
 import logging
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Union
 
+from ajc27_freemocap_blender_addon.ajc27_run_as_main import ajc27_run_as_main_function
+
+
 logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def run_process(command_list):
+def run_subprocess(command_list):
     process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         yield process
@@ -21,7 +25,7 @@ def call_blender_subprocess_ajc_addon(
         blender_file_path: Union[str, Path],
         blender_exe_path: Union[str, Path],
 ):
-    ajc_addon_main = ajc_addon_main
+    ajc_addon_main_file_path = Path(inspect.getfile(ajc27_run_as_main_function))
 
     if not ajc_addon_main_file_path.exists():
         raise FileNotFoundError(f"Could not find the ajc_addon_main_file at {ajc_addon_main_file_path}")
@@ -46,7 +50,7 @@ def call_blender_subprocess_ajc_addon(
 
     logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")
 
-    with run_process(command_list) as blender_process:
+    with run_subprocess(command_list) as blender_process:
         while True:
             output = blender_process.stdout.readline()
             if blender_process.poll() is not None:

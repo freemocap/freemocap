@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from freemocap.data_layer.export_data.blender_stuff.blender_subprocess_calls.call_blender_subprocess_methods import \
+from freemocap.data_layer.export_data.blender_stuff.blender_subprocess_calls.run_megascript_take2 import \
     call_blender_subprocess_megascript_take2, call_blender_subprocess_alpha_megascript, call_blender_subprocess_cgtinker
 from freemocap.data_layer.export_data.blender_stuff.blender_subprocess_calls.run_ajc_addon_main import \
     call_blender_subprocess_ajc_addon

@@ -21,8 +21,7 @@ def call_blender_subprocess_ajc_addon(
         blender_file_path: Union[str, Path],
         blender_exe_path: Union[str, Path],
 ):
-    ajc_addon_main_file_path = Path(
-        __file__).parent.parent.resolve() / "ajc27_freemocap_blender_addon" / "freemocap_adapter" / "main.py"
+    ajc_addon_main = ajc_addon_main
 
     if not ajc_addon_main_file_path.exists():
         raise FileNotFoundError(f"Could not find the ajc_addon_main_file at {ajc_addon_main_file_path}")

@@ -1,0 +1,26 @@
+{
+  "adjust_empties": {
+    "vertical_align_reference": "left_knee",
+    "vertical_align_angle_offset": 0,
+    "ground_align_reference": "left_foot_index",
+    "vertical_align_position_offset": 0.0,
+    "correct_fingers_empties": true,
+    "add_hand_middle_empty": true
+  },
+  "reduce_bone_length_dispersion": {
+    "interval_variable": "median",
+    "interval_factor": 0.0
+  },
+  "reduce_shakiness": {
+    "recording_fps": 30.0
+  },
+  "add_rig": {
+    "bone_length_method": "median_length",
+    "keep_symmetry": false,
+    "add_fingers_constraints": true,
+    "use_limit_rotation": false
+  },
+  "add_body_mesh": {
+    "body_mesh_mode": "custom"
+  }
+}

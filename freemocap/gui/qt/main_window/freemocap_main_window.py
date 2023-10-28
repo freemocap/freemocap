@@ -21,8 +21,8 @@ from skellycam import (
 )
 from tqdm import tqdm
 
-from freemocap.data_layer.export_data.blender_stuff.export_to_blender import export_to_blender
-from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
+from freemocap.core_processes.export_data.blender_stuff.export_to_blender import export_to_blender
+from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import (
     generate_jupyter_notebook,
 )
@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
         logger.info("Initializing FreeMoCap MainWindow")
 
-        self._size_main_window(width_fraction=1, height_fraction=0.95)
+        self._size_main_window(width_fraction=0.8, height_fraction=0.8)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
         self.setWindowTitle("freemocap \U0001F480 \U00002728")
 
@@ -179,9 +179,9 @@ class MainWindow(QMainWindow):
 
         width = screen.width() * width_fraction
         height = screen.height() * height_fraction
-        self.setFixedSize(int(width), int(height))
+        # self.setFixedSize(int(width), int(height))
         self.setMinimumSize(1280, 720)
-        self.setMaximumSize(int(width * 2), int(height * 2))
+        # self.setMaximumSize(int(width * 2), int(height * 2))
 
     def _create_tools_dock_widget(self):
         tools_dock_widget = QDockWidget("Control Panel", self)

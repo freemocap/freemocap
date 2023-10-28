@@ -3,6 +3,7 @@ from typing import Union
 
 import requests
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
     QLabel,
@@ -21,7 +22,7 @@ from freemocap.gui.qt.actions_and_menus.actions import (
     Actions,
 )
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
-from freemocap.gui.qt.widgets.image_widget import ImageWidget
+from freemocap.gui.qt.widgets.logo_svg_widget import LogoSvgWidget
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
@@ -49,7 +50,7 @@ class HomeWidget(QWidget):
 
         self.sizePolicy().setHorizontalStretch(1)
         self.sizePolicy().setVerticalStretch(1)
-
+        self._layout.addStretch(1)
         self._add_freemocap_logo()
 
         self._welcome_to_freemocap_title_widget = self._welcome_to_freemocap_title()
@@ -177,5 +178,7 @@ class HomeWidget(QWidget):
         return session_title_label
 
     def _add_freemocap_logo(self):
-        freemocap_logo_label = ImageWidget(image_path=PATH_TO_FREEMOCAP_LOGO_SVG)#, scaling_factor=0.88)
+        freemocap_logo_label = LogoSvgWidget(image_path=PATH_TO_FREEMOCAP_LOGO_SVG)
+        self._layout.addStretch(1)
         self._layout.addWidget(freemocap_logo_label)
+        self._layout.addStretch(1)

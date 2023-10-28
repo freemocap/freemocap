@@ -2,21 +2,18 @@ import subprocess
 from pathlib import Path
 from typing import Union
 
-from freemocap.data_layer.export_data.blender_stuff.blender_subprocess_calls.run_megascript_take2 import \
-    logger
+import logging
+logger = logging.getLogger(__name__)
 
 
-def run_blender_subprocess_alpha_megascript(
+def run_cgtinker_method(
     recording_folder_path: Union[str, Path],
     blender_file_path: Union[str, Path],
     blender_exe_path: Union[str, Path],
-    good_clean_frame_number: int = 0,
 ):
     path_to_this_py_file = Path(__file__).parent.resolve()
 
-    freemocap_blender_megascript_path = (
-        path_to_this_py_file / "blender_bpy_export_scripts" / "alpha_freemocap_blender_megascript.py"
-    )
+    blender_script_path = path_to_this_py_file / "cgtinker_blendarmocap_load.py"
 
     # freemocap_blender_megascript_path = (
     #     path_to_this_py_file / "freemocap_blender_megascript_take2.py"
@@ -34,11 +31,15 @@ def run_blender_subprocess_alpha_megascript(
         str(blender_exe_path),
         "--background",
         "--python",
-        str(freemocap_blender_megascript_path),
+        str(blender_script_path),
         "--",
         str(recording_folder_path),
         str(blender_file_path),
-        str(good_clean_frame_number),
+        "1",  # bind to rig
+        "1",  # load synchronized_videos
+        "9999",  # timeout
+        "0",  # load raw data
+        "1,",  # load quick
     ]
 
     logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")

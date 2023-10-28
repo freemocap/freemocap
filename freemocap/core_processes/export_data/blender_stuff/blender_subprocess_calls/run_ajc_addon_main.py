@@ -8,6 +8,7 @@ from typing import Union
 from ajc27_freemocap_blender_addon.ajc27_run_as_main import ajc27_run_as_main_function
 
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,10 +65,10 @@ def call_blender_subprocess_ajc_addon(
 
 
 if __name__ == "__main__":
-    from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import \
+    from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import \
         get_best_guess_of_blender_path
 
-    recording_path_in = r"C:\Users\jonma\freemocap_data\recording_sessions\freemocap_sample_data"
+    recording_path_in = r"C:\Users\jonma\freemocap_data\recording_sessions\steen_pantsOn_gait"
     blender_file_path_in = str(Path(recording_path_in) / (str(Path(recording_path_in).stem)+".blend"))
     blender_exe_path_in = get_best_guess_of_blender_path()
 

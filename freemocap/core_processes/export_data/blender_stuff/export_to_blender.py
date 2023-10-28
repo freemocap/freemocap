@@ -2,13 +2,18 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from freemocap.data_layer.export_data.blender_stuff.blender_subprocess_calls.run_megascript_take2 import \
-    call_blender_subprocess_megascript_take2, call_blender_subprocess_alpha_megascript, call_blender_subprocess_cgtinker
-from freemocap.data_layer.export_data.blender_stuff.blender_subprocess_calls.run_ajc_addon_main import \
+from freemocap.core_processes.export_data.blender_stuff.blender_subprocess_calls.run_ajc_addon_main import \
     call_blender_subprocess_ajc_addon
-from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import (
+from freemocap.core_processes.export_data.blender_stuff.blender_subprocess_calls.run_alpha_megascript import \
+    run_alpha_megascript
+from freemocap.core_processes.export_data.blender_stuff.blender_subprocess_calls.run_cgtinker_method import \
+    run_cgtinker_method
+from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import (
     get_best_guess_of_blender_path,
 )
+
+from freemocap.core_processes.export_data.blender_stuff.blender_subprocess_calls.run_megascript_take2 import \
+    run_blender_megascript_take2
 
 logger = logging.getLogger(__name__)
 
@@ -31,19 +36,19 @@ def export_to_blender(
         )
 
     elif method == "megascript_take2":
-        call_blender_subprocess_megascript_take2(
+        run_blender_megascript_take2(
             recording_folder_path=recording_folder_path,
             blender_file_path=blender_file_path,
             blender_exe_path=blender_exe_path,
         )
     elif method == "alpha_megascript":
-        call_blender_subprocess_alpha_megascript(
+        run_alpha_megascript(
             recording_folder_path=recording_folder_path,
             blender_file_path=blender_file_path,
             blender_exe_path=blender_exe_path,
         )
     elif method == "cgtinker":
-        call_blender_subprocess_cgtinker(
+        run_cgtinker_method(
             recording_folder_path=recording_folder_path,
             blender_file_path=blender_file_path,
             blender_exe_path=blender_exe_path,

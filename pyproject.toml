@@ -29,6 +29,7 @@ plotly="5.14.1"
 pydantic="1.*"
 packaging = "^23.2"
 ajc27-freemocap-blender-addon = "*"
+numpy = "^1.23.5"
 
 
 [tool.poetry.group.dev.dependencies]

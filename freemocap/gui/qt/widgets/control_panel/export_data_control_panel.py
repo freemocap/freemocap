@@ -51,12 +51,12 @@ class VisualizationControlPanel(QWidget):
 
         self._use_alpha_megascript_take2_method_radio_button = QRadioButton("Use `alpha_megascript_take2` method (Legacy)")
         groupbox.layout().addWidget(self._use_alpha_megascript_take2_method_radio_button)
-
-        self._use_alpha_megascript_method_radio_button = QRadioButton("Use `alpha_megascript` method (Deprecated)")
-        groupbox.layout().addWidget(self._use_alpha_megascript_method_radio_button)
-
-        self._use_cgtinker_method_radio_button = QRadioButton("Use `@cgtinker` method (Work in progress)")
-        groupbox.layout().addWidget(self._use_cgtinker_method_radio_button)
+        #
+        # self._use_alpha_megascript_method_radio_button = QRadioButton("Use `alpha_megascript` method (Deprecated)")
+        # groupbox.layout().addWidget(self._use_alpha_megascript_method_radio_button)
+        #
+        # self._use_cgtinker_method_radio_button = QRadioButton("Use `@cgtinker` method (Work in progress)")
+        # groupbox.layout().addWidget(self._use_cgtinker_method_radio_button)
 
         self._layout.addWidget(QLabel("Blender Executable Path:"))
 
@@ -103,11 +103,11 @@ class VisualizationControlPanel(QWidget):
         if self._use_alpha_megascript_take2_method_radio_button.isChecked():
             return "megascript_take2"
 
-        if self._use_alpha_megascript_method_radio_button.isChecked():
-            return "alpha_megascript"
-
-        if self._use_cgtinker_method_radio_button.isChecked():
-            return "cgtinker"
+        # if self._use_alpha_megascript_method_radio_button.isChecked():
+        #     return "alpha_megascript"
+        #
+        # if self._use_cgtinker_method_radio_button.isChecked():
+        #     return "cgtinker"
 
     def _handle_blender_executable_button_clicked(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s

@@ -53,6 +53,11 @@ class DirectoryViewer(QTreeView):
         # Change the color for the active recording using a stylesheet
         self.setStyleSheet("QTreeView::item:selected {background: red;}")
 
+        # also color children of the active recording
+        for index in self.get_children(index):
+            self.setStyleSheet("QTreeView::item:selected {background: pink;}")
+
+
         # Keep the parent directory expanded
         parent_index = self.model.parent(index)
         self.expand(parent_index)
@@ -77,6 +82,13 @@ class DirectoryViewer(QTreeView):
             if self.isExpanded(sibling) and self.model.filePath(sibling) != parent:
                 self.collapse(sibling)
             sibling = self.indexBelow(sibling)
+
+    def get_children(self, parent_index):
+        children = []
+        for i in range(self.model.rowCount(parent_index)):
+            child_index = self.model.index(i, 0, parent_index)
+            children.append(child_index)
+        return children
 
 if __name__ == "__main__":
     app = QApplication([])

@@ -1,4 +1,4 @@
-"""Top-level package for freemocap"""
+"""A free and open source markerless motion capture system for everyone 💀✨"""
 
 __author__ = """Skelly FreeMoCap"""
 __email__ = "info@freemocap.org"

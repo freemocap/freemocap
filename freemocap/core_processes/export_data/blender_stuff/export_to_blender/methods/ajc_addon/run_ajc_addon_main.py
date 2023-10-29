@@ -1,35 +1,41 @@
 import inspect
 import logging
+import os
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 
-from ajc27_freemocap_blender_addon.ajc27_run_as_main import ajc27_run_as_main_function
-
-
+from src.ajc27_freemocap_blender_addon.install_and_run_addon.run_as_main import ajc27_run_as_main_function
 
 logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def run_subprocess(command_list):
-    process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+def run_subprocess(command_list: List[str], addon_root_directory: str):
+    modified_env = os.environ.copy()
+    # Copy the existing environment variables
+    modified_env["PYTHONPATH"] += f";{addon_root_directory}"
+    process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               env=modified_env)
     try:
         yield process
     finally:
         process.terminate()
 
 
-def call_blender_subprocess_ajc_addon(
+def run_ajc_blender_addon_subprocess(
         recording_folder_path: Union[str, Path],
         blender_file_path: Union[str, Path],
         blender_exe_path: Union[str, Path],
 ):
-    ajc_addon_main_file_path = Path(inspect.getfile(ajc27_run_as_main_function))
+    ajc_addon_main_file_path = inspect.getfile(ajc27_run_as_main_function)
+    logger.info(f"Running ajc27_freemocap_blender_addon as a subprocess using script at : {ajc_addon_main_file_path}")
 
-    if not ajc_addon_main_file_path.exists():
-        raise FileNotFoundError(f"Could not find the ajc_addon_main_file at {ajc_addon_main_file_path}")
+    addon_root_directory = str(Path(ajc_addon_main_file_path).parent.parent)
+
+    # install_ajc_addon(blender_exe_path=blender_exe_path,
+    #                   ajc_addon_main_file_path=ajc_addon_main_file_path)
 
     try:
         blender_exe_path = Path(blender_exe_path)
@@ -43,15 +49,17 @@ def call_blender_subprocess_ajc_addon(
         str(blender_exe_path),
         "--background",
         "--python",
-        str(ajc_addon_main_file_path),
+        ajc_addon_main_file_path,
         "--",
         str(recording_folder_path),
         str(blender_file_path),
+
     ]
 
     logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")
 
-    with run_subprocess(command_list) as blender_process:
+    with run_subprocess(command_list=command_list,
+                        addon_root_directory=addon_root_directory) as blender_process:
         while True:
             output = blender_process.stdout.readline()
             if blender_process.poll() is not None:
@@ -69,10 +77,10 @@ if __name__ == "__main__":
         get_best_guess_of_blender_path
 
     recording_path_in = r"C:\Users\jonma\freemocap_data\recording_sessions\steen_pantsOn_gait"
-    blender_file_path_in = str(Path(recording_path_in) / (str(Path(recording_path_in).stem)+".blend"))
+    blender_file_path_in = str(Path(recording_path_in) / (str(Path(recording_path_in).stem) + ".blend"))
     blender_exe_path_in = get_best_guess_of_blender_path()
 
-    call_blender_subprocess_ajc_addon(
+    run_ajc_blender_addon_subprocess(
         recording_folder_path=recording_path_in,
         blender_file_path=blender_file_path_in,
         blender_exe_path=blender_exe_path_in,

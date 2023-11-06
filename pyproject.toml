@@ -28,7 +28,7 @@ ipykernel="6.23.1"
 plotly="5.14.1"
 pydantic="1.*"
 packaging = "^23.2"
-ajc27-freemocap-blender-addon = "^0.2.5"
+ajc27-freemocap-blender-addon = "^0.2.9"
 numpy = "^1.23.5"
 
 

@@ -17,12 +17,12 @@ from packaging import version
 import freemocap
 from freemocap.gui.qt.actions_and_menus.actions import (
     CREATE_NEW_RECORDING_ACTION_NAME,
-    LOAD_MOST_RECENT_RECORDING_ACTION_NAME,
     LOAD_RECORDING_ACTION_NAME,
     IMPORT_VIDEOS_ACTION_NAME,
     Actions,
 )
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+from freemocap.gui.qt.widgets.logo_svg_widget import LogoSvgWidget
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
@@ -46,11 +46,11 @@ class HomeWidget(QWidget):
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
+        self._layout.setContentsMargins(0, 0, 0, 0)
+
         self.sizePolicy().setHorizontalStretch(1)
         self.sizePolicy().setVerticalStretch(1)
-
         self._layout.addStretch(1)
-
         self._add_freemocap_logo()
 
         self._welcome_to_freemocap_title_widget = self._welcome_to_freemocap_title()
@@ -61,10 +61,6 @@ class HomeWidget(QWidget):
         self._layout.addWidget(self._create_new_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
         self._create_new_session_button.setProperty("recommended_next", True)
 
-        self._load_most_recent_session_button = WelcomeScreenButton(f"{LOAD_MOST_RECENT_RECORDING_ACTION_NAME}")
-        # self._load_most_recent_session_button.clicked.connect(actions.load_most_recent_recording_action.trigger)
-        # self._layout.addWidget(self._load_most_recent_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        #
         self._load_existing_session_button = WelcomeScreenButton(f"{LOAD_RECORDING_ACTION_NAME}")
         self._load_existing_session_button.clicked.connect(actions.load_existing_recording_action.trigger)
         self._layout.addWidget(self._load_existing_session_button, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -72,8 +68,6 @@ class HomeWidget(QWidget):
         self._import_videos_button = WelcomeScreenButton(f"{IMPORT_VIDEOS_ACTION_NAME}")
         self._import_videos_button.clicked.connect(actions.import_videos_action.trigger)
         self._layout.addWidget(self._import_videos_button, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # self._layout.addStretch(1)
 
         self._create_user_info_consent_checkbox()
 
@@ -86,7 +80,9 @@ class HomeWidget(QWidget):
         hbox = QHBoxLayout()
         self._layout.addLayout(hbox)
         version_label_string = f'source:<a href="https://github.com/freemocap/freemocap" style="color: #777777;"> {freemocap.__version__}</a>'
-        latest_version = self.check_for_latest_version().split("rc")[0]
+        latest_version = self.check_for_latest_version()
+        if latest_version is not None:
+            latest_version = latest_version.split("rc")[0]
         current_version = freemocap.__version__.strip("v").split("-")[0]
 
         if latest_version is None:
@@ -111,8 +107,9 @@ class HomeWidget(QWidget):
         hbox.addWidget(version_label)
 
     def check_for_latest_version(self) -> Union[str, None]:
-        response = requests.get(f"https://pypi.org/pypi/{freemocap.__package_name__}/json", timeout=(5, 60))
-        if response.status_code != 200:
+        try:
+            response = requests.get(f"https://pypi.org/pypi/{freemocap.__package_name__}/json", timeout=(5, 60))
+        except requests.RequestException:
             logger.error(f"Failed to check for latest version of {freemocap.__package_name__}")
             return None
 
@@ -181,12 +178,7 @@ class HomeWidget(QWidget):
         return session_title_label
 
     def _add_freemocap_logo(self):
-        freemocap_logo_label = QLabel(self)
-        freemocap_logo_label.sizePolicy().setHorizontalStretch(1)
-        freemocap_logo_label.sizePolicy().setVerticalStretch(1)
+        freemocap_logo_label = LogoSvgWidget(image_path=PATH_TO_FREEMOCAP_LOGO_SVG)
+        self._layout.addStretch(1)
         self._layout.addWidget(freemocap_logo_label)
-
-        freemocap_logo_pixmap = QPixmap(PATH_TO_FREEMOCAP_LOGO_SVG)
-        freemocap_logo_pixmap = freemocap_logo_pixmap.scaledToWidth(200)
-        freemocap_logo_label.setPixmap(freemocap_logo_pixmap)
-        freemocap_logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._layout.addStretch(1)

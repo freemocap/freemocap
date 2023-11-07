@@ -250,6 +250,74 @@ def build_YOLO_skeleton(YOLO_pose_data, segment_dataframe, YOLO_indices) -> list
 # Winter, D.A. (2005) Biomechanics and Motor Control of Human Movement. 3rd Edition, John Wiley & Sons, Inc., Hoboken.
 
 
+# BODY_SEGMENT_NAMES = [
+#     "head",
+#     "trunk",
+#     "right_upper_arm",
+#     "left_upper_arm",
+#     "right_forearm",
+#     "left_forearm",
+#     "right_hand",
+#     "left_hand",
+#     "right_thigh",
+#     "left_thigh",
+#     "right_shin",
+#     "left_shin",
+#     "right_foot",
+#     "left_foot",
+# ]
+
+# joint_connections = [
+#     ["left_ear", "right_ear"],
+#     ["mid_chest_marker", "mid_hip_marker"],
+#     ["right_shoulder", "right_elbow"],
+#     ["left_shoulder", "left_elbow"],
+#     ["right_elbow", "right_wrist"],
+#     ["left_elbow", "left_wrist"],
+#     ["right_wrist", "right_hand_marker"],
+#     ["left_wrist", "left_hand_marker"],
+#     ["right_hip", "right_knee"],
+#     ["left_hip", "left_knee"],
+#     ["right_knee", "right_ankle"],
+#     ["left_knee", "left_ankle"],
+#     ["right_back_of_foot_marker", "right_foot_index"],
+#     ["left_back_of_foot_marker", "left_foot_index"],
+# ]
+
+# segment_COM_lengths = [
+#     0.5,
+#     0.5,
+#     0.436,
+#     0.436,
+#     0.430,
+#     0.430,
+#     0.506,
+#     0.506,
+#     0.433,
+#     0.433,
+#     0.433,
+#     0.433,
+#     0.5,
+#     0.5,
+# ]
+
+# segment_COM_percentages = [
+#     0.081,
+#     0.497,
+#     0.028,
+#     0.028,
+#     0.016,
+#     0.016,
+#     0.006,
+#     0.006,
+#     0.1,
+#     0.1,
+#     0.0465,
+#     0.0465,
+#     0.0145,
+#     0.0145,
+# ]
+
 BODY_SEGMENT_NAMES = [
     "head",
     "trunk",
@@ -257,16 +325,11 @@ BODY_SEGMENT_NAMES = [
     "left_upper_arm",
     "right_forearm",
     "left_forearm",
-    "right_hand",
-    "left_hand",
     "right_thigh",
     "left_thigh",
     "right_shin",
     "left_shin",
-    "right_foot",
-    "left_foot",
 ]
-
 joint_connections = [
     ["left_ear", "right_ear"],
     ["mid_chest_marker", "mid_hip_marker"],
@@ -274,48 +337,53 @@ joint_connections = [
     ["left_shoulder", "left_elbow"],
     ["right_elbow", "right_wrist"],
     ["left_elbow", "left_wrist"],
-    ["right_wrist", "right_hand_marker"],
-    ["left_wrist", "left_hand_marker"],
     ["right_hip", "right_knee"],
     ["left_hip", "left_knee"],
     ["right_knee", "right_ankle"],
     ["left_knee", "left_ankle"],
-    ["right_back_of_foot_marker", "right_foot_index"],
-    ["left_back_of_foot_marker", "left_foot_index"],
 ]
-
 segment_COM_lengths = [
     0.5,
     0.5,
     0.436,
     0.436,
-    0.430,
-    0.430,
-    0.506,
-    0.506,
+    0.682,
+    0.682,
     0.433,
     0.433,
-    0.433,
-    0.433,
-    0.5,
-    0.5,
+    0.606,
+    0.606,
 ]
-
 segment_COM_percentages = [
     0.081,
     0.497,
     0.028,
     0.028,
-    0.016,
-    0.016,
-    0.006,
-    0.006,
+    0.022,
+    0.022,
     0.1,
     0.1,
-    0.0465,
-    0.0465,
-    0.0145,
-    0.0145,
+    0.061, # potentially add .0145 for the feet here
+    0.061, # potentially add .0145 for the feet here
+]
+YOLO_body_landmark_names = [
+    "nose",
+    "left_eye",
+    "right_eye",
+    "left_ear",
+    "right_ear",
+    "left_shoulder",
+    "right_shoulder",
+    "left_elbow",
+    "right_elbow",
+    "left_wrist",
+    "right_wrist",
+    "left_hip",
+    "right_hip",
+    "left_knee",
+    "right_knee",
+    "left_ankle",
+    "right_ankle",
 ]
 
 
@@ -439,15 +507,20 @@ def run_center_of_mass_calculations(processed_skel3d_frame_marker_xyz: np.ndarra
     anthropometric_info_dataframe = build_anthropometric_dataframe(
         BODY_SEGMENT_NAMES, joint_connections, segment_COM_lengths, segment_COM_percentages
     )
-    if not mediapipe_body_names_match_expected(mediapipe_body_landmark_names):
-        raise ValueError(
-            "Mediapipe body landmark names do not match expected names - Perhaps they altered the names in a new version? This code will need to be updated"
-        )
+    # if not mediapipe_body_names_match_expected(mediapipe_body_landmark_names):
+    #     raise ValueError(
+    #         "Mediapipe body landmark names do not match expected names - Perhaps they altered the names in a new version? This code will need to be updated"
+    #     )
 
-    skelcoordinates_frame_segment_joint_XYZ = build_mediapipe_skeleton(
-        processed_skel3d_frame_marker_xyz,
-        anthropometric_info_dataframe,
-        mediapipe_body_landmark_names,
+    # skelcoordinates_frame_segment_joint_XYZ = build_mediapipe_skeleton(
+    #     processed_skel3d_frame_marker_xyz,
+    #     anthropometric_info_dataframe,
+    #     mediapipe_body_landmark_names,
+    # )
+    skelcoordinates_frame_segment_joint_XYZ = build_YOLO_skeleton(
+        YOLO_pose_data=processed_skel3d_frame_marker_xyz,
+        segment_dataframe=anthropometric_info_dataframe,
+        YOLO_indices=YOLO_body_landmark_names
     )
     (
         segment_COM_frame_dict,

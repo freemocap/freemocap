@@ -186,6 +186,63 @@ def build_mediapipe_skeleton(mediapipe_pose_data, segment_dataframe, mediapipe_i
 
     return mediapipe_frame_segment_joint_XYZ
 
+def build_YOLO_skeleton(YOLO_pose_data, segment_dataframe, YOLO_indices) -> list:
+    """This function takes in the YOLO pose data array and the segment_conn_len_perc_dataframe.
+    For each frame of data, it loops through each segment we want to find and identifies the names
+    of the proximal and distal joints of that segment. Then it searches the YOLO_indices list
+    to find the index that corresponds to the name of that segment. We plug the index into the
+    YOLO_pose_data array to find the proximal/distal joints' XYZ coordinates at that frame.
+    The segment, its proximal joint and its distal joint gets thrown into a dictionary.
+    And then that dictionary gets saved to a list for each frame. By the end of the function, you
+    have a list that contains the skeleton segment XYZ coordinates for each frame."""
+
+    num_frames = YOLO_pose_data.shape[0]
+    num_frame_range = range(num_frames)
+
+    YOLO_frame_segment_joint_XYZ = []  # empty list to hold all the skeleton XYZ coordinates/frame
+
+    for frame in track(num_frame_range, description="Building a YOLO Skeleton"):
+        trunk_joint_connection = [
+            "left_shoulder",
+            "right_shoulder",
+            "left_hip",
+            "right_hip",
+        ]
+        trunk_virtual_markers = build_virtual_trunk_marker(
+            YOLO_pose_data, YOLO_indices, trunk_joint_connection, frame
+        )
+        YOLO_pose_skeleton_coordinates = {}
+        for (
+            segment,
+            segment_info,
+        ) in (
+            segment_dataframe.iterrows()
+        ):  # iterate through the data frame by the segment name and all the info for that segment
+            if segment == "trunk":
+                # based on index, extract coordinate data from fmc YOLO data
+                YOLO_pose_skeleton_coordinates[segment] = [
+                    trunk_virtual_markers[0],
+                    trunk_virtual_markers[1],
+                ]
+            else:
+                proximal_joint_name = segment_info["Joint_Connection"][0]
+                distal_joint_name = segment_info["Joint_Connection"][1]
+
+                # get the YOLO index for the proximal and distal joint for this segment
+                proximal_joint_index = YOLO_indices.index(proximal_joint_name)
+                distal_joint_index = YOLO_indices.index(distal_joint_name)
+
+                # use the YOLO indices to get the XYZ coordinates for the prox/distal joints and throw it in a dictionary
+                # YOLO_pose_skeleton_coordinates[segment] = {'proximal':YOLO_pose_data[frame,proximal_joint_index,:],'distal':YOLO_pose_data[frame,distal_joint_index,:]}
+                YOLO_pose_skeleton_coordinates[segment] = [
+                    YOLO_pose_data[frame, proximal_joint_index, :],
+                    YOLO_pose_data[frame, distal_joint_index, :],
+                ]
+
+        YOLO_frame_segment_joint_XYZ.append(YOLO_pose_skeleton_coordinates)
+
+    return YOLO_frame_segment_joint_XYZ
+
 
 # %%
 # values for segment weight and segment mass percentages taken from Winter anthropometry tables

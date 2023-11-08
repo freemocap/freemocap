@@ -37,7 +37,11 @@ black = "^23.9.1"
 pre-commit = "^3.4.0"
 pyinstaller = "^6.0.0"
 pytest = "*"
+pytest-cov = "^4.1.0"
 bumpver = "^2023.1129"
+flake8 = "^6.0.0"
+flake8-bandit = "^4.1.1"
+flake8-bugbear = "^23.9.16"
 
 [build-system]
 requires = ["poetry-core"]

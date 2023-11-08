@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import QTreeView, QFileIconProvider, QScroller, QApplicatio
 
 
 class DirectoryViewer(QTreeView):
-
     def __init__(self, root_path=None, no_custom=False, no_watch=False, parent=None):
         super().__init__(parent)
 
@@ -30,7 +29,7 @@ class DirectoryViewer(QTreeView):
         self.setSortingEnabled(True)
         availableSize = self.screen().availableGeometry().size()
         self.resize(availableSize / 2)
-        self.setColumnWidth(0,int( self.width() / 3))
+        self.setColumnWidth(0, int(self.width() / 3))
 
         # Make it flickable on touchscreens
         QScroller.grabGesture(self, QScroller.ScrollerGestureType.TouchGesture)
@@ -54,9 +53,8 @@ class DirectoryViewer(QTreeView):
         self.setStyleSheet("QTreeView::item:selected {background: red;}")
 
         # also color children of the active recording
-        for index in self.get_children(index):
+        for index in self.get_children(index): # noqa (do we want to reassign the index value while we're looping?)
             self.setStyleSheet("QTreeView::item:selected {background: pink;}")
-
 
         # Keep the parent directory expanded
         parent_index = self.model.parent(index)
@@ -89,6 +87,7 @@ class DirectoryViewer(QTreeView):
             child_index = self.model.index(i, 0, parent_index)
             children.append(child_index)
         return children
+
 
 if __name__ == "__main__":
     app = QApplication([])

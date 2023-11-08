@@ -1,11 +1,9 @@
 import logging
-import threading
 from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal, QThread
 
 from freemocap.utilities.download_sample_data import download_sample_data
-from freemocap.system.paths_and_filenames.file_and_folder_names import FIGSHARE_SAMPLE_ZIP_FILE_URL
 
 logger = logging.getLogger(__name__)
 

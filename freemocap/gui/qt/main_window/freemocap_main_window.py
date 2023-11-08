@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
         logger.info("Initializing FreeMoCap MainWindow")
 
-        self._size_main_window(width_fraction=0.8, height_fraction=0.8)
+        self.setMinimumSize(1280, 720)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
         self.setWindowTitle("freemocap \U0001F480 \U00002728")
 
@@ -171,17 +171,6 @@ class MainWindow(QMainWindow):
             QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetFloatable
         )
         logger.info("Finished initializing FreeMoCap MainWindow")
-
-    def _size_main_window(self, width_fraction: float = 0.8, height_fraction: float = 0.8):
-        # Get screen size
-        screen = QApplication.primaryScreen().availableGeometry()
-        # Calculate width and height as a fraction of the screen size
-
-        width = screen.width() * width_fraction
-        height = screen.height() * height_fraction
-        # self.setFixedSize(int(width), int(height))
-        self.setMinimumSize(1280, 720)
-        # self.setMaximumSize(int(width * 2), int(height * 2))
 
     def _create_tools_dock_widget(self):
         tools_dock_widget = QDockWidget("Control Panel", self)
@@ -514,7 +503,7 @@ class MainWindow(QMainWindow):
         self.download_data_thread_worker.finished.connect(self._handle_download_data_finished)
 
     @pyqtSlot(str)
-    def _handle_download_data_finished(self, downloaded_data_path:str):
+    def _handle_download_data_finished(self, downloaded_data_path: str):
         logger.info("Setting downloaded data as active recording... ")
         self._active_recording_info_widget.set_active_recording(
             recording_folder_path=downloaded_data_path

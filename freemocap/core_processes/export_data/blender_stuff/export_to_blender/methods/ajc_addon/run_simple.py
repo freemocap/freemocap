@@ -1,12 +1,12 @@
 import sys
-from pathlib import Path
 
 
-def run_simple(recording_path_input: str,
-               blender_file_save_path_input: str):
+def run_simple(recording_path_input: str, blender_file_save_path_input: str):
     from ajc27_freemocap_blender_addon.run_as_main import ajc27_run_as_main_function
+
     ajc27_run_as_main_function(recording_path=str(recording_path_input),
                                save_path=str(blender_file_save_path_input))
+
 
 if __name__ == "__main__":
     print(f"\n\n\n\nRunning {__file__} as a subprocess to install the addon...\n\n\n")

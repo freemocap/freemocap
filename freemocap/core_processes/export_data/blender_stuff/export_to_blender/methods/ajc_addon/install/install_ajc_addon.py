@@ -16,7 +16,7 @@ def get_package_path(package_name: str):
         package_dist = distribution(package_name)
         package_path = package_dist.locate_file('')
         return package_path
-    except:
+    except Exception:
         print(f"{package_name} not found.")
         return None
 

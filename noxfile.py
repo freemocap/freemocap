@@ -12,7 +12,7 @@ def test(session: Session):
 @nox.session(python="3.11")
 def coverage(session: Session):
     """Run a coverage test on python 3.11."""
-    session.install("-e", ".[dev]")
+    session.install("-e", ".", "pytest-cov")
     session.run("pytest", "--cov=freemocap", "freemocap/tests")
 
 

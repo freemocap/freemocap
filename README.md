@@ -49,7 +49,7 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 
 1. Install software via [pip](https://pypi.org/project/freemocap/1.0.0rc0/):
 ```
-pip install --pre freemocap
+pip install freemocap
 ```
 
 2. Launch the GUI by entering the command:

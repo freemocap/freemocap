@@ -92,7 +92,7 @@ class HomeWidget(QWidget):
             tooltip_string = (
                 f"New version {latest_version} available!\n"
                 f" upgrade to latest version by entering the command \n\n"
-                f" ```\npip install freemocap --upgrade --pre\n``` "
+                f" ```\npip install freemocap --upgrade\n``` "
                 f"\n\ninto the terminal you used to launch this program (with your `(freemocap-env)` environment activated)"
             )
         else:

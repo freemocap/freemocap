@@ -8,7 +8,7 @@ readme = "README.md"
 
 [project.urls]
 Homepage = "https://freemocap.org"
-Documentation = "https://freemocap.readthedocs.io/en/latest/"
+Documentation = "https://freemocap.github.io/documentation/"
 Github = "https://github.com/freemocap/freemocap"
 Issues = "https://github.com/freemocap/freemocap/issues"
 Community_Discord = "https://discord.gg/uTvkkJnSff"

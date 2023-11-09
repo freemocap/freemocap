@@ -95,7 +95,7 @@ freemocap = { include = ["assets"] }
 
 [project.urls]
 Homepage = "https://freemocap.org"
-Documentation = "https://freemocap.readthedocs.io/en/latest/"
+Documentation = "https://freemocap.github.io/documentation/"
 Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]

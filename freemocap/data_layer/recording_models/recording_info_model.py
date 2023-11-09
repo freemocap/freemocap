@@ -244,9 +244,12 @@ class RecordingFolderStatusChecker:
             return frame_counts
 
     def check_for_calibration_toml_with_different_name(self) -> bool:
-        for file in Path(self.recording_info_model.path).iterdir():
-            if file.is_file() and file.name.endswith("camera_calibration.toml"):
-                self.recording_info_model.calibration_toml_path = str(file)
-                logger.info(f"Found calibration file at: {self.recording_info_model.calibration_toml_path}")
-                return True
+        try:
+            for file in Path(self.recording_info_model.path).iterdir():
+                if file.is_file() and file.name.endswith("camera_calibration.toml"):
+                    self.recording_info_model.calibration_toml_path = str(file)
+                    logger.info(f"Found calibration file at: {self.recording_info_model.calibration_toml_path}")
+                    return True
+        except Exception as e:
+            logger.warning(f"Error checking for calibration toml with different name: {e}")
         return False

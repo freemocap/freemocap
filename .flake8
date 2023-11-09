@@ -1,7 +1,7 @@
 [flake8]
 root = ./freemocap
 exclude = 
-    ./freemocap/data_layer/export_data/blender_stuff/blender_bpy_export_scripts/*
+    ./freemocap/core_processes/export_data/blender_stuff/export_to_blender/methods/legacy/*
     ./freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/anipose_camera_calibrator.py
     ./freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
     ./.nox

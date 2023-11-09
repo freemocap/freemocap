@@ -17,16 +17,24 @@ class MenuBar(QMenuBar):
         # file menu
         file_menu = self.addMenu("&File")
 
-        file_menu.addAction(actions.download_sample_data_action)
-        file_menu.addSeparator()
         file_menu.addAction(actions.create_new_recording_action)
         file_menu.addAction(actions.load_most_recent_recording_action)
         file_menu.addAction(actions.load_existing_recording_action)
         file_menu.addAction(actions.import_videos_action)
         file_menu.addAction(actions.reset_to_defaults_action)
-        file_menu.addAction(actions.kill_running_threads_and_processes_action)
-        file_menu.addAction(actions.reboot_gui_action)
         file_menu.addAction(actions.exit_action)
+
+        # Actions Menu
+        actions_menu = self.addMenu("&Controller")
+        actions_menu.addAction(actions.kill_running_threads_and_processes_action)
+        actions_menu.addAction(actions.reboot_gui_action)
+
+        # Data Menu
+        data_menu = self.addMenu("&Data")
+
+        data_menu.addAction(actions.download_sample_data_action)
+        data_menu.addAction(actions.download_test_data_action)
+
         #
         # # navigation menu
         # navigation_menu = QMenu("Na&vigation", parent=self)

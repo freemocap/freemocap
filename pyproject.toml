@@ -99,7 +99,7 @@ Documentation = "https://freemocap.github.io/documentation/"
 Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]
-current_version = "v1.0.27"
+current_version = "v1.0.28"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

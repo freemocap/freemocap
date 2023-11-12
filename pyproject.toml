@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "freemocap"
-version = "1.0.23-rc"
+version = "1.0.26"
 description = "A free and open source markerless motion capture system for everyone 💀✨"
 authors = ["Skelly FreeMoCap <info@freemocap.org>"]
 license = "AGPLv3"

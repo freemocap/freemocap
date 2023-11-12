@@ -81,7 +81,7 @@ dependencies = [
     "plotly==5.14.1",
     "pydantic==1.*",
     "packaging",
-    "ajc27_freemocap_blender_addon@git+https://github.com/freemocap/ajc27_freemocap_blender_addon.git"
+    "ajc27_freemocap_blender_addon"
 ]
 requires-python = ">=3.8"
 

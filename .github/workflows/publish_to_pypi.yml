@@ -20,9 +20,21 @@ jobs:
       with:
         python-version: '3.x'
 
+    - name: Install LLVM
+      run: sudo apt-get update && sudo apt-get install -y llvm
+
+
     - name: Install Poetry
       run: |
         curl -sSL https://install.python-poetry.org | python3 -
+
+    - name: Cache Poetry dependencies
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pypoetry
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
 
     - name: Update dependencies
       run: poetry update

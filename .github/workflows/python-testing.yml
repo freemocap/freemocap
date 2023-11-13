@@ -2,7 +2,7 @@ name: Freemocap Tests
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, development ]
     paths: 
       - 'freemocap/**'
 
@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           # Semantic version range syntax or exact version of a Python version
-          python-version: '3.9'
+          python-version: '3.11'
           # Optional - x64 or x86 architecture, defaults to x64
           architecture: 'x64'
           cache: 'pip'

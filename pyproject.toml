@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "freemocap"
-version = "1.0.28"
+version = "1.0.23-rc"
 description = "A free and open source markerless motion capture system for everyone 💀✨"
 authors = ["Skelly FreeMoCap <info@freemocap.org>"]
 license = "AGPLv3"
@@ -14,7 +14,7 @@ Issues = "https://github.com/freemocap/freemocap/issues"
 Community_Discord = "https://discord.gg/uTvkkJnSff"
 
 [tool.poetry.dependencies]
-python =  ">=3.9,<3.12"
+python =  ">=3.9,<3.13"
 skellycam = "2023.9.1086"
 skelly_viewer = "2023.5.1019 "
 skellyforge = "2023.9.1004 "

@@ -229,14 +229,13 @@ class ProcessMotionCaptureDataPanel(QWidget):
         selected_camera_calibration_toml_path = self._calibration_control_panel.calibration_toml_path
         session_parameter_model.recording_info_model.calibration_toml_path = selected_camera_calibration_toml_path
 
-        #check if there is already a calibration toml  in the recording folder, if not save this one there
-        if len(list(Path(session_parameter_model.recording_info_model.path).glob("*.toml")))==0:
+        # check if there is already a calibration toml  in the recording folder, if not save this one there
+        if len(list(Path(session_parameter_model.recording_info_model.path).glob("*.toml"))) == 0:
             # copy the calibration toml to the recording folder (keeping the original filename
             logger.info(f"Copying calibration toml from {selected_camera_calibration_toml_path} to {session_parameter_model.recording_info_model.path}")
             Path(session_parameter_model.recording_info_model.path).mkdir(parents=True, exist_ok=True)
-            copied_toml_path = Path(session_parameter_model.recording_info_model.path)/Path(selected_camera_calibration_toml_path).name
+            copied_toml_path = Path(session_parameter_model.recording_info_model.path) / Path(selected_camera_calibration_toml_path).name
             shutil.copyfile(selected_camera_calibration_toml_path, copied_toml_path)
-
 
         self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(
             session_parameter_model, kill_event=self._kill_thread_event

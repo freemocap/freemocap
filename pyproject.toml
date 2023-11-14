@@ -1,54 +1,105 @@
-[tool.poetry]
+# pyproject.toml
+# originally based on - https://realpython.com/pypi-publish-python-package/
+
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
 name = "freemocap"
-version = "1.0.23-rc"
-description = "A free and open source markerless motion capture system for everyone 💀✨"
-authors = ["Skelly FreeMoCap <info@freemocap.org>"]
-license = "AGPLv3"
 readme = "README.md"
+authors = [
+    { name = "Skelly FreeMoCap", email = "info@freemocap.org" },
+    { name = "Endurance Idehen" },
+    { name = "Aaron Cherian" },
+    { name = "Jonathan Samir Matthis" },
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Other Audience",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Video :: Capture",
+    "Topic :: Multimedia :: Video :: Display",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Scientific/Engineering :: Human Machine Interfaces",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB)",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Video (UVC)",
+]
+keywords = [
+    "camera",
+    "stream",
+    "video",
+    "image",
+    "opencv",
+    "skelly",
+    "freemocap",
+    "motion capture",
+    "markerless motion capture",
+    "mocap",
+    "markerless mocap",
+    "markerless",
+    "kinematic",
+    "animation",
+    "3d animation",
+    "Blender",
+    "Blender3d",
+    "synchronization",
+    "computer vision"
+]
+
+#dynamic = ["dependencies"]
+dependencies = [
+    "skellycam",
+    "skelly_viewer",
+    "skellyforge",
+    "skelly_synchronize>=2023.9.1026",
+    "mediapipe",
+    "opencv-contrib-python==4.8.*",
+    "toml==0.10.2",
+    "aniposelib==0.4.3",
+    "libsass==0.21.0",
+    "ipykernel==6.23.1",
+    "plotly==5.14.1",
+    "pydantic==1.*",
+    "packaging",
+    "ajc27_freemocap_blender_addon"
+]
+requires-python = ">=3.9,<3.12"
+
+dynamic = ["version", "description"]
+
+[project.optional-dependencies]
+dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit", "flake8"]
+
+[project.packages]
+freemocap = { include = ["assets"] }
 
 [project.urls]
 Homepage = "https://freemocap.org"
 Documentation = "https://freemocap.github.io/documentation/"
 Github = "https://github.com/freemocap/freemocap"
-Issues = "https://github.com/freemocap/freemocap/issues"
-Community_Discord = "https://discord.gg/uTvkkJnSff"
-
-[tool.poetry.dependencies]
-python =  ">=3.9,<3.13"
-skellycam = "2023.9.1086"
-skelly_viewer = "2023.5.1019 "
-skellyforge = "2023.9.1004 "
-skelly_synchronize = "2023.10.1027"
-mediapipe = "^0.10.7"
-opencv-contrib-python="4.8.*"
-toml="0.10.2"
-aniposelib="0.4.3"
-libsass="0.21.0"
-ipykernel="6.23.1"
-plotly="5.14.1"
-pydantic="1.*"
-packaging = "^23.2"
-ajc27-freemocap-blender-addon = "*"
-numpy = "^1.23.5"
-
-
-[tool.poetry.group.dev.dependencies]
-black = "^23.9.1"
-pre-commit = "^3.4.0"
-pyinstaller = "^6.0.0"
-pytest = "*"
-pytest-cov = "^4.1.0"
-bumpver = "^2023.1129"
-flake8 = "^6.0.0"
-flake8-bandit = "^4.1.1"
-flake8-bugbear = "^23.9.16"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
 
 [tool.bumpver]
-current_version = "v1.0.25"
+current_version = "v1.0.28"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
@@ -56,7 +107,11 @@ tag = true
 push = true
 
 [tool.bumpver.file_patterns]
+#"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
 "freemocap/__init__.py" = ["{version}"]
+
+#[tool.setuptools.dynamic]
+#dependencies = {file = "requirements.txt"}
 
 [project.scripts]
 freemocap = "freemocap.__main__:main"
@@ -69,6 +124,7 @@ line-length = 120
 
 [tool.taskipy.tasks]
 setup = "pre-commit install"
+#test = "python -m unittest freemocap/tests/**/test_*"
 installer = "./bin/installer.sh"
+# This command ensures that your code is formatted appropriately
 format = "black freemocap"
-

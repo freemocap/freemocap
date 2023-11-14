@@ -66,6 +66,8 @@ def process_recording_folder(
     recording_processing_parameter_model : RecordingProcessingParameterModel
         RecordingProcessingParameterModel object (contains all the paths and parameters necessary to process a session folder
 
+
+
     """
 
     if queue:

@@ -33,7 +33,6 @@ class ControlPanelWidget(QWidget):
     def __init__(
         self,
         camera_configuration_parameter_tree_widget: SkellyCamParameterTreeWidget,
-        # calibration_control_panel: CalibrationControlPanel,
         process_motion_capture_data_panel: ProcessMotionCaptureDataPanel,
         visualize_data_widget: QWidget,
         parent=None,
@@ -50,7 +49,6 @@ class ControlPanelWidget(QWidget):
             camera_configuration_parameter_tree_widget,
             "Camera Configuration",
         )
-        # self._tool_box.addTab(calibration_control_panel, "Capture Volume Calibration")
         self._tab_widget.addTab(process_motion_capture_data_panel, "Process Data")
         self._tab_widget.addTab(visualize_data_widget, "Export Data")
 

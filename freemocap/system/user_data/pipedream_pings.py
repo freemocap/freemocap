@@ -24,4 +24,7 @@ class PipedreamPings:
             f"{self._pings_dict} "
         )
 
-        requests.post(self._pipedream_url, json=self._pings_dict, timeout=(5, 60))
+        try:
+            requests.post(self._pipedream_url, json=self._pings_dict, timeout=(5, 60))
+        except requests.RequestException:
+            logger.error("Failed to send anonymous ping to pipedream")

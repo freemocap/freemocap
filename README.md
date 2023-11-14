@@ -49,7 +49,7 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 
 1. Install software via [pip](https://pypi.org/project/freemocap/1.0.0rc0/):
 ```
-pip install --pre freemocap
+pip install freemocap
 ```
 
 2. Launch the GUI by entering the command:
@@ -109,7 +109,7 @@ Documentation for this software is currently pretty thin... but we're woking on 
 
 Here's a YouTube video that covers a lot of relevant material (check the `chapters` for specific topics) - https://youtu.be/GxKmyKdnTy0
 
-Our documentation lives here (for now) - https://freemocap.readthedocs.io
+Our documentation lives here (for now) - https://freemocap.github.io/documentation
 
 ___
 

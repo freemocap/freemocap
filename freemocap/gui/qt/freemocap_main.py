@@ -39,7 +39,7 @@ def qt_gui_main():
             freemocap_data_folder_path=get_freemocap_data_folder_path(), pipedream_pings=pipedream_pings
         )
         logger.info("Showing main window - Ready to start!")
-        logger.info("Welcome to FreeMoCap 💀✨")
+
         freemocap_main_window.show()
         if freemocap_main_window._gui_state.show_welcome_screen:
             freemocap_main_window.open_welcome_screen_dialog()

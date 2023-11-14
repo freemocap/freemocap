@@ -80,9 +80,10 @@ dependencies = [
     "ipykernel==6.23.1",
     "plotly==5.14.1",
     "pydantic==1.*",
-    "packaging"
+    "packaging",
+    "ajc27_freemocap_blender_addon"
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9,<3.12"
 
 dynamic = ["version", "description"]
 
@@ -94,11 +95,11 @@ freemocap = { include = ["assets"] }
 
 [project.urls]
 Homepage = "https://freemocap.org"
-Documentation = "https://freemocap.readthedocs.io/en/latest/"
+Documentation = "https://freemocap.github.io/documentation/"
 Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]
-current_version = "v1.0.22-rc"
+current_version = "v1.0.28"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

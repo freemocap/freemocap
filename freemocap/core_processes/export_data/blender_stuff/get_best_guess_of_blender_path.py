@@ -16,13 +16,16 @@ def guess_blender_exe_path_from_path(base_path: Union[str, Path]) -> Path:
 
 def get_best_guess_of_blender_path():
     if platform.system() == "Windows":
-        base_path = Path(r"C:\Program Files\Blender Foundation")
-        blender_exe_path = guess_blender_exe_path_from_path(base_path)
+        drives = ["C:", "B:", "D:", "E:", "F:"]
+        for drive in drives:
+            base_path = Path(drive) / Path(r"\Program Files\Blender Foundation")
+            blender_exe_path = guess_blender_exe_path_from_path(base_path)
 
-        if blender_exe_path is not None:
-            if not blender_exe_path.is_file():
-                base_path = Path(Path.home()) / "Blender Foundation"
-                blender_exe_path = guess_blender_exe_path_from_path(base_path)
+            if blender_exe_path is not None:
+                if not blender_exe_path.is_file():
+                    base_path = Path(Path.home()) / "Blender Foundation"
+                    blender_exe_path = guess_blender_exe_path_from_path(base_path)
+                break
 
         if blender_exe_path is not None and blender_exe_path.is_file():
             logger.info(f"Windows machine detected - guessing that `blender` is installed at: {str(blender_exe_path)}")

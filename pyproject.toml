@@ -83,6 +83,7 @@ dependencies = [
     "packaging",
     "ajc27_freemocap_blender_addon"
 ]
+
 requires-python = ">=3.9,<3.12"
 
 dynamic = ["version", "description"]

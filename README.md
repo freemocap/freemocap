@@ -1,6 +1,6 @@
 <p align="center">
     <img src="https://raw.githubusercontent.com/freemocap/freemocap/main/assets/logo/freemocap-logo-black-border.svg" height="64" alt="Project Logo">
-</p>
+</p> 
 
 <h3 align="center">The FreeMoCap Project</h3>
 <h4 align="center"> A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture system and platform for decentralized scientific research, education, and training</h2>

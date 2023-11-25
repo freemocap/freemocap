@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
     QPushButton,

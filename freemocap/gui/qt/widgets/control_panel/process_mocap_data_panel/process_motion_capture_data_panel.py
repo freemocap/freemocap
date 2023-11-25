@@ -4,9 +4,9 @@ import threading
 from pathlib import Path
 from typing import Callable
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt
-from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
+from PySide6.QtCore import Signal, Qt, Slot
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QPushButton
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessMotionCaptureDataPanel(QWidget):
-    processing_finished_signal = pyqtSignal()
+    processing_finished_signal = Signal()
 
     def __init__(
         self,
@@ -251,14 +251,14 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         self._process_motion_capture_data_thread_worker.finished.connect(self._handle_finished_signal)
 
-    @pyqtSlot()
+    @Slot()
     def _handle_finished_signal(self):
         logger.debug("Process motion capture data process finished.")
         self.processing_finished_signal.emit()
 
 
 if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
     import sys
 
     app = QApplication(sys.argv)

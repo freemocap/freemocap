@@ -2,7 +2,7 @@ import logging
 import threading
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, QThread
+from PySide6.QtCore import Signal, QThread
 
 from skelly_synchronize.skelly_synchronize import synchronize_videos_from_audio, synchronize_videos_from_brightness
 
@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class SynchronizeVideosThreadWorker(QThread):
-    finished = pyqtSignal()
-    in_progress = pyqtSignal(str)
+    finished = Signal()
+    in_progress = Signal(str)
 
     def __init__(
         self,

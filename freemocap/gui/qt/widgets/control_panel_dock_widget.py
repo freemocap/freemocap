@@ -1,12 +1,11 @@
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
     QDockWidget,
     QLabel,
     QSplitter,
     QVBoxLayout,
     QWidget,
 )
-from skellycam import SkellyCamParameterTreeWidget
 
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import (
     CalibrationControlPanel,
@@ -19,7 +18,7 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_mot
 class ControlPanelDockWidget(QDockWidget):
     def __init__(
         self,
-        camera_configuration_parameter_tree_widget: SkellyCamParameterTreeWidget,
+        # camera_configuration_parameter_tree_widget: SkellyCamParameterTreeWidget,
         calibration_control_panel: CalibrationControlPanel,
         process_motion_capture_data_panel: ProcessMotionCaptureDataPanel,
         visualize_data_widget: QWidget,
@@ -31,10 +30,10 @@ class ControlPanelDockWidget(QDockWidget):
         self._splitter.setOrientation(Qt.Orientation.Vertical)
         self.setWidget(self._splitter)
 
-        self._add_widget_to_splitter(
-            widget=camera_configuration_parameter_tree_widget,
-            title_str="Camera Configuration",
-        )
+        # self._add_widget_to_splitter(
+        #     widget=camera_configuration_parameter_tree_widget,
+        #     title_str="Camera Configuration",
+        # )
 
         self._add_widget_to_splitter(
             widget=calibration_control_panel,

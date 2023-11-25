@@ -3,7 +3,7 @@ import multiprocessing
 import time
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, QThread
+from PySide6.QtCore import Signal, QThread
 
 from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
 
@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessMotionCaptureDataThreadWorker(QThread):
-    finished = pyqtSignal()
-    in_progress = pyqtSignal(object)
+    finished = Signal()
+    in_progress = Signal(object)
 
     def __init__(
         self, post_processing_parameters: PostProcessingParameterModel, kill_event: multiprocessing.Event, parent=None

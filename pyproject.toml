@@ -20,16 +20,16 @@ opencv-contrib-python="4.8.*"
 toml="0.10.2"
 aniposelib="0.4.3"
 libsass="0.21.0"
-ipykernel="6.23.1"
 plotly="^5.17.1"
 pydantic="1.*"
 packaging = "^23.2"
 numpy = "^1.23.5"
 skellycam = {git = "https://github.com/freemocap/skellycam"}
-skellyforge = {git = "https://github.com/freemocap/skellyforge"}
-skelly_synchronize = {git = "https://github.com/freemocap/skelly_synchronize"}
-skelly_viewer = {git = "https://github.com/freemocap/skelly_viewer"}
-ajc27_freemocap_blender_addon = {git = "https://github.com/freemocap/ajc27_freemocap_blender_addon"}
+#skellyforge = {git = "https://github.com/freemocap/skellyforge"}
+#skelly_synchronize = {git = "https://github.com/freemocap/skelly_synchronize"}
+#skelly_viewer = {git = "https://github.com/freemocap/skelly_viewer"}
+#ajc27_freemocap_blender_addon = {git = "https://github.com/freemocap/ajc27_freemocap_blender_addon"}
+pyside6 = "^6.6.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.9.1"

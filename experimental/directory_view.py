@@ -1,8 +1,8 @@
 import sys
 
-from PyQt6.QtCore import QDir
+from PySide6.QtCore import QDir
 from PyQt6.QtGui import QFileSystemModel, QAction
-from PyQt6.QtWidgets import QTreeView, QFileIconProvider, QScroller, QApplication, QMenu
+from PySide6.QtWidgets import QTreeView, QFileIconProvider, QScroller, QApplication, QMenu
 
 
 class DirectoryViewer(QTreeView):

@@ -1,8 +1,7 @@
 import logging
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget, QLabel
-
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QWidget, QTabWidget, QVBoxLayout, QLabel
 # from skelly_viewer import SkellyViewer
 from skellycam.frontend import SkellyCamWidget
 
@@ -19,7 +18,7 @@ class CentralTabWidget(QTabWidget):
         skelly_cam_widget: SkellyCamWidget,
         # camera_controller_widget: QWidget,
         welcome_to_freemocap_widget: HomeWidget,
-        skelly_viewer_widget: QWidget,
+        # skelly_viewer_widget: QWidget,
         directory_view_widget: QWidget,
         active_recording_info_widget: QWidget,
         parent=None,
@@ -32,13 +31,13 @@ class CentralTabWidget(QTabWidget):
         self._skelly_cam_widget = skelly_cam_widget
 #         # self._camera_controller_widget = camera_controller_widget
         self._welcome_to_freemocap_widget = welcome_to_freemocap_widget
-        self._skelly_viewer_widget = skelly_viewer_widget
+        # self._skelly_viewer_widget = skelly_viewer_widget
         self._directory_view_widget = directory_view_widget
         self._active_recording_info_widget = active_recording_info_widget
 
         self._create_welcome_tab(self)
         self._create_skellycam_view_tab(self)
-        self._create_skelly_viewer_tab(self)
+        # self._create_skelly_viewer_tab(self)
         self._create_directory_view_tab(self)
         self._create_active_recording_info_tab(self)
 
@@ -69,15 +68,7 @@ class CentralTabWidget(QTabWidget):
 
         self._camera_view_layout.addWidget(self._skelly_cam_widget)
 
-        lag_note_label = QLabel(
-            "NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras. The frames are likely being being recorded properly, its just the viewer that is lagging. A fix is incoming soon!"
-        )
-        lag_note_label.setStyleSheet("font-size: 10px;")
-        lag_note_label.setWordWrap(True)
-        layout = QVBoxLayout()
-        layout.addWidget(lag_note_label)
-        layout.setAlignment(Qt.AlignmentFlag.AlignBottom)
-        self._camera_view_layout.addLayout(layout)
+
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):
         logger.info("Creating export_data tab")

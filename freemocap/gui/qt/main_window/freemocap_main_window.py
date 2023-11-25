@@ -4,17 +4,10 @@ import shutil
 from pathlib import Path
 from typing import Union, List, Callable
 
-from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import (
-    QApplication,
-    QDockWidget,
-    QMainWindow,
-    QFileDialog,
-    QWidget,
-    QHBoxLayout,
-)
-from skelly_viewer import SkellyViewer
+from PySide6.QtCore import Slot
+from PySide6.QtGui import QIcon, Qt
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QDockWidget, QFileDialog, QApplication
+
 from skellycam.frontend import SkellyCamWidget
 
 from tqdm import tqdm
@@ -212,7 +205,7 @@ class MainWindow(QMainWindow):
 
     def update(self):
         super().update()
-
+        return
         try:
             if not self._skellycam_widget.is_recording:
                 self._controller_group_box.update_recording_name_string()
@@ -237,25 +230,24 @@ class MainWindow(QMainWindow):
         self._home_widget = HomeWidget(actions=self._actions, gui_state=self._gui_state, parent=self)
 
         self._skellycam_widget = SkellyCamWidget(
-            self._create_new_synchronized_videos_folder,
             parent=self,
         )
-        self._skellycam_widget.videos_saved_to_this_folder_signal.connect(
-            self._handle_videos_saved_to_this_folder_signal
-        )
+        # self._skellycam_widget.videos_saved_to_this_folder_signal.connect(
+        #     self._handle_videos_saved_to_this_folder_signal
+        # )
 
         # self._controller_group_box = CameraControllerGroupBox(
         #     skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
         # )
 
-        self._skelly_viewer_widget = SkellyViewer()
+        # self._skelly_viewer_widget = SkellyViewer()
 
         center_tab_widget = CentralTabWidget(
             parent=self,
             skelly_cam_widget=self._skellycam_widget,
             # camera_controller_widget=self._controller_group_box,
             welcome_to_freemocap_widget=self._home_widget,
-            skelly_viewer_widget=self._skelly_viewer_widget,
+            # skelly_viewer_widget=self._skelly_viewer_widget,
             directory_view_widget=self._directory_view_widget,
             active_recording_info_widget=self._active_recording_info_widget,
         )
@@ -290,7 +282,7 @@ class MainWindow(QMainWindow):
     #                    parent=self)
 
     def _create_control_panel_widget(self, log_update: Callable):
-        self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(self._skellycam_widget)
+        # self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(self._skellycam_widget)
 
         # self._calibration_control_panel = CalibrationControlPanel(
         #     get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
@@ -319,7 +311,7 @@ class MainWindow(QMainWindow):
         )
 
         return ControlPanelWidget(
-            camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
+            # camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
             # calibration_control_panel=self._calibration_control_panel,
             process_motion_capture_data_panel=self._process_motion_capture_data_panel,
             visualize_data_widget=self._visualization_control_panel,
@@ -500,14 +492,14 @@ class MainWindow(QMainWindow):
         self.download_data_thread_worker.start()
         self.download_data_thread_worker.finished.connect(self._handle_download_data_finished)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _handle_download_data_finished(self, downloaded_data_path: str):
         logger.info("Setting downloaded data as active recording... ")
         self._active_recording_info_widget.set_active_recording(
             recording_folder_path=downloaded_data_path
         )
 
-    @pyqtSlot(list, str, bool)
+    @Slot(list, str, bool)
     def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str, synchronization_bool: bool):
         folder_to_save_videos = Path(folder_to_save_videos)
         folder_to_save_videos.mkdir(parents=True, exist_ok=True)

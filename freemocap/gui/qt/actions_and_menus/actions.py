@@ -1,5 +1,5 @@
-from PyQt6.QtCore import QUrl
-from PyQt6.QtGui import QAction, QDesktopServices
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QAction, QDesktopServices
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import FIGSHARE_SAMPLE_ZIP_FILE_URL, \
     FIGSHARE_TEST_ZIP_FILE_URL

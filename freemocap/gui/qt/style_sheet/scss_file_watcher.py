@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from PyQt6 import QtCore
-from PyQt6.QtCore import pyqtSlot, QFileSystemWatcher
+from PySide6 import QtCore
+from PySide6.QtCore import Slot, QFileSystemWatcher
 
 from freemocap.gui.qt.style_sheet.compile_scss_to_css import compile_scss_to_css
 
@@ -19,7 +19,7 @@ class SCSSFileWatcher(QFileSystemWatcher):
         self.path_to_css_file = str(path_to_css_file)
         self.fileChanged.connect(self.file_changed)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def file_changed(self, path: str):
         logger.info(f"SCSS file changed: {path} - running compile_scss_to_css")
 

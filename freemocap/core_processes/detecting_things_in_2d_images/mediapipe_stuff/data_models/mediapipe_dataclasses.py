@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from skellycam.detection.models.frame_payload import FramePayload
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +52,3 @@ class Mediapipe2dNumpyArrays:
             logger.error("data should have either 2 or 3 dimensions")
 
 
-@dataclass
-class Mediapipe2dDataPayload:
-    raw_frame_payload: FramePayload = None
-    mediapipe_results: Any = None
-    annotated_image: np.ndarray = None
-    pixel_data_numpy_arrays: Mediapipe2dNumpyArrays = None

@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget, QLabel
 
 # from skelly_viewer import SkellyViewer
-from skellycam import SkellyCamWidget
+from skellycam.frontend import SkellyCamWidget
 
 from freemocap.gui.qt.widgets.home_widget import (
     HomeWidget,
@@ -17,7 +17,7 @@ class CentralTabWidget(QTabWidget):
     def __init__(
         self,
         skelly_cam_widget: SkellyCamWidget,
-        camera_controller_widget: QWidget,
+        # camera_controller_widget: QWidget,
         welcome_to_freemocap_widget: HomeWidget,
         skelly_viewer_widget: QWidget,
         directory_view_widget: QWidget,
@@ -30,7 +30,7 @@ class CentralTabWidget(QTabWidget):
         # self.setTabShape(QTabWidget.TabShape.Triangular)
 
         self._skelly_cam_widget = skelly_cam_widget
-        self._camera_controller_widget = camera_controller_widget
+#         # self._camera_controller_widget = camera_controller_widget
         self._welcome_to_freemocap_widget = welcome_to_freemocap_widget
         self._skelly_viewer_widget = skelly_viewer_widget
         self._directory_view_widget = directory_view_widget
@@ -65,7 +65,7 @@ class CentralTabWidget(QTabWidget):
         # tab_widget.setToolTip(skellycam.__repo_url__)
 
         # self._qt_multi_camera_viewer_widget.resize(1280, 720)
-        self._camera_view_layout.addWidget(self._camera_controller_widget)
+        # self._camera_view_layout.addWidget(self._camera_controller_widget)
 
         self._camera_view_layout.addWidget(self._skelly_cam_widget)
 

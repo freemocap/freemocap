@@ -6,7 +6,7 @@ from typing import List, Optional, Union, Callable, Tuple
 import cv2
 import mediapipe as mp
 import numpy as np
-from skellycam.opencv.video_recorder.video_recorder import VideoRecorder
+# # from skellycam.opencv.video_recorder.video_recorder import VideoRecorder
 from tqdm import tqdm
 
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_dataclasses import (
@@ -184,13 +184,13 @@ class MediaPipeSkeletonDetector:
 
             logger.info(f"Saving mediapipe annotated video to : {annotated_video_save_path}")
 
-            video_recorder = VideoRecorder()
+            # video_recorder = VideoRecorder()
 
-            video_recorder.save_image_list_to_disk(
-                image_list=video_annotated_images_list,
-                path_to_save_video_file=annotated_video_save_path,
-                frames_per_second=video_framerate,
-            )
+            # video_recorder.save_image_list_to_disk(
+            #     image_list=video_annotated_images_list,
+            #     path_to_save_video_file=annotated_video_save_path,
+            #     frames_per_second=video_framerate,
+            # )
         except Exception as e:
             logger.error(f"Failed to save annotated video to disk: {e}")
             raise e

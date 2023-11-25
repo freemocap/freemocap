@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QCheckBox,
 )
-from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
@@ -51,7 +50,7 @@ class CameraControllerGroupBox(QGroupBox):
 
         self._calibration_videos_radio_button.toggled.connect(self._set_record_button_text)
         self._mocap_videos_radio_button.toggled.connect(self._set_record_button_text)
-        self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
+        # self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
         self._stop_recording_button.clicked.connect(self._set_record_button_text)
 
         self._auto_process_videos_checkbox.toggled.connect(self._on_auto_process_videos_checkbox_changed)

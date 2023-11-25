@@ -15,10 +15,8 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
 )
 from skelly_viewer import SkellyViewer
-from skellycam import (
-    SkellyCamParameterTreeWidget,
-    SkellyCamWidget,
-)
+from skellycam.frontend import SkellyCamWidget
+
 from tqdm import tqdm
 
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender
@@ -48,7 +46,7 @@ from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
 )
 from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingInfoWidget
-from freemocap.gui.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
+# from freemocap.gui.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
 from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
 from freemocap.gui.qt.widgets.control_panel.control_panel_dock_widget import (
     ControlPanelWidget,
@@ -246,16 +244,16 @@ class MainWindow(QMainWindow):
             self._handle_videos_saved_to_this_folder_signal
         )
 
-        self._controller_group_box = CameraControllerGroupBox(
-            skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
-        )
+        # self._controller_group_box = CameraControllerGroupBox(
+        #     skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
+        # )
 
         self._skelly_viewer_widget = SkellyViewer()
 
         center_tab_widget = CentralTabWidget(
             parent=self,
             skelly_cam_widget=self._skellycam_widget,
-            camera_controller_widget=self._controller_group_box,
+            # camera_controller_widget=self._controller_group_box,
             welcome_to_freemocap_widget=self._home_widget,
             skelly_viewer_widget=self._skelly_viewer_widget,
             directory_view_widget=self._directory_view_widget,

@@ -23,11 +23,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+          pip install pytest
       - name: Install libegl1
         run: |
           sudo apt-get update
           sudo apt-get install libegl1-mesa
       - name: Run Tests with Pytest
         run: |
-          pip install pytest
           pytest freemocap/tests

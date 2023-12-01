@@ -27,8 +27,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1-mesa
-      - name: Run Tests with Pytest
+      - name: Mess with QT
         run: |
           export QT_DEBUG_PLUGINS=1
+          qmake --version
+      - name: Run Tests with Pytest
+        run: |
           pip install pytest
           pytest freemocap/tests

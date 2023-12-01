@@ -32,7 +32,7 @@ jobs:
       - name: Install qt
         run: |
           sudo apt-get update
-          sudo apt install -y qt6-default
+          sudo apt install -y qt6-base-dev
       - name: Install libegl1
         run: |
           sudo apt-get install -y libegl1-mesa

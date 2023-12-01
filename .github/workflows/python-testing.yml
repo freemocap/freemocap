@@ -30,7 +30,8 @@ jobs:
       - name: Mess with QT
         run: |
           export QT_DEBUG_PLUGINS=1
-          qmake --version
+          pip list --missing-per-platform
+          pip list | grep pyqt
       - name: Run Tests with Pytest
         run: |
           pip install pytest

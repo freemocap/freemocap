@@ -80,6 +80,7 @@ dependencies = [
     "ipykernel==6.23.1",
     "plotly==5.14.1",
     "pydantic==1.*",
+    "pyqt6==6.6.*",
     "packaging",
     "ajc27_freemocap_blender_addon"
 ]

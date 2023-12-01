@@ -11,6 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: System Info
+        run: |
+          uname -a || true
+          lsb_release -a || true
+          gcc --version || true
+          env
       - name: Set up Python 3.x
         uses: actions/setup-python@v4
         with:
@@ -27,11 +33,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1-mesa
-      - name: Mess with QT
-        run: |
-          export QT_DEBUG_PLUGINS=1
-          pip list | grep pyqt
-          pip show pyqt6
       - name: Run Tests with Pytest
         run: |
           pip install pytest

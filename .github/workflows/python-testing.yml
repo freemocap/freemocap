@@ -29,13 +29,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-      - name: Install qt
-        run: |
-          sudo apt-get update
-          sudo apt install -y qt6-base-dev
       - name: Install libegl1
         run: |
+          sudo apt-get update
           sudo apt-get install -y libegl1-mesa
+      - name: Force reinstall pyqt6
+        run: |
+          pip install --upgrade --force-reinstall PyQt6
       - name: Run Tests with Pytest
         run: |
           pip install pytest

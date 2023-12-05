@@ -33,7 +33,7 @@ from freemocap.core_processes.post_process_skeleton_data.process_single_camera_s
     process_single_camera_skeleton_data,
 )
 from freemocap.data_layer.data_saver.data_saver import DataSaver
-from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 def process_recording_folder(
-    recording_processing_parameter_model: PostProcessingParameterModel,
+    recording_processing_parameter_model: ProcessingParameterModel,
     kill_event: multiprocessing.Event = None,
     queue: multiprocessing.Queue = None,
     use_tqdm: bool = True,

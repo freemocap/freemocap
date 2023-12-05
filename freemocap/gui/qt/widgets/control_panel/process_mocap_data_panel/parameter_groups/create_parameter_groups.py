@@ -2,7 +2,7 @@ from pyqtgraph.parametertree import Parameter
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
     MediapipeParametersModel,
-    PostProcessingParameterModel,
+    ProcessingParameterModel,
     AniposeTriangulate3DParametersModel,
     PostProcessingParametersModel,
     ButterworthFilterParametersModel,
@@ -161,14 +161,14 @@ def create_post_processing_parameter_group(
 
 def extract_parameter_model_from_parameter_tree(
     parameter_object: Parameter,
-) -> PostProcessingParameterModel:
+) -> ProcessingParameterModel:
     parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
 
     mediapipe_model_complexity_integer = get_integer_from_mediapipe_model_complexity(
         parameter_values_dictionary[MEDIAPIPE_MODEL_COMPLEXITY]
     )
 
-    return PostProcessingParameterModel(
+    return ProcessingParameterModel(
         mediapipe_parameters_model=MediapipeParametersModel(
             mediapipe_model_complexity=mediapipe_model_complexity_integer,
             min_detection_confidence=parameter_values_dictionary[MINIMUM_DETECTION_CONFIDENCE],

@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
-    PostProcessingParameterModel,
+    ProcessingParameterModel,
 )
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
@@ -36,7 +36,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def __init__(
         self,
-        recording_processing_parameters: PostProcessingParameterModel,
+        recording_processing_parameters: ProcessingParameterModel,
         get_active_recording_info: Callable,
         kill_thread_event: threading.Event,
         log_update: Callable,
@@ -101,7 +101,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def _add_parameters_to_parameter_tree_widget(
         self,
         parameter_tree_widget: ParameterTree,
-        session_processing_parameter_model: PostProcessingParameterModel,
+        session_processing_parameter_model: ProcessingParameterModel,
     ):
         parameter_group = self._convert_session_processing_parameter_model_to_parameter_group(
             session_processing_parameter_model
@@ -112,7 +112,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _convert_session_processing_parameter_model_to_parameter_group(
         self,
-        session_processing_parameter_model: PostProcessingParameterModel,
+        session_processing_parameter_model: ProcessingParameterModel,
     ):
         return Parameter.create(
             name="Processing Parameters",
@@ -156,7 +156,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _create_session_parameter_model(
         self,
-    ) -> PostProcessingParameterModel:
+    ) -> ProcessingParameterModel:
         recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(
             parameter_object=self._parameter_group
         )

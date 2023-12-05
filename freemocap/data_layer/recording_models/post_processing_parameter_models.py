@@ -37,7 +37,7 @@ class PostProcessingParametersModel(BaseModel):
     skip_butterworth_filter: bool = False
 
 
-class PostProcessingParameterModel(BaseModel):
+class ProcessingParameterModel(BaseModel):
     recording_info_model: RecordingInfoModel = None
     mediapipe_parameters_model: MediapipeParametersModel = MediapipeParametersModel()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel()

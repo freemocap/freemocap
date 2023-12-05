@@ -7,7 +7,7 @@ from PyQt6.QtCore import pyqtSignal, QThread
 
 from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
 
-from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
@@ -19,7 +19,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
     in_progress = pyqtSignal(object)
 
     def __init__(
-        self, post_processing_parameters: PostProcessingParameterModel, kill_event: multiprocessing.Event, parent=None
+        self, post_processing_parameters: ProcessingParameterModel, kill_event: multiprocessing.Event, parent=None
     ):
         super().__init__()
         self._post_processing_parameters = post_processing_parameters

@@ -89,6 +89,7 @@ def process_recording_folder(
 
     # TODO: deprecate save_data function in favor of DataSaver
     DataSaver(recording_folder_path=recording_processing_parameter_model.recording_info_model.path).save_all()
+    # TODO: pull center of mass stuff out of this, and put it before DataSaver
     save_data(
         skel3d_frame_marker_xyz=skel3d_frame_marker_xyz, processing_parameters=recording_processing_parameter_model
     )

@@ -68,7 +68,7 @@ keywords = [
 
 #dynamic = ["dependencies"]
 dependencies = [
-    "skellycam",
+    "skellycam@https://github.com/freemocap/skellycam/archive/philip/pyside6-change.zip",
     "skelly_viewer",
     "skellyforge",
     "skelly_synchronize>=2023.9.1026",

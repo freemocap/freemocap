@@ -2,7 +2,11 @@ import logging
 import multiprocessing
 from pathlib import Path
 import numpy as np
+from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import run_center_of_mass_calculations
 from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data
+from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.anatomical_data_pipeline_functions import (
+    calculate_anatomical_data,
+)
 from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.data_saving_pipeline_functions import (
     save_data,
 )
@@ -87,11 +91,24 @@ def process_recording_folder(
         logger.info("Process was killed")
         return
 
+    anatomical_data_dict = calculate_anatomical_data(
+        processing_parameters=recording_processing_parameter_model,
+        skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+    )
+
+    if kill_event is not None and kill_event.is_set():
+        logger.info("Process was killed")
+        return
+
     # TODO: deprecate save_data function in favor of DataSaver
-    # DataSaver(recording_folder_path=recording_processing_parameter_model.recording_info_model.path).save_all()
+    DataSaver(recording_folder_path=recording_processing_parameter_model.recording_info_model.path).save_all()
     # TODO: pull center of mass stuff out of this, and put it before DataSaver
     save_data(
-        skel3d_frame_marker_xyz=skel3d_frame_marker_xyz, processing_parameters=recording_processing_parameter_model
+        skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+        segment_COM_frame_imgPoint_XYZ=anatomical_data_dict["segment_COM"],
+        totalBodyCOM_frame_XYZ=anatomical_data_dict["total_body_COM"],
+        skeleton_segment_lengths=anatomical_data_dict["skeleton_segment_lengths"],
+        processing_parameters=recording_processing_parameter_model,
     )
 
     logger.info(f"Done processing {recording_processing_parameter_model.recording_info_model.path}")

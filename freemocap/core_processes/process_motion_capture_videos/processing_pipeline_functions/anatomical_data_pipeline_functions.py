@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 from pathlib import Path
 from typing import Dict
 import numpy as np
@@ -10,7 +11,9 @@ from freemocap.core_processes.post_process_skeleton_data.estimate_skeleton_segme
 )
 from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import run_center_of_mass_calculations
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
+from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.paths_and_filenames.file_and_folder_names import MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +21,13 @@ logger = logging.getLogger(__name__)
 def calculate_anatomical_data(
     processing_parameters: ProcessingParameterModel,
     skel3d_frame_marker_xyz: np.ndarray,
+    queue: multiprocessing.Queue,
 ) -> Dict[str, np.ndarray]:
+    if queue:
+        handler = DirectQueueHandler(queue)
+        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
+        logger.addHandler(handler)
+
     logger.info("Calculating center of mass...")
     segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ = run_center_of_mass_calculations(
         processed_skel3d_frame_marker_xyz=skel3d_frame_marker_xyz

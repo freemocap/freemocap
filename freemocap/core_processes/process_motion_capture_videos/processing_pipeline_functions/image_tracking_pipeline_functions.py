@@ -1,8 +1,8 @@
 import logging
 import multiprocessing
 from pathlib import Path
-
 import numpy as np
+
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.mediapipe_skeleton_detector import (
     MediaPipeSkeletonDetector,
 )
@@ -10,14 +10,24 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
     MediapipeParametersModel,
     ProcessingParameterModel,
 )
+from freemocap.system.logging.queue_logger import DirectQueueHandler
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.paths_and_filenames.file_and_folder_names import RAW_DATA_FOLDER_NAME
 
 logger = logging.getLogger(__name__)
 
 
 def get_image_data(
-    processing_parameters: ProcessingParameterModel, kill_event: multiprocessing.Event, use_tqdm: bool
+    processing_parameters: ProcessingParameterModel,
+    kill_event: multiprocessing.Event,
+    queue: multiprocessing.Queue,
+    use_tqdm: bool,
 ) -> np.ndarray:
+    if queue:
+        handler = DirectQueueHandler(queue)
+        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
+        logger.addHandler(handler)
+
     if processing_parameters.mediapipe_parameters_model.skip_2d_image_tracking:
         logger.info(
             f"Skipping 2d skeleton detection and loading data from: {processing_parameters.recording_info_model.mediapipe_2d_data_npy_file_path}"

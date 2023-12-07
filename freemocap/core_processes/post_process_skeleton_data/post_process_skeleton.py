@@ -1,3 +1,4 @@
+import multiprocessing
 from typing import Union
 
 import numpy as np
@@ -16,6 +17,9 @@ from skellyforge.freemocap_utils.constants import (
     TASK_FINDING_GOOD_FRAME,
 )
 from skellyforge.freemocap_utils.postprocessing_widgets.task_worker_thread import TaskWorkerThread
+
+from freemocap.system.logging.queue_logger import DirectQueueHandler
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +89,13 @@ def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings
     return post_processed_data_handler.processed_skeleton
 
 
-def post_process_data(recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray):
+def post_process_data(
+    recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray, queue: multiprocessing.Queue
+) -> np.ndarray:
+    if queue:
+        handler = DirectQueueHandler(queue)
+        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
+        logger.addHandler(handler)
     filter_sampling_rate, filter_cutoff_frequency, filter_order = get_settings_from_parameter_tree(
         recording_processing_parameter_model
     )

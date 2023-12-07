@@ -62,7 +62,10 @@ def process_recording_folder(
     )  # TODO: This can maybe just be another status check?
 
     image_data_numCams_numFrames_numTrackedPts_XYZ = get_image_data(
-        processing_parameters=recording_processing_parameter_model, kill_event=kill_event, use_tqdm=use_tqdm
+        processing_parameters=recording_processing_parameter_model,
+        kill_event=kill_event,
+        queue=queue,
+        use_tqdm=use_tqdm,
     )
 
     if kill_event is not None and kill_event.is_set():
@@ -73,6 +76,7 @@ def process_recording_folder(
         image_data_numCams_numFrames_numTrackedPts_XYZ=image_data_numCams_numFrames_numTrackedPts_XYZ,
         processing_parameters=recording_processing_parameter_model,
         kill_event=kill_event,
+        queue=queue,
     )
 
     if kill_event is not None and kill_event.is_set():
@@ -85,6 +89,7 @@ def process_recording_folder(
     skel3d_frame_marker_xyz = post_process_data(
         recording_processing_parameter_model=recording_processing_parameter_model,
         raw_skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
+        queue=queue,
     )
 
     if kill_event is not None and kill_event.is_set():
@@ -94,6 +99,7 @@ def process_recording_folder(
     anatomical_data_dict = calculate_anatomical_data(
         processing_parameters=recording_processing_parameter_model,
         skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+        queue=queue,
     )
 
     if kill_event is not None and kill_event.is_set():
@@ -102,13 +108,13 @@ def process_recording_folder(
 
     # TODO: deprecate save_data function in favor of DataSaver
     DataSaver(recording_folder_path=recording_processing_parameter_model.recording_info_model.path).save_all()
-    # TODO: pull center of mass stuff out of this, and put it before DataSaver
     save_data(
         skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
         segment_COM_frame_imgPoint_XYZ=anatomical_data_dict["segment_COM"],
         totalBodyCOM_frame_XYZ=anatomical_data_dict["total_body_COM"],
         skeleton_segment_lengths=anatomical_data_dict["skeleton_segment_lengths"],
         processing_parameters=recording_processing_parameter_model,
+        queue=queue,
     )
 
     logger.info(f"Done processing {recording_processing_parameter_model.recording_info_model.path}")

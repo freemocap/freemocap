@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 from pathlib import Path
 import numpy as np
+
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
@@ -9,8 +10,9 @@ from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibrat
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import (
     process_single_camera_skeleton_data,
 )
-
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
+from freemocap.system.logging.queue_logger import DirectQueueHandler
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,12 @@ def get_triangulated_data(
     image_data_numCams_numFrames_numTrackedPts_XYZ: np.ndarray,
     processing_parameters: ProcessingParameterModel,
     kill_event: multiprocessing.Event = None,
+    queue: multiprocessing.Queue = None,
 ) -> np.ndarray:
+    if queue:
+        handler = DirectQueueHandler(queue)
+        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
+        logger.addHandler(handler)
     if image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
         logger.info("Skipping 3d triangulation for single camera data")
         (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(

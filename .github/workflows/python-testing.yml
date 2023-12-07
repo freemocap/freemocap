@@ -2,7 +2,7 @@ name: Freemocap Tests
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, development ]
     paths: 
       - 'freemocap/**'
 
@@ -11,11 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: System Info
+        run: |
+          uname -a || true
+          lsb_release -a || true
+          gcc --version || true
+          env
       - name: Set up Python 3.x
         uses: actions/setup-python@v4
         with:
           # Semantic version range syntax or exact version of a Python version
-          python-version: '3.9'
+          python-version: '3.11'
           # Optional - x64 or x86 architecture, defaults to x64
           architecture: 'x64'
           cache: 'pip'
@@ -26,7 +32,7 @@ jobs:
       - name: Install libegl1
         run: |
           sudo apt-get update
-          sudo apt-get install libegl1-mesa
+          sudo apt-get install -y libegl1-mesa
       - name: Run Tests with Pytest
         run: |
           pip install pytest

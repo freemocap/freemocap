@@ -68,7 +68,7 @@ keywords = [
 
 #dynamic = ["dependencies"]
 dependencies = [
-    "skellycam",
+    "skellycam@https://github.com/freemocap/skellycam/archive/philip/pyside6-change.zip",
     "skelly_viewer",
     "skellyforge",
     "skelly_synchronize>=2023.9.1026",
@@ -80,10 +80,12 @@ dependencies = [
     "ipykernel==6.23.1",
     "plotly==5.14.1",
     "pydantic==1.*",
+    "pyqt6==6.6.*",
     "packaging",
     "ajc27_freemocap_blender_addon"
 ]
-requires-python = ">=3.8"
+
+requires-python = ">=3.9,<3.12"
 
 dynamic = ["version", "description"]
 

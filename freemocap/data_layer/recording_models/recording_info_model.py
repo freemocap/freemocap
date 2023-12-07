@@ -21,6 +21,7 @@ from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_d
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import test_synchronized_video_frame_counts
 from freemocap.tests.test_total_body_center_of_mass_data_shape import test_total_body_center_of_mass_data_shape
+from freemocap.utilities.get_video_paths import get_video_paths
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +132,10 @@ class RecordingInfoModel:
         return self._recording_folder_status_checker.check_synchronized_videos_status()
 
     @property
+    def single_video_check(self) -> bool:
+        return self._recording_folder_status_checker.check_single_video()
+
+    @property
     def data2d_status_check(self) -> bool:
         return self._recording_folder_status_checker.check_data2d_status()
 
@@ -167,6 +172,12 @@ class RecordingFolderStatusChecker:
             test_synchronized_video_frame_counts(self.recording_info_model.synchronized_videos_folder_path)
             return True
         except AssertionError:
+            return False
+
+    def check_single_video(self) -> bool:
+        if len(get_video_paths(path_to_video_folder=self.recording_info_model.synchronized_videos_folder_path)) == 1:
+            return True
+        else:
             return False
 
     def check_data2d_status(self) -> bool:

@@ -51,7 +51,6 @@ def process_recording_folder(
 
 
     """
-    # TODO: this queue may need to be passed in to each processing subfunction - this block can be copied into those functions if logging isn't making it into the gui
     if queue:
         handler = DirectQueueHandler(queue)
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
@@ -112,7 +111,7 @@ def process_recording_folder(
         skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
         segment_COM_frame_imgPoint_XYZ=anatomical_data_dict["segment_COM"],
         totalBodyCOM_frame_XYZ=anatomical_data_dict["total_body_COM"],
-        skeleton_segment_lengths=anatomical_data_dict["skeleton_segment_lengths"],
+        skeleton_segment_lengths_dict=anatomical_data_dict["skeleton_segment_lengths"],
         processing_parameters=recording_processing_parameter_model,
         queue=queue,
     )

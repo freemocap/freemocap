@@ -82,7 +82,8 @@ dependencies = [
     "pydantic==1.*",
     "pyqt6==6.6.*",
     "packaging",
-    "ajc27_freemocap_blender_addon"
+    "ajc27_freemocap_blender_addon",
+    "skelly_tracker @ git+https://github.com/freemocap/skellytracker.git"
 ]
 
 requires-python = ">=3.9,<3.12"

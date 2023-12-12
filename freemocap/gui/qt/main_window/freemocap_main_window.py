@@ -4,9 +4,9 @@ import shutil
 from pathlib import Path
 from typing import Union, List, Callable
 
-from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Slot
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import (
     QApplication,
     QDockWidget,
     QMainWindow,
@@ -502,14 +502,14 @@ class MainWindow(QMainWindow):
         self.download_data_thread_worker.start()
         self.download_data_thread_worker.finished.connect(self._handle_download_data_finished)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _handle_download_data_finished(self, downloaded_data_path: str):
         logger.info("Setting downloaded data as active recording... ")
         self._active_recording_info_widget.set_active_recording(
             recording_folder_path=downloaded_data_path
         )
 
-    @pyqtSlot(list, str, bool)
+    @Slot(list, str, bool)
     def _handle_import_videos(self, video_paths: List[str], folder_to_save_videos: str, synchronization_bool: bool):
         folder_to_save_videos = Path(folder_to_save_videos)
         folder_to_save_videos.mkdir(parents=True, exist_ok=True)

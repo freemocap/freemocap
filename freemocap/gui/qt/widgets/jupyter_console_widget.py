@@ -1,6 +1,6 @@
 import logging
 
-from PyQt6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 from qtconsole.manager import QtKernelManager
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     configure_logging()
     logger.info("Hello world!")
 
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     app = QApplication([])
 

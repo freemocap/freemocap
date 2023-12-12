@@ -2,11 +2,12 @@ import logging
 from pathlib import Path
 import threading
 from typing import Union
+
+from PySide6.QtGui import QDoubleValidator
 from skelly_synchronize import create_audio_debug_plots, create_brightness_debug_plots
 
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QFileSystemModel, QDoubleValidator
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QListWidget,
@@ -19,7 +20,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QButtonGroup,
     QRadioButton,
-    QWidget,
+    QWidget, QFileSystemModel,
 )
 
 from freemocap.gui.qt.workers.synchronize_videos_thread_worker import SynchronizeVideosThreadWorker
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class ImportVideosWizard(QDialog):
-    folder_to_save_videos_to_selected = pyqtSignal(list, str, bool)
+    folder_to_save_videos_to_selected = Signal(list, str, bool)
 
     def __init__(self, import_videos_path: Union[str, Path], kill_thread_event: threading.Event, parent=None):
         super().__init__(parent=parent)
@@ -226,7 +227,7 @@ class ImportVideosWizard(QDialog):
 
 
 if __name__ == "__main__":
-    # from PyQt6.QtWidgets import QApplication
+    # from PySide6.QtWidgets import QApplication
     # import sys
     #
     # app = QApplication(sys.argv)

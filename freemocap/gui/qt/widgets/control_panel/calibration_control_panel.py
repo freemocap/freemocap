@@ -3,9 +3,9 @@ import os
 import threading
 from typing import Callable
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QDoubleValidator
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QDoubleValidator
+from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QLabel,
@@ -302,7 +302,7 @@ class CalibrationControlPanel(QWidget):
 
 
 if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
     import sys
 
     app = QApplication(sys.argv)

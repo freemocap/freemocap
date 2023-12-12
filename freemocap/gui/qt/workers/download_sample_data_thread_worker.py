@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, QThread
+from PySide6.QtCore import Signal, QThread
 
 from freemocap.utilities.download_sample_data import download_sample_data
 
@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 class DownloadDataThreadWorker(QThread):
-    finished = pyqtSignal(str)
-    in_progress = pyqtSignal(str)
+    finished = Signal(str)
+    in_progress = Signal(str)
 
     def __init__(self,
                  dowload_url: str,

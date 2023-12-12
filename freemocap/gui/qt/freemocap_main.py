@@ -3,8 +3,8 @@ import signal
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication
 
 from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
 

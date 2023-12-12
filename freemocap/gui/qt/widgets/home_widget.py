@@ -2,8 +2,8 @@ import logging
 from typing import Union
 
 import requests
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
     QCheckBox,
     QLabel,
     QPushButton,
@@ -22,7 +22,6 @@ from freemocap.gui.qt.actions_and_menus.actions import (
 )
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
 from freemocap.gui.qt.widgets.logo_svg_widget import LogoSvgWidget
-
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 

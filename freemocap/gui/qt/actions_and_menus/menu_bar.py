@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMainWindow, QMenuBar
+from PySide6.QtWidgets import QMainWindow, QMenuBar
 
 from freemocap.gui.qt.actions_and_menus.actions import Actions
 
@@ -60,7 +60,7 @@ class MenuBar(QMenuBar):
 
 if __name__ == "__main__":
     import sys
-    from PyQt6.QtWidgets import QApplication, QLabel
+    from PySide6.QtWidgets import QApplication, QLabel
 
     app = QApplication(sys.argv)
     _main_window = QMainWindow()

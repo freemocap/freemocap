@@ -1,6 +1,7 @@
 export function supported() {
-  console.log("Uncomment me to do useful stuff")
+    console.log("Uncomment me to do useful stuff")
 }
+
 // function getSupportedMimeTypes(media, types, codecs) {
 //   const isSupported = MediaRecorder.isTypeSupported;
 //   const supported = [];

@@ -10,7 +10,6 @@ from skellycam.system.environment.default_paths import get_log_file_path
 logging.getLogger('tzlocal').setLevel(logging.WARNING)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
-
 log_view_logging_format_string = "[%(asctime)s.%(msecs)04d] [%(levelname)4s] [%(name)s] [Process:%(process)d Thread:%(thread)d] ::::: [%(name)s:%(funcName)s():%(lineno)s] |||| %(message)s."
 
 
@@ -213,8 +212,8 @@ def log_test_messages(logger):
 
 
 if __name__ == "__main__":
-
     from skellycam import logger
+
     configure_logging(LogLevel.TRACE)  # Setting the root logger level to TRACE
     log_test_messages(logger)
     logger.success(

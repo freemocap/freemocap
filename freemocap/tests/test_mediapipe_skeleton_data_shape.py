@@ -11,9 +11,9 @@ from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
 
 @pytest.mark.usefixtures("synchronized_video_folder_path", "raw_skeleton_npy_file_path", "reprojection_error_file_path")
 def test_mediapipe_skeleton_data_shape(
-    synchronized_video_folder_path: Union[str, Path],
-    raw_skeleton_npy_file_path: Union[str, Path],
-    reprojection_error_file_path,
+        synchronized_video_folder_path: Union[str, Path],
+        raw_skeleton_npy_file_path: Union[str, Path],
+        reprojection_error_file_path,
 ):
     """
     test that the `mediapipe 3d detection` process worked correctly by checking:
@@ -31,7 +31,7 @@ def test_mediapipe_skeleton_data_shape(
     skel3d_frame_marker_xyz = np.load(raw_skeleton_npy_file_path)
 
     assert (
-        len(skel3d_frame_marker_xyz.shape) == 3
+            len(skel3d_frame_marker_xyz.shape) == 3
     ), f"3d skeleton data file should have 3 dimensions -  {raw_skeleton_npy_file_path}"
 
     assert Path(
@@ -41,12 +41,12 @@ def test_mediapipe_skeleton_data_shape(
     skeleton_reprojection_error_fr_mar = np.load(reprojection_error_file_path)
 
     assert (
-        len(skeleton_reprojection_error_fr_mar.shape) == 2
+            len(skeleton_reprojection_error_fr_mar.shape) == 2
     ), f"3d skeleton reprojection error data file should have 2 dimensions {reprojection_error_file_path}"
 
     frame_count = get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path)
     assert (
-        len(set(frame_count)) == 1
+            len(set(frame_count)) == 1
     ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_count}"
 
     number_of_frames = frame_count[0]
@@ -57,5 +57,5 @@ def test_mediapipe_skeleton_data_shape(
     # TODO - check number of tracked points vs 'expected' number of tracked points
 
     assert (
-        skel3d_frame_marker_xyz.shape[2] == 3
+            skel3d_frame_marker_xyz.shape[2] == 3
     ), f"3d skeleton data file does not have 3 dimensions for X,Y,Z at {raw_skeleton_npy_file_path}"

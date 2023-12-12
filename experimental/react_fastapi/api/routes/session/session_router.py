@@ -1,14 +1,12 @@
 import logging
 import traceback
-from pathlib import Path
 from typing import Optional, Union
 
 from fastapi import APIRouter
-from pydantic import BaseModel
-
 from jon_scratch.pupil_calibration_pipeline.qt_gl_laser_skeleton_visualizer import (
     QtGlLaserSkeletonVisualizer,
 )
+from pydantic import BaseModel
 from src.cameras.launch_camera_frame_loop import launch_camera_frame_loop
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.config.home_dir import (
@@ -73,7 +71,7 @@ class SessionIdModel(BaseModel):
 
 @session_router.post("/session/create")
 async def create_session(
-    session_create_model: SessionCreateModel = SessionCreateModel(),
+        session_create_model: SessionCreateModel = SessionCreateModel(),
 ) -> SessionResponse:
     session_id = create_session_id()
     if session_create_model.user_session_tag_str is not None:
@@ -88,7 +86,7 @@ async def create_session(
 
 @session_router.post("/session/calibrate")
 def calibrate_session(
-    session_calibrate_model: SessionCalibrateModel = SessionCalibrateModel(),
+        session_calibrate_model: SessionCalibrateModel = SessionCalibrateModel(),
 ):
     """calibate capture volume - record synchronized videos (from all available camras wtih default parameters for now) and process with Anipose to produce a camera calibration (saved as a `.toml` file in the session folder"""
 
@@ -136,7 +134,7 @@ def record_session(session_record_model: SessionRecordModel = SessionRecordModel
 
 @session_router.post("/session/mediapipe_track_skeletons_offline")
 def mediapipe_track_2D_skeletons_offline(
-    session_id_model: SessionIdModel = SessionIdModel(),
+        session_id_model: SessionIdModel = SessionIdModel(),
 ):
     if session_id_model.session_id is None or session_id_model.session_id == "string":
         this_session_id = get_most_recent_session_id()

@@ -1,9 +1,7 @@
-import json
 import logging
 from pathlib import Path
 
 from pydantic import BaseModel
-
 from src.config.home_dir import get_session_folder_path
 
 logger = logging.getLogger(__name__)
@@ -24,7 +22,7 @@ class UserConfigService:
     """take things like WebcamConfigModel and save it to a text file or whatever"""
 
     def save_webcam_config_to_disk(
-        self, webcam_config_model: WebcamConfigModel, session_id: str
+            self, webcam_config_model: WebcamConfigModel, session_id: str
     ):
         webcam_config_json = webcam_config_model.json()
         camera_name = get_camera_name(webcam_config_model.webcam_id)

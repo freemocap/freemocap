@@ -35,13 +35,13 @@ class ProcessMotionCaptureDataPanel(QWidget):
     processing_finished_signal = Signal()
 
     def __init__(
-        self,
-        recording_processing_parameters: PostProcessingParameterModel,
-        get_active_recording_info: Callable,
-        kill_thread_event: threading.Event,
-        log_update: Callable,
-        gui_state: GuiState,
-        parent=None,
+            self,
+            recording_processing_parameters: PostProcessingParameterModel,
+            get_active_recording_info: Callable,
+            kill_thread_event: threading.Event,
+            log_update: Callable,
+            gui_state: GuiState,
+            parent=None,
     ):
         super().__init__(parent=parent)
 
@@ -99,9 +99,9 @@ class ProcessMotionCaptureDataPanel(QWidget):
         return self._calibration_control_panel.update_calibration_toml_path()
 
     def _add_parameters_to_parameter_tree_widget(
-        self,
-        parameter_tree_widget: ParameterTree,
-        session_processing_parameter_model: PostProcessingParameterModel,
+            self,
+            parameter_tree_widget: ParameterTree,
+            session_processing_parameter_model: PostProcessingParameterModel,
     ):
         parameter_group = self._convert_session_processing_parameter_model_to_parameter_group(
             session_processing_parameter_model
@@ -111,8 +111,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
         return parameter_group
 
     def _convert_session_processing_parameter_model_to_parameter_group(
-        self,
-        session_processing_parameter_model: PostProcessingParameterModel,
+            self,
+            session_processing_parameter_model: PostProcessingParameterModel,
     ):
         return Parameter.create(
             name="Processing Parameters",
@@ -149,13 +149,13 @@ class ProcessMotionCaptureDataPanel(QWidget):
                         ),
                     ],
                     tip="Methods for cleaning up the data (e.g. filtering/smoothing, gap filling, etc ...)"
-                    "TODO - Add/expose more post processing methods here (e.g. gap filling, outlier removal, etc ...)",
+                        "TODO - Add/expose more post processing methods here (e.g. gap filling, outlier removal, etc ...)",
                 ),
             ],
         )
 
     def _create_session_parameter_model(
-        self,
+            self,
     ) -> PostProcessingParameterModel:
         recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(
             parameter_object=self._parameter_group
@@ -238,8 +238,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
                 )
                 Path(session_parameter_model.recording_info_model.path).mkdir(parents=True, exist_ok=True)
                 copied_toml_path = (
-                    Path(session_parameter_model.recording_info_model.path)
-                    / Path(selected_camera_calibration_toml_path).name
+                        Path(session_parameter_model.recording_info_model.path)
+                        / Path(selected_camera_calibration_toml_path).name
                 )
                 shutil.copyfile(selected_camera_calibration_toml_path, copied_toml_path)
 

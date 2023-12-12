@@ -21,5 +21,5 @@ def test_synchronized_video_frame_counts(synchronized_video_folder_path: Union[P
     frame_count = get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path)
 
     assert (
-        len(set(frame_count)) == 1
+            len(set(frame_count)) == 1
     ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_count}"

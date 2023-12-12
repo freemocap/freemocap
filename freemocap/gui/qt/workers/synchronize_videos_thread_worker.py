@@ -3,7 +3,6 @@ import threading
 from pathlib import Path
 
 from PySide6.QtCore import Signal, QThread
-
 from skelly_synchronize.skelly_synchronize import synchronize_videos_from_audio, synchronize_videos_from_brightness
 
 logger = logging.getLogger(__name__)
@@ -14,12 +13,12 @@ class SynchronizeVideosThreadWorker(QThread):
     in_progress = Signal(str)
 
     def __init__(
-        self,
-        raw_video_folder_path: Path,
-        synchronized_video_folder_path: Path,
-        kill_thread_event: threading.Event,
-        synchronization_method: str = "audio",
-        brightness_contrast_threshold: float = 1000,
+            self,
+            raw_video_folder_path: Path,
+            synchronized_video_folder_path: Path,
+            kill_thread_event: threading.Event,
+            synchronization_method: str = "audio",
+            brightness_contrast_threshold: float = 1000,
     ):
         super().__init__()
         logger.info("Initializing Synchronize Videos Thread Worker")

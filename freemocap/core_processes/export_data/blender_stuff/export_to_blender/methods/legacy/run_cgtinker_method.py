@@ -1,15 +1,15 @@
+import logging
 import subprocess
 from pathlib import Path
 from typing import Union
 
-import logging
 logger = logging.getLogger(__name__)
 
 
 def run_cgtinker_method(
-    recording_folder_path: Union[str, Path],
-    blender_file_path: Union[str, Path],
-    blender_exe_path: Union[str, Path],
+        recording_folder_path: Union[str, Path],
+        blender_file_path: Union[str, Path],
+        blender_exe_path: Union[str, Path],
 ):
     path_to_this_py_file = Path(__file__).parent.resolve()
 

@@ -1,6 +1,6 @@
+from PySide6.QtCore import Qt
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QSizePolicy
-from PySide6.QtCore import Qt
 
 
 class LogoSvgWidget(QSvgWidget):

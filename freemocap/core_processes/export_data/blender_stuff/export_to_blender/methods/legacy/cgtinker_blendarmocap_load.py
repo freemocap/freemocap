@@ -6,7 +6,7 @@ from BlendArMocap.src.cgt_freemocap.fm_subprocess_cmd_receiver import import_fre
 logger = logging.getLogger(__name__)
 
 argv = sys.argv
-argv = argv[argv.index("--") + 1 :]
+argv = argv[argv.index("--") + 1:]
 recording_path = argv[0]
 blender_save_path = argv[1]
 bind_to_rig_bool = bool(argv[2])

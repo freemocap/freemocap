@@ -53,7 +53,7 @@ class DirectoryViewer(QTreeView):
         self.setStyleSheet("QTreeView::item:selected {background: red;}")
 
         # also color children of the active recording
-        for index in self.get_children(index): # noqa (do we want to reassign the index value while we're looping?)
+        for index in self.get_children(index):  # noqa (do we want to reassign the index value while we're looping?)
             self.setStyleSheet("QTreeView::item:selected {background: pink;}")
 
         # Keep the parent directory expanded

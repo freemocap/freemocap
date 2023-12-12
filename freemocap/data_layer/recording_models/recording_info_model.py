@@ -28,15 +28,15 @@ logger = logging.getLogger(__name__)
 
 class RecordingInfoModel:
     def __init__(
-        self,
-        recording_folder_path: Union[Path, str],
+            self,
+            recording_folder_path: Union[Path, str],
     ):
         if any(
-            [
-                Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME,
-                Path(recording_folder_path).name == ANNOTATED_VIDEOS_FOLDER_NAME,
-                Path(recording_folder_path).name == OUTPUT_DATA_FOLDER_NAME,
-            ]
+                [
+                    Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME,
+                    Path(recording_folder_path).name == ANNOTATED_VIDEOS_FOLDER_NAME,
+                    Path(recording_folder_path).name == OUTPUT_DATA_FOLDER_NAME,
+                ]
         ):
             recording_folder_path = Path(recording_folder_path).parent
 

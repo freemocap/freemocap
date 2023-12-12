@@ -22,11 +22,11 @@ logger = logging.getLogger(__name__)
 
 class AniposeCameraCalibrator:
     def __init__(
-        self,
-        charuco_board_object: CharucoBoardDefinition,
-        charuco_square_size: Union[int, float],
-        calibration_videos_folder_path: Union[str, Path],
-        progress_callback: Callable[[str], None] = None,
+            self,
+            charuco_board_object: CharucoBoardDefinition,
+            charuco_square_size: Union[int, float],
+            calibration_videos_folder_path: Union[str, Path],
+            progress_callback: Callable[[str], None] = None,
     ):
         self._charuco_board_object = charuco_board_object
         self._progress_callback = progress_callback
@@ -42,7 +42,7 @@ class AniposeCameraCalibrator:
         self._initialize_anipose_objects()
 
     def _get_video_paths(
-        self,
+            self,
     ):
         self._list_of_video_paths = get_video_paths(path_to_video_folder=Path(self._calibration_videos_folder_path))
 
@@ -115,7 +115,7 @@ class AniposeCameraCalibrator:
         altered_translation_vectors = np.zeros(original_translation_vectors.shape)
         for this_camera_number in range(original_translation_vectors.shape[0]):
             altered_translation_vectors[this_camera_number, :] = (
-                original_translation_vectors[this_camera_number, :] - camera_0_translation
+                    original_translation_vectors[this_camera_number, :] - camera_0_translation
             )
 
         _anipose_camera_group_object.set_translations(altered_translation_vectors)

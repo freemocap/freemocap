@@ -3,7 +3,6 @@ import logging
 import cv2
 from fastapi import APIRouter
 from pydantic import BaseModel
-
 from src.api.services.user_config import UserConfigService, WebcamConfigModel
 from src.cameras.detection.cam_singleton import get_or_create_cams
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
@@ -25,11 +24,11 @@ async def config_cam(webcam_config_model: WebcamConfigModel, session_id):
 
 @camera_router.post("/camera/show_camera/{webcam_id}")
 async def show_camera(
-    webcam_id: str, camera_preview_model: CameraPreviewModel = CameraPreviewModel()
+        webcam_id: str, camera_preview_model: CameraPreviewModel = CameraPreviewModel()
 ):
     cv_cam_manager = OpenCVCameraManager(session_id=camera_preview_model.session_id)
     with cv_cam_manager.start_capture_session_single_cam(
-        webcam_id
+            webcam_id
     ) as connected_camera_and_writer:
         should_continue = True
         this_camera = connected_camera_and_writer.cv_camera
@@ -48,7 +47,7 @@ async def show_camera(
 
 @camera_router.post("/camera/show_cameras")
 async def cv2_imshow_all_camera(
-    camera_preview_model: CameraPreviewModel = CameraPreviewModel(),
+        camera_preview_model: CameraPreviewModel = CameraPreviewModel(),
 ):
     cv_cam_manager = OpenCVCameraManager(session_id=camera_preview_model.session_id)
     with cv_cam_manager.start_capture_session_all_cams() as connected_cameras_dict:

@@ -31,7 +31,7 @@ class DownloadDataThreadWorker(QThread):
                 logger.error(f"Could not find downloaded data at {downloaded_data_path}")
                 raise FileNotFoundError(f"Could not find downloaded data at {downloaded_data_path}")
 
-        except Exception as e: # noqa
+        except Exception as e:  # noqa
             logger.exception(e)
             logger.error(f"Error downloading sample data from {self._dowload_url}")
             raise e

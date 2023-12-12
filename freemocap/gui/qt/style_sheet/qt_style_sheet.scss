@@ -24,214 +24,223 @@ $divider-color: #bdbdbd;
 $disabled-line-edit: #e0e0e0;
 
 * {
-    font-family: "Dosis", sans-serif;
-    font-size: 14px;
-    color: $dark-charcoal;
+  font-family: "Dosis", sans-serif;
+  font-size: 14px;
+  color: $dark-charcoal;
 }
 
 QObject {
-    color: $plain-black;
-    background-color: $plain-white;
+  color: $plain-black;
+  background-color: $plain-white;
 }
 
 QGroupBox {
-    border: 1px solid $divider-color;
-    border-radius: 4px;
-    margin-top: 10px;
-    font-weight: bold;
-    background-color: $accent-background;
+  border: 1px solid $divider-color;
+  border-radius: 4px;
+  margin-top: 10px;
+  font-weight: bold;
+  background-color: $accent-background;
 
 }
 
 QStatusBar {
-    color: $plain-black;
+  color: $plain-black;
 }
 
 QMainWindow {
-    background-color: $dark-background;
+  background-color: $dark-background;
 }
 
 QTabWidget::pane {
-    border: 1px solid $plain-white;
-    background: $background;
-    padding: 5px;
+  border: 1px solid $plain-white;
+  background: $background;
+  padding: 5px;
 }
+
 QTabWidget::pane::selection {
-    border-top: 1px solid $dark-charcoal;
+  border-top: 1px solid $dark-charcoal;
 }
+
 QTabBar::tab {
-    border: 1px solid $plain-black;
-    padding: 5px;
-    padding-right: 15px;
-    padding-left: 15px;
-    color: $plain-black;
-    border-top-left-radius: 20px;
-    border-top-right-radius: 5px;
-    background: $plain-white;
-    margin-bottom: -5px;
-    font-weight: bolder;
-    font-size: 16px;
+  border: 1px solid $plain-black;
+  padding: 5px;
+  padding-right: 15px;
+  padding-left: 15px;
+  color: $plain-black;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 5px;
+  background: $plain-white;
+  margin-bottom: -5px;
+  font-weight: bolder;
+  font-size: 16px;
 }
 
 QTabBar::tab:selected,
 QTabBar::tab:hover {
-    background: $active-element;
-    color: $plain-white;
-    border-color: $plain-black;
+  background: $active-element;
+  color: $plain-white;
+  border-color: $plain-black;
 }
 
 QPushButton {
-    border-radius: 10px;
-    color: $plain-black;
-    border: 2px solid $primary-button;
-    background-color: #dbeef0;
-    color: $plain-black;
-    padding: 5px;
+  border-radius: 10px;
+  color: $plain-black;
+  border: 2px solid $primary-button;
+  background-color: #dbeef0;
+  color: $plain-black;
+  padding: 5px;
 }
 
 QPushButton:disabled {
-    background-color: $background;
-    border: 2px solid $disabled-button;
-    color: $dark-charcoal;
+  background-color: $background;
+  border: 2px solid $disabled-button;
+  color: $dark-charcoal;
 }
 
 QPushButton:hover {
-    border: 2px solid $plain-black;
-    background-color: $primary-button;
+  border: 2px solid $plain-black;
+  background-color: $primary-button;
 }
 
 QPushButton:pressed {
-    background-color: darken($secondary-button, 20%);
+  background-color: darken($secondary-button, 20%);
 }
 
 QPushButton:pressed {
-    background-color: darken($secondary-button, 20%);
+  background-color: darken($secondary-button, 20%);
 }
 
 QPushButton#start_recording_button {
-    font-size: 16px;
-    background-color: $recording-button-red;
-    border: 2px solid $dark-charcoal;
-    padding: 10px;
-    border-radius: 10px;
-    width:250px;
+  font-size: 16px;
+  background-color: $recording-button-red;
+  border: 2px solid $dark-charcoal;
+  padding: 10px;
+  border-radius: 10px;
+  width: 250px;
 }
+
 QPushButton#start_recording_button:hover {
-    border: 2px solid darken($laser-red, 10%);
+  border: 2px solid darken($laser-red, 10%);
 }
+
 QPushButton#start_recording_button:disabled {
-    background-color: $disabled-laser-red;
-    color: $disabled-text;
+  background-color: $disabled-laser-red;
+  color: $disabled-text;
 }
 
 QPushButton#stop_recording_button {
-    font-size: 14px;
-    background-color: $background;
+  font-size: 14px;
+  background-color: $background;
 }
+
 QPushButton#stop_recording_button:enabled {
-    border: 3px solid $laser-red;
-    background-color: $background;
+  border: 3px solid $laser-red;
+  background-color: $background;
 }
+
 QPushButton#stop_recording_button:hover {
-    border: 3px solid $plain-black;
-    background-color: $background;
+  border: 3px solid $plain-black;
+  background-color: $background;
 }
+
 QPushButton#stop_recording_button:disabled {
-    color: $disabled-text;
+  color: $disabled-text;
 }
+
 QPushButton#process_motion_capture_button,
 QPushButton#export_to_blender_button {
-    font-size: 18px;
-    background-color: $primary-button;
-    border: 2px solid $dark-charcoal;
+  font-size: 18px;
+  background-color: $primary-button;
+  border: 2px solid $dark-charcoal;
 }
 
 QPushButton#process_motion_capture_button:hover,
 QPushButton#export_to_blender_button:hover {
-    border: 2px solid darken($primary-button, 20%);
+  border: 2px solid darken($primary-button, 20%);
 }
 
 WelcomeScreenButton {
-    border: 2px solid $dark-charcoal;
-    background-color: $primary-button;
-    color: $plain-black;
-    font-size: 24px;
-    border-radius: 20px;
-    padding: 10px;
-    min-height: auto;
+  border: 2px solid $dark-charcoal;
+  background-color: $primary-button;
+  color: $plain-black;
+  font-size: 24px;
+  border-radius: 20px;
+  padding: 10px;
+  min-height: auto;
 }
 
 WelcomeScreenButton:hover {
-    border: 2px solid darken($primary-button, 20%);
+  border: 2px solid darken($primary-button, 20%);
 }
 
 WelcomeScreenButton[recommended_next = true] {
-    background-color: $laser-red;
-    color: $plain-white;
+  background-color: $laser-red;
+  color: $plain-white;
 }
 
 WelcomeScreenButton[recommended_next = true]:hover {
-    border: 2px solid darken($laser-red, 20%);
+  border: 2px solid darken($laser-red, 20%);
 }
 
 QLabel {
-    font-size: 14px;
-    color: $dark-charcoal;
-    
+  font-size: 14px;
+  color: $dark-charcoal;
 
-    QTreeView & {
-        color: $plain-black;
+
+  QTreeView & {
+    color: $plain-black;
   }
 }
 
 QLabel:disabled {
-    color: $dark-background
+  color: $dark-background
 }
 
 QLineEdit {
-    border: 1px solid $dark-charcoal;
-    border-radius: 4px;
-    padding: 0 8px;
-    color: $dark-charcoal;
-    background-color: $plain-white;
+  border: 1px solid $dark-charcoal;
+  border-radius: 4px;
+  padding: 0 8px;
+  color: $dark-charcoal;
+  background-color: $plain-white;
 }
+
 QLineEdit:disabled {
-    border: 1px solid $divider-color;
-    color: $dark-charcoal;
-    background-color: $disabled-line-edit;
+  border: 1px solid $divider-color;
+  color: $dark-charcoal;
+  background-color: $disabled-line-edit;
 }
 
 QTreeView {
-    background-color: $tree-primary;
-    color: $plain-black;
-    font-family: "Roboto", sans-serif;
-    font-size: 12px;
+  background-color: $tree-primary;
+  color: $plain-black;
+  font-family: "Roboto", sans-serif;
+  font-size: 12px;
 }
 
 QTreeView::item:has-children {
-    background-color: $tree-secondary;
-    color: $plain-black;
-    border-bottom: 1px solid $divider-color;
+  background-color: $tree-secondary;
+  color: $plain-black;
+  border-bottom: 1px solid $divider-color;
 }
 
 QTreeView::item:selected,
-QTreeView::item:hover{
-    background-color: $tree-selected;
-    color: $dark-charcoal;
+QTreeView::item:hover {
+  background-color: $tree-selected;
+  color: $dark-charcoal;
 }
 
 LogViewWidget {
-    background-color: $terminal-background;
-    color: $plain-white;
-    font-family: "Roboto", sans-serif;
-    font-size: 12px;
-    padding: 8px;
+  background-color: $terminal-background;
+  color: $plain-white;
+  font-family: "Roboto", sans-serif;
+  font-size: 12px;
+  padding: 8px;
 }
 
 QDialog {
-    background-color: $accent-background;
+  background-color: $accent-background;
 }
 
 QListWidget {
-    background-color: $accent-background;
+  background-color: $accent-background;
 }

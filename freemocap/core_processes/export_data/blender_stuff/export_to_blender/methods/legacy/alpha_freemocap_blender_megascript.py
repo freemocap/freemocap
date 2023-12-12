@@ -11,6 +11,7 @@ print(" - Starting (alpha) blender megascript - ")
 bpy.ops.preferences.addon_enable(module="io_import_images_as_planes")
 bpy.ops.preferences.addon_enable(module="rigify")
 
+
 #######################################################################
 
 
@@ -37,7 +38,7 @@ try:
     ##% Session path
     # #get session path as command line argument
     argv = sys.argv
-    argv = argv[argv.index("--") + 1 :]
+    argv = argv[argv.index("--") + 1:]
     session_path = argv[0]
 
     blend_file_save_path = argv[1]
@@ -56,10 +57,10 @@ print(f"Using session path - {str(session_path)}")
 session_path = Path(session_path)
 
 path_to_mediapipe_npy = (
-    session_path / "output_data" / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+        session_path / "output_data" / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
 )
 path_to_mediapipe_3d_reproj = (
-    session_path / "output_data" / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+        session_path / "output_data" / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
 )
 
 print(f"Loading mediapipe data from {path_to_mediapipe_npy}")
@@ -83,25 +84,25 @@ left_hand_marker_range = np.arange(33 + 21, 33 + 21 + 21)
 face_marker_range = np.arange(left_hand_marker_range[-1], mediapipe_skel_fr_mar_dim.shape[1])
 
 body_skel_fr_mar_dim = mediapipe_skel_fr_mar_dim[
-    :,
-    body_marker_range,
-    :,
-]
+                       :,
+                       body_marker_range,
+                       :,
+                       ]
 right_hand_fr_mar_dim = mediapipe_skel_fr_mar_dim[
-    :,
-    right_hand_marker_range,
-    :,
-]
+                        :,
+                        right_hand_marker_range,
+                        :,
+                        ]
 left_hand_fr_mar_dim = mediapipe_skel_fr_mar_dim[
-    :,
-    left_hand_marker_range,
-    :,
-]
+                       :,
+                       left_hand_marker_range,
+                       :,
+                       ]
 face_fr_mar_dim = mediapipe_skel_fr_mar_dim[
-    :,
-    face_marker_range,
-    :,
-]
+                  :,
+                  face_marker_range,
+                  :,
+                  ]
 
 # %% Session Specific stuff
 number_of_frames = mediapipe_skel_fr_mar_dim.shape[0]
@@ -305,8 +306,9 @@ try:
     left_shoulder_index = 11
     right_shoulder_index = 12
     neck_xyz = (
-        mediapipe_skel_fr_mar_dim[:, left_shoulder_index, :] + mediapipe_skel_fr_mar_dim[:, right_shoulder_index, :]
-    ) / 2
+                       mediapipe_skel_fr_mar_dim[:, left_shoulder_index, :] + mediapipe_skel_fr_mar_dim[:,
+                                                                              right_shoulder_index, :]
+               ) / 2
     bpy.ops.object.empty_add(type="PLAIN_AXES")
     this_empty = bpy.context.active_object
     this_empty.name = "neck_center"
@@ -1167,8 +1169,8 @@ try:
             print(f"---Setting constraints for bone:{this_bone_name}---")
 
             for (
-                this_constraint_name,
-                this_constraint_target_empty_name,
+                    this_constraint_name,
+                    this_constraint_target_empty_name,
             ) in this_bone_dict.items():
                 print(f"constraint: {this_constraint_name} with target:{this_constraint_target_empty_name}")
                 print("grab bone")
@@ -1547,7 +1549,7 @@ try:
                 tail_index = mediapipe_tracked_point_names.index(tail_name)
 
                 if (
-                    "center" in head_name
+                        "center" in head_name
                 ):  # virtual markers are acting weird so we're brute forcing it :-/ this will fail if there is a virtual marker without 'center' in the name....
                     head_index = virtual_point_index_dict[head_name]
                 if "center" in tail_name:
@@ -1641,8 +1643,8 @@ try:
             vid_location_scale = 1
 
             for (
-                vid_number,
-                thisVidPath,
+                    vid_number,
+                    thisVidPath,
             ) in enumerate(get_video_paths(vidFolderPath)):
                 print(thisVidPath)
                 # use 'images as planes' add on to load in the video files as planes

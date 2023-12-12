@@ -1,10 +1,9 @@
-
 interface Props {
-  recordingSessionLocation: string;
+    recordingSessionLocation: string;
 }
 
 export const UserConfig = (
-  props: Props
+    props: Props
 ) => {
-  return null;
+    return null;
 }

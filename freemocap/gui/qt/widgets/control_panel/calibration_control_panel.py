@@ -22,7 +22,6 @@ from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gu
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
-
 from freemocap.system.paths_and_filenames.path_getters import (
     get_gui_state_json_path,
     get_last_successful_calibration_toml_path,
@@ -33,7 +32,8 @@ logger = logging.getLogger(__name__)
 
 class CalibrationControlPanel(QWidget):
     def __init__(
-        self, get_active_recording_info: Callable, kill_thread_event: threading.Event, gui_state: GuiState, parent=None
+            self, get_active_recording_info: Callable, kill_thread_event: threading.Event, gui_state: GuiState,
+            parent=None
     ):
         super().__init__(parent=parent)
         self.gui_state = gui_state

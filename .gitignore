@@ -146,3 +146,5 @@ data/
 *.avi
 *.mp4
 *.divx
+
+*/node_modules/

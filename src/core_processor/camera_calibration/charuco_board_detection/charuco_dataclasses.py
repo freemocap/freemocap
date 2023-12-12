@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -20,6 +20,6 @@ class CharucoViewData:
 
 @dataclass
 class CharucoFramePayload:
-    raw_frame_payload: FramePayload = FramePayload()
+    raw_frame_payload: FramePayload = field(default_factory=FramePayload)
     annotated_image: np.ndarray = None
-    charuco_view_data: CharucoViewData = CharucoViewData()
+    charuco_view_data: CharucoViewData = field(default_factory=CharucoViewData)

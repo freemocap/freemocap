@@ -35,15 +35,16 @@ class WebcamConfig(BaseModel):
 class CameraCalibrationData:
     image_width: int
     image_height: int
-    lens_distortion_calibration_data: LensDistortionCalibrationData = None
-    camera_translation_relative_to_camera0: np.ndarray = np.zeros((3, 1))
-    camera_rotation_relative_to_camera0: np.ndarray = np.zeros((3, 1))
+    lens_distortion_calibration_data: LensDistortionCalibrationData
+    camera_translation_relative_to_camera0: np.ndarray
+    camera_rotation_relative_to_camera0: np.ndarray
 
-    def __init__(self, image_width, image_height):
+    def __init__(self, image_width: int, image_height: int):
         self.image_width = image_width
         self.image_height = image_height
-        self.lens_distortion_calibration_data = LensDistortionCalibrationData(self.image_width,
-                                                                              self.image_height)
+        self.lens_distortion_calibration_data = LensDistortionCalibrationData(image_width, image_height)
+        self.camera_translation_relative_to_camera0 = np.zeros((3, 1))
+        self.camera_rotation_relative_to_camera0 = np.zeros((3, 1))
 
 
 class OpenCVCamera:

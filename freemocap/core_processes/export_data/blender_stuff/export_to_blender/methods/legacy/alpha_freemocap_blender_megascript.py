@@ -11,6 +11,7 @@ print(" - Starting (alpha) blender megascript - ")
 bpy.ops.preferences.addon_enable(module="io_import_images_as_planes")
 bpy.ops.preferences.addon_enable(module="rigify")
 
+
 #######################################################################
 
 

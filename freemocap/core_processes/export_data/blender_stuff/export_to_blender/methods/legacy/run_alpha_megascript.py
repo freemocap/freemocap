@@ -1,8 +1,8 @@
+import logging
 import subprocess
 from pathlib import Path
 from typing import Union
 
-import logging
 logger = logging.getLogger(__name__)
 
 

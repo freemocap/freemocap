@@ -254,7 +254,8 @@ def process_recording_folder(
         dictionary=mediapipe_names_and_connections_dict,
     )
 
-    # TODO - move this data output method *above* the sloppy stuff above and deprecate the sloppy stuff (gracefully enough not to bork hypothetical users' workflows)
+    # TODO - move this data output method *above* the sloppy stuff above and deprecate the sloppy stuff
+    #  (gracefully enough not to bork hypothetical users' workflows)
     DataSaver(recording_folder_path=rec.recording_info_model.path).save_all()
 
     logger.info(f"Done processing {rec.recording_info_model.path}")

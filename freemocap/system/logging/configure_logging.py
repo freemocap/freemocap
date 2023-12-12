@@ -7,9 +7,8 @@ from logging.config import dictConfig
 from skellycam.system.environment.default_paths import get_log_file_path
 
 # Suppress some annoying log messages
-logging.getLogger('tzlocal').setLevel(logging.WARNING)
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-
+logging.getLogger("tzlocal").setLevel(logging.WARNING)
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 log_view_logging_format_string = "[%(asctime)s.%(msecs)04d] [%(levelname)4s] [%(name)s] [Process:%(process)d Thread:%(thread)d] ::::: [%(name)s:%(funcName)s():%(lineno)s] |||| %(message)s."
 
@@ -51,12 +50,8 @@ class CustomFormatter(logging.Formatter):
         else:
             raise TypeError("Invalid type for 'created'")
 
-        date_format_with_microseconds = (
-            "%Y-%m-%dT%H:%M:%S.%f"  # Including microseconds with %f
-        )
-        return datetime.strftime(
-            datetime.fromtimestamp(timestamp), date_format_with_microseconds
-        )
+        date_format_with_microseconds = "%Y-%m-%dT%H:%M:%S.%f"  # Including microseconds with %f
+        return datetime.strftime(datetime.fromtimestamp(timestamp), date_format_with_microseconds)
 
 
 class LoggerBuilder:
@@ -69,9 +64,7 @@ class LoggerBuilder:
     )
 
     def __init__(self, level: LogLevel):
-        self.default_logging_formatter = CustomFormatter(
-            fmt=self.format_string, datefmt="%Y-%m-%dT%H:%M:%S"
-        )
+        self.default_logging_formatter = CustomFormatter(fmt=self.format_string, datefmt="%Y-%m-%dT%H:%M:%S")
         dictConfig(self.DEFAULT_LOGGING)
 
         self._set_logging_level(level)
@@ -129,6 +122,7 @@ class LoggerBuilder:
                     logging.getLogger("").handlers.append(handler)
         else:
             from skellycam import logger
+
             logger.info("Logging already configured")
 
 
@@ -140,11 +134,7 @@ def ensure_min_brightness(value, threshold=50):
 def ensure_not_grey(r, g, b, threshold_diff=100):
     """Ensure that the color isn't desaturated grey by making one color component dominant."""
     max_val = max(r, g, b)
-    if (
-            abs(r - g) < threshold_diff
-            and abs(r - b) < threshold_diff
-            and abs(g - b) < threshold_diff
-    ):
+    if abs(r - g) < threshold_diff and abs(r - b) < threshold_diff and abs(g - b) < threshold_diff:
         if max_val == r:
             r = 255
         elif max_val == g:
@@ -200,23 +190,17 @@ def log_test_messages(logger):
     for iter in range(1, 10):
         wait_time = iter / 10
         print(f"Testing timestamps (round: {iter}:")
-        logger.info(
-            "Starting 1 sec timer (Δt should probably be near 0, unless you've got other stuff going on)"
-        )
+        logger.info("Starting 1 sec timer (Δt should probably be near 0, unless you've got other stuff going on)")
         tic = time.perf_counter_ns()
         time.sleep(wait_time)
         toc = time.perf_counter_ns()
         elapsed_time = (toc - tic) / 1e9
-        logger.info(
-            f"Done {wait_time} sec timer - elapsed time:{elapsed_time} (Δt should be ~{wait_time}s)"
-        )
+        logger.info(f"Done {wait_time} sec timer - elapsed time:{elapsed_time} (Δt should be ~{wait_time}s)")
 
 
 if __name__ == "__main__":
-
     from skellycam import logger
+
     configure_logging(LogLevel.TRACE)  # Setting the root logger level to TRACE
     log_test_messages(logger)
-    logger.success(
-        "Logging setup and tests completed. Check the console output and the log file."
-    )
+    logger.success("Logging setup and tests completed. Check the console output and the log file.")

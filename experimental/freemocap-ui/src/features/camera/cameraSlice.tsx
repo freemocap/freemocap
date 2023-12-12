@@ -9,16 +9,16 @@ export class AppCameraState {
 // }
 
 export const cameraSlice = createSlice({
-  name: 'counter',
-  initialState: new AppCameraState(),
-  reducers: {
-    increment: (state) => {
+    name: 'counter',
+    initialState: new AppCameraState(),
+    reducers: {
+        increment: (state) => {
+        },
+        decrement: (state) => {
+        },
+        incrementByAmount: (state, action: PayloadAction<number>) => {
+        },
     },
-    decrement: (state) => {
-    },
-    incrementByAmount: (state, action: PayloadAction<number>) => {
-    },
-  },
 })
 
 // Action creators are generated for each case reducer function

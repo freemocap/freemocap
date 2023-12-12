@@ -3,9 +3,9 @@ import os
 import threading
 from typing import Callable
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QDoubleValidator
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QDoubleValidator
+from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QLabel,
@@ -22,7 +22,6 @@ from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gu
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
-
 from freemocap.system.paths_and_filenames.path_getters import (
     get_gui_state_json_path,
     get_last_successful_calibration_toml_path,
@@ -302,7 +301,7 @@ class CalibrationControlPanel(QWidget):
 
 
 if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
     import sys
 
     app = QApplication(sys.argv)

@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, QThread
+from PySide6.QtCore import Signal, QThread
 
 from freemocap.utilities.download_sample_data import download_sample_data
 
@@ -9,12 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class DownloadDataThreadWorker(QThread):
-    finished = pyqtSignal(str)
-    in_progress = pyqtSignal(str)
+    finished = Signal(str)
+    in_progress = Signal(str)
 
-    def __init__(self,
-                 dowload_url: str,
-                 parent=None):
+    def __init__(self, dowload_url: str, parent=None):
         super().__init__(parent=parent)
         logger.info("Initializing download sample data thread worker")
         self.download_url = dowload_url
@@ -31,7 +29,7 @@ class DownloadDataThreadWorker(QThread):
                 logger.error(f"Could not find downloaded data at {downloaded_data_path}")
                 raise FileNotFoundError(f"Could not find downloaded data at {downloaded_data_path}")
 
-        except Exception as e: # noqa
+        except Exception as e:  # noqa
             logger.exception(e)
             logger.error(f"Error downloading sample data from {self._dowload_url}")
             raise e

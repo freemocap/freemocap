@@ -1192,7 +1192,6 @@ BODY_SEGMENT_NAMES = [
     "left_foot",
 ]
 
-
 FULL_BODY_CENTER_OF_MASS_NAME = (
     "_full_body_center_of_mass"  # leading underscore to make it easier to find in the outliner
 )

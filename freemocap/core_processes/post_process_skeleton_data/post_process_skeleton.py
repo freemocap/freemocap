@@ -1,9 +1,8 @@
+import logging
+from pathlib import Path
 from typing import Union
 
 import numpy as np
-from pathlib import Path
-import logging
-
 from skellyforge.freemocap_utils.config import default_settings
 from skellyforge.freemocap_utils.constants import (
     TASK_FILTERING,

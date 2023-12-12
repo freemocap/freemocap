@@ -3,7 +3,7 @@ import threading
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtCore import pyqtSignal, QThread
+from PySide6.QtCore import Signal, QThread
 
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class AniposeCalibrationThreadWorker(QThread):
-    finished = pyqtSignal()
-    in_progress = pyqtSignal(str)
+    finished = Signal()
+    in_progress = Signal(str)
 
     def __init__(
         self,

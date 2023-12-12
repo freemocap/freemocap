@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget
 
 
 def apply_css_style_sheet(qt_widget: QWidget, path_to_css_file: Union[str, Path]):

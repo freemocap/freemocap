@@ -4,9 +4,9 @@ import threading
 from logging.handlers import QueueHandler
 from queue import Queue
 
-from PyQt6 import QtCore
-from PyQt6.QtCore import QThread
-from PyQt6.QtWidgets import QApplication, QPlainTextEdit
+from PySide6 import QtCore
+from PySide6.QtCore import QThread
+from PySide6.QtWidgets import QApplication, QPlainTextEdit
 
 from freemocap.gui.qt.utilities.colors import get_next_color, rgb_color_generator
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
@@ -28,7 +28,7 @@ code_path_colors = {}
 
 
 class LoggingQueueListener(QThread):
-    log_message_signal = QtCore.pyqtSignal(object)
+    log_message_signal = QtCore.Signal(object)
 
     def __init__(self, logging_queue: Queue, exit_event: threading.Event, parent=None):
         super().__init__(parent)

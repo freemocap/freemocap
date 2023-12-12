@@ -1,32 +1,41 @@
 import logging
 import platform
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 
 logger = logging.getLogger(__name__)
 
 
-def guess_blender_exe_path_from_path(base_path: Union[str, Path]) -> Path:
-    blender_folder_path = [path for path in base_path.glob("Blender*")]
-    if len(blender_folder_path) > 0:
-        blender_exe_path = blender_folder_path[-1] / "blender.exe"
-        return blender_exe_path
+def guess_blender_exe_path_from_path(base_path: Union[str, Path],
+                                     exclude_blender_4: bool = True) -> Optional[Path]:
+    base_path = Path(base_path)
+    blender_folder_paths = [path for path in base_path.rglob("blender.exe")]
+
+    if blender_folder_paths:
+        if exclude_blender_4:
+            blender_folder_paths = [path for path in blender_folder_paths if "blender-4" not in str(path)]
+            blender_folder_paths = [path for path in blender_folder_paths if "Blender 4" not in str(path)]
+
+        best_guess = blender_folder_paths[-1]
+
+        return best_guess
 
 
 def get_best_guess_of_blender_path():
     if platform.system() == "Windows":
-        base_path = Path(r"C:\Program Files\Blender Foundation")
-        blender_exe_path = guess_blender_exe_path_from_path(base_path)
 
-        if blender_exe_path is not None:
-            if not blender_exe_path.is_file():
-                base_path = Path(Path.home()) / "Blender Foundation"
-                blender_exe_path = guess_blender_exe_path_from_path(base_path)
+        # check all lettered drives and the user's home directory
+        paths_to_check = [Path(f"{letter}:/Program Files/Blender Foundation") for letter in
+                          "ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
 
-        if blender_exe_path is not None and blender_exe_path.is_file():
-            logger.info(f"Windows machine detected - guessing that `blender` is installed at: {str(blender_exe_path)}")
+        paths_to_check.append(Path.home() / "Blender Foundation")
 
-            return str(blender_exe_path)
+        for base_path in paths_to_check:
+            blender_exe_path = guess_blender_exe_path_from_path(base_path)
+            if blender_exe_path is not None and blender_exe_path.is_file():
+                logger.info(f"Found `blender.exe` at: {str(blender_exe_path)}")
+
+                return str(blender_exe_path)
         else:
             logger.warning(
                 "Could not find `blender.exe` in the expected locations. Please locate it manually (or install Blender, if it isn't installed)."
@@ -72,3 +81,7 @@ def get_best_guess_of_blender_path():
     else:
         logger.info("Machine system not detected, please locate Blender path manually.")
         return None
+
+
+if __name__ == "__main__":
+    print(f" blender path: {get_best_guess_of_blender_path()}")

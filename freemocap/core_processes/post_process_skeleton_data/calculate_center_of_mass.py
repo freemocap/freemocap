@@ -126,10 +126,10 @@ def build_mediapipe_skeleton(mediapipe_pose_data, segment_dataframe, mediapipe_i
 
         mediapipe_pose_skeleton_coordinates = {}
         for (
-                segment,
-                segment_info,
+            segment,
+            segment_info,
         ) in (
-                segment_dataframe.iterrows()
+            segment_dataframe.iterrows()
         ):  # iterate through the data frame by the segment name and all the info for that segment
             if segment == "trunk":
                 # based on index, extract coordinate data from fmc mediapipe data
@@ -264,9 +264,9 @@ segment_COM_percentages = [
 
 # %%
 def calculate_segment_COM(
-        segment_conn_len_perc_dataframe,
-        skelcoordinates_frame_segment_joint_XYZ,
-        num_frame_range,
+    segment_conn_len_perc_dataframe,
+    skelcoordinates_frame_segment_joint_XYZ,
+    num_frame_range,
 ):
     segment_COM_frame_dict = []
     for frame in track(num_frame_range, description="Calculating Segment Center of Mass"):
@@ -280,7 +280,7 @@ def calculate_segment_COM(
             this_segment_COM_length = segment_info["Segment_COM_Length"]
 
             this_segment_COM = this_segment_proximal + this_segment_COM_length * (
-                    this_segment_distal - this_segment_proximal
+                this_segment_distal - this_segment_proximal
             )
             segment_COM_dict[segment] = this_segment_COM
         segment_COM_frame_dict.append(segment_COM_dict)
@@ -328,10 +328,10 @@ def calculate_total_body_COM(segment_conn_len_perc_dataframe, segment_COM_frame_
 
 
 def build_anthropometric_dataframe(
-        segments: list,
-        joint_connections: list,
-        segment_COM_lengths: list,
-        segment_COM_percentages: list,
+    segments: list,
+    joint_connections: list,
+    segment_COM_lengths: list,
+    segment_COM_percentages: list,
 ) -> pd.DataFrame:
     # load anthropometric data into a pandas dataframe
     df = pd.DataFrame(
@@ -355,9 +355,9 @@ def build_anthropometric_dataframe(
 
 
 def calculate_center_of_mass(
-        freemocap_marker_data_array: np.ndarray,
-        pose_estimation_skeleton: list,
-        anthropometric_info_dataframe: pd.DataFrame,
+    freemocap_marker_data_array: np.ndarray,
+    pose_estimation_skeleton: list,
+    anthropometric_info_dataframe: pd.DataFrame,
 ):
     num_frames = freemocap_marker_data_array.shape[0]
     num_frame_range = range(num_frames)

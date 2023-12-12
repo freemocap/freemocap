@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 def convert_mediapipe_npy_to_csv(
-        mediapipe_3d_frame_trackedPoint_xyz: np.ndarray,
-        output_data_folder_path: Union[str, Path],
+    mediapipe_3d_frame_trackedPoint_xyz: np.ndarray,
+    output_data_folder_path: Union[str, Path],
 ):
     logger.info(
         f"Converting npy data with shape: {mediapipe_3d_frame_trackedPoint_xyz.shape} into `csv` and smaller `npy` files"
@@ -78,14 +78,14 @@ def convert_mediapipe_npy_to_csv(
     # )
 
     # %%
-    body_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_body_marker_index: last_body_marker_index + 1, :]
+    body_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_body_marker_index : last_body_marker_index + 1, :]
     right_hand_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
-                        :, first_right_hand_marker_index: last_right_hand_marker_index + 1, :
-                        ]
+        :, first_right_hand_marker_index : last_right_hand_marker_index + 1, :
+    ]
     left_hand_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
-                       :, first_left_hand_marker_index: last_left_hand_marker_index + 1, :
-                       ]
-    face_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_face_marker_index: last_face_marker_index + 1, :]
+        :, first_left_hand_marker_index : last_left_hand_marker_index + 1, :
+    ]
+    face_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_face_marker_index : last_face_marker_index + 1, :]
 
     # logger.info(f"body 3d xyz shape: {body_3d_xyz.shape}")
     # logger.info(f"right hand 3d xyz shape: {right_hand_3d_xyz.shape}")
@@ -227,14 +227,14 @@ def convert_mediapipe_npy_to_csv(
     # )
 
     # %%
-    body_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_body_marker_index: last_body_marker_index + 1, :]
+    body_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_body_marker_index : last_body_marker_index + 1, :]
     right_hand_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
-                        :, first_right_hand_marker_index: last_right_hand_marker_index + 1, :
-                        ]
+        :, first_right_hand_marker_index : last_right_hand_marker_index + 1, :
+    ]
     left_hand_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[
-                       :, first_left_hand_marker_index: last_left_hand_marker_index + 1, :
-                       ]
-    face_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_face_marker_index: last_face_marker_index + 1, :]
+        :, first_left_hand_marker_index : last_left_hand_marker_index + 1, :
+    ]
+    face_3d_xyz = mediapipe_3d_frame_trackedPoint_xyz[:, first_face_marker_index : last_face_marker_index + 1, :]
 
     logger.debug(f"body 3d xyz shape: {body_3d_xyz.shape}")
     logger.debug(f"right hand 3d xyz shape: {right_hand_3d_xyz.shape}")

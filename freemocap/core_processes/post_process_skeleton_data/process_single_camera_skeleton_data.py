@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 def process_single_camera_skeleton_data(
-        input_image_data_frame_marker_xyz: np.ndarray,
-        raw_data_folder_path: Union[str, Path],
-        project_to_z_plane: bool = True,
+    input_image_data_frame_marker_xyz: np.ndarray,
+    raw_data_folder_path: Union[str, Path],
+    project_to_z_plane: bool = True,
 ) -> [np.ndarray, np.ndarray]:
     if project_to_z_plane:
         logger.info(

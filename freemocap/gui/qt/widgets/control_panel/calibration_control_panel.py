@@ -32,8 +32,7 @@ logger = logging.getLogger(__name__)
 
 class CalibrationControlPanel(QWidget):
     def __init__(
-            self, get_active_recording_info: Callable, kill_thread_event: threading.Event, gui_state: GuiState,
-            parent=None
+        self, get_active_recording_info: Callable, kill_thread_event: threading.Event, gui_state: GuiState, parent=None
     ):
         super().__init__(parent=parent)
         self.gui_state = gui_state

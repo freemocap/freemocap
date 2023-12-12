@@ -12,9 +12,7 @@ class DownloadDataThreadWorker(QThread):
     finished = Signal(str)
     in_progress = Signal(str)
 
-    def __init__(self,
-                 dowload_url: str,
-                 parent=None):
+    def __init__(self, dowload_url: str, parent=None):
         super().__init__(parent=parent)
         logger.info("Initializing download sample data thread worker")
         self.download_url = dowload_url

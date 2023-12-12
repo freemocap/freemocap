@@ -17,16 +17,16 @@ logger = logging.getLogger(__name__)
 
 
 def run_blender_megascript_take2(
-        recording_folder_path: Union[str, Path],
-        blender_file_path: Union[str, Path],
-        blender_exe_path: Union[str, Path],
+    recording_folder_path: Union[str, Path],
+    blender_file_path: Union[str, Path],
+    blender_exe_path: Union[str, Path],
 ):
     path_to_this_py_file = Path(__file__).parent.resolve()
 
     freemocap_blender_megascript_path = path_to_this_py_file / "freemocap_blender_megascript_take2.py"
 
     if not (
-            Path(recording_folder_path) / OUTPUT_DATA_FOLDER_NAME / "mediapipe_names_and_connections_dict.json"
+        Path(recording_folder_path) / OUTPUT_DATA_FOLDER_NAME / "mediapipe_names_and_connections_dict.json"
     ).is_file():
         save_dictionary_to_json(
             save_path=str(Path(recording_folder_path) / OUTPUT_DATA_FOLDER_NAME),

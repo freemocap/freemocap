@@ -54,10 +54,10 @@ logger = logging.getLogger(__name__)
 
 
 def process_recording_folder(
-        recording_processing_parameter_model: PostProcessingParameterModel,
-        kill_event: multiprocessing.Event = None,
-        queue: multiprocessing.Queue = None,
-        use_tqdm: bool = True,
+    recording_processing_parameter_model: PostProcessingParameterModel,
+    kill_event: multiprocessing.Event = None,
+    queue: multiprocessing.Queue = None,
+    use_tqdm: bool = True,
 ):
     """
 
@@ -204,7 +204,7 @@ def process_recording_folder(
         array_to_save=segment_COM_frame_imgPoint_XYZ,
         skeleton_file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
         path_to_folder_where_we_will_save_this_data=Path(path_to_folder_where_we_will_save_this_data)
-                                                    / CENTER_OF_MASS_FOLDER_NAME,
+        / CENTER_OF_MASS_FOLDER_NAME,
     )
 
     logger.info("Saving total body center of mass data")
@@ -212,7 +212,7 @@ def process_recording_folder(
         array_to_save=totalBodyCOM_frame_XYZ,
         skeleton_file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
         path_to_folder_where_we_will_save_this_data=Path(path_to_folder_where_we_will_save_this_data)
-                                                    / CENTER_OF_MASS_FOLDER_NAME,
+        / CENTER_OF_MASS_FOLDER_NAME,
     )
 
     try:
@@ -232,7 +232,7 @@ def process_recording_folder(
     )
 
     path_to_skeleton_body_csv = (
-            Path(rec.recording_info_model.output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME
+        Path(rec.recording_info_model.output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME
     )
     skeleton_dataframe = pd.read_csv(path_to_skeleton_body_csv)
 
@@ -254,7 +254,8 @@ def process_recording_folder(
         dictionary=mediapipe_names_and_connections_dict,
     )
 
-    # TODO - move this data output method *above* the sloppy stuff above and deprecate the sloppy stuff (gracefully enough not to bork hypothetical users' workflows)
+    # TODO - move this data output method *above* the sloppy stuff above and deprecate the sloppy stuff
+    #  (gracefully enough not to bork hypothetical users' workflows)
     DataSaver(recording_folder_path=rec.recording_info_model.path).save_all()
 
     logger.info(f"Done processing {rec.recording_info_model.path}")

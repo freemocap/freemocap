@@ -7,15 +7,15 @@ logger = logging.getLogger(__name__)
 
 
 def run_alpha_megascript(
-        recording_folder_path: Union[str, Path],
-        blender_file_path: Union[str, Path],
-        blender_exe_path: Union[str, Path],
-        good_clean_frame_number: int = 0,
+    recording_folder_path: Union[str, Path],
+    blender_file_path: Union[str, Path],
+    blender_exe_path: Union[str, Path],
+    good_clean_frame_number: int = 0,
 ):
     path_to_this_py_file = Path(__file__).parent.resolve()
 
     freemocap_blender_megascript_path = (
-            path_to_this_py_file / "blender_bpy_export_scripts" / "alpha_freemocap_blender_megascript.py"
+        path_to_this_py_file / "blender_bpy_export_scripts" / "alpha_freemocap_blender_megascript.py"
     )
 
     # freemocap_blender_megascript_path = (

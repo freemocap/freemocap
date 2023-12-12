@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 def main(
-        recording_path: Union[str, Path],
-        blender_file_save_path: Union[str, Path],
-        mediapipe_empty_names: Dict[str, List[str]],
-        create_rig: bool = True,
+    recording_path: Union[str, Path],
+    blender_file_save_path: Union[str, Path],
+    mediapipe_empty_names: Dict[str, List[str]],
+    create_rig: bool = True,
 ):
     ###%% clear the scene - Scorch the earth \o/
     print("Clearing scene...")
@@ -52,7 +52,7 @@ def main(
 
         path_to_center_of_mass_npy = path_to_data_arrays_folder / "center_of_mass" / "total_body_center_of_mass_xyz.npy"
         path_to_body_segment_centers_npy = (
-                path_to_data_arrays_folder / "center_of_mass" / "segmentCOM_frame_joint_xyz.npy"
+            path_to_data_arrays_folder / "center_of_mass" / "segmentCOM_frame_joint_xyz.npy"
         )
 
         mediapipe_body_fr_mar_xyz = np.load(str(path_to_body_npy)) / 1000  # load and convert to meters
@@ -65,7 +65,7 @@ def main(
 
         # load reprojection error
         path_to_reprojection_error_npy = (
-                path_to_data_arrays_folder / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+            path_to_data_arrays_folder / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
         )
         mediapipe_reprojection_error_fr_mar = np.load(str(path_to_reprojection_error_npy))
 
@@ -359,8 +359,8 @@ def main(
             bpy.ops.object.mode_set(mode="EDIT")
 
             for (
-                    segment_name,
-                    rigify_bones_list,
+                segment_name,
+                rigify_bones_list,
             ) in rigify_bone_to_skeleton_segment_name_correspondance.items():
                 for rigify_bone_name in rigify_bones_list:
                     median_segment_length = skeleton_segment_lengths_dict[segment_name]["median"]
@@ -450,8 +450,8 @@ def add_videos_to_scene(videos_path: Union[Path, str], parent_object: bpy.types.
     number_of_videos = len(list(get_video_paths(videos_path)))
     print(f"Found {number_of_videos} videos in {videos_path}")
     for (
-            video_number,
-            video_path,
+        video_number,
+        video_path,
     ) in enumerate(get_video_paths(videos_path)):
         print(f"Adding video: {video_path.name} to scene")
 
@@ -479,11 +479,11 @@ def add_videos_to_scene(videos_path: Union[Path, str], parent_object: bpy.types.
 
 
 def create_keyframed_empty_from_3d_trajectory_data(
-        trajectory_fr_xyz: np.ndarray,
-        trajectory_name: str,
-        parent_origin: bpy.types.Object = None,
-        empty_scale: float = 0.1,
-        empty_type: str = "PLAIN_AXES",
+    trajectory_fr_xyz: np.ndarray,
+    trajectory_name: str,
+    parent_origin: bpy.types.Object = None,
+    empty_scale: float = 0.1,
+    empty_type: str = "PLAIN_AXES",
 ):
     """
     Create a key framed empty from 3d trajectory data
@@ -508,9 +508,9 @@ def create_keyframed_empty_from_3d_trajectory_data(
 
 
 def create_material(
-        name: str = "Generic",
-        color: Union[str, Tuple, List] = "#00FFFF",
-        emission_strength: float = 1.0,
+    name: str = "Generic",
+    color: Union[str, Tuple, List] = "#00FFFF",
+    emission_strength: float = 1.0,
 ):
     """
     Create a material with the given name and color, with a strong emission.
@@ -546,7 +546,7 @@ def create_material(
 
     # Convert color from hex to RGB
     if isinstance(color, str) and color.startswith("#"):
-        color_rgb = [int(color[i: i + 2], 16) / 255 for i in (1, 3, 5)]  # skips the "#" and separates R, G, and B
+        color_rgb = [int(color[i : i + 2], 16) / 255 for i in (1, 3, 5)]  # skips the "#" and separates R, G, and B
     elif isinstance(color, list) or isinstance(color, tuple):
         color_rgb = color
 
@@ -561,13 +561,13 @@ def create_material(
 
 
 def put_sphere_meshes_on_empties(
-        empty_names_list: list,
-        parent_object: bpy.types.Object,
-        sphere_scale: float = 0.02,
-        material: Union[bpy.types.Material, str] = None,
-        color: str = "#00FFFF",
-        marker_type: str = "generic",
-        emission_strength: float = 1.0,
+    empty_names_list: list,
+    parent_object: bpy.types.Object,
+    sphere_scale: float = 0.02,
+    material: Union[bpy.types.Material, str] = None,
+    color: str = "#00FFFF",
+    marker_type: str = "generic",
+    emission_strength: float = 1.0,
 ):
     """
     Put uv sphere meshes on the empties in `empty_names_list` with a scale of `sphere_scale`.
@@ -600,10 +600,10 @@ def put_sphere_meshes_on_empties(
 
 
 def create_stick_meshes_between_emtpies(
-        body_frame_marker_xyz: np.ndarray,
-        empty_names: List[str],
-        body_connections: Dict[int, int],
-        parent_object: bpy.types.Object,
+    body_frame_marker_xyz: np.ndarray,
+    empty_names: List[str],
+    body_connections: Dict[int, int],
+    parent_object: bpy.types.Object,
 ):
     """make cylinder meshes between the empties as defined in `body_connections`"""
     for origin_marker_index, target_marker_index in body_connections.items():
@@ -632,15 +632,15 @@ def create_stick_meshes_between_emtpies(
 
 
 def create_stick_mesh(
-        vertices: int = 12,
-        radius: float = 0.02,
-        depth: float = 1.0,
-        location=(0, 0, 0),
-        rotation=(0, 0, 0),
-        scale=(1, 1, 1),
-        end_fill_type="TRIFAN",
-        enter_editmode=False,
-        align="WORLD",
+    vertices: int = 12,
+    radius: float = 0.02,
+    depth: float = 1.0,
+    location=(0, 0, 0),
+    rotation=(0, 0, 0),
+    scale=(1, 1, 1),
+    end_fill_type="TRIFAN",
+    enter_editmode=False,
+    align="WORLD",
 ):
     bpy.ops.mesh.primitive_cylinder_add(
         radius=radius,
@@ -666,8 +666,8 @@ def apply_constraints_to_bone(bone_name: str, bone_constraint_dict: dict, armatu
     Apply constraints to a bone (that exists in `armature_rig` based on a dictionary of constraints
     """
     for (
-            constraint_name,
-            constrain_parameters_dict,
+        constraint_name,
+        constrain_parameters_dict,
     ) in bone_constraint_dict.items():
         constraint_name = constraint_name.split(".")[
             0
@@ -720,22 +720,22 @@ def test_virtual_marker_definitions(virtual_marker_definitions_dict: dict):
     """
 
     for (
-            virtual_marker_name,
-            virtual_marker_definition,
+        virtual_marker_name,
+        virtual_marker_definition,
     ) in virtual_marker_definitions_dict.items():
         assert len(virtual_marker_definition["marker_names"]) == len(
             virtual_marker_definition["marker_weights"]
         ), f"marker_names and marker_weights must be the same length for virtual marker {virtual_marker_name}"
         assert (
-                sum(virtual_marker_definition["marker_weights"]) == 1
+            sum(virtual_marker_definition["marker_weights"]) == 1
         ), f"marker_weights must sum to 1 for virtual marker {virtual_marker_name}"
 
 
 def calculate_virtual_marker_trajectory(
-        trajectory_3d_frame_marker_xyz: np.ndarray,
-        all_trajectory_names: list,
-        component_trajectory_names: List,
-        trajectory_weights: List,
+    trajectory_3d_frame_marker_xyz: np.ndarray,
+    all_trajectory_names: list,
+    component_trajectory_names: List,
+    trajectory_weights: List,
 ) -> np.ndarray:
     """
     Create a virtual marker from a set of component markers. A 'Virtual Marker' is a 'fake' marker created by combining the data from 'real' (measured) marker/trajectory data
@@ -765,12 +765,12 @@ def calculate_virtual_marker_trajectory(
 
 
 def creating_stick_figure_mesh_from_bone_dictionary(
-        trajectory_frame_marker_xyz: np.ndarray, body_connections: Dict[int, int]
+    trajectory_frame_marker_xyz: np.ndarray, body_connections: Dict[int, int]
 ):
     print("creating_stick_figure_mesh_from_bone_dictionary")
 
     assert (
-            len(trajectory_frame_marker_xyz.shape) == 3
+        len(trajectory_frame_marker_xyz.shape) == 3
     ), "trajectory_frame_marker_xyz must have three axes - [frame, marker, xyz] (e.g. skeleton data from a single frame"
     mesh = bpy.data.meshes.new("stick_figure_mesh")
 
@@ -1208,7 +1208,7 @@ if __name__ == "__main__" or __name__ == "<run_path>":
         # Session path
         # get session path as command line argument
         print(f"Received command line arguments: {argv}")
-        argv = argv[argv.index("--") + 1:]
+        argv = argv[argv.index("--") + 1 :]
 
         recording_path_input = Path(argv[0])
         blender_file_save_path_input = Path(argv[1])

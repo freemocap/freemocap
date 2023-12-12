@@ -18,8 +18,8 @@ class ActiveRecordingInfoWidget(QWidget):
     new_active_recording_selected_signal = Signal(RecordingInfoModel)
 
     def __init__(
-            self,
-            parent: QWidget = None,
+        self,
+        parent: QWidget = None,
     ):
         super().__init__(parent=parent)
         self._layout = QVBoxLayout()
@@ -56,8 +56,8 @@ class ActiveRecordingInfoWidget(QWidget):
         return self._active_recording_info
 
     def set_active_recording(
-            self,
-            recording_folder_path: Union[str, Path],
+        self,
+        recording_folder_path: Union[str, Path],
     ):
         logger.info(f"Setting active recording to {recording_folder_path}")
 
@@ -99,8 +99,8 @@ class ActiveRecordingTreeView(ParameterTree):
         super().__init__(parent=parent, showHeader=False)
 
     def setup_parameter_tree(
-            self,
-            recording_info_model: RecordingInfoModel,
+        self,
+        recording_info_model: RecordingInfoModel,
     ):
         if recording_info_model is None:
             logger.debug("No recording info model provided - clearing parameter tree")

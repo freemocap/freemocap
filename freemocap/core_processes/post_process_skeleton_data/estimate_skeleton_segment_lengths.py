@@ -100,7 +100,7 @@ def create_virtual_markers(skeleton_data_dictionary, virtual_marker_name: str, m
 
 
 def create_skeleton_dictionary_from_skeleton_body_data_frame(
-        skeleton_body_dataframe: pd.DataFrame,
+    skeleton_body_dataframe: pd.DataFrame,
 ) -> dict:
     skeleton_data_dictionary = skeleton_body_dataframe.to_dict(orient="list")
 

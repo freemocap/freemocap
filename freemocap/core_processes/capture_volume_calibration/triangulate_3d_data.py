@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 def threshold_by_confidence(
-        mediapipe_2d_data: np.ndarray,
-        mediapipe_confidence_cutoff_threshold: float = 0.0,
+    mediapipe_2d_data: np.ndarray,
+    mediapipe_confidence_cutoff_threshold: float = 0.0,
 ):
     mediapipe_2d_data[mediapipe_2d_data <= mediapipe_confidence_cutoff_threshold] = np.NaN
 
@@ -29,8 +29,8 @@ def threshold_by_confidence(
 
 
 def remove_3d_data_with_high_reprojection_error(
-        data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
-        data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
+    data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
+    data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
 ):
     return data3d_numFrames_numTrackedPoints_XYZ
     # TODO - Fix this function (it was causing overfiltering when combined with the anipose calibration confidence thresholding)
@@ -58,13 +58,13 @@ def remove_3d_data_with_high_reprojection_error(
     # replace points with high reprojection error with `np.nan`
     data3d_numFrames_numTrackedPoints_XYZ[
         data3d_numFrames_numTrackedPoints_reprojectionError > error_threshold
-        ] = np.nan
+    ] = np.nan
 
     number_of_nans_after_thresholding = np.sum(np.isnan(data3d_numFrames_numTrackedPoints_XYZ))
     percentage_of_nans_removed = (
-            (number_of_nans_before_thresholding - number_of_nans_after_thresholding)
-            / number_of_nans_before_thresholding
-            * 100
+        (number_of_nans_before_thresholding - number_of_nans_after_thresholding)
+        / number_of_nans_before_thresholding
+        * 100
     )
 
     logger.info(f"Removing points with reprojection error > {error_threshold:.3f}")
@@ -77,12 +77,12 @@ def remove_3d_data_with_high_reprojection_error(
 
 
 def triangulate_3d_data(
-        anipose_calibration_object,
-        mediapipe_2d_data: np.ndarray,
-        output_data_folder_path: Union[str, Path],
-        mediapipe_confidence_cutoff_threshold: float,
-        use_triangulate_ransac: bool = False,
-        kill_event: multiprocessing.Event = None,
+    anipose_calibration_object,
+    mediapipe_2d_data: np.ndarray,
+    output_data_folder_path: Union[str, Path],
+    mediapipe_confidence_cutoff_threshold: float,
+    use_triangulate_ransac: bool = False,
+    kill_event: multiprocessing.Event = None,
 ):
     number_of_cameras = mediapipe_2d_data.shape[0]
     number_of_frames = mediapipe_2d_data.shape[1]
@@ -147,9 +147,9 @@ def triangulate_3d_data(
 
 
 def save_mediapipe_3d_data_to_npy(
-        data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
-        data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
-        path_to_folder_where_data_will_be_saved: Union[str, Path],
+    data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
+    data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
+    path_to_folder_where_data_will_be_saved: Union[str, Path],
 ):
     path_to_folder_where_data_will_be_saved = Path(path_to_folder_where_data_will_be_saved)
     Path(path_to_folder_where_data_will_be_saved).mkdir(parents=True, exist_ok=True)  # save spatial XYZ data
@@ -160,7 +160,7 @@ def save_mediapipe_3d_data_to_npy(
 
     # save reprojection error
     mediapipe_reprojection_error_save_path = (
-            path_to_folder_where_data_will_be_saved / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
+        path_to_folder_where_data_will_be_saved / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
     )
 
     logger.info(f"saving: {mediapipe_reprojection_error_save_path}")

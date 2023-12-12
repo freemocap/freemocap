@@ -30,10 +30,10 @@ logger = logging.getLogger(__name__)
 
 class DataLoader:
     def __init__(
-            self,
-            recording_folder_path: Union[str, Path],
-            include_hands: bool = True,
-            include_face: bool = True,
+        self,
+        recording_folder_path: Union[str, Path],
+        include_hands: bool = True,
+        include_face: bool = True,
     ):
         self._recording_folder_path = Path(recording_folder_path)
         self.include_hands = include_hands

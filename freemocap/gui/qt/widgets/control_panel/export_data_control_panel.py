@@ -50,7 +50,8 @@ class VisualizationControlPanel(QWidget):
         groupbox.layout().addWidget(self._use_ajc27_method_radio_button)
 
         self._use_alpha_megascript_take2_method_radio_button = QRadioButton(
-            "Use `alpha_megascript_take2` method (Legacy)")
+            "Use `alpha_megascript_take2` method (Legacy)"
+        )
         groupbox.layout().addWidget(self._use_alpha_megascript_take2_method_radio_button)
         #
         # self._use_alpha_megascript_method_radio_button = QRadioButton("Use `alpha_megascript` method (Deprecated)")

@@ -18,7 +18,8 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QButtonGroup,
     QRadioButton,
-    QWidget, QFileSystemModel,
+    QWidget,
+    QFileSystemModel,
 )
 from skelly_synchronize import create_audio_debug_plots, create_brightness_debug_plots
 

@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class PipedreamPings:
     def __init__(
-            self,
+        self,
     ):
         self._pipedream_url = "https://eowipinr6rcpbo0.m.pipedream.net"
         self._pings_dict = {}

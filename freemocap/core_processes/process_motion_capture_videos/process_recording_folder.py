@@ -8,7 +8,7 @@ from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_
     calculate_anatomical_data,
 )
 from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.data_saving_pipeline_functions import (
-    save_data,
+    split_and_export_data
 )
 
 from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.image_tracking_pipeline_functions import (
@@ -67,6 +67,15 @@ def process_recording_folder(
         use_tqdm=use_tqdm,
     )
 
+    logging.info(f'Saving mediapipe 2d data to: {recording_processing_parameter_model.recording_info_model.mediapipe_2d_data_npy_file_path}')
+    save_path = Path(recording_processing_parameter_model.recording_info_model.mediapipe_2d_data_npy_file_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    np.save(recording_processing_parameter_model.recording_info_model.mediapipe_2d_data_npy_file_path, image_data_numCams_numFrames_numTrackedPts_XYZ)
+
+    # assert (
+    #     recording_processing_parameter_model.recording_info_model.data2d_status_check
+    # ), f"No mediapipe 2d data found at: {recording_processing_parameter_model.recording_info_model.mediapipe_2d_data_npy_file_path}"
+
     if kill_event is not None and kill_event.is_set():
         logger.info("Process was killed")
         return
@@ -94,27 +103,31 @@ def process_recording_folder(
     if kill_event is not None and kill_event.is_set():
         logger.info("Process was killed")
         return
+    
+    
 
-    anatomical_data_dict = calculate_anatomical_data(
-        processing_parameters=recording_processing_parameter_model,
-        skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
-        queue=queue,
-    )
+    # anatomical_data_dict = calculate_anatomical_data(
+    #     processing_parameters=recording_processing_parameter_model,
+    #     skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+    #     queue=queue,
+    # )
+    split_and_export_data(processing_parameters=recording_processing_parameter_model, skel3d_frame_marker_xyz=skel3d_frame_marker_xyz)
+
 
     if kill_event is not None and kill_event.is_set():
         logger.info("Process was killed")
         return
 
     # TODO: deprecate save_data function in favor of DataSaver
-    DataSaver(recording_folder_path=recording_processing_parameter_model.recording_info_model.path).save_all()
-    save_data(
-        skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
-        segment_COM_frame_imgPoint_XYZ=anatomical_data_dict["segment_COM"],
-        totalBodyCOM_frame_XYZ=anatomical_data_dict["total_body_COM"],
-        skeleton_segment_lengths_dict=anatomical_data_dict["skeleton_segment_lengths"],
-        processing_parameters=recording_processing_parameter_model,
-        queue=queue,
-    )
+    # DataSaver(recording_folder_path=recording_processing_parameter_model.recording_info_model.path).save_all()
+    # save_data(
+    #     skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+    #     segment_COM_frame_imgPoint_XYZ=anatomical_data_dict["segment_COM"],
+    #     totalBodyCOM_frame_XYZ=anatomical_data_dict["total_body_COM"],
+    #     skeleton_segment_lengths_dict=anatomical_data_dict["skeleton_segment_lengths"],
+    #     processing_parameters=recording_processing_parameter_model,
+    #     queue=queue,
+    # )
 
     logger.info(f"Done processing {recording_processing_parameter_model.recording_info_model.path}")
 

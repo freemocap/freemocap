@@ -59,9 +59,6 @@ def get_image_data(
             use_tqdm=use_tqdm,
         )
 
-    assert (
-        processing_parameters.recording_info_model.data2d_status_check
-    ), f"No mediapipe 2d data found at: {processing_parameters.recording_info_model.mediapipe_2d_data_npy_file_path}"
     return image_data_numCams_numFrames_numTrackedPts_XYZ
 
 
@@ -84,8 +81,8 @@ def run_image_tracking(
     #     static_image_mode=tracking_params.static_image_mode,
     # )
 
-    tracker_type = 'MediapipeHolisticTracker'
-    # tracker_type = 'YOLOMediapipeComboTracker'
+    # tracker_type = 'MediapipeHolisticTracker'
+    tracker_type = 'YOLOMediapipeComboTracker'
 
     mediapipe_image_data_numCams_numFrames_numTrackedPts_XYZ = process_folder_of_videos(
         tracker_type = tracker_type,

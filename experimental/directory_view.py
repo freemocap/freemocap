@@ -1,8 +1,8 @@
 import sys
 
-from PyQt6.QtCore import QDir
-from PyQt6.QtGui import QFileSystemModel, QAction
-from PyQt6.QtWidgets import QTreeView, QFileIconProvider, QScroller, QApplication, QMenu
+from PySide6.QtCore import QDir
+from PySide6.QtGui import QFileSystemModel, QAction
+from PySide6.QtWidgets import QTreeView, QFileIconProvider, QScroller, QApplication, QMenu
 
 
 class DirectoryViewer(QTreeView):
@@ -53,7 +53,7 @@ class DirectoryViewer(QTreeView):
         self.setStyleSheet("QTreeView::item:selected {background: red;}")
 
         # also color children of the active recording
-        for index in self.get_children(index): # noqa (do we want to reassign the index value while we're looping?)
+        for index in self.get_children(index):  # noqa (do we want to reassign the index value while we're looping?)
             self.setStyleSheet("QTreeView::item:selected {background: pink;}")
 
         # Keep the parent directory expanded

@@ -1,7 +1,7 @@
 import os
-from pathlib import Path
 import shutil
 import tempfile
+from pathlib import Path
 from typing import Union
 
 INSTALL_ADDON_SCRIPT_PATH = __file__

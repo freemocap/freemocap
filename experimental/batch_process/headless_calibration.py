@@ -10,16 +10,17 @@ from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_b
 
 
 def headless_calibration(
-    path_to_folder_of_calibration_videos: Path,
-    charuco_board_object=CharucoBoardDefinition,
-    charuco_square_size: Union[int, float] = 39,
-    pin_camera_0_to_origin: bool = True,
+        path_to_folder_of_calibration_videos: Path,
+        charuco_board_object=CharucoBoardDefinition,
+        charuco_square_size: Union[int, float] = 39,
+        pin_camera_0_to_origin: bool = True,
 ):
     anipose_camera_calibrator = AniposeCameraCalibrator(
         charuco_board_object=charuco_board_object,
         charuco_square_size=charuco_square_size,
         calibration_videos_folder_path=path_to_folder_of_calibration_videos,
-        progress_callback=lambda *args, **kwargs: None,  # the empty callable is needed, otherwise calibration will cause an error
+        progress_callback=lambda *args, **kwargs: None,
+        # the empty callable is needed, otherwise calibration will cause an error
     )
 
     anipose_camera_calibrator.calibrate_camera_capture_volume(pin_camera_0_to_origin=pin_camera_0_to_origin)

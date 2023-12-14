@@ -45,40 +45,43 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 
 
 
----
 
+
+--
 ## QUICKSTART
 
-1. Install software via [pip](https://pypi.org/project/freemocap/1.0.0rc0/):
+#### 0. Create a a Python 3.9 through 3.11 environment (python3.11 recommended)¶
+#### 1. Install software via [pip](https://pypi.org/project/freemocap/1.0.0rc0/):
 
 ```
 pip install freemocap
 ```
 
-2. Launch the GUI by entering the command:
+#### 2. Launch the GUI by entering the command:
 
 ```
 freemocap
 ``` 
 
-3. A GUI should pop up that looks like this
+####  3. A GUI should pop up that looks like this: 
+
    <img width="1457" alt="image" src="https://github.com/freemocap/freemocap/assets/15314521/90ef7e7b-48f3-4f46-8d4a-5b5bcc3254b3">
 
-4. Have fun! It might break!  Work in Progress lol
+#### 4. Have fun! It might break!  Work in Progress lol
 
-5. [Join the Discord and let us know how it went!](https://discord.gg/nxv5dNTfKT)
+#### 5. [Join the Discord and let us know how it went!](https://discord.gg/nxv5dNTfKT)
 
+
+
+___
 ## Install/run from source code (i.e. the code in this repo)
 
-> NOTE - these are super bare-bones install instructions just to show the new entry point - these instructions will be
-> overhauled very soon (written 2023-03-14)
+Open an [Anaconda-enabled command prompt](https://www.anaconda.org) (or your preferred method of environmnet management) and enter the following commands:
 
-Open an [Anaconda-enabled command prompt](https://www.anaconda.org) (or equivalent) and enter the following commands:
-
-1) Create a `Python3.8+` environment
+1) Create a `Python` environment (Recommended version 
 
 ```bash
-conda create -n freemocap-env python=3.9
+conda create -n freemocap-env python=3.11
 ```
 
 2) Activate that newly created environment
@@ -113,48 +116,22 @@ python -m freemocap
 
 A GUI should pop up!
 
-## Documentation and Knowledge Base (NOTE - no docs exist for the version of the GUI on the `main` branch yet - these docs refer to the `Alpha` release
+___
 
-Documentation for this software is currently pretty thin... but we're woking on it!
+## Documentation 
 
-Here's a YouTube video that covers a lot of relevant material (check the `chapters` for specific
-topics) - https://youtu.be/GxKmyKdnTy0
+Our documenation is hosted at: https://freemocap.github.io/documentation/
 
-Our documentation lives here (for now) - https://freemocap.github.io/documentation
+That site is built using `mkdocs` from this repository: https://github.com/freemocap/documentation
 
 ___
 
-## For Developers
 
-### Dev Setup
-
-After you've done the easy install instructions, you'll be able to run our repo commands
-
-1. Run the "setup" command to set up your environment
-
-```bash
-task setup
-```
-
-2. Run the tests to ensure that everything works appropriate
-
-```bash
-task test
-```
 
 ### Contribution Guidelines
 
 Please read our contribution doc: [CONTRIBUTING.md](CONTRIBUTING.md)
 
-### Creating a new binary (may or may not work lol)
-
-Create a new binary on your local system by running the below comand
-
-```bash
-task installer
-```
-
-Navigate to the `/dist/` directory and you'll see the new FreeMoCap Binary there.
 
 ## Related
 

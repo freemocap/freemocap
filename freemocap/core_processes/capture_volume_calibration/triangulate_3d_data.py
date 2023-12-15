@@ -77,7 +77,7 @@ def triangulate_3d_data(
         logger.error(
             f"This is supposed to be 2D data but, number_of_spatial_dimensions: {number_of_spatial_dimensions}"
         )
-        raise Exception
+        raise ValueError
 
     # reshape data to collapse across 'frames' so it becomes [number_of_cameras,
     # number_of_2d_points(numFrames*numPoints), XY]

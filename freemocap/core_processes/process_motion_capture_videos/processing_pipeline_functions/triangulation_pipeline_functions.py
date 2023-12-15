@@ -27,6 +27,7 @@ def get_triangulated_data(
         handler = DirectQueueHandler(queue)
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
         logger.addHandler(handler)
+
     if image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
         logger.info("Skipping 3d triangulation for single camera data")
         (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
@@ -37,12 +38,16 @@ def get_triangulated_data(
         logger.info(
             f"Skipping 3d triangulation and loading data from: {processing_parameters.recording_info_model.raw_mediapipe_3d_data_npy_file_path}"
         )
-        raw_skel3d_frame_marker_xyz = np.load(
-            processing_parameters.recording_info_model.raw_mediapipe_3d_data_npy_file_path
-        )
-        skeleton_reprojection_error_fr_mar = np.load(
-            processing_parameters.recording_info_model.mediapipe_reprojection_error_data_npy_file_path
-        )
+        try:
+            raw_skel3d_frame_marker_xyz = np.load(
+                processing_parameters.recording_info_model.raw_mediapipe_3d_data_npy_file_path
+            )
+            skeleton_reprojection_error_fr_mar = np.load(
+                processing_parameters.recording_info_model.mediapipe_reprojection_error_data_npy_file_path
+            )
+        except Exception as e:
+            logger.error(e)
+            raise RuntimeError("Failed to load 3D data, cannot continue processing") from e
     else:
         logger.info("Triangulating 3d skeletons...")
 

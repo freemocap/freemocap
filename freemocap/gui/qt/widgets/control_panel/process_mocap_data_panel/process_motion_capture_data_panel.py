@@ -251,10 +251,13 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         self._process_motion_capture_data_thread_worker.finished.connect(self._handle_finished_signal)
 
-    @pyqtSlot()
-    def _handle_finished_signal(self):
-        logger.debug("Process motion capture data process finished.")
-        self.processing_finished_signal.emit()
+    @pyqtSlot(bool)
+    def _handle_finished_signal(self, successful: bool):
+        if successful:
+            logger.debug("Process motion capture data process successful.")
+            self.processing_finished_signal.emit()
+        else:
+            logger.debug("Process motion capture data process failed.")
 
 
 if __name__ == "__main__":

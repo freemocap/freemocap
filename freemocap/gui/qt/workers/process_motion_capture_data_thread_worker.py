@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessMotionCaptureDataThreadWorker(QThread):
-    finished = pyqtSignal()
+    finished = pyqtSignal(bool)
     in_progress = pyqtSignal(object)
 
     def __init__(
@@ -30,6 +30,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         self._process = multiprocessing.Process(
             target=process_recording_folder, args=(self._post_processing_parameters, self._kill_event, self._queue)
         )
+        self._success = None
 
     def run(self):
         logger.info(
@@ -64,9 +65,12 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
                 print(f"message: {record.msg}")
                 self.in_progress.emit(record)
 
+            self._success = True
+            logger.info("Finished processing session folder!")
+
         except Exception as e:
-            logger.error(f"Error processing motion capture data: {str(e)}")
+            record = self._queue.get()
+            logger.error(f"Error processing session folder: {str(record)}")
+            self._success = False
 
-        logger.info("Finished processing session folder!")
-
-        self.finished.emit()
+        self.finished.emit(self._success)

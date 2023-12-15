@@ -4,6 +4,9 @@ from pathlib import Path
 from typing import Dict
 import numpy as np
 import pandas as pd
+from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
+    convert_mediapipe_npy_to_csv,
+)
 
 from freemocap.core_processes.post_process_skeleton_data.estimate_skeleton_segment_lengths import (
     estimate_skeleton_segment_lengths,
@@ -32,6 +35,11 @@ def calculate_anatomical_data(
     segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ = run_center_of_mass_calculations(
         processed_skel3d_frame_marker_xyz=skel3d_frame_marker_xyz
     )
+
+    convert_mediapipe_npy_to_csv(
+        mediapipe_3d_frame_trackedPoint_xyz=skel3d_frame_marker_xyz,
+        output_data_folder_path=processing_parameters.recording_info_model.output_data_folder_path,
+    )  # TODO: separate functionality of splitting into CSVs and savings to disk
 
     path_to_skeleton_body_csv = (
         Path(processing_parameters.recording_info_model.output_data_folder_path)

@@ -15,6 +15,7 @@ file_name_dictionary = {
     "YOLOMediapipeComboTracker": "mediapipe2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy",
 }
 
+
 def get_tracker(tracker_type: str, tracking_params) -> BaseTracker:
     match tracker_type:
         case "MediapipeHolisticTracker":
@@ -23,19 +24,20 @@ def get_tracker(tracker_type: str, tracking_params) -> BaseTracker:
                 min_detection_confidence=tracking_params.min_detection_confidence,
                 min_tracking_confidence=tracking_params.min_tracking_confidence,
                 static_image_mode=tracking_params.static_image_mode,
-                )
-            
+            )
+
         case "YOLOMediapipeComboTracker":
             tracker = YOLOMediapipeComboTracker(
                 model_complexity=tracking_params.mediapipe_model_complexity,
                 min_detection_confidence=tracking_params.min_detection_confidence,
                 min_tracking_confidence=tracking_params.min_tracking_confidence,
-                static_image_mode=tracking_params.static_image_mode,
-                )
-    
+                static_image_mode=True,
+            )
+
     return tracker
 
-def process_single_video(tracker_type,tracking_params, video_path, annotated_video_path):
+
+def process_single_video(tracker_type, tracking_params, video_path, annotated_video_path):
     video_name = video_path.stem + "_mediapipe.mp4"
     tracker = get_tracker(tracker_type, tracking_params)
     logger.info(f"Processing video: {video_name} with tracker: {tracker.__class__.__name__}")
@@ -47,13 +49,14 @@ def process_single_video(tracker_type,tracking_params, video_path, annotated_vid
     tracker.recorder.clear_recorded_objects()
     return output_array
 
+
 def process_folder_of_videos(
     tracker_type: str,
     tracking_params,
     synchronized_video_path: Path,
     output_path: Optional[Path] = None,
     annotated_video_path: Optional[Path] = None,
-    use_multiprocessing: bool = True,
+    num_processes: int = None,
 ) -> None:
     """
     Process a folder of synchronized videos with the given tracker.
@@ -66,16 +69,14 @@ def process_folder_of_videos(
     """
     synchronized_video_path = Path(synchronized_video_path)
 
-
     file_name = file_name_dictionary[tracker_type]
 
-
+    if num_processes is None:
+        num_processes = 1  # TODO: figure out number of processor cores and set to that minus 1
 
     # file_name = file_name_dictionary[tracker.__class__.__name__]
     if output_path is None:
-        output_path = (
-            synchronized_video_path.parent / "output_data" / "raw_data" / file_name
-        )
+        output_path = synchronized_video_path.parent / "output_data" / "raw_data" / file_name
     if not output_path.exists():
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -84,11 +85,14 @@ def process_folder_of_videos(
     if not annotated_video_path.exists():
         annotated_video_path.mkdir(parents=True, exist_ok=True)
 
-    tasks = [(tracker_type, tracking_params, video_path, annotated_video_path) for video_path in synchronized_video_path.glob("*.mp4")]
+    tasks = [
+        (tracker_type, tracking_params, video_path, annotated_video_path)
+        for video_path in synchronized_video_path.glob("*.mp4")
+    ]
 
-    if use_multiprocessing:
-        logging.info('Using multiprocessing to run pose estimation')
-        with Pool() as pool:
+    if num_processes > 1:
+        logging.info("Using multiprocessing to run pose estimation")
+        with Pool(processes=num_processes) as pool:
             array_list = pool.starmap(process_single_video, tasks)
     else:
         array_list = []

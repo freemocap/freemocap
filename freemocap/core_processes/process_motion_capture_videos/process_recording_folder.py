@@ -22,6 +22,7 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
+from freemocap.utilities.kill_event_exception import KillEventException
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +73,10 @@ def process_recording_folder(
         raise e
 
     if kill_event is not None and kill_event.is_set():
-        logger.info("Process was killed")
-        return
+        exception = KillEventException("Process was killed")
+        if queue:
+            queue.put(exception)
+        raise exception
 
     try:
         raw_skel3d_frame_marker_xyz = get_triangulated_data(
@@ -89,9 +92,11 @@ def process_recording_folder(
         raise e
 
     if kill_event is not None and kill_event.is_set():
-        logger.info("Process was killed")
-        return
-
+        exception = KillEventException("Process was killed")
+        if queue:
+            queue.put(exception)
+        raise exception
+    
     # TODO: move the rotate by 90 function into skellyforge to skip duplication of responsibility
     rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
     # TODO: find out if skellyforge does all the error handling we need - if not add it to post_process_data
@@ -102,8 +107,10 @@ def process_recording_folder(
     )
 
     if kill_event is not None and kill_event.is_set():
-        logger.info("Process was killed")
-        return
+        exception = KillEventException("Process was killed")
+        if queue:
+            queue.put(exception)
+        raise exception
 
     anatomical_data_dict = calculate_anatomical_data(
         processing_parameters=recording_processing_parameter_model,
@@ -112,8 +119,10 @@ def process_recording_folder(
     )
 
     if kill_event is not None and kill_event.is_set():
-        logger.info("Process was killed")
-        return
+        exception = KillEventException("Process was killed")
+        if queue:
+            queue.put(exception)
+        raise exception
 
     # TODO: deprecate save_data function in favor of DataSaver
     save_data(

@@ -5,7 +5,7 @@ from freemocap.data_layer.recording_models.recording_info_model import Recording
 def processing_pipeline_check(processing_parameters: ProcessingParameterModel) -> None:
     """Performs checks on the processing parameters to make sure they are valid with the existing data before running the pipeline"""
     status_check_dict = processing_parameters.recording_info_model.status_check
-    if not status_check_dict["synchronized_videos_folder_exists"]:
+    if not status_check_dict["synchronized_videos_status_check"]:
         raise FileNotFoundError(
             f"Could not find synchronized_videos folder at {processing_parameters.recording_info_model.synchronized_videos_folder_path}"
         )
@@ -22,12 +22,10 @@ def processing_pipeline_check(processing_parameters: ProcessingParameterModel) -
                 f"No mediapipe 3d data found at: {processing_parameters.recording_info_model.mediapipe_3d_data_npy_file_path}"
             )
     else:
-        if not status_check_dict["calibration_toml_check"]:
+        if not status_check_dict["calibration_toml_check"] and not status_check_dict["single_video_check"]:
             raise FileNotFoundError(
                 f"No calibration file found at: {processing_parameters.recording_info_model.calibration_toml_path}"
             )
-
-    print(status_check_dict)
 
 
 if __name__ == "__main__":

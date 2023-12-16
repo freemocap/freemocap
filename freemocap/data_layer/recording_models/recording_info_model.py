@@ -160,6 +160,8 @@ class RecordingFolderStatusChecker:
             "data3d_status_check": self.check_data3d_status(),
             "center_of_mass_data_status_check": self.check_center_of_mass_data_status(),
             "blender_file_status_check": self.check_blender_file_status(),
+            "single_video_check": self.check_single_video(),
+            "calibration_toml_check": self.check_calibration_toml_status(),
             "video_and_camera_info": {
                 "number_of_synchronized_videos": self.get_number_of_mp4s_in_synched_videos_directory(),
                 "number_of_frames_in_videos": self.get_number_of_frames_in_videos(),
@@ -242,7 +244,7 @@ class RecordingFolderStatusChecker:
         timestamps_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path) / "timestamps"
 
         if not timestamps_directory_path.exists():
-            return "No 'timestamps' directory found"
+            return "No 'timestamps' directory found" # TODO: Check frame status without using timestamps with openCV or FFProbe
 
         if timestamps_directory_path.exists():
             frame_counts = {}

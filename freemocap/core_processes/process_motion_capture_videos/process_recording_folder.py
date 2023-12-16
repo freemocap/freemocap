@@ -1,6 +1,5 @@
 import logging
 import multiprocessing
-from pathlib import Path
 
 
 from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data
@@ -13,6 +12,9 @@ from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_
 
 from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.image_tracking_pipeline_functions import (
     get_image_data,
+)
+from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.pipeline_check import (
+    processing_pipeline_check,
 )
 from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.triangulation_pipeline_functions import (
     get_triangulated_data,
@@ -54,10 +56,13 @@ def process_recording_folder(
         handler = DirectQueueHandler(queue)
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
         logger.addHandler(handler)
-
-    check_synchronized_videos_folder_exists(
-        processing_parameters=recording_processing_parameter_model
-    )  # TODO: Swap this out for a full "pipeline check" before running
+    try:
+        processing_pipeline_check(processing_parameters=recording_processing_parameter_model)
+    except FileNotFoundError as e:
+        logger.error("processing parameters are not valid for recording status")
+        if queue:
+            queue.put(e)
+        raise e
 
     try:
         image_data_numCams_numFrames_numTrackedPts_XYZ = get_image_data(
@@ -96,7 +101,7 @@ def process_recording_folder(
         if queue:
             queue.put(exception)
         raise exception
-    
+
     # TODO: move the rotate by 90 function into skellyforge to skip duplication of responsibility
     rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
     # TODO: find out if skellyforge does all the error handling we need - if not add it to post_process_data
@@ -136,10 +141,3 @@ def process_recording_folder(
     DataSaver(recording_folder_path=recording_processing_parameter_model.recording_info_model.path).save_all()
 
     logger.info(f"Done processing {recording_processing_parameter_model.recording_info_model.path}")
-
-
-def check_synchronized_videos_folder_exists(processing_parameters: ProcessingParameterModel):
-    if not Path(processing_parameters.recording_info_model.synchronized_videos_folder_path).exists():
-        raise FileNotFoundError(
-            f"Could not find synchronized_videos folder at {processing_parameters.recording_info_model.synchronized_videos_folder_path}"
-        )

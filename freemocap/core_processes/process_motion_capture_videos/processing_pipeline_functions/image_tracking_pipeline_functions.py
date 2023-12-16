@@ -4,6 +4,9 @@ from pathlib import Path
 import numpy as np
 
 from skelly_tracker.process_folder_of_videos import process_folder_of_videos
+from skelly_tracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeTrackingParams,
+)
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
     ProcessingParameterModel,
@@ -60,7 +63,7 @@ def get_image_data(
 
 
 def run_image_tracking(
-    tracking_params: ProcessingParameterModel,
+    tracking_params: MediapipeTrackingParams,
     synchronized_videos_folder_path: Path,
     output_data_folder_path: Path,
     kill_event: multiprocessing.Event = None,
@@ -75,7 +78,7 @@ def run_image_tracking(
         synchronized_video_path=synchronized_videos_folder_path,
         output_folder_path=output_data_folder_path,
         annotated_video_path=None,
-        num_processes=None,  # TODO: change the use multiprocessing bool to num_processes
+        num_processes=tracking_params.num_processes,
     )
 
     return image_data_numCams_numFrames_numTrackedPts_XYZ

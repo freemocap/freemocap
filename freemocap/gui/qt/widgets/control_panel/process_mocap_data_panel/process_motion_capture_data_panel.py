@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 import shutil
 import threading
 from pathlib import Path
@@ -22,7 +23,7 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
     RUN_IMAGE_TRACKING_NAME,
     RUN_3D_TRIANGULATION_NAME,
     RUN_BUTTERWORTH_FILTER_NAME,
-    USE_MULTIPROCESSING_PARAMETER_NAME,
+    NUMBER_OF_PROCESSES_PARAMETER_NAME,
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
@@ -123,7 +124,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     type="group",
                     children=[
                         self._create_new_run_this_step_parameter(run_step_name=RUN_IMAGE_TRACKING_NAME),
-                        self._create_use_multiprocessing_parameter(),
+                        self._create_num_processes_parameter(),
                         create_mediapipe_parameter_group(session_processing_parameter_model.mediapipe_parameters_model),
                     ],
                     tip="Methods for tracking 2d points in images (e.g. mediapipe, deeplabcut(TODO), openpose(TODO), etc ...)",
@@ -189,12 +190,12 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         return parameter
 
-    def _create_use_multiprocessing_parameter(self):
+    def _create_num_processes_parameter(self):
         parameter = Parameter.create(
-            name=USE_MULTIPROCESSING_PARAMETER_NAME,
-            type="bool",
-            value=True,
-            tip="If your computer has issues processing larger videos, you can try disabling multiprocessing to process each video serially.",
+            name=NUMBER_OF_PROCESSES_PARAMETER_NAME,
+            type="int",
+            value=(multiprocessing.cpu_count() - 1),
+            tip="If your computer has issues processing larger videos, you can try setting number of processes to 1 to process each video serially.",
         )
         return parameter
 

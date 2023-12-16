@@ -3,8 +3,8 @@ import multiprocessing
 from pathlib import Path
 import numpy as np
 
-from skelly_tracker.process_folder_of_videos import process_folder_of_videos
-from skelly_tracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+from skellytracker.process_folder_of_videos import process_folder_of_videos
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeTrackingParams,
 )
 
@@ -18,7 +18,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import RAW_DATA_
 logger = logging.getLogger(__name__)
 
 
-def get_image_data(
+def run_image_tracking_pipeline(
     processing_parameters: ProcessingParameterModel,
     kill_event: multiprocessing.Event,
     queue: multiprocessing.Queue,
@@ -69,8 +69,11 @@ def run_image_tracking(
     kill_event: multiprocessing.Event = None,
     use_tqdm: bool = True,
 ):
-    # tracker_type = 'MediapipeHolisticTracker'
-    tracker_type = "YOLOMediapipeComboTracker"  # TODO: read this from tracking params
+    if tracking_params.use_yolo_crop_method:
+        tracker_type = "YOLOMediapipeComboTracker"
+    else:
+        tracker_type = 'MediapipeHolisticTracker'
+
 
     image_data_numCams_numFrames_numTrackedPts_XYZ = process_folder_of_videos(
         tracker_name=tracker_type,

@@ -1,7 +1,7 @@
 import logging
 
 from pydantic import BaseModel
-from skelly_tracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeTrackingParams
 )
 

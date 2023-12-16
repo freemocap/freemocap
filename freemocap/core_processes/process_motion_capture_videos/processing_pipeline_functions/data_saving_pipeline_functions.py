@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 
-from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import save_skeleton_array_to_npy
+from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import save_numpy_array_to_disk
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
     mediapipe_names_and_connections_dict,
 )
@@ -38,26 +38,26 @@ def save_data(
     path_to_folder_where_we_will_save_this_data = processing_parameters.recording_info_model.output_data_folder_path
 
     logger.info("Saving post-processed data")
-    save_skeleton_array_to_npy(
+    save_numpy_array_to_disk(
         array_to_save=skel3d_frame_marker_xyz,
-        skeleton_file_name="mediaPipeSkel_3d_body_hands_face.npy",
-        path_to_folder_where_we_will_save_this_data=path_to_folder_where_we_will_save_this_data,
+        file_name="mediaPipeSkel_3d_body_hands_face.npy",
+        save_directory=path_to_folder_where_we_will_save_this_data,
     )
 
     logger.info("Saving segment center of mass data")
-    save_skeleton_array_to_npy(
+    save_numpy_array_to_disk(
         array_to_save=segment_COM_frame_imgPoint_XYZ,
-        skeleton_file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
-        path_to_folder_where_we_will_save_this_data=Path(path_to_folder_where_we_will_save_this_data)
-        / CENTER_OF_MASS_FOLDER_NAME,
+        file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
+        save_directory=Path(path_to_folder_where_we_will_save_this_data)
+                       / CENTER_OF_MASS_FOLDER_NAME,
     )
 
     logger.info("Saving total body center of mass data")
-    save_skeleton_array_to_npy(
+    save_numpy_array_to_disk(
         array_to_save=totalBodyCOM_frame_XYZ,
-        skeleton_file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-        path_to_folder_where_we_will_save_this_data=Path(path_to_folder_where_we_will_save_this_data)
-        / CENTER_OF_MASS_FOLDER_NAME,
+        file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
+        save_directory=Path(path_to_folder_where_we_will_save_this_data)
+                       / CENTER_OF_MASS_FOLDER_NAME,
     )
 
     save_dictionary_to_json(

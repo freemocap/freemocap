@@ -11,7 +11,7 @@ from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_
 )
 
 from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.image_tracking_pipeline_functions import (
-    get_image_data,
+    run_image_tracking_pipeline,
 )
 from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.pipeline_check import (
     processing_pipeline_check,
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def process_recording_folder(
     recording_processing_parameter_model: ProcessingParameterModel,
     kill_event: multiprocessing.Event = None,
-    queue: multiprocessing.Queue = None,
+    logging_queue: multiprocessing.Queue = None,
     use_tqdm: bool = True,
 ) -> bool:
     """
@@ -45,42 +45,42 @@ def process_recording_folder(
     kill_event : multiprocessing.Event
         Event to kill the process
 
-    queue : multiprocessing.Queue
+    logging_queue : multiprocessing.Queue
         Queue to communicate logging between processes
 
     use_tqdm : bool
         Whether or not to use tqdm to show progress bar in terminal
 
     """
-    if queue:
-        handler = DirectQueueHandler(queue)
+    if logging_queue:
+        handler = DirectQueueHandler(logging_queue)
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
         logger.addHandler(handler)
     try:
         processing_pipeline_check(processing_parameters=recording_processing_parameter_model)
     except FileNotFoundError as e:
         logger.error("processing parameters are not valid for recording status")
-        if queue:
-            queue.put(e)
+        if logging_queue:
+            logging_queue.put(e)
         raise e
 
     try:
-        image_data_numCams_numFrames_numTrackedPts_XYZ = get_image_data(
+        image_data_numCams_numFrames_numTrackedPts_XYZ = run_image_tracking_pipeline(
             processing_parameters=recording_processing_parameter_model,
             kill_event=kill_event,
-            queue=queue,
+            queue=logging_queue,
             use_tqdm=use_tqdm,
         )
     except (RuntimeError, FileNotFoundError) as e:
         logger.error("2D skeleton detection failed, cannot continue processing")
-        if queue:
-            queue.put(e)
+        if logging_queue:
+            logging_queue.put(e)
         raise e
 
     if kill_event is not None and kill_event.is_set():
         exception = KillEventException("Process was killed")
-        if queue:
-            queue.put(exception)
+        if logging_queue:
+            logging_queue.put(exception)
         raise exception
 
     try:
@@ -88,18 +88,18 @@ def process_recording_folder(
             image_data_numCams_numFrames_numTrackedPts_XYZ=image_data_numCams_numFrames_numTrackedPts_XYZ,
             processing_parameters=recording_processing_parameter_model,
             kill_event=kill_event,
-            queue=queue,
+            queue=logging_queue,
         )
     except (RuntimeError, FileNotFoundError, ValueError) as e:
         logger.error("Triangulation failed, cannot continue processing")
-        if queue:
-            queue.put(e)
+        if logging_queue:
+            logging_queue.put(e)
         raise e
 
     if kill_event is not None and kill_event.is_set():
         exception = KillEventException("Process was killed")
-        if queue:
-            queue.put(exception)
+        if logging_queue:
+            logging_queue.put(exception)
         raise exception
 
     # TODO: move the rotate by 90 function into skellyforge to skip duplication of responsibility
@@ -108,25 +108,25 @@ def process_recording_folder(
     skel3d_frame_marker_xyz = post_process_data(
         recording_processing_parameter_model=recording_processing_parameter_model,
         raw_skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
-        queue=queue,
+        queue=logging_queue,
     )
 
     if kill_event is not None and kill_event.is_set():
         exception = KillEventException("Process was killed")
-        if queue:
-            queue.put(exception)
+        if logging_queue:
+            logging_queue.put(exception)
         raise exception
 
     anatomical_data_dict = calculate_anatomical_data(
         processing_parameters=recording_processing_parameter_model,
         skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
-        queue=queue,
+        queue=logging_queue,
     )
 
     if kill_event is not None and kill_event.is_set():
         exception = KillEventException("Process was killed")
-        if queue:
-            queue.put(exception)
+        if logging_queue:
+            logging_queue.put(exception)
         raise exception
 
     # TODO: deprecate save_data function in favor of DataSaver
@@ -136,7 +136,7 @@ def process_recording_folder(
         totalBodyCOM_frame_XYZ=anatomical_data_dict["total_body_COM"],
         skeleton_segment_lengths_dict=anatomical_data_dict["skeleton_segment_lengths"],
         processing_parameters=recording_processing_parameter_model,
-        queue=queue,
+        queue=logging_queue,
     )
     DataSaver(recording_folder_path=recording_processing_parameter_model.recording_info_model.path).save_all()
 

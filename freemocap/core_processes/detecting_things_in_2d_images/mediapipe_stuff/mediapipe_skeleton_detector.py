@@ -7,7 +7,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from skellycam.opencv.video_recorder.video_recorder import VideoRecorder
-from skelly_tracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeTrackingParams
 )
 from tqdm import tqdm

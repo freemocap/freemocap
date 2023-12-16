@@ -68,7 +68,7 @@ keywords = [
 
 dependencies = [
     "skellycam==2023.12.1090",
-    "skelly-viewer==2023.12.1020",
+    "skelly_viewer==2023.12.1020",
     "skellyforge==2023.12.1005",
     "skelly_synchronize==2023.12.1029",
     "ajc27_freemocap_blender_addon==2023.10.1016",
@@ -80,7 +80,7 @@ dependencies = [
     "ipykernel==6.23.1",
     "plotly==5.14.1",
     "pydantic==1.*",
-    "skelly_tracker @ git+https://github.com/freemocap/skellytracker.git"
+    "skellytracker @ git+https://github.com/freemocap/skellytracker.git",
     "PySide6==6.6.*",
     "packaging===23.2",
 ]

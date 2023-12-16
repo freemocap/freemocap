@@ -2,6 +2,10 @@ import logging
 from pathlib import Path
 from typing import Optional, Union
 
+from freemocap.core_processes.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender
+from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import (
+    get_best_guess_of_blender_path,
+)
 from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
 from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender

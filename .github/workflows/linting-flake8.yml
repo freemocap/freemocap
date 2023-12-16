@@ -3,7 +3,7 @@ name: Linting Flake8
 on:
   pull_request:
     branches: [ main, development ]
-    paths: 
+    paths:
       - 'freemocap/**'
 
 jobs:

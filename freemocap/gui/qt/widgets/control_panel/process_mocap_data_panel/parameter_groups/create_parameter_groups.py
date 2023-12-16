@@ -10,7 +10,6 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
     ButterworthFilterParametersModel,
 )
 
-
 BUTTERWORTH_ORDER = "Order"
 
 BUTTERWORTH_CUTOFF_FREQUENCY = "Cutoff Frequency"

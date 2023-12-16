@@ -26,7 +26,7 @@ def get_image_data(
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
         logger.addHandler(handler)
 
-    if processing_parameters.mediapipe_parameters_model.skip_2d_image_tracking:
+    if not processing_parameters.mediapipe_parameters_model.run_image_tracking:
         logger.info(
             f"Skipping 2d skeleton detection and loading data from: {processing_parameters.recording_info_model.mediapipe_2d_data_npy_file_path}"
         )

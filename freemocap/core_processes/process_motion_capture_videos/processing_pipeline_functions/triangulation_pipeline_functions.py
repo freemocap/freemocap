@@ -34,7 +34,7 @@ def get_triangulated_data(
             input_image_data_frame_marker_xyz=image_data_numCams_numFrames_numTrackedPts_XYZ[0],
             raw_data_folder_path=Path(processing_parameters.recording_info_model.raw_data_folder_path),
         )
-    elif processing_parameters.anipose_triangulate_3d_parameters_model.skip_3d_triangulation:
+    elif not processing_parameters.anipose_triangulate_3d_parameters_model.run_3d_triangulation:
         logger.info(
             f"Skipping 3d triangulation and loading data from: {processing_parameters.recording_info_model.raw_mediapipe_3d_data_npy_file_path}"
         )

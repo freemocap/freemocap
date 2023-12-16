@@ -1,7 +1,9 @@
 from pyqtgraph.parametertree import Parameter
+from skelly_tracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeTrackingParams,
+)
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
-    MediapipeParametersModel,
     ProcessingParameterModel,
     AniposeTriangulate3DParametersModel,
     PostProcessingParametersModel,
@@ -33,20 +35,20 @@ MEDIAPIPE_MODEL_COMPLEXITY = "Model Complexity"
 
 MEDIAPIPE_TREE_NAME = "Mediapipe"
 
-SKIP_2D_IMAGE_TRACKING_NAME = "Skip 2d image tracking?"
+RUN_IMAGE_TRACKING_NAME = "Run 2d image tracking?"
 
-SKIP_3D_TRIANGULATION_NAME = "Skip 3d triangulation?"
+RUN_3D_TRIANGULATION_NAME = "Run 3d triangulation?"
 
-SKIP_BUTTERWORTH_FILTER_NAME = "Skip butterworth filter?"
+RUN_BUTTERWORTH_FILTER_NAME = "Run butterworth filter?"
 
 USE_MULTIPROCESSING_PARAMETER_NAME = "Use Multiprocessing"
 
 
 def create_mediapipe_parameter_group(
-    parameter_model: MediapipeParametersModel = None,
+    parameter_model: MediapipeTrackingParams = None,
 ) -> Parameter:
     if parameter_model is None:
-        parameter_model = MediapipeParametersModel()
+        parameter_model = MediapipeTrackingParams()
 
     mediapipe_model_complexity_list = [
         "0 (Fastest/Least accurate)",
@@ -169,18 +171,18 @@ def extract_parameter_model_from_parameter_tree(
     )
 
     return ProcessingParameterModel(
-        mediapipe_parameters_model=MediapipeParametersModel(
+        mediapipe_parameters_model=MediapipeTrackingParams(
             mediapipe_model_complexity=mediapipe_model_complexity_integer,
             min_detection_confidence=parameter_values_dictionary[MINIMUM_DETECTION_CONFIDENCE],
             min_tracking_confidence=parameter_values_dictionary[MINIUMUM_TRACKING_CONFIDENCE],
             static_image_mode=parameter_values_dictionary[STATIC_IMAGE_MODE],
-            skip_2d_image_tracking=parameter_values_dictionary[SKIP_2D_IMAGE_TRACKING_NAME],
+            run_image_tracking=parameter_values_dictionary[RUN_IMAGE_TRACKING_NAME],
             use_multiprocessing=parameter_values_dictionary[USE_MULTIPROCESSING_PARAMETER_NAME],
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
-            skip_3d_triangulation=parameter_values_dictionary[SKIP_3D_TRIANGULATION_NAME],
+            run_3d_triangulation=parameter_values_dictionary[RUN_3D_TRIANGULATION_NAME],
         ),
         post_processing_parameters_model=PostProcessingParametersModel(
             framerate=parameter_values_dictionary[POST_PROCESSING_FRAME_RATE],
@@ -189,7 +191,7 @@ def extract_parameter_model_from_parameter_tree(
                 cutoff_frequency=parameter_values_dictionary[BUTTERWORTH_CUTOFF_FREQUENCY],
                 order=parameter_values_dictionary[BUTTERWORTH_ORDER],
             ),
-            skip_butterworth_filter=parameter_values_dictionary[SKIP_BUTTERWORTH_FILTER_NAME],
+            run_butterworth_filter=parameter_values_dictionary[RUN_BUTTERWORTH_FILTER_NAME],
         ),
     )
 

@@ -19,9 +19,9 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
     create_3d_triangulation_prarameter_group,
     create_post_processing_parameter_group,
     extract_parameter_model_from_parameter_tree,
-    SKIP_2D_IMAGE_TRACKING_NAME,
-    SKIP_3D_TRIANGULATION_NAME,
-    SKIP_BUTTERWORTH_FILTER_NAME,
+    RUN_IMAGE_TRACKING_NAME,
+    RUN_3D_TRIANGULATION_NAME,
+    RUN_BUTTERWORTH_FILTER_NAME,
     USE_MULTIPROCESSING_PARAMETER_NAME,
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
@@ -122,7 +122,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="2d Image Trackers",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_2D_IMAGE_TRACKING_NAME),
+                        self._create_new_run_this_step_parameter(run_step_name=RUN_IMAGE_TRACKING_NAME),
                         self._create_use_multiprocessing_parameter(),
                         create_mediapipe_parameter_group(session_processing_parameter_model.mediapipe_parameters_model),
                     ],
@@ -132,7 +132,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="3d Triangulation Methods",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_3D_TRIANGULATION_NAME),
+                        self._create_new_run_this_step_parameter(run_step_name=RUN_3D_TRIANGULATION_NAME),
                         create_3d_triangulation_prarameter_group(
                             session_processing_parameter_model.anipose_triangulate_3d_parameters_model
                         ),
@@ -143,7 +143,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="Post Processing (data cleaning)",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_BUTTERWORTH_FILTER_NAME),
+                        self._create_new_run_this_step_parameter(run_step_name=RUN_BUTTERWORTH_FILTER_NAME),
                         create_post_processing_parameter_group(
                             session_processing_parameter_model.post_processing_parameters_model
                         ),
@@ -178,14 +178,14 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         return recording_processing_parameter_model
 
-    def _create_new_skip_this_step_parameter(self, skip_step_name: str):
+    def _create_new_run_this_step_parameter(self, run_step_name: str):
         parameter = Parameter.create(
-            name=skip_step_name,
+            name=run_step_name,
             type="bool",
-            value=False,
+            value=True,
             tip="If you have already run this step, you can skip it." "re-running it will overwrite the existing data.",
         )
-        parameter.sigValueChanged.connect(self.disable_this_parameter_group)
+        parameter.sigValueChanged.connect(self.enable_this_parameter_group)
 
         return parameter
 
@@ -198,15 +198,15 @@ class ProcessMotionCaptureDataPanel(QWidget):
         )
         return parameter
 
-    def disable_this_parameter_group(self, parameter):
-        skip_this_step_bool = parameter.value()
+    def enable_this_parameter_group(self, parameter):
+        run_this_step_bool = parameter.value()
         parameter_group = parameter.parent()
         for child in parameter_group.children():
-            if child.name().split(" ")[0] != "Skip":
+            if child.name().split(" ")[0] != "Run":
                 logger.debug(
-                    f"{'Enabling' if not skip_this_step_bool else 'Disabling'} {child.name()} in processing pipeline"
+                    f"{'Enabling' if run_this_step_bool else 'Disabling'} {child.name()} in processing pipeline"
                 )
-                self.set_parameter_enabled(child, not skip_this_step_bool)
+                self.set_parameter_enabled(child, run_this_step_bool)
 
     def set_parameter_enabled(self, parameter, enabled_bool):
         parameter.setOpts(enabled=enabled_bool)

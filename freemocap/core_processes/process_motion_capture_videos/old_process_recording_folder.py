@@ -82,7 +82,7 @@ def process_recording_folder(
             f"Could not find synchronized_videos folder at {rec.recording_info_model.synchronized_videos_folder_path}"
         )
 
-    if rec.mediapipe_parameters_model.skip_2d_image_tracking:
+    if not rec.mediapipe_parameters_model.run_image_tracking:
         logger.info(
             f"Skipping 2d skeleton detection and loading data from: {rec.recording_info_model.mediapipe_2d_data_npy_file_path}"
         )

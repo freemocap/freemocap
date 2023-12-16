@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from PyQt6 import QtCore
-from PyQt6.QtCore import pyqtSlot, QFileSystemWatcher
+from PySide6 import QtCore
+from PySide6.QtCore import Slot, QFileSystemWatcher
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class CSSFileWatcher(QFileSystemWatcher):
         self.parent = parent
         self.fileChanged.connect(self.file_changed)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def file_changed(self, path: str):
         logger.info(f"CSS file changed: {path} - updating MainWindow stylesheet")
 

@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtCore import pyqtSignal, QFileSystemWatcher
-from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
+from PySide6.QtCore import Signal, QFileSystemWatcher
+from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.data_layer.recording_models.recording_info_model import (
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class ActiveRecordingInfoWidget(QWidget):
-    new_active_recording_selected_signal = pyqtSignal(RecordingInfoModel)
+    new_active_recording_selected_signal = Signal(RecordingInfoModel)
 
     def __init__(
         self,

@@ -244,7 +244,7 @@ class RecordingFolderStatusChecker:
         timestamps_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path) / "timestamps"
 
         if not timestamps_directory_path.exists():
-            return "No 'timestamps' directory found" # TODO: Check frame status without using timestamps with openCV or FFProbe
+            return "No 'timestamps' directory found"  # TODO: Check frame status without using timestamps with openCV or FFProbe
 
         if timestamps_directory_path.exists():
             frame_counts = {}

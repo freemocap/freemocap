@@ -46,9 +46,8 @@ NUMBER_OF_PROCESSES_PARAMETER_NAME = "Number of Processes to use"
 
 
 def create_mediapipe_parameter_group(
-        parameter_model: MediapipeTrackingParams,
+    parameter_model: MediapipeTrackingParams,
 ) -> Parameter:
-
     mediapipe_model_complexity_list = [
         "0 (Fastest/Least accurate)",
         "1 (Middle ground)",
@@ -61,7 +60,7 @@ def create_mediapipe_parameter_group(
             dict(
                 name=USE_YOLO_CROP_METHOD,
                 type="bool",
-                value= parameter_model.use_yolo_crop_method,
+                value=parameter_model.use_yolo_crop_method,
                 tip="If true, `skellytracker` will use YOLO to pre-crop the person from the image before running the `mediapipe` tracker",
             ),
             dict(
@@ -70,7 +69,7 @@ def create_mediapipe_parameter_group(
                 limits=mediapipe_model_complexity_list,
                 value=mediapipe_model_complexity_list[parameter_model.mediapipe_model_complexity],
                 tip="Which Mediapipe model to use - higher complexity is slower but more accurate. "
-                    "Variable name in `mediapipe` code: `mediapipe_model_complexity`",
+                "Variable name in `mediapipe` code: `mediapipe_model_complexity`",
             ),
             dict(
                 name=MINIMUM_DETECTION_CONFIDENCE,
@@ -79,8 +78,8 @@ def create_mediapipe_parameter_group(
                 step=0.05,
                 limits=(0.0, 1.0),
                 tip="Minimum confidence for a skeleton detection to be considered valid. "
-                    "Variable name in `mediapipe` code: `min_detection_confidence`."
-                    "NOTE - Never trust a machine learning model's estimates of their own confidence!",
+                "Variable name in `mediapipe` code: `min_detection_confidence`."
+                "NOTE - Never trust a machine learning model's estimates of their own confidence!",
             ),
             dict(
                 name=MINIUMUM_TRACKING_CONFIDENCE,
@@ -89,22 +88,22 @@ def create_mediapipe_parameter_group(
                 step=0.05,
                 limits=(0.0, 1.0),
                 tip="Minimum confidence needed to use the previous frame's skeleton estiamte to predict the next one"
-                    "Variable name in `mediapipe` code: `min_tracking_confidence`.",
+                "Variable name in `mediapipe` code: `min_tracking_confidence`.",
             ),
             dict(
                 name=STATIC_IMAGE_MODE,
                 type="bool",
                 value=parameter_model.static_image_mode,
                 tip="If true, the model will process each image independently, without tracking across frames."
-                    "I think this is equivalent to setting `min_tracking_confidence` to 0.0"
-                    "Variable name in `mediapipe` code: `static_image_mode`",
+                "I think this is equivalent to setting `min_tracking_confidence` to 0.0"
+                "Variable name in `mediapipe` code: `static_image_mode`",
             ),
         ],
     )
 
 
 def create_3d_triangulation_prarameter_group(
-        parameter_model: AniposeTriangulate3DParametersModel = None,
+    parameter_model: AniposeTriangulate3DParametersModel = None,
 ) -> Parameter:
     if parameter_model is None:
         parameter_model = AniposeTriangulate3DParametersModel()
@@ -118,22 +117,22 @@ def create_3d_triangulation_prarameter_group(
                 type="float",
                 value=parameter_model.confidence_threshold_cutoff,
                 tip="Confidence threshold cut-off for triangulation. "
-                    "NOTE - Never trust a machine learning model's estimates of their own confidence! "
-                    "TODO - Something similar that uses `reprojection_error` instead of `confidence`",
+                "NOTE - Never trust a machine learning model's estimates of their own confidence! "
+                "TODO - Something similar that uses `reprojection_error` instead of `confidence`",
             ),
             dict(
                 name=USE_RANSAC_METHOD,
                 type="bool",
                 value=parameter_model.use_triangulate_ransac_method,
                 tip="If true, use `anipose`'s `triangulate_ransac` method instead of the default `triangulate_simple` method. "
-                    "NOTE - Much slower than the 'simple' method, but might be more accurate and better at rejecting bad camera views. Needs more testing and evaluation to see if it's worth it. ",
+                "NOTE - Much slower than the 'simple' method, but might be more accurate and better at rejecting bad camera views. Needs more testing and evaluation to see if it's worth it. ",
             ),
         ],
     )
 
 
 def create_post_processing_parameter_group(
-        parameter_model: PostProcessingParametersModel = None,
+    parameter_model: PostProcessingParametersModel = None,
 ) -> Parameter:
     if parameter_model is None:
         parameter_model = PostProcessingParametersModel()
@@ -159,7 +158,7 @@ def create_post_processing_parameter_group(
                 type="int",
                 value=parameter_model.butterworth_filter_parameters.order,
                 tip="Order of the filter."
-                    "NOTE - I'm not really sure what this parameter does, but this is what I see in other people's Methods sections so....   lol",
+                "NOTE - I'm not really sure what this parameter does, but this is what I see in other people's Methods sections so....   lol",
             ),
         ],
         tip="Low-pass, zero-lag, Butterworth filter to remove high frequency oscillations/noise from the data. ",
@@ -167,14 +166,15 @@ def create_post_processing_parameter_group(
 
 
 def extract_parameter_model_from_parameter_tree(
-        parameter_object: Parameter,
+    parameter_object: Parameter,
 ) -> ProcessingParameterModel:
     parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
 
     return ProcessingParameterModel(
         mediapipe_parameters_model=MediapipeTrackingParams(
             mediapipe_model_complexity=get_integer_from_mediapipe_model_complexity(
-                parameter_values_dictionary[MEDIAPIPE_MODEL_COMPLEXITY]),
+                parameter_values_dictionary[MEDIAPIPE_MODEL_COMPLEXITY]
+            ),
             min_detection_confidence=parameter_values_dictionary[MINIMUM_DETECTION_CONFIDENCE],
             min_tracking_confidence=parameter_values_dictionary[MINIUMUM_TRACKING_CONFIDENCE],
             static_image_mode=parameter_values_dictionary[STATIC_IMAGE_MODE],

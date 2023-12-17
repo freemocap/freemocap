@@ -48,16 +48,14 @@ def save_data(
     save_numpy_array_to_disk(
         array_to_save=segment_COM_frame_imgPoint_XYZ,
         file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
-        save_directory=Path(path_to_folder_where_we_will_save_this_data)
-                       / CENTER_OF_MASS_FOLDER_NAME,
+        save_directory=Path(path_to_folder_where_we_will_save_this_data) / CENTER_OF_MASS_FOLDER_NAME,
     )
 
     logger.info("Saving total body center of mass data")
     save_numpy_array_to_disk(
         array_to_save=totalBodyCOM_frame_XYZ,
         file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-        save_directory=Path(path_to_folder_where_we_will_save_this_data)
-                       / CENTER_OF_MASS_FOLDER_NAME,
+        save_directory=Path(path_to_folder_where_we_will_save_this_data) / CENTER_OF_MASS_FOLDER_NAME,
     )
 
     save_dictionary_to_json(

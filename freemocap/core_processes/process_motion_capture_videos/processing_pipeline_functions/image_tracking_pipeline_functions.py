@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 def run_image_tracking_pipeline(
-        processing_parameters: ProcessingParameterModel,
-        kill_event: multiprocessing.Event,
-        queue: multiprocessing.Queue,
-        use_tqdm: bool,
+    processing_parameters: ProcessingParameterModel,
+    kill_event: multiprocessing.Event,
+    queue: multiprocessing.Queue,
+    use_tqdm: bool,
 ) -> np.ndarray:
     if queue:
         handler = DirectQueueHandler(queue)
@@ -49,7 +49,7 @@ def run_image_tracking_pipeline(
                 processing_parameters.recording_info_model.synchronized_videos_folder_path
             ),
             output_data_folder_path=Path(processing_parameters.recording_info_model.output_data_folder_path)
-                                    / RAW_DATA_FOLDER_NAME,
+            / RAW_DATA_FOLDER_NAME,
             kill_event=kill_event,
             use_tqdm=use_tqdm,
         )
@@ -63,16 +63,16 @@ def run_image_tracking_pipeline(
 
 
 def run_image_tracking(
-        tracking_params: MediapipeTrackingParams,
-        synchronized_videos_folder_path: Path,
-        output_data_folder_path: Path,
-        kill_event: multiprocessing.Event = None,
-        use_tqdm: bool = True,
+    tracking_params: MediapipeTrackingParams,
+    synchronized_videos_folder_path: Path,
+    output_data_folder_path: Path,
+    kill_event: multiprocessing.Event = None,
+    use_tqdm: bool = True,
 ):
     if tracking_params.use_yolo_crop_method:
         tracker_type = "YOLOMediapipeComboTracker"
     else:
-        tracker_type = 'MediapipeHolisticTracker'
+        tracker_type = "MediapipeHolisticTracker"
 
     image_data_numCams_numFrames_numTrackedPts_XYZ = process_folder_of_videos(
         tracker_name=tracker_type,

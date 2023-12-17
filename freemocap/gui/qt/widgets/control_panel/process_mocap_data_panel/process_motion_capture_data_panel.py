@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 import shutil
 import threading
 from pathlib import Path
@@ -10,7 +11,7 @@ from PySide6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
-    PostProcessingParameterModel,
+    ProcessingParameterModel,
 )
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
@@ -19,10 +20,10 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
     create_3d_triangulation_prarameter_group,
     create_post_processing_parameter_group,
     extract_parameter_model_from_parameter_tree,
-    SKIP_2D_IMAGE_TRACKING_NAME,
-    SKIP_3D_TRIANGULATION_NAME,
-    SKIP_BUTTERWORTH_FILTER_NAME,
-    USE_MULTIPROCESSING_PARAMETER_NAME,
+    RUN_IMAGE_TRACKING_NAME,
+    RUN_3D_TRIANGULATION_NAME,
+    RUN_BUTTERWORTH_FILTER_NAME,
+    NUMBER_OF_PROCESSES_PARAMETER_NAME,
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
@@ -36,7 +37,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def __init__(
         self,
-        recording_processing_parameters: PostProcessingParameterModel,
+        recording_processing_parameters: ProcessingParameterModel,
         get_active_recording_info: Callable,
         kill_thread_event: threading.Event,
         log_update: Callable,
@@ -101,7 +102,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def _add_parameters_to_parameter_tree_widget(
         self,
         parameter_tree_widget: ParameterTree,
-        session_processing_parameter_model: PostProcessingParameterModel,
+        session_processing_parameter_model: ProcessingParameterModel,
     ):
         parameter_group = self._convert_session_processing_parameter_model_to_parameter_group(
             session_processing_parameter_model
@@ -112,7 +113,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _convert_session_processing_parameter_model_to_parameter_group(
         self,
-        session_processing_parameter_model: PostProcessingParameterModel,
+        session_processing_parameter_model: ProcessingParameterModel,
     ):
         return Parameter.create(
             name="Processing Parameters",
@@ -122,8 +123,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="2d Image Trackers",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_2D_IMAGE_TRACKING_NAME),
-                        self._create_use_multiprocessing_parameter(),
+                        self._create_new_run_this_step_parameter(run_step_name=RUN_IMAGE_TRACKING_NAME),
+                        self._create_num_processes_parameter(),
                         create_mediapipe_parameter_group(session_processing_parameter_model.mediapipe_parameters_model),
                     ],
                     tip="Methods for tracking 2d points in images (e.g. mediapipe, deeplabcut(TODO), openpose(TODO), etc ...)",
@@ -132,7 +133,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="3d Triangulation Methods",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_3D_TRIANGULATION_NAME),
+                        self._create_new_run_this_step_parameter(run_step_name=RUN_3D_TRIANGULATION_NAME),
                         create_3d_triangulation_prarameter_group(
                             session_processing_parameter_model.anipose_triangulate_3d_parameters_model
                         ),
@@ -143,7 +144,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     name="Post Processing (data cleaning)",
                     type="group",
                     children=[
-                        self._create_new_skip_this_step_parameter(skip_step_name=SKIP_BUTTERWORTH_FILTER_NAME),
+                        self._create_new_run_this_step_parameter(run_step_name=RUN_BUTTERWORTH_FILTER_NAME),
                         create_post_processing_parameter_group(
                             session_processing_parameter_model.post_processing_parameters_model
                         ),
@@ -156,7 +157,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
     def _create_session_parameter_model(
         self,
-    ) -> PostProcessingParameterModel:
+    ) -> ProcessingParameterModel:
         recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(
             parameter_object=self._parameter_group
         )
@@ -178,35 +179,35 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         return recording_processing_parameter_model
 
-    def _create_new_skip_this_step_parameter(self, skip_step_name: str):
+    def _create_new_run_this_step_parameter(self, run_step_name: str):
         parameter = Parameter.create(
-            name=skip_step_name,
-            type="bool",
-            value=False,
-            tip="If you have already run this step, you can skip it." "re-running it will overwrite the existing data.",
-        )
-        parameter.sigValueChanged.connect(self.disable_this_parameter_group)
-
-        return parameter
-
-    def _create_use_multiprocessing_parameter(self):
-        parameter = Parameter.create(
-            name=USE_MULTIPROCESSING_PARAMETER_NAME,
+            name=run_step_name,
             type="bool",
             value=True,
-            tip="If your computer has issues processing larger videos, you can try disabling multiprocessing to process each video serially.",
+            tip="If you have already run this step, you can skip it." "re-running it will overwrite the existing data.",
+        )
+        parameter.sigValueChanged.connect(self.enable_this_parameter_group)
+
+        return parameter
+
+    def _create_num_processes_parameter(self):
+        parameter = Parameter.create(
+            name=NUMBER_OF_PROCESSES_PARAMETER_NAME,
+            type="int",
+            value=(multiprocessing.cpu_count() - 1),
+            tip="If your computer has issues processing larger videos, you can try setting number of processes to 1 to process each video serially.",
         )
         return parameter
 
-    def disable_this_parameter_group(self, parameter):
-        skip_this_step_bool = parameter.value()
+    def enable_this_parameter_group(self, parameter):
+        run_this_step_bool = parameter.value()
         parameter_group = parameter.parent()
         for child in parameter_group.children():
-            if child.name().split(" ")[0] != "Skip":
+            if child.name().split(" ")[0] != "Run":
                 logger.debug(
-                    f"{'Enabling' if not skip_this_step_bool else 'Disabling'} {child.name()} in processing pipeline"
+                    f"{'Enabling' if run_this_step_bool else 'Disabling'} {child.name()} in processing pipeline"
                 )
-                self.set_parameter_enabled(child, not skip_this_step_bool)
+                self.set_parameter_enabled(child, run_this_step_bool)
 
     def set_parameter_enabled(self, parameter, enabled_bool):
         parameter.setOpts(enabled=enabled_bool)
@@ -251,10 +252,13 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         self._process_motion_capture_data_thread_worker.finished.connect(self._handle_finished_signal)
 
-    @Slot()
-    def _handle_finished_signal(self):
-        logger.debug("Process motion capture data process finished.")
-        self.processing_finished_signal.emit()
+    @Slot(bool)
+    def _handle_finished_signal(self, successful: bool):
+        if successful:
+            logger.debug("Process motion capture data process successful.")
+            self.processing_finished_signal.emit()
+        else:
+            logger.debug("Process motion capture data process failed.")
 
 
 if __name__ == "__main__":

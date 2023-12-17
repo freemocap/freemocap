@@ -29,7 +29,7 @@ from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook im
     generate_jupyter_notebook,
 )
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
-    PostProcessingParameterModel,
+    ProcessingParameterModel,
 )
 from freemocap.data_layer.recording_models.recording_info_model import (
     RecordingInfoModel,
@@ -301,7 +301,7 @@ class MainWindow(QMainWindow):
         # )
 
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
-            recording_processing_parameters=PostProcessingParameterModel(),
+            recording_processing_parameters=ProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
             gui_state=self._gui_state,
             kill_thread_event=self._kill_thread_event,

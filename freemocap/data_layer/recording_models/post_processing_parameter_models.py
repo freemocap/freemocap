@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from pydantic import BaseModel
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
@@ -33,9 +34,18 @@ class PostProcessingParametersModel(BaseModel):
 
 class ProcessingParameterModel(BaseModel):
     recording_info_model: RecordingInfoModel = None
+    _recording_path: Optional[str] = ""
     mediapipe_parameters_model: MediapipeTrackingParams = MediapipeTrackingParams()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel()
     post_processing_parameters_model: PostProcessingParametersModel = PostProcessingParametersModel()
+
+    @property
+    def recording_path(self)->str:
+        if self.recording_info_model is None:
+            return self._recording_path
+        else:
+            return self.recording_info_model.path
+
 
     class Config:
         arbitrary_types_allowed = True

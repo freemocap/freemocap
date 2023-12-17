@@ -28,7 +28,7 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_mot
 
 
 
-class WidgetGallery(QDialog):
+class BatchProcessWidget(QDialog):
     """Dialog displaying a gallery of Qt Widgets"""
 
     def __init__(self):
@@ -89,7 +89,7 @@ class WidgetGallery(QDialog):
         self.setWindowTitle(f"Widget Gallery Qt {qv}")
 
     def setVisible(self, visible):
-        super(WidgetGallery, self).setVisible(visible)
+        super(BatchProcessWidget, self).setVisible(visible)
         if visible:
             self.windowHandle().screenChanged.connect(self.update_systeminfo)
             self.update_systeminfo()

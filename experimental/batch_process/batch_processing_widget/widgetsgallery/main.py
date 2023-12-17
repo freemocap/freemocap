@@ -6,11 +6,11 @@
 import sys
 
 from PySide6.QtWidgets import QApplication
-from widgetgallery import WidgetGallery
+from batch_process_widget import BatchProcessWidget
 
 def main():
     app = QApplication()
-    gallery = WidgetGallery()
+    gallery = BatchProcessWidget()
     gallery.show()
     sys.exit(app.exec())
 

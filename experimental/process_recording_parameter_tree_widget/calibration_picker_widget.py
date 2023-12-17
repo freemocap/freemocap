@@ -67,7 +67,7 @@ class CalibrationPickerWidget(QWidget):
 
         radio_button_form_layout.addRow(self._create_load_calibration_from_file_radio_button())
 
-        radio_button_form_layout.addRow(self._add_calibrate_from_active_recording_radio_button())
+        # radio_button_form_layout.addRow(self._add_calibrate_from_active_recording_radio_button())
 
         self.update_calibration_toml_path()
         return radio_button_form_layout
@@ -100,8 +100,8 @@ class CalibrationPickerWidget(QWidget):
             elif self._use_most_recent_calibration_radio_button.isChecked():
                 toml_path = get_last_successful_calibration_toml_path()
 
-            elif self._calibrate_from_active_recording_radio_button.isChecked():
-                toml_path = None
+            # elif self._calibrate_from_active_recording_radio_button.isChecked():
+            #     toml_path = None
 
             else:  # no button checked -> initialize
                 self._load_calibration_from_file_radio_button.setChecked(True)
@@ -224,7 +224,6 @@ class CalibrationPickerWidget(QWidget):
     def calibrate_from_selected_toml(self, charuco_square_size_mm: float = None):
         if not charuco_square_size_mm:
             charuco_square_size_mm = float(self._charuco_square_size_line_edit.text())
-
 
 
         self._anipose_calibration_frame_worker = AniposeCalibrationThreadWorker(

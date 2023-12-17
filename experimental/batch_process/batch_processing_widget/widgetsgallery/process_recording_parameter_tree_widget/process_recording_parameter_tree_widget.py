@@ -32,25 +32,12 @@ from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
 logger = logging.getLogger(__name__)
 
 
-class ProcessMotionCaptureDataPanel(QWidget):
-    processing_finished_signal = Signal()
-
+class ProcessRecordingParameterTreeWidget(QWidget):
     def __init__(
         self,
-        recording_processing_parameters: ProcessingParameterModel,
-        get_active_recording_info: Callable,
-        kill_thread_event: threading.Event,
-        log_update: Callable,
-        gui_state: GuiState,
         parent=None,
     ):
         super().__init__(parent=parent)
-
-        self._kill_thread_event = kill_thread_event
-        self._get_active_recording_info = get_active_recording_info
-        self._log_update = log_update
-        self._recording_processing_parameter_model = recording_processing_parameters
-        self._recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
 
         self._layout = QVBoxLayout()
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -62,9 +49,6 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._layout.addWidget(calibration_group_box)
 
         self._calibration_control_panel = CalibrationControlPanel(
-            get_active_recording_info=self._get_active_recording_info,
-            kill_thread_event=self._kill_thread_event,
-            gui_state=gui_state,
             parent=self,
         )
         vbox.addWidget(self._calibration_control_panel)

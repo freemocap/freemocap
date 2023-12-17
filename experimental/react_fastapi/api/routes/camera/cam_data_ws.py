@@ -4,14 +4,13 @@ import time
 import cv2
 import numpy as np
 from fastapi import APIRouter, WebSocket
-from src.cameras.capture.dataclasses.frame_payload import FramePayload
 
 logger = logging.getLogger(__name__)
 
 cam_ws_router = APIRouter()
 
 
-async def websocket_send(web_socket: WebSocket, input_payload: FramePayload):
+async def websocket_send(web_socket: WebSocket, input_payload):
     if not input_payload.success:
         return
     success, frame = cv2.imencode(".png", input_payload.image)

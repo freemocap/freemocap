@@ -2,7 +2,7 @@
 
 __author__ = """Skelly FreeMoCap"""
 __email__ = "info@freemocap.org"
-__version__ = "v1.0.32"
+__version__ = "v1.0.33"
 __description__ = "A free and open source markerless motion capture system for everyone 💀✨"
 
 __package_name__ = "freemocap"

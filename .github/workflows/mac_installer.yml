@@ -46,7 +46,7 @@ jobs:
           export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}
-          mv ${{ github.workspace }}/bin/pyapp freemocap_app && chmod +x freemocap_app
+          mv ${{ github.workspace }}/bin/pyapp ${{ github.workspace }}/freemocap_app && chmod +x ${{ github.workspace }}/freemocap_app
       - uses: actions/upload-artifact@v3
         with:
           name: freemocap

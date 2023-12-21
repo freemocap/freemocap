@@ -35,10 +35,9 @@ jobs:
       - name: Download PyApp
         run: |
           curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.12.0/source.zip"
-      - name: Unzip and move PyApp
+      - name: Unzip PyApp
         run: |
           unzip pyapp.zip
-          sudo mv pyapp-v0.12.0 ${{ github.workspace }}
           cd ${{ github.workspace }}/pyapp-v0.12.0
       - name: Export PyApp env variables
         run: |

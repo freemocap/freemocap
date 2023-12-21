@@ -47,7 +47,7 @@ jobs:
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}
           cd ${{ github.workspace }}
-          mv /bin/pyapp freemocap_app && chmod +x freemocap_app
+          mv ${{ github.workspace }}/bin/pyapp freemocap_app && chmod +x freemocap_app
           tar -czvf freemocap_app.tar.gz freemocap_app
       - uses: actions/upload-artifact@v3
         with:

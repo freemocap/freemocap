@@ -38,16 +38,18 @@ jobs:
       - name: Unzip PyApp
         run: |
           unzip pyapp.zip
-          cd ${{ github.workspace }}/pyapp-v0.12.0
       - name: Export PyApp env variables
         run: |
+          cd ${{ github.workspace }}/pyapp-v0.12.0
           export PYAPP_PROJECT_NAME=freemocap
           export PYAPP_PROJECT_VERSION=1.0.33
           export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt
           export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
       - name: Build
         run: |
+          cd ${{ github.workspace }}/pyapp-v0.12.0
           cargo build --release
       - name: Create Linux Installer
         run: |
+          cd ${{ github.workspace }}/pyapp-v0.12.0
           cargo install pyapp --force --root ${{ github.workspace }}

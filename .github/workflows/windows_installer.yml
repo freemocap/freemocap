@@ -1,4 +1,4 @@
-name: Create Mac Installer
+name: Create Windows Installer
 
 on:
   workflow_dispatch:
@@ -8,13 +8,12 @@ on:
 
 jobs:
   build:
-    runs-on: macos-11
+    runs-on: windows-2019
     steps:
       - uses: actions/checkout@v3
       - name: System Info
         run: |
-          uname -a || true
-          gcc --version || true
+          systeminfo || true
           env
       - name: Set up Python 3.x
         uses: actions/setup-python@v4
@@ -37,7 +36,8 @@ jobs:
       - name: Unzip PyApp
         run: |
           unzip pyapp.zip
-      - name: Create Mac Installer
+        shell: bash
+      - name: Create Windows Installer
         run: |
           cd ${{ github.workspace }}/pyapp-v0.12.0
           export PYAPP_PROJECT_NAME=freemocap
@@ -49,6 +49,7 @@ jobs:
           cd ${{ github.workspace }}
           mv ${{ github.workspace }}/bin/pyapp freemocap_app && chmod +x freemocap_app
           tar -czvf freemocap_app.tar.gz freemocap_app
+        shell: bash
       - uses: actions/upload-artifact@v3
         with:
           name: freemocap

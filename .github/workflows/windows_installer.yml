@@ -39,15 +39,15 @@ jobs:
         shell: bash
       - name: Create Windows Installer
         run: |
-          cd ${{ github.workspace }}/pyapp-v0.12.0
+          cd ${{ github.workspace }}\pyapp-v0.12.0
           export PYAPP_PROJECT_NAME=freemocap
           export PYAPP_PROJECT_VERSION=1.0.33
-          export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt
-          export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
+          export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}\requirements.txt
+          export PYAPP_EXEC_SCRIPT=${{ github.workspace }}\freemocap\__main__.py
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}
           cd ${{ github.workspace }}
-          mv ${{ github.workspace }}/bin/pyapp freemocap_app && chmod +x freemocap_app
+          mv ${{ github.workspace }}\bin\pyapp freemocap_app && chmod +x freemocap_app
           tar -czvf freemocap_app.tar.gz freemocap_app
         shell: bash
       - uses: actions/upload-artifact@v3

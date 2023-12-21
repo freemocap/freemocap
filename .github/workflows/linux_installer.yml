@@ -5,9 +5,6 @@ on:
   push:
     tags: [ v* ]
   pull_request:
-    branches: [ development ]
-    paths:
-      - 'freemocap/**'
 
 jobs:
   build:

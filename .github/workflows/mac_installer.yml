@@ -1,4 +1,4 @@
-name: Create Linux Installer
+name: Create Mac Installer
 
 on:
   workflow_dispatch:
@@ -8,13 +8,12 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@v3
       - name: System Info
         run: |
           uname -a || true
-          lsb_release -a || true
           gcc --version || true
           env
       - name: Set up Python 3.x

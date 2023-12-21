@@ -37,6 +37,9 @@ jobs:
         run: |
           unzip pyapp.zip
         shell: bash
+      - name: List Directory Contents
+        run: ls -la
+        shell: bash
       - name: Create Windows Installer
         run: |
           cd ${{ github.workspace }}\pyapp-v0.12.0

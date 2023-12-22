@@ -146,7 +146,11 @@ data/
 *.mp4
 *.divx
 
+*.pt
+
 
 .DS_Store
 
 desktop.ini
+
+node_modules/

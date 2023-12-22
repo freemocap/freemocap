@@ -3,11 +3,10 @@ import multiprocessing
 import time
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, QThread
+from PySide6.QtCore import Signal, QThread
 
 from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
-
-from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
@@ -15,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessMotionCaptureDataThreadWorker(QThread):
-    finished = pyqtSignal()
-    in_progress = pyqtSignal(object)
+    finished = Signal(bool)
+    in_progress = Signal(object)
 
     def __init__(
-        self, post_processing_parameters: PostProcessingParameterModel, kill_event: multiprocessing.Event, parent=None
+        self, post_processing_parameters: ProcessingParameterModel, kill_event: multiprocessing.Event, parent=None
     ):
         super().__init__()
         self._post_processing_parameters = post_processing_parameters
@@ -30,6 +29,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         self._process = multiprocessing.Process(
             target=process_recording_folder, args=(self._post_processing_parameters, self._kill_event, self._queue)
         )
+        self._success = None
 
     def run(self):
         logger.info(
@@ -64,9 +64,12 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
                 print(f"message: {record.msg}")
                 self.in_progress.emit(record)
 
-        except Exception as e:
-            logger.error(f"Error processing motion capture data: {str(e)}")
+            self._success = True
+            logger.info("Finished processing session folder!")
 
-        logger.info("Finished processing session folder!")
+        except Exception as e:  # noqa
+            record = self._queue.get()
+            logger.error(f"Error processing session folder: {str(record)}")
+            self._success = False
 
-        self.finished.emit()
+        self.finished.emit(self._success)

@@ -51,6 +51,7 @@ class CameraControllerGroupBox(QGroupBox):
         self._layout.addLayout(self._make_options_layout())
 
         self._calibration_videos_radio_button.toggled.connect(self._set_record_button_text)
+        self._annotate_charuco_checkbox.toggled.connect(self._on_annotate_charuco_checkbox_changed)
         self._mocap_videos_radio_button.toggled.connect(self._set_record_button_text)
         self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
         self._stop_recording_button.clicked.connect(self._set_record_button_text)
@@ -131,6 +132,11 @@ class CameraControllerGroupBox(QGroupBox):
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
         hbox.addWidget(self._charuco_square_size_line_edit)
+
+        self._annotate_charuco_checkbox = QCheckBox("Display Charuco Overlay")
+        self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_images)
+        self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
+        hbox.addWidget(self._annotate_charuco_checkbox)
         hbox.addStretch()
         return hbox
 
@@ -230,6 +236,11 @@ class CameraControllerGroupBox(QGroupBox):
             self.setProperty("calibration_videos_radio_button_checked", False)
             self._start_recording_button.setText(MOCAP_RECORDING_BUTTON_TEXT)
         self.style().polish(self)
+
+    def _on_annotate_charuco_checkbox_changed(self):
+        self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
+        self.gui_state.annotate_images = self._annotate_charuco_checkbox.isChecked()
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
     def _on_auto_process_videos_checkbox_changed(self):
         self.gui_state.auto_process_videos_on_save = self._auto_process_videos_checkbox.isChecked()

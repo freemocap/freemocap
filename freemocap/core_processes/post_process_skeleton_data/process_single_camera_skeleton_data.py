@@ -19,7 +19,7 @@ def process_single_camera_skeleton_data(
 ) -> [np.ndarray, np.ndarray]:
     if project_to_z_plane:
         logger.info(
-            "Single camera detected - " "Altering image-derived 3d data to resemble multi-camera reconstructed data."
+            "Altering image-derived 3d data to resemble multi-camera reconstructed data."
         )
 
         skeleton_reprojection_error_fr_mar = np.zeros(input_image_data_frame_marker_xyz.shape[0:2])

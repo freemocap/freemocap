@@ -2,11 +2,13 @@ import logging
 from pathlib import Path
 from typing import Optional, Union
 
+from freemocap.core_processes.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender
+from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import (
+    get_best_guess_of_blender_path,
+)
 from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
 from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
-from freemocap.data_layer.export_data.blender_stuff.export_to_blender import export_to_blender
-from freemocap.data_layer.export_data.blender_stuff.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-from freemocap.data_layer.recording_models.post_processing_parameter_models import PostProcessingParameterModel
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
 from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
@@ -21,13 +23,13 @@ def process_recording_headless(
     recording_path: Union[str, Path],
     path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
     path_to_blender_executable: Optional[Union[str, Path]] = None,
-    recording_processing_parameter_model: Optional[PostProcessingParameterModel] = None,
+    recording_processing_parameter_model: Optional[ProcessingParameterModel] = None,
     use_tqdm: bool = True,
 ):
     if path_to_blender_executable is None:
         path_to_blender_executable = get_best_guess_of_blender_path()
     if recording_processing_parameter_model is None:
-        recording_processing_parameter_model = PostProcessingParameterModel()
+        recording_processing_parameter_model = ProcessingParameterModel()
 
     rec = recording_processing_parameter_model
 

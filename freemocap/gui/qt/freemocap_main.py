@@ -3,8 +3,8 @@ import signal
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication
 
 from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
 
@@ -39,7 +39,7 @@ def qt_gui_main():
             freemocap_data_folder_path=get_freemocap_data_folder_path(), pipedream_pings=pipedream_pings
         )
         logger.info("Showing main window - Ready to start!")
-        logger.info("Welcome to FreeMoCap 💀✨")
+
         freemocap_main_window.show()
         if freemocap_main_window._gui_state.show_welcome_screen:
             freemocap_main_window.open_welcome_screen_dialog()

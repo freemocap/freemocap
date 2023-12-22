@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
     QPushButton,
@@ -45,15 +45,20 @@ class VisualizationControlPanel(QWidget):
         self._open_in_blender_automatically_checkbox.setChecked(True)
         # groupbox.layout().addWidget(self._open_in_blender_automatically_checkbox)
 
-        self._use_default_method_radio_button = QRadioButton("Use default method (Recommended)")
-        self._use_default_method_radio_button.setChecked(True)
-        groupbox.layout().addWidget(self._use_default_method_radio_button)
+        self._use_ajc27_method_radio_button = QRadioButton("Use `@ajc27_blender_addon` method (Recommended)")
+        self._use_ajc27_method_radio_button.setChecked(True)
+        groupbox.layout().addWidget(self._use_ajc27_method_radio_button)
 
-        self._use_legacy_method_radio_button = QRadioButton("Use legacy method")
-        groupbox.layout().addWidget(self._use_legacy_method_radio_button)
-
-        self._use_cgtinker_method_radio_button = QRadioButton("Use @cgtinker method (Work in progress)")
-        groupbox.layout().addWidget(self._use_cgtinker_method_radio_button)
+        self._use_alpha_megascript_take2_method_radio_button = QRadioButton(
+            "Use `alpha_megascript_take2` method (Legacy)"
+        )
+        groupbox.layout().addWidget(self._use_alpha_megascript_take2_method_radio_button)
+        #
+        # self._use_alpha_megascript_method_radio_button = QRadioButton("Use `alpha_megascript` method (Deprecated)")
+        # groupbox.layout().addWidget(self._use_alpha_megascript_method_radio_button)
+        #
+        # self._use_cgtinker_method_radio_button = QRadioButton("Use `@cgtinker` method (Work in progress)")
+        # groupbox.layout().addWidget(self._use_cgtinker_method_radio_button)
 
         self._layout.addWidget(QLabel("Blender Executable Path:"))
 
@@ -94,14 +99,17 @@ class VisualizationControlPanel(QWidget):
         Returns:
             str: String representing the method the user selected to generate the Blender scene.
         """
-        if self._use_default_method_radio_button.isChecked():
+        if self._use_ajc27_method_radio_button.isChecked():
+            return "ajc27_blender_addon"
+
+        if self._use_alpha_megascript_take2_method_radio_button.isChecked():
             return "megascript_take2"
 
-        if self._use_legacy_method_radio_button.isChecked():
-            return "alpha_megascript"
-
-        if self._use_cgtinker_method_radio_button.isChecked():
-            return "cgtinker"
+        # if self._use_alpha_megascript_method_radio_button.isChecked():
+        #     return "alpha_megascript"
+        #
+        # if self._use_cgtinker_method_radio_button.isChecked():
+        #     return "cgtinker"
 
     def _handle_blender_executable_button_clicked(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s

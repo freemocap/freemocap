@@ -1,0 +1,74 @@
+[tool.poetry]
+name = "freemocap"
+version = "1.0.28"
+description = "A free and open source markerless motion capture system for everyone 💀✨"
+authors = ["Skelly FreeMoCap <info@freemocap.org>"]
+license = "AGPLv3"
+readme = "README.md"
+
+[project.urls]
+Homepage = "https://freemocap.org"
+Documentation = "https://freemocap.github.io/documentation/"
+Github = "https://github.com/freemocap/freemocap"
+Issues = "https://github.com/freemocap/freemocap/issues"
+Community_Discord = "https://discord.gg/uTvkkJnSff"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.12"
+skellycam = "2023.9.1086"
+skelly_viewer = "2023.5.1019"
+skellyforge = "2023.9.1004"
+skelly_synchronize = "2023.10.1027"
+mediapipe = "^0.10.7"
+opencv-contrib-python = "4.8.*"
+toml = "0.10.2"
+aniposelib = "0.4.3"
+libsass = "0.21.0"
+ipykernel = "6.23.1"
+plotly = "^5.17.1"
+pydantic = "1.*"
+packaging = "^23.2"
+ajc27-freemocap-blender-addon = "^0.2.14"
+numpy = "^1.23.5"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.9.1"
+pre-commit = "^3.4.0"
+pyinstaller = "^6.0.0"
+pytest = "*"
+pytest-cov = "^4.1.0"
+bumpver = "^2023.1129"
+flake8 = "^6.0.0"
+flake8-bandit = "^4.1.1"
+flake8-bugbear = "^23.9.16"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.bumpver]
+current_version = "v1.0.25"
+version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
+commit_message = "Bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = true
+
+[tool.bumpver.file_patterns]
+"freemocap/__init__.py" = ["{version}"]
+
+[project.scripts]
+freemocap = "freemocap.__main__:main"
+
+[tool.setuptools]
+py-modules = ["freemocap"]
+
+[tool.black]
+line-length = 120
+
+[tool.taskipy.tasks]
+setup = "pre-commit install"
+installer = "./bin/installer.sh"
+format = "black freemocap"
+

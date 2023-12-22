@@ -58,6 +58,7 @@ def remove_3d_data_with_high_reprojection_error(
 def triangulate_3d_data(
     anipose_calibration_object,
     mediapipe_2d_data: np.ndarray,
+    output_data_folder_path: Union[str, Path],
     use_triangulate_ransac: bool = False,
     kill_event: multiprocessing.Event = None,
 ):
@@ -70,7 +71,7 @@ def triangulate_3d_data(
         logger.error(
             f"This is supposed to be 2D data but, number_of_spatial_dimensions: {number_of_spatial_dimensions}"
         )
-        raise Exception
+        raise ValueError
 
     # reshape data to collapse across 'frames' so it becomes [number_of_cameras,
     # number_of_2d_points(numFrames*numPoints), XY]

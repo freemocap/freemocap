@@ -239,7 +239,7 @@ def get_raw_skeleton_npy_file_name(data_folder_name: Union[str, Path]) -> str:
         if RAW_MEDIAPIPE_3D_NPY_FILE_NAME in raw_data_npy_path_list:
             return str(raw_data_subfolder_path / RAW_MEDIAPIPE_3D_NPY_FILE_NAME)
 
-    logger.debug(data_folder_name.glob())
+    logger.debug(Path(data_folder_name).glob())
     raise Exception(f"Could not find a skeleton NPY file in path {str(data_folder_name)}")
 
 

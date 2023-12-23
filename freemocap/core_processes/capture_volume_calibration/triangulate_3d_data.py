@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 
@@ -58,10 +59,10 @@ def remove_3d_data_with_high_reprojection_error(
 def triangulate_3d_data(
     anipose_calibration_object,
     mediapipe_2d_data: np.ndarray,
-    output_data_folder_path: Union[str, Path],
+    output_data_folder_path: Union[str, Path],  # TODO: verify we're not using this and remove it
     use_triangulate_ransac: bool = False,
     kill_event: multiprocessing.Event = None,
-):
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     number_of_cameras = mediapipe_2d_data.shape[0]
     number_of_frames = mediapipe_2d_data.shape[1]
     number_of_tracked_points = mediapipe_2d_data.shape[2]

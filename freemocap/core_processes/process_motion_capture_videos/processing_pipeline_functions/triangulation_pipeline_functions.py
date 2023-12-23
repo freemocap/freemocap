@@ -2,6 +2,13 @@ import logging
 import multiprocessing
 from pathlib import Path
 import numpy as np
+from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import (
+    filter_by_reprojection_error,
+    plot_reprojection_error,
+)
+from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
+    save_mediapipe_3d_data_to_npy,
+)
 
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
@@ -68,6 +75,7 @@ def get_triangulated_data(
         (
             raw_skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar,
+            skeleton_reprojection_error_cam_fr_mar,
         ) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
@@ -75,5 +83,42 @@ def get_triangulated_data(
             use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
             kill_event=kill_event,
         )
+
+        if processing_parameters.anipose_triangulate_3d_parameters_model.skip_reprojection_error_filtering:
+            logger.info("Skipping filtering of 3d triangulation...")
+            reprojection_filtered_skel3d_frame_marker_xyz = raw_skel3d_frame_marker_xyz
+            reprojection_filtered_skeleton_reprojection_error_fr_mar = skeleton_reprojection_error_fr_mar
+        else:
+            logger.info("Filtering 3d triangulation...")
+            (
+                reprojection_filtered_skel3d_frame_marker_xyz,
+                reprojection_filtered_skeleton_reprojection_error_fr_mar,
+                reprojection_filtered_skeleton_reprojection_error_cam_fr_mar,
+            ) = filter_by_reprojection_error(
+                reprojection_error_camera_frame_marker=skeleton_reprojection_error_cam_fr_mar,
+                reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
+                reprojection_error_confidence_threshold=processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
+                mediapipe_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
+                raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
+                anipose_calibration_object=anipose_calibration_object,
+                use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
+                minimum_cameras_to_reproject=processing_parameters.anipose_triangulate_3d_parameters_model.minimum_cameras_to_reproject,
+            )
+            save_mediapipe_3d_data_to_npy(
+                data3d_numFrames_numTrackedPoints_XYZ=reprojection_filtered_skel3d_frame_marker_xyz,
+                data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_fr_mar,
+                data3d_numCams_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_cam_fr_mar,
+                path_to_folder_where_data_will_be_saved=processing_parameters.recording_info_model.raw_data_folder_path,
+                processing_level="reprojection_filtered",
+            )
+            plot_reprojection_error(
+                raw_reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
+                filtered_reprojection_error_frame_marker=reprojection_filtered_skeleton_reprojection_error_fr_mar,
+                reprojection_error_threshold=np.nanpercentile(
+                    skeleton_reprojection_error_cam_fr_mar,
+                    processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
+                ),
+                output_folder_path=processing_parameters.recording_info_model.raw_data_folder_path,
+            )
 
     return raw_skel3d_frame_marker_xyz

@@ -134,7 +134,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     type="group",
                     children=[
                         self._create_new_run_this_step_parameter(run_step_name=RUN_3D_TRIANGULATION_NAME),
-                        create_3d_triangulation_prarameter_group(
+                        create_3d_triangulation_parameter_group(
                             session_processing_parameter_model.anipose_triangulate_3d_parameters_model
                         ),
                     ],

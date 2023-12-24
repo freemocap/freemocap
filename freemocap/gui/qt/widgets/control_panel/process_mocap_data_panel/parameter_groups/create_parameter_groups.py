@@ -24,7 +24,7 @@ ANIPOSE_CONFIDENCE_CUTOFF = "Confidence Threshold Cut-off"
 
 REPROJECTION_ERROR_FILTERING_TREE_NAME = "Reprojection Error Filtering"
 
-SKIP_REPROJECTION_ERROR_FILTERING = "Skip Reprojection Error Filtering"
+RUN_REPROJECTION_ERROR_FILTERING = "Run Reprojection Error Filtering"
 
 REPROJECTION_ERROR_FILTER_THRESHOLD = "Reprojection Error Filter Threshold (%)"
 
@@ -140,10 +140,10 @@ def create_3d_triangulation_parameter_group(
                 type="group",
                 children=[
                     dict(
-                        name=SKIP_REPROJECTION_ERROR_FILTERING,
+                        name=RUN_REPROJECTION_ERROR_FILTERING,
                         type="bool",
-                        value=parameter_model.skip_reprojection_error_filtering,
-                        tip="If true, skip filtering of reprojection error.",
+                        value=parameter_model.run_reprojection_error_filtering,
+                        tip="If true, run filtering of reprojection error.",
                     ),
                     dict(
                         name=REPROJECTION_ERROR_FILTER_THRESHOLD,
@@ -214,7 +214,7 @@ def extract_parameter_model_from_parameter_tree(
             num_processes=parameter_values_dictionary[NUMBER_OF_PROCESSES_PARAMETER_NAME],
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
-            skip_reprojection_error_filtering=parameter_values_dictionary[SKIP_REPROJECTION_ERROR_FILTERING],
+            run_reprojection_error_filtering=parameter_values_dictionary[RUN_REPROJECTION_ERROR_FILTERING],
             reprojection_error_confidence_cutoff=parameter_values_dictionary[REPROJECTION_ERROR_FILTER_THRESHOLD],
             minimum_cameras_to_reproject=parameter_values_dictionary[MINIMUM_CAMERAS_TO_REPROJECT],
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],

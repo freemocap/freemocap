@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class AniposeTriangulate3DParametersModel(BaseModel):
-    skip_reprojection_error_filtering: bool = True
+    run_reprojection_error_filtering: bool = False
     reprojection_error_confidence_cutoff: float = 90
     minimum_cameras_to_reproject: int = 3
     confidence_threshold_cutoff: float = 0.5

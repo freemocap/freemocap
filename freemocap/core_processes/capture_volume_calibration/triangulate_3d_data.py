@@ -5,13 +5,15 @@ from typing import Union
 
 import numpy as np
 
+from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import save_mediapipe_3d_data_to_npy
+
 logger = logging.getLogger(__name__)
 
 
 def triangulate_3d_data(
     anipose_calibration_object,
     mediapipe_2d_data: np.ndarray,
-    output_data_folder_path: Union[str, Path],  # TODO: verify we're not using this and remove it
+    output_data_folder_path: Union[str, Path],
     use_triangulate_ransac: bool = False,
     kill_event: multiprocessing.Event = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -57,6 +59,14 @@ def triangulate_3d_data(
 
     reprojection_error_data3d_numFrames_numTrackedPoints = data3d_reprojectionError_flat.reshape(
         number_of_frames, number_of_tracked_points
+    )
+
+    save_mediapipe_3d_data_to_npy(
+        data3d_numFrames_numTrackedPoints_XYZ=spatial_data3d_numFrames_numTrackedPoints_XYZ,
+        data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_error_data3d_numFrames_numTrackedPoints,
+        data3d_numCams_numFrames_numTrackedPoints_reprojectionError=reprojectionError_cam_frame_marker,
+        path_to_folder_where_data_will_be_saved=output_data_folder_path,
+        processing_level="raw"
     )
 
     return (

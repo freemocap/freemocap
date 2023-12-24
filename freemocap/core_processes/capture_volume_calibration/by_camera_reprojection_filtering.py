@@ -3,13 +3,72 @@ from pathlib import Path
 from typing import Tuple, Union
 from matplotlib import pyplot as plt
 import numpy as np
+
+
+from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
+    save_mediapipe_3d_data_to_npy,
+)
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
 
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
     NUMBER_OF_MEDIAPIPE_BODY_MARKERS,
 )
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 
 logger = logging.getLogger(__name__)
+
+
+def run_reprojection_error_filtering(
+    image_data_numCams_numFrames_numTrackedPts_XYZ: np.ndarray,
+    raw_skel3d_frame_marker_xyz: np.ndarray,
+    skeleton_reprojection_error_cam_fr_mar: np.ndarray,
+    skeleton_reprojection_error_fr_mar: np.ndarray,
+    anipose_calibration_object,
+    processing_parameters: ProcessingParameterModel,
+) -> np.ndarray:
+    """
+    Runs reprojection error filtering on 3d data, saves the filtered 3d data and reprojection error data, and creates and saves a debug plot.
+
+    :param image_data_numCams_numFrames_numTrackedPts_XYZ: original 2d data
+    :param raw_skel3d_frame_marker_xyz: original 3d data
+    :param skeleton_reprojection_error_cam_fr_mar: original per camerareprojection error
+    :param skeleton_reprojection_error_fr_mar: original per frame average reprojection error
+    :param anipose_calibration_object: anipose calibration object
+    :param processing_parameters: processing parameters
+
+    :return: filtered 3d data
+    """
+    (
+        reprojection_filtered_skel3d_frame_marker_xyz,
+        reprojection_filtered_skeleton_reprojection_error_fr_mar,
+        reprojection_filtered_skeleton_reprojection_error_cam_fr_mar,
+    ) = filter_by_reprojection_error(
+        reprojection_error_camera_frame_marker=skeleton_reprojection_error_cam_fr_mar,
+        reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
+        reprojection_error_confidence_threshold=processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
+        mediapipe_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
+        raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
+        anipose_calibration_object=anipose_calibration_object,
+        use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
+        minimum_cameras_to_reproject=processing_parameters.anipose_triangulate_3d_parameters_model.minimum_cameras_to_reproject,
+    )
+    save_mediapipe_3d_data_to_npy(
+        data3d_numFrames_numTrackedPoints_XYZ=reprojection_filtered_skel3d_frame_marker_xyz,
+        data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_fr_mar,
+        data3d_numCams_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_cam_fr_mar,
+        path_to_folder_where_data_will_be_saved=processing_parameters.recording_info_model.raw_data_folder_path,
+        processing_level="reprojection_filtered",
+    )
+    plot_reprojection_error(
+        raw_reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
+        filtered_reprojection_error_frame_marker=reprojection_filtered_skeleton_reprojection_error_fr_mar,
+        reprojection_error_threshold=np.nanpercentile(
+            skeleton_reprojection_error_cam_fr_mar,
+            processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
+        ),
+        output_folder_path=processing_parameters.recording_info_model.raw_data_folder_path,
+    )
+    return reprojection_filtered_skel3d_frame_marker_xyz
 
 
 def filter_by_reprojection_error(
@@ -113,7 +172,9 @@ def _get_data_to_reproject(
     indices_above_threshold = np.nonzero(reprojError_cam_frame_marker > reprojection_error_threshold)
     logger.info(f"SHAPE OF INDICES ABOVE THRESHOLD: {indices_above_threshold[0].shape}")
 
-    total_frame_marker_combos = input_2d_data_camera_frame_marker_xy.shape[1] * input_2d_data_camera_frame_marker_xy.shape[2]
+    total_frame_marker_combos = (
+        input_2d_data_camera_frame_marker_xy.shape[1] * input_2d_data_camera_frame_marker_xy.shape[2]
+    )
     unique_frame_marker_list = _get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
     logger.info(
         f"number of frame/marker combos with reprojection error above threshold: {len(unique_frame_marker_list)} ({len(unique_frame_marker_list)/total_frame_marker_combos * 100:.1f} percent of total)"

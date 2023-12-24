@@ -2,14 +2,11 @@ import logging
 import multiprocessing
 from pathlib import Path
 import numpy as np
-from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import (
-    filter_by_reprojection_error,
-    plot_reprojection_error,
-)
-from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
-    save_mediapipe_3d_data_to_npy,
-)
 
+
+from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import (
+    run_reprojection_error_filtering,
+)
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
@@ -37,7 +34,7 @@ def get_triangulated_data(
 
     if image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
         logger.info("Skipping 3d triangulation for single camera data")
-        (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
+        (skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
             input_image_data_frame_marker_xyz=image_data_numCams_numFrames_numTrackedPts_XYZ[0],
             raw_data_folder_path=Path(processing_parameters.recording_info_model.raw_data_folder_path),
         )
@@ -46,7 +43,7 @@ def get_triangulated_data(
             f"Skipping 3d triangulation and loading data from: {processing_parameters.recording_info_model.raw_mediapipe_3d_data_npy_file_path}"
         )
         try:
-            raw_skel3d_frame_marker_xyz = np.load(
+            skel3d_frame_marker_xyz = np.load(
                 processing_parameters.recording_info_model.raw_mediapipe_3d_data_npy_file_path
             )
             skeleton_reprojection_error_fr_mar = np.load(
@@ -73,7 +70,7 @@ def get_triangulated_data(
             save_copy_of_calibration_to_this_path=processing_parameters.recording_info_model.path,
         )
         (
-            raw_skel3d_frame_marker_xyz,
+            skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar,
             skeleton_reprojection_error_cam_fr_mar,
         ) = triangulate_3d_data(
@@ -84,41 +81,15 @@ def get_triangulated_data(
             kill_event=kill_event,
         )
 
-        if processing_parameters.anipose_triangulate_3d_parameters_model.skip_reprojection_error_filtering:
-            logger.info("Skipping filtering of 3d triangulation...")
-            reprojection_filtered_skel3d_frame_marker_xyz = raw_skel3d_frame_marker_xyz
-            reprojection_filtered_skeleton_reprojection_error_fr_mar = skeleton_reprojection_error_fr_mar
-        else:
+        if processing_parameters.anipose_triangulate_3d_parameters_model.run_reprojection_error_filtering:
             logger.info("Filtering 3d triangulation...")
-            (
-                reprojection_filtered_skel3d_frame_marker_xyz,
-                reprojection_filtered_skeleton_reprojection_error_fr_mar,
-                reprojection_filtered_skeleton_reprojection_error_cam_fr_mar,
-            ) = filter_by_reprojection_error(
-                reprojection_error_camera_frame_marker=skeleton_reprojection_error_cam_fr_mar,
-                reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
-                reprojection_error_confidence_threshold=processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
-                mediapipe_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
-                raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
+            skel3d_frame_marker_xyz = run_reprojection_error_filtering(
+                image_data_numCams_numFrames_numTrackedPts_XYZ=image_data_numCams_numFrames_numTrackedPts_XYZ,
+                raw_skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+                skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
+                skeleton_reprojection_error_cam_fr_mar=skeleton_reprojection_error_cam_fr_mar,
                 anipose_calibration_object=anipose_calibration_object,
-                use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
-                minimum_cameras_to_reproject=processing_parameters.anipose_triangulate_3d_parameters_model.minimum_cameras_to_reproject,
-            )
-            save_mediapipe_3d_data_to_npy(
-                data3d_numFrames_numTrackedPoints_XYZ=reprojection_filtered_skel3d_frame_marker_xyz,
-                data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_fr_mar,
-                data3d_numCams_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_cam_fr_mar,
-                path_to_folder_where_data_will_be_saved=processing_parameters.recording_info_model.raw_data_folder_path,
-                processing_level="reprojection_filtered",
-            )
-            plot_reprojection_error(
-                raw_reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
-                filtered_reprojection_error_frame_marker=reprojection_filtered_skeleton_reprojection_error_fr_mar,
-                reprojection_error_threshold=np.nanpercentile(
-                    skeleton_reprojection_error_cam_fr_mar,
-                    processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
-                ),
-                output_folder_path=processing_parameters.recording_info_model.raw_data_folder_path,
+                processing_parameters=processing_parameters,
             )
 
-    return raw_skel3d_frame_marker_xyz
+    return skel3d_frame_marker_xyz

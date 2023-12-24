@@ -8,54 +8,6 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def remove_3d_data_with_high_reprojection_error(
-    data3d_numFrames_numTrackedPoints_XYZ: np.ndarray,
-    data3d_numFrames_numTrackedPoints_reprojectionError: np.ndarray,
-):
-    return data3d_numFrames_numTrackedPoints_XYZ
-    # TODO - Fix this function (it was causing overfiltering when combined with the anipose calibration confidence thresholding)
-
-    logger.info("Removing 3D data with high reprojection error")
-    mean_reprojection_error_per_frame = np.nanmean(
-        data3d_numFrames_numTrackedPoints_reprojectionError,
-        axis=1,
-    )
-
-    reprojection_error_mean = np.nanmean(mean_reprojection_error_per_frame)
-    reprojection_error_median = np.nanmedian(mean_reprojection_error_per_frame)
-    reprojection_error_std = np.nanstd(mean_reprojection_error_per_frame)
-
-    median_absolute_deviation = np.nanmedian(np.abs(mean_reprojection_error_per_frame - reprojection_error_median))
-
-    logger.info(
-        f"\nInitial reprojection error - \nmean: {reprojection_error_mean:.3f},\nstandard deviation: {reprojection_error_std:.3f},\nmedian: {reprojection_error_median}\nmedian absolute deviation: {median_absolute_deviation:.3f}"
-    )
-
-    error_threshold = reprojection_error_median + 3 * median_absolute_deviation
-
-    number_of_nans_before_thresholding = np.sum(np.isnan(data3d_numFrames_numTrackedPoints_XYZ))
-
-    # replace points with high reprojection error with `np.nan`
-    data3d_numFrames_numTrackedPoints_XYZ[
-        data3d_numFrames_numTrackedPoints_reprojectionError > error_threshold
-    ] = np.nan
-
-    number_of_nans_after_thresholding = np.sum(np.isnan(data3d_numFrames_numTrackedPoints_XYZ))
-    percentage_of_nans_removed = (
-        (number_of_nans_before_thresholding - number_of_nans_after_thresholding)
-        / number_of_nans_before_thresholding
-        * 100
-    )
-
-    logger.info(f"Removing points with reprojection error > {error_threshold:.3f}")
-    logger.info(f"Number of NaNs before thresholding: {number_of_nans_before_thresholding}")
-    logger.info(
-        f"Number of NaNs after thresholding: {number_of_nans_after_thresholding} ({percentage_of_nans_removed:.2f} %)"
-    )
-
-    return data3d_numFrames_numTrackedPoints_XYZ
-
-
 def triangulate_3d_data(
     anipose_calibration_object,
     mediapipe_2d_data: np.ndarray,
@@ -93,7 +45,7 @@ def triangulate_3d_data(
         logger.info("Using simple `triangulate` method ")
         data3d_flat = anipose_calibration_object.triangulate(data2d_flat, progress=True, kill_event=kill_event)
 
-    spatial_data3d_numFrames_numTrackedPoints_XYZ_og = data3d_flat.reshape(
+    spatial_data3d_numFrames_numTrackedPoints_XYZ = data3d_flat.reshape(
         number_of_frames, number_of_tracked_points, 3
     )
 
@@ -105,11 +57,6 @@ def triangulate_3d_data(
 
     reprojection_error_data3d_numFrames_numTrackedPoints = data3d_reprojectionError_flat.reshape(
         number_of_frames, number_of_tracked_points
-    )
-
-    spatial_data3d_numFrames_numTrackedPoints_XYZ = remove_3d_data_with_high_reprojection_error(
-        data3d_numFrames_numTrackedPoints_XYZ=spatial_data3d_numFrames_numTrackedPoints_XYZ_og,
-        data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_error_data3d_numFrames_numTrackedPoints,
     )
 
     return (

@@ -168,7 +168,7 @@ class MainWindow(QMainWindow):
         return tools_dock_widget
 
     def _handle_videos_saved_to_this_folder_signal(self, folder_path: str):
-        logger.info(f"Videos saved to this folder signal received: {folder_path}")
+        logger.debug(f"Videos saved to this folder signal received: {folder_path}")
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
@@ -351,6 +351,7 @@ class MainWindow(QMainWindow):
         self._directory_view_widget.handle_new_active_recording_selected()
 
         try:
+            # TODO: don't run this on single camera recordings
             self._process_motion_capture_data_panel.update_calibration_path()
         except Exception as e:
             logger.error(e)

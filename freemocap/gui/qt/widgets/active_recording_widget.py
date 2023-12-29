@@ -40,7 +40,7 @@ class ActiveRecordingInfoWidget(QWidget):
     def active_recording_view_widget(self):
         return self._active_recording_view_widget
 
-    def get_active_recording_info(self, return_path: bool = False):
+    def get_active_recording_info(self, return_path: bool = False) -> Union[RecordingInfoModel, Path]:
         # this is redundant to the `active_recording_info` property,
         # but it will be more intuitive to send this down as a callable
         # rather than relying on 'pass-by-reference' magic lol
@@ -59,7 +59,7 @@ class ActiveRecordingInfoWidget(QWidget):
         self,
         recording_folder_path: Union[str, Path],
     ):
-        logger.info(f"Setting active recording to {recording_folder_path}")
+        logger.debug(f"Setting active recording to {recording_folder_path}")
 
         self._active_recording_info = RecordingInfoModel(recording_folder_path=str(recording_folder_path))
 

@@ -76,7 +76,7 @@ class DirectoryViewWidget(QWidget):
         self._tree_view_widget.scrollTo(og_index)
 
     def set_folder_as_root(self, folder_path: Union[str, Path]):
-        logger.info(f"Setting root folder to {str(folder_path)}")
+        logger.debug(f"Setting root folder to {str(folder_path)}")
         self._root_folder = folder_path
         self._tree_view_widget.setWindowTitle(str(folder_path))
         self._file_system_model.setRootPath(str(folder_path))

@@ -1,7 +1,8 @@
 import logging
 import os
+from pathlib import Path
 import threading
-from typing import Callable
+from typing import Callable, Union
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLayout,
 )
+from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
@@ -32,7 +34,11 @@ logger = logging.getLogger(__name__)
 
 class CalibrationControlPanel(QWidget):
     def __init__(
-        self, get_active_recording_info: Callable, kill_thread_event: threading.Event, gui_state: GuiState, parent=None
+        self,
+        get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
+        kill_thread_event: threading.Event,
+        gui_state: GuiState,
+        parent=None,
     ):
         super().__init__(parent=parent)
         self.gui_state = gui_state
@@ -124,7 +130,7 @@ class CalibrationControlPanel(QWidget):
         self._calibration_toml_path = toml_path
 
         if self._calibration_toml_path is not None:
-            logger.info(f"Setting calibration TOML path: {self._calibration_toml_path}")
+            logger.debug(f"Setting calibration TOML path: {self._calibration_toml_path}")
             self._show_selected_calibration_toml_path(self._calibration_toml_path)
         else:
             self._show_selected_calibration_toml_path("-Calibration File Not Found-")

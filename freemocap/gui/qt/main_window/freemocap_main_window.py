@@ -172,7 +172,7 @@ class MainWindow(QMainWindow):
         log_view_dock_widget.setFeatures(
             QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetFloatable
         )
-        logger.info("Finished initializing FreeMoCap MainWindow")
+        logger.debug("Finished initializing FreeMoCap MainWindow")
 
     def _create_tools_dock_widget(self):
         tools_dock_widget = QDockWidget("Control Panel", self)
@@ -200,7 +200,7 @@ class MainWindow(QMainWindow):
             )
 
     def _handle_processing_finished_signal(self):
-        logger.info("Processing finished")
+        logger.debug("Processing finished")
         if self._controller_group_box.auto_open_in_blender_checked and not self._kill_thread_event.is_set():
             logger.info("'Auto process videos' checkbox is checked - triggering 'Create Blender Scene'")
             self._export_active_recording_to_blender()

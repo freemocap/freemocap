@@ -187,7 +187,7 @@ class MainWindow(QMainWindow):
     def _handle_processing_finished_signal(self):
         logger.debug("Processing finished")
         if self._controller_group_box.auto_open_in_blender_checked and not self._kill_thread_event.is_set():
-            logger.info("'Auto process videos' checkbox is checked - triggering 'Create Blender Scene'")
+            logger.info("'Auto Open in Blender' checkbox is checked - triggering 'Create Blender Scene'")
             self._export_active_recording_to_blender()
         if self._controller_group_box.generate_jupyter_notebook_checked and not self._kill_thread_event.is_set():
             self._generate_jupyter_notebook()
@@ -294,7 +294,7 @@ class MainWindow(QMainWindow):
         )
 
     def _export_active_recording_to_blender(self):
-        logger.info("Exporting active recording to Blender...")
+        logger.debug("Exporting active recording to Blender...")
         recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
 
         if self._visualization_control_panel.blender_executable_path is None:

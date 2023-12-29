@@ -18,7 +18,7 @@ class DirectoryViewWidget(QWidget):
 
     def __init__(self, top_level_folder_path: Union[str, Path], get_active_recording_info_callable: Callable):
         self._root_folder = None
-        logger.info("Creating QtDirectoryViewWidget")
+        logger.debug("Creating QtDirectoryViewWidget")
         super().__init__()
         self._minimum_width = 300
         self.setMinimumWidth(self._minimum_width)

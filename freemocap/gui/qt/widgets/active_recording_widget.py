@@ -71,7 +71,7 @@ class ActiveRecordingInfoWidget(QWidget):
         self.new_active_recording_selected_signal.emit(self._active_recording_info)
 
     def update_parameter_tree(self):
-        logger.info("Updating Parameter Tree")
+        logger.debug("Updating Parameter Tree")
         self._active_recording_view_widget.setup_parameter_tree(self.active_recording_info)
 
     def _update_file_watch_path(self, folder_to_watch: Union[str, Path]):
@@ -90,7 +90,7 @@ class ActiveRecordingInfoWidget(QWidget):
         return directory_watcher
 
     def _handle_directory_changed(self, path: str):
-        logger.info(f"Directory changed: {path} - Updating Parameter Tree")
+        logger.debug(f"Directory changed: {path}")
         self.update_parameter_tree()
 
 

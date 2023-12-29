@@ -123,9 +123,6 @@ class MainWindow(QMainWindow):
         self._kill_thread_event = multiprocessing.Event()
 
         self._active_recording_info_widget = ActiveRecordingInfoWidget(parent=self)
-        self._active_recording_info_widget.new_active_recording_selected_signal.connect(
-            self._handle_new_active_recording_selected
-        )
         self._directory_view_widget = self._create_directory_view_widget()
         self._directory_view_widget.expand_directory_to_path(get_recording_session_folder_path())
         self._directory_view_widget.new_active_recording_selected_signal.connect(
@@ -146,25 +143,13 @@ class MainWindow(QMainWindow):
 
         self._tools_dock_widget = self._create_tools_dock_widget()
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._tools_dock_widget)
-        # self._tools_dock_tab_widget = QTabWidget(self)
 
         self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
         self._tools_dock_widget.setWidget(self._control_panel_widget)
-        # self._tools_dock_tab_widget.addTab(self._control_panel_widget, f"Control Panel")
-        #
-        # self._tools_dock_tab_widget.addTab(self._directory_view_widget, f"Directory View")
-        # self._tools_dock_tab_widget.addTab(
-        #     self._active_recording_info_widget, f"Active Recording Info"
-        # )
 
-        # self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._directory_view_dock_widget)
-
-        # self._jupyter_console_widget = JupyterConsoleWidget(parent=self)
-        # jupyter_console_dock_widget = QDockWidget("Jupyter IPython Console", self)
-        # self.addDockWidget(
-        #     Qt.DockWidgetArea.BottomDockWidgetArea, jupyter_console_dock_widget
-        # )
-        # jupyter_console_dock_widget.setWidget(self._jupyter_console_widget)
+        self._active_recording_info_widget.new_active_recording_selected_signal.connect(
+            self._handle_new_active_recording_selected
+        )
 
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
@@ -276,29 +261,8 @@ class MainWindow(QMainWindow):
             get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
         )
 
-    # def _create_tool_bar(self):
-    #     self._calibration_control_panel = CalibrationControlPanel(
-    #         get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
-    #     )
-    #     self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
-    #         recording_processing_parameters=RecordingProcessingParameterModel(),
-    #         get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
-    #     )
-    #     self._process_motion_capture_data_panel.processing_finished_signal.connect(
-    #         self._handle_processing_finished_signal
-    #     )
-    #     return ToolBar(calibration_control_panel=self._calibration_control_panel,
-    #                    process_motion_capture_data_panel=self._process_motion_capture_data_panel,
-    #                    visualize_data_widget=self._create_visualization_control_panel(),
-    #                    directory_view_widget=self._create_directory_view_widget(),
-    #                    parent=self)
-
     def _create_control_panel_widget(self, log_update: Callable):
         self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(self._skellycam_widget)
-
-        # self._calibration_control_panel = CalibrationControlPanel(
-        #     get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
-        # )
 
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             recording_processing_parameters=ProcessingParameterModel(),
@@ -324,7 +288,6 @@ class MainWindow(QMainWindow):
 
         return ControlPanelWidget(
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
-            # calibration_control_panel=self._calibration_control_panel,
             process_motion_capture_data_panel=self._process_motion_capture_data_panel,
             visualize_data_widget=self._visualization_control_panel,
             parent=self,
@@ -348,7 +311,6 @@ class MainWindow(QMainWindow):
 
         if (
             self._controller_group_box.auto_open_in_blender_checked
-            # or self._visualization_control_panel.open_in_blender_automatically_box_is_checked
         ):
             if Path(self._active_recording_info_widget.active_recording_info.blender_file_path).exists():
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
@@ -366,7 +328,6 @@ class MainWindow(QMainWindow):
     def _handle_new_active_recording_selected(self, recording_info_model: RecordingInfoModel):
         logger.info(f"New active recording selected: {recording_info_model.path}")
 
-        # self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
         self._pipedream_pings.update_pings_dict(
             key=recording_info_model.name, value=self._active_recording_info_widget.active_recording_info.status_check
         )

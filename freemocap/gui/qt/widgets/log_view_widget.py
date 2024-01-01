@@ -67,6 +67,7 @@ class LogViewWidget(QPlainTextEdit):
         self._logging_queue = multiprocessing.Queue(-1)
         self._queue_handler = QueueHandler(self._logging_queue)
         self._queue_handler.setFormatter(log_view_logging_formatter)
+        self._queue_handler.setLevel(logging.INFO)
         logging.getLogger("").handlers.append(self._queue_handler)
 
         self._exit_event = threading.Event()

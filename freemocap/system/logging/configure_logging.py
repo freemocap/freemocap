@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from logging.config import dictConfig
 
-from skellycam.system.environment.default_paths import get_log_file_path
+from freemocap.system.paths_and_filenames.path_getters import get_log_file_path
 
 # Suppress some annoying log messages
 logging.getLogger("tzlocal").setLevel(logging.WARNING)

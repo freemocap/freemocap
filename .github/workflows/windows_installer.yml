@@ -52,10 +52,9 @@ jobs:
           cargo build --release
           cargo install pyapp --force --root $WORKSPACE
           cd $WORKSPACE
-          mv $WORKSPACE/bin/pyapp freemocap_app && chmod +x freemocap_app
-          tar -czvf freemocap_app.tar.gz freemocap_app
+          mv $WORKSPACE/bin/pyapp freemocap_app.exe
         shell: bash
       - uses: actions/upload-artifact@v3
         with:
           name: freemocap
-          path: freemocap_app.tar.gz
+          path: freemocap_app.exe

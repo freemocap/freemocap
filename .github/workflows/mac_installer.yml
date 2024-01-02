@@ -46,9 +46,17 @@ jobs:
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}
           cd ${{ github.workspace }}
-          mv ${{ github.workspace }}/bin/pyapp freemocap_app && chmod +x freemocap_app
-          tar -czvf freemocap_app.tar.gz freemocap_app
+          mv ${{ github.workspace }}/bin/pyapp freemocap_app
+      - name: Bundle Mac App
+        run: |
+          mkdir -p ${{ github.workspace }}/freemocap.app/Contents/MacOS
+          mkdir -p ${{ github.workspace }}/freemocap.app/Contents/Resources
+          mkdir -p ${{ github.workspace }}/freemocap.app/Contents/Frameworks
+          chmod +x freemocap_app && cp freemocap_app ${{ github.workspace }}/freemocap.app/Contents/MacOS
+          cp ${{ github.workspace }}/freemocap/assets/mac_app_files/freemocap.icns ${{ github.workspace }}/freemocap.app/Contents/Resources
+          cp ${{ github.workspace }}/freemocap/assets/mac_app_files/Info.plist ${{ github.workspace }}/freemocap.app/Contents
+          tar -czvf freemocap.tar.gz freemocap.app
       - uses: actions/upload-artifact@v3
         with:
           name: freemocap
-          path: freemocap_app.tar.gz
+          path: freemocap.tar.gz

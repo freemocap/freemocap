@@ -42,6 +42,7 @@ def run_image_tracking_pipeline(
             raise RuntimeError("Failed to load 2D data, cannot continue processing") from e
     else:
         logger.info("Detecting 2d skeletons...")
+        logger.info("progress")
         # 2d skeleton detection
         image_data_numCams_numFrames_numTrackedPts_XYZ = run_image_tracking(
             tracking_params=processing_parameters.mediapipe_parameters_model,

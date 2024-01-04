@@ -56,6 +56,9 @@ def process_recording_folder(
         handler = DirectQueueHandler(logging_queue)
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
         logger.addHandler(handler)
+
+    logger.info("progress")
+
     try:
         processing_pipeline_check(processing_parameters=recording_processing_parameter_model)
     except FileNotFoundError as e:

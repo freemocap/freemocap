@@ -34,13 +34,18 @@ class LoggingQueueListener(QThread):
         super().__init__(parent)
         self._logging_queue = logging_queue
         self._exit_event = exit_event
+        self._parent = parent
 
     def run(self):
         logger.info("Starting LoggingQueueListener thread")
         try:
             while not self._exit_event.is_set():
                 if self._logging_queue.empty():
+                    if self._parent._keep_logging:  # Check if progress logging should continue
+                        QtCore.QMetaObject.invokeMethod(self._parent, "log_progress", QtCore.Qt.QueuedConnection)
                     continue
+                else:
+                    self._parent._keep_logging = False
 
                 record = self._logging_queue.get(block=True)
 
@@ -48,6 +53,7 @@ class LoggingQueueListener(QThread):
                     break
 
                 self.log_message_signal.emit(record)
+
         except Exception as e:
             logger.exception(e)
             self.close()
@@ -72,8 +78,9 @@ class LogViewWidget(QPlainTextEdit):
 
         self._exit_event = threading.Event()
         self._logging_queue_listener = LoggingQueueListener(
-            logging_queue=self._logging_queue, exit_event=self._exit_event
+            logging_queue=self._logging_queue, exit_event=self._exit_event, parent=self
         )
+        self._keep_logging = False
         self._logging_queue_listener.log_message_signal.connect(self.add_log)
         self.timestamp_color_generator = rgb_color_generator((50, 255, 255), (255, 50, 255), phase_increment=0.2)
         self.log_message_color_generator = rgb_color_generator((128, 255, 100), (100, 255, 255), phase_increment=0.7)
@@ -90,6 +97,10 @@ class LogViewWidget(QPlainTextEdit):
         message_content = full_message.split("||||")[-1].strip()
         code_path_str = full_message.split("||||")[0].strip()
         package, method, line = code_path_str.split(":")
+
+        if message_content == "progress.":
+            self._keep_logging = True  # Start progress logging
+            return
 
         # Set color for the level
         r, g, b = level_colors.get(level.strip(), (255, 255, 255))
@@ -133,6 +144,10 @@ class LogViewWidget(QPlainTextEdit):
             f"{color_timestamp}[{color_level}] {color_process_id_thread_id} {color_code_path} ::: {color_message}"
         )
         self.appendHtml(colored_log_entry)
+
+    @QtCore.Slot()
+    def log_progress(self) -> None:
+        self.appendPlainText("-/|\\")
 
     def closeEvent(self, event):
         logger.info("Closing LogViewWidget")

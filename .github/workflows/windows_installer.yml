@@ -54,13 +54,12 @@ jobs:
           cd $WORKSPACE
           mv $WORKSPACE/bin/pyapp freemocap_app.exe
         shell: bash
-      - name: Download Rcedit
-        run: |
-          curl -L -o rcedit.exe https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe
+      - name: Install Rcedit with Chocolatey
+        run: choco install rcedit -y
         shell: bash
       - name: Set Executable Icon
         run: |
-          rcedit.exe "freemocap_app.exe" --set-icon "${{ github.workspace }}/freemocap/assets/logo/freemocap_skelly_logo.ico"
+          rcedit "freemocap_app.exe" --set-icon "${{ github.workspace }}/freemocap/assets/logo/freemocap_skelly_logo.ico"
       - uses: actions/upload-artifact@v3
         with:
           name: freemocap

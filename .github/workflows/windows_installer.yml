@@ -60,7 +60,7 @@ jobs:
         shell: bash
       - name: Set Executable Icon
         run: |
-          rcedit "freemocap_app.exe" --set-icon "${{ github.workspace }}/freemocap/assets/logo/freemocap_skelly_logo.ico"
+          rcedit.exe "freemocap_app.exe" --set-icon "${{ github.workspace }}/freemocap/assets/logo/freemocap_skelly_logo.ico"
       - uses: actions/upload-artifact@v3
         with:
           name: freemocap

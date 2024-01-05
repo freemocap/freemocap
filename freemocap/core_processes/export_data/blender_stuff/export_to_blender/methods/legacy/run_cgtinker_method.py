@@ -42,7 +42,7 @@ def run_cgtinker_method(
         "1,",  # load quick
     ]
 
-    logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")
+    logger.debug(f"Starting `blender` sub-process with this command: \n {command_list}")
 
     blender_process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     while True:
@@ -53,6 +53,6 @@ def run_cgtinker_method(
             print(output.strip().decode())
 
     if blender_process.returncode == 0:
-        print("Blender returned an error:")
-        print(blender_process.stderr.read().decode())
-    logger.info("Done with blender stuff :D")
+        logger.error("Blender returned an error:")
+        logger.error(blender_process.stderr.read().decode())
+    logger.debug("Done with cgtinker Blender Export")

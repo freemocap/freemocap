@@ -46,6 +46,9 @@ FREEMOCAP_TEST_DATA_RECORDING_NAME = "freemocap_sample_data"
 # logo
 PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent / "assets/logo/freemocap-logo-black-border.svg")
 
+# progress bars
+LOG_VIEW_PROGRESS_BAR_STRING = "Log Progress"
+
 # emoji strings
 SPARKLES_EMOJI_STRING = "\U00002728"
 SKULL_EMOJI_STRING = "\U0001F480"

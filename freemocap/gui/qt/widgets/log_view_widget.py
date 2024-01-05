@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication, QPlainTextEdit
 
 from freemocap.gui.qt.utilities.colors import get_next_color, rgb_color_generator
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
+from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
 
 logger = logging.getLogger(__name__)
 
@@ -96,8 +97,7 @@ class LogViewWidget(QPlainTextEdit):
         code_path_str = full_message.split("||||")[0].strip()
         package, method, line = code_path_str.split(":")
 
-        # TODO: replace "progress" with an imported SPECIAL_STRING
-        if message_content == "progress" + ".":  # message content always ends with a period
+        if message_content == LOG_VIEW_PROGRESS_BAR_STRING + ".":
             self._keep_logging = True
             return
         else:
@@ -147,26 +147,31 @@ class LogViewWidget(QPlainTextEdit):
         self.appendHtml(colored_log_entry)
 
     @QtCore.Slot()
-    def log_progress(self, bar_length: int = 50, cycles_per_update: int = 2500) -> None:
+    def log_progress(self, bar_length: int = 100, cycles_per_update: int = 2500) -> None:
         if not hasattr(self, "_progress_counter"):
             self._progress_counter = 0
 
-        progress_marker = "-\\|/"
+        progress_marker = "▁▂▃▄▅▆▇▆▅▄▃▂▁"
+        help_text = "Processing:"
 
-        if self.toPlainText().split("\n")[-1].strip().split(" ")[0] != "progress:":
-            self.appendPlainText("progress: " + progress_marker * bar_length)
+        if self.toPlainText().split("\n")[-1].strip().split(" ")[0] != help_text:
+            self.appendPlainText(help_text + " " + progress_marker * bar_length)
             return
-        
+
         cycles_until_repeat = len(progress_marker) * cycles_per_update
         for i in range(len(progress_marker)):
             if self._progress_counter % cycles_until_repeat == cycles_per_update * i:
-                self._replace_last_line("progress: " + (progress_marker[i:] + progress_marker[:i]) * bar_length)
+                self._replace_last_line(
+                    help_text
+                    + " "
+                    + (progress_marker[i:] + progress_marker[:i]) * int(bar_length / len(progress_marker))
+                )
 
         self._progress_counter += 1
 
     def _replace_last_line(
-        self, text
-    ):  # from https://stackoverflow.com/questions/53381975/display-terminal-output-with-tqdm-in-qplaintextedit
+        self, text: str
+    ) -> None:  # from https://stackoverflow.com/questions/53381975/display-terminal-output-with-tqdm-in-qplaintextedit
         cursor = self.textCursor()
         cursor.movePosition(QtGui.QTextCursor.End)
         cursor.select(QtGui.QTextCursor.BlockUnderCursor)

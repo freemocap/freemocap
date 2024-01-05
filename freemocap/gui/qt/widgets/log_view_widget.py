@@ -41,11 +41,9 @@ class LoggingQueueListener(QThread):
         try:
             while not self._exit_event.is_set():
                 if self._logging_queue.empty():
-                    if self._parent._keep_logging:  # Check if progress logging should continue
+                    if self._parent._keep_logging:
                         QtCore.QMetaObject.invokeMethod(self._parent, "log_progress", QtCore.Qt.QueuedConnection)
                     continue
-                else:
-                    self._parent._keep_logging = False # TODO: this is not properly stopping the _keep_logging function
 
                 record = self._logging_queue.get(block=True)
 
@@ -98,9 +96,12 @@ class LogViewWidget(QPlainTextEdit):
         code_path_str = full_message.split("||||")[0].strip()
         package, method, line = code_path_str.split(":")
 
-        if message_content == "progress.":
-            self._keep_logging = True  # Start progress logging
+        # TODO: replace "progress" with an imported SPECIAL_STRING
+        if message_content == "progress" + ".":  # message content always ends with a period
+            self._keep_logging = True
             return
+        else:
+            self._keep_logging = False
 
         # Set color for the level
         r, g, b = level_colors.get(level.strip(), (255, 255, 255))
@@ -146,23 +147,26 @@ class LogViewWidget(QPlainTextEdit):
         self.appendHtml(colored_log_entry)
 
     @QtCore.Slot()
-    def log_progress(self) -> None:
+    def log_progress(self, bar_length: int = 50, cycles_per_update: int = 2500) -> None:
         if not hasattr(self, "_progress_counter"):
             self._progress_counter = 0
+
+        progress_marker = "-\\|/"
+
         if self.toPlainText().split("\n")[-1].strip().split(" ")[0] != "progress:":
-            self.appendPlainText("progress: -\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/")
+            self.appendPlainText("progress: " + progress_marker * bar_length)
             return
-        if self._progress_counter % 10000 == 0:
-            self._replace_last_line("progress: -\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/")
-        elif self._progress_counter % 10000 == 2500:
-            self._replace_last_line("progress: \\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-")
-        elif self._progress_counter % 10000 == 5000:
-            self._replace_last_line("progress: |/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\")
-        elif self._progress_counter % 10000 == 7500:
-            self._replace_last_line("progress: /-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|")
+        
+        cycles_until_repeat = len(progress_marker) * cycles_per_update
+        for i in range(len(progress_marker)):
+            if self._progress_counter % cycles_until_repeat == cycles_per_update * i:
+                self._replace_last_line("progress: " + (progress_marker[i:] + progress_marker[:i]) * bar_length)
+
         self._progress_counter += 1
 
-    def _replace_last_line(self, text): # from https://stackoverflow.com/questions/53381975/display-terminal-output-with-tqdm-in-qplaintextedit
+    def _replace_last_line(
+        self, text
+    ):  # from https://stackoverflow.com/questions/53381975/display-terminal-output-with-tqdm-in-qplaintextedit
         cursor = self.textCursor()
         cursor.movePosition(QtGui.QTextCursor.End)
         cursor.select(QtGui.QTextCursor.BlockUnderCursor)

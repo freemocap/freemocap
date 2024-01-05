@@ -4,7 +4,7 @@ import threading
 from logging.handlers import QueueHandler
 from queue import Queue
 
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui
 from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QApplication, QPlainTextEdit
 
@@ -45,7 +45,7 @@ class LoggingQueueListener(QThread):
                         QtCore.QMetaObject.invokeMethod(self._parent, "log_progress", QtCore.Qt.QueuedConnection)
                     continue
                 else:
-                    self._parent._keep_logging = False
+                    self._parent._keep_logging = False # TODO: this is not properly stopping the _keep_logging function
 
                 record = self._logging_queue.get(block=True)
 
@@ -147,7 +147,29 @@ class LogViewWidget(QPlainTextEdit):
 
     @QtCore.Slot()
     def log_progress(self) -> None:
-        self.appendPlainText("-/|\\")
+        if not hasattr(self, "_progress_counter"):
+            self._progress_counter = 0
+        if self.toPlainText().split("\n")[-1].strip().split(" ")[0] != "progress:":
+            self.appendPlainText("progress: -\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/")
+            return
+        if self._progress_counter % 10000 == 0:
+            self._replace_last_line("progress: -\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/")
+        elif self._progress_counter % 10000 == 2500:
+            self._replace_last_line("progress: \\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-")
+        elif self._progress_counter % 10000 == 5000:
+            self._replace_last_line("progress: |/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\")
+        elif self._progress_counter % 10000 == 7500:
+            self._replace_last_line("progress: /-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|/-\\|")
+        self._progress_counter += 1
+
+    def _replace_last_line(self, text): # from https://stackoverflow.com/questions/53381975/display-terminal-output-with-tqdm-in-qplaintextedit
+        cursor = self.textCursor()
+        cursor.movePosition(QtGui.QTextCursor.End)
+        cursor.select(QtGui.QTextCursor.BlockUnderCursor)
+        cursor.removeSelectedText()
+        cursor.insertBlock()
+        self.setTextCursor(cursor)
+        self.insertPlainText(text)
 
     def closeEvent(self, event):
         logger.info("Closing LogViewWidget")

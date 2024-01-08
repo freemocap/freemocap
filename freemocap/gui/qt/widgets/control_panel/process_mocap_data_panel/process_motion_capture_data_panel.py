@@ -194,6 +194,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         parameter = Parameter.create(
             name=NUMBER_OF_PROCESSES_PARAMETER_NAME,
             type="int",
+            limits=(1, multiprocessing.cpu_count() - 1),
             value=(multiprocessing.cpu_count() - 1),
             tip="If your computer has issues processing larger videos, you can try setting number of processes to 1 to process each video serially.",
         )

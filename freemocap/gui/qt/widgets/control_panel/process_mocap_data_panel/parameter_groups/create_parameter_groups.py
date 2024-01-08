@@ -50,7 +50,7 @@ RUN_3D_TRIANGULATION_NAME = "Run 3d triangulation?"
 
 RUN_BUTTERWORTH_FILTER_NAME = "Run butterworth filter?"
 
-NUMBER_OF_PROCESSES_PARAMETER_NAME = "Number of Processes to use"
+NUMBER_OF_PROCESSES_PARAMETER_NAME = "Max Number of Processes to Use"
 
 
 def create_mediapipe_parameter_group(

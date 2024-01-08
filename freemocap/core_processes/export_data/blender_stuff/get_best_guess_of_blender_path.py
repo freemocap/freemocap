@@ -6,8 +6,7 @@ from typing import Union, Optional
 logger = logging.getLogger(__name__)
 
 
-def guess_blender_exe_path_from_path(base_path: Union[str, Path],
-                                     exclude_blender_4: bool = True) -> Optional[Path]:
+def guess_blender_exe_path_from_path(base_path: Union[str, Path], exclude_blender_4: bool = True) -> Optional[Path]:
     base_path = Path(base_path)
     blender_folder_paths = [path for path in base_path.rglob("blender.exe")]
 
@@ -16,6 +15,9 @@ def guess_blender_exe_path_from_path(base_path: Union[str, Path],
             blender_folder_paths = [path for path in blender_folder_paths if "blender-4" not in str(path)]
             blender_folder_paths = [path for path in blender_folder_paths if "Blender 4" not in str(path)]
 
+        if len(blender_folder_paths) == 0:
+            return None
+
         best_guess = blender_folder_paths[-1]
 
         return best_guess
@@ -23,10 +25,10 @@ def guess_blender_exe_path_from_path(base_path: Union[str, Path],
 
 def get_best_guess_of_blender_path():
     if platform.system() == "Windows":
-
         # check all lettered drives and the user's home directory
-        paths_to_check = [Path(f"{letter}:/Program Files/Blender Foundation") for letter in
-                          "ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
+        paths_to_check = [
+            Path(f"{letter}:/Program Files/Blender Foundation") for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        ]
 
         paths_to_check.append(Path.home() / "Blender Foundation")
 

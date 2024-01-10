@@ -4,7 +4,7 @@ from pathlib import Path
 import threading
 from typing import Callable, Union
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -269,6 +269,10 @@ class CalibrationControlPanel(QWidget):
         self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
+    @Slot
+    def _log_calibration_progress_callbacks(self, message: str):
+        logger.info(message)
+
     def calibrate_from_active_recording(self, charuco_square_size_mm: float = None):
         if not charuco_square_size_mm:
             charuco_square_size_mm = float(self._charuco_square_size_line_edit.text())
@@ -296,6 +300,8 @@ class CalibrationControlPanel(QWidget):
         )
 
         self._anipose_calibration_frame_worker.start()
+
+        self._anipose_calibration_frame_worker.in_progress.connect(self._log_calibration_progress_callbacks)
 
         self._anipose_calibration_frame_worker.finished.connect(self.update_calibration_toml_path)
 

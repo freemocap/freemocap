@@ -351,7 +351,6 @@ class MainWindow(QMainWindow):
         self._directory_view_widget.handle_new_active_recording_selected()
 
         try:
-            # TODO: don't run this on single camera recordings
             self._process_motion_capture_data_panel.update_calibration_path()
         except Exception as e:
             logger.error(e)

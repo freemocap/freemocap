@@ -96,9 +96,9 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def calibrate_from_active_recording(self, charuco_square_size_mm: float):
         self._calibration_control_panel.calibrate_from_active_recording(charuco_square_size_mm=charuco_square_size_mm)
 
-    def update_calibration_path(self) -> bool:
+    def update_calibration_path(self) -> None:
         self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
-        return self._calibration_control_panel.update_calibration_toml_path()
+        self._calibration_control_panel.update_calibration_toml_path()
 
     def _add_parameters_to_parameter_tree_widget(
         self,

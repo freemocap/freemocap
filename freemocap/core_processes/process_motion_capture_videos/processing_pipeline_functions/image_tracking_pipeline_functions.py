@@ -13,7 +13,7 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
 )
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.logging.queue_logger import DirectQueueHandler
-from freemocap.system.paths_and_filenames.file_and_folder_names import RAW_DATA_FOLDER_NAME
+from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING, RAW_DATA_FOLDER_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,7 @@ def run_image_tracking_pipeline(
             raise RuntimeError("Failed to load 2D data, cannot continue processing") from e
     else:
         logger.info("Detecting 2d skeletons...")
+        logger.info(LOG_VIEW_PROGRESS_BAR_STRING)
         # 2d skeleton detection
         image_data_numCams_numFrames_numTrackedPts_XYZ = run_image_tracking(
             tracking_params=processing_parameters.mediapipe_parameters_model,

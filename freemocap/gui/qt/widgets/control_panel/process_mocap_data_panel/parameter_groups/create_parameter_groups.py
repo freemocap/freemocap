@@ -14,13 +14,21 @@ BUTTERWORTH_ORDER = "Order"
 
 BUTTERWORTH_CUTOFF_FREQUENCY = "Cutoff Frequency"
 
-POST_PROCESSING_FRAME_RATE = "framerate"
+POST_PROCESSING_FRAME_RATE = "Framerate"
 
 BUTTERWORTH_FILTER_TREE_NAME = "Butterworth Filter"
 
 USE_RANSAC_METHOD = "Use RANSAC Method"
 
 ANIPOSE_CONFIDENCE_CUTOFF = "Confidence Threshold Cut-off"
+
+REPROJECTION_ERROR_FILTERING_TREE_NAME = "Reprojection Error Filtering"
+
+RUN_REPROJECTION_ERROR_FILTERING = "Run Reprojection Error Filtering"
+
+REPROJECTION_ERROR_FILTER_THRESHOLD = "Reprojection Error Filter Threshold (%)"
+
+MINIMUM_CAMERAS_TO_REPROJECT = "Minimum Cameras to Reproject"
 
 ANIPOSE_TREE_NAME = "Anipose Triangulation"
 
@@ -102,7 +110,7 @@ def create_mediapipe_parameter_group(
     )
 
 
-def create_3d_triangulation_prarameter_group(
+def create_3d_triangulation_parameter_group(
     parameter_model: AniposeTriangulate3DParametersModel = None,
 ) -> Parameter:
     if parameter_model is None:
@@ -126,6 +134,30 @@ def create_3d_triangulation_prarameter_group(
                 value=parameter_model.use_triangulate_ransac_method,
                 tip="If true, use `anipose`'s `triangulate_ransac` method instead of the default `triangulate_simple` method. "
                 "NOTE - Much slower than the 'simple' method, but might be more accurate and better at rejecting bad camera views. Needs more testing and evaluation to see if it's worth it. ",
+            ),
+            dict(
+                name=REPROJECTION_ERROR_FILTERING_TREE_NAME,
+                type="group",
+                children=[
+                    dict(
+                        name=RUN_REPROJECTION_ERROR_FILTERING,
+                        type="bool",
+                        value=parameter_model.run_reprojection_error_filtering,
+                        tip="If true, run filtering of reprojection error.",
+                    ),
+                    dict(
+                        name=REPROJECTION_ERROR_FILTER_THRESHOLD,
+                        type="float",
+                        value=parameter_model.reprojection_error_confidence_cutoff,
+                        tip="The maximum reprojection error allowed in the data.",
+                    ),
+                    dict(
+                        name=MINIMUM_CAMERAS_TO_REPROJECT,
+                        type="int",
+                        value=parameter_model.minimum_cameras_to_reproject,
+                        tip="The minimum number of cameras to reproject during retriangulation.",
+                    ),
+                ],
             ),
         ],
     )
@@ -183,6 +215,9 @@ def extract_parameter_model_from_parameter_tree(
             use_yolo_crop_method=parameter_values_dictionary[USE_YOLO_CROP_METHOD],
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
+            run_reprojection_error_filtering=parameter_values_dictionary[RUN_REPROJECTION_ERROR_FILTERING],
+            reprojection_error_confidence_cutoff=parameter_values_dictionary[REPROJECTION_ERROR_FILTER_THRESHOLD],
+            minimum_cameras_to_reproject=parameter_values_dictionary[MINIMUM_CAMERAS_TO_REPROJECT],
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
             run_3d_triangulation=parameter_values_dictionary[RUN_3D_TRIANGULATION_NAME],

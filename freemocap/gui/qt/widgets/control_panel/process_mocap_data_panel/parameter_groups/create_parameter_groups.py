@@ -42,7 +42,7 @@ RUN_3D_TRIANGULATION_NAME = "Run 3d triangulation?"
 
 RUN_BUTTERWORTH_FILTER_NAME = "Run butterworth filter?"
 
-NUMBER_OF_PROCESSES_PARAMETER_NAME = "Number of Processes to use"
+NUMBER_OF_PROCESSES_PARAMETER_NAME = "Max Number of Processes to Use"
 
 
 def create_mediapipe_parameter_group(
@@ -180,6 +180,7 @@ def extract_parameter_model_from_parameter_tree(
             static_image_mode=parameter_values_dictionary[STATIC_IMAGE_MODE],
             run_image_tracking=parameter_values_dictionary[RUN_IMAGE_TRACKING_NAME],
             num_processes=parameter_values_dictionary[NUMBER_OF_PROCESSES_PARAMETER_NAME],
+            use_yolo_crop_method=parameter_values_dictionary[USE_YOLO_CROP_METHOD],
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],

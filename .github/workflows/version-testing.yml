@@ -3,7 +3,7 @@ name: Version Testing with Nox
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ main ]
+    branches: [ main, development ]
     paths:
       - 'pyproject.toml'
 
@@ -12,10 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Free up disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          large-packages: false
+          docker-images: false
+          swap-storage: false
       - name: Set up Python 3.x
         uses: wntrblm/nox@2022.8.7
         with:
-          python-versions: "3.8, 3.9, 3.10, 3.11"
+          python-versions: "3.9, 3.10, 3.11"
       - name: Install libegl1
         run: |
           sudo apt-get update

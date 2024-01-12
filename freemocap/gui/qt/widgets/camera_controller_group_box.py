@@ -134,7 +134,7 @@ class CameraControllerGroupBox(QGroupBox):
         hbox.addWidget(self._charuco_square_size_line_edit)
 
         self._annotate_charuco_checkbox = QCheckBox("Display Charuco Overlay")
-        self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_images)
+        self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_charuco_images)
         self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
         hbox.addWidget(self._annotate_charuco_checkbox)
         hbox.addStretch()
@@ -239,7 +239,7 @@ class CameraControllerGroupBox(QGroupBox):
 
     def _on_annotate_charuco_checkbox_changed(self):
         self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
-        self.gui_state.annotate_images = self._annotate_charuco_checkbox.isChecked()
+        self.gui_state.annotate_charuco_images = self._annotate_charuco_checkbox.isChecked()
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
     def _on_auto_process_videos_checkbox_changed(self):

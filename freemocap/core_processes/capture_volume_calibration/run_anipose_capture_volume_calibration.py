@@ -26,5 +26,4 @@ def run_anipose_capture_volume_calibration(
         calibration_videos_folder_path=calibration_videos_folder_path,
         progress_callback=progress_callback,
     )
-    progress_callback("Endurance is great wow wow wow")
     anipose_camera_calibrator.calibrate_camera_capture_volume(pin_camera_0_to_origin=pin_camera_0_to_origin)

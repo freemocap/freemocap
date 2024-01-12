@@ -4,7 +4,7 @@ from pathlib import Path
 import threading
 from typing import Callable, Union
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -106,8 +106,12 @@ class CalibrationControlPanel(QWidget):
         return vbox_layout
 
     def update_calibration_toml_path(self, toml_path: str = None):
+        active_recording_info = self._get_active_recording_info()
         if toml_path is None:
-            if self._load_calibration_from_file_radio_button.isChecked():
+            if active_recording_info.single_video_check:
+                toml_path = None
+
+            elif self._load_calibration_from_file_radio_button.isChecked():
                 if self._user_selected_toml_path is not None:
                     toml_path = self._user_selected_toml_path
                 else:
@@ -132,6 +136,8 @@ class CalibrationControlPanel(QWidget):
         if self._calibration_toml_path is not None:
             logger.debug(f"Setting calibration TOML path: {self._calibration_toml_path}")
             self._show_selected_calibration_toml_path(self._calibration_toml_path)
+        elif active_recording_info.single_video_check:
+            self._show_selected_calibration_toml_path("-Single Video Recording, No Calibration Needed-")
         else:
             self._show_selected_calibration_toml_path("-Calibration File Not Found-")
 
@@ -178,11 +184,12 @@ class CalibrationControlPanel(QWidget):
         else:
             if not active_recording_info.synchronized_videos_status_check:
                 active_path_str = f"Recording: {active_recording_info.name} has no synchronized videos!"
+            elif active_recording_info.single_video_check:
+                active_path_str = "Single Video Recording: No calibration needed"
             else:
                 active_path_str = f"Calibrate from Recording: {self._get_active_recording_info().name}"
 
         self._calibrate_from_active_recording_button.setToolTip(active_path_str)
-        self.update_calibration_toml_path()
 
     def _handle_use_most_recent_calibration_toggled(self, checked):
         pass
@@ -269,6 +276,10 @@ class CalibrationControlPanel(QWidget):
         self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
+    @Slot(str)
+    def _log_calibration_progress_callbacks(self, message: str):
+        logger.info(message)
+
     def calibrate_from_active_recording(self, charuco_square_size_mm: float = None):
         if not charuco_square_size_mm:
             charuco_square_size_mm = float(self._charuco_square_size_line_edit.text())
@@ -296,6 +307,8 @@ class CalibrationControlPanel(QWidget):
         )
 
         self._anipose_calibration_frame_worker.start()
+
+        self._anipose_calibration_frame_worker.in_progress.connect(self._log_calibration_progress_callbacks)
 
         self._anipose_calibration_frame_worker.finished.connect(self.update_calibration_toml_path)
 

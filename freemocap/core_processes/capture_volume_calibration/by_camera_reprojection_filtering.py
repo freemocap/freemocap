@@ -122,7 +122,6 @@ def filter_by_reprojection_error(
         ) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=data_to_reproject_camera_frame_marker_xy,
-            output_data_folder_path=output_data_folder_path,
             use_triangulate_ransac=use_triangulate_ransac,
         )
 

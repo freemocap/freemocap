@@ -123,6 +123,9 @@ class MainWindow(QMainWindow):
         self._kill_thread_event = multiprocessing.Event()
 
         self._active_recording_info_widget = ActiveRecordingInfoWidget(parent=self)
+        self._active_recording_info_widget.new_active_recording_selected_signal.connect(
+            self._handle_new_active_recording_selected
+        )
         self._directory_view_widget = self._create_directory_view_widget()
         self._directory_view_widget.expand_directory_to_path(get_recording_session_folder_path())
         self._directory_view_widget.new_active_recording_selected_signal.connect(
@@ -146,10 +149,6 @@ class MainWindow(QMainWindow):
 
         self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
         self._tools_dock_widget.setWidget(self._control_panel_widget)
-
-        self._active_recording_info_widget.new_active_recording_selected_signal.connect(
-            self._handle_new_active_recording_selected
-        )
 
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)

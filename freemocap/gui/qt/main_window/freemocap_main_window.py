@@ -21,7 +21,6 @@ from skellycam import (
 )
 from tqdm import tqdm
 
-from freemocap.core_processes.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender
 from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import (
     get_best_guess_of_blender_path,
 )
@@ -66,6 +65,7 @@ from freemocap.gui.qt.widgets.import_videos_wizard import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
+from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
@@ -339,13 +339,17 @@ class MainWindow(QMainWindow):
             return
 
         self._visualization_control_panel.get_user_selected_method_string()
-        export_to_blender(
-            recording_folder_path=recording_path,
+        self._export_to_blender_thread_worker = ExportToBlenderThreadWorker(
+            recording_path=recording_path,
             blender_file_path=get_blender_file_path(recording_path),
-            blender_exe_path=self._visualization_control_panel.blender_executable_path,
-            method=self._visualization_control_panel.get_user_selected_method_string(),
+            blender_executable_path=self._visualization_control_panel.blender_executable_path,
+            blender_method=self._visualization_control_panel.get_user_selected_method_string(),
+            kill_thread_event=self._kill_thread_event,
         )
+        self._export_to_blender_thread_worker.start()
+        self._export_to_blender_thread_worker.finished.connect(self._handle_export_to_blender_finished)
 
+    def _handle_export_to_blender_finished(self) -> None:
         if (
             self._controller_group_box.auto_open_in_blender_checked
             # or self._visualization_control_panel.open_in_blender_automatically_box_is_checked

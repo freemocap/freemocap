@@ -7,6 +7,9 @@ import numpy as np
 from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import (
     run_reprojection_error_filtering,
 )
+from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
+    save_mediapipe_3d_data_to_npy,
+)
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
@@ -76,9 +79,15 @@ def get_triangulated_data(
         ) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
             mediapipe_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
-            output_data_folder_path=processing_parameters.recording_info_model.raw_data_folder_path,
             use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
             kill_event=kill_event,
+        )
+        save_mediapipe_3d_data_to_npy(
+            data3d_numFrames_numTrackedPoints_XYZ=skel3d_frame_marker_xyz,
+            data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
+            data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,
+            path_to_folder_where_data_will_be_saved=processing_parameters.recording_info_model.raw_data_folder_path,
+            processing_level="raw",
         )
 
         if processing_parameters.anipose_triangulate_3d_parameters_model.run_reprojection_error_filtering:

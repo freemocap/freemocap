@@ -1,11 +1,12 @@
 import logging
 import multiprocessing
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 
-from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import save_mediapipe_3d_data_to_npy
+from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
+    save_mediapipe_3d_data_to_npy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,6 @@ logger = logging.getLogger(__name__)
 def triangulate_3d_data(
     anipose_calibration_object,
     mediapipe_2d_data: np.ndarray,
-    output_data_folder_path: Union[str, Path],
     use_triangulate_ransac: bool = False,
     kill_event: multiprocessing.Event = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -47,9 +47,7 @@ def triangulate_3d_data(
         logger.info("Using simple `triangulate` method ")
         data3d_flat = anipose_calibration_object.triangulate(data2d_flat, progress=True, kill_event=kill_event)
 
-    spatial_data3d_numFrames_numTrackedPoints_XYZ = data3d_flat.reshape(
-        number_of_frames, number_of_tracked_points, 3
-    )
+    spatial_data3d_numFrames_numTrackedPoints_XYZ = data3d_flat.reshape(number_of_frames, number_of_tracked_points, 3)
 
     data3d_reprojectionError_flat = anipose_calibration_object.reprojection_error(data3d_flat, data2d_flat, mean=True)
     data3d_reprojectionError_full = anipose_calibration_object.reprojection_error(data3d_flat, data2d_flat, mean=False)
@@ -59,14 +57,6 @@ def triangulate_3d_data(
 
     reprojection_error_data3d_numFrames_numTrackedPoints = data3d_reprojectionError_flat.reshape(
         number_of_frames, number_of_tracked_points
-    )
-
-    save_mediapipe_3d_data_to_npy(
-        data3d_numFrames_numTrackedPoints_XYZ=spatial_data3d_numFrames_numTrackedPoints_XYZ,
-        data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_error_data3d_numFrames_numTrackedPoints,
-        data3d_numCams_numFrames_numTrackedPoints_reprojectionError=reprojectionError_cam_frame_marker,
-        path_to_folder_where_data_will_be_saved=output_data_folder_path,
-        processing_level="raw"
     )
 
     return (
@@ -142,10 +132,20 @@ if __name__ == "__main__":
             Path(args.mediapipe_2d_data_path).parent.parent / "camera_calibration_data.toml"
         )
 
-    triangulate_3d_data(
+    (
+        skel3d_frame_marker_xyz,
+        skeleton_reprojection_error_fr_mar,
+        skeleton_reprojection_error_cam_fr_mar,
+    ) = triangulate_3d_data(
         anipose_calibration_object=anipose_calibration_object,
         mediapipe_2d_data=mediapipe_2d_data,
-        output_data_folder_path=args.output_data_folder_path,
         mediapipe_confidence_cutoff_threshold=args.mediapipe_confidence_cutoff_threshold,
         use_triangulate_ransac=args.use_triangulate_ransac,
+    )
+    save_mediapipe_3d_data_to_npy(
+        data3d_numFrames_numTrackedPoints_XYZ=skel3d_frame_marker_xyz,
+        data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
+        data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,
+        path_to_folder_where_data_will_be_saved=args.output_data_folder_path,
+        processing_level="raw",
     )

@@ -13,6 +13,7 @@ from freemocap.core_processes.export_data.blender_stuff.export_to_blender.method
     install_ajc_addon,
 )
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.run_simple import run_simple
+from freemocap.utilities.parse_string_to_log import parse_string_to_log
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ def run_ajc_blender_addon_subprocess(
         if blender_process.poll() is not None:
             break
         if output:
-            logging.debug(output.strip().decode())
+            parse_string_to_log(output.strip().decode())
 
     if blender_process.returncode != 0:
         logging.error(blender_process.stderr.read().decode())

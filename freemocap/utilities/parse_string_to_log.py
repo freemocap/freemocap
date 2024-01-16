@@ -8,6 +8,8 @@ def parse_string_to_log(log_string: str) -> None:
     if len(split_string) == 1: # Log as debug if there is no colon
         logger.debug(prefix)
         return
+    elif prefix not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+        message = log_string.strip()
     else:
         prefix = prefix.upper()
         message = split_string[1].strip()

@@ -10,7 +10,7 @@ class GuiState(BaseModel):
     generate_jupyter_notebook: bool = True
     auto_open_in_blender: bool = True
     charuco_square_size: float = 39
-    annotate_images: bool = True
+    annotate_charuco_images: bool = False
 
 
 def save_gui_state(gui_state: GuiState, file_pathstring: str = None):

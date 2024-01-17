@@ -41,7 +41,7 @@ def run_alpha_megascript(
         str(good_clean_frame_number),
     ]
 
-    logger.debug(f"Starting `blender` sub-process with this command: \n {command_list}")
+    logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")
 
     blender_process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     while True:

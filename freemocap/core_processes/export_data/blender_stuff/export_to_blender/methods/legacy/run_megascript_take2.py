@@ -52,7 +52,7 @@ def run_blender_megascript_take2(
         str(blender_file_path),
     ]
 
-    logger.debug(f"Starting `blender` sub-process with this command: \n {command_list}")
+    logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")
 
     blender_process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     while True:

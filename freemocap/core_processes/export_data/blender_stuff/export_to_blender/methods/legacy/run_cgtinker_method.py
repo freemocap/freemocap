@@ -42,7 +42,7 @@ def run_cgtinker_method(
         "1,",  # load quick
     ]
 
-    logger.debug(f"Starting `blender` sub-process with this command: \n {command_list}")
+    logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")
 
     blender_process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     while True:

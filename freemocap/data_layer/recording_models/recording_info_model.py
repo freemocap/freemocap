@@ -218,9 +218,10 @@ class RecordingFolderStatusChecker:
         return Path(self.recording_info_model.blender_file_path).is_file()
 
     def check_calibration_toml_status(self) -> bool:
+        # TODO: check if adding a single video check here makes sense with the logic (i.e. will that ever give a misleading response)
         toml_status = Path(self.recording_info_model.calibration_toml_path).is_file()
         if not toml_status:
-            logger.info(
+            logger.debug(
                 "No calibration file found with session name, checking for other calibration files in recording session"
             )
             toml_status = self.check_for_calibration_toml_with_different_name()

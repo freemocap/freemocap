@@ -20,6 +20,7 @@ from freemocap.core_processes.post_process_skeleton_data.process_single_camera_s
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
+from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,9 @@ def get_triangulated_data(
 
     if image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
         logger.info("Skipping 3d triangulation for single camera data")
-        (skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
+        logger.info(LOG_VIEW_PROGRESS_BAR_STRING)
+        (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
+
             input_image_data_frame_marker_xyz=image_data_numCams_numFrames_numTrackedPts_XYZ[0],
             raw_data_folder_path=Path(processing_parameters.recording_info_model.raw_data_folder_path),
         )
@@ -45,6 +48,7 @@ def get_triangulated_data(
         logger.info(
             f"Skipping 3d triangulation and loading data from: {processing_parameters.recording_info_model.raw_mediapipe_3d_data_npy_file_path}"
         )
+        logger.info(LOG_VIEW_PROGRESS_BAR_STRING)
         try:
             skel3d_frame_marker_xyz = np.load(
                 processing_parameters.recording_info_model.raw_mediapipe_3d_data_npy_file_path
@@ -57,6 +61,7 @@ def get_triangulated_data(
             raise RuntimeError("Failed to load 3D data, cannot continue processing") from e
     else:
         logger.info("Triangulating 3d skeletons...")
+        logger.info(LOG_VIEW_PROGRESS_BAR_STRING)
 
         if not processing_parameters.recording_info_model.calibration_toml_check:
             raise FileNotFoundError(

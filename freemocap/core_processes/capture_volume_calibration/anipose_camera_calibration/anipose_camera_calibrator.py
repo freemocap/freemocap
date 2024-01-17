@@ -32,9 +32,9 @@ class AniposeCameraCalibrator:
         self._progress_callback = progress_callback
 
         if charuco_square_size == 1:
-            logger.warning(
-                "Charuco square size is not set, so units of 3d reconstructed data will be in units of `however_long_the_black_edge_of_the_charuco_square_was`. Please input `charuco_square_size` in millimeters (or your preferred unity of length)"
-            )
+            warning_string = "Charuco square size is not set, so units of 3d reconstructed data will be in units of `however_long_the_black_edge_of_the_charuco_square_was`. Please input `charuco_square_size` in millimeters (or your preferred unity of length)"
+            logger.warning(warning_string)
+            self._progress_callback(warning_string)
         self._charuco_square_size = charuco_square_size
         self._calibration_videos_folder_path = Path(calibration_videos_folder_path)
         self._recording_folder_path = Path(self._calibration_videos_folder_path).parent
@@ -93,21 +93,22 @@ class AniposeCameraCalibrator:
         calibration_folder_toml_path = Path(get_calibrations_folder_path()) / calibration_toml_filename
 
         self._anipose_camera_group_object.dump(calibration_folder_toml_path)
-        logger.info(
+        logger.debug(
             f"anipose camera calibration data saved to Calibrations folder - {str(calibration_folder_toml_path)}"
         )
 
         recording_folder_toml_path = Path(self._recording_folder_path) / calibration_toml_filename
 
         self._anipose_camera_group_object.dump(recording_folder_toml_path)
-        logger.info(f"anipose camera calibration data saved to Recording folder - {str(recording_folder_toml_path)}")
+        logger.debug(f"anipose camera calibration data saved to Recording folder - {str(recording_folder_toml_path)}")
 
         last_successful_calibration_toml_path = get_last_successful_calibration_toml_path()
         self._anipose_camera_group_object.dump(last_successful_calibration_toml_path)
 
-        logger.info(
+        logger.debug(
             f"anipose camera calibration data also saved to 'Last Successful Calibration' - {last_successful_calibration_toml_path}"
         )
+        self._progress_callback("Anipose camera calibration data saved to calibrations folder, recording folder, and `Last Successful Calibration` file")
 
     def pin_camera_zero_to_origin(self, _anipose_camera_group_object):
         original_translation_vectors = _anipose_camera_group_object.get_translations()
@@ -119,8 +120,8 @@ class AniposeCameraCalibrator:
             )
 
         _anipose_camera_group_object.set_translations(altered_translation_vectors)
-        logger.info(f"original translation vectors:\n {original_translation_vectors}")
-        logger.info(f"altered translation vectors:\n {_anipose_camera_group_object.get_translations()}")
+        logger.debug(f"original translation vectors:\n {original_translation_vectors}")
+        logger.debug(f"altered translation vectors:\n {_anipose_camera_group_object.get_translations()}")
         return _anipose_camera_group_object
 
     def rotate_cameras_so_camera_zero_aligns_with_XYZ(self, _anipose_camera_group_object):

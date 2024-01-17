@@ -21,7 +21,6 @@ from skellycam import (
 )
 from tqdm import tqdm
 
-from freemocap.core_processes.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender
 from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import (
     get_best_guess_of_blender_path,
 )
@@ -66,6 +65,7 @@ from freemocap.gui.qt.widgets.import_videos_wizard import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
+from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
 
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
@@ -146,25 +146,9 @@ class MainWindow(QMainWindow):
 
         self._tools_dock_widget = self._create_tools_dock_widget()
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._tools_dock_widget)
-        # self._tools_dock_tab_widget = QTabWidget(self)
 
         self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
         self._tools_dock_widget.setWidget(self._control_panel_widget)
-        # self._tools_dock_tab_widget.addTab(self._control_panel_widget, f"Control Panel")
-        #
-        # self._tools_dock_tab_widget.addTab(self._directory_view_widget, f"Directory View")
-        # self._tools_dock_tab_widget.addTab(
-        #     self._active_recording_info_widget, f"Active Recording Info"
-        # )
-
-        # self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._directory_view_dock_widget)
-
-        # self._jupyter_console_widget = JupyterConsoleWidget(parent=self)
-        # jupyter_console_dock_widget = QDockWidget("Jupyter IPython Console", self)
-        # self.addDockWidget(
-        #     Qt.DockWidgetArea.BottomDockWidgetArea, jupyter_console_dock_widget
-        # )
-        # jupyter_console_dock_widget.setWidget(self._jupyter_console_widget)
 
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
@@ -172,7 +156,7 @@ class MainWindow(QMainWindow):
         log_view_dock_widget.setFeatures(
             QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetFloatable
         )
-        logger.info("Finished initializing FreeMoCap MainWindow")
+        logger.debug("Finished initializing FreeMoCap MainWindow")
 
     def _create_tools_dock_widget(self):
         tools_dock_widget = QDockWidget("Control Panel", self)
@@ -183,7 +167,7 @@ class MainWindow(QMainWindow):
         return tools_dock_widget
 
     def _handle_videos_saved_to_this_folder_signal(self, folder_path: str):
-        logger.info(f"Videos saved to this folder signal received: {folder_path}")
+        logger.debug(f"Videos saved to this folder signal received: {folder_path}")
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
@@ -200,12 +184,12 @@ class MainWindow(QMainWindow):
             )
 
     def _handle_processing_finished_signal(self):
-        logger.info("Processing finished")
         if self._controller_group_box.auto_open_in_blender_checked and not self._kill_thread_event.is_set():
-            logger.info("'Auto process videos' checkbox is checked - triggering 'Create Blender Scene'")
+            logger.info("'Auto Open in Blender' checkbox is checked - triggering 'Create Blender Scene'")
             self._export_active_recording_to_blender()
         if self._controller_group_box.generate_jupyter_notebook_checked and not self._kill_thread_event.is_set():
             self._generate_jupyter_notebook()
+        logger.info("Processing finished")
 
     def handle_start_new_session_action(self):
         # self._central_tab_widget.set_welcome_tab_enabled(True)
@@ -276,29 +260,8 @@ class MainWindow(QMainWindow):
             get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
         )
 
-    # def _create_tool_bar(self):
-    #     self._calibration_control_panel = CalibrationControlPanel(
-    #         get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
-    #     )
-    #     self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
-    #         recording_processing_parameters=RecordingProcessingParameterModel(),
-    #         get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
-    #     )
-    #     self._process_motion_capture_data_panel.processing_finished_signal.connect(
-    #         self._handle_processing_finished_signal
-    #     )
-    #     return ToolBar(calibration_control_panel=self._calibration_control_panel,
-    #                    process_motion_capture_data_panel=self._process_motion_capture_data_panel,
-    #                    visualize_data_widget=self._create_visualization_control_panel(),
-    #                    directory_view_widget=self._create_directory_view_widget(),
-    #                    parent=self)
-
     def _create_control_panel_widget(self, log_update: Callable):
         self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(self._skellycam_widget)
-
-        # self._calibration_control_panel = CalibrationControlPanel(
-        #     get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
-        # )
 
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             recording_processing_parameters=ProcessingParameterModel(),
@@ -324,14 +287,13 @@ class MainWindow(QMainWindow):
 
         return ControlPanelWidget(
             camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
-            # calibration_control_panel=self._calibration_control_panel,
             process_motion_capture_data_panel=self._process_motion_capture_data_panel,
             visualize_data_widget=self._visualization_control_panel,
             parent=self,
         )
 
     def _export_active_recording_to_blender(self):
-        logger.info("Exporting active recording to Blender...")
+        logger.debug("Exporting active recording to Blender...")
         recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
 
         if self._visualization_control_panel.blender_executable_path is None:
@@ -339,16 +301,19 @@ class MainWindow(QMainWindow):
             return
 
         self._visualization_control_panel.get_user_selected_method_string()
-        export_to_blender(
-            recording_folder_path=recording_path,
+        self._export_to_blender_thread_worker = ExportToBlenderThreadWorker(
+            recording_path=recording_path,
             blender_file_path=get_blender_file_path(recording_path),
-            blender_exe_path=self._visualization_control_panel.blender_executable_path,
-            method=self._visualization_control_panel.get_user_selected_method_string(),
+            blender_executable_path=self._visualization_control_panel.blender_executable_path,
+            blender_method=self._visualization_control_panel.get_user_selected_method_string(),
+            kill_thread_event=self._kill_thread_event,
         )
+        self._export_to_blender_thread_worker.start()
+        self._export_to_blender_thread_worker.finished.connect(self._handle_export_to_blender_finished)
 
+    def _handle_export_to_blender_finished(self) -> None:
         if (
             self._controller_group_box.auto_open_in_blender_checked
-            # or self._visualization_control_panel.open_in_blender_automatically_box_is_checked
         ):
             if Path(self._active_recording_info_widget.active_recording_info.blender_file_path).exists():
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
@@ -366,7 +331,6 @@ class MainWindow(QMainWindow):
     def _handle_new_active_recording_selected(self, recording_info_model: RecordingInfoModel):
         logger.info(f"New active recording selected: {recording_info_model.path}")
 
-        # self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
         self._pipedream_pings.update_pings_dict(
             key=recording_info_model.name, value=self._active_recording_info_widget.active_recording_info.status_check
         )
@@ -391,6 +355,8 @@ class MainWindow(QMainWindow):
 
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
+        except AttributeError:  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
+            logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
             logger.error(e)
 

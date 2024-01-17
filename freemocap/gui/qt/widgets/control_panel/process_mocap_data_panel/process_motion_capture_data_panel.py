@@ -3,7 +3,7 @@ import multiprocessing
 import shutil
 import threading
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Union
 
 from PySide6.QtCore import Signal, Slot, Qt
 from PySide6.QtGui import QFont
@@ -13,6 +13,7 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
     ProcessingParameterModel,
 )
+from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
@@ -38,7 +39,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def __init__(
         self,
         recording_processing_parameters: ProcessingParameterModel,
-        get_active_recording_info: Callable,
+        get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
         kill_thread_event: threading.Event,
         log_update: Callable,
         gui_state: GuiState,
@@ -95,9 +96,9 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def calibrate_from_active_recording(self, charuco_square_size_mm: float):
         self._calibration_control_panel.calibrate_from_active_recording(charuco_square_size_mm=charuco_square_size_mm)
 
-    def update_calibration_path(self) -> bool:
+    def update_calibration_path(self) -> None:
         self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
-        return self._calibration_control_panel.update_calibration_toml_path()
+        self._calibration_control_panel.update_calibration_toml_path()
 
     def _add_parameters_to_parameter_tree_widget(
         self,
@@ -233,8 +234,11 @@ class ProcessMotionCaptureDataPanel(QWidget):
             session_parameter_model.recording_info_model.calibration_toml_path = selected_camera_calibration_toml_path
 
             # check if there is already a calibration toml  in the recording folder, if not save this one there
-            if len(list(Path(session_parameter_model.recording_info_model.path).glob("*.toml"))) == 0:
-                # copy the calibration toml to the recording folder (keeping the original filename
+            if (
+                len(list(Path(session_parameter_model.recording_info_model.path).glob("*.toml"))) == 0
+                and Path(selected_camera_calibration_toml_path).exists()
+            ):
+                # copy the calibration toml to the recording folder (keeping the original filename)
                 logger.info(
                     f"Copying calibration toml from {selected_camera_calibration_toml_path} to {session_parameter_model.recording_info_model.path}"
                 )

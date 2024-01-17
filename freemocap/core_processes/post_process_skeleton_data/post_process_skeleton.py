@@ -19,6 +19,7 @@ from skellyforge.freemocap_utils.postprocessing_widgets.task_worker_thread impor
 
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.logging.queue_logger import DirectQueueHandler
+from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings
     post_processed_data_handler = PostProcessedDataHandler()
 
     logger.info("Starting post-processing worker thread")
+    logger.info(LOG_VIEW_PROGRESS_BAR_STRING)
 
     worker_thread = TaskWorkerThread(
         raw_skeleton_data=raw_skel3d_frame_marker_xyz,

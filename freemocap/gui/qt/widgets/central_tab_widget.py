@@ -52,11 +52,11 @@ class CentralTabWidget(QTabWidget):
         self.setTabEnabled(2, enabled)
 
     def _create_welcome_tab(self, tab_widget: QTabWidget):
-        logger.info("Creating welcome tab")
+        logger.debug("Creating welcome tab")
         tab_widget.addTab(self._welcome_to_freemocap_widget, "Home")
 
     def _create_skellycam_view_tab(self, tab_widget: QTabWidget):
-        logger.info("Creating skellycam view tab")
+        logger.debug("Creating skellycam view tab")
         dummy_widget = QWidget()
         self._camera_view_layout = QVBoxLayout()
         self._camera_view_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -80,14 +80,14 @@ class CentralTabWidget(QTabWidget):
         self._camera_view_layout.addLayout(layout)
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):
-        logger.info("Creating export_data tab")
+        logger.debug("Creating export_data tab")
         tab_widget.addTab(self._skelly_viewer_widget, "Data Viewer")
         # tab_widget.setToolTip(skelly_viewer.__repo_url__)
 
     def _create_directory_view_tab(self, tab_widget: QTabWidget):
-        logger.info("Creating directory view tab")
+        logger.debug("Creating directory view tab")
         tab_widget.addTab(self._directory_view_widget, "Directory View")
 
     def _create_active_recording_info_tab(self, tab_widget: QTabWidget):
-        logger.info("Creating active recording info tab")
+        logger.debug("Creating active recording info tab")
         tab_widget.addTab(self._active_recording_info_widget, "Active Recording Info")

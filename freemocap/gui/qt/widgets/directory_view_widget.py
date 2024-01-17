@@ -18,7 +18,7 @@ class DirectoryViewWidget(QWidget):
 
     def __init__(self, top_level_folder_path: Union[str, Path], get_active_recording_info_callable: Callable):
         self._root_folder = None
-        logger.info("Creating QtDirectoryViewWidget")
+        logger.debug("Creating QtDirectoryViewWidget")
         super().__init__()
         self._minimum_width = 300
         self.setMinimumWidth(self._minimum_width)
@@ -76,7 +76,7 @@ class DirectoryViewWidget(QWidget):
         self._tree_view_widget.scrollTo(og_index)
 
     def set_folder_as_root(self, folder_path: Union[str, Path]):
-        logger.info(f"Setting root folder to {str(folder_path)}")
+        logger.debug(f"Setting root folder to {str(folder_path)}")
         self._root_folder = folder_path
         self._tree_view_widget.setWindowTitle(str(folder_path))
         self._file_system_model.setRootPath(str(folder_path))

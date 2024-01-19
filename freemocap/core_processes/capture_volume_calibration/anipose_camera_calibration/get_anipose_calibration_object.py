@@ -25,8 +25,8 @@ def load_most_recent_anipose_calibration_toml(save_copy_of_calibration_to_this_p
 
     try:
         camera_group = freemocap_anipose.CameraGroup.load(str(most_recent_calibration_toml_path))
-    except:
-        logger.error(f"Failed to load anipose calibration info from {str(most_recent_calibration_toml_path)}")
+    except Exception as e:
+        logger.exception(e)
         raise
     return camera_group
 

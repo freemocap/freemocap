@@ -175,7 +175,6 @@ def get_most_recent_recording_path(subfolder_str: str = None):
         logger.exception(e)
         return None
 
-
     if not Path(most_recent_recording_path).exists():
         logger.error(f"Most recent recording path {most_recent_recording_path} not found!!")
         return None

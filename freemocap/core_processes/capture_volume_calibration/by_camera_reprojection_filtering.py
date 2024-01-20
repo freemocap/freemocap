@@ -172,7 +172,7 @@ def _get_data_to_reproject(
     input_2d_data_camera_frame_marker_xy: np.ndarray,
 ) -> tuple[np.ndarray, list]:
     indices_above_threshold = np.nonzero(reprojError_cam_frame_marker > reprojection_error_threshold)
-    logger.info(f"SHAPE OF INDICES ABOVE THRESHOLD: {indices_above_threshold[0].shape}")
+    logger.info(f"SHAPE OF INDICES ABOVE THRESHOLD: {indices_above_threshold[0].shape}") # TODO: Set this to debug
 
     total_frame_marker_combos = (
         input_2d_data_camera_frame_marker_xy.shape[1] * input_2d_data_camera_frame_marker_xy.shape[2]

@@ -4,10 +4,11 @@ from pathlib import Path
 import numpy as np
 
 
-from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import save_numpy_array_to_disk
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
-    mediapipe_names_and_connections_dict,
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeModelInfo,
 )
+
+from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import save_numpy_array_to_disk
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
@@ -67,5 +68,5 @@ def save_data(
     save_dictionary_to_json(
         save_path=processing_parameters.recording_info_model.output_data_folder_path,
         file_name="mediapipe_names_and_connections_dict.json",
-        dictionary=mediapipe_names_and_connections_dict,
+        dictionary=MediapipeModelInfo.names_and_connections_dict,
     )

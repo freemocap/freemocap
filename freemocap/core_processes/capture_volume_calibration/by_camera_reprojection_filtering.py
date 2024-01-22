@@ -4,15 +4,14 @@ from typing import Tuple, Union
 from matplotlib import pyplot as plt
 import numpy as np
 
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeModelInfo
+)
 
 from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
     save_mediapipe_3d_data_to_npy,
 )
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
-
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
-    NUMBER_OF_MEDIAPIPE_BODY_MARKERS,
-)
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 
 logger = logging.getLogger(__name__)
@@ -96,8 +95,8 @@ def filter_by_reprojection_error(
             reprojection_error_camera_frame_marker,
         )
 
-    body2d_camera_frame_marker_xy = mediapipe_2d_data[:, :, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS, :2]
-    bodyReprojErr_camera_frame_marker = reprojection_error_camera_frame_marker[:, :, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS]
+    body2d_camera_frame_marker_xy = mediapipe_2d_data[:, :, :MediapipeModelInfo.num_tracked_points_body, :2]
+    bodyReprojErr_camera_frame_marker = reprojection_error_camera_frame_marker[:, :, :MediapipeModelInfo.num_tracked_points_body]
 
     reprojection_error_confidence_threshold = min(max(reprojection_error_confidence_threshold, 0), 100)
 
@@ -139,14 +138,14 @@ def filter_by_reprojection_error(
 
     # put retriangulated data back in place
     filtered_skel3d_frame_marker_xyz = raw_skel3d_frame_marker_xyz.copy()
-    filtered_skel3d_frame_marker_xyz[:, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS, :] = retriangulated_data_frame_marker_xyz
+    filtered_skel3d_frame_marker_xyz[:, :MediapipeModelInfo.num_tracked_points_body, :] = retriangulated_data_frame_marker_xyz
 
     filtered_reprojection_error_frame_marker = reprojection_error_frame_marker.copy()
-    filtered_reprojection_error_frame_marker[:, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS] = new_reprojection_error_flat
+    filtered_reprojection_error_frame_marker[:, :MediapipeModelInfo.num_tracked_points_body] = new_reprojection_error_flat
 
     filtered_reprojection_error_camera_frame_marker = reprojection_error_camera_frame_marker.copy()
     filtered_reprojection_error_camera_frame_marker[
-        :, :, :NUMBER_OF_MEDIAPIPE_BODY_MARKERS
+        :, :, :MediapipeModelInfo.num_tracked_points_body
     ] = new_reprojError_cam_frame_marker
 
     return (
@@ -172,7 +171,7 @@ def _get_data_to_reproject(
     input_2d_data_camera_frame_marker_xy: np.ndarray,
 ) -> tuple[np.ndarray, list]:
     indices_above_threshold = np.nonzero(reprojError_cam_frame_marker > reprojection_error_threshold)
-    logger.info(f"SHAPE OF INDICES ABOVE THRESHOLD: {indices_above_threshold[0].shape}") # TODO: Set this to debug
+    logger.info(f"SHAPE OF INDICES ABOVE THRESHOLD: {indices_above_threshold[0].shape}")  # TODO: Set this to debug
 
     total_frame_marker_combos = (
         input_2d_data_camera_frame_marker_xy.shape[1] * input_2d_data_camera_frame_marker_xy.shape[2]

@@ -3,9 +3,8 @@ from typing import List, Dict, Tuple
 from typing import Optional, Any
 
 from pydantic import BaseModel, Field, root_validator
-
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
-    mediapipe_skeleton_schema,
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeModelInfo,
 )
 
 
@@ -123,6 +122,6 @@ if __name__ == "__main__":
 
     print("=====================================\n\n===============================")
 
-    skeleton_schema = SkeletonSchema(schema_dict=mediapipe_skeleton_schema)
+    skeleton_schema = SkeletonSchema(schema_dict=MediapipeModelInfo.skeleton_schema)
 
     pprint.pp(skeleton_schema.dict())

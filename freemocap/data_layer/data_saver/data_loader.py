@@ -5,11 +5,10 @@ from typing import Union, Dict, Any
 
 import numpy as np
 import pandas as pd
-
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
-    mediapipe_skeleton_schema,
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeModelInfo,
 )
-from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import BODY_SEGMENT_NAMES
+
 from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, SkeletonSchema
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
@@ -178,7 +177,7 @@ class DataLoader:
             z=self.center_of_mass_xyz[frame_number, 2],
         )
 
-        for segment_number, segment_name in enumerate(BODY_SEGMENT_NAMES):
+        for segment_number, segment_name in enumerate(MediapipeModelInfo.segment_names):
             com_data[segment_name] = Point(
                 x=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 0],
                 y=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 1],
@@ -215,4 +214,4 @@ class DataLoader:
         return recording_data_by_frame_number
 
     def _load_skeleton_schema(self):
-        self.skeleton_schema = SkeletonSchema(schema_dict=mediapipe_skeleton_schema)
+        self.skeleton_schema = SkeletonSchema(schema_dict=MediapipeModelInfo.skeleton_schema)

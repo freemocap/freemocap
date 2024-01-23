@@ -55,7 +55,7 @@ def run_image_tracking_pipeline(
                 kill_event=kill_event,
                 use_tqdm=use_tqdm,
             )
-        except:
+        except Exception:
             raise RuntimeError("2D skeleton detection failed, cannot continue processing")
 
     if not processing_parameters.recording_info_model.data2d_status_check:

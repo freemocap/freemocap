@@ -201,7 +201,7 @@ def extract_parameter_model_from_parameter_tree(
     parameter_object: Parameter,
 ) -> ProcessingParameterModel:
     parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
-
+    # TODO: Add selection for TrackingInfoModel here when we add tracking options to GUI
     return ProcessingParameterModel(
         mediapipe_parameters_model=MediapipeTrackingParams(
             mediapipe_model_complexity=get_integer_from_mediapipe_model_complexity(

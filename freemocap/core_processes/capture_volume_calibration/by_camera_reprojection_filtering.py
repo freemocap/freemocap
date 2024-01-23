@@ -4,9 +4,6 @@ from typing import Tuple, Union
 from matplotlib import pyplot as plt
 import numpy as np
 
-from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
-    MediapipeModelInfo
-)
 
 from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
     save_mediapipe_3d_data_to_npy,
@@ -37,6 +34,13 @@ def run_reprojection_error_filtering(
 
     :return: filtered 3d data
     """
+    if hasattr(
+        processing_parameters.tracking_model_info, "num_tracked_points_body"
+    ):  # we don't want to reproject hand and face data
+        num_tracked_points = processing_parameters.tracking_model_info.num_tracked_points_body
+    else:
+        num_tracked_points = processing_parameters.tracking_model_info.num_tracked_points
+
     (
         reprojection_filtered_skel3d_frame_marker_xyz,
         reprojection_filtered_skeleton_reprojection_error_fr_mar,
@@ -48,7 +52,7 @@ def run_reprojection_error_filtering(
         mediapipe_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
         anipose_calibration_object=anipose_calibration_object,
-        output_data_folder_path=processing_parameters.recording_info_model.raw_data_folder_path,
+        num_tracked_points=num_tracked_points,
         use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
         minimum_cameras_to_reproject=processing_parameters.anipose_triangulate_3d_parameters_model.minimum_cameras_to_reproject,
     )
@@ -78,7 +82,7 @@ def filter_by_reprojection_error(
     mediapipe_2d_data: np.ndarray,
     raw_skel3d_frame_marker_xyz: np.ndarray,
     anipose_calibration_object,
-    output_data_folder_path: Union[str, Path],
+    num_tracked_points: int,
     use_triangulate_ransac: bool = False,
     minimum_cameras_to_reproject: int = 3,
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -95,8 +99,8 @@ def filter_by_reprojection_error(
             reprojection_error_camera_frame_marker,
         )
 
-    body2d_camera_frame_marker_xy = mediapipe_2d_data[:, :, :MediapipeModelInfo.num_tracked_points_body, :2]
-    bodyReprojErr_camera_frame_marker = reprojection_error_camera_frame_marker[:, :, :MediapipeModelInfo.num_tracked_points_body]
+    body2d_camera_frame_marker_xy = mediapipe_2d_data[:, :, :num_tracked_points, :2]
+    bodyReprojErr_camera_frame_marker = reprojection_error_camera_frame_marker[:, :, :num_tracked_points]
 
     reprojection_error_confidence_threshold = min(max(reprojection_error_confidence_threshold, 0), 100)
 
@@ -138,15 +142,13 @@ def filter_by_reprojection_error(
 
     # put retriangulated data back in place
     filtered_skel3d_frame_marker_xyz = raw_skel3d_frame_marker_xyz.copy()
-    filtered_skel3d_frame_marker_xyz[:, :MediapipeModelInfo.num_tracked_points_body, :] = retriangulated_data_frame_marker_xyz
+    filtered_skel3d_frame_marker_xyz[:, :num_tracked_points, :] = retriangulated_data_frame_marker_xyz
 
     filtered_reprojection_error_frame_marker = reprojection_error_frame_marker.copy()
-    filtered_reprojection_error_frame_marker[:, :MediapipeModelInfo.num_tracked_points_body] = new_reprojection_error_flat
+    filtered_reprojection_error_frame_marker[:, :num_tracked_points] = new_reprojection_error_flat
 
     filtered_reprojection_error_camera_frame_marker = reprojection_error_camera_frame_marker.copy()
-    filtered_reprojection_error_camera_frame_marker[
-        :, :, :MediapipeModelInfo.num_tracked_points_body
-    ] = new_reprojError_cam_frame_marker
+    filtered_reprojection_error_camera_frame_marker[:, :, :num_tracked_points] = new_reprojError_cam_frame_marker
 
     return (
         filtered_skel3d_frame_marker_xyz,

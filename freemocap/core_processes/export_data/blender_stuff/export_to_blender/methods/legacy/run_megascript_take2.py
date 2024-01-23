@@ -25,6 +25,7 @@ def run_blender_megascript_take2(
 
     freemocap_blender_megascript_path = path_to_this_py_file / "freemocap_blender_megascript_take2.py"
 
+    # TODO: this will have to be generalized to make it accept different trackers
     if not (
         Path(recording_folder_path) / OUTPUT_DATA_FOLDER_NAME / "mediapipe_names_and_connections_dict.json"
     ).is_file():

@@ -32,9 +32,14 @@ def calculate_anatomical_data(
         logger.addHandler(handler)
 
     logger.info("Calculating center of mass...")
-    segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ = run_center_of_mass_calculations(
-        processed_skel3d_frame_marker_xyz=skel3d_frame_marker_xyz
-    )
+    try:
+        segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ = run_center_of_mass_calculations(
+            processed_skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            tracking_model_info=processing_parameters.tracking_model_info,
+        )
+    except ValueError:
+        logger.warning("Center of mass cannot be calculated for this tracking model")
+        segment_COM_frame_imgPoint_XYZ = totalBodyCOM_frame_XYZ = None
 
     convert_mediapipe_npy_to_csv(
         mediapipe_3d_frame_trackedPoint_xyz=skel3d_frame_marker_xyz,

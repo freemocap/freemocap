@@ -3,10 +3,22 @@ import numpy as np
 import pandas as pd
 from rich.progress import track
 
-# TODO: Generalize references to generic Model Info class and parameterize the tracker type
-from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import MediapipeModelInfo
+from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 logger = logging.getLogger(__name__)
+
+
+def validate_model_attributes(tracking_model_info: ModelInfo) -> None:
+    "Raise ValueError is model does not have required attributes for COM calculation"
+    required_attributes = [
+        "segment_names",
+        "joint_connections",
+        "segment_COM_lengths",
+        "segment_COM_percentages",
+        "landmark_names",
+    ]
+    if any(getattr(tracking_model_info, attr) is None for attr in required_attributes):
+        raise ValueError("Invalid model attributes")
 
 
 def return_indices_of_joints(list_of_indices, list_of_joint_names):
@@ -230,18 +242,25 @@ def calculate_center_of_mass(
     )
 
 
-def run_center_of_mass_calculations(processed_skel3d_frame_marker_xyz: np.ndarray):
+def run_center_of_mass_calculations(processed_skel3d_frame_marker_xyz: np.ndarray, tracking_model_info: ModelInfo):
+    validate_model_attributes(tracking_model_info)
+
     anthropometric_info_dataframe = build_anthropometric_dataframe(
-        MediapipeModelInfo.segment_names,
-        MediapipeModelInfo.joint_connections,
-        MediapipeModelInfo.segment_COM_lengths,
-        MediapipeModelInfo.segment_COM_percentages,
+        tracking_model_info.segment_names,
+        tracking_model_info.joint_connections,
+        tracking_model_info.segment_COM_lengths,
+        tracking_model_info.segment_COM_percentages,
     )
+
+    if hasattr(tracking_model_info, "body_landmark_names"):  # we don't draw face/hand data
+        landmark_names = tracking_model_info.body_landmark_names
+    else:
+        landmark_names = tracking_model_info.landmark_names
 
     skelcoordinates_frame_segment_joint_XYZ = build_skeleton(
         processed_skel3d_frame_marker_xyz,
         anthropometric_info_dataframe,
-        MediapipeModelInfo.body_landmark_names,
+        landmark_names,
     )
     (
         segment_COM_frame_dict,

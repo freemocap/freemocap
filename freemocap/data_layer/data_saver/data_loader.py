@@ -27,6 +27,7 @@ from freemocap.system.paths_and_filenames.path_getters import (
 logger = logging.getLogger(__name__)
 
 
+# TODO: Need to generalize this beyond mediapipe, and make COM data optional
 class DataLoader:
     def __init__(
         self,

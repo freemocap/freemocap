@@ -4,10 +4,6 @@ from pathlib import Path
 import numpy as np
 
 
-from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
-    MediapipeModelInfo,
-)
-
 from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import save_numpy_array_to_disk
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.system.logging.queue_logger import DirectQueueHandler
@@ -45,28 +41,41 @@ def save_data(
         save_directory=path_to_folder_where_we_will_save_this_data,
     )
 
-    logger.info("Saving segment center of mass data")
-    save_numpy_array_to_disk(
-        array_to_save=segment_COM_frame_imgPoint_XYZ,
-        file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
-        save_directory=Path(path_to_folder_where_we_will_save_this_data) / CENTER_OF_MASS_FOLDER_NAME,
-    )
+    if segment_COM_frame_imgPoint_XYZ is not None:
+        logger.info("Saving segment center of mass data")
+        save_numpy_array_to_disk(
+            array_to_save=segment_COM_frame_imgPoint_XYZ,
+            file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
+            save_directory=Path(path_to_folder_where_we_will_save_this_data) / CENTER_OF_MASS_FOLDER_NAME,
+        )
+    else:
+        logger.debug("segment_COM_frame_imgPoint_XYZ is None, could not save")
 
-    logger.info("Saving total body center of mass data")
-    save_numpy_array_to_disk(
-        array_to_save=totalBodyCOM_frame_XYZ,
-        file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-        save_directory=Path(path_to_folder_where_we_will_save_this_data) / CENTER_OF_MASS_FOLDER_NAME,
-    )
+    if totalBodyCOM_frame_XYZ is not None:
+        logger.info("Saving total body center of mass data")
+        save_numpy_array_to_disk(
+            array_to_save=totalBodyCOM_frame_XYZ,
+            file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
+            save_directory=Path(path_to_folder_where_we_will_save_this_data) / CENTER_OF_MASS_FOLDER_NAME,
+        )
+    else:
+        logger.debug("totalBodyCOM_frame_XYZ is None, could not save")
 
-    save_dictionary_to_json(
-        save_path=processing_parameters.recording_info_model.output_data_folder_path,
-        file_name="mediapipe_skeleton_segment_lengths.json",
-        dictionary=skeleton_segment_lengths_dict,
-    )
+    if skeleton_segment_lengths_dict is not None:
+        logger.info("Saving skeleton segment lengths data")
+        save_dictionary_to_json(
+            save_path=processing_parameters.recording_info_model.output_data_folder_path,
+            file_name="mediapipe_skeleton_segment_lengths.json",
+            dictionary=skeleton_segment_lengths_dict,
+        )
+    else:
+        logger.debug("skeleton_segment_lengths_dict is None, could not save")
 
-    save_dictionary_to_json(
-        save_path=processing_parameters.recording_info_model.output_data_folder_path,
-        file_name="mediapipe_names_and_connections_dict.json",
-        dictionary=MediapipeModelInfo.names_and_connections_dict,
-    )
+    if processing_parameters.tracking_model_info.names_and_connections_dict is not None:
+        save_dictionary_to_json(
+            save_path=processing_parameters.recording_info_model.output_data_folder_path,
+            file_name="mediapipe_names_and_connections_dict.json",
+            dictionary=processing_parameters.tracking_model_info.names_and_connections_dict,
+        )
+    else:
+        logger.debug("mediapipe_names_and_connections_dict is None, could not save")

@@ -107,9 +107,9 @@ class CalibrationControlPanel(QWidget):
 
     def update_calibration_toml_path(self, toml_path: str = None):
         active_recording_info = self._get_active_recording_info()
-        if toml_path is None:
+        if toml_path is None and active_recording_info is not None:
             if active_recording_info.single_video_check:
-                toml_path = None
+                pass
 
             elif self._load_calibration_from_file_radio_button.isChecked():
                 if self._user_selected_toml_path is not None:

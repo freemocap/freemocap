@@ -1,0 +1,168 @@
+import logging
+from pathlib import Path
+from typing import Optional, Union
+import shutil
+
+from freemocap.core_processes.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender
+from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import (
+    get_best_guess_of_blender_path,
+)
+from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
+from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
+from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
+from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
+from freemocap.utilities.download_sample_data import get_sample_data_path
+from freemocap.utilities.get_video_paths import get_video_paths
+from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
+
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeTrackingParams
+)
+
+logger = logging.getLogger(__name__)
+
+def create_yolo_parameter_model():
+    yolo_recording_parameters = MediapipeTrackingParams()
+    yolo_recording_parameters.use_yolo_crop_method = True
+    yolo_recording_parameters.num_processes = 8
+
+    yolo_recording_processing_parameter_model = ProcessingParameterModel()
+    yolo_recording_processing_parameter_model.mediapipe_parameters_model = yolo_recording_parameters
+
+    
+    return yolo_recording_processing_parameter_model
+
+def process_recording_headless(
+    recording_path: Union[str, Path],
+    path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
+    path_to_blender_executable: Optional[Union[str, Path]] = None,
+    recording_processing_parameter_model: Optional[ProcessingParameterModel] = None,
+    use_tqdm: bool = True,
+):
+    if path_to_blender_executable is None:
+        path_to_blender_executable = get_best_guess_of_blender_path()
+    if recording_processing_parameter_model is None:
+        recording_processing_parameter_model = ProcessingParameterModel()
+
+    rec = recording_processing_parameter_model
+
+    logger.info(
+        f"Processing recording:\n"
+        f"Recording path: {recording_path}\n"
+        f"Camera calibration toml path: {path_to_camera_calibration_toml}\n"
+        f"Blender executable path: {path_to_blender_executable}\n"
+        f"Recording processing parameter model: {rec.dict()}"
+    )
+
+    rec.recording_info_model = RecordingInfoModel(recording_folder_path=Path(recording_path))
+
+     # Check and set the calibration file path
+    if path_to_camera_calibration_toml:
+        rec.recording_info_model.calibration_toml_path = Path(path_to_camera_calibration_toml)
+    else:
+        # Search for a calibration file if not provided
+        calibration_file = find_calibration_toml_path(recording_path)
+        if calibration_file is not None:
+            rec.recording_info_model.calibration_toml_path = calibration_file
+            logger.info(f"Found calibration file: {calibration_file}")
+        else:
+            logger.warning("No calibration file provided and none found in the recording path.")
+            number_of_videos = len(get_video_paths(rec.recording_info_model.synchronized_videos_folder_path))
+            if number_of_videos > 1:
+                raise ValueError(
+                    f"There are {number_of_videos} videos. Must provide a calibration toml file for multicamera recordings."
+                )
+
+
+    recording_info_dict = rec.dict(exclude={"recording_info_model"})
+
+    Path(rec.recording_info_model.output_data_folder_path).mkdir(parents=True, exist_ok=True)
+
+    save_dictionary_to_json(
+        save_path=rec.recording_info_model.output_data_folder_path,
+        file_name=RECORDING_PARAMETERS_JSON_FILE_NAME,
+        dictionary=recording_info_dict,
+    )
+
+    logger.info("Starting core processing pipeline...")
+    process_recording_folder(recording_processing_parameter_model=rec, use_tqdm=use_tqdm)
+
+    logger.info("Generating jupyter notebook...")
+    generate_jupyter_notebook(path_to_recording=recording_path)
+
+    if path_to_blender_executable:
+        blender_file_path = get_blender_file_path(recording_folder_path=recording_path)
+        logger.info(f"Exporting to {blender_file_path}")
+        export_to_blender(
+            recording_folder_path=recording_path,
+            blender_file_path=blender_file_path,
+            blender_exe_path=Path(path_to_blender_executable),
+        )
+    else:
+        logger.warning("No blender executable provided. Blender file will not be exported.")
+
+
+def find_calibration_toml_path(recording_path: Union[str, Path]) -> Path:
+    for file in Path(recording_path).glob("*calibration.toml"):
+        return Path(file)
+
+
+
+def create_yolo_folder_and_copy_videos(recording_path: Union[str, Path]) -> Path:
+    """
+    Takes a recording folder path, creates a new folder with '_yolo' suffix, 
+    and copies the 'synchronized_videos' folder from the original to the new one.
+
+    Parameters:
+    recording_path (Union[str, Path]): The path to the original recording folder.
+
+    Returns:
+    Path: The path to the newly created folder with '_yolo' suffix.
+    """
+    # Convert to Path object if the input is a string
+    recording_path = Path(recording_path)
+
+    # Creating the new folder name with '_yolo' suffix
+    yolo_folder_path = recording_path.parent / (recording_path.name + '_yolo')
+
+    # Create the new folder if it doesn't exist
+    yolo_folder_path.mkdir(parents=True, exist_ok=True)
+
+    # Path to the 'synchronized_videos' folder in the original directory
+    original_videos_path = recording_path / 'synchronized_videos'
+
+    # Path to the 'synchronized_videos' folder in the new YOLO directory
+    yolo_videos_path = yolo_folder_path / 'synchronized_videos'
+
+    # Copy the 'synchronized_videos' folder
+    if original_videos_path.exists() and original_videos_path.is_dir():
+        shutil.copytree(original_videos_path, yolo_videos_path, dirs_exist_ok=True)
+    else:
+        raise FileNotFoundError(f"'synchronized_videos' folder not found in {recording_path}")
+
+    return yolo_folder_path
+
+
+def main(path_to_recording_folder_to_run_yolo_on: Union[str, Path], path_to_camera_calibration_toml: Union[str, Path]):
+    path_to_yolo_recording_folder = create_yolo_folder_and_copy_videos(path_to_recording_folder_to_run_yolo_on)
+    yolo_recording_processing_parameter_model = create_yolo_parameter_model()
+
+    process_recording_headless(recording_path=path_to_yolo_recording_folder, 
+                               recording_processing_parameter_model=yolo_recording_processing_parameter_model, 
+                               path_to_camera_calibration_toml=path_to_camera_calibration_toml)
+    
+
+
+
+
+if __name__ == "__main__":
+    # recording_path = Path(r"D:\steen_pantsOn_gait_yolo")
+    # blender_path = Path("PATH/TO/BLENDER/EXECUTABLE")
+
+    # process_recording_headless(recording_path=recording_path, recording_processing_parameter_model=yolo_recording_processing_parameter_model)
+    
+    path_to_recording_folder_to_run_yolo_on = Path(r"D:\steen_pantsOn_gait")
+    path_to_camera_calibration_toml = Path(r"D:\steen_calibration\steen_calibration_camera_calibration.toml")
+    main(path_to_recording_folder_to_run_yolo_on=path_to_recording_folder_to_run_yolo_on, path_to_camera_calibration_toml=path_to_camera_calibration_toml)

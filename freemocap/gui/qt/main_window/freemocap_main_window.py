@@ -523,10 +523,11 @@ class MainWindow(QMainWindow):
 
         if self._home_widget.consent_to_send_usage_information:
             self._pipedream_pings.update_pings_dict(key="gui_closed", value=True)
-            self._pipedream_pings.update_pings_dict(
-                key="active recording status on close",
-                value=self._active_recording_info_widget.active_recording_info.status_check,
-            )
+            if self._active_recording_info_widget.active_recording_info is not None:
+                self._pipedream_pings.update_pings_dict(
+                    key="active recording status on close",
+                    value=self._active_recording_info_widget.active_recording_info.status_check,
+                )
             self._pipedream_pings.send_pipedream_ping()
 
         try:

@@ -26,7 +26,8 @@ def main():
     if "opencv-python" and "opencv-contrib-python" in installed_packages:
         logger.warning("Conflicting versions of opencv found, uninstalling `opencv-python`")
         try:
-            subprocess.run(["pip", "uninstall", "-y", "opencv-python"])
+            subprocess.run(["pip", "uninstall", "-y", "opencv-python", "opencv-contrib-python"])
+            subprocess.run(["pip", "install", "opencv-contrib-python==4.8.*"])
         except Exception:
             logger.warning(
                 "Failed to uninstall opencv-python, calibration may not work without manually uninstalling it"

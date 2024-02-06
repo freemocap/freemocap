@@ -12,7 +12,7 @@ def fix_opencv_conflict():
         logger.warning(
             "Failed to uninstall existing opencv distributions, calibration may not work without manually uninstalling them and reinstalling with `pip install opencv-contrib-python==4.8.*`"
         )
-        return
+        raise
 
     try:
         subprocess.run(["pip", "install", "opencv-contrib-python==4.8.*"], check=True)
@@ -20,6 +20,7 @@ def fix_opencv_conflict():
         logger.error(
             "Failed to install opencv-contrib-python, please run `pip install opencv-contrib-python==4.8.*` manually"
         )
+        raise
     logger.info(
         "Successfully fixed opencv conflict by uninstalling all versions and reinstalling opencv-contrib-python"
     )

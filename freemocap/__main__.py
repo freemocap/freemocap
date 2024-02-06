@@ -3,7 +3,6 @@ import sys
 from multiprocessing import freeze_support
 from pathlib import Path
 
-from freemocap.utilities.fix_opencv_conflict import fix_opencv_conflict
 
 try:
     from freemocap.gui.qt.freemocap_main import qt_gui_main
@@ -18,12 +17,6 @@ def main():
     # set up so you can change the taskbar icon - https://stackoverflow.com/a/74531530/14662833
     import ctypes
     import freemocap
-
-    from importlib.metadata import distributions
-
-    installed_packages = {dist.metadata["Name"] for dist in distributions()}
-    if "opencv-python" in installed_packages and "opencv-contrib-python" in installed_packages:
-        fix_opencv_conflict()
 
     if sys.platform == "win32":
         myappid = f"{freemocap.__package_name__}_{freemocap.__version__}"  # arbitrary string

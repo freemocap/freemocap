@@ -31,6 +31,8 @@ def calculate_anatomical_data(
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
         logger.addHandler(handler)
 
+    # TODO: start this by building skeleton dictionary we use in both COM and segment lengths
+
     logger.info("Calculating center of mass...")
     try:
         segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ = run_center_of_mass_calculations(

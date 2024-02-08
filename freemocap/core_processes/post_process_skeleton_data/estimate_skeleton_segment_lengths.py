@@ -7,6 +7,7 @@ from rich import print
 
 logger = logging.getLogger(__name__)
 
+# TODO: need to make this share with the center of mass
 mediapipe_skeleton_segment_definitions = {
     "lower_spine": {"proximal": "hips_center", "distal": "chest_center"},
     "upper_spine": {"proximal": "chest_center", "distal": "neck_center"},

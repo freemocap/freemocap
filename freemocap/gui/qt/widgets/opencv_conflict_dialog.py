@@ -49,11 +49,12 @@ class OpencvConflictDialog(QDialog):
 
         button_box = QHBoxLayout()
 
-        fix_opencv_button = QPushButton("Fix OpenCV version conflict")
+        fix_opencv_button = QPushButton("Recommended: Fix OpenCV conflict")
         fix_opencv_button.clicked.connect(self.fix_conflict_and_close)
         button_box.addWidget(fix_opencv_button)
 
         continue_unchanged_button = QPushButton("Continue without fixing conflict")
+        continue_unchanged_button.setObjectName("continue_unchanged_button")
         continue_unchanged_button.clicked.connect(self.accept)
         button_box.addWidget(continue_unchanged_button)
 

@@ -159,6 +159,17 @@ QPushButton#export_to_blender_button:hover {
   border: 2px solid darken($primary-button, 20%);
 }
 
+QPushButton#continue_unchanged_button {
+  background-color: #dbeef0f9;
+  border: 2px solid $primary-button;
+  color: $dark-charcoal;
+}
+
+QPushButton#continue_unchanged_button:hover {
+  border: 2px solid $plain-black;
+  background-color: $primary-button;
+}
+
 WelcomeScreenButton {
   border: 2px solid $dark-charcoal;
   background-color: $primary-button;

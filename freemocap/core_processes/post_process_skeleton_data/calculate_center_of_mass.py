@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def validate_model_attributes(tracking_model_info: ModelInfo) -> None:
-    "Raise ValueError is model does not have required attributes for COM calculation"
+    "Raise ValueError if model does not have required attributes for COM calculation"
     required_attributes = [
         "segment_names",
         "joint_connections",

@@ -43,6 +43,7 @@ from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.gui.qt.utilities.save_and_load_gui_state import (
     GuiState,
     load_gui_state,
+    save_gui_state,
 )
 from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
@@ -71,6 +72,7 @@ from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBle
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
+    BLENDER_EXECUTABLE_PATH_MISSING_STRING,
     PATH_TO_FREEMOCAP_LOGO_SVG,
 )
 from freemocap.system.paths_and_filenames.path_getters import (
@@ -275,8 +277,16 @@ class MainWindow(QMainWindow):
             self._handle_processing_finished_signal
         )
 
+        if (
+            self._gui_state.blender_executable_pathstring is BLENDER_EXECUTABLE_PATH_MISSING_STRING
+            or self._gui_state.blender_executable_pathstring is None
+        ):
+            self._gui_state.blender_executable_pathstring = get_best_guess_of_blender_path()
+            save_gui_state(gui_state=self._gui_state, file_pathstring=get_gui_state_json_path())
+        blender_executable_path = self._gui_state.blender_executable_pathstring
+
         self._visualization_control_panel = VisualizationControlPanel(
-            parent=self, blender_executable_path=get_best_guess_of_blender_path()
+            parent=self, blender_executable_path=blender_executable_path, gui_state=self._gui_state
         )
         self._visualization_control_panel.export_to_blender_button.clicked.connect(
             self._export_active_recording_to_blender
@@ -313,9 +323,7 @@ class MainWindow(QMainWindow):
         self._export_to_blender_thread_worker.finished.connect(self._handle_export_to_blender_finished)
 
     def _handle_export_to_blender_finished(self) -> None:
-        if (
-            self._controller_group_box.auto_open_in_blender_checked
-        ):
+        if self._controller_group_box.auto_open_in_blender_checked:
             if Path(self._active_recording_info_widget.active_recording_info.blender_file_path).exists():
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
             else:
@@ -356,7 +364,9 @@ class MainWindow(QMainWindow):
 
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
-        except AttributeError:  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
+        except (
+            AttributeError
+        ):  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
             logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
             logger.error(e)

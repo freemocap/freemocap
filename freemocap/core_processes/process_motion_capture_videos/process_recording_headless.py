@@ -10,6 +10,7 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_fo
 from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.system.paths_and_filenames.file_and_folder_names import BLENDER_EXECUTABLE_PATH_MISSING_STRING
 from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
 from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
 from freemocap.utilities.download_sample_data import get_sample_data_path
@@ -26,7 +27,7 @@ def process_recording_headless(
     recording_processing_parameter_model: Optional[ProcessingParameterModel] = None,
     use_tqdm: bool = True,
 ):
-    if path_to_blender_executable is None:
+    if path_to_blender_executable is None or path_to_blender_executable is BLENDER_EXECUTABLE_PATH_MISSING_STRING:
         path_to_blender_executable = get_best_guess_of_blender_path()
     if recording_processing_parameter_model is None:
         recording_processing_parameter_model = ProcessingParameterModel()

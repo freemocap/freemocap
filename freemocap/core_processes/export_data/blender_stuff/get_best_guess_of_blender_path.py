@@ -3,6 +3,9 @@ import platform
 from pathlib import Path
 from typing import Union, Optional
 
+from freemocap.system.paths_and_filenames.file_and_folder_names import BLENDER_EXECUTABLE_PATH_MISSING_STRING
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,7 +26,11 @@ def guess_blender_exe_path_from_path(base_path: Union[str, Path], exclude_blende
         return best_guess
 
 
-def get_best_guess_of_blender_path():
+def get_best_guess_of_blender_path() -> str:
+    """
+    Returns the pathstring to the best guess of the blender executable, depending on the system
+    If it cannot find a blender executable, it returns BLENDER_EXECUTABLE_PATH_MISSING_STRING
+    """
     if platform.system() == "Windows":
         # check all lettered drives and the user's home directory
         paths_to_check = [
@@ -42,7 +49,7 @@ def get_best_guess_of_blender_path():
             logger.warning(
                 "Could not find `blender.exe` in the expected locations. Please locate it manually (or install Blender, if it isn't installed)."
             )
-            return None
+            return BLENDER_EXECUTABLE_PATH_MISSING_STRING
 
     if platform.system() == "Darwin":
         blender_app_path = Path("/Applications/Blender.app")
@@ -56,7 +63,7 @@ def get_best_guess_of_blender_path():
             logger.warning(
                 "Could not find Blender executable in the applications folder. Please locate it manually (or install Blender, if it isn't installed)."
             )
-            return None
+            return BLENDER_EXECUTABLE_PATH_MISSING_STRING
 
     if platform.system() == "Linux":
         blender_path_list = [
@@ -78,11 +85,11 @@ def get_best_guess_of_blender_path():
         logger.info(
             "Could not find Blender executable in bin. Please locate it manually (or install Blender, if it isn't installed)."
         )
-        return None
+        return BLENDER_EXECUTABLE_PATH_MISSING_STRING
 
     else:
         logger.info("Machine system not detected, please locate Blender path manually.")
-        return None
+        return BLENDER_EXECUTABLE_PATH_MISSING_STRING
 
 
 if __name__ == "__main__":

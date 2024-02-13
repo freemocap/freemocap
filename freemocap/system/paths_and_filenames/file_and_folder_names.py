@@ -26,11 +26,19 @@ MEDIAPIPE_BODY_WORLD_FILE_NAME = "mediapipeBodyWorld_numCams_numFrames_numTracke
 
 RAW_MEDIAPIPE_3D_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
 RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
-RAW_MEDIAPIPE_FULL_REPROJECTION_ERROR_NPY_FILE_NAME = "mediapipe3dData_numCams_numFrames_numTrackedPoints_reprojectionError.npy"
+RAW_MEDIAPIPE_FULL_REPROJECTION_ERROR_NPY_FILE_NAME = (
+    "mediapipe3dData_numCams_numFrames_numTrackedPoints_reprojectionError.npy"
+)
 
-REPROJECTION_FILTERED_MEDIAPIPE_3D_NPY_FILE_NAME = "reprojection_filtered_mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
-REPROJECTION_FILTERED_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME = "reprojection_filtered_mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
-REPROJECTION_FILTERED_MEDIAPIPE_FULL_REPROJECTION_ERROR_NPY_FILE_NAME = "reprojection_filtered_mediapipe3dData_numCams_numFrames_numTrackedPoints_reprojectionError.npy"
+REPROJECTION_FILTERED_MEDIAPIPE_3D_NPY_FILE_NAME = (
+    "reprojection_filtered_mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
+)
+REPROJECTION_FILTERED_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME = (
+    "reprojection_filtered_mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+)
+REPROJECTION_FILTERED_MEDIAPIPE_FULL_REPROJECTION_ERROR_NPY_FILE_NAME = (
+    "reprojection_filtered_mediapipe3dData_numCams_numFrames_numTrackedPoints_reprojectionError.npy"
+)
 
 MEDIAPIPE_3D_NPY_FILE_NAME = "mediaPipeSkel_3d_body_hands_face.npy"
 MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME = "mediapipe_body_3d_xyz.csv"
@@ -51,8 +59,9 @@ FREEMOCAP_TEST_DATA_RECORDING_NAME = "freemocap_sample_data"
 # logo
 PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent / "assets/logo/freemocap-logo-black-border.svg")
 
-# progress bars
+# string constants
 LOG_VIEW_PROGRESS_BAR_STRING = "Log Progress"
+BLENDER_EXECUTABLE_PATH_MISSING_STRING = "BLENDER EXECUTABLE NOT FOUND"
 
 # emoji strings
 SPARKLES_EMOJI_STRING = "\U00002728"

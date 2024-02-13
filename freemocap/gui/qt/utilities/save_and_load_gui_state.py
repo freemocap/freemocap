@@ -2,6 +2,8 @@ import json
 
 from pydantic import BaseModel
 
+from freemocap.system.paths_and_filenames.file_and_folder_names import BLENDER_EXECUTABLE_PATH_MISSING_STRING
+
 
 class GuiState(BaseModel):
     send_user_pings: bool = True
@@ -11,6 +13,7 @@ class GuiState(BaseModel):
     auto_open_in_blender: bool = True
     charuco_square_size: float = 39
     annotate_charuco_images: bool = False
+    blender_executable_pathstring: str = BLENDER_EXECUTABLE_PATH_MISSING_STRING
 
 
 def save_gui_state(gui_state: GuiState, file_pathstring: str = None):

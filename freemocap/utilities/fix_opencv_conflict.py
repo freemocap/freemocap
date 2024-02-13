@@ -6,6 +6,8 @@ logger = logging.getLogger(__name__)
 
 def fix_opencv_conflict():
     logger.warning("Conflicting versions of opencv found, uninstalling `opencv-python`")
+    result = subprocess.run(["which", "pip"], capture_output=True)
+    print(f"\n\nwhich pip: {result}\n\n")
     try:
         subprocess.run(["pip", "uninstall", "-y", "opencv-python", "opencv-contrib-python"], check=True)
     except subprocess.CalledProcessError:

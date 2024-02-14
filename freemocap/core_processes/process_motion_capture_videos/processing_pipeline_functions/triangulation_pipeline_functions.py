@@ -39,7 +39,7 @@ def get_triangulated_data(
     if image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
         logger.info("Skipping 3d triangulation for single camera data")
         logger.info(LOG_VIEW_PROGRESS_BAR_STRING)
-        (raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
+        (skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
 
             input_image_data_frame_marker_xyz=image_data_numCams_numFrames_numTrackedPts_XYZ[0],
             raw_data_folder_path=Path(processing_parameters.recording_info_model.raw_data_folder_path),

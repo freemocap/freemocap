@@ -31,6 +31,9 @@ jobs:
       - name: Freeze dependencies to requirements.txt
         run: |
           pip freeze > ${{ github.workspace }}/requirements.txt
+      - name: Remove opencv-python dependency
+        run: |
+          sed -i '.bak''/opencv-python/d' requirements.txt
       - name: Download PyApp
         run: |
           curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.12.0/source.zip"
@@ -44,6 +47,7 @@ jobs:
           export PYAPP_PROJECT_VERSION=1.0.34
           export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt
           export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
+          export PYAPP_PIP_EXTRA_ARGS=--no-deps
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}
           cd ${{ github.workspace }}

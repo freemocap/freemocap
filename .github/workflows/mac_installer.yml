@@ -33,7 +33,7 @@ jobs:
           pip freeze > ${{ github.workspace }}/requirements.txt
       - name: Remove opencv-python dependency
         run: |
-          sed -i '.bak''/opencv-python/d' requirements.txt
+          sed '/opencv-python/d' requirements.txt > tmp && mv tmp requirements.txt
       - name: Download PyApp
         run: |
           curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.12.0/source.zip"

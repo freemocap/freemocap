@@ -27,10 +27,10 @@ def create_nested_dict(pydantic_model):
 
 
 if __name__ == "__main__":
-    from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
-        mediapipe_skeleton_schema,
+    from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+        MediapipeModelInfo,
     )
     from freemocap.data_layer.data_saver import SkeletonSchema
 
-    skeleton_schema = SkeletonSchema(schema_dict=mediapipe_skeleton_schema)
+    skeleton_schema = SkeletonSchema(schema_dict=MediapipeModelInfo.skeleton_schema)
     print(create_nested_dict(skeleton_schema))

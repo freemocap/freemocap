@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class AniposeCalibrationThreadWorker(QThread):
-    finished = Signal()
+    finished = Signal(str)
     in_progress = Signal(str)
 
     def __init__(
@@ -51,19 +51,19 @@ class AniposeCalibrationThreadWorker(QThread):
         logger.info("Beginning Anipose calibration with Charuco Square Size (mm): {}".format(self._charuco_square_size))
 
         try:
-            run_anipose_capture_volume_calibration(
+            toml_path = run_anipose_capture_volume_calibration(
                 charuco_board_definition=self._charuco_board_definition,
                 charuco_square_size=self._charuco_square_size,
                 calibration_videos_folder_path=self._calibration_videos_folder_path,
                 pin_camera_0_to_origin=True,
                 progress_callback=self._emit_in_progress_data,
             )
+            self.finished.emit(str(toml_path))
 
         except Exception as e:
             logger.exception("something went wrong in the anipose calibration")
             logger.exception(e)
 
-        self.finished.emit()
         self._work_done = True
 
         logger.info("Anipose Calibration Complete")

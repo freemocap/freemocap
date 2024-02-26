@@ -37,7 +37,6 @@ class OpencvConflictDialog(QDialog):
         welcome_text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._layout.addWidget(welcome_text_label, 1)
 
-
         pypi_fix_link_string = '\n\n&#10132; <a href="https://github.com/pypa/pip/pull/10837" style="color: #333333;">A pull request to the `pypi` repo that would resolve this issue, but they won\'t do it :,(</a>'
         pypi_doc_link = QLabel(pypi_fix_link_string)
         pypi_doc_link.setOpenExternalLinks(True)
@@ -48,8 +47,10 @@ class OpencvConflictDialog(QDialog):
         frame.setFrameShadow(QFrame.Shadow.Sunken)
         self._layout.addWidget(frame)
 
-        this_fix_will_label = QLabel("THIS WILL PROCESS WILL UPDATE YOUR PYTHON ENVIRONMENT AND THEN SHUTDOWN THE FREEMOCAP GUI\n\n"
-            "THE NEXT TIME YOU RESTART, THE PROBLEM WILL BE FIXED :D")
+        this_fix_will_label = QLabel(
+            "THIS WILL PROCESS WILL UPDATE YOUR PYTHON ENVIRONMENT AND THEN SHUTDOWN THE FREEMOCAP GUI\n\n"
+            "THE NEXT TIME YOU RESTART, THE PROBLEM WILL BE FIXED :D"
+        )
         this_fix_will_label.setWordWrap(True)
         this_fix_will_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._layout.addWidget(this_fix_will_label)

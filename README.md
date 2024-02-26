@@ -51,7 +51,7 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 ## QUICKSTART
 
 #### 0. Create a a Python 3.9 through 3.11 environment (python3.11 recommended)¶
-#### 1. Install software via [pip](https://pypi.org/project/freemocap/1.0.0rc0/):
+#### 1. Install software via [pip](https://pypi.org/project/freemocap/#description):
 
 ```
 pip install freemocap
@@ -78,7 +78,7 @@ ___
 
 Open an [Anaconda-enabled command prompt](https://www.anaconda.org) (or your preferred method of environmnet management) and enter the following commands:
 
-1) Create a `Python` environment (Recommended version 
+1) Create a `Python` environment (Recommended version  is `python3.11`)
 
 ```bash
 conda create -n freemocap-env python=3.11
@@ -90,7 +90,7 @@ conda create -n freemocap-env python=3.11
 conda activate freemocap-env
 ```
 
-3) Clone the repository (pip install coming very soon!)
+3) Clone the repository
 
 ```bash
 git clone https://github.com/freemocap/freemocap
@@ -120,9 +120,9 @@ ___
 
 ## Documentation 
 
-Our documenation is hosted at: https://freemocap.github.io/documentation/
+Our documenation is hosted at: https://freemocap.github.io/documentation/index_md.html
 
-That site is built using `mkdocs` from this repository: https://github.com/freemocap/documentation
+That site is built using `writerside` from this repository: https://github.com/freemocap/documentation
 
 ___
 

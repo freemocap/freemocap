@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>FreeMoCap</string>
+	<key>CFBundleExecutable</key>
+	<string>freemocap_app</string>
+	<key>CFBundleIconFile</key>
+	<string>freemocap.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>freemocap.v1.0.34</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>FreeMoCap</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>v1.0.34</string>
+	<key>CFBundleVersion</key>
+	<string>v1.0.34</string>
+	<key>LSEnvironment</key>
+	<dict>
+		<key>PATH</key>
+		<string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
+	</dict>
+	<key>NSAppleScriptEnabled</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Webcam can be opened by user to capture recordings for motion capture</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+</dict>
+</plist>

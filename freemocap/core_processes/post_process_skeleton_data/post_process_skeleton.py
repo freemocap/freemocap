@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 from pathlib import Path
 from typing import Union
 
@@ -16,6 +17,10 @@ from skellyforge.freemocap_utils.constants import (
 )
 from skellyforge.freemocap_utils.postprocessing_widgets.task_worker_thread import TaskWorkerThread
 
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
+from freemocap.system.logging.queue_logger import DirectQueueHandler
+from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,14 +32,16 @@ class PostProcessedDataHandler:
         self.processed_skeleton = processed_skeleton
 
 
-def save_skeleton_array_to_npy(
-    array_to_save: np.ndarray, skeleton_file_name: str, path_to_folder_where_we_will_save_this_data: Union[str, Path]
+def save_numpy_array_to_disk(
+        array_to_save: np.ndarray,
+        file_name: str,
+        save_directory: Union[str, Path]
 ):
-    if not skeleton_file_name.endswith(".npy"):
-        skeleton_file_name += ".npy"
-    Path(path_to_folder_where_we_will_save_this_data).mkdir(parents=True, exist_ok=True)
+    if not file_name.endswith(".npy"):
+        file_name += ".npy"
+    Path(save_directory).mkdir(parents=True, exist_ok=True)
     np.save(
-        str(Path(path_to_folder_where_we_will_save_this_data) / skeleton_file_name),
+        str(Path(save_directory) / file_name),
         array_to_save,
     )
 
@@ -70,6 +77,7 @@ def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings
     post_processed_data_handler = PostProcessedDataHandler()
 
     logger.info("Starting post-processing worker thread")
+    logger.info(LOG_VIEW_PROGRESS_BAR_STRING)
 
     worker_thread = TaskWorkerThread(
         raw_skeleton_data=raw_skel3d_frame_marker_xyz,
@@ -84,7 +92,13 @@ def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings
     return post_processed_data_handler.processed_skeleton
 
 
-def post_process_data(recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray):
+def post_process_data(
+        recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray, queue: multiprocessing.Queue
+) -> np.ndarray:
+    if queue:
+        handler = DirectQueueHandler(queue)
+        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
+        logger.addHandler(handler)
     filter_sampling_rate, filter_cutoff_frequency, filter_order = get_settings_from_parameter_tree(
         recording_processing_parameter_model
     )

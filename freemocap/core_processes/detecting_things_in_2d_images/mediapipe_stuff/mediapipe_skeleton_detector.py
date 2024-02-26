@@ -7,6 +7,9 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from skellycam.opencv.video_recorder.video_recorder import VideoRecorder
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeTrackingParams
+)
 from tqdm import tqdm
 
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_dataclasses import (
@@ -15,7 +18,6 @@ from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
     mediapipe_tracked_point_names_dict,
 )
-from freemocap.data_layer.recording_models.post_processing_parameter_models import MediapipeParametersModel
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     MEDIAPIPE_2D_NPY_FILE_NAME,
     ANNOTATED_VIDEOS_FOLDER_NAME,
@@ -37,11 +39,11 @@ face_drawing_spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
 class MediaPipeSkeletonDetector:
     def __init__(
         self,
-        parameter_model: Optional[MediapipeParametersModel] = None,
+        parameter_model: Optional[MediapipeTrackingParams] = None,
         use_tqdm: bool = True,
     ):
         if parameter_model is None:
-            parameter_model = MediapipeParametersModel()
+            parameter_model = MediapipeTrackingParams()
 
         self._parameter_model = parameter_model
         self._use_tqdm = use_tqdm
@@ -110,7 +112,7 @@ class MediaPipeSkeletonDetector:
     def process_single_video(
         synchronized_video_file_path: Path,
         output_data_folder_path: Path,
-        mediapipe_parameters_model: MediapipeParametersModel,
+        mediapipe_parameters_model: MediapipeTrackingParams,
         annotate_image: Callable,
         list_of_mediapipe_results_to_npy_arrays: Callable,
         use_tqdm: bool = True,

@@ -1,0 +1,70 @@
+name: Create Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags: [ v* ]
+
+jobs:
+  build:
+    runs-on: windows-2019
+    steps:
+      - uses: actions/checkout@v3
+      - name: System Info
+        run: |
+          systeminfo || true
+          env
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v4
+        with:
+          # Semantic version range syntax or exact version of a Python version
+          python-version: '3.11'
+          # Optional - x64 or x86 architecture, defaults to x64
+          architecture: 'x64'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Freeze dependencies to requirements.txt
+        run: |
+          pip freeze > ${{ github.workspace }}/requirements.txt
+      - name: Remove opencv-python dependency
+        run: |
+          sed '/opencv-python/d' requirements.txt > tmp && mv tmp requirements.txt
+        shell: bash
+      - name: Download PyApp
+        run: |
+          curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.12.0/source.zip"
+      - name: Unzip PyApp
+        run: |
+          unzip pyapp.zip
+        shell: bash
+      - name: List Directory Contents
+        run: |
+          ls -la
+        shell: bash
+      - name: Create Windows Installer
+        run: |
+          WORKSPACE=$(cygpath -u "${{ github.workspace}}")
+          cd $WORKSPACE/pyapp-v0.12.0
+          export PYAPP_PROJECT_NAME=freemocap
+          export PYAPP_PROJECT_VERSION=v1.0.34
+          export PYAPP_PROJECT_DEPENDENCY_FILE=$WORKSPACE/requirements.txt
+          export PYAPP_EXEC_SCRIPT=$WORKSPACE/freemocap/__main__.py
+          export PYAPP_PIP_EXTRA_ARGS=--no-deps
+          cargo build --release
+          cargo install pyapp --force --root $WORKSPACE
+          cd $WORKSPACE
+          mv $WORKSPACE/bin/pyapp freemocap_app.exe
+        shell: bash
+      - name: Install Rcedit with Chocolatey
+        run: choco install rcedit -y
+        shell: bash
+      - name: Set Executable Icon
+        run: |
+          rcedit "freemocap_app.exe" --set-icon "${{ github.workspace }}/freemocap/assets/logo/freemocap_skelly_logo.ico"
+      - uses: actions/upload-artifact@v3
+        with:
+          name: freemocap
+          path: freemocap_app.exe

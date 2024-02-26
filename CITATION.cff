@@ -1,12 +1,15 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-  - family-names: Cherian
-    given-names: Aaron
   - family-names: Queen
     given-names: Philip
+    orcid: https://orcid.org/0009-0009-9872-6697
+  - family-names: Cherian
+    given-names: Aaron
+    orcid: https://orcid.org/0000-0003-4944-2814
   - family-names: Trent
     given-names: Wirth
+    orcid: https://orcid.org/0000-0002-2510-8603
   - family-names: Endurance
     given-names: Idehen
   - family-names: Matthis
@@ -15,4 +18,3 @@ authors:
 
 title: "FreeMoCap: A free, open source markerless motion capture system"
 doi: 10.5281/zenodo.7233714
-

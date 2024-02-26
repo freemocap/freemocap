@@ -68,11 +68,11 @@ keywords = [
 
 dependencies = [
     "skellycam==2023.12.1090",
-    "skelly-viewer==2023.12.1020",
+    "skelly_viewer==2023.12.1020",
     "skellyforge==2023.12.1005",
     "skelly_synchronize==2023.12.1029",
     "ajc27_freemocap_blender_addon==2023.10.1016",
-    "mediapipe~=0.10.0",
+    "mediapipe==0.10.9",
     "opencv-contrib-python==4.8.*",
     "toml==0.10.2",
     "aniposelib==0.4.3",
@@ -80,6 +80,7 @@ dependencies = [
     "ipykernel==6.23.1",
     "plotly==5.14.1",
     "pydantic==1.*",
+    "skellytracker==2024.1.1008",
     "PySide6==6.6.*",
     "packaging===23.2",
 ]
@@ -89,7 +90,7 @@ requires-python = ">=3.9,<3.12"
 dynamic = ["version", "description"]
 
 [project.optional-dependencies]
-dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit", "flake8"]
+dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit", "flake8", "flake8-bugbear", "flake8-bandit"]
 
 [project.packages]
 freemocap = { include = ["assets"] }
@@ -110,6 +111,7 @@ push = true
 [tool.bumpver.file_patterns]
 #"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
 "freemocap/__init__.py" = ["{version}"]
+".github/workflows/*_installer.yml" = ['export PYAPP_PROJECT_VERSION={version}']
 
 #[tool.setuptools.dynamic]
 #dependencies = {file = "requirements.txt"}

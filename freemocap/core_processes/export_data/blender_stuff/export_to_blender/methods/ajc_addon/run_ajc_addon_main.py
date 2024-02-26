@@ -37,7 +37,7 @@ def run_ajc_blender_addon_subprocess(
     blender_exe_path: Union[str, Path],
 ):
     ajc_addon_main_file_path = inspect.getfile(ajc27_run_as_main_function)
-    logger.info(f"Running ajc27_freemocap_blender_addon as a subprocess using script at : {ajc_addon_main_file_path}")
+    logger.debug(f"Running ajc27_freemocap_blender_addon as a subprocess using script at : {ajc_addon_main_file_path}")
 
     addon_root_directory = str(Path(ajc_addon_main_file_path).parent.parent)
 
@@ -75,11 +75,11 @@ def run_ajc_blender_addon_subprocess(
         if blender_process.poll() is not None:
             break
         if output:
-            print(output.strip().decode())
+            logging.debug(output.strip().decode())
 
     if blender_process.returncode != 0:
-        print(blender_process.stderr.read().decode())
-    logger.info("Done with blender stuff :D")
+        logging.error(blender_process.stderr.read().decode())
+    logger.debug("Done with blender add on")
     blender_process.terminate()  # manually terminate the process
 
 

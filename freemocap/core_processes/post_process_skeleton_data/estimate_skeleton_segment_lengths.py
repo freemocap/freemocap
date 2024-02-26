@@ -45,7 +45,7 @@ def estimate_skeleton_segment_lengths(skeleton_dataframe: pd.DataFrame, skeleton
 
     skeleton_segment_lengths_dict = {}
     for segment_name, segment_definition_dict in skeleton_segment_definitions.items():
-        print(
+        logger.debug(
             f"Estimating length of segment '{segment_name}' "
             f"based on proximal joint: '{segment_definition_dict['proximal']}' and "
             f"distal joint:'{segment_definition_dict['distal']}'"

@@ -167,7 +167,7 @@ class HomeWidget(QWidget):
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
     def _welcome_to_freemocap_title(self):
-        logger.info("Creating `welcome to freemocap` layout")
+        logger.debug("Creating `welcome to freemocap` layout")
 
         session_title_label = QLabel("Welcome  to  FreeMoCap!")
         session_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)

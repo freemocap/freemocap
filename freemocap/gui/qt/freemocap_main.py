@@ -2,6 +2,7 @@ import logging
 import signal
 import sys
 from pathlib import Path
+from importlib.metadata import distributions
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
@@ -41,8 +42,13 @@ def qt_gui_main():
         logger.info("Showing main window - Ready to start!")
 
         freemocap_main_window.show()
+
         if freemocap_main_window._gui_state.show_welcome_screen:
             freemocap_main_window.open_welcome_screen_dialog()
+        installed_packages = {dist.metadata["Name"] for dist in distributions()}
+        if "opencv-python" in installed_packages and "opencv-contrib-python" in installed_packages:
+            freemocap_main_window.open_opencv_conflict_dialog()
+
         timer.timeout.connect(freemocap_main_window.update)
         error_code = app.exec()
         logger.info(f"`main` exited with error code: {error_code}")

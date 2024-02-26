@@ -3,6 +3,7 @@ import sys
 from multiprocessing import freeze_support
 from pathlib import Path
 
+
 try:
     from freemocap.gui.qt.freemocap_main import qt_gui_main
 except Exception:

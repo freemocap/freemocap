@@ -14,16 +14,16 @@ class DownloadDataThreadWorker(QThread):
 
     def __init__(self, dowload_url: str, parent=None):
         super().__init__(parent=parent)
-        logger.info("Initializing download sample data thread worker")
+        logger.debug("Initializing download sample data thread worker")
         self.download_url = dowload_url
 
     def run(self):
-        logger.info("Downloading sample data")
+        logger.debug("Downloading sample data")
 
         try:
             downloaded_data_path = download_sample_data(sample_data_zip_file_url=self.download_url)
             if Path(downloaded_data_path).exists():
-                logger.info(f"Data successfully downloaded from: {self.download_url}")
+                logger.debug(f"Data successfully downloaded from: {self.download_url}")
                 self.finished.emit(downloaded_data_path)
             else:
                 logger.error(f"Could not find downloaded data at {downloaded_data_path}")

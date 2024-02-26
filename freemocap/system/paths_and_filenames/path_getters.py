@@ -21,7 +21,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     CENTER_OF_MASS_FOLDER_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
     MEDIAPIPE_2D_NPY_FILE_NAME,
-    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
+    RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     MEDIAPIPE_3D_NPY_FILE_NAME,
     GUI_STATE_JSON_FILENAME,
@@ -168,8 +168,12 @@ def get_most_recent_recording_path(subfolder_str: str = None):
         logger.error(f"{MOST_RECENT_RECORDING_TOML_FILENAME} not found at {get_most_recent_recording_toml_path()}!!")
         return None
 
-    most_recent_recording_dict = toml.load(str(get_most_recent_recording_toml_path()))
-    most_recent_recording_path = most_recent_recording_dict["most_recent_recording_path"]
+    try:
+        most_recent_recording_dict = toml.load(str(get_most_recent_recording_toml_path()))
+        most_recent_recording_path = most_recent_recording_dict["most_recent_recording_path"]
+    except (ValueError, toml.TomlDecodeError, KeyError) as e:
+        logger.exception(e)
+        return None
 
     if not Path(most_recent_recording_path).exists():
         logger.error(f"Most recent recording path {most_recent_recording_path} not found!!")
@@ -239,6 +243,8 @@ def get_raw_skeleton_npy_file_name(data_folder_name: Union[str, Path]) -> str:
         if RAW_MEDIAPIPE_3D_NPY_FILE_NAME in raw_data_npy_path_list:
             return str(raw_data_subfolder_path / RAW_MEDIAPIPE_3D_NPY_FILE_NAME)
 
+    logger.debug(list(Path(data_folder_name).glob("*")))
+    logger.debug(list(Path(raw_data_subfolder_path).glob("*")))
     raise Exception(f"Could not find a skeleton NPY file in path {str(data_folder_name)}")
 
 
@@ -285,7 +291,7 @@ def get_reprojection_error_file_path(data_folder_name: Union[str, Path]) -> str:
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
 
-        if MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME in raw_data_npy_path_list:
-            return str(raw_data_subfolder_path / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME)
+        if RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME in raw_data_npy_path_list:
+            return str(raw_data_subfolder_path / RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME)
 
     raise Exception(f"Could not find reprojection error data file in path {str(data_folder_name)}")

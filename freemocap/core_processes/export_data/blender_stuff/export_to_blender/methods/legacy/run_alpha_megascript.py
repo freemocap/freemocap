@@ -49,9 +49,9 @@ def run_alpha_megascript(
         if blender_process.poll() is not None:
             break
         if output:
-            print(output.strip().decode())
+            logger.debug(output.strip().decode())
 
     if blender_process.returncode == 0:
-        print("Blender returned an error:")
-        print(blender_process.stderr.read().decode())
-    logger.info("Done with blender stuff :D")
+        logger.error("Blender returned an error:")
+        logger.error(blender_process.stderr.read().decode())
+    logger.debug("Done with Blender Alpha Megascript")

@@ -11,7 +11,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     OUTPUT_DATA_FOLDER_NAME,
     RAW_DATA_FOLDER_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-    MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
+    RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
     ANNOTATED_VIDEOS_FOLDER_NAME,
     MEDIAPIPE_3D_NPY_FILE_NAME,
@@ -103,7 +103,7 @@ class RecordingInfoModel:
             Path(self._path)
             / OUTPUT_DATA_FOLDER_NAME
             / RAW_DATA_FOLDER_NAME
-            / MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
+            / RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
         )
 
     @property
@@ -160,6 +160,8 @@ class RecordingFolderStatusChecker:
             "data3d_status_check": self.check_data3d_status(),
             "center_of_mass_data_status_check": self.check_center_of_mass_data_status(),
             "blender_file_status_check": self.check_blender_file_status(),
+            "single_video_check": self.check_single_video(),
+            "calibration_toml_check": self.check_calibration_toml_status(),
             "video_and_camera_info": {
                 "number_of_synchronized_videos": self.get_number_of_mp4s_in_synched_videos_directory(),
                 "number_of_frames_in_videos": self.get_number_of_frames_in_videos(),
@@ -216,9 +218,10 @@ class RecordingFolderStatusChecker:
         return Path(self.recording_info_model.blender_file_path).is_file()
 
     def check_calibration_toml_status(self) -> bool:
+        # TODO: check if adding a single video check here makes sense with the logic (i.e. will that ever give a misleading response)
         toml_status = Path(self.recording_info_model.calibration_toml_path).is_file()
         if not toml_status:
-            logger.info(
+            logger.debug(
                 "No calibration file found with session name, checking for other calibration files in recording session"
             )
             toml_status = self.check_for_calibration_toml_with_different_name()
@@ -242,7 +245,7 @@ class RecordingFolderStatusChecker:
         timestamps_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path) / "timestamps"
 
         if not timestamps_directory_path.exists():
-            return "No 'timestamps' directory found"
+            return "No 'timestamps' directory found"  # TODO: Check frame status without using timestamps with openCV or FFProbe
 
         if timestamps_directory_path.exists():
             frame_counts = {}

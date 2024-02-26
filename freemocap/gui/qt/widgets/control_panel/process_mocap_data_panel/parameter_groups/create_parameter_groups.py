@@ -1,8 +1,10 @@
 from pyqtgraph.parametertree import Parameter
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeTrackingParams,
+)
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
-    MediapipeParametersModel,
-    PostProcessingParameterModel,
+    ProcessingParameterModel,
     AniposeTriangulate3DParametersModel,
     PostProcessingParametersModel,
     ButterworthFilterParametersModel,
@@ -12,7 +14,7 @@ BUTTERWORTH_ORDER = "Order"
 
 BUTTERWORTH_CUTOFF_FREQUENCY = "Cutoff Frequency"
 
-POST_PROCESSING_FRAME_RATE = "framerate"
+POST_PROCESSING_FRAME_RATE = "Framerate"
 
 BUTTERWORTH_FILTER_TREE_NAME = "Butterworth Filter"
 
@@ -20,7 +22,17 @@ USE_RANSAC_METHOD = "Use RANSAC Method"
 
 ANIPOSE_CONFIDENCE_CUTOFF = "Confidence Threshold Cut-off"
 
+REPROJECTION_ERROR_FILTERING_TREE_NAME = "Reprojection Error Filtering"
+
+RUN_REPROJECTION_ERROR_FILTERING = "Run Reprojection Error Filtering"
+
+REPROJECTION_ERROR_FILTER_THRESHOLD = "Reprojection Error Filter Threshold (%)"
+
+MINIMUM_CAMERAS_TO_REPROJECT = "Minimum Cameras to Reproject"
+
 ANIPOSE_TREE_NAME = "Anipose Triangulation"
+
+USE_YOLO_CROP_METHOD = "Use YOLO Crop Method"
 
 STATIC_IMAGE_MODE = "Static Image Mode"
 
@@ -32,21 +44,18 @@ MEDIAPIPE_MODEL_COMPLEXITY = "Model Complexity"
 
 MEDIAPIPE_TREE_NAME = "Mediapipe"
 
-SKIP_2D_IMAGE_TRACKING_NAME = "Skip 2d image tracking?"
+RUN_IMAGE_TRACKING_NAME = "Run 2d image tracking?"
 
-SKIP_3D_TRIANGULATION_NAME = "Skip 3d triangulation?"
+RUN_3D_TRIANGULATION_NAME = "Run 3d triangulation?"
 
-SKIP_BUTTERWORTH_FILTER_NAME = "Skip butterworth filter?"
+RUN_BUTTERWORTH_FILTER_NAME = "Run butterworth filter?"
 
-USE_MULTIPROCESSING_PARAMETER_NAME = "Use Multiprocessing"
+NUMBER_OF_PROCESSES_PARAMETER_NAME = "Max Number of Processes to Use"
 
 
 def create_mediapipe_parameter_group(
-    parameter_model: MediapipeParametersModel = None,
+    parameter_model: MediapipeTrackingParams,
 ) -> Parameter:
-    if parameter_model is None:
-        parameter_model = MediapipeParametersModel()
-
     mediapipe_model_complexity_list = [
         "0 (Fastest/Least accurate)",
         "1 (Middle ground)",
@@ -56,6 +65,12 @@ def create_mediapipe_parameter_group(
         name=MEDIAPIPE_TREE_NAME,
         type="group",
         children=[
+            dict(
+                name=USE_YOLO_CROP_METHOD,
+                type="bool",
+                value=parameter_model.use_yolo_crop_method,
+                tip="If true, `skellytracker` will use YOLO to pre-crop the person from the image before running the `mediapipe` tracker",
+            ),
             dict(
                 name=MEDIAPIPE_MODEL_COMPLEXITY,
                 type="list",
@@ -95,7 +110,7 @@ def create_mediapipe_parameter_group(
     )
 
 
-def create_3d_triangulation_prarameter_group(
+def create_3d_triangulation_parameter_group(
     parameter_model: AniposeTriangulate3DParametersModel = None,
 ) -> Parameter:
     if parameter_model is None:
@@ -119,6 +134,30 @@ def create_3d_triangulation_prarameter_group(
                 value=parameter_model.use_triangulate_ransac_method,
                 tip="If true, use `anipose`'s `triangulate_ransac` method instead of the default `triangulate_simple` method. "
                 "NOTE - Much slower than the 'simple' method, but might be more accurate and better at rejecting bad camera views. Needs more testing and evaluation to see if it's worth it. ",
+            ),
+            dict(
+                name=REPROJECTION_ERROR_FILTERING_TREE_NAME,
+                type="group",
+                children=[
+                    dict(
+                        name=RUN_REPROJECTION_ERROR_FILTERING,
+                        type="bool",
+                        value=parameter_model.run_reprojection_error_filtering,
+                        tip="If true, run filtering of reprojection error.",
+                    ),
+                    dict(
+                        name=REPROJECTION_ERROR_FILTER_THRESHOLD,
+                        type="float",
+                        value=parameter_model.reprojection_error_confidence_cutoff,
+                        tip="The maximum reprojection error allowed in the data.",
+                    ),
+                    dict(
+                        name=MINIMUM_CAMERAS_TO_REPROJECT,
+                        type="int",
+                        value=parameter_model.minimum_cameras_to_reproject,
+                        tip="The minimum number of cameras to reproject during retriangulation.",
+                    ),
+                ],
             ),
         ],
     )
@@ -160,26 +199,28 @@ def create_post_processing_parameter_group(
 
 def extract_parameter_model_from_parameter_tree(
     parameter_object: Parameter,
-) -> PostProcessingParameterModel:
+) -> ProcessingParameterModel:
     parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
 
-    mediapipe_model_complexity_integer = get_integer_from_mediapipe_model_complexity(
-        parameter_values_dictionary[MEDIAPIPE_MODEL_COMPLEXITY]
-    )
-
-    return PostProcessingParameterModel(
-        mediapipe_parameters_model=MediapipeParametersModel(
-            mediapipe_model_complexity=mediapipe_model_complexity_integer,
+    return ProcessingParameterModel(
+        mediapipe_parameters_model=MediapipeTrackingParams(
+            mediapipe_model_complexity=get_integer_from_mediapipe_model_complexity(
+                parameter_values_dictionary[MEDIAPIPE_MODEL_COMPLEXITY]
+            ),
             min_detection_confidence=parameter_values_dictionary[MINIMUM_DETECTION_CONFIDENCE],
             min_tracking_confidence=parameter_values_dictionary[MINIUMUM_TRACKING_CONFIDENCE],
             static_image_mode=parameter_values_dictionary[STATIC_IMAGE_MODE],
-            skip_2d_image_tracking=parameter_values_dictionary[SKIP_2D_IMAGE_TRACKING_NAME],
-            use_multiprocessing=parameter_values_dictionary[USE_MULTIPROCESSING_PARAMETER_NAME],
+            run_image_tracking=parameter_values_dictionary[RUN_IMAGE_TRACKING_NAME],
+            num_processes=parameter_values_dictionary[NUMBER_OF_PROCESSES_PARAMETER_NAME],
+            use_yolo_crop_method=parameter_values_dictionary[USE_YOLO_CROP_METHOD],
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
+            run_reprojection_error_filtering=parameter_values_dictionary[RUN_REPROJECTION_ERROR_FILTERING],
+            reprojection_error_confidence_cutoff=parameter_values_dictionary[REPROJECTION_ERROR_FILTER_THRESHOLD],
+            minimum_cameras_to_reproject=parameter_values_dictionary[MINIMUM_CAMERAS_TO_REPROJECT],
             confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
-            skip_3d_triangulation=parameter_values_dictionary[SKIP_3D_TRIANGULATION_NAME],
+            run_3d_triangulation=parameter_values_dictionary[RUN_3D_TRIANGULATION_NAME],
         ),
         post_processing_parameters_model=PostProcessingParametersModel(
             framerate=parameter_values_dictionary[POST_PROCESSING_FRAME_RATE],
@@ -188,7 +229,7 @@ def extract_parameter_model_from_parameter_tree(
                 cutoff_frequency=parameter_values_dictionary[BUTTERWORTH_CUTOFF_FREQUENCY],
                 order=parameter_values_dictionary[BUTTERWORTH_ORDER],
             ),
-            skip_butterworth_filter=parameter_values_dictionary[SKIP_BUTTERWORTH_FILTER_NAME],
+            run_butterworth_filter=parameter_values_dictionary[RUN_BUTTERWORTH_FILTER_NAME],
         ),
     )
 

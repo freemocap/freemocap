@@ -136,7 +136,7 @@ class CalibrationControlPanel(QWidget):
         if self._calibration_toml_path is not None:
             logger.debug(f"Setting calibration TOML path: {self._calibration_toml_path}")
             self._show_selected_calibration_toml_path(self._calibration_toml_path)
-        elif active_recording_info.single_video_check:
+        elif active_recording_info and active_recording_info.single_video_check:
             self._show_selected_calibration_toml_path("-Single Video Recording, No Calibration Needed-")
         else:
             self._show_selected_calibration_toml_path("-Calibration File Not Found-")

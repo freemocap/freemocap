@@ -24,3 +24,4 @@ def fix_opencv_conflict():
     logger.info(
         "Successfully fixed opencv conflict by uninstalling all versions and reinstalling opencv-contrib-python"
     )
+

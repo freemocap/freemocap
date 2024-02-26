@@ -30,22 +30,34 @@ class OpencvConflictDialog(QDialog):
             "Choosing `Fix OpenCV version conflict` will remove the existing OpenCV versions and install opencv-contrib-python. "
             "It will also close Freemocap to make the changes take affect, but everything will work when restarted. \n\n"
             "If you choose not to fix the conflict, you will need to manually install opencv-contrib-python and restart Freemocap "
-            "in order for multi-camera calibration to work."
+            "in order for multi-camera calibration to work.\n\n"
         )
         welcome_text_label = QLabel(version_conflict_message)
         welcome_text_label.setWordWrap(True)
         welcome_text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._layout.addWidget(welcome_text_label, 1)
 
-        self.frame = QFrame()
-        self.frame.setFrameShape(QFrame.Shape.HLine)
-        self.frame.setFrameShadow(QFrame.Shadow.Sunken)
-        self._layout.addWidget(self.frame)
 
-        single_camera_recording_doc_link_string = '\n\n&#10132; <a href="https://github.com/pypa/pip/pull/10837" style="color: #333333;">A pull request to the `pypi` repo that would resolve this issue, but they won\'t do it >:(</a>'
-        single_camera_doc_link = QLabel(single_camera_recording_doc_link_string)
-        single_camera_doc_link.setOpenExternalLinks(True)
-        self._layout.addWidget(single_camera_doc_link)
+        pypi_fix_link_string = '\n\n&#10132; <a href="https://github.com/pypa/pip/pull/10837" style="color: #333333;">A pull request to the `pypi` repo that would resolve this issue, but they won\'t do it :,(</a>'
+        pypi_doc_link = QLabel(pypi_fix_link_string)
+        pypi_doc_link.setOpenExternalLinks(True)
+        self._layout.addWidget(pypi_doc_link)
+
+        frame = QFrame()
+        frame.setFrameShape(QFrame.Shape.HLine)
+        frame.setFrameShadow(QFrame.Shadow.Sunken)
+        self._layout.addWidget(frame)
+
+        this_fix_will_label = QLabel("THIS WILL PROCESS WILL UPDATE YOUR PYTHON ENVIRONMENT AND THEN SHUTDOWN THE FREEMOCAP GUI\n\n"
+            "THE NEXT TIME YOU RESTART, THE PROBLEM WILL BE FIXED :D")
+        this_fix_will_label.setWordWrap(True)
+        this_fix_will_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._layout.addWidget(this_fix_will_label)
+
+        frame1 = QFrame()
+        frame1.setFrameShape(QFrame.Shape.HLine)
+        frame1.setFrameShadow(QFrame.Shadow.Sunken)
+        self._layout.addWidget(frame1)
 
         button_box = QHBoxLayout()
 
@@ -64,6 +76,7 @@ class OpencvConflictDialog(QDialog):
         try:
             fix_opencv_conflict()
             logger.info("Successfully fixed opencv conflict, closing GUI")
+
         except subprocess.CalledProcessError:
             logger.error(
                 "Failed to fix opencv conflict, please uninstall all opencv versions and run `pip install opencv-contrib-python==4.8.*` manually"

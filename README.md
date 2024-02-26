@@ -1,6 +1,7 @@
 <p align="center">
-    <img src="https://raw.githubusercontent.com/freemocap/freemocap/main/assets/logo/freemocap-skelly-logo-black-border-transparent-bkgd.png" height="64" alt="Project Logo">
+    <img src="https://github.com/freemocap/freemocap/assets/15314521/da1af7fe-f808-43dc-8f59-c579715d6593" height="240" alt="Project Logo">
 </p> 
+
 
 <h3 align="center">The FreeMoCap Project</h3>
 <h4 align="center"> A free-and-open-source, hardware-and-software-agnostic, minimal-cost, research-grade, motion capture

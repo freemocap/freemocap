@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://raw.githubusercontent.com/freemocap/freemocap/main/assets/logo/freemocap-logo-black-border.svg" height="64" alt="Project Logo">
+    <img src="https://raw.githubusercontent.com/freemocap/freemocap/main/assets/logo/freemocap-skelly-logo-black-border-transparent-bkgd.png" height="64" alt="Project Logo">
 </p> 
 
 <h3 align="center">The FreeMoCap Project</h3>

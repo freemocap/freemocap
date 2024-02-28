@@ -43,7 +43,7 @@
     "@types/react-router-dom": "^5.1.6"
   },
   "scripts": {
-    "start": "REACT_APP_DISABLE_LIVE_RELOAD=true react-scripts start",
+    "start": "react-scripts start",
     "start:https": "HTTPS=true SSL_CRT_FILE=./localhost.pem SSL_KEY_FILE=./localhost-key.pem react-scripts start",
     "certs": "./scripts/cert.sh",
     "build": "react-scripts build",

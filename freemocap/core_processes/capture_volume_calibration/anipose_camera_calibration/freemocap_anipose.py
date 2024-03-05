@@ -3,11 +3,12 @@
 
 import itertools
 import logging
-import multiprocessing
 import queue
 import time
 from collections import defaultdict, Counter
 from copy import copy
+from typing import List, Optional, Union
+from multiprocessing.synchronize import Event as MultiprocessingEvent
 
 import cv2
 import numpy as np
@@ -30,17 +31,17 @@ logger = logging.getLogger(__name__)
 
 
 @jit(nopython=True, parallel=True)
-def triangulate_simple(points, camera_mats):
+def triangulate_simple(points: np.ndarray, camera_mats):
     num_cams = len(camera_mats)
     A = np.zeros((num_cams * 2, 4))
-    for i in range(num_cams):
+    for i in range(num_cams):  # get system of equations to solve
         x, y = points[i]
         mat = camera_mats[i]
-        A[(i * 2) : (i * 2 + 1)] = x * mat[2] - mat[0]
-        A[(i * 2 + 1) : (i * 2 + 2)] = y * mat[2] - mat[1]
-    u, s, vh = np.linalg.svd(A, full_matrices=True)
-    p3d = vh[-1]
-    p3d = p3d[:3] / p3d[3]
+        A[(i * 2) : (i * 2 + 1)] = x * mat[2] - mat[0]  # x coordinate in projected points
+        A[(i * 2 + 1) : (i * 2 + 2)] = y * mat[2] - mat[1]  # y coordinate in projected points
+    u, s, vh = np.linalg.svd(A, full_matrices=True)  # singular value decomposition
+    p3d = vh[-1]  # solution in homogenous coordinates (vh is sorted by size, so last value is the minimal solution)
+    p3d = p3d[:3] / p3d[3]  # convert to normal 3D coordinates
     return p3d
 
 
@@ -397,7 +398,7 @@ class Camera:
             "translation": self.get_translation().tolist(),
         }
 
-    def load_dict(self, d):
+    def load_dict(self, d: dict):
         self.set_camera_matrix(d["matrix"])
         self.set_rotation(d["rotation"])
         self.set_translation(d["translation"])
@@ -646,15 +647,24 @@ class FisheyeCamera(Camera):
 
 
 class CameraGroup:
-    def __init__(self, cameras, metadata={}):
+    def __init__(self, cameras: List[Union[Camera, FisheyeCamera]], metadata: dict = {}):
         self.cameras = cameras
         self.metadata = metadata
 
-    def subset_cameras(self, indices):
+    def subset_cameras(self, indices: List[int]) -> "CameraGroup":
+        """
+        Return a CameraGroup instance with a subset of cameras given by index
+        """
         cams = [self.cameras[ix].copy() for ix in indices]
         return CameraGroup(cams, self.metadata)
 
-    def subset_cameras_names(self, names):
+    def subset_cameras_names(self, names: List[str]) -> "CameraGroup":
+        """
+        Return a CameraGroup instance with a subset of cameras given by name
+
+        Raises:
+            IndexError: if a name is not in self.get_names()
+        """
         cur_names = self.get_names()
         cur_names_dict = dict(zip(cur_names, range(len(cur_names))))
         indices = []
@@ -664,9 +674,10 @@ class CameraGroup:
             indices.append(cur_names_dict[name])
         return self.subset_cameras(indices)
 
-    def project(self, points):
-        """Given an Nx3 array of points, this returns an CxNx2 array of 2D points,
-        where C is the number of cameras"""
+    def project(self, points: np.ndarray) -> np.ndarray:
+        """
+        Given an Nx3 array of points, this returns an CxNx2 array of 2D points, where C is the number of cameras
+        """
         points = points.reshape(-1, 1, 3)
         n_points = points.shape[0]
         n_cams = len(self.cameras)
@@ -677,7 +688,13 @@ class CameraGroup:
 
         return out
 
-    def triangulate(self, points, undistort=True, progress=False, kill_event: multiprocessing.Event = None):
+    def triangulate(
+        self,
+        points: np.ndarray,
+        undistort: bool = True,
+        progress: bool = False,
+        kill_event: Optional[MultiprocessingEvent] = None,
+    ):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
 
@@ -728,12 +745,12 @@ class CameraGroup:
 
     def triangulate_possible(
         self,
-        points,
-        undistort=True,
-        min_cams=2,
-        progress=False,
-        threshold=0.5,
-        kill_event: multiprocessing.Event = None,
+        points: np.ndarray,
+        undistort: bool = True,
+        min_cams: int = 2,
+        progress: bool = False,
+        threshold: float = 0.5,
+        kill_event: Optional[MultiprocessingEvent] = None,
     ):
         """Given an CxNxPx2 array, this returns an Nx3 array of points
         by triangulating all possible points and picking the ones with
@@ -823,7 +840,12 @@ class CameraGroup:
         return out  # simplify output so that `triangulate_ransac` can be used exactly the same way as `triangulate`
 
     def triangulate_ransac(
-        self, points, undistort=True, min_cams=2, progress=False, kill_event: multiprocessing.Event = None
+        self,
+        points: np.ndarray,
+        undistort=True,
+        min_cams=2,
+        progress=False,
+        kill_event: Optional[MultiprocessingEvent] = None,
     ):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
@@ -1913,8 +1935,8 @@ class CameraGroup:
             cameras.append(cam)
         return CameraGroup(cameras)
 
-    def load_dicts(self, arr):
-        for cam, d in zip(self.cameras, arr):
+    def load_dicts(self, dicts: List[dict]):
+        for cam, d in zip(self.cameras, dicts):
             cam.load_dict(d)
 
     def dump(self, fname):
@@ -1943,14 +1965,13 @@ class CameraGroup:
 class AniposeCharucoBoard(CharucoBoard):
     def __init__(
         self,
-        squaresX,
-        squaresY,
-        square_length,
-        marker_length,
-        marker_bits=4,
-        dict_size=50,
-        aruco_dict=None,
-        manually_verify=False,
+        squaresX: int,
+        squaresY: int,
+        square_length: Union[int, float],
+        marker_length: Union[int, float],
+        marker_bits: int = 4,
+        dict_size: int = 50,
+        manually_verify: bool = False,
     ):
         self.squaresX = squaresX
         self.squaresY = squaresY
@@ -1997,12 +2018,11 @@ class AniposeCharucoBoard(CharucoBoard):
         self.empty_detection = np.zeros((total_size, 1, 2)) * np.nan
         self.total_size = total_size
 
-    def detect_markers(self, image, camera=None, refine=True):
+    def detect_markers(self, image: np.ndarray, camera: Optional[Camera] = None, refine: bool = True):
         if len(image.shape) == 3:
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         else:
             gray = image
-
         params = cv2.aruco.DetectorParameters()
         params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_CONTOUR
         params.adaptiveThreshWinSizeMin = 100
@@ -2033,7 +2053,7 @@ class AniposeCharucoBoard(CharucoBoard):
 
         return detectedCorners, detectedIds
 
-    def detect_image(self, image, camera=None):
+    def detect_image(self, image: np.ndarray, camera: Optional[Camera]=None):
         if len(image.shape) == 3:
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         else:
@@ -2056,52 +2076,52 @@ class AniposeCharucoBoard(CharucoBoard):
 
         return detectedCorners, detectedIds
 
-    def manually_verify_board_detection(self, image, corners, ids=None):
+    def manually_verify_board_detection(self, image: np.ndarray, corners, ids=None) -> bool:
         height, width = image.shape[:2]
         image = cv2.aruco.drawDetectedCornersCharuco(image, corners, ids)
         cv2.putText(
-            image,
-            "(a) Accept (d) Reject",
-            (int(width / 1.35), int(height / 16)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            255,
-            1,
-            cv2.LINE_AA,
+            img=image,
+            text="(a) Accept (d) Reject",
+            org=(int(width / 1.35), int(height / 16)),
+            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+            fontScale=0.5,
+            color=255,
+            thickness=1,
+            lineType=cv2.LINE_AA,
         )
         cv2.imshow("verify_detection", image)
         while 1:
             key = cv2.waitKey(0) & 0xFF
             if key == ord("a"):
                 cv2.putText(
-                    image,
-                    "Accepted!",
-                    (int(width / 2.5), int(height / 1.05)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    255,
-                    2,
-                    cv2.LINE_AA,
+                    img=image,
+                    text="Accepted!",
+                    org=(int(width / 2.5), int(height / 1.05)),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=1,
+                    color=255,
+                    thickness=2,
+                    lineType=cv2.LINE_AA,
                 )
                 cv2.imshow("verify_detection", image)
                 cv2.waitKey(100)
                 return True
             elif key == ord("d"):
                 cv2.putText(
-                    image,
-                    "Rejected!",
-                    (int(width / 2.5), int(height / 1.05)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    255,
-                    2,
-                    cv2.LINE_AA,
+                    img=image,
+                    text="Rejected!",
+                    org=(int(width / 2.5), int(height / 1.05)),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=1,
+                    color=255,
+                    thickness=2,
+                    lineType=cv2.LINE_AA,
                 )
                 cv2.imshow("verify_detection", image)
                 cv2.waitKey(100)
                 return False
 
-    def estimate_pose_points(self, camera, corners, ids):
+    def estimate_pose_points(self, camera: Camera, corners, ids) -> tuple[np.ndarray, np.ndarray]:
         if corners is None or ids is None or len(corners) < 5:
             return None, None
 

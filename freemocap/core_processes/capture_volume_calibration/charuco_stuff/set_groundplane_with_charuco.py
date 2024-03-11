@@ -28,6 +28,7 @@ def get_pose_vectors_from_charuco(
     if not (charuco_ids is None) and len(charuco_ids) >= 4:
         cv2.aruco.drawDetectedCornersCharuco(image, charuco_corners, charuco_ids)
         try:
+            # how do we get these obj points into 3d space to plot charuco board
             obj_points, img_points = charuco_board.matchImagePoints(charuco_corners, charuco_ids)
             ret, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, distortion_coefficients)
             if ret:
@@ -187,6 +188,7 @@ if __name__ == "__main__":
     rvec_back, _ = cv2.Rodrigues(rotation_matrix)
     print("Original rotation vector: ", rotation_vector)
     print("Rotation vector after conversion back and forth: ", rvec_back)
+    print("Original translation vector: ", translation_vector)
 
     print(f"charuco to camera rotation_vector: {rotation_vector}")
 
@@ -206,12 +208,26 @@ if __name__ == "__main__":
 
     flattened_combined_rotation_vector = combined_rotation_vector.flatten()
 
+    rotation_vector_string = ""
+    for vector in flattened_combined_rotation_vector:
+        rotation_vector_string += f"{vector}, "
+
+    print(f"vector_string: {rotation_vector_string}")
+
+    translation_vector_string = ""
+    for vector in combined_translation_vector:
+        translation_vector_string += f"{vector}, "
+
+    print(f"translation_vector_string: {translation_vector_string}")
+
+    # we need to rotate around the origin, so we should translate the skeleton data based on the charuco location before rotating?
+
     # from here on is skellyforge stuff
     # rotation_matrix = create_rotation_matrix_from_rotation_vector(flattened_combined_rotation_vector)
 
     # print(f"rotation_matrix: {rotation_matrix}")
 
-    # raw_skeleton_datapath = "/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/output_data/mediaPipeSkel_3d_body_hands_face.npy"
+    # raw_skeleton_datapath = "/Users/philipqueen/freemocap_data/recording_sessions/aaron_ground_charuco_test/recording_14_23_11_gmt-4/output_data/mediaPipeSkel_3d_body_hands_face.npy"
     # raw_skeleton_data = np.load(raw_skeleton_datapath)
     # print(f"raw_skeleton_data shape: {raw_skeleton_data.shape}")
 
@@ -223,4 +239,14 @@ if __name__ == "__main__":
     # translated_rotated_skeleton_data = rotated_skeleton_data + combined_translation_vector
     # print(f"translated_rotated_skeleton_data shape: {translated_rotated_skeleton_data.shape}")
 
-    # np.save("/Users/philipqueen/freemocap_data/recording_sessions/charuco_groundplane_test/recording_13_27_26_gmt-6/output_data/mediaPipeSkel_3d_body_hands_face_rotated.npy", rotated_skeleton_data)
+    # np.save("/Users/philipqueen/freemocap_data/recording_sessions/aaron_ground_charuco_test/recording_14_23_11_gmt-4/output_data/mediaPipeSkel_3d_body_hands_face_rotated.npy", rotated_skeleton_data)
+
+
+    # trent notes:
+    # Step 1: Find the coordinates of the charuco board in 3d space
+    # Step 2: Get the translation between charuco board and origin point
+    # Step 3: Plot the translation (board before and after translation)
+    # Step 4: Get the rotation between charuco board and origin plane (once we've translated it)
+    # Step 5: Plot the rotation (board before and after rotation) (should be a grid NOT in line with the groundplane, and one in line with the groundplane)
+    # Step 6: Apply the same trnaslation and rotation to the skeleton
+    # Step 7: Plot the skeleton before and after translation + rotation

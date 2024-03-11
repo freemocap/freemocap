@@ -5,6 +5,7 @@ from typing import Union, Callable
 
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget, QPushButton, QFileSystemModel
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from qtpy import QtGui
 
 from freemocap.system.open_file import open_file
@@ -16,7 +17,9 @@ logger = logging.getLogger(__name__)
 class DirectoryViewWidget(QWidget):
     new_active_recording_selected_signal = Signal(str)
 
-    def __init__(self, top_level_folder_path: Union[str, Path], get_active_recording_info_callable: Callable):
+    def __init__(
+        self, top_level_folder_path: Union[str, Path], get_active_recording_info_callable: Callable, gui_state: GuiState
+    ):
         self._root_folder = None
         logger.debug("Creating QtDirectoryViewWidget")
         super().__init__()
@@ -25,6 +28,7 @@ class DirectoryViewWidget(QWidget):
 
         self._top_level_folder_path = top_level_folder_path
         self._get_active_recording_info_callable = get_active_recording_info_callable
+        self._gui_state = gui_state
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
@@ -123,7 +127,7 @@ class DirectoryViewWidget(QWidget):
         if current_recording_info is None:
             # self.set_folder_as_root(self._top_level_folder_path)
             self._show_freemocap_data_folder_button.hide()
-            self.expand_directory_to_path(get_recording_session_folder_path())
+            self.expand_directory_to_path(get_recording_session_folder_path(self._gui_state))
             return
 
         # self.set_folder_as_root(current_recording_info.path)
@@ -143,7 +147,7 @@ if __name__ == "__main__":
     from PySide6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    directory_view_widget = DirectoryViewWidget(top_level_folder_path=Path.home())
+    directory_view_widget = DirectoryViewWidget(top_level_folder_path=Path.home(), gui_state=GuiState())
 
     directory_view_widget.show()
 

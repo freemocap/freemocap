@@ -5,6 +5,7 @@ from typing import Union
 
 import toml
 
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     LOGS_INFO_AND_SETTINGS_FOLDER_NAME,
     LOG_FILE_FOLDER_NAME,
@@ -51,7 +52,7 @@ freemocap_data_folder_path = None
 
 
 def get_freemocap_data_folder_path(create_folder: bool = True):
-    global freemocap_data_folder_path
+    global freemocap_data_folder_path  # TODO: is there a reason this is global? doesn't seem to be used elsewhere?
 
     if freemocap_data_folder_path is None:
         freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
@@ -62,8 +63,8 @@ def get_freemocap_data_folder_path(create_folder: bool = True):
     return str(freemocap_data_folder_path)
 
 
-def get_calibrations_folder_path(create_folder: bool = True):
-    calibration_folder_path = Path(get_freemocap_data_folder_path()) / CALIBRATIONS_FOLDER_NAME
+def get_calibrations_folder_path(gui_state: GuiState, create_folder: bool = True):
+    calibration_folder_path = gui_state.freemocap_data_folder_path / CALIBRATIONS_FOLDER_NAME
 
     if create_folder:
         calibration_folder_path.mkdir(exist_ok=create_folder, parents=True)
@@ -71,8 +72,8 @@ def get_calibrations_folder_path(create_folder: bool = True):
     return str(calibration_folder_path)
 
 
-def create_new_recording_folder_path(recording_name: str):
-    recording_folder_path = Path(create_new_session_folder()) / recording_name
+def create_new_recording_folder_path(recording_name: str, gui_state: GuiState):
+    recording_folder_path = Path(create_new_session_folder(gui_state)) / recording_name
 
     return str(recording_folder_path)
 
@@ -119,16 +120,16 @@ def default_session_name(string_tag: str = None):
 session_folder_path = None
 
 
-def create_new_session_folder():
+def create_new_session_folder(gui_state: GuiState):
     global session_folder_path
     if session_folder_path is None:
-        session_folder_path = Path(get_recording_session_folder_path()) / default_session_name()
+        session_folder_path = Path(get_recording_session_folder_path(gui_state=gui_state)) / default_session_name()
 
     return str(session_folder_path)
 
 
-def get_recording_session_folder_path(create_folder: bool = True):
-    recording_session_folder_path = Path(get_freemocap_data_folder_path()) / RECORDING_SESSIONS_FOLDER_NAME
+def get_recording_session_folder_path(gui_state: GuiState, create_folder: bool = True):
+    recording_session_folder_path = gui_state.freemocap_data_folder_path / RECORDING_SESSIONS_FOLDER_NAME
 
     if create_folder:
         recording_session_folder_path.mkdir(exist_ok=create_folder, parents=True)

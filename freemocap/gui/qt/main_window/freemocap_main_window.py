@@ -2,7 +2,7 @@ import logging
 import multiprocessing
 import shutil
 from pathlib import Path
-from typing import Union, List, Callable
+from typing import List, Callable
 
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QIcon
@@ -42,7 +42,6 @@ from freemocap.gui.qt.utilities.copy_timestamps_folder import copy_directory_if_
 from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.gui.qt.utilities.save_and_load_gui_state import (
     GuiState,
-    load_gui_state,
 )
 from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
@@ -79,7 +78,6 @@ from freemocap.system.paths_and_filenames.path_getters import (
     get_scss_stylesheet_path,
     get_blender_file_path,
     get_most_recent_recording_path,
-    get_gui_state_json_path,
 )
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 from freemocap.utilities.remove_empty_directories import remove_empty_directories
@@ -92,7 +90,7 @@ logger = logging.getLogger(__name__)
 class MainWindow(QMainWindow):
     def __init__(
         self,
-        freemocap_data_folder_path: Union[str, Path],
+        gui_state: GuiState,
         pipedream_pings: PipedreamPings,
         parent=None,
     ):
@@ -111,15 +109,10 @@ class MainWindow(QMainWindow):
 
         self._css_file_watcher = self._set_up_stylesheet()
 
-        self._freemocap_data_folder_path = freemocap_data_folder_path
         self._pipedream_pings = pipedream_pings
+        self._gui_state = gui_state
 
-        try:
-            self._gui_state = load_gui_state(get_gui_state_json_path())
-            logger.info("Successfully loaded previous settings")
-        except Exception:
-            logger.info("Failed to find previous GUI settings, using default settings")
-            self._gui_state = GuiState()
+        self._freemocap_data_folder_path = self._gui_state.freemocap_data_folder_path
 
         self._kill_thread_event = multiprocessing.Event()
 
@@ -128,7 +121,7 @@ class MainWindow(QMainWindow):
             self._handle_new_active_recording_selected
         )
         self._directory_view_widget = self._create_directory_view_widget()
-        self._directory_view_widget.expand_directory_to_path(get_recording_session_folder_path())
+        self._directory_view_widget.expand_directory_to_path(get_recording_session_folder_path(self._gui_state))
         self._directory_view_widget.new_active_recording_selected_signal.connect(
             self._active_recording_info_widget.set_active_recording
         )
@@ -259,6 +252,7 @@ class MainWindow(QMainWindow):
         return DirectoryViewWidget(
             top_level_folder_path=self._freemocap_data_folder_path,
             get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
+            gui_state=self._gui_state,
         )
 
     def _create_control_panel_widget(self, log_update: Callable):
@@ -313,9 +307,7 @@ class MainWindow(QMainWindow):
         self._export_to_blender_thread_worker.finished.connect(self._handle_export_to_blender_finished)
 
     def _handle_export_to_blender_finished(self) -> None:
-        if (
-            self._controller_group_box.auto_open_in_blender_checked
-        ):
+        if self._controller_group_box.auto_open_in_blender_checked:
             if Path(self._active_recording_info_widget.active_recording_info.blender_file_path).exists():
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
             else:
@@ -339,7 +331,7 @@ class MainWindow(QMainWindow):
         path = Path(recording_info_model.path)
         path.mkdir(parents=True, exist_ok=True)
 
-        if str(path.parent) != get_recording_session_folder_path():
+        if str(path.parent) != get_recording_session_folder_path(self._gui_state):
             self._directory_view_widget.set_folder_as_root(path.parent)
         else:
             self._directory_view_widget.set_folder_as_root(path)
@@ -356,7 +348,9 @@ class MainWindow(QMainWindow):
 
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
-        except AttributeError:  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
+        except (
+            AttributeError
+        ):  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
             logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
             logger.error(e)
@@ -408,7 +402,7 @@ class MainWindow(QMainWindow):
         user_selected_directory = QFileDialog.getExistingDirectory(
             self,
             "Select a recording folder",
-            str(get_recording_session_folder_path()),
+            str(get_recording_session_folder_path(self._gui_state)),
         )
         if len(user_selected_directory) == 0:
             logger.info("User cancelled `Load Existing Recording` dialog")
@@ -451,6 +445,7 @@ class MainWindow(QMainWindow):
             parent=self,
             import_videos_path=import_videos_path,
             kill_thread_event=self._kill_thread_event,
+            gui_state=self._gui_state,
         )
         self._import_videos_window.folder_to_save_videos_to_selected.connect(self._handle_import_videos)
         self._import_videos_window.exec()
@@ -473,7 +468,7 @@ class MainWindow(QMainWindow):
 
     def download_data(self, download_url: str):
         logger.info("Downloading sample data")
-        self.download_data_thread_worker = DownloadDataThreadWorker(dowload_url=download_url)
+        self.download_data_thread_worker = DownloadDataThreadWorker(dowload_url=download_url, gui_state=self._gui_state)
         self.download_data_thread_worker.start()
         self.download_data_thread_worker.finished.connect(self._handle_download_data_finished)
 
@@ -539,7 +534,7 @@ class MainWindow(QMainWindow):
             self._pipedream_pings.send_pipedream_ping()
 
         try:
-            remove_empty_directories(get_recording_session_folder_path())
+            remove_empty_directories(get_recording_session_folder_path(self._gui_state))
         except Exception as e:
             logger.error(f"Error while removing empty directories: {e}")
 

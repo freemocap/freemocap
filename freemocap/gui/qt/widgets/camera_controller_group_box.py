@@ -201,7 +201,7 @@ class CameraControllerGroupBox(QGroupBox):
         return vbox
 
     def get_new_recording_path(self):
-        return create_new_recording_folder_path(recording_name=self._get_recording_name())
+        return create_new_recording_folder_path(recording_name=self._get_recording_name(), gui_state=self.gui_state)
 
     def update_recording_name_string(self):
         self._recording_name_label.setText(Path(self.get_new_recording_path()).stem)

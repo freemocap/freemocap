@@ -4,6 +4,7 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_he
     process_recording_headless,
     find_calibration_toml_path,
 )
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.system.paths_and_filenames.path_getters import (
     get_output_data_folder_path,
     get_synchronized_videos_folder_path,
@@ -18,7 +19,8 @@ from freemocap.utilities.download_sample_data import (
 
 
 def pytest_sessionstart():
-    pytest.sample_session_folder_path = download_sample_data()
+    gui_state = GuiState()
+    pytest.sample_session_folder_path = download_sample_data(gui_state=gui_state)
     calibration_toml_path = find_calibration_toml_path(pytest.sample_session_folder_path)
     process_recording_headless(
         recording_path=pytest.sample_session_folder_path,

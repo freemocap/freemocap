@@ -1,6 +1,8 @@
 import json
-
+from pathlib import Path
 from pydantic import BaseModel
+
+from freemocap.system.paths_and_filenames.file_and_folder_names import BASE_FREEMOCAP_DATA_FOLDER_NAME
 
 
 class GuiState(BaseModel):
@@ -11,6 +13,7 @@ class GuiState(BaseModel):
     auto_open_in_blender: bool = True
     charuco_square_size: float = 39
     annotate_charuco_images: bool = False
+    freemocap_data_folder_path: Path = Path(Path.home(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
 
 
 def save_gui_state(gui_state: GuiState, file_pathstring: str = None):

@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Callable, Union
 
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 import numpy as np
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
@@ -26,9 +27,11 @@ class AniposeCameraCalibrator:
         charuco_board_object: CharucoBoardDefinition,
         charuco_square_size: Union[int, float],
         calibration_videos_folder_path: Union[str, Path],
+        gui_state: GuiState,
         progress_callback: Callable[[str], None] = None,
     ):
         self._charuco_board_object = charuco_board_object
+        self._gui_state = gui_state
         self._progress_callback = progress_callback
 
         if charuco_square_size == 1:
@@ -90,7 +93,7 @@ class AniposeCameraCalibrator:
             recording_name=self._calibration_videos_folder_path.parent.stem
         )
 
-        calibration_folder_toml_path = Path(get_calibrations_folder_path()) / calibration_toml_filename
+        calibration_folder_toml_path = Path(get_calibrations_folder_path(self.gui_state)) / calibration_toml_filename
 
         self._anipose_camera_group_object.dump(calibration_folder_toml_path)
         logger.debug(

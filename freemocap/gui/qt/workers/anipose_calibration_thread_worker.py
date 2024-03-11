@@ -11,6 +11,7 @@ from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_b
 from freemocap.core_processes.capture_volume_calibration.run_anipose_capture_volume_calibration import (
     run_anipose_capture_volume_calibration,
 )
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class AniposeCalibrationThreadWorker(QThread):
         calibration_videos_folder_path: Union[str, Path],
         charuco_square_size: Union[int, float],
         kill_thread_event: threading.Event,
+        gui_state: GuiState,
         charuco_board_definition: CharucoBoardDefinition = None,
     ):
         super().__init__()
@@ -34,6 +36,7 @@ class AniposeCalibrationThreadWorker(QThread):
             charuco_board_definition = CharucoBoardDefinition()
 
         self._kill_thread_event = kill_thread_event
+        self._gui_state = gui_state
         self._charuco_board_definition = charuco_board_definition
         self._charuco_square_size = charuco_square_size
         self._calibration_videos_folder_path = calibration_videos_folder_path
@@ -55,6 +58,7 @@ class AniposeCalibrationThreadWorker(QThread):
                 charuco_board_definition=self._charuco_board_definition,
                 charuco_square_size=self._charuco_square_size,
                 calibration_videos_folder_path=self._calibration_videos_folder_path,
+                gui_state=self._gui_state,
                 pin_camera_0_to_origin=True,
                 progress_callback=self._emit_in_progress_data,
             )

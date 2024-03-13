@@ -121,8 +121,7 @@ class LoggerBuilder:
                 if handler not in logging.getLogger("").handlers:
                     logging.getLogger("").handlers.append(handler)
         else:
-            from freemocap import logger
-
+            logger = logging.getLogger(__name__)
             logger.info("Logging already configured")
 
 

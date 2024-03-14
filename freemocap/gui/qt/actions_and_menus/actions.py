@@ -78,7 +78,7 @@ class Actions:
         # Help
         self.open_docs_action = QAction(OPEN_DOCS_ACTION_NAME, parent=freemocap_main_window)
         self.open_docs_action.triggered.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://freemocap.github.io/documentation/"))
+            lambda: QDesktopServices.openUrl(QUrl("https://freemocap.github.io/documentation/index_md.html"))
         )
 
         self.freemocap_foundation_action = QAction(FREEMOCAP_FOUNDATION_ACTION_NAME, parent=freemocap_main_window)

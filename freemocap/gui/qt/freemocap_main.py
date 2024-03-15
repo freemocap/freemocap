@@ -10,8 +10,6 @@ from PySide6.QtWidgets import QApplication
 from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, load_gui_state
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
-from freemocap.system.logging.configure_logging import configure_logging, LogLevel
-from freemocap import __package_name__, __version__
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
@@ -30,7 +28,7 @@ def sigint_handler(*args):
 
 
 def qt_gui_main():
-    print("Starting main...")
+    logger.info("Starting main...")
     signal.signal(signal.SIGINT, sigint_handler)
     app = get_qt_app()
     timer = QTimer()
@@ -38,16 +36,10 @@ def qt_gui_main():
 
     try:
         gui_state = load_gui_state(get_gui_state_json_path())
-        print("Successfully loaded previous settings")
+        logger.info("Successfully loaded previous settings")
     except Exception:
-        print("Failed to find previous GUI settings, using default settings")
+        logger.info("Failed to find previous GUI settings, using default settings")
         gui_state = GuiState()
-
-
-    configure_logging(LogLevel.TRACE)
-
-    logger = logging.getLogger(__name__)
-    logger.info(f"Initializing {__package_name__} package, version: {__version__}, from file: {__file__}")
 
     pipedream_pings = PipedreamPings()
 

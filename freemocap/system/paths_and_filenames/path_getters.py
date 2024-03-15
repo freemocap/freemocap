@@ -5,6 +5,7 @@ from typing import Union
 
 import toml
 
+from freemocap.gui.qt.utilities.save_and_load_gui_state import load_gui_state
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     LOGS_INFO_AND_SETTINGS_FOLDER_NAME,
     LOG_FILE_FOLDER_NAME,
@@ -49,15 +50,22 @@ def create_camera_calibration_file_name(recording_name: str):
 
 freemocap_data_folder_path = None
 
-
-def get_freemocap_data_folder_path(create_folder: bool = True):
+def get_freemocap_data_folder_path(create_folder: bool = True) -> str:
     global freemocap_data_folder_path
+
+    try:
+        if freemocap_data_folder_path is None:
+            freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
+        gui_state = load_gui_state(str(Path(freemocap_data_folder_path) / LOGS_INFO_AND_SETTINGS_FOLDER_NAME / GUI_STATE_JSON_FILENAME))
+        freemocap_data_folder_path = Path(gui_state.freemocap_data_folder_path)
+    except Exception:
+        pass
 
     if freemocap_data_folder_path is None:
         freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
 
-        if create_folder:
-            freemocap_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
+    if create_folder:
+        freemocap_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
 
     return str(freemocap_data_folder_path)
 

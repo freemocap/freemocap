@@ -7,21 +7,18 @@ from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibrat
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
 )
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 
 
 def headless_calibration(
-    path_to_folder_of_calibration_videos: Path,
-    charuco_board_object=CharucoBoardDefinition,
-    charuco_square_size: Union[int, float] = 39,
-    pin_camera_0_to_origin: bool = True,
+        path_to_folder_of_calibration_videos: Path,
+        charuco_board_object=CharucoBoardDefinition,
+        charuco_square_size: Union[int, float] = 39,
+        pin_camera_0_to_origin: bool = True,
 ):
-    gui_state = GuiState()
     anipose_camera_calibrator = AniposeCameraCalibrator(
         charuco_board_object=charuco_board_object,
         charuco_square_size=charuco_square_size,
         calibration_videos_folder_path=path_to_folder_of_calibration_videos,
-        gui_state=gui_state,
         progress_callback=lambda *args, **kwargs: None,
         # the empty callable is needed, otherwise calibration will cause an error
     )

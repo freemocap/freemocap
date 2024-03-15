@@ -23,7 +23,6 @@ from PySide6.QtWidgets import (
 )
 from skelly_synchronize import create_audio_debug_plots, create_brightness_debug_plots
 
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.gui.qt.workers.synchronize_videos_thread_worker import SynchronizeVideosThreadWorker
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import SYNCHRONIZED_VIDEOS_FOLDER_NAME
@@ -38,12 +37,9 @@ logger = logging.getLogger(__name__)
 class ImportVideosWizard(QDialog):
     folder_to_save_videos_to_selected = Signal(list, str, bool)
 
-    def __init__(
-        self, import_videos_path: Union[str, Path], kill_thread_event: threading.Event, gui_state: GuiState, parent=None
-    ):
+    def __init__(self, import_videos_path: Union[str, Path], kill_thread_event: threading.Event, parent=None):
         super().__init__(parent=parent)
         self.kill_thread_event = kill_thread_event
-        self._gui_state = gui_state
 
         self.setWindowTitle("Import Videos")
 
@@ -87,11 +83,7 @@ class ImportVideosWizard(QDialog):
         self._form_layout.addRow(self._continue_button)
 
     def _get_folder_videos_will_be_saved_to(self):
-        return str(
-            Path(get_recording_session_folder_path(self._gui_state))
-            / self._folder_name
-            / SYNCHRONIZED_VIDEOS_FOLDER_NAME
-        )
+        return str(Path(get_recording_session_folder_path()) / self._folder_name / SYNCHRONIZED_VIDEOS_FOLDER_NAME)
 
     def _create_import_directory_view(self, import_videos_path: Union[str, Path]):
         self._file_system_model = QFileSystemModel()
@@ -237,8 +229,7 @@ if __name__ == "__main__":
     # import sys
     #
     # app = QApplication(sys.argv)
-    gui_state = GuiState()
-    import_videos_window = ImportVideosWizard(import_videos_path=Path().home(), gui_state=gui_state)
+    import_videos_window = ImportVideosWizard(import_videos_path=Path().home())
     import_videos_window.exec()
     # import_videos_window.show()
     # sys.exit(app.exec())

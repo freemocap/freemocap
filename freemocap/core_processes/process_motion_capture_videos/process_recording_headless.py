@@ -87,10 +87,7 @@ def find_calibration_toml_path(recording_path: Union[str, Path]) -> Path:
 
 
 if __name__ == "__main__":
-    from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
-
     recording_path = Path("PATH/TO/RECORDING/FOLDER")
     blender_path = Path("PATH/TO/BLENDER/EXECUTABLE")
 
-    gui_state = GuiState()
-    process_recording_headless(recording_path=get_sample_data_path(gui_state=gui_state))
+    process_recording_headless(recording_path=get_sample_data_path())

@@ -8,12 +8,11 @@ from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, load_gui_state
-from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
+from freemocap.system.paths_and_filenames.path_getters import get_freemocap_data_folder_path
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
 repo = Path(__file__).parent.parent.parent.parent
@@ -34,17 +33,12 @@ def qt_gui_main():
     timer = QTimer()
     timer.start(500)
 
-    try:
-        gui_state = load_gui_state(get_gui_state_json_path())
-        logger.info("Successfully loaded previous settings")
-    except Exception:
-        logger.info("Failed to find previous GUI settings, using default settings")
-        gui_state = GuiState()
-
     pipedream_pings = PipedreamPings()
 
     while True:
-        freemocap_main_window = MainWindow(gui_state=gui_state, pipedream_pings=pipedream_pings)
+        freemocap_main_window = MainWindow(
+            freemocap_data_folder_path=get_freemocap_data_folder_path(), pipedream_pings=pipedream_pings
+        )
         logger.info("Showing main window - Ready to start!")
 
         freemocap_main_window.show()

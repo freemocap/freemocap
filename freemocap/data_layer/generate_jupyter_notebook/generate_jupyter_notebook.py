@@ -24,10 +24,7 @@ def generate_jupyter_notebook(path_to_recording: Union[str, Path]):
 
 
 if __name__ == "__main__":
-    from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
-
-    gui_state = GuiState()
-    path_to_recording = get_sample_data_path(gui_state=gui_state)
+    path_to_recording = get_sample_data_path()
     # path_to_recording = r"PATH/TO/RECORDING/FOLDER" #specify path to a specific recording here (other wise it will just download sample data)
 
     generate_jupyter_notebook(path_to_recording)

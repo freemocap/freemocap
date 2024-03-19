@@ -30,7 +30,7 @@ export const WebcamStreamCapture = () => {
       <Box>
         {devices.deviceInfos.map(dev => {
           return (
-            <Webcam audio={false} videoConstraints={{deviceId: dev.deviceId}} onUserMedia={stream => {
+            <Webcam audio={true} videoConstraints={{deviceId: dev.deviceId}} onUserMedia={stream => {
               setDevices(prev => {
                 return {
                   ...prev,

@@ -48,8 +48,8 @@ class OpencvConflictDialog(QDialog):
         self._layout.addWidget(frame)
 
         this_fix_will_label = QLabel(
-            "THIS WILL PROCESS WILL UPDATE YOUR PYTHON ENVIRONMENT AND THEN SHUTDOWN THE FREEMOCAP GUI\n\n"
-            "THE NEXT TIME YOU RESTART, THE PROBLEM WILL BE FIXED :D"
+            "THIS WILL PROCESS WILL: \n\n 1) UPDATE YOUR PYTHON ENVIRONMENT AND THEN \n 2)  SHUTDOWN THE FREEMOCAP GUI\n\n"
+            "THE NEXT TIME YOU RUN `FREEMOCAP`, THE PROBLEM WILL BE FIXED! :D"
         )
         this_fix_will_label.setWordWrap(True)
         this_fix_will_label.setAlignment(Qt.AlignmentFlag.AlignCenter)

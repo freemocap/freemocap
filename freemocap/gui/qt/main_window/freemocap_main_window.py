@@ -21,9 +21,7 @@ from skellycam import (
 )
 from tqdm import tqdm
 
-from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import (
-    get_best_guess_of_blender_path,
-)
+
 from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import (
     generate_jupyter_notebook,
 )
@@ -275,9 +273,7 @@ class MainWindow(QMainWindow):
             self._handle_processing_finished_signal
         )
 
-        self._visualization_control_panel = VisualizationControlPanel(
-            parent=self, blender_executable_path=get_best_guess_of_blender_path()
-        )
+        self._visualization_control_panel = VisualizationControlPanel(parent=self, gui_state=self._gui_state)
         self._visualization_control_panel.export_to_blender_button.clicked.connect(
             self._export_active_recording_to_blender
         )
@@ -313,9 +309,7 @@ class MainWindow(QMainWindow):
         self._export_to_blender_thread_worker.finished.connect(self._handle_export_to_blender_finished)
 
     def _handle_export_to_blender_finished(self) -> None:
-        if (
-            self._controller_group_box.auto_open_in_blender_checked
-        ):
+        if self._controller_group_box.auto_open_in_blender_checked:
             if Path(self._active_recording_info_widget.active_recording_info.blender_file_path).exists():
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
             else:
@@ -356,7 +350,9 @@ class MainWindow(QMainWindow):
 
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
-        except AttributeError:  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
+        except (
+            AttributeError
+        ):  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
             logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
             logger.error(e)

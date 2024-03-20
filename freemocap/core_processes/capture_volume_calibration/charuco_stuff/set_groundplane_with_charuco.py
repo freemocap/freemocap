@@ -30,7 +30,6 @@ def get_pose_vectors_from_charuco(
         try:
             # how do we get these obj points into 3d space to plot charuco board
             obj_points, img_points = charuco_board.matchImagePoints(charuco_corners, charuco_ids)
-            print(f"obj_points: {obj_points}")
             # rvec and tvec put charuco object points into camera's representation
             ret, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, distortion_coefficients)
             if ret:
@@ -49,6 +48,9 @@ def get_pose_vectors_from_charuco(
             cv2.destroyAllWindows()
         except:
             print("Couldn't display image")
+
+    print(f"rvec: {rvec}")
+    print(f"tvec: {tvec}")
 
     return (rvec, tvec)
 
@@ -181,6 +183,8 @@ if __name__ == "__main__":
         display_image=True,
     )
 
+
+
     # image = cv2.drawFrameAxes(image, camera_matrix, distortion_coefficients, rotation_vector, translation_vector, 1)
     # cv2.imshow("Image with world coordinate system", image)
     # cv2.waitKey(0)
@@ -188,56 +192,72 @@ if __name__ == "__main__":
 
     # get inverse of rotation and translation vectors:
 
-    rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
-    inverse_rotation_matrix = np.linalg.inv(rotation_matrix)
-    inverse_rotation_vector, _ = cv2.Rodrigues(inverse_rotation_matrix)
-    inverse_translation_vector = -inverse_rotation_matrix @ translation_vector
-    print("Original rotation vector: ", rotation_vector)
-    print("Inverted rotation vector: ", inverse_rotation_vector)
-    print("Original translation vector: ", translation_vector)
-    print("Inverted translation vector: ", inverse_translation_vector)
+    # rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+    # inverse_rotation_matrix = np.linalg.inv(rotation_matrix)
+    # inverse_rotation_vector, _ = cv2.Rodrigues(inverse_rotation_matrix)
+    # inverse_translation_vector = -inverse_rotation_matrix @ translation_vector
+    # print("Original rotation vector: ", rotation_vector)
+    # print("Inverted rotation vector: ", inverse_rotation_vector)
+    # print("Original translation vector: ", translation_vector)
+    # print("Inverted translation vector: ", inverse_translation_vector)
 
-    rotation_vector_string = ""
-    flattened_inverse_rotation_vector = inverse_rotation_vector.flatten()
-    for vector in flattened_inverse_rotation_vector:
-        rotation_vector_string += f"{vector}, "
-    print(f"intermediate rotation string: {rotation_vector_string}")
+    # rotation_vector_string = ""
+    # flattened_inverse_rotation_vector = inverse_rotation_vector.flatten()
+    # for vector in flattened_inverse_rotation_vector:
+    #     rotation_vector_string += f"{vector}, "
+    # print(f"intermediate rotation string: {rotation_vector_string}")
 
-    translation_vector_string = ""
-    flattened_inverse_translation_vector = inverse_translation_vector.flatten()
-    for vector in flattened_inverse_translation_vector:
-        translation_vector_string += f"{vector}, "
-    print(f"intermediate translation string: {translation_vector_string}")
+    # translation_vector_string = ""
+    # flattened_inverse_translation_vector = inverse_translation_vector.flatten()
+    # for vector in flattened_inverse_translation_vector:
+    #     translation_vector_string += f"{vector}, "
+    # print(f"intermediate translation string: {translation_vector_string}")
 
-    print(f"charuco to camera rotation_vector: {inverse_rotation_vector}")
+    # print(f"charuco to camera rotation_vector: {inverse_rotation_vector}")
 
     existing_camera_rotation_vector, existing_camera_translation_vector = get_camera_transformation_vectors_from_toml(
         calibration_toml_path=calibration_toml_path, camera_name=camera_name
     )
 
-    combined_rotation_vector, combined_translation_vector = compose_transformation_vectors(
-        charuco_to_camera_rvec=inverse_rotation_vector,
-        charuco_to_camera_tvec=inverse_translation_vector,
-        camera_to_world_rvec=existing_camera_rotation_vector,
-        camera_to_world_tvec=existing_camera_translation_vector,
-    )
 
-    print(f"combined_rotation_vector: {combined_rotation_vector}")
-    print(f"combined_translation_vector: {combined_translation_vector}")
+    ####################################################################
 
-    flattened_combined_rotation_vector = combined_rotation_vector.flatten()
+    charuco_rotation_vector = rotation_vector.flatten()
+    charuco_translation_vector = translation_vector.flatten()
 
-    rotation_vector_string = ""
-    for vector in flattened_combined_rotation_vector:
-        rotation_vector_string += f"{vector}, "
+    camera_rotation_vector = existing_camera_rotation_vector.flatten()
+    camera_translation_vector = existing_camera_translation_vector.flatten()
 
-    print(f"vector_string: {rotation_vector_string}")
+    print(f"charuco_rvec: {charuco_rotation_vector}")
+    print(f"charuco_tvec: {charuco_translation_vector}")
+    print(f"camera_rvec: {camera_rotation_vector}")
+    print(f"camera_tvec: {camera_translation_vector}")
 
-    translation_vector_string = ""
-    for vector in combined_translation_vector:
-        translation_vector_string += f"{vector}, "
+    ####################################################################
 
-    print(f"translation_vector_string: {translation_vector_string}")
+    # combined_rotation_vector, combined_translation_vector = compose_transformation_vectors(
+    #     charuco_to_camera_rvec=inverse_rotation_vector,
+    #     charuco_to_camera_tvec=inverse_translation_vector,
+    #     camera_to_world_rvec=existing_camera_rotation_vector,
+    #     camera_to_world_tvec=existing_camera_translation_vector,
+    # )
+
+    # print(f"combined_rotation_vector: {combined_rotation_vector}")
+    # print(f"combined_translation_vector: {combined_translation_vector}")
+
+    # flattened_combined_rotation_vector = combined_rotation_vector.flatten()
+
+    # rotation_vector_string = ""
+    # for vector in flattened_combined_rotation_vector:
+    #     rotation_vector_string += f"{vector}, "
+
+    # print(f"vector_string: {rotation_vector_string}")
+
+    # translation_vector_string = ""
+    # for vector in combined_translation_vector:
+    #     translation_vector_string += f"{vector}, "
+
+    # print(f"translation_vector_string: {translation_vector_string}")
 
     # we need to rotate around the origin, so we should translate the skeleton data based on the charuco location before rotating?
 

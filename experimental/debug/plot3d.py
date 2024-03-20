@@ -1,4 +1,5 @@
 import logging
+import cv2
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
@@ -62,6 +63,48 @@ def plot_points(points, translation_vector, rotation_vector):
 
     plt.show()
 
+def transform_points(points, charuco_rvec, charuco_tvec, camera_rvec, camera_tvec):
+    R_charuco, _ = cv2.Rodrigues(charuco_rvec)
+    R_camera, _ = cv2.Rodrigues(camera_rvec)
+
+    # Invert the Charuco transformation matrices since we want world to Charuco
+    R_charuco_inv = R_charuco.T
+    charuco_tvec_inv = -R_charuco_inv @ charuco_tvec
+
+    # Translate and rotate from camera to world coordinates
+    data_world = points @ R_camera.T + camera_tvec
+
+    # Translate and rotate from world coordinates to Charuco coordinates
+    data_charuco = data_world @ R_charuco_inv + charuco_tvec_inv
+
+    return data_charuco
+
+def plot_points_2(points, charuco_rvec, charuco_tvec, camera_rvec, camera_tvec):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot original points
+    original_scatter = ax.scatter(points[:, 0], points[:, 1], points[:, 2], label='Original Points')
+
+    # Apply transformations
+    transformed_points = transform_points(points, charuco_rvec, charuco_tvec, camera_rvec, camera_tvec)
+    
+    # Plot transformed points
+    transformed_scatter = ax.scatter(transformed_points[:, 0], transformed_points[:, 1], transformed_points[:, 2], 
+                                     color='r', label='Transformed Points')
+    
+    ax.scatter([0], [0], [0], color='g', s=100, marker='*', label='Origin')
+
+    # Set labels and plot range for better visualization
+    ax.set_xlabel('X axis')
+    ax.set_ylabel('Y axis')
+    ax.set_zlabel('Z axis')
+
+    # Add legend
+    plt.legend()
+
+    plt.show()
+
 
 if __name__ == '__main__':
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
@@ -71,12 +114,21 @@ if __name__ == '__main__':
     good_frame = 443
 
     good_frame_skeleton_data = raw_skeleton_data[good_frame, :, :]
+
+    charuco_rvec =  np.asarray([-0.96589522, -0.77364613, -1.11162952])
+    charuco_tvec =  np.asarray([-2.47244532, 13.17456212, 28.80547085])
+    camera_rvec =  np.asarray([-0.17670231, -0.56332344, -0.21706653])
+    camera_tvec =  np.asarray([ 2224.16084537,  -169.55332914, -1705.4570826 ])
+
+    plot_points_2(good_frame_skeleton_data, charuco_rvec, charuco_tvec, camera_rvec, camera_tvec)
     
     
     # Example translation and rotation vectors
     # rotation_vector = np.array([0.53001589, 0.29190598, 1.03438838])
-    # rotation_vector = np.array([0.7736461280213088, 1.1116295230333113, 0.9658952227181706])
-    rotation_vector = np.array([0, 0, 1])
+    # rotation_vector = np.array([0.9658952227181706, 0.7736461280213088, 1.1116295230333113])
+    rotation_vector = np.array([0.530015885561023, 0.2919059828646295, 1.034388376307615,])
+    # rotation_vector = np.array([0, 0, 1])
+    # translation_vector = np.array([-19.98968668386086, 7.35363210152957, -23.57485407984481])
     translation_vector = np.array([2221.526610089684, -164.67318405283316, -1736.7409796095908])
     # translation_vector = np.array([0, 0, 0])
 

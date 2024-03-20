@@ -37,6 +37,8 @@ YOLO_CROP_TREE_NAME = "YOLO Crop"
 
 USE_YOLO_CROP_METHOD = "Use YOLO Crop Method"
 
+YOLO_MODEL_SIZE = "YOLO Model Size"
+
 BOUNDING_BOX_BUFFER_METHOD = "Buffer Bounding Box:"
 
 BOUNDING_BOX_BUFFER_PERCENTAGE = "Bounding Box Buffer Percentage"
@@ -81,6 +83,13 @@ def create_mediapipe_parameter_group(
                         type="bool",
                         value=parameter_model.use_yolo_crop_method,
                         tip="If true, `skellytracker` will use YOLO to pre-crop the person from the image before running the `mediapipe` tracker",
+                    ),
+                    dict(
+                        name=YOLO_MODEL_SIZE,
+                        type="list",
+                        limits=["nano", "small", "medium", "large", "extra_large", "high_res"],
+                        value=parameter_model.yolo_model_size,
+                        tip="Smaller models are faster but may be less accurate",
                     ),
                     dict(
                         name=BOUNDING_BOX_BUFFER_METHOD,
@@ -241,6 +250,7 @@ def extract_parameter_model_from_parameter_tree(
             run_image_tracking=parameter_values_dictionary[RUN_IMAGE_TRACKING_NAME],
             num_processes=parameter_values_dictionary[NUMBER_OF_PROCESSES_PARAMETER_NAME],
             use_yolo_crop_method=parameter_values_dictionary[USE_YOLO_CROP_METHOD],
+            yolo_model_size=parameter_values_dictionary[YOLO_MODEL_SIZE],
             buffer_size_method=get_bounding_box_buffer_method_from_string(
                 parameter_values_dictionary[BOUNDING_BOX_BUFFER_METHOD]
             ),

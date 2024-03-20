@@ -80,7 +80,7 @@ dependencies = [
     "ipykernel==6.23.1",
     "plotly==5.14.1",
     "pydantic==1.*",
-    "skellytracker==2024.3.1011",
+    "skellytracker==2024.3.1012",
     "PySide6==6.6.*",
     "packaging===23.2",
 ]

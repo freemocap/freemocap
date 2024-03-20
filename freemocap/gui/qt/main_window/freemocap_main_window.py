@@ -41,6 +41,7 @@ from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.gui.qt.utilities.save_and_load_gui_state import (
     GuiState,
     load_gui_state,
+    save_gui_state,
 )
 from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
@@ -428,6 +429,8 @@ class MainWindow(QMainWindow):
         self._process_motion_capture_data_panel._calibration_control_panel._charuco_square_size_line_edit.setText(
             str(self._gui_state.charuco_square_size)
         )
+
+        save_gui_state(self._gui_state, get_gui_state_json_path())
 
     def open_import_videos_dialog(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s

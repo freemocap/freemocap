@@ -12,7 +12,6 @@ LOAD_RECORDING_ACTION_NAME = "Load Recording"
 IMPORT_VIDEOS_ACTION_NAME = "Import Videos"
 DOWNLOAD_SAMPLE_DATA_ACTION_NAME = "Download Sample Data (3 cameras, ~1000 frames)"
 DOWNLOAD_TEST_DATA_ACTION_NAME = "Download Test Data (3 cameras, ~200 frames)"
-OPEN_SETTINGS_DIALOG_ACTION_NAME = "Open Settings"
 RESET_TO_DEFAULTS_ACTION_NAME = "Reset to Default GUI Settings"
 KILL_THREADS_AND_PROCESSES_ACTION_NAME = "Kill Threads and Processes"
 REBOOT_GUI_ACTION_NAME = "Reboot GUI"
@@ -56,10 +55,6 @@ class Actions:
         self.download_test_data_action.triggered.connect(
             lambda: freemocap_main_window.download_data(download_url=FIGSHARE_TEST_ZIP_FILE_URL)
         )
-
-        self.open_settings_dialog_action = QAction(OPEN_SETTINGS_DIALOG_ACTION_NAME, parent=freemocap_main_window)
-        self.open_settings_dialog_action.setShortcut("Ctrl+S")
-        self.open_settings_dialog_action.triggered.connect(freemocap_main_window.open_settings_dialog)
 
         self.reset_to_defaults_action = QAction(RESET_TO_DEFAULTS_ACTION_NAME, parent=freemocap_main_window)
         self.reset_to_defaults_action.triggered.connect(freemocap_main_window.reset_to_default_gui_settings)

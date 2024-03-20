@@ -50,16 +50,13 @@ def create_camera_calibration_file_name(recording_name: str):
 
 freemocap_data_folder_path = None
 
-
 def get_freemocap_data_folder_path(create_folder: bool = True) -> str:
     global freemocap_data_folder_path
 
     try:
         if freemocap_data_folder_path is None:
             freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
-        gui_state = load_gui_state(
-            str(Path(freemocap_data_folder_path) / LOGS_INFO_AND_SETTINGS_FOLDER_NAME / GUI_STATE_JSON_FILENAME)
-        )
+        gui_state = load_gui_state(str(Path(freemocap_data_folder_path) / LOGS_INFO_AND_SETTINGS_FOLDER_NAME / GUI_STATE_JSON_FILENAME))
         freemocap_data_folder_path = Path(gui_state.freemocap_data_folder_path)
     except Exception:
         pass

@@ -64,7 +64,6 @@ from freemocap.gui.qt.widgets.home_widget import (
 from freemocap.gui.qt.widgets.import_videos_wizard import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.opencv_conflict_dialog import OpencvConflictDialog
-from freemocap.gui.qt.widgets.settings_dialog import SettingsDialog
 from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
 from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
@@ -471,13 +470,6 @@ class MainWindow(QMainWindow):
         )
 
         self._opencv_conflict_dialog.exec()
-
-    def open_settings_dialog(self):
-        self._settings_dialog = SettingsDialog(
-            gui_state=self._gui_state, kill_thread_event=self._kill_thread_event, parent=self
-        )
-
-        self._settings_dialog.exec()
 
     def download_data(self, download_url: str):
         logger.info("Downloading sample data")

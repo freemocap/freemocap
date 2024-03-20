@@ -1,4 +1,3 @@
-from typing import Literal
 from pyqtgraph.parametertree import Parameter
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeTrackingParams,

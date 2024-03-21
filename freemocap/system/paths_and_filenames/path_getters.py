@@ -63,9 +63,9 @@ def get_freemocap_data_folder_path(create_folder: bool = True) -> str:
         freemocap_data_folder_path = Path(gui_state.freemocap_data_folder_path)
     except Exception as e:
         print(e)  # Cannot log this due to circular import from logging config
-
-    if freemocap_data_folder_path is None:
-        freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
+    finally:
+        if freemocap_data_folder_path is None:
+            freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
 
     if create_folder:
         freemocap_data_folder_path.mkdir(exist_ok=create_folder, parents=True)

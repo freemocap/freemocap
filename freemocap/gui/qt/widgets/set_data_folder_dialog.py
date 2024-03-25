@@ -28,13 +28,16 @@ class SetDataFolderDialog(QDialog):
         self._change_data_folder_button.clicked.connect(self._change_data_folder)
         self._layout.addWidget(self._change_data_folder_button)
 
+        self._reboot_warning_label = QLabel("Changing the freemocap data folder will reboot the GUI.")
+        self._layout.addWidget(self._reboot_warning_label)
+
         button_box = QHBoxLayout()
 
         _cancel_button = QPushButton("Cancel")
         _cancel_button.clicked.connect(self.reject)
         button_box.addWidget(_cancel_button)
 
-        _done_button = QPushButton("Done")
+        _done_button = QPushButton("Save and Reboot")
         _done_button.clicked.connect(self._save_and_accept)
         button_box.addWidget(_done_button)
 
@@ -50,8 +53,9 @@ class SetDataFolderDialog(QDialog):
         self._title_message_label.setText(f"Freemocap Data Folder: {self.new_folder_path}")
 
     def _save_and_accept(self) -> None:
-
-        self.gui_state.freemocap_data_folder_path = str(Path(self.new_folder_path))
-        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        if self.new_folder_path is not None:
+            # TODO: change global variable here
+            self.gui_state.freemocap_data_folder_path = str(Path(self.new_folder_path))
+            save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
         self.accept()

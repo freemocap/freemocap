@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QWidget,
     QHBoxLayout,
+    QDialog,
 )
 from skelly_viewer import SkellyViewer
 from skellycam import (
@@ -477,6 +478,9 @@ class MainWindow(QMainWindow):
         )
 
         self._settings_dialog.exec()
+
+        if self._settings_dialog.accepted:
+            self.reboot_gui()
 
     def download_data(self, download_url: str):
         logger.info("Downloading sample data")

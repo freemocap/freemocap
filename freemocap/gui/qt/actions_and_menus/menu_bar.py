@@ -21,7 +21,7 @@ class MenuBar(QMenuBar):
         file_menu.addAction(actions.load_most_recent_recording_action)
         file_menu.addAction(actions.load_existing_recording_action)
         file_menu.addAction(actions.import_videos_action)
-        file_menu.addAction(actions.open_settings_dialog_action)
+        file_menu.addAction(actions.set_data_folder_action)
         file_menu.addAction(actions.reset_to_defaults_action)
         file_menu.addAction(actions.exit_action)
 

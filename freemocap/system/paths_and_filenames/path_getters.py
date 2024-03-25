@@ -182,7 +182,7 @@ def get_most_recent_recording_path(subfolder_str: str = None):
     try:
         most_recent_recording_dict = toml.load(str(get_most_recent_recording_toml_path()))
         most_recent_recording_path = most_recent_recording_dict["most_recent_recording_path"]
-    except (ValueError, toml.TomlDecodeError, KeyError) as e:
+    except (ValueError, toml.TomlDecodeError, KeyError, FileNotFoundError) as e:
         logger.exception(e)
         return None
 

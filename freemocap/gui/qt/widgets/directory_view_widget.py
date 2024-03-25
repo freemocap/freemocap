@@ -51,7 +51,7 @@ class DirectoryViewWidget(QWidget):
         self._show_freemocap_data_folder_button = QPushButton("Show FreeMoCap Data Folder")
         self._show_freemocap_data_folder_button.clicked.connect(
             lambda: self.set_folder_as_root(self._top_level_folder_path)
-        )
+        )  # TODO: pull this from gui state
 
         self._layout.addWidget(self._show_freemocap_data_folder_button)
 

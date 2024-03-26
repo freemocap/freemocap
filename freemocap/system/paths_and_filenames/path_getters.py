@@ -171,7 +171,7 @@ def get_most_recent_recording_toml_path():
 
 
 def get_gui_state_json_path():
-    return str(Path(get_logs_info_and_settings_folder_path()) / GUI_STATE_JSON_FILENAME)
+    return str(Path(__file__).parent.parent / GUI_STATE_JSON_FILENAME)
 
 
 def get_most_recent_recording_path(subfolder_str: str = None):

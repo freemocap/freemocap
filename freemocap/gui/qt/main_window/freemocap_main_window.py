@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QWidget,
     QHBoxLayout,
-    QDialog,
 )
 from skelly_viewer import SkellyViewer
 from skellycam import (
@@ -258,7 +257,7 @@ class MainWindow(QMainWindow):
 
     def _create_directory_view_widget(self):
         return DirectoryViewWidget(
-            top_level_folder_path=self._freemocap_data_folder_path,
+            gui_state=self._gui_state,
             get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
         )
 

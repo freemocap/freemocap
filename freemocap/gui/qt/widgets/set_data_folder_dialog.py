@@ -54,8 +54,8 @@ class SetDataFolderDialog(QDialog):
 
     def _save_and_accept(self) -> None:
         if self.new_folder_path is not None:
-            # TODO: change global variable here
-            self.gui_state.freemocap_data_folder_path = str(Path(self.new_folder_path))
+            freemocap_data_folder_path = Path(self.new_folder_path)
+            self.gui_state.freemocap_data_folder_path = str(freemocap_data_folder_path)
             save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
         self.accept()

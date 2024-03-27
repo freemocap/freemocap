@@ -32,7 +32,15 @@ MINIMUM_CAMERAS_TO_REPROJECT = "Minimum Cameras to Reproject"
 
 ANIPOSE_TREE_NAME = "Anipose Triangulation"
 
+YOLO_CROP_TREE_NAME = "YOLO Crop"
+
 USE_YOLO_CROP_METHOD = "Use YOLO Crop Method"
+
+YOLO_MODEL_SIZE = "YOLO Model Size"
+
+BOUNDING_BOX_BUFFER_METHOD = "Buffer Bounding Box:"
+
+BOUNDING_BOX_BUFFER_PERCENTAGE = "Bounding Box Buffer Percentage"
 
 STATIC_IMAGE_MODE = "Static Image Mode"
 
@@ -66,10 +74,38 @@ def create_mediapipe_parameter_group(
         type="group",
         children=[
             dict(
-                name=USE_YOLO_CROP_METHOD,
-                type="bool",
-                value=parameter_model.use_yolo_crop_method,
-                tip="If true, `skellytracker` will use YOLO to pre-crop the person from the image before running the `mediapipe` tracker",
+                name=YOLO_CROP_TREE_NAME,
+                type="group",
+                children=[
+                    dict(
+                        name=USE_YOLO_CROP_METHOD,
+                        type="bool",
+                        value=parameter_model.use_yolo_crop_method,
+                        tip="If true, `skellytracker` will use YOLO to pre-crop the person from the image before running the `mediapipe` tracker",
+                    ),
+                    dict(
+                        name=YOLO_MODEL_SIZE,
+                        type="list",
+                        limits=["nano", "small", "medium", "large", "extra_large", "high_res"],
+                        value=parameter_model.yolo_model_size,
+                        tip="Smaller models are faster but may be less accurate",
+                    ),
+                    dict(
+                        name=BOUNDING_BOX_BUFFER_METHOD,
+                        type="list",
+                        limits=["By box size", "By image size"],
+                        value=parameter_model.buffer_size_method,
+                        tip="Buffer bounding box by percentage of either box size or image size",
+                    ),
+                    dict(
+                        name=BOUNDING_BOX_BUFFER_PERCENTAGE,
+                        type="int",
+                        value=parameter_model.bounding_box_buffer_percentage,
+                        limits=(0, 100),
+                        step=1,
+                        tip="Percentage to increase size of bounding box",
+                    ),
+                ],
             ),
             dict(
                 name=MEDIAPIPE_MODEL_COMPLEXITY,
@@ -213,6 +249,11 @@ def extract_parameter_model_from_parameter_tree(
             run_image_tracking=parameter_values_dictionary[RUN_IMAGE_TRACKING_NAME],
             num_processes=parameter_values_dictionary[NUMBER_OF_PROCESSES_PARAMETER_NAME],
             use_yolo_crop_method=parameter_values_dictionary[USE_YOLO_CROP_METHOD],
+            yolo_model_size=parameter_values_dictionary[YOLO_MODEL_SIZE],
+            buffer_size_method=get_bounding_box_buffer_method_from_string(
+                parameter_values_dictionary[BOUNDING_BOX_BUFFER_METHOD]
+            ),
+            bounding_box_buffer_percentage=parameter_values_dictionary[BOUNDING_BOX_BUFFER_PERCENTAGE],
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
             run_reprojection_error_filtering=parameter_values_dictionary[RUN_REPROJECTION_ERROR_FILTERING],
@@ -241,6 +282,14 @@ def get_integer_from_mediapipe_model_complexity(mediapipe_model_complexity_value
         "2 (Slowest/Most accurate)": 2,
     }
     return mediapipe_model_complexity_dictionary[mediapipe_model_complexity_value]
+
+
+def get_bounding_box_buffer_method_from_string(buffer_method_string: str) -> str:
+    bounding_box_buffer_method_dict = {
+        "By box size": "buffer_by_box_size",
+        "By image size": "buffer_by_image_size",
+    }
+    return bounding_box_buffer_method_dict[buffer_method_string]
 
 
 def extract_processing_parameter_model_from_tree(parameter_object, value_dictionary: dict = None):

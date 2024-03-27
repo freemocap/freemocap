@@ -310,12 +310,12 @@ class MainWindow(QMainWindow):
             kill_thread_event=self._kill_thread_event,
         )
         self._export_to_blender_thread_worker.start()
-        self._export_to_blender_thread_worker.finished.connect(self._handle_export_to_blender_finished)
+        self._export_to_blender_thread_worker.success.connect(self._handle_export_to_blender_finished)
 
     def _handle_export_to_blender_finished(self) -> None:
-        if (
-            self._controller_group_box.auto_open_in_blender_checked
-        ):
+        if self._export_to_blender_thread_worker.success is False:
+            logger.error("Blender export failed!")
+        elif self._controller_group_box.auto_open_in_blender_checked:
             if Path(self._active_recording_info_widget.active_recording_info.blender_file_path).exists():
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
             else:
@@ -356,7 +356,9 @@ class MainWindow(QMainWindow):
 
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
-        except AttributeError:  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
+        except (
+            AttributeError
+        ):  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
             logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
             logger.error(e)

@@ -6,14 +6,11 @@ from typing import Union, Optional
 logger = logging.getLogger(__name__)
 
 
-def guess_blender_exe_path_from_path(base_path: Union[str, Path], exclude_blender_4: bool = True) -> Optional[Path]:
+def guess_blender_exe_path_from_path(base_path: Union[str, Path]) -> Optional[Path]:
     base_path = Path(base_path)
     blender_folder_paths = [path for path in base_path.rglob("blender.exe")]
 
     if blender_folder_paths:
-        if exclude_blender_4:
-            blender_folder_paths = [path for path in blender_folder_paths if "blender-4" not in str(path)]
-            blender_folder_paths = [path for path in blender_folder_paths if "Blender 4" not in str(path)]
 
         if len(blender_folder_paths) == 0:
             return None

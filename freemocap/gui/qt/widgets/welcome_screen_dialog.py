@@ -48,7 +48,7 @@ class WelcomeScreenDialog(QDialog):
         multi_camera_docs_label.setWordWrap(True)
         self._layout.addWidget(multi_camera_docs_label, 1)
 
-        multi_camera_recording_doc_link_string = '&#10132; <a href="https://freemocap.github.io/documentation/multi-camera-calibration.html</a>'
+        multi_camera_recording_doc_link_string = '&#10132; <a href="https://freemocap.github.io/documentation/multi-camera-calibration.html" style="color: #333333;"> Multi camera recording tutorial</a>'
         multi_camera_doc_link = QLabel(multi_camera_recording_doc_link_string)
         multi_camera_doc_link.setOpenExternalLinks(True)
         self._layout.addWidget(multi_camera_doc_link)

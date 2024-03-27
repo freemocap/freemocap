@@ -5,6 +5,7 @@ from typing import Union
 
 import toml
 
+from freemocap.gui.qt.utilities.save_and_load_gui_state import load_gui_state
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     LOGS_INFO_AND_SETTINGS_FOLDER_NAME,
     LOG_FILE_FOLDER_NAME,
@@ -50,14 +51,24 @@ def create_camera_calibration_file_name(recording_name: str):
 freemocap_data_folder_path = None
 
 
-def get_freemocap_data_folder_path(create_folder: bool = True):
+def get_freemocap_data_folder_path(create_folder: bool = True) -> str:
     global freemocap_data_folder_path
 
-    if freemocap_data_folder_path is None:
-        freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
+    try:
+        if freemocap_data_folder_path is None:
+            freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
+        gui_state = load_gui_state(
+            str(Path(freemocap_data_folder_path) / LOGS_INFO_AND_SETTINGS_FOLDER_NAME / GUI_STATE_JSON_FILENAME)
+        )
+        freemocap_data_folder_path = Path(gui_state.freemocap_data_folder_path)
+    except Exception as e:
+        print(e)  # Cannot log this due to circular import from logging config
+    finally:
+        if freemocap_data_folder_path is None:
+            freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
 
-        if create_folder:
-            freemocap_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
+    if create_folder:
+        freemocap_data_folder_path.mkdir(exist_ok=create_folder, parents=True)
 
     return str(freemocap_data_folder_path)
 
@@ -160,7 +171,7 @@ def get_most_recent_recording_toml_path():
 
 
 def get_gui_state_json_path():
-    return str(Path(get_logs_info_and_settings_folder_path()) / GUI_STATE_JSON_FILENAME)
+    return str(Path(__file__).parent.parent / GUI_STATE_JSON_FILENAME)
 
 
 def get_most_recent_recording_path(subfolder_str: str = None):
@@ -171,7 +182,7 @@ def get_most_recent_recording_path(subfolder_str: str = None):
     try:
         most_recent_recording_dict = toml.load(str(get_most_recent_recording_toml_path()))
         most_recent_recording_path = most_recent_recording_dict["most_recent_recording_path"]
-    except (ValueError, toml.TomlDecodeError, KeyError) as e:
+    except (ValueError, toml.TomlDecodeError, KeyError, FileNotFoundError) as e:
         logger.exception(e)
         return None
 

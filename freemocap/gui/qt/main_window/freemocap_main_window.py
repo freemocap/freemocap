@@ -21,9 +21,7 @@ from skellycam import (
 )
 from tqdm import tqdm
 
-from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import (
-    get_best_guess_of_blender_path,
-)
+
 from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import (
     generate_jupyter_notebook,
 )
@@ -43,6 +41,7 @@ from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
 from freemocap.gui.qt.utilities.save_and_load_gui_state import (
     GuiState,
     load_gui_state,
+    save_gui_state,
 )
 from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
@@ -64,6 +63,7 @@ from freemocap.gui.qt.widgets.home_widget import (
 from freemocap.gui.qt.widgets.import_videos_wizard import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.opencv_conflict_dialog import OpencvConflictDialog
+from freemocap.gui.qt.widgets.set_data_folder_dialog import SetDataFolderDialog
 from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
 from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
@@ -257,7 +257,7 @@ class MainWindow(QMainWindow):
 
     def _create_directory_view_widget(self):
         return DirectoryViewWidget(
-            top_level_folder_path=self._freemocap_data_folder_path,
+            gui_state=self._gui_state,
             get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
         )
 
@@ -275,9 +275,7 @@ class MainWindow(QMainWindow):
             self._handle_processing_finished_signal
         )
 
-        self._visualization_control_panel = VisualizationControlPanel(
-            parent=self, blender_executable_path=get_best_guess_of_blender_path()
-        )
+        self._visualization_control_panel = VisualizationControlPanel(parent=self, gui_state=self._gui_state)
         self._visualization_control_panel.export_to_blender_button.clicked.connect(
             self._export_active_recording_to_blender
         )
@@ -313,9 +311,7 @@ class MainWindow(QMainWindow):
         self._export_to_blender_thread_worker.finished.connect(self._handle_export_to_blender_finished)
 
     def _handle_export_to_blender_finished(self) -> None:
-        if (
-            self._controller_group_box.auto_open_in_blender_checked
-        ):
+        if self._controller_group_box.auto_open_in_blender_checked:
             if Path(self._active_recording_info_widget.active_recording_info.blender_file_path).exists():
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
             else:
@@ -356,7 +352,9 @@ class MainWindow(QMainWindow):
 
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
-        except AttributeError:  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
+        except (
+            AttributeError
+        ):  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
             logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
             logger.error(e)
@@ -433,6 +431,8 @@ class MainWindow(QMainWindow):
             str(self._gui_state.charuco_square_size)
         )
 
+        save_gui_state(self._gui_state, get_gui_state_json_path())
+
     def open_import_videos_dialog(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
         logger.info("Opening `Import Videos` dialog... ")
@@ -470,6 +470,16 @@ class MainWindow(QMainWindow):
         )
 
         self._opencv_conflict_dialog.exec()
+
+    def open_settings_dialog(self):
+        self._settings_dialog = SetDataFolderDialog(
+            gui_state=self._gui_state, kill_thread_event=self._kill_thread_event, parent=self
+        )
+
+        self._settings_dialog.exec()
+
+        if self._settings_dialog.accepted:
+            self.reboot_gui()
 
     def download_data(self, download_url: str):
         logger.info("Downloading sample data")

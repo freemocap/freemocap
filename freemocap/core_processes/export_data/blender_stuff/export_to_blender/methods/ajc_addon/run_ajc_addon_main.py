@@ -39,7 +39,6 @@ def run_ajc_blender_addon_subprocess(
     try:
         ajc_blender_addon_validator(recording_folder_path=recording_folder_path)
     except FileNotFoundError as e:
-        logger.error(e)
         logger.error("Missing required files to run AJC addon, did something go wrong during processing?")
         raise e
 
@@ -142,6 +141,13 @@ def ajc_blender_addon_validator(recording_folder_path: Union[str, Path]):
     if not (output_data_path / "center_of_mass" / "segmentCOM_frame_joint_xyz.npy").exists():
         raise FileNotFoundError(
             f"Could not find required file: {output_data_path / 'center_of_mass' / 'segmentCOM_frame_joint_xyz.npy'}"
+        )
+
+    if not (
+        output_data_path / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+    ).exists():
+        raise FileNotFoundError(
+            f"Could not find required file: {output_data_path / 'raw_data' / 'mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy'}"
         )
 
 

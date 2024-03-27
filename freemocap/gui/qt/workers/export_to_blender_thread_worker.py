@@ -48,12 +48,11 @@ class ExportToBlenderThreadWorker(QThread):
                 blender_exe_path=self.blender_executable_path,
                 method=self.blender_method,
             )
+            self.success.emit(True)
+            logger.debug("Blender Export Complete")
         except Exception as e:
             logger.exception("something went wrong in the Blender export")
-            logger.exception(e)
+            logger.error(e)
             self.success.emit(False)
 
-        self.success.emit(True)
         self._work_done = True
-
-        logger.debug("Blender Export Complete")

@@ -15,6 +15,13 @@ def rotate_skeleton_to_vector(vector_to_rotate_to: np.ndarray, original_points: 
         rotated_points[point, :] = rotate_point(original_points[point, :], rotation_matrix)
     return rotated_points
 
+raw_skeleton_datapath = "/Users/philipqueen/freemocap_data/recording_sessions/aaron_ground_charuco_test/recording_14_23_11_gmt-4/output_data/mediaPipeSkel_3d_body_hands_face.npy"
+raw_skeleton_data = np.load(raw_skeleton_datapath)
+
+good_frame = 443
+
+good_frame_skeleton_data = raw_skeleton_data[good_frame, :, :]
+
 obj_points = np.asarray([[1., 1., 0.], [2., 1., 0.],
             [3., 1., 0.], [4., 1., 0.],
             [5., 1., 0.], [6., 1., 0.],
@@ -42,16 +49,24 @@ transformed_xs = transformed_obj_points[:, 0]
 transformed_ys = transformed_obj_points[:, 1]
 transformed_zs = transformed_obj_points[:, 2]
 
+skeleton_xs = good_frame_skeleton_data[:, 0]
+skeleton_ys = good_frame_skeleton_data[:, 1]
+skeleton_zs = good_frame_skeleton_data[:, 2]
+
 # Plotting the Charuco board corners in world coordinates
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.scatter(xs, ys, zs, c='r', marker='o', label='Original Charuco Board Points')
+
+ax.scatter(skeleton_xs, skeleton_ys, skeleton_zs, c='g', marker='o', label='Original Skeleton Points')
 
 ax.scatter(transformed_xs, transformed_ys, transformed_zs, c='b', marker='o', label='Transformed Charuco Board Points')
 
 ax.set_xlabel('X Label')
 ax.set_ylabel('Y Label')
 ax.set_zlabel('Z Label')
+
+ax.set_aspect('equal', 'box')
 
 plt.legend(loc='upper left')
 

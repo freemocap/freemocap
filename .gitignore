@@ -157,3 +157,5 @@ freemocap/fmc_calibration/
 
 desktop.ini
 /BlendArMocap/
+yolov8n.pt
+freemocap/system/gui_state.json

@@ -49,11 +49,11 @@ def plot_points(camera_dict: dict, skeleton: np.ndarray, line_length: float = 30
     plt.show()
 
 if __name__ == "__main__":
-    toml_path = "/Users/philipqueen/freemocap_data/recording_sessions/freemocap_sample_data/2022-09-19_16_16_50_in_class_jsm_camera_calibration.toml"
+    toml_path = "/Users/philipqueen/freemocap_data/recording_sessions/iphone_testing/iPhoneTesting_camera_calibration.toml"
 
-    raw_skeleton_data = np.load("/Users/philipqueen/freemocap_data/recording_sessions/freemocap_sample_data/output_data/raw_data/mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy")
+    raw_skeleton_data = np.load("/Users/philipqueen/freemocap_data/recording_sessions/iphone_testing/output_data/raw_data/mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy")
 
-    good_frame = 450
+    good_frame = 599
 
     good_frame_skeleton_data = raw_skeleton_data[good_frame, :, :]
     print(good_frame_skeleton_data)
@@ -62,3 +62,5 @@ if __name__ == "__main__":
     camera_dict = camera_dict_from_toml(toml_path)
 
     plot_points(camera_dict, good_frame_skeleton_data)
+
+    # somehow the cameras seem reversed, i.e. a camera looking at the left of the subject appears on the right of the subject in the plot

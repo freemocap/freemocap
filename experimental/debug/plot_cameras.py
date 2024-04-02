@@ -17,6 +17,26 @@ def camera_dict_from_toml(path_to_toml: str | Path) -> dict:
 
     return camera_dict
 
+def plot_axis_indicator(ax: plt.Axes, identity: np.ndarray = np.identity(3)) -> None:
+    ax.quiver(0, 0, 0, identity[0, 0], identity[0, 1], identity[0, 2], length=300, normalize=True, color='r')
+    ax.quiver(0, 0, 0, identity[1, 0], identity[1, 1], identity[1, 2], length=300, normalize=True, color='g')
+    ax.quiver(0, 0, 0, identity[2, 0], identity[2, 1], identity[2, 2], length=300, normalize=True, color='b')
+
+    ax.set_xlabel('X axis')
+    ax.set_ylabel('Y axis')
+    ax.set_zlabel('Z axis')
+
+    ax.set_aspect('equal', 'box')
+
+def plot_groundplane(ax: plt.Axes) -> None:
+    
+    xx, yy = np.meshgrid(range(10), range(10))
+    z = (9 - xx - yy) / 2 
+
+    # plot the plane
+    ax.plot_surface(xx, yy, z, alpha=0.5)
+
+
 def rotation_matrix_to_direction(rvec: np.ndarray) -> np.ndarray:
     rotation_matrix, _ = cv2.Rodrigues(rvec)
     direction = rotation_matrix[:, 2]
@@ -43,21 +63,25 @@ def plot_points(camera_dict: dict, skeleton: np.ndarray, line_length: float = 30
                   length=line_length, normalize=True)
         
     skeleton_scatter = ax.scatter(skeleton[:, 0], skeleton[:, 1], skeleton[:, 2], label='Original Points')
+
+    plot_axis_indicator(ax=ax)
     
     ax.set_xlabel('X axis')
     ax.set_ylabel('Y axis')
     ax.set_zlabel('Z axis')
+
+    ax.set_aspect('equal', 'box')
 
     plt.legend()
 
     plt.show()
 
 if __name__ == "__main__":
-    toml_path = "/Users/philipqueen/freemocap_data/recording_sessions/freemocap_sample_data/2022-09-19_16_16_50_in_class_jsm_camera_calibration.toml"
+    toml_path = "/Users/philipqueen/freemocap_data/recording_sessions/iphone_testing/iPhoneTesting_camera_calibration.toml"
 
-    raw_skeleton_data = np.load("/Users/philipqueen/freemocap_data/recording_sessions/freemocap_sample_data/output_data/raw_data/mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy")
+    raw_skeleton_data = np.load("/Users/philipqueen/freemocap_data/recording_sessions/iphone_testing/output_data/raw_data/mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy")
 
-    good_frame = 533
+    good_frame = 600
 
     good_frame_skeleton_data = raw_skeleton_data[good_frame, :, :]
     print(good_frame_skeleton_data)

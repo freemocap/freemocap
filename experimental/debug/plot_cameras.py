@@ -14,6 +14,7 @@ def camera_dict_from_toml(path_to_toml: str | Path) -> dict:
         if key == "metadata":
             continue
         camera_dict[key] = {"rotation": value["rotation"], "translation": value["translation"]}
+        print(f"{key}: {camera_dict[key]}")
 
     return camera_dict
 
@@ -21,12 +22,6 @@ def plot_axis_indicator(ax: plt.Axes, identity: np.ndarray = np.identity(3)) -> 
     ax.quiver(0, 0, 0, identity[0, 0], identity[0, 1], identity[0, 2], length=300, normalize=True, color='r')
     ax.quiver(0, 0, 0, identity[1, 0], identity[1, 1], identity[1, 2], length=300, normalize=True, color='g')
     ax.quiver(0, 0, 0, identity[2, 0], identity[2, 1], identity[2, 2], length=300, normalize=True, color='b')
-
-    ax.set_xlabel('X axis')
-    ax.set_ylabel('Y axis')
-    ax.set_zlabel('Z axis')
-
-    ax.set_aspect('equal', 'box')
 
 def plot_groundplane(ax: plt.Axes) -> None:
     
@@ -48,19 +43,25 @@ def plot_points(camera_dict: dict, skeleton: np.ndarray, line_length: float = 30
     ax = fig.add_subplot(111, projection='3d')
 
     for camera_name, camera_data in camera_dict.items():
-        rotation = camera_data["rotation"]
+        rotation = np.asarray(camera_data["rotation"])
         translation = camera_data["translation"]
-        direction = rotation_matrix_to_direction(np.asarray(rotation))
-
-        # data is flipped in x direction??
-        translation[0] *= -1
-        direction[0] *= -1
 
         ax.scatter(translation[0], translation[1], translation[2], label=f"{camera_name}")
 
+        rotation_matrix, _ = cv2.Rodrigues(rotation)
+
         ax.quiver(translation[0], translation[1], translation[2], 
-                  direction[0], direction[1], direction[2], 
-                  length=line_length, normalize=True)
+                  rotation_matrix[0, 0], rotation_matrix[0,1], rotation_matrix[0,2], 
+                  length=line_length, normalize=True, color='r', alpha=0.5)
+
+        ax.quiver(translation[0], translation[1], translation[2], 
+                  rotation_matrix[1, 0], rotation_matrix[1,1], rotation_matrix[1,2], 
+                  length=line_length, normalize=True, color='g', alpha=0.5)
+
+        ax.quiver(translation[0], translation[1], translation[2], 
+                  rotation_matrix[2, 0], rotation_matrix[2,1], rotation_matrix[2,2], 
+                  length=line_length, normalize=True, color='b', alpha=0.5)
+        
         
     skeleton_scatter = ax.scatter(skeleton[:, 0], skeleton[:, 1], skeleton[:, 2], label='Original Points')
 

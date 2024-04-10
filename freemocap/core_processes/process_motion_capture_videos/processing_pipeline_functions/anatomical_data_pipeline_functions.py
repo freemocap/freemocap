@@ -41,20 +41,8 @@ def calculate_anatomical_data(
         output_data_folder_path=processing_parameters.recording_info_model.output_data_folder_path,
     )  # TODO: separate functionality of splitting into CSVs and savings to disk
 
-    path_to_skeleton_body_csv = (
-        Path(processing_parameters.recording_info_model.output_data_folder_path)
-        / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME
-    )
-    skeleton_dataframe = pd.read_csv(path_to_skeleton_body_csv)
-
-    logger.info("Estimating skeleton segment lengths...")
-    skeleton_segment_lengths_dict = estimate_skeleton_segment_lengths(
-        skeleton_dataframe=skeleton_dataframe,
-        skeleton_segment_definitions=mediapipe_skeleton_segment_definitions,
-    )
 
     return {
         "segment_COM": segment_COM_frame_imgPoint_XYZ,
         "total_body_COM": totalBodyCOM_frame_XYZ,
-        "skeleton_segment_lengths": skeleton_segment_lengths_dict,
     }

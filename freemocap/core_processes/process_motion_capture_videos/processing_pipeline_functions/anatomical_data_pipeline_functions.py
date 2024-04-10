@@ -5,8 +5,6 @@ import numpy as np
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.convert_mediapipe_npy_to_csv import (
     convert_mediapipe_npy_to_csv,
 )
-
-
 from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import run_center_of_mass_calculations
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.system.logging.queue_logger import DirectQueueHandler
@@ -34,7 +32,6 @@ def calculate_anatomical_data(
         mediapipe_3d_frame_trackedPoint_xyz=skel3d_frame_marker_xyz,
         output_data_folder_path=processing_parameters.recording_info_model.output_data_folder_path,
     )  # TODO: separate functionality of splitting into CSVs and savings to disk
-
 
     return {
         "segment_COM": segment_COM_frame_imgPoint_XYZ,

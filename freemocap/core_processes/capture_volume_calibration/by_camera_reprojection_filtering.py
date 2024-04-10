@@ -52,7 +52,7 @@ def run_reprojection_error_filtering(
         mediapipe_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
         anipose_calibration_object=anipose_calibration_object,
-        num_tracked_points=num_tracked_points,
+        output_data_folder_path=processing_parameters.recording_info_model.raw_data_folder_path,
         use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
         minimum_cameras_to_reproject=processing_parameters.anipose_triangulate_3d_parameters_model.minimum_cameras_to_reproject,
     )
@@ -82,7 +82,7 @@ def filter_by_reprojection_error(
     mediapipe_2d_data: np.ndarray,
     raw_skel3d_frame_marker_xyz: np.ndarray,
     anipose_calibration_object,
-    num_tracked_points: int,
+    output_data_folder_path: Union[str, Path],
     use_triangulate_ransac: bool = False,
     minimum_cameras_to_reproject: int = 3,
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -173,7 +173,7 @@ def _get_data_to_reproject(
     input_2d_data_camera_frame_marker_xy: np.ndarray,
 ) -> tuple[np.ndarray, list]:
     indices_above_threshold = np.nonzero(reprojError_cam_frame_marker > reprojection_error_threshold)
-    logger.info(f"SHAPE OF INDICES ABOVE THRESHOLD: {indices_above_threshold[0].shape}")  # TODO: Set this to debug
+    logger.debug(f"SHAPE OF INDICES ABOVE THRESHOLD: {indices_above_threshold[0].shape}")
 
     total_frame_marker_combos = (
         input_2d_data_camera_frame_marker_xy.shape[1] * input_2d_data_camera_frame_marker_xy.shape[2]

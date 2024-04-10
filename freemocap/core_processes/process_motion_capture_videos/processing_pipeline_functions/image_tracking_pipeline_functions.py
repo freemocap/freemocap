@@ -44,19 +44,16 @@ def run_image_tracking_pipeline(
         logger.info("Detecting 2d skeletons...")
         logger.info(LOG_VIEW_PROGRESS_BAR_STRING)
         # 2d skeleton detection
-        try:
-            image_data_numCams_numFrames_numTrackedPts_XYZ = run_image_tracking(
-                tracking_params=processing_parameters.mediapipe_parameters_model,
-                synchronized_videos_folder_path=Path(
-                    processing_parameters.recording_info_model.synchronized_videos_folder_path
-                ),
-                output_data_folder_path=Path(processing_parameters.recording_info_model.output_data_folder_path)
-                / RAW_DATA_FOLDER_NAME,
-                kill_event=kill_event,
-                use_tqdm=use_tqdm,
-            )
-        except Exception:
-            raise RuntimeError("2D skeleton detection failed, cannot continue processing")
+        image_data_numCams_numFrames_numTrackedPts_XYZ = run_image_tracking(
+            tracking_params=processing_parameters.mediapipe_parameters_model,
+            synchronized_videos_folder_path=Path(
+                processing_parameters.recording_info_model.synchronized_videos_folder_path
+            ),
+            output_data_folder_path=Path(processing_parameters.recording_info_model.output_data_folder_path)
+            / RAW_DATA_FOLDER_NAME,
+            kill_event=kill_event,
+            use_tqdm=use_tqdm,
+        )
 
     if not processing_parameters.recording_info_model.data2d_status_check:
         raise FileNotFoundError(

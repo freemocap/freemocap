@@ -67,7 +67,7 @@ class AniposeCameraCalibrator:
             dict_size=250,
         )
 
-    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False):
+    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False) -> Path:
         video_paths_list_of_list_of_strings = [[str(this_path)] for this_path in self._list_of_video_paths]
 
         (
@@ -108,7 +108,11 @@ class AniposeCameraCalibrator:
         logger.debug(
             f"anipose camera calibration data also saved to 'Last Successful Calibration' - {last_successful_calibration_toml_path}"
         )
-        self._progress_callback("Anipose camera calibration data saved to calibrations folder, recording folder, and `Last Successful Calibration` file")
+        self._progress_callback(
+            "Anipose camera calibration data saved to calibrations folder, recording folder, and `Last Successful Calibration` file"
+        )
+
+        return calibration_folder_toml_path
 
     def pin_camera_zero_to_origin(self, _anipose_camera_group_object):
         original_translation_vectors = _anipose_camera_group_object.get_translations()

@@ -17,7 +17,9 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
     finished = Signal(bool)
     in_progress = Signal(object)
 
-    def __init__(self, processing_parameters: ProcessingParameterModel, kill_event: multiprocessing.Event, parent=None):
+    def __init__(
+        self, post_processing_parameters: ProcessingParameterModel, kill_event: multiprocessing.Event, parent=None
+    ):
         super().__init__()
         self._processing_parameters = processing_parameters
         self._kill_event = kill_event

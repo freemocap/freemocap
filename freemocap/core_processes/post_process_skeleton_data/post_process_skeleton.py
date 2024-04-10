@@ -24,6 +24,10 @@ from freemocap.system.logging.configure_logging import log_view_logging_format_s
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
 
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
+from freemocap.system.logging.queue_logger import DirectQueueHandler
+from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,8 +38,11 @@ class PostProcessedDataHandler:
     def data_callback(self, processed_skeleton: np.ndarray):
         self.processed_skeleton = processed_skeleton
 
-
-def save_numpy_array_to_disk(array_to_save: np.ndarray, file_name: str, save_directory: Union[str, Path]):
+def save_numpy_array_to_disk(
+        array_to_save: np.ndarray,
+        file_name: str,
+        save_directory: Union[str, Path]
+):
     if not file_name.endswith(".npy"):
         file_name += ".npy"
     Path(save_directory).mkdir(parents=True, exist_ok=True)
@@ -95,9 +102,7 @@ def run_post_processing_worker(
 
 
 def post_process_data(
-    recording_processing_parameter_model: ProcessingParameterModel,
-    raw_skel3d_frame_marker_xyz: np.ndarray,
-    queue: multiprocessing.Queue,
+    recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray, queue: multiprocessing.Queue
 ) -> np.ndarray:
     if queue:
         handler = DirectQueueHandler(queue)

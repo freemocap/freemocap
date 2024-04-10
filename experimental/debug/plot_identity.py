@@ -3,10 +3,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_axis_indicator(ax: plt.Axes, x_vector: np.ndarray, y_vector: np.ndarray, z_vector: np.ndarray) -> None:
-    ax.quiver(0, 0, 0, x_vector[0], x_vector[1], x_vector[2], length=1, normalize=True, color='r', alpha=0.5)
-    ax.quiver(0, 0, 0, y_vector[0], y_vector[1], y_vector[2], length=1, normalize=True, color='g', alpha=0.5)
-    ax.quiver(0, 0, 0, z_vector[0], z_vector[1], z_vector[2], length=1, normalize=True, color='b', alpha=0.5)
+def plot_axis_indicator(ax: plt.Axes, x_vector: np.ndarray, y_vector: np.ndarray, z_vector: np.ndarray, length: int = 1) -> None:
+    ax.quiver(0, 0, 0, x_vector[0], x_vector[1], x_vector[2], length=length, normalize=True, color='r', alpha=0.5)
+    ax.quiver(0, 0, 0, y_vector[0], y_vector[1], y_vector[2], length=length, normalize=True, color='g', alpha=0.5)
+    ax.quiver(0, 0, 0, z_vector[0], z_vector[1], z_vector[2], length=length, normalize=True, color='b', alpha=0.5)
 
     ax.set_xlim((-1, 1))
     ax.set_ylim((-1, 1))
@@ -64,12 +64,17 @@ if __name__ == "__main__":
     ])
 
     # rotation_matrix = z_rotation_matrix
-    rotation_matrix = x_rotation_matrix @ y_rotation_matrix @ z_rotation_matrix
+    # rotation_matrix = x_rotation_matrix @ y_rotation_matrix @ z_rotation_matrix
+
+    forty_fives = np.radians([0, 0, -90])
+    rotation_matrix, _ = cv2.Rodrigues(forty_fives)
+
     rotated_id = rotation_matrix @ id
-    print(id)
-    print(rotated_id)
+    print("id", id)
+    print("rotated id", rotated_id)
+    print("rotation matrix", rotation_matrix)
     rodrigues, _ = cv2.Rodrigues(rotated_id)
-    print(rodrigues)
+    print("rodrigues", rodrigues)
     plot_axis_indicator(ax=ax, x_vector=rotated_id[0, :], y_vector=rotated_id[1, :], z_vector=rotated_id[2, :])
 
     show_plot(fig=fig, ax=ax)

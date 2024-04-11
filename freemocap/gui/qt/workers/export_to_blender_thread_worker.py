@@ -18,7 +18,6 @@ class ExportToBlenderThreadWorker(QThread):
         recording_path: Path,
         blender_file_path: Path,
         blender_executable_path: Path,
-        blender_method: str,
         kill_thread_event: threading.Event,
     ):
         super().__init__()
@@ -27,7 +26,6 @@ class ExportToBlenderThreadWorker(QThread):
         self.recording_path = recording_path
         self.blender_file_path = blender_file_path
         self.blender_executable_path = blender_executable_path
-        self.blender_method = blender_method
 
         self._work_done = False
 
@@ -46,7 +44,6 @@ class ExportToBlenderThreadWorker(QThread):
                 recording_folder_path=self.recording_path,
                 blender_file_path=self.blender_file_path,
                 blender_exe_path=self.blender_executable_path,
-                method=self.blender_method,
             )
         except Exception as e:
             logger.exception("something went wrong in the Blender export")

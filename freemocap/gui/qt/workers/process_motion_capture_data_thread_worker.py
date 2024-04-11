@@ -21,7 +21,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
         self, post_processing_parameters: ProcessingParameterModel, kill_event: multiprocessing.Event, parent=None
     ):
         super().__init__()
-        self._processing_parameters = processing_parameters
+        self._processing_parameters = post_processing_parameters
         self._kill_event = kill_event
 
         self._queue = multiprocessing.Queue()

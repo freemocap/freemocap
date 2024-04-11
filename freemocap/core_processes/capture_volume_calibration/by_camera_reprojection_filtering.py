@@ -52,7 +52,7 @@ def run_reprojection_error_filtering(
         mediapipe_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
         anipose_calibration_object=anipose_calibration_object,
-        output_data_folder_path=processing_parameters.recording_info_model.raw_data_folder_path,
+        num_tracked_points=num_tracked_points,
         use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
         minimum_cameras_to_reproject=processing_parameters.anipose_triangulate_3d_parameters_model.minimum_cameras_to_reproject,
     )
@@ -82,7 +82,7 @@ def filter_by_reprojection_error(
     mediapipe_2d_data: np.ndarray,
     raw_skel3d_frame_marker_xyz: np.ndarray,
     anipose_calibration_object,
-    output_data_folder_path: Union[str, Path],
+    num_tracked_points: int,
     use_triangulate_ransac: bool = False,
     minimum_cameras_to_reproject: int = 3,
 ) -> Tuple[np.ndarray, np.ndarray]:

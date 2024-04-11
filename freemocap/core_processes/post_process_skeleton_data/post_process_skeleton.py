@@ -18,12 +18,6 @@ from skellyforge.freemocap_utils.constants import (
 from skellyforge.freemocap_utils.postprocessing_widgets.task_worker_thread import TaskWorkerThread
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
-
-from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
-from freemocap.system.logging.configure_logging import log_view_logging_format_string
-from freemocap.system.logging.queue_logger import DirectQueueHandler
-from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
-
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
@@ -38,11 +32,8 @@ class PostProcessedDataHandler:
     def data_callback(self, processed_skeleton: np.ndarray):
         self.processed_skeleton = processed_skeleton
 
-def save_numpy_array_to_disk(
-        array_to_save: np.ndarray,
-        file_name: str,
-        save_directory: Union[str, Path]
-):
+
+def save_numpy_array_to_disk(array_to_save: np.ndarray, file_name: str, save_directory: Union[str, Path]):
     if not file_name.endswith(".npy"):
         file_name += ".npy"
     Path(save_directory).mkdir(parents=True, exist_ok=True)
@@ -115,10 +106,11 @@ def post_process_data(
     processed_skeleton_array = run_post_processing_worker(
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
         settings_dictionary=adjusted_settings,
-        landmark_names = get_landmark_names(model_info=recording_processing_parameter_model.tracking_model_info),
+        landmark_names=get_landmark_names(model_info=recording_processing_parameter_model.tracking_model_info),
     )
 
     return processed_skeleton_array
+
 
 def get_landmark_names(model_info: ModelInfo) -> list:
     if hasattr(model_info, "body_landmark_names"):

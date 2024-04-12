@@ -1,11 +1,13 @@
+import logging
 from typing import Dict, List, Optional
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel
 import numpy as np
 
-from freemocap.data_layer.skeleton_models.anthropometric_data import CenterOfMassDefinitions, SegmentAnthropometry
-from freemocap.data_layer.skeleton_models.joint_hierarchy import JointHierarchy
+
 from freemocap.data_layer.skeleton_models.marker_info import MarkerInfo
-from freemocap.data_layer.skeleton_models.segments import Segment, Segments
+from freemocap.data_layer.skeleton_models.segments import Segment, Segments, SegmentAnthropometry
+
+logger = logging.getLogger(__name__)
 
 
 class Skeleton(BaseModel):
@@ -40,9 +42,16 @@ class Skeleton(BaseModel):
         Parameters:
         - joint_hierarchy: A dictionary with joint names as keys and lists of connected marker names as values.
         """
-        # TODO: We only use this pydantic model for validation - we could easily put that validator here and skip a layer of indirection
-        joint_hierarchy_model = JointHierarchy(markers=self.markers, joint_hierarchy=joint_hierarchy)
-        self.joint_hierarchy = joint_hierarchy_model.joint_hierarchy
+        for joint_name, joint_connections in joint_hierarchy.items():
+            if joint_name not in self.markers.all_markers:
+                raise ValueError(f"The joint {joint_name} is not in the list of markers or virtual markers.")
+            for connected_marker in joint_connections:
+                if connected_marker not in self.markers.all_markers:
+                    raise ValueError(
+                        f"The connected marker {connected_marker} for {joint_name} is not in the list of markers or virtual markers."
+                    )
+        
+        self.joint_hierarchy = joint_hierarchy
 
     def add_center_of_mass_definitions(self, center_of_mass_definitions: Dict[str, SegmentAnthropometry]):
         """
@@ -51,9 +60,8 @@ class Skeleton(BaseModel):
         Parameters:
         - anthropometric_data: A dictionary containing segment mass percentages.
         """
-        # TODO: Similar to above, pydantic model is just doing validaiton we can do here (model doesn't need to persist over time)
-        anthropometrics = CenterOfMassDefinitions(center_of_mass_definitions=center_of_mass_definitions)
-        self.center_of_mass_definitions = anthropometrics.center_of_mass_definitions
+        # TODO: can add validation to check that segments exist in the segment_connections
+        self.center_of_mass_definitions = center_of_mass_definitions
 
     def integrate_freemocap_3d_data(self, freemocap_3d_data: np.ndarray):
         self.num_frames = freemocap_3d_data.shape[
@@ -71,6 +79,11 @@ class Skeleton(BaseModel):
 
         for i, marker_name in enumerate(original_marker_names_list):
             self.marker_data[marker_name] = freemocap_3d_data[:, i, :]
+
+        try:
+            self.calculate_virtual_markers()
+        except ValueError:
+            logger.info("Freemocap data integrated without virtual markers, as no virtual marker definition was provided")
 
     def calculate_virtual_markers(self):
         if not self.marker_data:

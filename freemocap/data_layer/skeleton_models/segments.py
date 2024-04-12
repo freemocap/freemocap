@@ -9,6 +9,11 @@ class Segment(BaseModel):
     distal: str
 
 
+class SegmentAnthropometry(BaseModel):
+    segment_com_length: float
+    segment_com_percentage: float
+
+
 class Segments(BaseModel):
     markers: MarkerInfo
     segment_connections: Dict[str, Segment]

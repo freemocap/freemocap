@@ -108,8 +108,10 @@ def calculate_center_of_mass_from_skeleton(skeleton: Skeleton) -> np.ndarray:
     if skeleton.center_of_mass_definitions is None:
         raise ValueError("Segment center of mass definitions must be defined before calculating center of mass.")
 
-    segment_3d_positions = get_all_segment_markers(skeleton) # TODO: Should this be a method of the skeleton model?
+    segment_3d_positions = get_all_segment_markers(skeleton)  # TODO: Should this be a method of the skeleton model?
     segment_com_data = calculate_all_segments_com(segment_3d_positions, skeleton.center_of_mass_definitions)
-    total_body_com = calculate_total_body_center_of_mass(segment_com_data, skeleton.center_of_mass_definitions, skeleton.num_frames)
+    total_body_com = calculate_total_body_center_of_mass(
+        segment_com_data, skeleton.center_of_mass_definitions, skeleton.num_frames
+    )
 
     return total_body_com

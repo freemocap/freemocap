@@ -21,7 +21,7 @@ class Skeleton(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def add_segments(self, segment_connections: Dict[str, Segment]):
+    def add_segments(self, segment_connections: Dict[str, Segment]) -> None:
         """
         Adds segment connection data to the skeleton model.
 
@@ -35,7 +35,7 @@ class Skeleton(BaseModel):
         )
         self.segments = segments_model.segment_connections
 
-    def add_joint_hierarchy(self, joint_hierarchy: Dict[str, List[str]]):
+    def add_joint_hierarchy(self, joint_hierarchy: Dict[str, List[str]]) -> None:
         """
         Adds joint hierarchy data to the skeleton model.
 
@@ -53,7 +53,7 @@ class Skeleton(BaseModel):
 
         self.joint_hierarchy = joint_hierarchy
 
-    def add_center_of_mass_definitions(self, center_of_mass_definitions: Dict[str, SegmentAnthropometry]):
+    def add_center_of_mass_definitions(self, center_of_mass_definitions: Dict[str, SegmentAnthropometry]) -> None:
         """
         Adds anthropometric center of mass definitions to the skeleton model.
 
@@ -68,10 +68,10 @@ class Skeleton(BaseModel):
 
         self.center_of_mass_definitions = center_of_mass_definitions
 
-    def integrate_freemocap_3d_data(self, freemocap_3d_data: np.ndarray):
+    def integrate_freemocap_3d_data(self, freemocap_3d_data: np.ndarray) -> None:
         self.num_frames = freemocap_3d_data.shape[
             0
-        ]  # TODO: This maybe should be defined in the model and only filled in here
+        ]  # TODO: Maybe should be defined in the model and only filled in here
         num_markers_in_data = freemocap_3d_data.shape[1]
         original_marker_names_list = self.markers.original_marker_names
         num_markers_in_model = len(original_marker_names_list)
@@ -92,7 +92,7 @@ class Skeleton(BaseModel):
                 "Freemocap data integrated without virtual markers, as no virtual marker definition was provided"
             )
 
-    def calculate_virtual_markers(self):
+    def calculate_virtual_markers(self) -> None:
         if not self.marker_data:
             raise ValueError(
                 "3d marker data must be integrated before calculating virtual markers. Run `integrate_freemocap_3d_data()` first."

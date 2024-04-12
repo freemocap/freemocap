@@ -50,17 +50,22 @@ class Skeleton(BaseModel):
                     raise ValueError(
                         f"The connected marker {connected_marker} for {joint_name} is not in the list of markers or virtual markers."
                     )
-        
+
         self.joint_hierarchy = joint_hierarchy
 
     def add_center_of_mass_definitions(self, center_of_mass_definitions: Dict[str, SegmentAnthropometry]):
         """
-        Adds anthropometric data to the skeleton model.
+        Adds anthropometric center of mass definitions to the skeleton model.
 
         Parameters:
-        - anthropometric_data: A dictionary containing segment mass percentages.
+        - center_of_mass_definitions: A dictionary containing segment mass percentages.
         """
-        # TODO: can add validation to check that segments exist in the segment_connections
+        if self.segments is None:
+            raise ValueError("Segments must be defined before center of mass definitions can be added.")
+        for com_segment_name in center_of_mass_definitions.keys():
+            if com_segment_name not in self.segments.keys():
+                raise ValueError(f"Segment {com_segment_name} is not in the list of segments.")
+
         self.center_of_mass_definitions = center_of_mass_definitions
 
     def integrate_freemocap_3d_data(self, freemocap_3d_data: np.ndarray):
@@ -83,7 +88,9 @@ class Skeleton(BaseModel):
         try:
             self.calculate_virtual_markers()
         except ValueError:
-            logger.info("Freemocap data integrated without virtual markers, as no virtual marker definition was provided")
+            logger.info(
+                "Freemocap data integrated without virtual markers, as no virtual marker definition was provided"
+            )
 
     def calculate_virtual_markers(self):
         if not self.marker_data:

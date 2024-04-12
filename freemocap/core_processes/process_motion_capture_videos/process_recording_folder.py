@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+from typing import Optional
 
 
 from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data
@@ -32,9 +33,9 @@ logger = logging.getLogger(__name__)
 def process_recording_folder(
     recording_processing_parameter_model: ProcessingParameterModel,
     kill_event: multiprocessing.Event = None,
-    logging_queue: multiprocessing.Queue = None,
+    logging_queue: Optional[multiprocessing.Queue] = None,
     use_tqdm: bool = True,
-) -> bool:
+) -> None:
     """
 
     Parameters

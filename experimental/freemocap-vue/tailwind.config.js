@@ -2,6 +2,7 @@
 import colors from 'tailwindcss/colors.js'
 
 export default {
+  mode: 'jit',
   content: [
     // Example content paths...
     './public/**/*.html',

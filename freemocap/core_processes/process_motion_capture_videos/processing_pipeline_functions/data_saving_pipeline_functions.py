@@ -70,12 +70,3 @@ def save_data(
         )
     else:
         logger.debug("skeleton_segment_lengths_dict is None, could not save")
-
-    if processing_parameters.tracking_model_info.names_and_connections_dict is not None:
-        save_dictionary_to_json(
-            save_path=processing_parameters.recording_info_model.output_data_folder_path,
-            file_name="mediapipe_names_and_connections_dict.json",
-            dictionary=processing_parameters.tracking_model_info.names_and_connections_dict,
-        )
-    else:
-        logger.debug("mediapipe_names_and_connections_dict is None, could not save")

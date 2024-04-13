@@ -12,7 +12,6 @@
 
 <script setup>
 import { ref, watch, onMounted, onUnmounted, provide } from 'vue';
-import { defineProps } from 'vue';
 
 const props = defineProps({
   camera: Object,

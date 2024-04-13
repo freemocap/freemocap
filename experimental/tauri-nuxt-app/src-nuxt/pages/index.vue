@@ -1,6 +1,10 @@
 <template>
   <div class="viewport-container">
-    <CameraGrid />
+
+    <ThreeDViewport />
+    <div >
+      <CameraGrid />
+    </div>
   </div>
 </template>
 
@@ -11,18 +15,9 @@
 
 <style scoped>
 .viewport-container{
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  overflow: hidden;
-  background-color: #01012d;
+  @apply relative w-full h-screen overflow-hidden bg-secondary;
 }
 .overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100vh;
-  pointer-events: none;
+  @apply absolute top-0 left-0 w-full h-screen pointer-events-none;
 }
 </style>

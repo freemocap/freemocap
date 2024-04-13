@@ -29,11 +29,7 @@
       },
       "externalBin": [],
       "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
+        "../shared/freemocap-skelly-icon.ico"
       ],
       "identifier": "com.tauri.dev",
       "longDescription": "",
@@ -62,10 +58,10 @@
     "windows": [
       {
         "fullscreen": false,
-        "height": 600,
-        "width": 800,
+        "height": 720,
+        "width": 1280,
         "resizable": true,
-        "title": "skellycam-tauri-nuxt-app"
+        "title": "freemocap-tauri-nuxt-app"
       }
     ]
   }

@@ -1,8 +1,8 @@
 import logging
-from typing import Dict
+from typing import Dict, Tuple
 import numpy as np
 
-from freemocap.data_layer.skeleton_models.segments import SegmentAnthropometry
+from freemocap.data_layer.skeleton_models.segments import Segment, SegmentAnthropometry
 from freemocap.data_layer.skeleton_models.skeleton import Skeleton
 
 logger = logging.getLogger(__name__)
@@ -97,16 +97,40 @@ def get_all_segment_markers(skeleton: Skeleton) -> Dict[str, Dict[str, np.ndarra
     return segment_positions
 
 
-def calculate_center_of_mass_from_skeleton(skeleton: Skeleton) -> np.ndarray:
+def merge_segment_com_data(segment_com_data: Dict[str, np.ndarray], segments: Dict[str, Segment]) -> np.ndarray:
     """
-    Calculates the center of mass of the total body based on segment center of mass positions and anthropometric data.
+    Merges the center of mass data from multiple segments into a single array.
+    
+    Parameters:
+    - segment_com_data: A dictionary where each key is a segment name and the value is the center of mass data for that segment.
+    - segments: A dictionary where each key is a segment name and the value is the Segment object for that segment.
+    
+    Returns:
+    - A numpy array containing the merged center of mass data.
+    """
+    # TODO: Since we're pulling segment names from a dict, we're not guaranteeing order!
+    segment_names = list(segments.keys())
+    com_data_list = [segment_com_data[segment_name] for segment_name in segment_names]
+
+    return np.stack(com_data_list, axis=0)
+
+
+def calculate_center_of_mass_from_skeleton(skeleton: Skeleton) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Calculates the segment and total body center of mass for a skeleton based on anthropometric data.
 
     Parameters:
     - skeleton: The Skeleton instance containing marker data and segment information.
     - anthropometric_data: A dictionary containing segment mass percentages
+
+    Returns:
+    - A tuple containing the segment center of mass data and the total body center of mass.
     """
     if skeleton.center_of_mass_definitions is None:
         raise ValueError("Segment center of mass definitions must be defined before calculating center of mass.")
+    
+    if skeleton.segments is None:
+        raise ValueError("Segments must be defined before calculating center of mass.")
 
     segment_3d_positions = get_all_segment_markers(skeleton)  # TODO: Should this be a method of the skeleton model?
     segment_com_data = calculate_all_segments_com(segment_3d_positions, skeleton.center_of_mass_definitions)
@@ -114,4 +138,6 @@ def calculate_center_of_mass_from_skeleton(skeleton: Skeleton) -> np.ndarray:
         segment_com_data, skeleton.center_of_mass_definitions, skeleton.num_frames
     )
 
-    return total_body_com
+    merged_segment_com_data = merge_segment_com_data(segment_com_data, skeleton.segments)
+
+    return merged_segment_com_data, total_body_com

@@ -1,23 +1,21 @@
 <template>
-  <div class="viewport-container">
+  <div class="flex">
 
-    <ThreeDViewport />
-    <div >
-      <CameraGrid />
+
+    <div class="flex-1 bg-purple-400 ">
+      <div class="relative overflow-hidden bg-secondary">
+        <ThreeDViewport/>
+      </div>
+      <div class="relative top-0 left-0 pointer-events-none">
+        <CameraGrid/>
+      </div>
+    </div>
+
+    <div class="flex-1 bg-primary">
+      <SideBar/>
     </div>
   </div>
-</template>
+</template>w3hat
 
 <script setup lang="ts">
-
 </script>
-
-
-<style scoped>
-.viewport-container{
-  @apply relative w-full h-screen overflow-hidden bg-secondary;
-}
-.overlay {
-  @apply absolute top-0 left-0 w-full h-screen pointer-events-none;
-}
-</style>

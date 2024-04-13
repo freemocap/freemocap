@@ -5,7 +5,7 @@ import SideBar from './components/sidebar/SideBar.vue'
 </script>
 
 <template>
-  <div class="flex h-screen">
+  <div class="flex bg-secondary w-screen h-screen">
     <SideBar />
   </div>
   <div class="flex-1 flex flex-col">

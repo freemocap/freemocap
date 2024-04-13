@@ -1,0 +1,19 @@
+{
+  "name": "skellycam-tauri-nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri-dev": "npm run tauri dev",
+    "dev": "npm run tauri dev",
+    "tauri-build": "tauri build",
+    "nuxt-dev": "cd src-nuxt && npm run dev",
+    "postinstall": "cd src-nuxt && npm install"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^1.5.3"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.5.11"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "skellycam-nuxt",
+  "version": "1.0.0",
+  "description": "The `nuxt` part of the SkellyCam app",
+  "scripts": {
+    "nuxt": "nuxt",
+    "build": "nuxt build",
+    "start": "nuxt start",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "test": "echo \"Error: testing not yet implemented!!\" && exit 1"
+  },
+  "dependencies": {
+    "@tresjs/cientos": "^3.8.0",
+    "@tresjs/core": "^3.7.0",
+    "@tresjs/nuxt": "^2.1.1",
+    "nuxt": "^3.11.1",
+    "three": "^0.162.0",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0",
+    "vue-sidebar-menu": "^5.3.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.162.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3"
+  },
+  "keywords": [
+    "freemocap",
+    "skellycam",
+    "cameras",
+    "multi-camera",
+    "synchronized",
+    "motion-capture",
+    "mocap"
+  ],
+  "author": "Skelly FreeMoCap",
+  "license": "AGPL-3.0-or-later"
+}

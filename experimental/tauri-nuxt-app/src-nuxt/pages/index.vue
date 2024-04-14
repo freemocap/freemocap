@@ -1,21 +1,8 @@
 <template>
-  <div class="flex">
-
-
-    <div class="flex-1 bg-purple-400 ">
-      <div class="relative overflow-hidden bg-secondary">
-        <ThreeDViewport/>
-      </div>
-      <div class="relative top-0 left-0 pointer-events-none">
-        <CameraGrid/>
-      </div>
-    </div>
-
-    <div class="flex-1 bg-primary">
-      <SideBar/>
-    </div>
+  <div class="flex-grow bg-amber-600 border-4 border-purple-600">
+    <p class="font-bold text-3xl">wowee zowee its pages/index.vue</p>
   </div>
-</template>w3hat
+</template>
 
 <script setup lang="ts">
 </script>

@@ -21,6 +21,7 @@ from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_d
 from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import test_synchronized_video_frame_counts
 from freemocap.tests.test_total_body_center_of_mass_data_shape import test_total_body_center_of_mass_data_shape
+from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import get_number_of_frames_of_videos_in_a_folder
 from freemocap.utilities.get_video_paths import get_video_paths
 
 logger = logging.getLogger(__name__)
@@ -153,7 +154,7 @@ class RecordingFolderStatusChecker:
         self.recording_info_model = recording_info_model
 
     @property
-    def status_check(self) -> Dict[str, Union[bool, str, float]]:
+    def status_check(self) -> Dict[str, Union[bool, str, float, dict]]:
         return {
             "synchronized_videos_status_check": self.check_synchronized_videos_status(),
             "data2d_status_check": self.check_data2d_status(),
@@ -227,25 +228,19 @@ class RecordingFolderStatusChecker:
             toml_status = self.check_for_calibration_toml_with_different_name()
         return toml_status
 
-    def get_number_of_mp4s_in_synched_videos_directory(self) -> float:
+    def get_number_of_mp4s_in_synched_videos_directory(self) -> int:
         synchronized_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path)
-        video_count = 0.0
 
         if not synchronized_directory_path.exists():
-            return video_count
+            return 0
 
-        for file in synchronized_directory_path.iterdir():
-            if file.is_file() and file.suffix.lower() == ".mp4":
-                video_count += 1
+        video_count = len(get_video_paths(synchronized_directory_path))
 
-        logger.info(f"Number of `.mp4`'s in {self.recording_info_model.synchronized_videos_folder_path}: {video_count}")
+        logger.info(f"Number of `.mp4`'s in {synchronized_directory_path}: {video_count}")
         return video_count
 
-    def get_number_of_frames_in_videos(self):
+    def get_number_of_frames_in_videos(self) -> Dict[str, int]:
         timestamps_directory_path = Path(self.recording_info_model.synchronized_videos_folder_path) / "timestamps"
-
-        if not timestamps_directory_path.exists():
-            return "No 'timestamps' directory found"  # TODO: Check frame status without using timestamps with openCV or FFProbe
 
         if timestamps_directory_path.exists():
             frame_counts = {}
@@ -253,9 +248,15 @@ class RecordingFolderStatusChecker:
             for npy_file in timestamps_directory_path.iterdir():
                 if npy_file.is_file() and npy_file.suffix.lower() == ".npy":
                     video_npy = np.load(str(npy_file))
-                    frame_counts[npy_file.name] = str(len(video_npy) - 1)
+                    frame_counts[npy_file.name] = len(video_npy) - 1
+        else:
+            logger.debug(f"No 'timestamps' directory, finding frame counts from synchronized videos")
+            try: 
+                frame_counts = get_number_of_frames_of_videos_in_a_folder(self.recording_info_model.synchronized_videos_folder_path)
+            except ValueError:
+                return {}
 
-            return frame_counts
+        return frame_counts
 
     def check_for_calibration_toml_with_different_name(self) -> bool:
         try:

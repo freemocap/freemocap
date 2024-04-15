@@ -63,11 +63,11 @@ def save_data(
         logger.debug("totalBodyCOM_frame_XYZ is None, could not save")
 
     if skeleton_segment_lengths_dict is not None:
-        logger.info("Saving skeleton segment lengths data")
+        logger.info("Saving rigid bones data")
         save_dictionary_to_json(
             save_path=processing_parameters.recording_info_model.output_data_folder_path,
-            file_name="mediapipe_skeleton_segment_lengths.json",
+            file_name="rigid_bones.json",
             dictionary=skeleton_segment_lengths_dict,
         )
     else:
-        logger.debug("skeleton_segment_lengths_dict is None, could not save")
+        logger.debug("rigid_bones_dict is None, could not save")

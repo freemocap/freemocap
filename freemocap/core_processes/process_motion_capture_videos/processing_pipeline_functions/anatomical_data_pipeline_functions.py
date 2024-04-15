@@ -47,10 +47,10 @@ def calculate_anatomical_data(
         segment_COM_frame_imgPoint_XYZ = totalBodyCOM_frame_XYZ = None
 
     logger.info("Enforcing rigid bones...")
-    skeleton_segment_lengths_dict = enforce_rigid_bones_from_skeleton(skeleton=skeleton)
+    rigid_bones_data = enforce_rigid_bones_from_skeleton(skeleton=skeleton)
 
     return {
         "segment_COM": segment_COM_frame_imgPoint_XYZ,
         "total_body_COM": totalBodyCOM_frame_XYZ,
-        "skeleton_segment_lengths": skeleton_segment_lengths_dict,
+        "rigid_bones_data": rigid_bones_data,
     }

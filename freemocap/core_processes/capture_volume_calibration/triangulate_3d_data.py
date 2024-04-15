@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
+from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
     save_3d_data_to_npy,
 )
 
@@ -74,9 +74,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--mediapipe_2d_data_path",
+        "--2d_data_path",
         type=str,
-        help="path to mediapipe 2d data",
+        help="path to 2d data",
         required=True,
     )
     parser.add_argument(
@@ -89,12 +89,6 @@ if __name__ == "__main__":
         "--calibration_file_path",
         type=str,
         help="path to calibration file",
-        required=False,
-    )
-    parser.add_argument(
-        "--mediapipe_confidence_cutoff_threshold",
-        type=float,
-        help="confidence cutoff threshold",
         required=False,
     )
     parser.add_argument(
@@ -111,13 +105,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    mediapipe_2d_data = np.load(args.mediapipe_2d_data_path)
-
-    if args.mediapipe_confidence_cutoff_threshold is None:
-        args.mediapipe_confidence_cutoff_threshold = 0.7  # default
+    data_2d = np.load(args.2d_data_path)
 
     if args.output_data_folder_path is None:
-        args.output_data_folder_path = Path(args.mediapipe_2d_data_path).parent
+        args.output_data_folder_path = Path(args.2d_data_path).parent
 
     if args.save_data_as_csv is None:
         args.save_data_as_csv = True  # default
@@ -129,7 +120,7 @@ if __name__ == "__main__":
         anipose_calibration_object = load_anipose_calibration_toml_from_path(args.calibration_file_path)
     else:
         anipose_calibration_object = load_anipose_calibration_toml_from_path(
-            Path(args.mediapipe_2d_data_path).parent.parent / "camera_calibration_data.toml"
+            Path(args.2d_data_path).parent.parent / "camera_calibration_data.toml"
         )
 
     (
@@ -138,8 +129,7 @@ if __name__ == "__main__":
         skeleton_reprojection_error_cam_fr_mar,
     ) = triangulate_3d_data(
         anipose_calibration_object=anipose_calibration_object,
-        image_2d_data=mediapipe_2d_data,
-        mediapipe_confidence_cutoff_threshold=args.mediapipe_confidence_cutoff_threshold,
+        image_2d_data=data_2d,
         use_triangulate_ransac=args.use_triangulate_ransac,
     )
     save_3d_data_to_npy(

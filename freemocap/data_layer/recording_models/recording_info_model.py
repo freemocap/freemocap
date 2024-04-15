@@ -254,7 +254,7 @@ class RecordingFolderStatusChecker:
             try: 
                 frame_counts = get_number_of_frames_of_videos_in_a_folder(self.recording_info_model.synchronized_videos_folder_path)
             except ValueError:
-                return {}
+                frame_counts = {}
 
         return frame_counts
 

@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 from pathlib import Path
+from typing import Optional
 import numpy as np
 
 
@@ -14,17 +15,15 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
 )
-from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
-
 
 logger = logging.getLogger(__name__)
 
 
 def save_data(
     skel3d_frame_marker_xyz: np.ndarray,
-    segment_COM_frame_imgPoint_XYZ: np.ndarray,
-    totalBodyCOM_frame_XYZ: np.ndarray,
-    skeleton_segment_lengths_dict: dict,
+    segment_COM_frame_imgPoint_XYZ: Optional[np.ndarray],
+    totalBodyCOM_frame_XYZ: Optional[np.ndarray],
+    rigid_bones_data: Optional[np.ndarray],
     processing_parameters: ProcessingParameterModel,
     queue: multiprocessing.Queue,
 ):
@@ -62,12 +61,12 @@ def save_data(
     else:
         logger.debug("totalBodyCOM_frame_XYZ is None, could not save")
 
-    if skeleton_segment_lengths_dict is not None:
+    if rigid_bones_data is not None:
         logger.info("Saving rigid bones data")
-        save_dictionary_to_json(
-            save_path=processing_parameters.recording_info_model.output_data_folder_path,
-            file_name="rigid_bones.json",
-            dictionary=skeleton_segment_lengths_dict,
+        save_numpy_array_to_disk(
+            array_to_save=rigid_bones_data,
+            file_name="rigid_bones.npy",
+            save_directory=path_to_folder_where_we_will_save_this_data,
         )
     else:
-        logger.debug("rigid_bones_dict is None, could not save")
+        logger.debug("rigid_bones_data is None, could not save")

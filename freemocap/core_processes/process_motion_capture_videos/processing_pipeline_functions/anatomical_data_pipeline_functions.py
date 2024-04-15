@@ -20,7 +20,7 @@ def calculate_anatomical_data(
     processing_parameters: ProcessingParameterModel,
     skel3d_frame_marker_xyz: np.ndarray,
     queue: multiprocessing.Queue,
-) -> Dict[str, Union[np.ndarray, Dict[str, np.ndarray], None]]:
+) -> Dict[str, Union[np.ndarray, None]]:
     if queue:
         handler = DirectQueueHandler(queue)
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))

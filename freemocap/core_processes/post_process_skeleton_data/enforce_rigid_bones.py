@@ -98,7 +98,25 @@ def adjust_children(
             adjust_children(child_marker, frame_index, adjustment, marker_data, joint_hierarchy)
 
 
-def enforce_rigid_bones_from_skeleton(skeleton: Skeleton) -> Dict[str, np.ndarray]:
+def merge_rigid_marker_data(rigid_marker_data: Dict[str, np.ndarray], segments: Dict[str, Segment]) -> np.ndarray:
+    """
+    Merges the center of mass data from multiple segments into a single array.
+
+    Parameters:
+    - segment_com_data: A dictionary where each key is a segment name and the value is the center of mass data for that segment.
+    - segments: A dictionary where each key is a segment name and the value is the Segment object for that segment.
+
+    Returns:
+    - A numpy array containing the merged center of mass data.
+    """
+
+    segment_names = list(segments.keys())
+    rigid_marker_data_list = [rigid_marker_data[segment_name] for segment_name in segment_names]
+
+    return np.stack(rigid_marker_data_list, axis=0)
+
+
+def enforce_rigid_bones_from_skeleton(skeleton: Skeleton) -> np.ndarray:
     """
     Calculates bone lengths and statistics from skeleton data and enforces rigid bones.
 
@@ -106,7 +124,7 @@ def enforce_rigid_bones_from_skeleton(skeleton: Skeleton) -> Dict[str, np.ndarra
     - skeleton: The Skeleton instance containing segment information, joint hierarchy, and marker data.
 
     Returns:
-    - A dictionary of adjusted marker positions.
+    - A numpy array of adjusted marker positions.
     """
     # TODO: Should this be a method of Skeleton?
     if not skeleton.segments:
@@ -126,4 +144,4 @@ def enforce_rigid_bones_from_skeleton(skeleton: Skeleton) -> Dict[str, np.ndarra
         joint_hierarchy=skeleton.joint_hierarchy,
     )
 
-    return rigid_marker_data
+    return merge_rigid_marker_data(rigid_marker_data=rigid_marker_data, segments=skeleton.segments)

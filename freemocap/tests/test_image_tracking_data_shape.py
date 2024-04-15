@@ -16,9 +16,9 @@ def test_image_tracking_data_shape(
     image_tracking_data_file_path,
 ):
     """
-    test that the `mediapipe 2d detection` process worked correctly by checking:
+    test that the `2d detection` process worked correctly by checking:
 
-    1. There is an `.npy` file containing the mediapipe 2d data in the `output_data_folder`
+    1. There is an `.npy` file containing the 2d data in the `output_data_folder`
     2. The dimensions of that `npy` (number of cameras, number of frames, [ need to do - number of tracked points], [pixelX, pixelY] matches the videos in the `synchronized videos` folder
 
     TODO - check number of tracked points vs 'expected' number of tracked points

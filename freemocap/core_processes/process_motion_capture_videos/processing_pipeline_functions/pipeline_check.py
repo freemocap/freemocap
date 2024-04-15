@@ -13,13 +13,13 @@ def processing_pipeline_check(processing_parameters: ProcessingParameterModel) -
     if not processing_parameters.tracking_parameters_model.run_image_tracking:
         if not status_check_dict["data2d_status_check"]:
             raise FileNotFoundError(
-                f"No mediapipe 2d data found at: {processing_parameters.recording_info_model.data_2d_npy_file_path}"
+                f"No 2d data found at: {processing_parameters.recording_info_model.data_2d_npy_file_path}"
             )
 
     if not processing_parameters.anipose_triangulate_3d_parameters_model.run_3d_triangulation:
         if not status_check_dict["data3d_status_check"]:
             raise FileNotFoundError(
-                f"No mediapipe 3d data found at: {processing_parameters.recording_info_model.data_3d_npy_file_path}"
+                f"No 3d data found at: {processing_parameters.recording_info_model.data_3d_npy_file_path}"
             )
     else:
         if not status_check_dict["calibration_toml_check"] and not status_check_dict["single_video_check"]:

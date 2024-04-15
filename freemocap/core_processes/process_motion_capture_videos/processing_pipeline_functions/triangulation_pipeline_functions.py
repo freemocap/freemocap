@@ -7,7 +7,7 @@ import numpy as np
 from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import (
     run_reprojection_error_filtering,
 )
-from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
+from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
     save_3d_data_to_npy,
 )
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
@@ -70,7 +70,7 @@ def get_triangulated_data(
 
         if not processing_parameters.recording_info_model.data2d_status_check:
             raise FileNotFoundError(
-                f"No mediapipe 2d data found at: {processing_parameters.recording_info_model.data_2d_npy_file_path}"
+                f"No 2d data found at: {processing_parameters.recording_info_model.data_2d_npy_file_path}"
             )
 
         anipose_calibration_object = load_anipose_calibration_toml_from_path(

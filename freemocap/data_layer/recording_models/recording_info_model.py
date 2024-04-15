@@ -250,9 +250,11 @@ class RecordingFolderStatusChecker:
                     video_npy = np.load(str(npy_file))
                     frame_counts[npy_file.name] = len(video_npy) - 1
         else:
-            logger.debug(f"No 'timestamps' directory, finding frame counts from synchronized videos")
-            try: 
-                frame_counts = get_number_of_frames_of_videos_in_a_folder(self.recording_info_model.synchronized_videos_folder_path)
+            logger.debug("No 'timestamps' directory, finding frame counts from synchronized videos")
+            try:
+                frame_counts = get_number_of_frames_of_videos_in_a_folder(
+                    self.recording_info_model.synchronized_videos_folder_path
+                )
             except ValueError:
                 frame_counts = {}
 

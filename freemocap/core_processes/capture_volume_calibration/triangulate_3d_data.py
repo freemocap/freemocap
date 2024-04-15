@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--2d_data_path",
+        "--data_2d_path",
         type=str,
         help="path to 2d data",
         required=True,
@@ -105,10 +105,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    data_2d = np.load(args.2d_data_path)
+    data_2d = np.load(args.data_2d_path)
 
     if args.output_data_folder_path is None:
-        args.output_data_folder_path = Path(args.2d_data_path).parent
+        args.output_data_folder_path = Path(args.data_2d_path).parent
 
     if args.save_data_as_csv is None:
         args.save_data_as_csv = True  # default
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         anipose_calibration_object = load_anipose_calibration_toml_from_path(args.calibration_file_path)
     else:
         anipose_calibration_object = load_anipose_calibration_toml_from_path(
-            Path(args.2d_data_path).parent.parent / "camera_calibration_data.toml"
+            Path(args.data_2d_path).parent.parent / "camera_calibration_data.toml"
         )
 
     (

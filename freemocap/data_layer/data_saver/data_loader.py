@@ -8,6 +8,7 @@ import pandas as pd
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeModelInfo,
 )
+from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, SkeletonSchema
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -34,10 +35,12 @@ class DataLoader:
         recording_folder_path: Union[str, Path],
         include_hands: bool = True,
         include_face: bool = True,
+        model_info: ModelInfo = MediapipeModelInfo(),
     ):
         self._recording_folder_path = Path(recording_folder_path)
         self.include_hands = include_hands
         self.include_face = include_face
+        self._model_info = model_info
 
         self._recording_name = self._recording_folder_path.name
         self._output_folder_path = Path(get_output_data_folder_path(self._recording_folder_path))
@@ -178,7 +181,10 @@ class DataLoader:
             z=self.center_of_mass_xyz[frame_number, 2],
         )
 
-        for segment_number, segment_name in enumerate(MediapipeModelInfo.segment_names):
+        if self._model_info.segment_connections is None:
+            raise ValueError("Segment connections are not defined.")
+
+        for segment_number, segment_name in enumerate(self._model_info.segment_connections.keys()):
             com_data[segment_name] = Point(
                 x=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 0],
                 y=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 1],
@@ -214,5 +220,5 @@ class DataLoader:
             recording_data_by_frame_number[frame_number] = self.load_frame_data(frame_number).to_dict()
         return recording_data_by_frame_number
 
-    def _load_skeleton_schema(self):
+    def _load_skeleton_schema(self):  # TODO: replace this with updated Skeleton class
         self.skeleton_schema = SkeletonSchema(schema_dict=MediapipeModelInfo.skeleton_schema)

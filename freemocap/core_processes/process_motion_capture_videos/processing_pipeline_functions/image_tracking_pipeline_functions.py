@@ -4,8 +4,8 @@ from pathlib import Path
 
 import numpy as np
 from skellytracker.process_folder_of_videos import process_folder_of_videos
-from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
-    MediapipeTrackingParams,
+from skellytracker.trackers.base_tracker.base_tracking_params import (
+    BaseTrackingParams,
 )
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
@@ -57,20 +57,21 @@ def run_image_tracking_pipeline(
 
     if not processing_parameters.recording_info_model.data2d_status_check:
         raise FileNotFoundError(
-            f"No mediapipe 2d data found at: {processing_parameters.recording_info_model.data_2d_npy_file_path}"
+            f"No 2d data found at: {processing_parameters.recording_info_model.data_2d_npy_file_path}"
         )
 
     return image_data_numCams_numFrames_numTrackedPts_XYZ
 
 
 def run_image_tracking(
-    tracking_params: MediapipeTrackingParams,
+    tracking_params: BaseTrackingParams,
     synchronized_videos_folder_path: Path,
     output_data_folder_path: Path,
     kill_event: multiprocessing.Event = None,
     use_tqdm: bool = True,
 ):
-    if tracking_params.use_yolo_crop_method:
+    # TODO: More robust way to determine which tracker is being used
+    if hasattr(tracking_params, "use_yolo_crop_method") and tracking_params.use_yolo_crop_method:
         tracker_type = "YOLOMediapipeComboTracker"
     else:
         tracker_type = "MediapipeHolisticTracker"

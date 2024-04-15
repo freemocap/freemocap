@@ -37,7 +37,7 @@ def save_data(
     logger.info("Saving post-processed data")
     save_numpy_array_to_disk(
         array_to_save=skel3d_frame_marker_xyz,
-        file_name="mediaPipeSkel_3d_body_hands_face.npy",
+        file_name="mediaPipeSkel_3d_body_hands_face.npy",  # TODO: No more mediapipe names!
         save_directory=path_to_folder_where_we_will_save_this_data,
     )
 

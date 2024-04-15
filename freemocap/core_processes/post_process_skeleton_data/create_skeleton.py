@@ -6,7 +6,9 @@ from freemocap.data_layer.skeleton_models.segments import Segment, SegmentAnthro
 from freemocap.data_layer.skeleton_models.skeleton import Skeleton
 
 
-def create_marker_info(marker_list: List[str], virtual_markers: Optional[Dict[str, Dict[str, List]]] = None) -> MarkerInfo:
+def create_marker_info(
+    marker_list: List[str], virtual_markers: Optional[Dict[str, Dict[str, List]]] = None
+) -> MarkerInfo:
     """
     Creates a MarkerInfo instance from a list of actual marker names and optional virtual markers.
 
@@ -24,12 +26,13 @@ def create_marker_info(marker_list: List[str], virtual_markers: Optional[Dict[st
         marker_hub.add_virtual_markers(virtual_markers)
     return marker_hub
 
+
 def create_skeleton_model(
-    actual_markers: List[str], 
-    segment_connections: Optional[Dict[str, Segment]] = None, 
+    actual_markers: List[str],
+    segment_connections: Optional[Dict[str, Segment]] = None,
     virtual_markers: Optional[Dict[str, Dict[str, List]]] = None,
     joint_hierarchy: Optional[Dict[str, List[str]]] = None,
-    center_of_mass_info: Optional[Dict[str, SegmentAnthropometry]] = None
+    center_of_mass_info: Optional[Dict[str, SegmentAnthropometry]] = None,
 ) -> Skeleton:
     """
     Creates a Skeleton model that includes both actual and optionally virtual markers
@@ -41,15 +44,12 @@ def create_skeleton_model(
     - virtual_markers: Optional; a dictionary with information necessary to compute virtual markers.
     - joint_hierarchy: Optional; a dictionary with joint names as keys and lists of connected marker names as values.
     - center_of_mass_info: Optional; a dictionary containing segment mass percentages
-    
+
     Returns:
     - An instance of the Skeleton class that represents the complete skeletal model including markers, segments,
       and optionally, joint hierarchy data.
     """
-    marker_hub = create_marker_info(
-        marker_list=actual_markers,
-        virtual_markers=virtual_markers
-    )
+    marker_hub = create_marker_info(marker_list=actual_markers, virtual_markers=virtual_markers)
 
     skeleton_model = Skeleton(markers=marker_hub)
 

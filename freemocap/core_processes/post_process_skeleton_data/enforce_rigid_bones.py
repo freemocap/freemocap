@@ -100,7 +100,7 @@ def adjust_children(
 
 def enforce_rigid_bones_from_skeleton(skeleton: Skeleton) -> Dict[str, np.ndarray]:
     """
-    Calculates bone lengths and statistics form skeleton data and enforces rigid bones.
+    Calculates bone lengths and statistics from skeleton data and enforces rigid bones.
 
     Parameters:
     - skeleton: The Skeleton instance containing segment information, joint hierarchy, and marker data.

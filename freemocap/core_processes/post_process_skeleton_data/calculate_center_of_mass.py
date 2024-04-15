@@ -100,15 +100,14 @@ def get_all_segment_markers(skeleton: Skeleton) -> Dict[str, Dict[str, np.ndarra
 def merge_segment_com_data(segment_com_data: Dict[str, np.ndarray], segments: Dict[str, Segment]) -> np.ndarray:
     """
     Merges the center of mass data from multiple segments into a single array.
-    
+
     Parameters:
     - segment_com_data: A dictionary where each key is a segment name and the value is the center of mass data for that segment.
     - segments: A dictionary where each key is a segment name and the value is the Segment object for that segment.
-    
+
     Returns:
     - A numpy array containing the merged center of mass data.
     """
-    # TODO: Since we're pulling segment names from a dict, we're not guaranteeing order!
     segment_names = list(segments.keys())
     com_data_list = [segment_com_data[segment_name] for segment_name in segment_names]
 
@@ -128,7 +127,7 @@ def calculate_center_of_mass_from_skeleton(skeleton: Skeleton) -> Tuple[np.ndarr
     """
     if skeleton.center_of_mass_definitions is None:
         raise ValueError("Segment center of mass definitions must be defined before calculating center of mass.")
-    
+
     if skeleton.segments is None:
         raise ValueError("Segments must be defined before calculating center of mass.")
 

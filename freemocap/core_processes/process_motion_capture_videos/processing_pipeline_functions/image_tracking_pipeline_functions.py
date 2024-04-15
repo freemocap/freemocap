@@ -29,7 +29,7 @@ def run_image_tracking_pipeline(
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
         logger.addHandler(handler)
 
-    if not processing_parameters.mediapipe_parameters_model.run_image_tracking:
+    if not processing_parameters.tracking_parameters_model.run_image_tracking:
         logger.info(
             f"Skipping 2d skeleton detection and loading data from: {processing_parameters.recording_info_model.mediapipe_2d_data_npy_file_path}"
         )
@@ -45,7 +45,7 @@ def run_image_tracking_pipeline(
         logger.info(LOG_VIEW_PROGRESS_BAR_STRING)
         # 2d skeleton detection
         image_data_numCams_numFrames_numTrackedPts_XYZ = run_image_tracking(
-            tracking_params=processing_parameters.mediapipe_parameters_model,
+            tracking_params=processing_parameters.tracking_parameters_model,
             synchronized_videos_folder_path=Path(
                 processing_parameters.recording_info_model.synchronized_videos_folder_path
             ),

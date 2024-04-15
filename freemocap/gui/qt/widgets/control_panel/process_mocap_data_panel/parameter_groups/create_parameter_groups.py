@@ -239,7 +239,7 @@ def extract_parameter_model_from_parameter_tree(
     parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
 
     return ProcessingParameterModel(
-        mediapipe_parameters_model=MediapipeTrackingParams(
+        tracking_parameters_model=MediapipeTrackingParams(
             mediapipe_model_complexity=get_integer_from_mediapipe_model_complexity(
                 parameter_values_dictionary[MEDIAPIPE_MODEL_COMPLEXITY]
             ),

@@ -126,7 +126,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     children=[
                         self._create_new_run_this_step_parameter(run_step_name=RUN_IMAGE_TRACKING_NAME),
                         self._create_num_processes_parameter(),
-                        create_mediapipe_parameter_group(session_processing_parameter_model.mediapipe_parameters_model),
+                        create_mediapipe_parameter_group(session_processing_parameter_model.tracking_parameters_model),
                     ],
                     tip="Methods for tracking 2d points in images (e.g. mediapipe, deeplabcut(TODO), openpose(TODO), etc ...)",
                 ),

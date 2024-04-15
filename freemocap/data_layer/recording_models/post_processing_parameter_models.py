@@ -36,7 +36,7 @@ class PostProcessingParametersModel(BaseModel):
 
 class ProcessingParameterModel(BaseModel):
     recording_info_model: RecordingInfoModel = None
-    mediapipe_parameters_model: BaseTrackingParams = MediapipeTrackingParams()
+    tracking_parameters_model: BaseTrackingParams = MediapipeTrackingParams()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel()
     post_processing_parameters_model: PostProcessingParametersModel = PostProcessingParametersModel()
     tracking_model_info: ModelInfo = MediapipeModelInfo()

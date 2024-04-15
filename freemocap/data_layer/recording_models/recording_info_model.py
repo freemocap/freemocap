@@ -6,15 +6,15 @@ import numpy as np
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     CENTER_OF_MASS_FOLDER_NAME,
-    MEDIAPIPE_2D_NPY_FILE_NAME,
-    RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
+    DATA_2D_NPY_FILE_NAME,
+    RAW_3D_NPY_FILE_NAME,
     OUTPUT_DATA_FOLDER_NAME,
     RAW_DATA_FOLDER_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-    RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
+    RAW_REPROJECTION_ERROR_NPY_FILE_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
     ANNOTATED_VIDEOS_FOLDER_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME,
+    DATA_3D_NPY_FILE_NAME,
 )
 from freemocap.system.paths_and_filenames.path_getters import create_camera_calibration_file_name, get_blender_file_path
 from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
@@ -86,24 +86,24 @@ class RecordingInfoModel:
         return str(Path(self._path) / ANNOTATED_VIDEOS_FOLDER_NAME)
 
     @property
-    def mediapipe_2d_data_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / MEDIAPIPE_2D_NPY_FILE_NAME)
+    def data_2d_npy_file_path(self):
+        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / DATA_2D_NPY_FILE_NAME)
 
     @property
-    def mediapipe_3d_data_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / MEDIAPIPE_3D_NPY_FILE_NAME)
+    def data_3d_npy_file_path(self):
+        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / DATA_3D_NPY_FILE_NAME)
 
     @property
-    def raw_mediapipe_3d_data_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / RAW_MEDIAPIPE_3D_NPY_FILE_NAME)
+    def raw_data_3d_npy_file_path(self):
+        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / RAW_3D_NPY_FILE_NAME)
 
     @property
-    def mediapipe_reprojection_error_data_npy_file_path(self):
+    def reprojection_error_data_npy_file_path(self):
         return str(
             Path(self._path)
             / OUTPUT_DATA_FOLDER_NAME
             / RAW_DATA_FOLDER_NAME
-            / RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME
+            / RAW_REPROJECTION_ERROR_NPY_FILE_NAME
         )
 
     @property
@@ -186,7 +186,7 @@ class RecordingFolderStatusChecker:
         try:
             test_image_tracking_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
-                image_tracking_data_file_path=self.recording_info_model.mediapipe_2d_data_npy_file_path,
+                image_tracking_data_file_path=self.recording_info_model.data_2d_npy_file_path,
             )
 
             return True
@@ -197,8 +197,8 @@ class RecordingFolderStatusChecker:
         try:
             test_mediapipe_skeleton_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
-                raw_skeleton_npy_file_path=self.recording_info_model.mediapipe_3d_data_npy_file_path,
-                reprojection_error_file_path=self.recording_info_model.mediapipe_reprojection_error_data_npy_file_path,
+                raw_skeleton_npy_file_path=self.recording_info_model.data_3d_npy_file_path,
+                reprojection_error_file_path=self.recording_info_model.reprojection_error_data_npy_file_path,
             )
             return True
         except AssertionError:

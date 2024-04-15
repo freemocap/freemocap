@@ -11,10 +11,10 @@ from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
 
 from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, SkeletonSchema
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
-    MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
-    MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
-    MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
-    MEDIAPIPE_FACE_3D_DATAFRAME_CSV_FILE_NAME,
+    BODY_3D_DATAFRAME_CSV_FILE_NAME,
+    RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
+    LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
+    FACE_3D_DATAFRAME_CSV_FILE_NAME,
 )
 from freemocap.system.paths_and_filenames.path_getters import (
     get_output_data_folder_path,
@@ -55,13 +55,13 @@ class DataLoader:
         self._validate_data()
 
     def _load_data_frames(self):
-        self.body_dataframe = self._load_dataframe(MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME)
+        self.body_dataframe = self._load_dataframe(BODY_3D_DATAFRAME_CSV_FILE_NAME)
         self.number_of_frames = len(self.body_dataframe)
         if self.include_hands:
-            self.right_hand_dataframe = self._load_dataframe(MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
-            self.left_hand_dataframe = self._load_dataframe(MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
+            self.right_hand_dataframe = self._load_dataframe(RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
+            self.left_hand_dataframe = self._load_dataframe(LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
         if self.include_face:
-            self.face_dataframe = self._load_dataframe(MEDIAPIPE_FACE_3D_DATAFRAME_CSV_FILE_NAME)
+            self.face_dataframe = self._load_dataframe(FACE_3D_DATAFRAME_CSV_FILE_NAME)
 
     def _load_dataframe(self, filename):
         return pd.read_csv(self._output_folder_path / filename)

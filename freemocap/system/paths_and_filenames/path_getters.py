@@ -17,13 +17,13 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     OUTPUT_DATA_FOLDER_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
     RAW_DATA_FOLDER_NAME,
-    RAW_MEDIAPIPE_3D_NPY_FILE_NAME,
+    RAW_3D_NPY_FILE_NAME,
     CENTER_OF_MASS_FOLDER_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-    MEDIAPIPE_2D_NPY_FILE_NAME,
-    RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME,
+    DATA_2D_NPY_FILE_NAME,
+    RAW_REPROJECTION_ERROR_NPY_FILE_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME,
+    DATA_3D_NPY_FILE_NAME,
     GUI_STATE_JSON_FILENAME,
 )
 
@@ -240,8 +240,8 @@ def get_raw_skeleton_npy_file_name(data_folder_name: Union[str, Path]) -> str:
     raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
-        if RAW_MEDIAPIPE_3D_NPY_FILE_NAME in raw_data_npy_path_list:
-            return str(raw_data_subfolder_path / RAW_MEDIAPIPE_3D_NPY_FILE_NAME)
+        if RAW_3D_NPY_FILE_NAME in raw_data_npy_path_list:
+            return str(raw_data_subfolder_path / RAW_3D_NPY_FILE_NAME)
 
     logger.debug(list(Path(data_folder_name).glob("*")))
     logger.debug(list(Path(raw_data_subfolder_path).glob("*")))
@@ -249,7 +249,7 @@ def get_raw_skeleton_npy_file_name(data_folder_name: Union[str, Path]) -> str:
 
 
 def get_full_npy_file_path(output_data_folder: Union[str, Path]) -> str:
-    path = Path(output_data_folder) / MEDIAPIPE_3D_NPY_FILE_NAME
+    path = Path(output_data_folder) / DATA_3D_NPY_FILE_NAME
     return str(path)
 
 
@@ -280,8 +280,8 @@ def get_image_tracking_data_file_name(data_folder_name: Union[str, Path]) -> str
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
 
-        if MEDIAPIPE_2D_NPY_FILE_NAME in raw_data_npy_path_list:
-            return str(raw_data_subfolder_path / MEDIAPIPE_2D_NPY_FILE_NAME)
+        if DATA_2D_NPY_FILE_NAME in raw_data_npy_path_list:
+            return str(raw_data_subfolder_path / DATA_2D_NPY_FILE_NAME)
 
     raise Exception(f"Could not find a 2d data file in path {str(data_folder_name)}")
 
@@ -291,7 +291,7 @@ def get_reprojection_error_file_path(data_folder_name: Union[str, Path]) -> str:
     if raw_data_subfolder_path.exists:
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
 
-        if RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME in raw_data_npy_path_list:
-            return str(raw_data_subfolder_path / RAW_MEDIAPIPE_REPROJECTION_ERROR_NPY_FILE_NAME)
+        if RAW_REPROJECTION_ERROR_NPY_FILE_NAME in raw_data_npy_path_list:
+            return str(raw_data_subfolder_path / RAW_REPROJECTION_ERROR_NPY_FILE_NAME)
 
     raise Exception(f"Could not find reprojection error data file in path {str(data_folder_name)}")

@@ -11,7 +11,8 @@ from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     CENTER_OF_MASS_FOLDER_NAME,
-    MEDIAPIPE_3D_NPY_FILE_NAME,
+    DATA_3D_NPY_FILE_NAME,
+    RIGID_BONES_NPY_FILE_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
 )
@@ -37,7 +38,7 @@ def save_data(
     logger.info("Saving post-processed data")
     save_numpy_array_to_disk(
         array_to_save=skel3d_frame_marker_xyz,
-        file_name=MEDIAPIPE_3D_NPY_FILE_NAME,
+        file_name=DATA_3D_NPY_FILE_NAME,
         save_directory=path_to_folder_where_we_will_save_this_data,
     )
 
@@ -65,7 +66,7 @@ def save_data(
         logger.info("Saving rigid bones data")
         save_numpy_array_to_disk(
             array_to_save=rigid_bones_data,
-            file_name="rigid_bones.npy",
+            file_name=RIGID_BONES_NPY_FILE_NAME,
             save_directory=path_to_folder_where_we_will_save_this_data,
         )
     else:

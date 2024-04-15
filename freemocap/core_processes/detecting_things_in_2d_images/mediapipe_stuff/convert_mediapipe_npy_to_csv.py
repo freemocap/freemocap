@@ -8,9 +8,9 @@ import pandas as pd
 from mediapipe.python.solutions import holistic as mp_holistic
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
-    MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
-    MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME,
-    MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
+    RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
+    BODY_3D_DATAFRAME_CSV_FILE_NAME,
+    LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
 )
 
 logger = logging.getLogger(__name__)
@@ -150,19 +150,19 @@ def convert_mediapipe_npy_to_csv(
     body_flat = body_3d_xyz.reshape(number_of_frames, number_of_body_points * 3)
 
     body_dataframe = pd.DataFrame(body_flat, columns=body_3d_xyz_header)
-    body_dataframe.to_csv(str(Path(output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME), index=False)
+    body_dataframe.to_csv(str(Path(output_data_folder_path) / BODY_3D_DATAFRAME_CSV_FILE_NAME), index=False)
 
     right_hand_flat = right_hand_3d_xyz.reshape(number_of_frames, number_of_hand_points * 3)
     right_hand_dataframe = pd.DataFrame(right_hand_flat, columns=right_hand_3d_xyz_header)
     right_hand_dataframe.to_csv(
-        str(Path(output_data_folder_path) / MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
+        str(Path(output_data_folder_path) / RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
         index=False,
     )
 
     left_hand_flat = left_hand_3d_xyz.reshape(number_of_frames, number_of_hand_points * 3)
     left_hand_dataframe = pd.DataFrame(left_hand_flat, columns=left_hand_3d_xyz_header)
     left_hand_dataframe.to_csv(
-        str(Path(output_data_folder_path) / MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
+        str(Path(output_data_folder_path) / LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
         index=False,
     )
 
@@ -299,19 +299,19 @@ def convert_mediapipe_npy_to_csv(
     body_flat = body_3d_xyz.reshape(number_of_frames, number_of_body_points * 3)
 
     body_dataframe = pd.DataFrame(body_flat, columns=body_3d_xyz_header)
-    body_dataframe.to_csv(str(Path(output_data_folder_path) / MEDIAPIPE_BODY_3D_DATAFRAME_CSV_FILE_NAME), index=False)
+    body_dataframe.to_csv(str(Path(output_data_folder_path) / BODY_3D_DATAFRAME_CSV_FILE_NAME), index=False)
 
     right_hand_flat = right_hand_3d_xyz.reshape(number_of_frames, number_of_hand_points * 3)
     right_hand_dataframe = pd.DataFrame(right_hand_flat, columns=right_hand_3d_xyz_header)
     right_hand_dataframe.to_csv(
-        str(Path(output_data_folder_path) / MEDIAPIPE_RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
+        str(Path(output_data_folder_path) / RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
         index=False,
     )
 
     left_hand_flat = left_hand_3d_xyz.reshape(number_of_frames, number_of_hand_points * 3)
     left_hand_dataframe = pd.DataFrame(left_hand_flat, columns=left_hand_3d_xyz_header)
     left_hand_dataframe.to_csv(
-        str(Path(output_data_folder_path) / MEDIAPIPE_LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
+        str(Path(output_data_folder_path) / LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME),
         index=False,
     )
 

@@ -368,7 +368,7 @@ class MainWindow(QMainWindow):
 
         if active_recording_info.data3d_status_check:
             self._skelly_viewer_widget.load_skeleton_data(
-                mediapipe_skeleton_npy_path=active_recording_info.mediapipe_3d_data_npy_file_path
+                mediapipe_skeleton_npy_path=active_recording_info.data_3d_npy_file_path
             )
 
         if active_recording_info.data2d_status_check:

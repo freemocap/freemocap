@@ -4,8 +4,8 @@ from typing import Union
 
 import numpy as np
 
-from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
-    save_mediapipe_3d_data_to_npy,
+from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
+    save_3d_data_to_npy,
 )
 from freemocap.utilities.geometry.project_3d_data_to_z_plane import project_3d_data_to_z_plane
 
@@ -31,7 +31,7 @@ def process_single_camera_skeleton_data(
             skel3d_frame_marker_xyz=input_image_data_frame_marker_xyz
         )
 
-        save_mediapipe_3d_data_to_npy(
+        save_3d_data_to_npy(
             data3d_numFrames_numTrackedPoints_XYZ=raw_skel3d_frame_marker_xyz,
             data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
             data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,

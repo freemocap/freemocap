@@ -5,8 +5,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 
-from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
-    save_mediapipe_3d_data_to_npy,
+from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
+    save_3d_data_to_npy,
 )
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
@@ -49,14 +49,14 @@ def run_reprojection_error_filtering(
         reprojection_error_camera_frame_marker=skeleton_reprojection_error_cam_fr_mar,
         reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
         reprojection_error_confidence_threshold=processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
-        mediapipe_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
+        image_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
         anipose_calibration_object=anipose_calibration_object,
         num_tracked_points=num_tracked_points,
         use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
         minimum_cameras_to_reproject=processing_parameters.anipose_triangulate_3d_parameters_model.minimum_cameras_to_reproject,
     )
-    save_mediapipe_3d_data_to_npy(
+    save_3d_data_to_npy(
         data3d_numFrames_numTrackedPoints_XYZ=reprojection_filtered_skel3d_frame_marker_xyz,
         data3d_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_fr_mar,
         data3d_numCams_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_cam_fr_mar,
@@ -79,14 +79,14 @@ def filter_by_reprojection_error(
     reprojection_error_camera_frame_marker: np.ndarray,
     reprojection_error_frame_marker: np.ndarray,
     reprojection_error_confidence_threshold: float,
-    mediapipe_2d_data: np.ndarray,
+    image_2d_data: np.ndarray,
     raw_skel3d_frame_marker_xyz: np.ndarray,
     anipose_calibration_object,
     num_tracked_points: int,
     use_triangulate_ransac: bool = False,
     minimum_cameras_to_reproject: int = 3,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    total_cameras = mediapipe_2d_data.shape[0]
+    total_cameras = image_2d_data.shape[0]
     num_cameras_to_remove = 1
 
     if total_cameras <= minimum_cameras_to_reproject:
@@ -99,7 +99,7 @@ def filter_by_reprojection_error(
             reprojection_error_camera_frame_marker,
         )
 
-    body2d_camera_frame_marker_xy = mediapipe_2d_data[:, :, :num_tracked_points, :2]
+    body2d_camera_frame_marker_xy = image_2d_data[:, :, :num_tracked_points, :2]
     bodyReprojErr_camera_frame_marker = reprojection_error_camera_frame_marker[:, :, :num_tracked_points]
 
     reprojection_error_confidence_threshold = min(max(reprojection_error_confidence_threshold, 0), 100)
@@ -124,7 +124,7 @@ def filter_by_reprojection_error(
             new_reprojError_cam_frame_marker,
         ) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
-            mediapipe_2d_data=data_to_reproject_camera_frame_marker_xy,
+            image_2d_data=data_to_reproject_camera_frame_marker_xy,
             use_triangulate_ransac=use_triangulate_ransac,
         )
 

@@ -31,11 +31,11 @@ def run_image_tracking_pipeline(
 
     if not processing_parameters.tracking_parameters_model.run_image_tracking:
         logger.info(
-            f"Skipping 2d skeleton detection and loading data from: {processing_parameters.recording_info_model.mediapipe_2d_data_npy_file_path}"
+            f"Skipping 2d skeleton detection and loading data from: {processing_parameters.recording_info_model.data_2d_npy_file_path}"
         )
         try:
             image_data_numCams_numFrames_numTrackedPts_XYZ = np.load(
-                processing_parameters.recording_info_model.mediapipe_2d_data_npy_file_path
+                processing_parameters.recording_info_model.data_2d_npy_file_path
             )
         except Exception as e:
             logger.error(e)
@@ -57,7 +57,7 @@ def run_image_tracking_pipeline(
 
     if not processing_parameters.recording_info_model.data2d_status_check:
         raise FileNotFoundError(
-            f"No mediapipe 2d data found at: {processing_parameters.recording_info_model.mediapipe_2d_data_npy_file_path}"
+            f"No mediapipe 2d data found at: {processing_parameters.recording_info_model.data_2d_npy_file_path}"
         )
 
     return image_data_numCams_numFrames_numTrackedPts_XYZ

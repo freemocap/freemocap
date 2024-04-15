@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
-    save_mediapipe_3d_data_to_npy,
+    save_3d_data_to_npy,
 )
 
 logger = logging.getLogger(__name__)
@@ -13,14 +13,14 @@ logger = logging.getLogger(__name__)
 
 def triangulate_3d_data(
     anipose_calibration_object,
-    mediapipe_2d_data: np.ndarray,
+    image_2d_data: np.ndarray,
     use_triangulate_ransac: bool = False,
     kill_event: multiprocessing.Event = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    number_of_cameras = mediapipe_2d_data.shape[0]
-    number_of_frames = mediapipe_2d_data.shape[1]
-    number_of_tracked_points = mediapipe_2d_data.shape[2]
-    number_of_spatial_dimensions = mediapipe_2d_data.shape[3]
+    number_of_cameras = image_2d_data.shape[0]
+    number_of_frames = image_2d_data.shape[1]
+    number_of_tracked_points = image_2d_data.shape[2]
+    number_of_spatial_dimensions = image_2d_data.shape[3]
 
     if not number_of_spatial_dimensions == 2:
         logger.error(
@@ -30,7 +30,7 @@ def triangulate_3d_data(
 
     # reshape data to collapse across 'frames' so it becomes [number_of_cameras,
     # number_of_2d_points(numFrames*numPoints), XY]
-    data2d_flat = mediapipe_2d_data.reshape(number_of_cameras, -1, 2)
+    data2d_flat = image_2d_data.reshape(number_of_cameras, -1, 2)
 
     logger.info(
         f"Reconstructing 3d points from 2d points with shape: \n"
@@ -138,11 +138,11 @@ if __name__ == "__main__":
         skeleton_reprojection_error_cam_fr_mar,
     ) = triangulate_3d_data(
         anipose_calibration_object=anipose_calibration_object,
-        mediapipe_2d_data=mediapipe_2d_data,
+        image_2d_data=mediapipe_2d_data,
         mediapipe_confidence_cutoff_threshold=args.mediapipe_confidence_cutoff_threshold,
         use_triangulate_ransac=args.use_triangulate_ransac,
     )
-    save_mediapipe_3d_data_to_npy(
+    save_3d_data_to_npy(
         data3d_numFrames_numTrackedPoints_XYZ=skel3d_frame_marker_xyz,
         data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
         data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,

@@ -301,12 +301,10 @@ class MainWindow(QMainWindow):
             logger.error("Blender executable path is None!")
             return
 
-        self._visualization_control_panel.get_user_selected_method_string()
         self._export_to_blender_thread_worker = ExportToBlenderThreadWorker(
             recording_path=recording_path,
-            blender_file_path=get_blender_file_path(recording_path),
-            blender_executable_path=self._visualization_control_panel.blender_executable_path,
-            blender_method=self._visualization_control_panel.get_user_selected_method_string(),
+            blender_file_path=Path(get_blender_file_path(recording_path)),
+            blender_executable_path=Path(self._visualization_control_panel.blender_executable_path),
             kill_thread_event=self._kill_thread_event,
         )
         self._export_to_blender_thread_worker.start()

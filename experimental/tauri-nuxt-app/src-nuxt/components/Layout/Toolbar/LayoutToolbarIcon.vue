@@ -1,7 +1,7 @@
 <template>
-  <div class="sidebar-icon group">
+  <div class="toolbar-icon group">
     <slot></slot>
-    <span class="sidebar-tooltip group-hover:scale-100">
+    <span class="toolbar-tooltip group-hover:scale-100">
       {{ text }}
     </span>
   </div>
@@ -20,12 +20,12 @@ const {text} = defineProps({
 
 
 <style scoped>
-.sidebar-icon {
+.toolbar-icon {
   @apply flex items-center justify-center w-12 h-12 bg-primary text-white rounded-lg cursor-pointer;
   position: relative;
 }
 
-.sidebar-tooltip {
+.toolbar-tooltip {
   @apply absolute top-0 left-0 transform scale-0 bg-black text-white p-2 rounded-lg;
   transition: transform 0.2s;
   transform-origin: 100% 0;

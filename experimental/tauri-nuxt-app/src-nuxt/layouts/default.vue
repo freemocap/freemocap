@@ -2,9 +2,17 @@
 
 </script>
 <template>
-  <div class="flex">
-    <SideBar/>
-    <slot/>
+  <div class="flex flex-col h-screen">
+    <header>
+      <LayoutHeader/>
+    </header>
+    <main class="flex flex-1 overflow-hidden">
+      <LayoutToolbarPanel/>
+      <slot/>
+    </main>
+    <footer >
+      <LayoutFooter/>
+    </footer>
   </div>
 </template>
 <style scoped>

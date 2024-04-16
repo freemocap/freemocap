@@ -34,13 +34,13 @@ def test_image_tracking_data_shape(
         image_tracking_data.shape[0] == number_of_videos
     ), f"Number of videos in {image_tracking_data_file_path} does not match number of videos in synchronized videos folder"
 
-    frame_count = get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path)
+    frame_counts = list(get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path).values())
 
     assert (
-        len(set(frame_count)) == 1
-    ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_count}"
+        len(set(frame_counts)) == 1
+    ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_counts}"
     assert (
-        image_tracking_data.shape[1] == frame_count[0]
+        image_tracking_data.shape[1] == frame_counts[0]
     ), f"Number of frames in {image_tracking_data_file_path} does not match number of frames of videos in {synchronized_video_folder_path}"
 
     # TODO - check number of tracked points vs 'expected' number of tracked points

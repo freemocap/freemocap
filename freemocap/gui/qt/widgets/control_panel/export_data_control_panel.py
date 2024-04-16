@@ -1,12 +1,9 @@
 import logging
 from pathlib import Path
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QGroupBox,
     QVBoxLayout,
     QPushButton,
-    QRadioButton,
     QWidget,
     QCheckBox,
     QLabel,
@@ -33,35 +30,12 @@ class VisualizationControlPanel(QWidget):
         self._generate_jupyter_notebook = QPushButton("Generate Jupyter Notebook")
         self._layout.addWidget(self._generate_jupyter_notebook)
 
-        groupbox = QGroupBox("Export to Blender", parent=self)
-        self._layout.addWidget(groupbox)
-        vbox = QVBoxLayout()
-        vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.setAlignment(Qt.AlignmentFlag.AlignTop)
-        groupbox.setLayout(vbox)
-
         self._export_to_blender_button = QPushButton("Export to Blender")
         self.export_to_blender_button.setObjectName("export_to_blender_button")
-        groupbox.layout().addWidget(self._export_to_blender_button)
+        self._layout.addWidget(self._export_to_blender_button)
 
         self._open_in_blender_automatically_checkbox = QCheckBox("Open in Blender automatically")
         self._open_in_blender_automatically_checkbox.setChecked(True)
-        # groupbox.layout().addWidget(self._open_in_blender_automatically_checkbox)
-
-        self._use_ajc27_method_radio_button = QRadioButton("Use `@ajc27_blender_addon` method (Recommended)")
-        self._use_ajc27_method_radio_button.setChecked(True)
-        groupbox.layout().addWidget(self._use_ajc27_method_radio_button)
-
-        self._use_alpha_megascript_take2_method_radio_button = QRadioButton(
-            "Use `alpha_megascript_take2` method (Legacy)"
-        )
-        groupbox.layout().addWidget(self._use_alpha_megascript_take2_method_radio_button)
-        #
-        # self._use_alpha_megascript_method_radio_button = QRadioButton("Use `alpha_megascript` method (Deprecated)")
-        # groupbox.layout().addWidget(self._use_alpha_megascript_method_radio_button)
-        #
-        # self._use_cgtinker_method_radio_button = QRadioButton("Use `@cgtinker` method (Work in progress)")
-        # groupbox.layout().addWidget(self._use_cgtinker_method_radio_button)
 
         self._layout.addWidget(QLabel("Blender Executable Path:"))
 
@@ -94,25 +68,6 @@ class VisualizationControlPanel(QWidget):
             str: Path to the Blender executable
         """
         return self._blender_executable_path
-
-    def get_user_selected_method_string(self):
-        """
-        Returns the string that represents the method the user selected to generate the Blender scene.
-
-        Returns:
-            str: String representing the method the user selected to generate the Blender scene.
-        """
-        if self._use_ajc27_method_radio_button.isChecked():
-            return "ajc27_blender_addon"
-
-        if self._use_alpha_megascript_take2_method_radio_button.isChecked():
-            return "megascript_take2"
-
-        # if self._use_alpha_megascript_method_radio_button.isChecked():
-        #     return "alpha_megascript"
-        #
-        # if self._use_cgtinker_method_radio_button.isChecked():
-        #     return "cgtinker"
 
     def _handle_blender_executable_button_clicked(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s

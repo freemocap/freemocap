@@ -20,12 +20,12 @@ def test_total_body_center_of_mass_data_shape(
 
     total_body_center_of_mass_fr_xyz = np.load(total_body_center_of_mass_file_path)
 
-    frame_count = get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path)
+    frame_counts = list(get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path).values())
     assert (
-        len(set(frame_count)) == 1
-    ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_count}"
+        len(set(frame_counts)) == 1
+    ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_counts}"
 
-    number_of_frames = frame_count[0]
+    number_of_frames = frame_counts[0]
 
     assert (
         total_body_center_of_mass_fr_xyz.shape[0] == number_of_frames

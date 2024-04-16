@@ -40,7 +40,7 @@ onMounted(() => {
         :camera="camera"
         class="w-full h-full object-contain border-8  border-green-800"
     />
-    <ThreeDViewport class="w-full h-full object-contain border-8  border-cyan-800" />
+<!--    <ThreeDViewport class="w-full h-full object-contain border-8  border-cyan-800" />-->
   </div>
   <!-- <RecordButton />-->
 </template>

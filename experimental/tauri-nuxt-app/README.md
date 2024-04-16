@@ -3,7 +3,7 @@
 ## Installation
 - Install Rust on your system - https://www.rust-lang.org/tools/install 
 - Install Node.js
-- Run the following commands in the root directory (i.e. the directory containing `package.json`, `src-tauri/` and `src-nuxt/`, etc.) run:
+- Run the following commands in this directory (i.e the same directory as this `README.md` file) 
 
 ```
 npm install

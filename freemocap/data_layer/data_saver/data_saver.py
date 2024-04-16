@@ -99,7 +99,7 @@ class DataSaver:
 
     def _get_info_dict(self):
         return InfoDict(
-            segment_lengths=self._data_loader.segment_lengths,
+            # segment_lengths=self._data_loader.segment_lengths,
             schemas=[self._data_loader.skeleton_schema.dict()],
         )
 

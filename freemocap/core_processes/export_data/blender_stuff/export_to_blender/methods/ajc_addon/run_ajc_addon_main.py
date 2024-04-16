@@ -36,6 +36,12 @@ def run_ajc_blender_addon_subprocess(
     blender_file_path: Union[str, Path],
     blender_exe_path: Union[str, Path],
 ):
+    try:
+        ajc_blender_addon_validator(recording_folder_path=recording_folder_path)
+    except FileNotFoundError as e:
+        logger.error("Missing required files to run AJC addon, did something go wrong during processing?")
+        raise e
+
     ajc_addon_main_file_path = inspect.getfile(ajc27_run_as_main_function)
     logger.debug(f"Running ajc27_freemocap_blender_addon as a subprocess using script at : {ajc_addon_main_file_path}")
 
@@ -51,7 +57,8 @@ def run_ajc_blender_addon_subprocess(
             raise FileNotFoundError(f"Could not find the blender executable at {blender_exe_path}")
     except Exception as e:
         logger.error(e)
-        return
+        raise e
+
     simple_run_script = inspect.getfile(run_simple)
 
     command_list = [
@@ -105,6 +112,43 @@ def get_blenders_numpy(blender_exe_path: Union[str, Path]) -> str:
         raise FileNotFoundError(f"Could not find Blender's numpy at {numpy_path}")
     logger.info(f"Got Blender's numpy path: {numpy_path}")
     return numpy_path
+
+
+def ajc_blender_addon_validator(recording_folder_path: Union[str, Path]):
+    """
+    Check if the required files exist in the recording folder
+    """
+    recording_path = Path(recording_folder_path)
+    output_data_path = recording_path / "output_data"
+
+    if not (output_data_path / "mediapipe_body_3d_xyz.npy").exists():
+        raise FileNotFoundError(f"Could not find required file: {output_data_path / 'mediapipe_body_3d_xyz.npy'}")
+
+    if not (output_data_path / "mediapipe_right_hand_3d_xyz.npy").exists():
+        raise FileNotFoundError(f"Could not find required file: {output_data_path / 'mediapipe_right_hand_3d_xyz.npy'}")
+
+    if not (output_data_path / "mediapipe_left_hand_3d_xyz.npy").exists():
+        raise FileNotFoundError(f"Could not find required file: {output_data_path / 'mediapipe_left_hand_3d_xyz.npy'}")
+
+    if not (output_data_path / "mediapipe_face_3d_xyz.npy").exists():
+        raise FileNotFoundError(f"Could not find required file: {output_data_path / 'mediapipe_face_3d_xyz.npy'}")
+
+    if not (output_data_path / "center_of_mass" / "total_body_center_of_mass_xyz.npy").exists():
+        raise FileNotFoundError(
+            f"Could not find required file: {output_data_path / 'center_of_mass' / 'total_body_center_of_mass_xyz.npy'}"
+        )
+
+    if not (output_data_path / "center_of_mass" / "segmentCOM_frame_joint_xyz.npy").exists():
+        raise FileNotFoundError(
+            f"Could not find required file: {output_data_path / 'center_of_mass' / 'segmentCOM_frame_joint_xyz.npy'}"
+        )
+
+    if not (
+        output_data_path / "raw_data" / "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+    ).exists():
+        raise FileNotFoundError(
+            f"Could not find required file: {output_data_path / 'raw_data' / 'mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy'}"
+        )
 
 
 if __name__ == "__main__":

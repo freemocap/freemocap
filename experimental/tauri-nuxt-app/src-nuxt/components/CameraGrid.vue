@@ -1,14 +1,3 @@
-<template>
-  <div class="webcam-grid">
-    <SingleCameraView
-        v-for="camera in cameras"
-        :key="camera.deviceId"
-        :camera="camera"
-    />
-  </div>
-<!--  < <RecordButton />-->
-</template>
-
 <script setup>
 import {ref, onMounted, inject} from "vue";
 
@@ -39,30 +28,19 @@ const getCameras = async () => {
 onMounted(() => {
   console.log("Mounted CameraGrid");
   getCameras();
-  cameraViews.value = cameras.value.map( () => inject('getStream'));
+  cameraViews.value = cameras.value.map(() => inject('getStream'));
 });
 </script>
 
-<style>
-.webcam-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 10px;
-  padding: 10px;
-  height: 100vh;
-  width: 100vw;
-  box-sizing: border-box;
-  overflow: auto;
-  border: #0a21a9 2px solid;
-}
-
-
-.camera-container video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border: darkgreen 2px solid;
-}
-
-
-</style>
+<template>
+  <div class="grid grid-cols-[repeat(auto-fit,_minmax(400px,_1fr))] gap-2.5 p-2.5 h-full w-screen border-8 border-blue-900">
+    <SingleCameraView
+        v-for="camera in cameras"
+        :key="camera.deviceId"
+        :camera="camera"
+        class="w-full h-full object-contain border-8  border-green-800"
+    />
+    <ThreeDViewport class="w-full h-full object-contain border-8  border-cyan-800" />
+  </div>
+  <!-- <RecordButton />-->
+</template>

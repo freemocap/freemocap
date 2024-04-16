@@ -1,6 +1,6 @@
 <template>
-  <div class="flex-grow bg-amber-600 border-4 border-purple-600">
-    <p class="font-bold text-3xl">wowee zowee its pages/index.vue</p>
+  <div class="flex bg-amber-600 border-8 border-purple-600">
+    <CameraGrid />
   </div>
 </template>
 

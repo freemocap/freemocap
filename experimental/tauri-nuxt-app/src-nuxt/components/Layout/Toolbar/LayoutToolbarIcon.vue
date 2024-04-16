@@ -1,7 +1,7 @@
 <template>
-  <div class="toolbar-icon group">
+  <div class="flex items-center justify-center p-7 m-4 w-12 h-12 bg-blue-400 text-white rounded-3xl cursor-pointer hover:bg-blue-900 group">
     <slot></slot>
-    <span class="toolbar-tooltip group-hover:scale-100">
+    <span class="absolute left-20 bg-gray-900 rounded-lg p-1 scale-0 group-hover:scale-100">
       {{ text }}
     </span>
   </div>
@@ -17,21 +17,4 @@ const {text} = defineProps({
 })
 
 </script>
-
-
-<style scoped>
-.toolbar-icon {
-  @apply flex items-center justify-center w-12 h-12 bg-primary text-white rounded-lg cursor-pointer;
-  position: relative;
-}
-
-.toolbar-tooltip {
-  @apply absolute top-0 left-0 transform scale-0 bg-black text-white p-2 rounded-lg;
-  transition: transform 0.2s;
-  transform-origin: 100% 0;
-  display: none;
-}
-
-</style>
-
 

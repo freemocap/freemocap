@@ -1,9 +1,9 @@
 <script setup>
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { library } from '@fortawesome/fontawesome-svg-core';
-import { faFire, faPlus, faBoltLightning, faGear, faPoo } from '@fortawesome/free-solid-svg-icons';
+import {faFire, faPlus, faBoltLightning, faGear, faPoo, faSkull, faCamera} from '@fortawesome/free-solid-svg-icons';
 
-library.add(faFire, faPlus, faBoltLightning, faGear, faPoo);
+library.add(faFire, faPlus, faBoltLightning, faGear, faPoo, faSkull, faCamera );
 
 </script>
 

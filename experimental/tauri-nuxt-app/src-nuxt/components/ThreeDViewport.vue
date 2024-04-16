@@ -1,7 +1,7 @@
 <template>
-  <TresCanvas window-size v-bind="gl">
+  <TresCanvas  v-bind="gl">
     <OrbitControls />
-    <TresPerspectiveCamera :position="[0, 0, 5]" />
+    <TresPerspectiveCamera :position="[6, 1, 6]" />
     <TresAmbientLight color="#ffffff" />
     <TresMesh ref="boxRef" :rotation="[Math.PI/3, Math.PI/2,Math.PI/2, ]" :scale="[2.0,3.5,1.0]">
       <TresBoxGeometry />

@@ -113,7 +113,7 @@ class InfoDict(BaseModel):
     A dictionary of information about this recording, such as the measured segement lengths and the schemas that we can use to interpret the tracked points (i.e./e.g. how to connect the dots of skeleton)
     """
 
-    segment_lengths: Dict[str, Any] = Field(default_factory=dict, description="The lengths of the segments of the body")
+    # segment_lengths: Dict[str, Any] = Field(default_factory=dict, description="The lengths of the segments of the body")
     schemas: List[BaseModel] = Field(default_factory=list, description="The schemas for the tracked points")
 
 

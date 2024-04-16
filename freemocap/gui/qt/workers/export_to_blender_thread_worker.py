@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExportToBlenderThreadWorker(QThread):
-    finished = Signal()
+    success = Signal(bool)
     in_progress = Signal(str)
 
     def __init__(
@@ -45,11 +45,11 @@ class ExportToBlenderThreadWorker(QThread):
                 blender_file_path=self.blender_file_path,
                 blender_exe_path=self.blender_executable_path,
             )
+            self.success.emit(True)
+            logger.debug("Blender Export Complete")
         except Exception as e:
             logger.exception("something went wrong in the Blender export")
-            logger.exception(e)
+            logger.error(e)
+            self.success.emit(False)
 
-        self.finished.emit()
         self._work_done = True
-
-        logger.debug("Blender Export Complete")

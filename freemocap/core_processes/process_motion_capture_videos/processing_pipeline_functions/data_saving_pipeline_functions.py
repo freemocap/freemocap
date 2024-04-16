@@ -26,7 +26,6 @@ def save_data(
     skel3d_frame_marker_xyz: np.ndarray,
     segment_COM_frame_imgPoint_XYZ: np.ndarray,
     totalBodyCOM_frame_XYZ: np.ndarray,
-    skeleton_segment_lengths_dict: dict,
     processing_parameters: ProcessingParameterModel,
     queue: multiprocessing.Queue,
 ):
@@ -56,12 +55,6 @@ def save_data(
         array_to_save=totalBodyCOM_frame_XYZ,
         file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
         save_directory=Path(path_to_folder_where_we_will_save_this_data) / CENTER_OF_MASS_FOLDER_NAME,
-    )
-
-    save_dictionary_to_json(
-        save_path=processing_parameters.recording_info_model.output_data_folder_path,
-        file_name="mediapipe_skeleton_segment_lengths.json",
-        dictionary=skeleton_segment_lengths_dict,
     )
 
     save_dictionary_to_json(

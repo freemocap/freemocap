@@ -26,7 +26,7 @@ const getCameras = async () => {
 
 
 onMounted(() => {
-  console.log("Mounted CameraGrid");
+  console.log("Mounted CameraGrid component");
   getCameras();
   cameraViews.value = cameras.value.map(() => inject('getStream'));
 });

@@ -481,7 +481,7 @@ class MainWindow(QMainWindow):
 
         self._settings_dialog.exec()
 
-        if self._settings_dialog.accepted:
+        if self._settings_dialog.result():
             self.reboot_gui()
 
     def download_data(self, download_url: str):

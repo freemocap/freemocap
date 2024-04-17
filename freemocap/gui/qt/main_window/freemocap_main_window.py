@@ -434,7 +434,6 @@ class MainWindow(QMainWindow):
         self._visualization_control_panel._blender_executable_label.setText(str(self._gui_state.blender_path))
         self._visualization_control_panel._blender_executable_path = str(self._gui_state.blender_path)
 
-
         save_gui_state(self._gui_state, get_gui_state_json_path())
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())

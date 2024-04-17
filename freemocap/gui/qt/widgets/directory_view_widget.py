@@ -46,6 +46,8 @@ class DirectoryViewWidget(QWidget):
         self._tree_view_widget.setAlternatingRowColors(True)
         self._tree_view_widget.setColumnWidth(0, 250)
 
+        self._path_label = QLabel(str(self._gui_state.freemocap_data_folder_path))
+
         if self._gui_state.freemocap_data_folder_path is not None:
             self.set_folder_as_root(self._gui_state.freemocap_data_folder_path)
 
@@ -55,8 +57,6 @@ class DirectoryViewWidget(QWidget):
         )
 
         self._layout.addWidget(self._show_freemocap_data_folder_button)
-
-        self._path_label = QLabel(str(self._gui_state.freemocap_data_folder_path))
         self._layout.addWidget(self._path_label)
 
     def expand_directory_to_path(self, path: Union[str, Path], collapse_other_directories: bool = True):
@@ -83,6 +83,8 @@ class DirectoryViewWidget(QWidget):
         self._file_system_model.setRootPath(str(folder_path))
         self._tree_view_widget.setRootIndex(self._file_system_model.index(str(folder_path)))
         self._tree_view_widget.setColumnWidth(0, int(self._minimum_width * 0.9))
+
+        self._path_label.setText(str(folder_path))
 
     def _context_menu(self):
         menu = QMenu()

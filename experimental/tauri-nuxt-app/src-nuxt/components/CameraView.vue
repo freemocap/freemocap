@@ -11,61 +11,25 @@
 </template>
 
 <script setup>
-import {onMounted, onUnmounted, ref, watch} from 'vue';
-
 const props = defineProps({
-  camera: Object,
+  camera: Object
 });
-
-const video = ref(null);
-const stream = ref(null);
-
-
-
-
-const startWebcam = async () => {
-  try {
-    const constraints = {
-      video: {
-        deviceId: props.camera ? { exact: props.camera.deviceId } : undefined,
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
-    };
-    stream.value = await navigator.mediaDevices.getUserMedia(constraints);
-    if (video.value) {
-      video.value.srcObject = stream.value;
-    }
-
-  } catch (error) {
-    console.error("Error accessing the webcam", error);
-  }
-};
+const {video, startCamera} = useCamera(ref(props.camera));
 
 watch(
     () => props.camera,
-    (newVal, oldVal) => {
-      if (newVal !== oldVal) {
-        startWebcam();
+    (newVal) => {
+      if (newVal) {
+        startCamera();
       }
-    },
-    { immediate: true }
+    }
 );
 
 onMounted(() => {
+  console.log(`Mounting 'CameraView' component with ${JSON.stringify(props.camera, null, 2)}...`)
   if (props.camera) {
-    startWebcam();
+    startCamera();
   }
-});
-
-onUnmounted( () => {
-  if (video.value && video.value.srcObject) {
-    console.log("Stopping stream");
-    const tracks = video.value.srcObject.getTracks();
-    tracks.forEach(track => track.stop());
-    video.value.srcObject = null;
-
-  }
-});
+})
 </script>
 

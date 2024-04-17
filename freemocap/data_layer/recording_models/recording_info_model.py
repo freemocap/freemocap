@@ -18,7 +18,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
 )
 from freemocap.system.paths_and_filenames.path_getters import create_camera_calibration_file_name, get_blender_file_path
 from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
-from freemocap.tests.test_mediapipe_skeleton_data_shape import test_mediapipe_skeleton_data_shape
+from freemocap.tests.test_skeleton_data_shape import test_skeleton_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import test_synchronized_video_frame_counts
 from freemocap.tests.test_total_body_center_of_mass_data_shape import test_total_body_center_of_mass_data_shape
 from freemocap.utilities.get_video_paths import get_video_paths
@@ -49,6 +49,8 @@ class RecordingInfoModel:
 
         self._recording_folder_status_checker = RecordingFolderStatusChecker(recording_info_model=self)
 
+        # TODO: consider storing what the "active" file prefix is for a recording (i.e. mediapipe, yolo, etc.)
+
     @property
     def path(self) -> str:
         return str(self._path)
@@ -58,7 +60,7 @@ class RecordingInfoModel:
         return self._name
 
     @property
-    def status_check(self) -> Dict[str, bool]:
+    def status_check(self) -> Dict[str, Union[bool, str, float, dict]]:
         return self._recording_folder_status_checker.status_check
 
     @property
@@ -87,7 +89,7 @@ class RecordingInfoModel:
 
     @property
     def data_2d_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / DATA_2D_NPY_FILE_NAME)
+        return str(Path(self.raw_data_folder_path) / DATA_2D_NPY_FILE_NAME)
 
     @property
     def data_3d_npy_file_path(self):
@@ -153,7 +155,7 @@ class RecordingFolderStatusChecker:
         self.recording_info_model = recording_info_model
 
     @property
-    def status_check(self) -> Dict[str, Union[bool, str, float]]:
+    def status_check(self) -> Dict[str, Union[bool, str, float, dict]]:
         return {
             "synchronized_videos_status_check": self.check_synchronized_videos_status(),
             "data2d_status_check": self.check_data2d_status(),
@@ -195,7 +197,7 @@ class RecordingFolderStatusChecker:
 
     def check_data3d_status(self) -> bool:
         try:
-            test_mediapipe_skeleton_data_shape(
+            test_skeleton_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
                 raw_skeleton_npy_file_path=self.recording_info_model.data_3d_npy_file_path,
                 reprojection_error_file_path=self.recording_info_model.reprojection_error_data_npy_file_path,

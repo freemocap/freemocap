@@ -10,7 +10,7 @@ from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
 
 
 @pytest.mark.usefixtures("synchronized_video_folder_path", "raw_skeleton_npy_file_path", "reprojection_error_file_path")
-def test_mediapipe_skeleton_data_shape(
+def test_skeleton_data_shape(
     synchronized_video_folder_path: Union[str, Path],
     raw_skeleton_npy_file_path: Union[str, Path],
     reprojection_error_file_path,

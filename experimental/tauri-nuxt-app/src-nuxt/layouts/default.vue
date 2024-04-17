@@ -10,7 +10,7 @@
       <slot/>
     </main>
 
-    <footer >
+    <footer>
       <LayoutFooter class="bg-blue-900"/>
     </footer>
   </div>

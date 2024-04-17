@@ -1,5 +1,5 @@
 <template>
   <div class="bg-secondary">
-    <LazyCameraGrid />
+    <LazyCameraGrid/>
   </div>
 </template>

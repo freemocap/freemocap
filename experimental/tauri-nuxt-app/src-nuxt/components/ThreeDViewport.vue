@@ -1,29 +1,29 @@
 <template>
-  <TresCanvas  v-bind="gl">
-    <OrbitControls />
-    <TresPerspectiveCamera :position="[6, 1, 6]" />
-    <TresAmbientLight color="#ffffff" />
+  <TresCanvas v-bind="gl">
+    <OrbitControls/>
+    <TresPerspectiveCamera :position="[6, 1, 6]"/>
+    <TresAmbientLight color="#ffffff"/>
     <TresMesh ref="boxRef" :rotation="[Math.PI/3, Math.PI/2,Math.PI/2, ]" :scale="[2.0,3.5,1.0]">
-      <TresBoxGeometry />
-      <TresMeshNormalMaterial  />
+      <TresBoxGeometry/>
+      <TresMeshNormalMaterial/>
     </TresMesh>
-    <TresGridHelper :size="10" :divisions="10" />
+    <TresGridHelper :divisions="10" :size="10"/>
   </TresCanvas>
 </template>
 
-<script setup >
+<script setup>
 
-import { ref } from 'vue';
+import {ref} from 'vue';
 
 const boxRef = ref(null);
 console.log(`boxRef:`, boxRef)
 
 
-const { onLoop } = useRenderLoop()
+const {onLoop} = useRenderLoop()
 
-onLoop(({ delta, elapsed, clock, dt }) => {
+onLoop(({delta, elapsed, clock, dt}) => {
   // I will run at every frame ~ 60FPS (depending of your monitor)
-  if(boxRef.value) {
+  if (boxRef.value) {
     boxRef.value.rotation.y += delta * 0.1;
     boxRef.value.rotation.z = elapsed * 0.1;
     boxRef.value.rotation.x = delta * 0.1;

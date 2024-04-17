@@ -2,19 +2,20 @@
   <div class="relative w-full h-full overflow-hidden">
     <video
         ref="video"
-        @loadedmetadata="onLoadedMetadata"
         autoplay
-        muted
         class="absolute top-0 left-0 w-full h-full object-contain"
+        muted
+        @loadedmetadata="onLoadedMetadata"
     ></video>
   </div>
 </template>
 
 <script setup>
+
 const props = defineProps({
   camera: Object
 });
-const {video, startCamera} = useCamera(ref(props.camera));
+const {video, startCamera} = useCameraDevice(ref(props.camera));
 
 watch(
     () => props.camera,
@@ -26,7 +27,7 @@ watch(
 );
 
 onMounted(() => {
-  console.log(`Mounting 'CameraView' component with ${JSON.stringify(props.camera, null, 2)}...`)
+  console.log(`Mounting 'CameraView' component with camera: ${props.camera.label}...`)
   if (props.camera) {
     startCamera();
   }

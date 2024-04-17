@@ -1,13 +1,13 @@
-export default (camera:MediaDeviceInfo) => {
+export const useCameraDevice =  (camera: Ref<MediaDeviceInfo>) => {
     const video = ref(null);
     const stream = ref(null);
 
     const startCamera = async () => {
-        console.log(`Starting camera: ${JSON.stringify(camera.deviceId)}`)
+        console.log(`Starting camera: ${camera.value.label} (${camera.value.deviceId})`);
         try {
             const constraints = {
                 video: {
-                    deviceId: camera ? {exact: camera.deviceId} : undefined,
+                    deviceId: camera.value.deviceId ? {exact: camera.value.deviceId} : undefined,
                     width: {ideal: 1920},
                     height: {ideal: 1080},
                 },
@@ -24,8 +24,8 @@ export default (camera:MediaDeviceInfo) => {
     const stopCamera = () => {
         if (video.value && video.value.srcObject) {
             const tracks = video.value.srcObject.getTracks();
-            tracks.forEach((track:MediaStreamTrack)=> track.stop());
-            video.value.srcObject= null;
+            tracks.forEach((track: MediaStreamTrack) => track.stop());
+            video.value.srcObject = null;
         }
     };
     onUnmounted(() => {

@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import toml
 
@@ -57,9 +57,12 @@ def get_freemocap_data_folder_path(create_folder: bool = True) -> str:
     try:
         if freemocap_data_folder_path is None:
             freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
-        gui_state = load_gui_state(
-            str(Path(freemocap_data_folder_path) / LOGS_INFO_AND_SETTINGS_FOLDER_NAME / GUI_STATE_JSON_FILENAME)
-        )
+        if Path(get_gui_state_json_path()).exists():
+            gui_state = load_gui_state(get_gui_state_json_path())
+        else:  # if GUI state isn't in new location, look in old location
+            gui_state = load_gui_state(
+                str(Path(freemocap_data_folder_path) / LOGS_INFO_AND_SETTINGS_FOLDER_NAME / GUI_STATE_JSON_FILENAME)
+            )
         freemocap_data_folder_path = Path(gui_state.freemocap_data_folder_path)
     except Exception as e:
         print(e)  # Cannot log this due to circular import from logging config
@@ -127,12 +130,14 @@ def default_session_name(string_tag: str = None):
     return session_name
 
 
-session_folder_path = None
+session_folder_path: Optional[Path] = None
 
 
 def create_new_session_folder():
     global session_folder_path
     if session_folder_path is None:
+        session_folder_path = Path(get_recording_session_folder_path()) / default_session_name()
+    elif not session_folder_path.is_relative_to(get_freemocap_data_folder_path()):
         session_folder_path = Path(get_recording_session_folder_path()) / default_session_name()
 
     return str(session_folder_path)
@@ -174,7 +179,7 @@ def get_gui_state_json_path():
     return str(Path(__file__).parent.parent / GUI_STATE_JSON_FILENAME)
 
 
-def get_most_recent_recording_path(subfolder_str: str = None):
+def get_most_recent_recording_path(subfolder_str: Optional[str] = None) -> Optional[str]:
     if not Path(get_most_recent_recording_toml_path()).exists():
         logger.error(f"{MOST_RECENT_RECORDING_TOML_FILENAME} not found at {get_most_recent_recording_toml_path()}!!")
         return None

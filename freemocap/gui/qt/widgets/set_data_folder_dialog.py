@@ -13,6 +13,9 @@ class SetDataFolderDialog(QDialog):
         self.gui_state = gui_state
         self.kill_thread_event = kill_thread_event
 
+        self._initUI()
+
+    def _initUI(self) -> None:
         self.setMinimumSize(500, 200)
 
         self.setWindowTitle("Set Freemocap Data Folder")

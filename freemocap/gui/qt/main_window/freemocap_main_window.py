@@ -431,6 +431,9 @@ class MainWindow(QMainWindow):
         self._process_motion_capture_data_panel._calibration_control_panel._charuco_square_size_line_edit.setText(
             str(self._gui_state.charuco_square_size)
         )
+        self._visualization_control_panel._blender_executable_label.setText(str(self._gui_state.blender_path))
+        self._visualization_control_panel._blender_executable_path = str(self._gui_state.blender_path)
+
 
         save_gui_state(self._gui_state, get_gui_state_json_path())
 

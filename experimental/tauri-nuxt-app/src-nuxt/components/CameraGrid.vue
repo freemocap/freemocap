@@ -26,7 +26,7 @@ const getCameras = async () => {
 
 
 onMounted(() => {
-  console.log("Mounted CameraGrid component");
+  console.log("Mounted CameraGrid");
   getCameras();
   cameraViews.value = cameras.value.map(() => inject('getStream'));
 });
@@ -38,7 +38,7 @@ onMounted(() => {
         v-for="camera in cameras"
         :key="camera.deviceId"
         :camera="camera"
-        class="w-full h-full object-contain border-8  border-green-800 hover:border-pink-800 hover:rounded-xl"
+        class="w-full h-full object-contain border-8  border-green-800 hover:border-blue-800 hover:rounded-xl"
     />
 <!--    <ThreeDViewport class="w-full h-full object-contain border-8  border-cyan-800" />-->
   </div>

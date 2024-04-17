@@ -19,6 +19,5 @@ export const useDevicesStore = defineStore('devices', {
         }
     },
     getters: {
-        availableCameras: (state) => state.cameras,
     }
 })

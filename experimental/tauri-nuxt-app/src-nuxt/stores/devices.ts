@@ -14,10 +14,10 @@ export const useDevicesStore = defineStore('devices', {
             console.log(`Detected devices: \n Cameras: [${JSON.stringify(this.cameras, null, 2)}],\n Microphones: [${this.microphones}], \n Speakers: [${this.speakers}]`)
         },
         initialize() {
+            console.debug("Initializing `devices` store...")
             this.detectDevices()
             navigator.mediaDevices.addEventListener('devicechange', this.detectDevices)
         }
     },
-    getters: {
-    }
+    getters: {}
 })

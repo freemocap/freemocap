@@ -1,6 +1,6 @@
 <template>
   <div class="grid grid-cols-[repeat(auto-fit,_minmax(400px,_1fr))] gap-1 p-1 h-full w-screen ">
-    <SingleCameraView
+    <CameraView
         v-for="camera in cameras"
         :key="camera.deviceId"
         :camera="camera"
@@ -13,35 +13,13 @@
 
 
 <script setup>
-
+const devicesStore = useDevicesStore();
 const cameras = ref([]);
-const cameraViews = ref([]);
 
-const getCameras = async () => {
-  try {
-    console.log("Getting available cameras");
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    console.log("All available devices", devices);
-
-    const videoDevices = devices
-        .filter((device) => device.kind === "videoinput")
-        .filter((device) => !device.label.toLowerCase().includes("virtual"));
-
-    console.log("Filtered video devices", videoDevices);
-
-    cameras.value = videoDevices;
-
-    console.log("Using cameras", cameras.value);
-  } catch (error) {
-    console.error("Error listing cameras", error);
-  }
-};
-
-
-onMounted(() => {
-  console.log("Mounted CameraGrid");
-  getCameras();
-  cameraViews.value = cameras.value.map(() => inject('getStream'));
+onMounted(async () => {
+  console.log("Mounting CameraGrid...");
+  await devicesStore.initialize()
+  cameras.value = devicesStore.cameras
 });
 </script>
 

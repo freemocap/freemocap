@@ -1,5 +1,18 @@
+<template>
+  <div class="grid grid-cols-[repeat(auto-fit,_minmax(400px,_1fr))] gap-1 p-1 h-full w-screen border-8 border-blue-900">
+    <SingleCameraView
+        v-for="camera in cameras"
+        :key="camera.deviceId"
+        :camera="camera"
+        class="w-full h-full object-contain border-4 border-green-800 hover:bg-blue-600 hover:border-2 hover:border-blue-800 hover:rounded-3xl transition-all ease-in-out duration-500"
+    />
+    <!--    <ThreeDViewport class="w-full h-full object-contain border-8  border-cyan-800" />-->
+  </div>
+  <!-- <RecordButton />-->
+</template>
+
+
 <script setup>
-import {ref, onMounted, inject} from "vue";
 
 const cameras = ref([]);
 const cameraViews = ref([]);
@@ -32,15 +45,3 @@ onMounted(() => {
 });
 </script>
 
-<template>
-  <div class="grid grid-cols-[repeat(auto-fit,_minmax(400px,_1fr))] gap-2.5 p-2.5 h-full w-screen border-8 border-blue-900">
-    <SingleCameraView
-        v-for="camera in cameras"
-        :key="camera.deviceId"
-        :camera="camera"
-        class="w-full h-full object-contain border-8  border-green-800 hover:border-blue-800 hover:rounded-xl"
-    />
-<!--    <ThreeDViewport class="w-full h-full object-contain border-8  border-cyan-800" />-->
-  </div>
-  <!-- <RecordButton />-->
-</template>

@@ -59,7 +59,6 @@ class SetDataFolderDialog(QDialog):
             self._done_button.setEnabled(False)
         else:
             self._done_button.setEnabled(True)
-        
 
     def _save_and_accept(self) -> None:
         if self.new_folder_path is not None:
@@ -68,4 +67,3 @@ class SetDataFolderDialog(QDialog):
             save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
             self.accept()
-

@@ -40,9 +40,9 @@ class SetDataFolderDialog(QDialog):
         _cancel_button.clicked.connect(self.reject)
         button_box.addWidget(_cancel_button)
 
-        _done_button = QPushButton("Save and Reboot")
-        _done_button.clicked.connect(self._save_and_accept)
-        button_box.addWidget(_done_button)
+        self._done_button = QPushButton("Save and Reboot")
+        self._done_button.clicked.connect(self._save_and_accept)
+        button_box.addWidget(self._done_button)
 
         self._layout.addLayout(button_box)
 
@@ -55,10 +55,17 @@ class SetDataFolderDialog(QDialog):
         )
         self._title_message_label.setText(f"Freemocap Data Folder: {self.new_folder_path}")
 
+        if self.new_folder_path == "":
+            self._done_button.setEnabled(False)
+        else:
+            self._done_button.setEnabled(True)
+        
+
     def _save_and_accept(self) -> None:
         if self.new_folder_path is not None:
             freemocap_data_folder_path = Path(self.new_folder_path)
             self.gui_state.freemocap_data_folder_path = str(freemocap_data_folder_path)
             save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
-        self.accept()
+            self.accept()
+

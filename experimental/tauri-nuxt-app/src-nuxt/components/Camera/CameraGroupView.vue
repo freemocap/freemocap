@@ -11,17 +11,18 @@
 
 
 <script setup>
-const devicesStore = useDevicesStore();
-const cameras = ref([])
 
+const camerasStore = useCamerasStore();
+const cameras = ref([]);
 watchEffect(() => {
-  cameras.value = devicesStore.availableCameras;
+  cameras.value = camerasStore.cameras;
   console.log(`Updated cameras - ${cameras.value.length} cameras found`);
 });
 
 onMounted(async () => {
   console.log("Mounting CameraGrid...");
-  await devicesStore.initialize()
+  await camerasStore.initialize()
+
 });
 </script>
 

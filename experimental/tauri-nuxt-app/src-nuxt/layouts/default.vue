@@ -1,20 +1,17 @@
-<script setup lang="ts">
-
-</script>
 <template>
-  <div class="flex flex-col h-screen">
-    <header>
+  <div class="flex flex-col ">
+
+    <header class=" bg-blue-400">
       <LayoutHeader/>
     </header>
-    <main class="flex flex-1 overflow-hidden">
+
+    <main class="flex flex-1">
       <LayoutToolbarPanel/>
       <slot/>
     </main>
+
     <footer >
-      <LayoutFooter/>
+      <LayoutFooter class="bg-blue-900"/>
     </footer>
   </div>
 </template>
-<style scoped>
-
-</style>

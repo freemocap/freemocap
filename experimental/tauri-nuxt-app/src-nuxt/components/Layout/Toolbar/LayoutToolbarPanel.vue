@@ -9,7 +9,7 @@ library.add(faFire, faPlus, faBoltLightning, faGear, faPoo, faSkull, faCamera );
 
 <template>
   <div
-      class="w-20 m-0 flex flex-col bg-primary text-gray-300 text-2xl justify-center items-center shadow-2xl border-green-600 border-4">
+      class="w-20 m-0 flex flex-col bg-primary text-gray-300 text-2xl justify-center items-center shadow-2xl">
     <LayoutToolbarIcon><FontAwesomeIcon :icon="['fas', 'skull']" size="lg" /></LayoutToolbarIcon>
     <LayoutToolbarIcon><FontAwesomeIcon :icon="['fas', 'camera']" size="lg" /></LayoutToolbarIcon>
     <LayoutToolbarIcon><FontAwesomeIcon :icon="['fas', 'poo']" size="lg" /></LayoutToolbarIcon>

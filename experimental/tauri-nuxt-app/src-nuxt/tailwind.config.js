@@ -13,7 +13,7 @@ export default {
     theme: {
         extend: {
             colors: {
-                primary: '#003535',
+                primary: '#007373',
                 secondary: '#002020',
                 tertiary: '#94c4c7',
                 accent: '#d64550',

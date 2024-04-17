@@ -1,11 +1,5 @@
 <template>
-  <NuxtLayout>
+  <NuxtLayout class="h-screen w-screen overflow-hidden">
     <NuxtPage />
   </NuxtLayout>
 </template>
-
-<script setup>
-</script>
-
-<style>
-</style>

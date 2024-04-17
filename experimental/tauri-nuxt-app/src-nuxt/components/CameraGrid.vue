@@ -1,10 +1,10 @@
 <template>
-  <div class="grid grid-cols-[repeat(auto-fit,_minmax(400px,_1fr))] gap-1 p-1 h-full w-screen border-8 border-blue-900">
+  <div class="grid grid-cols-[repeat(auto-fit,_minmax(400px,_1fr))] gap-1 p-1 h-full w-screen ">
     <SingleCameraView
         v-for="camera in cameras"
         :key="camera.deviceId"
         :camera="camera"
-        class="w-full h-full object-contain border-4 border-green-800 hover:bg-blue-600 hover:border-2 hover:border-blue-800 hover:rounded-3xl transition-all ease-in-out duration-500"
+        class="w-full h-full object-contain  hover:bg-blue-600 hover:border-blue-800 hover:rounded-3xl transition-all ease-out duration-1000"
     />
     <!--    <ThreeDViewport class="w-full h-full object-contain border-8  border-cyan-800" />-->
   </div>

@@ -1,22 +1,26 @@
 export const useDevicesStore = defineStore('devices', {
-    state: () => ({
-        cameras: [],
-        microphones: [],
-        speakers: [],
+    state: (): { devices: MediaDeviceInfo[] } => ({
+        devices: [],
     }),
 
     actions: {
         async detectDevices() {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            this.cameras = devices.filter(device => device.kind === 'videoinput')
-            this.microphones = devices.filter(device => device.kind === 'audioinput')
-            this.speakers = devices.filter(device => device.kind === 'audiooutput')
+            console.log("Detecting available devices...")
+            try {
+                this.devices = await navigator.mediaDevices.enumerateDevices();
+            } catch (error) {
+                console.error('Error when detecting devices:', error);
+            }
+            console.log(`Found: ${this.devices.length} devices`);
         },
         initialize() {
-            console.debug("Initializing `devices` store...")
-            this.detectDevices()
-            navigator.mediaDevices.addEventListener('devicechange', this.detectDevices)
+            console.log("Initializing `devices` pinia store")
+            this.detectDevices();
+            navigator.mediaDevices.addEventListener('devicechange', () => this.detectDevices());
+            console.log("`devices` datastore initialized successfully.")
         }
     },
-    getters: {}
-})
+    getters: {
+        availableCameras: (state) => state.devices.filter((device: MediaDeviceInfo) => device.kind === 'videoinput')
+    }
+});

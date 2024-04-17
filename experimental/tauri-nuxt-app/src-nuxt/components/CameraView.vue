@@ -1,17 +1,17 @@
 <template>
-  <div class="camera-container" >
+  <div class="relative w-full h-full overflow-hidden">
     <video
         ref="video"
         @loadedmetadata="onLoadedMetadata"
         autoplay
         muted
-        class="w-full h-full object-contain"
+        class="absolute top-0 left-0 w-full h-full object-contain"
     ></video>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, provide } from 'vue';
+import {onMounted, onUnmounted, ref, watch} from 'vue';
 
 const props = defineProps({
   camera: Object,
@@ -69,17 +69,3 @@ onUnmounted( () => {
 });
 </script>
 
-<style>
-.camera-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-video {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-</style>

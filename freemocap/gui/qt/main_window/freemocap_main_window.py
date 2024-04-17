@@ -434,6 +434,8 @@ class MainWindow(QMainWindow):
 
         save_gui_state(self._gui_state, get_gui_state_json_path())
 
+        self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())
+
     def open_import_videos_dialog(self):
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
         logger.info("Opening `Import Videos` dialog... ")

@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QLabel,
     QFileDialog,
-    QLineEdit,
 )
 
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
@@ -39,7 +38,7 @@ class VisualizationControlPanel(QWidget):
 
         self._layout.addWidget(QLabel("Blender Executable Path:"))
 
-        self._blender_executable_label = QLineEdit(self._blender_executable_path)
+        self._blender_executable_label = QLabel(self._blender_executable_path)
         self._layout.addWidget(self._blender_executable_label)
 
         self._set_blender_executable_path_button = QPushButton("Choose your Blender Executable")

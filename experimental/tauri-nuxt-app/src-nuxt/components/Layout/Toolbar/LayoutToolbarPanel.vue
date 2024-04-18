@@ -1,24 +1,35 @@
 <script setup>
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {library} from '@fortawesome/fontawesome-svg-core';
-import {faBoltLightning, faCamera, faFire, faGear, faPlus, faPoo, faSkull} from '@fortawesome/free-solid-svg-icons';
+import {faCamera, faFire, faGear, faHome, faPlus, faPoo, faSkull} from '@fortawesome/free-solid-svg-icons';
 
-library.add(faFire, faPlus, faBoltLightning, faGear, faPoo, faSkull, faCamera);
+library.add(faFire, faPlus, faCamera, faGear, faPoo, faSkull, faHome);
 
 </script>
 
 <template>
   <div
       class="w-20 m-0 flex flex-col bg-primary text-gray-300 text-2xl justify-center items-center shadow-2xl">
+
     <LayoutToolbarIcon>
-      <FontAwesomeIcon :icon="['fas', 'skull']" size="lg"/>
+      <NuxtLink to="/">
+        <FontAwesomeIcon :icon="['fas', 'house']" size="lg"/>
+      </NuxtLink>
     </LayoutToolbarIcon>
+
     <LayoutToolbarIcon>
-      <FontAwesomeIcon :icon="['fas', 'camera']" size="lg"/>
+      <NuxtLink to="/camera-group">
+        <FontAwesomeIcon :icon="['fas', 'camera']" size="lg"/>
+      </NuxtLink>
     </LayoutToolbarIcon>
+
     <LayoutToolbarIcon>
-      <FontAwesomeIcon :icon="['fas', 'poo']" size="lg"/>
+      <NuxtLink to="/three-d-viewport">
+        <FontAwesomeIcon :icon="['fas', 'skull']" size="lg"/>
+      </NuxtLink>
     </LayoutToolbarIcon>
+
+
     <LayoutToolbarIcon>
       <FontAwesomeIcon :icon="['fas', 'gear']" size="lg"/>
     </LayoutToolbarIcon>

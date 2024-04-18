@@ -26,8 +26,7 @@ watch(() => camerasStore.cameras, (newVal) => {
 
 onMounted(async () => {
   console.log("Mounting CameraGrid...");
-  await camerasStore.initialize()
-
+  camerasStore.initialize();
 });
 </script>
 

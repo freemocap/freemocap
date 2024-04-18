@@ -11,26 +11,26 @@ library.add(faFire, faPlus, faCamera, faGear, faPoo, faSkull, faHome);
   <div
       class="w-20 m-0 flex flex-col bg-primary text-gray-300 text-2xl justify-center items-center shadow-2xl">
 
-    <LayoutToolbarIcon>
+    <LayoutToolbarIcon tooltip="Home">
       <NuxtLink to="/">
         <FontAwesomeIcon :icon="['fas', 'house']" size="lg"/>
       </NuxtLink>
     </LayoutToolbarIcon>
 
-    <LayoutToolbarIcon>
+    <LayoutToolbarIcon tooltip="Cameras">
       <NuxtLink to="/camera-group">
         <FontAwesomeIcon :icon="['fas', 'camera']" size="lg"/>
       </NuxtLink>
     </LayoutToolbarIcon>
 
-    <LayoutToolbarIcon>
+    <LayoutToolbarIcon tooltip="3d Viewport">
       <NuxtLink to="/three-d-viewport">
         <FontAwesomeIcon :icon="['fas', 'skull']" size="lg"/>
       </NuxtLink>
     </LayoutToolbarIcon>
 
 
-    <LayoutToolbarIcon>
+    <LayoutToolbarIcon tooltip="Settings configuration">
       <FontAwesomeIcon :icon="['fas', 'gear']" size="lg"/>
     </LayoutToolbarIcon>
   </div>

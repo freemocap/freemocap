@@ -14,9 +14,14 @@
 
 const camerasStore = useCamerasStore();
 const cameras = ref([]);
-watchEffect(() => {
-  cameras.value = camerasStore.cameras;
-  console.log(`Updated cameras - ${cameras.value.length} cameras found`);
+const {startCameraGroup} = useCameraGroup();
+
+watch(() => camerasStore.cameras, (newVal) => {
+  if (newVal) {
+    cameras.value = camerasStore.cameras;
+    startCameraGroup(cameras);
+    console.log(`Updated cameras - ${cameras.value.length} cameras found`);
+  }
 });
 
 onMounted(async () => {

@@ -1,14 +1,63 @@
-// TODO - better wrangle `stream`, `track`, config (constraints), `available settings` and `devicechange` event and other listeners, and a bunch of other stuff for each camera indifgivually, and also a way to interact with all the cameras as a group
+interface CameraConfig {
+    deviceId: string;
+    label: string;
+    constraints: MediaStreamConstraints;
+
+}
+const defaultConstraints: MediaStreamConstraints = {
+    video: {
+        width: {ideal: 1920},
+        height: {ideal: 1080}
+    }
+};
+
+export class CameraDevice {
+    private config: CameraConfig;
+    private stream: MediaStream | null = null;
+
+    constructor(config: CameraConfig) {
+        // Merge default constraints with provided constraints
+        this.config = {
+            ...config,
+            constraints: {
+                ...defaultConstraints,
+                ...config.constraints
+            }
+        };
+    }
+
+    async connect() {
+        try {
+            this.stream = await navigator.mediaDevices.getUserMedia(this.config.constraints);
+            console.log(`Connected to camera: ${this.config.label}`);
+        } catch (error) {
+            console.error('Error when connecting to camera:', error);
+        }
+    }
+    async createVideoElement() {
+        const video = document.createElement('video');
+        if (this.stream) {
+            video.srcObject = this.stream;
+        }
+        return video;
+    }
+    disconnect() {
+        this.stream?.getTracks().forEach(track => track.stop());
+    }
+
+}
+
 export const useCamerasStore = defineStore('cameras', {
 
-    state: (): { cameras: MediaDeviceInfo[] } => ({
-        cameras: [],
+    state: (): { cameraDevices: CameraDevice[] } => ({
+        cameraDevices: [],
     }),
 
     actions: {
         async initialize() {
             console.log("Initializing `cameras` pinia store")
             await this.detectDevices();
+            await this.connectToCameras();
             navigator.mediaDevices.addEventListener('devicechange', () => this.detectDevices);
             console.log("`cameras` datastore initialized successfully.")
         },
@@ -17,40 +66,30 @@ export const useCamerasStore = defineStore('cameras', {
             console.log("Detecting available cameras...")
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                this.cameras = devices.filter((device: MediaDeviceInfo) => device.kind === 'videoinput');
+                const videoDevices = devices.filter((device: MediaDeviceInfo) => device.kind === 'videoinput');
+
+                this.cameraDevices = videoDevices.map((device: MediaDeviceInfo) => {
+                    const config: CameraConfig = {
+                        deviceId: device.deviceId,
+                        label: device.label,
+                        constraints: {
+                            video: {
+                                deviceId: device.deviceId ? {exact: device.deviceId} : undefined,
+                            },
+                        },
+                    };
+                    return new CameraDevice(config);
+                });
             } catch (error) {
                 console.error('Error when detecting cameras:', error);
             }
-            console.log(`Available cameras: Cameras - ${this.cameras.map((camera: MediaDeviceInfo) => camera.label).join(', ')}`);
+            console.log(`Available cameras: Cameras - ${this.cameraDevices.map((camera: MediaDeviceInfo) => camera.label).join(', ')}`);
         },
 
         async connectToCameras() {
-            console.log("Connecting to cameras...")
-            try {
-                await Promise.all(this.cameras.map(async (camera: MediaDeviceInfo) => {
-                    //TODO - make a camera model that holds this info and can be passed to the composable
-                    const constraints = {
-                        video: {
-                            deviceId: camera.deviceId ? {exact: camera.deviceId} : undefined,
-                            width: {ideal: 1920},
-                            height: {ideal: 1080},
-                        },
-                        //TODO - also record audio
-                    };
-                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    const video = document.createElement('video');
-                    video.srcObject = stream;
-                    video.autoplay = true;
-                    document.body.appendChild(video);
-                }));
-            } catch (error) {
-                console.error("Error when connecting to cameras:", error);
-            }
-        }
+            await Promise.all(this.cameraDevices.map((camera: CameraDevice) => camera.connect()));
+        },
     },
 
-
-    getters: {
-
-    }
+    getters: {}
 });

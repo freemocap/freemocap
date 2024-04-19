@@ -30,7 +30,7 @@ library.add(faFire, faPlus, faCamera, faGear, faPoo, faSkull, faHome);
     </LayoutToolbarIcon>
 
 
-    <LayoutToolbarIcon tooltip="Settings configuration">
+    <LayoutToolbarIcon tooltip="TODO - Settings">
       <FontAwesomeIcon :icon="['fas', 'gear']" size="lg"/>
     </LayoutToolbarIcon>
   </div>

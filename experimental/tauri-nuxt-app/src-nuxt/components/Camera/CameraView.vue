@@ -12,24 +12,25 @@
 
 <script setup>
 
+
 const props = defineProps({
-  camera: Object
+  cameraDevice: CameraDevice,
 });
-const {video, startCamera} = useCameraDevice(ref(props.camera));
+const video = ref(null);
 
 watch(
-    () => props.camera,
+    () => props.cameraDevice,
     (newVal) => {
       if (newVal) {
-        startCamera();
+        video.value = props.cameraDevice.createVideoElement();
       }
     }
 );
 
 onMounted(() => {
-  console.log(`Mounting 'CameraView' component with camera: ${props.camera.label}...`)
-  if (props.camera) {
-    startCamera();
+  if (props.cameraDevice) {
+    console.log(`Mounting 'CameraView' component with camera: ${props.cameraDevice.label}...`)
+    video.value = props.cameraDevice.createVideoElement();
   }
 })
 </script>

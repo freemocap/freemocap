@@ -34,13 +34,10 @@ export class CameraDevice {
             console.error('Error when connecting to camera:', error);
         }
     }
-    async createVideoElement() {
-        const video = document.createElement('video');
-        if (this.stream) {
-            video.srcObject = this.stream;
-        }
-        return video;
+    public getStream(): MediaStream | null {
+        return this.stream;
     }
+
     disconnect() {
         this.stream?.getTracks().forEach(track => track.stop());
     }

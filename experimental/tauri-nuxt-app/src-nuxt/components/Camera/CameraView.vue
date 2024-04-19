@@ -1,11 +1,11 @@
 <template>
   <div class="relative w-full h-full overflow-hidden">
     <video
-        ref="video"
+        ref="videoElement"
         autoplay
         class="absolute top-0 left-0 w-full h-full object-contain"
         muted
-        @loadedmetadata="onLoadedMetadata"
+        playsinline
     ></video>
   </div>
 </template>
@@ -16,22 +16,25 @@
 const props = defineProps({
   cameraDevice: CameraDevice,
 });
-const video = ref(null);
+const videoElement = ref(null);
+const cameraStream = computed(() => props.cameraDevice.getStream());
 
 watch(
-    () => props.cameraDevice,
-    (newVal) => {
-      if (newVal) {
-        video.value = props.cameraDevice.createVideoElement();
+    cameraStream,
+    (newStream) => {
+      if (newStream && videoElement.value) {
+        videoElement.value.srcObject = newStream;
       }
-    }
+    },
+    { immediate: true }
 );
 
 onMounted(() => {
-  if (props.cameraDevice) {
-    console.log(`Mounting 'CameraView' component with camera: ${props.cameraDevice.label}...`)
-    video.value = props.cameraDevice.createVideoElement();
+  if (props.cameraDevice && videoElement.value) {
+    props.cameraDevice.connect().then(() => {
+      videoElement.value.srcObject = cameraStream.value;
+    });
   }
-})
+});
 </script>
 

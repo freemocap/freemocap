@@ -28,13 +28,5 @@ watch(
     },
     { immediate: true }
 );
-
-onMounted(() => {
-  if (props.cameraDevice && videoElement.value) {
-    props.cameraDevice.connect().then(() => {
-      videoElement.value.srcObject = cameraStream.value;
-    });
-  }
-});
 </script>
 

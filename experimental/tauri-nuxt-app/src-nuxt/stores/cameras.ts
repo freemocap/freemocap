@@ -1,5 +1,6 @@
 interface CameraConfig {
     deviceId: string;
+    groupId: string;
     label: string;
     constraints: MediaStreamConstraints;
 
@@ -12,8 +13,8 @@ const defaultConstraints: MediaStreamConstraints = {
 };
 
 export class CameraDevice {
-    private config: CameraConfig;
-    private stream: MediaStream | null = null;
+    config: CameraConfig;
+    stream: MediaStream | null = null;
 
     constructor(config: CameraConfig) {
         // Merge default constraints with provided constraints
@@ -63,11 +64,15 @@ export const useCamerasStore = defineStore('cameras', {
             console.log("Detecting available cameras...")
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter((device: MediaDeviceInfo) => device.kind === 'videoinput');
+                const videoDevices = devices
+                    .filter((device: MediaDeviceInfo) =>
+                        device.kind === 'videoinput' && !device.label.toLowerCase().includes('virtual')
+                    );
 
                 this.cameraDevices = videoDevices.map((device: MediaDeviceInfo) => {
                     const config: CameraConfig = {
                         deviceId: device.deviceId,
+                        groupId: device.groupId,
                         label: device.label,
                         constraints: {
                             video: {
@@ -80,7 +85,7 @@ export const useCamerasStore = defineStore('cameras', {
             } catch (error) {
                 console.error('Error when detecting cameras:', error);
             }
-            console.log(`Available cameras: Cameras - ${this.cameraDevices.map((camera: MediaDeviceInfo) => camera.label).join(', ')}`);
+            console.log(`Available cameras: Cameras - ${this.getCameraLabels}`);
         },
 
         async connectToCameras() {
@@ -88,5 +93,9 @@ export const useCamerasStore = defineStore('cameras', {
         },
     },
 
-    getters: {}
+    getters: {
+        getCameraLabels(): string[] {
+            return this.cameraDevices.map((camera: CameraDevice) => camera.config.label);
+        }
+    }
 });

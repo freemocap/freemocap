@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-full h-full overflow-hidden">
+  <div class="relative">
     <video
         ref="videoElement"
         autoplay
@@ -28,5 +28,11 @@ watch(
     },
     { immediate: true }
 );
+
+onMounted(() => {
+  if (videoElement.value && cameraStream.value) {
+    videoElement.value.srcObject = cameraStream.value;
+  }
+});
 </script>
 

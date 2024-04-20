@@ -8,7 +8,6 @@
 const camerasStore = useCamerasStore();
 
 onMounted(async () => {
-  console.log("Initializing Cameras Store...");
   await camerasStore.initialize();
 });
 </script>

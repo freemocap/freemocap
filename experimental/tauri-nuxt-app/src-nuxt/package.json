@@ -20,6 +20,7 @@
     "@tresjs/cientos": "^3.8.0",
     "@tresjs/core": "^3.7.0",
     "@tresjs/nuxt": "^2.1.1",
+    "fluent-ffmpeg": "^2.1.2",
     "nuxt": "^3.11.1",
     "pinia": "^2.1.7",
     "three": "^0.162.0",

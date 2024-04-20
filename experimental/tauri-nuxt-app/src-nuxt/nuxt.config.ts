@@ -9,7 +9,9 @@ export default defineNuxtConfig({
     tres: {
         devtools: true,
     },
-
+    build: {
+        transpile: ['@tauri-apps/api']
+    },
     components: true,
     ssr: false, // Disable Server Side rendering for Tauri
     vite: {

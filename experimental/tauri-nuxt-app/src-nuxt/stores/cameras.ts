@@ -5,12 +5,19 @@ interface CameraConfig {
     constraints: MediaStreamConstraints;
 
 }
+
 const defaultConstraints: MediaStreamConstraints = {
     video: {
         width: {ideal: 1920},
         height: {ideal: 1080}
     }
 };
+
+interface FramePayload {
+    imageData: Blob;
+    preCaptureTimestamp: DOMHighResTimeStamp;
+    postCaptureTimestamp: DOMHighResTimeStamp;
+}
 
 export class CameraDevice {
     config: CameraConfig;
@@ -35,6 +42,7 @@ export class CameraDevice {
             console.error('Error when connecting to camera:', error);
         }
     }
+
     public getStream(): MediaStream | null {
         return this.stream;
     }
@@ -53,11 +61,11 @@ export const useCamerasStore = defineStore('cameras', {
 
     actions: {
         async initialize() {
-            console.log("Initializing `cameras` pinia store")
+            console.log("Initializing pinia `cameras` store...")
             await this.detectDevices();
             await this.connectToCameras();
             navigator.mediaDevices.addEventListener('devicechange', () => this.detectDevices);
-            console.log("`cameras` datastore initialized successfully.")
+            console.log("`Pinia cameras` datastore initialized successfully.")
         },
 
         async detectDevices() {
@@ -65,9 +73,8 @@ export const useCamerasStore = defineStore('cameras', {
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices
-                    .filter((device: MediaDeviceInfo) =>
-                        device.kind === 'videoinput' && !device.label.toLowerCase().includes('virtual')
-                    );
+                    .filter((device: MediaDeviceInfo) => device.kind === 'videoinput')
+                    .filter((device: MediaDeviceInfo) => !device.label.toLowerCase().includes('virtual'));
 
                 this.cameraDevices = videoDevices.map((device: MediaDeviceInfo) => {
                     const config: CameraConfig = {
@@ -91,6 +98,15 @@ export const useCamerasStore = defineStore('cameras', {
         async connectToCameras() {
             await Promise.all(this.cameraDevices.map((camera: CameraDevice) => camera.connect()));
         },
+        async updateCameraConstraints(camera: CameraDevice, constraints: MediaStreamConstraints) {
+            console.log(`Updating constraints for camera: ${camera.config.label}`)
+            camera.config.constraints = {
+                ...camera.config.constraints,
+                ...constraints
+            };
+            await camera.connect();
+        },
+
     },
 
     getters: {

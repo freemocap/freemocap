@@ -30,6 +30,5 @@ onLoop(({delta, elapsed, clock, dt}) => {
 const gl = reactive({
   clearColor: '#125042',
 })
-// const { pane } = useTweakPane()
-// pane.addInput(gl, 'clearColor', { label: 'Background' })
+
 </script>

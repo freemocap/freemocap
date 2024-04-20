@@ -7,6 +7,7 @@
       <TresPlaneGeometry :args="[1.6, .9]"/>
       <TresMeshBasicMaterial :map="texture"/>
     </TresMesh>
+    <TresAxesHelper :size="1"/>
     <TresGridHelper :divisions="100" :size="100"/>
   </TresCanvas>
 </template>
@@ -27,7 +28,7 @@ type CameraPositions = ComputedRef<Position[]>;
 const cameraPositions: CameraPositions = computed(() => {
   return videoTextures.value.map((_:any, index:number, array:THREE.Texture[]): Position => {
     const offset: number = (planeWidth + planeSpacing) * (array.length - 1) / 2;
-    return [(index * (planeWidth + planeSpacing)) - offset, 0, 0];
+    return [(index * (planeWidth + planeSpacing)) - offset, planeHeight, 0];
   });
 });
 const gl = reactive({

@@ -1,10 +1,10 @@
 <template>
   <TresCanvas v-bind="gl">
     <OrbitControls/>
-    <TresPerspectiveCamera :position="[0, 0, 10]"/>
+    <TresPerspectiveCamera :position="[0, 1, 5]"/>
 <!--    <TresMesh :rotation="[0, 0, 0]" :scale="[1.0, 1.0, 1.0]">-->
-    <TresMesh v-for="(texture, index) in videoTextures" :key="index" :position="[index * 2 - (videoTextures.length -1),0,0]" :rotation="[0,0,0]">
-      <TresPlaneGeometry :args="[16, 9]"/>
+    <TresMesh v-for="(texture, index) in videoTextures" :key="index" :position="cameraPositions[index]" :rotation="[0,0,0]">
+      <TresPlaneGeometry :args="[1.6, .9]"/>
       <TresMeshBasicMaterial :map="texture"/>
     </TresMesh>
     <TresGridHelper :divisions="100" :size="100"/>
@@ -16,6 +16,20 @@ import * as THREE from 'three';
 const camerasStore = useCamerasStore();
 const videoTextures = ref<THREE.Texture[]>([]);
 
+const planeWidth:number = 1.6;
+const planeHeight:number = .9;
+const planeSpacing:number = 0.1;
+
+// Define the type for the array of positions
+type Position = [number, number, number];
+type CameraPositions = ComputedRef<Position[]>;
+
+const cameraPositions: CameraPositions = computed(() => {
+  return videoTextures.value.map((_:any, index:number, array:THREE.Texture[]): Position => {
+    const offset: number = (planeWidth + planeSpacing) * (array.length - 1) / 2;
+    return [(index * (planeWidth + planeSpacing)) - offset, 0, 0];
+  });
+});
 const gl = reactive({
   clearColor: '#0c352c',
   antialias: true,

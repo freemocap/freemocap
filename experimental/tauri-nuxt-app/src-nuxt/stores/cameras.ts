@@ -1,43 +1,37 @@
-interface CameraConfig {
-    deviceId: string;
-    groupId: string;
-    label: string;
-    constraints: MediaStreamConstraints;
 
-}
 
 const defaultConstraints: MediaStreamConstraints = {
     video: {
-        width: {ideal: 1920},
-        height: {ideal: 1080}
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
     }
 };
 
-interface FramePayload {
-    imageData: Blob;
-    preCaptureTimestamp: DOMHighResTimeStamp;
-    postCaptureTimestamp: DOMHighResTimeStamp;
-}
-
 export class CameraDevice {
-    config: CameraConfig;
+    cameraNumber: string;
+    deviceInfo: MediaDeviceInfo;
     stream: MediaStream | null = null;
+    targetConstraints: Object | null = null;
+    currentSettings: MediaTrackSettings | null = null;
+    capabilities: MediaTrackCapabilities | null = null;
 
-    constructor(config: CameraConfig) {
-        // Merge default constraints with provided constraints
-        this.config = {
-            ...config,
-            constraints: {
-                ...defaultConstraints,
-                ...config.constraints
-            }
-        };
+    constructor(deviceInfo:MediaDeviceInfo, cameraNumber: string) {
+        this.cameraNumber = cameraNumber;
+        this.deviceInfo = deviceInfo;
     }
 
     async connect() {
+        this.targetConstraints = {
+            video: {
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                deviceId: { exact: this.deviceInfo.deviceId } }
+        };
         try {
-            this.stream = await navigator.mediaDevices.getUserMedia(this.config.constraints);
-            console.log(`Connected to camera: ${this.config.label}`);
+            this.stream = await navigator.mediaDevices.getUserMedia(this.targetConstraints);
+            this.currentSettings = this.stream.getVideoTracks()[0].getSettings();
+            this.capabilities = this.stream.getVideoTracks()[0].getCapabilities();
+            console.log(`Connected to Camera#${this.cameraNumber} - ${this.deviceInfo.label}`);
         } catch (error) {
             console.error('Error when connecting to camera:', error);
         }
@@ -50,7 +44,6 @@ export class CameraDevice {
     disconnect() {
         this.stream?.getTracks().forEach(track => track.stop());
     }
-
 }
 
 export const useCamerasStore = defineStore('cameras', {
@@ -75,43 +68,21 @@ export const useCamerasStore = defineStore('cameras', {
                 const videoDevices = devices
                     .filter((device: MediaDeviceInfo) => device.kind === 'videoinput')
                     .filter((device: MediaDeviceInfo) => !device.label.toLowerCase().includes('virtual'));
-
-                this.cameraDevices = videoDevices.map((device: MediaDeviceInfo) => {
-                    const config: CameraConfig = {
-                        deviceId: device.deviceId,
-                        groupId: device.groupId,
-                        label: device.label,
-                        constraints: {
-                            video: {
-                                deviceId: device.deviceId ? {exact: device.deviceId} : undefined,
-                            },
-                        },
-                    };
-                    return new CameraDevice(config);
+                let cameraNumber = -1;
+                this.cameraDevices = videoDevices.map((deviceInfo: MediaDeviceInfo) => {
+                    cameraNumber++;
+                    return new CameraDevice(deviceInfo, String(cameraNumber));
                 });
             } catch (error) {
                 console.error('Error when detecting cameras:', error);
             }
-            console.log(`Available cameras: Cameras - ${this.getCameraLabels}`);
+            console.log(`Found ${this.cameraDevices.length} camera(s)`);
         },
 
         async connectToCameras() {
             await Promise.all(this.cameraDevices.map((camera: CameraDevice) => camera.connect()));
         },
-        async updateCameraConstraints(camera: CameraDevice, constraints: MediaStreamConstraints) {
-            console.log(`Updating constraints for camera: ${camera.config.label}`)
-            camera.config.constraints = {
-                ...camera.config.constraints,
-                ...constraints
-            };
-            await camera.connect();
-        },
 
     },
 
-    getters: {
-        getCameraLabels(): string[] {
-            return this.cameraDevices.map((camera: CameraDevice) => camera.config.label);
-        }
-    }
 });

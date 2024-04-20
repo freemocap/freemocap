@@ -17,6 +17,12 @@ library.add(faFire, faPlus, faCamera, faGear, faPoo, faSkull, faHome);
       </NuxtLink>
     </LayoutToolbarIcon>
 
+    <LayoutToolbarIcon tooltip="High Concept">
+      <NuxtLink to="/images-as-planes">
+        <p>✨</p>
+      </NuxtLink>
+    </LayoutToolbarIcon>
+
     <LayoutToolbarIcon tooltip="Cameras">
       <NuxtLink to="/camera-group">
         <FontAwesomeIcon :icon="['fas', 'camera']" size="lg"/>

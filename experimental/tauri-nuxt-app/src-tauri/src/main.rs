@@ -60,21 +60,7 @@ fn main() {
         app.manage(child);
         Ok(())
     })
-//     .on_window_event(|event| match event.event() {
-//         WindowEvent::Destroyed => {
-//             if let Some(child) = event.window().app_handle().state::<Child>() {
-//                 match child.try_wait() {
-//                     Ok(None) => {
-//                         let _  = child.kill();
-//                         }
-//                     Ok(Some(_)) | Err(_) => {
-//                         // Child already exited
-//                     }
-//                 }
-//             }
-//         }
-//         _ => {}
-//         })
+
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

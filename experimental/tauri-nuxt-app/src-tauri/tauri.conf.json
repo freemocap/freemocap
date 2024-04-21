@@ -13,6 +13,12 @@
   "tauri": {
     "allowlist": {
       "all": false,
+      "shell": {
+        "sidecar": true,
+        "scope" : [
+          {"name":  "../dist/main", "sidecar": true}
+        ]
+      },
       "fs": {
         "all": true,
         "writeFile": true,
@@ -27,7 +33,7 @@
       "deb": {
         "depends": []
       },
-      "externalBin": [],
+      "externalBin": ["../dist/main"],
       "icon": [
         "../shared/freemocap-skelly-icon.ico"
       ],
@@ -61,7 +67,7 @@
         "height": 720,
         "width": 1280,
         "resizable": true,
-        "title": "freemocap-tauri-nuxt-app"
+        "title": "freemocap"
       }
     ]
   }

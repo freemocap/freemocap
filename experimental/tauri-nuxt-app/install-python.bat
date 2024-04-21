@@ -13,7 +13,7 @@ REM Install Python requirements
 CALL pip install -r requirements.txt
 
 REM (Optional) Build with PyInstaller
-CALL pyinstaller --onefile src-python/main.py
+CALL pyinstaller --name main-x86_64-pc-windows-msvc --onefile src-python/main.py
 
 echo Installation and setup complete!
 

@@ -48,8 +48,9 @@ export class CameraDevice {
 
 export const useCamerasStore = defineStore('cameras', {
 
-    state: (): { cameraDevices: CameraDevice[] } => ({
+    state: (): { camerasReady: boolean; cameraDevices: any[] } => ({
         cameraDevices: [],
+        camerasReady: false,
     }),
 
     actions: {
@@ -58,6 +59,7 @@ export const useCamerasStore = defineStore('cameras', {
             await this.detectDevices();
             await this.connectToCameras();
             navigator.mediaDevices.addEventListener('devicechange', () => this.detectDevices);
+            this.camerasReady = true;
             console.log("`Pinia cameras` datastore initialized successfully.")
         },
 

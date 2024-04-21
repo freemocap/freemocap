@@ -15,6 +15,7 @@
 <script setup lang="ts">
 import * as THREE from 'three';
 const camerasStore = useCamerasStore();
+const camerasReady = computed(() => camerasStore.camerasReady);
 const videoTextures = ref<THREE.Texture[]>([]);
 
 
@@ -41,6 +42,9 @@ const gl = reactive({
 
 
 onMounted(async () => {
+  while (!camerasReady.value) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
   for (let i = 0; i < camerasStore.cameraDevices.length; i++) {
     const video = document.createElement('video');
     video.autoplay = true;

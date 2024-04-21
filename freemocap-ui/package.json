@@ -1,5 +1,10 @@
 {
   "dependencies": {
+    "@mdi/font": "^7.4.47",
     "fluent-ffmpeg": "^2.1.2"
+  },
+  "devDependencies": {
+    "vite-plugin-vuetify": "^2.0.3",
+    "vuetify": "^3.5.16"
   }
 }

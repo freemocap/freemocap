@@ -11,9 +11,12 @@
     "postinstall": "cd src-nuxt && npm install"
   },
   "dependencies": {
+    "@mdi/font": "^7.4.47",
     "@tauri-apps/api": "^1.5.3"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.5.11"
+    "@tauri-apps/cli": "^1.5.11",
+    "vite-plugin-vuetify": "^2.0.3",
+    "vuetify": "^3.5.16"
   }
 }

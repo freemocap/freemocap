@@ -1,14 +1,14 @@
 <template>
   <TresCanvas v-bind="gl">
     <OrbitControls/>
-    <TresPerspectiveCamera :position="[0, 1, 5]"/>
+    <TresPerspectiveCamera :position="[0, 1, 5]" :near = .01 />
 <!--    <TresMesh :rotation="[0, 0, 0]" :scale="[1.0, 1.0, 1.0]">-->
     <TresMesh v-for="(texture, index) in videoTextures" :key="index" :position="cameraPositions[index]" :rotation="[0,0,0]">
       <TresPlaneGeometry :args="[1.6, .9]"/>
       <TresMeshBasicMaterial :map="texture"/>
     </TresMesh>
     <TresAxesHelper :size="1"/>
-    <TresGridHelper :divisions="100" :size="100"/>
+    <TresGridHelper :divisions="100" :size="100" :position="[0,-.001,0]"/>
   </TresCanvas>
 </template>
 

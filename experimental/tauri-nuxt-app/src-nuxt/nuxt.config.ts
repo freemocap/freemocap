@@ -1,16 +1,26 @@
+import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 export default defineNuxtConfig({
+    build: {
+        transpile: ['@tauri-apps/api', 'vuetify']
+    },
     devtools: {
         enabled: true,
         timeline: {
             enabled: true,
         },
     },
-    modules: ['@tresjs/nuxt', '@nuxt/devtools', '@pinia/nuxt',],
+    modules: ['@tresjs/nuxt',
+        '@nuxt/devtools',
+        '@pinia/nuxt',
+        (_options:any, nuxt:any) => {
+            nuxt.hooks.hook('vite:extendConfig', (config:any) => {
+                // @ts-expect-error
+                config.plugins.push(vuetify({ autoImport: true }))
+            })
+        }
+        ],
     tres: {
         devtools: true,
-    },
-    build: {
-        transpile: ['@tauri-apps/api']
     },
     components: true,
     ssr: false, // Disable Server Side rendering for Tauri
@@ -35,7 +45,11 @@ export default defineNuxtConfig({
                 port: 5183,
             },
         },
-
+        vue: {
+            template: {
+                transformAssetUrls,
+            },
+        },
     },
     // TailwindCSS
     css: ['~/assets/css/main.css'],

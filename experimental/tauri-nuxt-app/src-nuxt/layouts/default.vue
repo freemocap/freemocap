@@ -1,19 +1,21 @@
 <template>
-  <div class="flex flex-col ">
+  <v-app id="inspire" class="bg-grey-darken-4">
+    <v-navigation-drawer v-model="drawerVisible" permanent app class="bg-cyan-darken-4">
+      <!--  -->
+    </v-navigation-drawer>
 
-    <header class=" bg-blue-400">
-      <LayoutHeader/>
-    </header>
+    <v-app-bar class="bg-teal-darken-4">
+      <v-app-bar-nav-icon @click="drawerVisible = !drawerVisible"></v-app-bar-nav-icon>
 
-    <main class="flex flex-1">
-      <LayoutToolbarPanel/>
-        <slot/>
-    </main>
+      <v-app-bar-title>FreeMoCap</v-app-bar-title>
+    </v-app-bar>
 
-    <footer>
-      <LayoutFooter class="bg-blue-900"/>
-    </footer>
-  </div>
+    <v-main>
+      <slot />
+    </v-main>
+  </v-app>
 </template>
-<script setup lang="ts">
+
+<script setup>
+const drawerVisible = ref(false)
 </script>

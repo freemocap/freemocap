@@ -23,8 +23,6 @@ export class CameraDevice {
     async connect() {
         this.targetConstraints = {
             video: {
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
                 deviceId: { exact: this.deviceInfo.deviceId } }
         };
         try {
@@ -65,12 +63,14 @@ export const useCamerasStore = defineStore('cameras', {
 
         async detectDevices() {
             console.log("Detecting available cameras...")
+            let cameraNumber = -1
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
+                console.log(`Found ${devices.length} camera(s) - \n ${JSON.stringify(devices, null, 2)}`);
+
                 const videoDevices = devices
                     .filter((device: MediaDeviceInfo) => device.kind === 'videoinput')
                     .filter((device: MediaDeviceInfo) => !device.label.toLowerCase().includes('virtual'));
-                let cameraNumber = -1;
                 this.cameraDevices = videoDevices.map((deviceInfo: MediaDeviceInfo) => {
                     cameraNumber++;
                     return new CameraDevice(deviceInfo, String(cameraNumber));
@@ -78,7 +78,7 @@ export const useCamerasStore = defineStore('cameras', {
             } catch (error) {
                 console.error('Error when detecting cameras:', error);
             }
-            console.log(`Found ${this.cameraDevices.length} camera(s)`);
+            console.log(`Found ${this.cameraDevices.length} camera(s) - \n ${JSON.stringify(this.cameraDevices, null, 2)}`);
         },
 
         async connectToCameras() {

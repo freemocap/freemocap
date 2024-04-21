@@ -10,8 +10,9 @@ name = "freemocap"
 readme = "README.md"
 authors = [
     { name = "Skelly FreeMoCap", email = "info@freemocap.org" },
-    { name = "Endurance Idehen" },
+    { name = "Philip Queen" },
     { name = "Aaron Cherian" },
+    { name = "Endurance Idehen" },
     { name = "Jonathan Samir Matthis" },
 ]
 license = { file = "LICENSE" }

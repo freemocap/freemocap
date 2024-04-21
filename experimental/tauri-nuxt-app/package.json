@@ -8,7 +8,8 @@
     "dev": "npm run tauri dev",
     "tauri-build": "tauri build",
     "nuxt-dev": "cd src-nuxt && npm run dev",
-    "postinstall": "cd src-nuxt && npm install"
+    "install-nuxt": "cd src-nuxt && npm install",
+    "postinstall": "npm run install-nuxt"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
@@ -16,6 +17,8 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.5.11",
+    "cross-env": "^7.0.3",
+    "shx": "^0.3.4",
     "vite-plugin-vuetify": "^2.0.3",
     "vuetify": "^3.5.16"
   }

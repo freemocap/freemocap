@@ -20,7 +20,6 @@ const camerasReady = ref(false);
 const cameraDevices = ref([]);
 
 onMounted(async () => {
-  await camerasStore.initialize();
   camerasReady.value = camerasStore.camerasReady;
 });
 </script>

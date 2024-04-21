@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Feed with Capabilities</title>
+</head>
+<body>
+<h2>Camera Feed</h2>
+<video id="cameraFeed" autoplay></video>
+<div id="cameraCapabilities"></div>
+
+<script>
+    async function getCameraFeed() {
+        try {
+            console.log('Getting camera feed...');
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            console.log("Stream loaded successfully!");
+            const videoElement = document.getElementById('cameraFeed');
+            videoElement.srcObject = stream;
+            // Once the stream is loaded, check if getCapabilities is available
+            if (stream.getVideoTracks()[0].getCapabilities) {
+                printCameraCapabilities(stream.getVideoTracks()[0]);
+            } else {
+                console.log('getCapabilities not supported by this browser.');
+            }
+        } catch (e) {
+            console.error('Error accessing camera feed.', e);
+        }
+    }
+
+    function printCameraCapabilities(track) {
+        const capabilities = track.getCapabilities();
+        console.log('Camera Capabilities:', capabilities);
+        const settings = track.getSettings();
+
+        // If capabilities and settings are available, print them out
+        if (capabilities && settings) {
+            const maxResolution = {
+                width: capabilities.width.max,
+                height: capabilities.height.max
+            };
+            console.log(`Max Resolution - Width: ${maxResolution.width}, Height: ${maxResolution.height}`);
+
+            // Print camera capabilities
+            const capElement = document.getElementById('cameraCapabilities');
+            capElement.innerHTML = `<p>Camera Capabilities: <br>
+                                  Width: ${maxResolution.width} <br>
+                                  Height: ${maxResolution.height} <br>
+                                  Frame Rate: ${capabilities.frameRate.max} fps</p>`;
+
+            // Apply the maximum resolution
+            track.applyConstraints({
+                advanced: [{ width: maxResolution.width, height: maxResolution.height }]
+            }).then(() => {
+                console.log('Applied max resolution constraints', track.getSettings());
+            }).catch(e => {
+                console.error('Error applying constraints:', e);
+            });
+        }
+    }
+
+    window.onload = getCameraFeed;
+</script>
+</body>
+</html>

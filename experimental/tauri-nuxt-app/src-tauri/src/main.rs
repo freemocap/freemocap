@@ -4,17 +4,17 @@
 use tauri::{Manager};
 // use tauri::WindowEvent;
 // use std::process::Child;
-use std::process::Command;
+// use std::process::Command;
 
 fn main() {
   tauri::Builder::default()
-    .setup(|app| {
-        let child = Command::new("../dist/main-x86_64-pc-windows-msvc.exe")
-            .spawn()
-            .expect("failed to execute child process - main.exe");
-        app.manage(child);
-        Ok(())
-    })
+//     .setup(|app| {
+//         let child = Command::new("../dist/main-x86_64-pc-windows-msvc.exe")
+//             .spawn()
+//             .expect("failed to execute child process - main.exe");
+//         app.manage(child);
+//         Ok(())
+//     })
 //     .on_window_event(|event| match event.event() {
 //         WindowEvent::Destroyed => {
 //             if let Some(child) = event.window().app_handle().state::<Child>() {

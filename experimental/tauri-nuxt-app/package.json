@@ -9,11 +9,13 @@
     "tauri-build": "tauri build",
     "nuxt-dev": "cd src-nuxt && npm run dev",
     "install-nuxt": "cd src-nuxt && npm install",
+    "install-python": "node install-python.js",
     "postinstall": "npm run install-nuxt"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
-    "@tauri-apps/api": "^1.5.3"
+    "@tauri-apps/api": "^1.5.3",
+    "execa": "^8.0.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.5.11",

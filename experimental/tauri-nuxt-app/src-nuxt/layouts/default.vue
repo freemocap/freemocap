@@ -8,22 +8,6 @@
           </v-icon>
         </v-list-item>
 
-        <v-list-item link to="/" class="px-3 d-flex" :class="drawer ? 'justify-start' : 'justify-center'">
-          <v-icon large>mdi-home</v-icon>
-        </v-list-item>
-
-        <v-list-item link to="/images-as-planes" class="px-3 d-flex" :class="drawer ? 'justify-start' : 'justify-center'">
-          <v-icon large>mdi-skull</v-icon>
-        </v-list-item>
-
-        <v-list-item link to="/camera-group" class="px-3 d-flex" :class="drawer ? 'justify-start' : 'justify-center'">
-          <v-icon large>mdi-camera</v-icon>
-        </v-list-item>
-
-        <v-list-item link to="/three-d-viewport" class="px-3 d-flex" :class="drawer ? 'justify-start' : 'justify-center'">
-          <v-icon large>mdi-cube</v-icon>
-        </v-list-item>
-
       </v-list>
     </v-navigation-drawer>
 
@@ -39,7 +23,7 @@
 const drawer = ref(true);
 const rail = ref(true);
 
-const railIcon = computed(() => (rail.value ? 'mdi-menu' : 'mdi-chevron-left'));
+const railIcon = computed(() => (rail.value ? 'mdi-cog' : 'mdi-chevron-left'));
 
 const toggleRail = () => {
   console.log('toggleRail');

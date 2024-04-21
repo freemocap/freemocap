@@ -10,7 +10,12 @@
 <script setup>
 const camerasStore = useCamerasStore();
 
-onMounted(async () => {
+
+await onMounted(async () => {
+  console.log('Calling `camerasStore.initialize()`...');
   await camerasStore.initialize();
-});
+  console.log('Call to `camerasStore.initialize()` completed successfully!');
+})
+
+
 </script>

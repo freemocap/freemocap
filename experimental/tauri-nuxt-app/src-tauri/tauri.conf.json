@@ -14,7 +14,13 @@
     "allowlist": {
       "all": true,
       "shell": {
-        "sidecar": true
+        "sidecar": true,
+        "scope": [
+          {
+            "name": "../dist/main",
+            "sidecar": true
+          }
+        ]
       },
       "fs": {
         "all": true,
@@ -30,7 +36,7 @@
       "deb": {
         "depends": []
       },
-      "externalBin": [],
+      "externalBin": ["../dist/main"],
       "icon": [
         "../shared/freemocap-skelly-icon.ico"
       ],

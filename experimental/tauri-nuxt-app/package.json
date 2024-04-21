@@ -9,7 +9,7 @@
     "tauri-build": "tauri build",
     "nuxt-dev": "cd src-nuxt && npm run dev",
     "install-nuxt": "cd src-nuxt && npm install",
-    "install-python": "node install-python.js",
+    "install-python": "node install-python.js && node rename-binary.js",
     "postinstall": "npm run install-nuxt"
   },
   "dependencies": {

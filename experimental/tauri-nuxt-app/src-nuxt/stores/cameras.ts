@@ -53,6 +53,10 @@ export const useCamerasStore = defineStore('cameras', {
 
     actions: {
         async initialize() {
+            if (this.camerasReady) {
+                console.log("Cameras are already initialized.");
+                return;
+            }
             console.log("Initializing pinia `cameras` store...")
             await this.detectDevices();
             await this.connectToCameras();

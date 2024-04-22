@@ -22,7 +22,7 @@ def main():
         myappid = f"{freemocap.__package_name__}_{freemocap.__version__}"  # arbitrary string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
-    qt_gui_main()
+    qt_gui_  main()
 
 
 if __name__ == "__main__":

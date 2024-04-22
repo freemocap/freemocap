@@ -1,19 +1,19 @@
 @echo off
 
-REM Create virtual environment
+echo Create virtual environment
 CALL python -m venv venv
 
-REM Activate virtual environment
+echo Activate virtual environment
 CALL venv\Scripts\activate.bat
 
-REM Upgrade pip
+echo Upgrade pip
 CALL python -m pip install --upgrade pip
 
-REM Install Python requirements
+echo Install Python requirements
 CALL pip install -r requirements.txt
 
-REM (Optional) Build with PyInstaller
-CALL pyinstaller  --onefile src-python/main.py
+echo  Build with PyInstaller
+CALL pyinstaller --onefile src-python/main.py
 
 echo Installation and setup complete!
 

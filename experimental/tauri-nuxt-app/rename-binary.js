@@ -17,7 +17,7 @@ async function main() {
         `${baseName}${extension}`,
         `${baseName}-${targetTriple}${extension}`
     )
-    console.log(`Renamed binary to sidecar-${targetTriple}${extension}`)
+    console.log(`Renamed binary to main-${targetTriple}${extension}`)
 }
 
 main().catch((e) => {

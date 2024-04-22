@@ -32,9 +32,9 @@ fn build_sidecar_path() -> String {
     };
 
     let env = if cfg!(target_env = "gnu") {
-        "gnu"
+        "-gnu"
     } else if cfg!(target_env = "msvc") {
-        "msvc"
+        "-msvc"
     } else {
         ""
     };

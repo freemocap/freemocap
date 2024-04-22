@@ -6,6 +6,8 @@ from pathlib import Path
 import requests
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
+    FIGSHARE_SAMPLE_ZIP_FILE_URL,
+    FREEMOCAP_SAMPLE_DATA_RECORDING_NAME,
     FREEMOCAP_TEST_DATA_RECORDING_NAME,
     FIGSHARE_TEST_ZIP_FILE_URL,
 )
@@ -38,7 +40,12 @@ def download_sample_data(sample_data_zip_file_url: str = FIGSHARE_TEST_ZIP_FILE_
         z = zipfile.ZipFile(io.BytesIO(r.content))
         z.extractall(recording_session_folder_path)
 
-        figshare_sample_data_path = recording_session_folder_path / FREEMOCAP_TEST_DATA_RECORDING_NAME
+        if sample_data_zip_file_url == FIGSHARE_TEST_ZIP_FILE_URL:
+            figshare_sample_data_path = recording_session_folder_path / FREEMOCAP_TEST_DATA_RECORDING_NAME
+        elif sample_data_zip_file_url == FIGSHARE_SAMPLE_ZIP_FILE_URL:
+            figshare_sample_data_path = recording_session_folder_path / FREEMOCAP_SAMPLE_DATA_RECORDING_NAME
+        else:
+            figshare_sample_data_path = recording_session_folder_path / "unknown_sample_data"
         logger.info(f"Sample data extracted to {str(figshare_sample_data_path)}")
         return str(figshare_sample_data_path)
 

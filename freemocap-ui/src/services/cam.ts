@@ -1,13 +1,14 @@
 export class BrowserCam {
-  public async findAllCameras(filterVirtual: boolean = false) {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const cameras = devices.filter(({ kind, label }) => kind === "videoinput");
+    public async findAllCameras(filterVirtual: boolean = false) {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter(({kind, label}) => kind === "videoinput");
+        console.log(`Found ${cameras.length} cameras - ${JSON.stringify(cameras, null, 2)}`);
+        return filterVirtual ? cameras.filter(({label}) => !this._isVirtualCamera(label)) : cameras;
+    }
 
-    return filterVirtual ? cameras.filter(({ label }) => !this._isVirtualCamera(label)) : cameras;
-  }
+    private _isVirtualCamera(label: string): boolean {
+        const virtualCameraKeywords = ['virtual'];
 
-  private _isVirtualCamera(label: string): boolean {
-    const virtualCameraKeywords = ['virtual', 'obs', 'camtwist', 'xsplit', 'v4l2loopback', 'fake'];
-    return virtualCameraKeywords.some(keyword => label.toLowerCase().includes(keyword));
-  }
+        return virtualCameraKeywords.some(keyword => label.toLowerCase().includes(keyword));
+    }
 }

@@ -148,3 +148,4 @@ data/
 *.divx
 
 node_modules/
+.nuxt/

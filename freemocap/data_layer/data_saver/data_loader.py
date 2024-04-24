@@ -29,13 +29,16 @@ logger = logging.getLogger(__name__)
 
 
 # TODO: Need to generalize this beyond mediapipe, and make COM data optional
+mediapipe_model_info = MediapipeModelInfo()
+
+
 class DataLoader:
     def __init__(
         self,
         recording_folder_path: Union[str, Path],
         include_hands: bool = True,
         include_face: bool = True,
-        model_info: ModelInfo = MediapipeModelInfo(),
+        model_info: ModelInfo = mediapipe_model_info,
     ):
         self._recording_folder_path = Path(recording_folder_path)
         self.include_hands = include_hands

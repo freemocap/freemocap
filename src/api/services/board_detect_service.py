@@ -3,6 +3,8 @@ from typing import NamedTuple
 # from src.cameras.multicam_manager import CVCameraManager
 from src.core_processor.camera_calibration.charuco_board_detection.board_detector import BoardDetector
 
+import logging
+logger = logging.getLogger(__name__)
 
 class ImageResponse(NamedTuple):
     image: bytes
@@ -18,5 +20,7 @@ class BoardDetectService:
         return BoardDetector(self._cam_manager).process()
 
     async def run_detection_on_cam_id(self, webcam_id: str, cb=None):
-        raise NotImplementedError
-        await BoardDetector(self._cam_manager).process_by_cam_id(webcam_id, cb)
+        # raise NotImplementedError
+        # await BoardDetector(self._cam_manager).process_by_cam_id(webcam_id, cb)
+        logger.info(f"Running board detection on webcam {webcam_id} (but not really tho)")
+        pass

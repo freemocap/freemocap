@@ -19,7 +19,7 @@ async def begin_board_detection():
     await service.run()
 
 
-@cam_ws_router.websocket("/ws/charuco_board_detection/{webcam_id}")
+@cam_ws_router.websocket("/ws/board_detection/{webcam_id}")
 async def board_detection_as_ws(web_socket: WebSocket, webcam_id: str):
     await web_socket.accept()
 
@@ -40,8 +40,9 @@ async def board_detection_as_ws(web_socket: WebSocket, webcam_id: str):
 
 @cam_ws_router.websocket("/ws/skeleton_detection/{webcam_id}")
 async def skeleton_detection_as_ws(
-    web_socket: WebSocket, webcam_id: str, model_complexity: int
+    web_socket: WebSocket, webcam_id: str, model_complexity: int = 1
 ):
+    logger.info(f"Websocket request for skeleton detection on webcam {webcam_id}")
     await web_socket.accept()
 
     async def websocket_send(input_image):

@@ -97,7 +97,7 @@ def get_all_segment_markers(skeleton: Skeleton) -> Dict[str, Dict[str, np.ndarra
     return segment_positions
 
 
-def merge_segment_com_data(segment_com_data: Dict[str, np.ndarray], segments: Dict[str, Segment]) -> np.ndarray:
+def merge_segment_com_data(segment_com_data: Dict[str, np.ndarray]) -> np.ndarray:
     """
     Merges the center of mass data from multiple segments into a single array.
 
@@ -108,7 +108,7 @@ def merge_segment_com_data(segment_com_data: Dict[str, np.ndarray], segments: Di
     Returns:
     - A numpy array containing the merged center of mass data.
     """
-    segment_names = list(segments.keys())
+    segment_names = list(segment_com_data.keys())
     com_data_list = [segment_com_data[segment_name] for segment_name in segment_names]
 
     return np.stack(com_data_list, axis=0)
@@ -137,6 +137,6 @@ def calculate_center_of_mass_from_skeleton(skeleton: Skeleton) -> Tuple[np.ndarr
         segment_com_data, skeleton.center_of_mass_definitions, skeleton.num_frames
     )
 
-    merged_segment_com_data = merge_segment_com_data(segment_com_data, skeleton.segments)
+    merged_segment_com_data = merge_segment_com_data(segment_com_data)
 
     return merged_segment_com_data, total_body_com

@@ -3,10 +3,10 @@ from typing import Dict, List, Optional, Union
 
 
 class VirtualMarkerInfo(BaseModel):
-    virtual_markers: Dict[str, Dict[str, List[Union[str, int, float]]]]
+    virtual_markers: Dict[str, Dict[str, List[Union[float, str]]]]
 
     @validator("virtual_markers", each_item=True)
-    def validate_virtual_marker(cls, virtual_marker: Dict[str, List[Union[str, int, float]]]):
+    def validate_virtual_marker(cls, virtual_marker: Dict[str, List[Union[float, str]]]):
         marker_names = virtual_marker.get("marker_names", [])
         marker_weights = virtual_marker.get("marker_weights", [])
 
@@ -46,7 +46,7 @@ class MarkerInfo(BaseModel):
             values["_all_markers"] = original_marker_names.copy()
         return values
 
-    def add_virtual_markers(self, virtual_markers_dict: Dict[str, Dict[str, List[Union[str, int, float]]]]):
+    def add_virtual_markers(self, virtual_markers_dict: Dict[str, Dict[str, List[Union[float, str]]]]):
         """Add virtual markers and update _all_markers."""
         self.virtual_marker_definition = VirtualMarkerInfo(virtual_markers=virtual_markers_dict)
         for virtual_marker_name in self.virtual_marker_definition.virtual_markers.keys():

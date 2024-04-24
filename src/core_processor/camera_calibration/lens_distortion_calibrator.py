@@ -107,7 +107,7 @@ class LensDistortionCalibrator:
         # flag definitions -> https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga3207604e4b1a1758aa66acb6ed5aa65d
         flags = (cv2.CALIB_USE_INTRINSIC_GUESS +
                  cv2.CALIB_ZERO_TANGENT_DIST +
-                 cv2.cv2.CALIB_FIX_ASPECT_RATIO +
+                 cv2.CALIB_FIX_ASPECT_RATIO +
                  cv2.CALIB_FIX_PRINCIPAL_POINT +
                  # cv2.CALIB_FIX_FOCAL_LENGTH
                  cv2.CALIB_RATIONAL_MODEL

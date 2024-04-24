@@ -35,7 +35,7 @@ def calculate_all_segments_com(
         proximal = segment_positions[segment_name]["proximal"]
         distal = segment_positions[segment_name]["distal"]
 
-        com_length = segment_info.segment_com_length
+        com_length = segment_info['segment_com_length']
 
         segment_com = proximal + (distal - proximal) * com_length
 
@@ -68,7 +68,7 @@ def calculate_total_body_center_of_mass(
         if segment_com is None:
             raise ValueError(f"Segment {segment_name} not found in segment center of mass data.")
 
-        segment_mass_percentage = segment_info.segment_com_percentage
+        segment_mass_percentage = segment_info['segment_com_percentage']
 
         total_body_com += segment_com * segment_mass_percentage
 

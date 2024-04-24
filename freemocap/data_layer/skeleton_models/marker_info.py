@@ -3,10 +3,10 @@ from typing import Dict, List, Optional, Union
 
 
 class VirtualMarkerInfo(BaseModel):
-    virtual_markers: Dict[str, Dict[str, List[Union[str, int, float]]]]
+    virtual_markers: Dict[str, Dict[str, List]]
 
     @validator("virtual_markers", each_item=True)
-    def validate_virtual_marker(cls, virtual_marker: Dict[str, List[Union[str, int, float]]]):
+    def validate_virtual_marker(cls, virtual_marker: Dict[str, List]):
         marker_names = virtual_marker.get("marker_names", [])
         marker_weights = virtual_marker.get("marker_weights", [])
 

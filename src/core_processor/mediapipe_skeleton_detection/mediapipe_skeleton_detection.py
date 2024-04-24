@@ -35,7 +35,7 @@ class MediapipeSkeletonDetection:
     def __init__(self, cam_manager: OpenCVCameraManager):
         self._cam_manager = cam_manager
 
-    async def process_as_frame_loop(self, webcam_id, cb, model_complexity: int = 1):
+    async def process_as_frame_loop(self, webcam_id, cb, model_complexity: int = 2):
         with self._cam_manager.start_capture_session_single_cam(
             webcam_id=webcam_id
         ) as session_obj:
@@ -158,6 +158,18 @@ class MediapipeSkeletonDetection:
             results.pose_landmarks,
             mp_holistic.POSE_CONNECTIONS,
             landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
+        )
+        mp_drawing.draw_landmarks(
+            image,
+            results.left_hand_landmarks,
+            mp_holistic.HAND_CONNECTIONS,
+            landmark_drawing_spec=mp_drawing_styles.get_default_hand_landmarks_style(),
+        )
+        mp_drawing.draw_landmarks(
+            image,
+            results.right_hand_landmarks,
+            mp_holistic.HAND_CONNECTIONS,
+            landmark_drawing_spec=mp_drawing_styles.get_default_hand_landmarks_style(),
         )
         return image
 

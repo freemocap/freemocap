@@ -52,7 +52,7 @@ class DataLoader:
         self._load_data_frames()
         self._load_full_npy_data()
         self._load_center_of_mass_data()
-        self._load_segment_lengths()
+        # self._load_segment_lengths()
         self._load_names_and_connections()
         self._load_skeleton_schema()
         self._validate_data()
@@ -121,9 +121,9 @@ class DataLoader:
         with open(self._output_folder_path / "mediapipe_names_and_connections_dict.json", "r") as file:
             self.names_and_connections = json.loads(file.read())
 
-    def _load_segment_lengths(self):
-        with open(self._output_folder_path / "mediapipe_skeleton_segment_lengths.json", "r") as file:
-            self.segment_lengths = json.loads(file.read())
+    # def _load_segment_lengths(self):
+    #     with open(self._output_folder_path / "mediapipe_skeleton_segment_lengths.json", "r") as file:
+    #         self.segment_lengths = json.loads(file.read())
 
     def load_frame_data(self, frame_number: int) -> FrameData:
         return FrameData(

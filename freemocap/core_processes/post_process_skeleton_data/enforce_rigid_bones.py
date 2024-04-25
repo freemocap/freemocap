@@ -72,7 +72,10 @@ def enforce_rigid_bones(
                 proximal_position = marker_data[proximal_marker][frame_index]
                 distal_position = marker_data[distal_marker][frame_index]
                 direction = distal_position - proximal_position
-                direction /= np.linalg.norm(direction)  # Normalize to unit vector
+                try:
+                    direction /= np.linalg.norm(direction)  # Normalize to unit vector
+                except ZeroDivisionError:
+                    direction /= 1e-5  # Set to a small value if the direction is zero
                 adjustment = (desired_length - current_length) * direction
 
                 rigid_marker_data[distal_marker][frame_index] += adjustment

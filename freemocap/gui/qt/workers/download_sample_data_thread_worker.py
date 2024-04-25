@@ -31,5 +31,5 @@ class DownloadDataThreadWorker(QThread):
 
         except Exception as e:  # noqa
             logger.exception(e)
-            logger.error(f"Error downloading sample data from {self._dowload_url}")
+            logger.error(f"Error downloading sample data from {self.download_url}")
             raise e

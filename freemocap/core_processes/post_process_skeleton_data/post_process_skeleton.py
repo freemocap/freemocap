@@ -82,7 +82,6 @@ def run_post_processing_worker(
         raw_skeleton_data=raw_skel3d_frame_marker_xyz,
         task_list=task_list,
         settings=settings_dictionary,
-        landmark_names=landmark_names,
         all_tasks_finished_callback=lambda results: handle_thread_finished(results, post_processed_data_handler),
     )
     worker_thread.start()

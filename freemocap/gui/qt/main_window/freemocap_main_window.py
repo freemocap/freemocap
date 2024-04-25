@@ -301,21 +301,20 @@ class MainWindow(QMainWindow):
             logger.error("Blender executable path is None!")
             return
 
-        self._visualization_control_panel.get_user_selected_method_string()
         self._export_to_blender_thread_worker = ExportToBlenderThreadWorker(
             recording_path=recording_path,
-            blender_file_path=get_blender_file_path(recording_path),
-            blender_executable_path=self._visualization_control_panel.blender_executable_path,
-            blender_method=self._visualization_control_panel.get_user_selected_method_string(),
+            blender_file_path=Path(get_blender_file_path(recording_path)),
+            blender_executable_path=Path(self._visualization_control_panel.blender_executable_path),
             kill_thread_event=self._kill_thread_event,
         )
         self._export_to_blender_thread_worker.start()
-        self._export_to_blender_thread_worker.finished.connect(self._handle_export_to_blender_finished)
+        self._export_to_blender_thread_worker.success.connect(self._handle_export_to_blender_finished)
 
-    def _handle_export_to_blender_finished(self) -> None:
-        if (
-            self._controller_group_box.auto_open_in_blender_checked
-        ):
+    @Slot()
+    def _handle_export_to_blender_finished(self, success_value: bool) -> None:
+        if success_value is False:
+            logger.error("Blender export failed!")
+        elif self._controller_group_box.auto_open_in_blender_checked:
             if Path(self._active_recording_info_widget.active_recording_info.blender_file_path).exists():
                 open_file(self._active_recording_info_widget.active_recording_info.blender_file_path)
             else:
@@ -356,7 +355,9 @@ class MainWindow(QMainWindow):
 
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
-        except AttributeError:  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
+        except (
+            AttributeError
+        ):  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
             logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
             logger.error(e)

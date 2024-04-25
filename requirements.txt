@@ -6,7 +6,7 @@ fastapi==0.110.2
 rich~=10.4.0
 numpy>=1.19
 singleton-decorator==1.0.0
-websockets
+websockets==12.0
 
 ## Requirements for core-processor
 pyqtgraph==0.12.4

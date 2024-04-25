@@ -1,4 +1,46 @@
+pre-reqs - `npm` `python3.11`
 
+## run python server
+- `python1 -m venv venv`
+- `source venv/bin/activate`
+- `pip install --upgrade pip`
+- `pip install -r requirements.txt`
+- `$Env:PYTHONPATH = "C:\Users\jonma\github_repos\freemocap_organization\freemocap"` 
+  - (i think in cmd if on windows?)
+- make a `python src/api/app_factory.py`
+
+## run react UI
+- `cd freemocap-ui`
+- `npm install`
+- `npm start`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----------------
 https://user-images.githubusercontent.com/15314521/124694557-8069ea00-deaf-11eb-9328-3be27a4b1ea4.mp4
 
 # This is all very much a work in progress! More to come!

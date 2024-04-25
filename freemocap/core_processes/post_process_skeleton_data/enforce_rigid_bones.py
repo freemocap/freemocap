@@ -98,7 +98,7 @@ def adjust_children(
             adjust_children(child_marker, frame_index, adjustment, marker_data, joint_hierarchy)
 
 
-def merge_rigid_marker_data(rigid_marker_data: Dict[str, np.ndarray], segments: Dict[str, Segment]) -> np.ndarray:
+def merge_rigid_marker_data(rigid_marker_data: Dict[str, np.ndarray]) -> np.ndarray:
     """
     Merges the center of mass data from multiple segments into a single array.
 
@@ -110,7 +110,7 @@ def merge_rigid_marker_data(rigid_marker_data: Dict[str, np.ndarray], segments: 
     - A numpy array containing the merged center of mass data.
     """
 
-    segment_names = list(segments.keys())
+    segment_names = list(rigid_marker_data.keys())
     rigid_marker_data_list = [rigid_marker_data[segment_name] for segment_name in segment_names]
 
     return np.stack(rigid_marker_data_list, axis=0)
@@ -144,4 +144,4 @@ def enforce_rigid_bones_from_skeleton(skeleton: Skeleton) -> np.ndarray:
         joint_hierarchy=skeleton.joint_hierarchy,
     )
 
-    return merge_rigid_marker_data(rigid_marker_data=rigid_marker_data, segments=skeleton.segments)
+    return merge_rigid_marker_data(rigid_marker_data=rigid_marker_data)

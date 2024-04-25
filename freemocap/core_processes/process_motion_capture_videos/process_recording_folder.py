@@ -104,14 +104,20 @@ def process_recording_folder(
             logging_queue.put(exception)
         raise exception
 
-    # TODO: move the rotate by 90 function into skellyforge to skip duplication of responsibility
-    rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
-    # TODO: find out if skellyforge does all the error handling we need - if not add it to post_process_data
-    skel3d_frame_marker_xyz = post_process_data(
-        recording_processing_parameter_model=recording_processing_parameter_model,
-        raw_skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
-        queue=logging_queue,
-    )
+    try:
+        # TODO: move the rotate by 90 function into skellyforge to skip duplication of responsibility
+        rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
+        # TODO: find out if skellyforge does all the error handling we need - if not add it to post_process_data
+        skel3d_frame_marker_xyz = post_process_data(
+            recording_processing_parameter_model=recording_processing_parameter_model,
+            raw_skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
+            queue=logging_queue,
+        )
+    except (RuntimeError, ValueError, AttributeError) as e:
+        logger.error("Post processing failed, cannot continue processing")
+        if logging_queue:
+            logging_queue.put(e)
+        raise e
 
     if kill_event is not None and kill_event.is_set():
         exception = KillEventException("Process was killed")
@@ -119,11 +125,17 @@ def process_recording_folder(
             logging_queue.put(exception)
         raise exception
 
-    anatomical_data_dict = calculate_anatomical_data(
-        processing_parameters=recording_processing_parameter_model,
-        skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
-        queue=logging_queue,
-    )
+    try:
+        anatomical_data_dict = calculate_anatomical_data(
+            processing_parameters=recording_processing_parameter_model,
+            skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            queue=logging_queue,
+        )
+    except (RuntimeError, ValueError) as e:
+        logger.error("Anatomical data calculation failed, cannot continue processing")
+        if logging_queue:
+            logging_queue.put(e)
+        raise e
 
     if kill_event is not None and kill_event.is_set():
         exception = KillEventException("Process was killed")

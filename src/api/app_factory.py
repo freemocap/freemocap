@@ -7,7 +7,7 @@ from src.api.routes import enabled_routers
 
 def create_app(*args, **kwargs):
     _app = FastAPI()
-
+ 
     cors(_app)
 
     for router in enabled_routers:

@@ -28,7 +28,7 @@ class WebcamConfig(BaseModel):
     save_video: bool = True
     # fourcc: str = "MP4V"
     fourcc: str = "MJPG"
-    base_save_video_dir = _get_home_dir()
+    base_save_video_dir:str = _get_home_dir()
 
 
 @dataclass

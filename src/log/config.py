@@ -6,6 +6,7 @@ from logging.config import dictConfig
 
 DEFAULT_LOGGING = {"version": 1, "disable_existing_loggers": False}
 
+logging.getLogger("OpenGL").setLevel(logging.INFO)
 
 def get_logging_handlers():
     """

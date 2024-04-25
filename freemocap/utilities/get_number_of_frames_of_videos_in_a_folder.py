@@ -9,7 +9,7 @@ from freemocap.utilities.get_video_paths import get_video_paths
 logger = logging.getLogger(__name__)
 
 
-def get_number_of_frames_of_videos_in_a_folder(folder_path: Union[str, Path]):
+def get_number_of_frames_of_videos_in_a_folder(folder_path: Union[str, Path]) -> dict[str, int]:
     """
     Get the number of frames in the first video in a folder
     """
@@ -18,12 +18,12 @@ def get_number_of_frames_of_videos_in_a_folder(folder_path: Union[str, Path]):
 
     if len(list_of_video_paths) == 0:
         logger.error(f"No videos found in {folder_path}")
-        return None
+        raise ValueError(f"No videos found in {folder_path}")
 
-    frame_count = []
+    frame_count = {}
     for video_path in list_of_video_paths:
         cap = cv2.VideoCapture(str(video_path))
-        frame_count.append(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
+        frame_count[video_path.name] = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         cap.release()
 
     return frame_count

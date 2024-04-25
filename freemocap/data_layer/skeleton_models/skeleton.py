@@ -12,11 +12,13 @@ logger = logging.getLogger(__name__)
 
 class Skeleton(BaseModel):
     markers: MarkerInfo
+    num_tracked_points: int
     segments: Optional[Dict[str, Segment]] = None
     marker_data: Dict[str, np.ndarray] = {}
     virtual_marker_data: Dict[str, np.ndarray] = {}
     joint_hierarchy: Optional[Dict[str, List[str]]] = None
     center_of_mass_definitions: Optional[Dict[str, SegmentAnthropometry]] = None
+    num_frames: Optional[int] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -69,17 +71,14 @@ class Skeleton(BaseModel):
         self.center_of_mass_definitions = center_of_mass_definitions
 
     def integrate_freemocap_3d_data(self, freemocap_3d_data: np.ndarray) -> None:
-        self.num_frames = freemocap_3d_data.shape[
-            0
-        ]  # TODO: Maybe should be defined in the model and only filled in here
+        self.num_frames = freemocap_3d_data.shape[0]
         num_markers_in_data = freemocap_3d_data.shape[1]
         original_marker_names_list = self.markers.original_marker_names
-        num_markers_in_model = len(original_marker_names_list)
 
-        if num_markers_in_data != num_markers_in_model:
+        if num_markers_in_data != self.num_tracked_points:
             raise ValueError(
                 f"The number of markers in the 3D data ({num_markers_in_data}) does not match "
-                f"the number of markers in the model ({num_markers_in_model})."
+                f"the expected number of tracked points ({self.num_tracked_points})."
             )
 
         for i, marker_name in enumerate(original_marker_names_list):

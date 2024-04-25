@@ -3,7 +3,10 @@ from freemocap.data_layer.recording_models.recording_info_model import Recording
 
 
 def processing_pipeline_check(processing_parameters: ProcessingParameterModel) -> None:
-    """Performs checks on the processing parameters to make sure they are valid with the existing data before running the pipeline"""
+    """
+    Performs checks on the processing parameters to make sure they are valid with the existing data before running the pipeline.
+    Raises FileNotFoundError if any of the checks fail.
+    """
     status_check_dict = processing_parameters.recording_info_model.status_check
     if not status_check_dict["synchronized_videos_status_check"]:
         raise FileNotFoundError(

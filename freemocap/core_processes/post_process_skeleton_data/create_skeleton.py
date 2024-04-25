@@ -29,6 +29,7 @@ def create_marker_info(
 
 def create_skeleton_model(
     actual_markers: List[str],
+    num_tracked_points: int,
     segment_connections: Optional[Dict[str, Segment]] = None,
     virtual_markers: Optional[Dict[str, Dict[str, List]]] = None,
     joint_hierarchy: Optional[Dict[str, List[str]]] = None,
@@ -39,6 +40,7 @@ def create_skeleton_model(
     Optionally integrates segment connections, joint hierarchy, and anthro data if needed
     Parameters:
     - actual_markers: A list of strings representing the names of actual markers.
+    - num_tracked_points: The number of tracked points expected in the 3D data.
     - segment_connections: Optional; A dictionary where each key is a segment name and its value is a dictionary
       with information about that segment (e.g., 'proximal', 'distal' marker names).
     - virtual_markers: Optional; a dictionary with information necessary to compute virtual markers.
@@ -51,7 +53,7 @@ def create_skeleton_model(
     """
     marker_hub = create_marker_info(marker_list=actual_markers, virtual_markers=virtual_markers)
 
-    skeleton_model = Skeleton(markers=marker_hub)
+    skeleton_model = Skeleton(markers=marker_hub, num_tracked_points=num_tracked_points)
 
     if segment_connections:
         skeleton_model.add_segments(segment_connections)

@@ -33,6 +33,7 @@ def calculate_anatomical_data(
         virtual_markers=processing_parameters.tracking_model_info.virtual_markers_definitions,
         joint_hierarchy=processing_parameters.tracking_model_info.joint_hierarchy,
         center_of_mass_info=processing_parameters.tracking_model_info.center_of_mass_definitions,
+        num_tracked_points=processing_parameters.tracking_model_info.num_tracked_points,
     )
 
     skeleton.integrate_freemocap_3d_data(skel3d_frame_marker_xyz)

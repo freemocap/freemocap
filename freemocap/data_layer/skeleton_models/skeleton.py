@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from pydantic import BaseModel
 import numpy as np
 
@@ -55,7 +55,7 @@ class Skeleton(BaseModel):
 
         self.joint_hierarchy = joint_hierarchy
 
-    def add_center_of_mass_definitions(self, center_of_mass_definitions: Dict[str, SegmentAnthropometry]) -> None:
+    def add_center_of_mass_definitions(self, center_of_mass_definitions: Dict[str, Dict[str, float]]) -> None:
         """
         Adds anthropometric center of mass definitions to the skeleton model.
 
@@ -68,7 +68,9 @@ class Skeleton(BaseModel):
             if com_segment_name not in self.segments.keys():
                 raise ValueError(f"Segment {com_segment_name} is not in the list of segments.")
 
-        self.center_of_mass_definitions = center_of_mass_definitions
+        self.center_of_mass_definitions = {}
+        for name, values in center_of_mass_definitions.items():
+            self.center_of_mass_definitions[name] = SegmentAnthropometry(**values)
 
     def integrate_freemocap_3d_data(self, freemocap_3d_data: np.ndarray) -> None:
         self.num_frames = freemocap_3d_data.shape[0]

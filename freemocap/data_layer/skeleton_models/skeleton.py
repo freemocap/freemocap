@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 from pydantic import BaseModel
 import numpy as np
 
@@ -68,9 +68,9 @@ class Skeleton(BaseModel):
             if com_segment_name not in self.segments.keys():
                 raise ValueError(f"Segment {com_segment_name} is not in the list of segments.")
 
-        self.center_of_mass_definitions = {}
-        for name, values in center_of_mass_definitions.items():
-            self.center_of_mass_definitions[name] = SegmentAnthropometry(**values)
+        self.center_of_mass_definitions = {
+            name: SegmentAnthropometry(**values) for name, values in center_of_mass_definitions.items()
+        }
 
     def integrate_freemocap_3d_data(self, freemocap_3d_data: np.ndarray) -> None:
         self.num_frames = freemocap_3d_data.shape[0]
@@ -83,8 +83,9 @@ class Skeleton(BaseModel):
                 f"the expected number of tracked points ({self.num_tracked_points})."
             )
 
-        for i, marker_name in enumerate(original_marker_names_list):
-            self.marker_data[marker_name] = freemocap_3d_data[:, i, :]
+        self.marker_data = {
+            marker_name: freemocap_3d_data[:, i, :] for i, marker_name in enumerate(original_marker_names_list)
+        }
 
         try:
             self.calculate_virtual_markers()

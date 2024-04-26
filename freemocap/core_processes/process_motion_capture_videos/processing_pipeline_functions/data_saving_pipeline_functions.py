@@ -6,6 +6,7 @@ import numpy as np
 
 
 from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import save_numpy_array_to_disk
+from freemocap.core_processes.post_process_skeleton_data.split_and_save import split_and_save
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
@@ -39,7 +40,7 @@ def save_data(
     save_numpy_array_to_disk(
         array_to_save=skel3d_frame_marker_xyz,
         file_name=DATA_3D_NPY_FILE_NAME,
-        save_directory=path_to_folder_where_we_will_save_this_data,
+        save_directory=Path(path_to_folder_where_we_will_save_this_data),
     )
 
     if segment_COM_frame_imgPoint_XYZ is not None:
@@ -71,3 +72,10 @@ def save_data(
         )
     else:
         logger.debug("rigid_bones_data is None, could not save")
+
+    logger.info("Splitting and saving data...")
+    split_and_save(
+        skeleton_3d_data=skel3d_frame_marker_xyz,
+        model_info=processing_parameters.tracking_model_info,
+        output_data_folder_path=processing_parameters.recording_info_model.output_data_folder_path,
+    )

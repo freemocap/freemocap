@@ -1,4 +1,3 @@
-import json
 import logging
 from pathlib import Path
 from typing import Union, Dict, Any
@@ -47,6 +46,7 @@ class DataLoader:
 
         self._recording_name = self._recording_folder_path.name
         self._output_folder_path = Path(get_output_data_folder_path(self._recording_folder_path))
+        self.number_of_frames = None
 
         self._load_data()
 
@@ -56,8 +56,7 @@ class DataLoader:
         self._load_full_npy_data()
         self._load_center_of_mass_data()
         # self._load_segment_lengths()
-        self._load_names_and_connections()
-        self._load_skeleton_schema()
+        # self._load_skeleton_schema()
         self._validate_data()
 
     def _load_data_frames(self):
@@ -82,13 +81,14 @@ class DataLoader:
     def _validate_dataframe(self, df, df_name):
         if df is not None and len(df) != self.number_of_frames:
             raise ValueError(
-                f"The number of frames in the {df_name} dataframe is different from the number of frames in the body dataframe."
+                f"The number of frames in the {df_name} dataframe ({len(df)}) is different from the expected number of frames ({self.number_of_frames})."
             )
 
     def _validate_numpy_array(self, np_array, np_array_name):
         if np_array is not None and np_array.shape[0] != self.number_of_frames:
+            print(f"\n\n {np_array.shape} \n\n")
             raise ValueError(
-                f"The number of frames in the {np_array_name} data is different from the number of frames in the body dataframe."
+                f"The number of frames in the {np_array_name} data ({np_array.shape[0]}) is different from the expected number of frames ({self.number_of_frames})."
             )
 
     def _load_timestamps(self):
@@ -120,13 +120,8 @@ class DataLoader:
     def _load_full_npy_data(self):
         self.data_frame_name_xyz = np.load(get_full_npy_file_path(output_data_folder=self._output_folder_path))
 
-    def _load_names_and_connections(self):
-        with open(self._output_folder_path / "mediapipe_names_and_connections_dict.json", "r") as file:
-            self.names_and_connections = json.loads(file.read())
-
-    # def _load_segment_lengths(self):
-    #     with open(self._output_folder_path / "mediapipe_skeleton_segment_lengths.json", "r") as file:
-    #         self.segment_lengths = json.loads(file.read())
+        if not self.number_of_frames:
+            self.number_of_frames = self.data_frame_name_xyz.shape[0]
 
     def load_frame_data(self, frame_number: int) -> FrameData:
         return FrameData(
@@ -143,7 +138,7 @@ class DataLoader:
                 },
             )
         except AttributeError:
-            return Timestamps()
+            return Timestamps(mean=None)
 
     def get_tracked_points(self, frame_number) -> Dict[str, Point]:
         right_hand_points = {}
@@ -187,6 +182,7 @@ class DataLoader:
         if self._model_info.segment_connections is None:
             raise ValueError("Segment connections are not defined.")
 
+        # TODO: This is throwing an out of bounds error, likely an issue with the skeleton model
         for segment_number, segment_name in enumerate(self._model_info.segment_connections.keys()):
             com_data[segment_name] = Point(
                 x=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 0],

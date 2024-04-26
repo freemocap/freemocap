@@ -131,7 +131,7 @@ def process_recording_folder(
             skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
             queue=logging_queue,
         )
-    except (RuntimeError, ValueError) as e:
+    except (RuntimeError, ValueError, TypeError, KeyError) as e:
         logger.error("Anatomical data calculation failed, cannot continue processing")
         if logging_queue:
             logging_queue.put(e)

@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Tuple
 import numpy as np
 
-from freemocap.data_layer.skeleton_models.segments import Segment, SegmentAnthropometry
+from freemocap.data_layer.skeleton_models.segments import SegmentAnthropometry
 from freemocap.data_layer.skeleton_models.skeleton import Skeleton
 
 logger = logging.getLogger(__name__)

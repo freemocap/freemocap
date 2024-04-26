@@ -46,6 +46,8 @@ def calculate_anatomical_data(
     except ValueError:
         logger.warning("Center of mass cannot be calculated for this tracking model")
         segment_COM_frame_imgPoint_XYZ = totalBodyCOM_frame_XYZ = None
+    except AttributeError as e:
+        raise e
 
     logger.info("Enforcing rigid bones...")
     rigid_bones_data = enforce_rigid_bones_from_skeleton(skeleton=skeleton)

@@ -14,7 +14,6 @@ pyqt5==5.15.6
 pyopengl==3.1.6
 
 
-
 ## old 
 #aniposelib==0.4.3
 #h5py>=3.1.0

@@ -1,3 +1,24 @@
+[tool.poetry]
+name = "freemocap"
+version = "0.1.0"
+description = ""
+authors = ["jonmatthis <jonmatthis@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">3.10, <3.12"
+pydantic = "^2.7.1"
+pyside6 = "^6.7.0"
+mediapipe = "^0.10.11"
+
+
+[tool.poetry.group.dev.dependencies]
+taskipy = "^1.12.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.taskipy.tasks]
 test = "python -m unittest src/tests/**/test_*"

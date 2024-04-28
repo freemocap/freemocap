@@ -1,21 +1,33 @@
 version: "3.8"
 
 services:
-  app:
+  python:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.python
     ports:
       - "57000:8080"
     command:
-      - "./bin/run_uvicorn_server.sh"
+      - "./bin/linux/run_uvicorn_server.sh"
     volumes:
       - .:/workspace
 
-  db:
-    image: postgres:14-alpine
+  ui: 
+    build:
+      context: ./freemocap-ui
+      dockerfile: Dockerfile.ui
     ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      - "57001:3000"
+    command:
+      - "npm"
+      - "start"
+    volumes:
+      - .:/workspace
+
+  # db:
+  #   image: postgres:14-alpine
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: password

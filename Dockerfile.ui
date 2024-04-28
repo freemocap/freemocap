@@ -1,0 +1,21 @@
+# Use an official Node.js runtime as a parent image
+FROM node:16.13.2-alpine
+
+# Set the working directory in the container
+WORKDIR /usr/src/app
+
+# Install app dependencies
+# A wildcard is used to ensure both package.json AND package-lock.json are copied
+COPY freemocap-ui/package*.json ./
+
+# Install all dependencies in the package.json
+RUN npm install
+
+# Bundle app source code inside the Docker image
+COPY . .
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Define the command to run the app
+CMD ["npm", "start"]

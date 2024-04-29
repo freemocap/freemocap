@@ -8,7 +8,11 @@ logger = logging.getLogger(__name__)
 
 def guess_blender_exe_path_from_path(base_path: Union[str, Path]) -> Optional[Path]:
     base_path = Path(base_path)
-    blender_folder_paths = [path for path in base_path.rglob("blender.exe")]
+    try:
+        blender_folder_paths = [path for path in base_path.rglob("blender.exe")]
+    except OSError:
+        logger.info(f"Unable to access: {str(base_path)}")
+        return
 
     if blender_folder_paths:
 

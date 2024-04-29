@@ -1,0 +1,68 @@
+<?xml version="1.0" ?>
+<!-- Including DOCTYPE breaks stuff
+    <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+-->
+
+<svg	version="1.1"
+	baseProfile="full"
+	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	xmlns:ev="http://www.w3.org/2001/xml-events"
+
+	width="40in" height="27in" viewBox="-1 -1.5 58 42">	<!-- hack width and height for differently sized printing -->
+
+    <title>FreeMocap Charucoboard</title>
+    <desc>
+    	FreeMocap Charucoboard in SVG Format
+	Creator: Brian M. Sutin
+	Copyright: 2024, Skewray Research, LLC
+	License: GNU Affero General Public License v3 (https://www.gnu.org/licenses/agpl-3.0.en.html)
+    </desc>
+
+<rect x="-5" y="-5.5" width="66" height="50" fill="white" />	<!-- white background with 5-pixel margin -->
+
+<path stroke-width="1" stroke="black" d="
+M0 0h8m8 0h8m8 0h8m8 0h8
+M0 1h8m1 0h6m1 0h8m1 0h6m1 0h8m1 0h6m1 0h8
+M0 2h8m1 0h1m1 0h1m2 0h1m1 0h8m1 0h6m1 0h8m1 0h3m2 0h1m1 0h8
+M0 3h8m1 0h2m1 0h1m1 0h1m1 0h8m1 0h1m4 0h1m1 0h8m1 0h3m2 0h1m1 0h8
+M0 4h8m1 0h3m2 0h1m1 0h8m1 0h1m1 0h2m1 0h1m1 0h8m1 0h3m1 0h2m1 0h8
+M0 5h8m1 0h3m1 0h2m1 0h8m1 0h1m1 0h1m1 0h2m1 0h8m1 0h1m2 0h1m1 0h1m1 0h8
+M0 6h8m1 0h6m1 0h8m1 0h6m1 0h8m1 0h6m1 0h8
+M0 7h8m8 0h8m8 0h8m8 0h8
+M8 8h8m8 0h8m8 0h8
+M1 9h6m1 0h8m1 0h6m1 0h8m1 0h6m1 0h8m1 0h6
+M1 10h1m1 0h2m1 0h1m1 0h8m1 0h2m1 0h1m1 0h1m1 0h8m1 0h2m3 0h1m1 0h8m1 0h1m1 0h2m1 0h1
+M1 11h1m1 0h2m1 0h1m1 0h8m1 0h2m1 0h3m1 0h8m1 0h1m1 0h2m1 0h1m1 0h8m1 0h1m3 0h2
+M1 12h2m1 0h3m1 0h8m1 0h1m1 0h2m1 0h1m1 0h8m1 0h1m2 0h3m1 0h8m1 0h3m1 0h2
+M1 13h2m2 0h2m1 0h8m1 0h1m3 0h2m1 0h8m1 0h1m2 0h1m1 0h1m1 0h8m1 0h1m3 0h2
+M1 14h6m1 0h8m1 0h6m1 0h8m1 0h6m1 0h8m1 0h6
+M8 15h8m8 0h8m8 0h8
+M0 16h8m8 0h8m8 0h8m8 0h8
+M0 17h8m1 0h6m1 0h8m1 0h6m1 0h8m1 0h6m1 0h8
+M0 18h8m1 0h1m2 0h3m1 0h8m1 0h1m4 0h1m1 0h8m1 0h1m2 0h3m1 0h8
+M0 19h8m1 0h2m1 0h3m1 0h8m1 0h1m3 0h2m1 0h8m1 0h1m4 0h1m1 0h8
+M0 20h8m1 0h1m4 0h1m1 0h8m1 0h1m2 0h1m1 0h1m1 0h8m1 0h2m1 0h1m1 0h1m1 0h8
+M0 21h8m1 0h3m1 0h2m1 0h8m1 0h1m1 0h1m1 0h2m1 0h8m1 0h2m2 0h2m1 0h8
+M0 22h8m1 0h6m1 0h8m1 0h6m1 0h8m1 0h6m1 0h8
+M0 23h8m8 0h8m8 0h8m8 0h8
+M8 24h8m8 0h8m8 0h8
+M1 25h6m1 0h8m1 0h6m1 0h8m1 0h6m1 0h8m1 0h6
+M1 26h1m4 0h1m1 0h8m1 0h4m1 0h1m1 0h8m1 0h6m1 0h8m1 0h3m1 0h2
+M1 27h1m1 0h2m1 0h1m1 0h8m1 0h4m1 0h1m1 0h8m1 0h1m3 0h2m1 0h8m1 0h1m1 0h1m1 0h2
+M1 28h1m1 0h2m1 0h1m1 0h8m1 0h1m1 0h1m1 0h2m1 0h8m1 0h1m1 0h1m2 0h1m1 0h8m1 0h6
+M1 29h4m1 0h1m1 0h8m1 0h2m3 0h1m1 0h8m1 0h2m3 0h1m1 0h8m1 0h1m4 0h1
+M1 30h6m1 0h8m1 0h6m1 0h8m1 0h6m1 0h8m1 0h6
+M8 31h8m8 0h8m8 0h8
+M0 32h8m8 0h8m8 0h8m8 0h8
+M0 33h8m1 0h6m1 0h8m1 0h6m1 0h8m1 0h6m1 0h8
+M0 34h8m1 0h3m1 0h2m1 0h8m1 0h3m1 0h2m1 0h8m1 0h2m1 0h3m1 0h8
+M0 35h8m1 0h2m1 0h3m1 0h8m1 0h2m2 0h2m1 0h8m1 0h2m2 0h2m1 0h8
+M0 36h8m1 0h1m1 0h1m2 0h1m1 0h8m1 0h3m2 0h1m1 0h8m1 0h2m2 0h2m1 0h8
+M0 37h8m1 0h4m1 0h1m1 0h8m1 0h1m3 0h2m1 0h8m1 0h2m1 0h1m1 0h1m1 0h8
+M0 38h8m1 0h6m1 0h8m1 0h6m1 0h8m1 0h6m1 0h8
+M0 39h8m8 0h8m8 0h8m8 0h8
+"/>
+
+</svg>
+

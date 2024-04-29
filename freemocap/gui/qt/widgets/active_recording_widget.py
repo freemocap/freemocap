@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 from PySide6.QtCore import Signal, QFileSystemWatcher
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
@@ -19,7 +19,7 @@ class ActiveRecordingInfoWidget(QWidget):
 
     def __init__(
         self,
-        parent: QWidget = None,
+        parent: Optional[QWidget] = None,
     ):
         super().__init__(parent=parent)
         self._layout = QVBoxLayout()
@@ -40,7 +40,7 @@ class ActiveRecordingInfoWidget(QWidget):
     def active_recording_view_widget(self):
         return self._active_recording_view_widget
 
-    def get_active_recording_info(self, return_path: bool = False) -> Union[RecordingInfoModel, Path]:
+    def get_active_recording_info(self, return_path: bool = False) -> Union[RecordingInfoModel, Path, None]:
         # this is redundant to the `active_recording_info` property,
         # but it will be more intuitive to send this down as a callable
         # rather than relying on 'pass-by-reference' magic lol
@@ -57,8 +57,13 @@ class ActiveRecordingInfoWidget(QWidget):
 
     def set_active_recording(
         self,
-        recording_folder_path: Union[str, Path],
+        recording_folder_path: Union[str, Path, None],
     ):
+        if recording_folder_path is None or recording_folder_path == "None":
+            logger.info("No recording folder path provided - clearing active recording")
+            self._active_recording_info = None
+            return
+
         logger.debug(f"Setting active recording to {recording_folder_path}")
 
         self._active_recording_info = RecordingInfoModel(recording_folder_path=str(recording_folder_path))

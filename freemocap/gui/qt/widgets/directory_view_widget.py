@@ -7,6 +7,7 @@ from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget, QPushButton, QFileSystemModel
 from qtpy import QtGui
 
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path
 
@@ -16,14 +17,14 @@ logger = logging.getLogger(__name__)
 class DirectoryViewWidget(QWidget):
     new_active_recording_selected_signal = Signal(str)
 
-    def __init__(self, top_level_folder_path: Union[str, Path], get_active_recording_info_callable: Callable):
+    def __init__(self, gui_state: GuiState, get_active_recording_info_callable: Callable):
         self._root_folder = None
         logger.debug("Creating QtDirectoryViewWidget")
         super().__init__()
         self._minimum_width = 300
         self.setMinimumWidth(self._minimum_width)
 
-        self._top_level_folder_path = top_level_folder_path
+        self._gui_state = gui_state
         self._get_active_recording_info_callable = get_active_recording_info_callable
 
         self._layout = QVBoxLayout()
@@ -45,17 +46,17 @@ class DirectoryViewWidget(QWidget):
         self._tree_view_widget.setAlternatingRowColors(True)
         self._tree_view_widget.setColumnWidth(0, 250)
 
-        if self._top_level_folder_path is not None:
-            self.set_folder_as_root(self._top_level_folder_path)
+        self._path_label = QLabel(str(self._gui_state.freemocap_data_folder_path))
+
+        if self._gui_state.freemocap_data_folder_path is not None:
+            self.set_folder_as_root(self._gui_state.freemocap_data_folder_path)
 
         self._show_freemocap_data_folder_button = QPushButton("Show FreeMoCap Data Folder")
         self._show_freemocap_data_folder_button.clicked.connect(
-            lambda: self.set_folder_as_root(self._top_level_folder_path)
+            lambda: self.set_folder_as_root(self._gui_state.freemocap_data_folder_path)
         )
 
         self._layout.addWidget(self._show_freemocap_data_folder_button)
-
-        self._path_label = QLabel(str(self._top_level_folder_path))
         self._layout.addWidget(self._path_label)
 
     def expand_directory_to_path(self, path: Union[str, Path], collapse_other_directories: bool = True):
@@ -82,6 +83,8 @@ class DirectoryViewWidget(QWidget):
         self._file_system_model.setRootPath(str(folder_path))
         self._tree_view_widget.setRootIndex(self._file_system_model.index(str(folder_path)))
         self._tree_view_widget.setColumnWidth(0, int(self._minimum_width * 0.9))
+
+        self._path_label.setText(str(folder_path))
 
     def _context_menu(self):
         menu = QMenu()
@@ -143,7 +146,8 @@ if __name__ == "__main__":
     from PySide6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    directory_view_widget = DirectoryViewWidget(top_level_folder_path=Path.home())
+    gui_state = GuiState()
+    directory_view_widget = DirectoryViewWidget(gui_state=gui_state)
 
     directory_view_widget.show()
 

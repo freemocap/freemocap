@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-from typing import Union
 
 from PySide6.QtWidgets import (
     QVBoxLayout,
@@ -9,18 +8,21 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QLabel,
     QFileDialog,
-    QLineEdit,
 )
+
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 logger = logging.getLogger(__name__)
 BLENDER_EXECUTABLE_PATH_MISSING_STRING = "BLENDER EXECUTABLE NOT FOUND"
 
 
 class VisualizationControlPanel(QWidget):
-    def __init__(self, blender_executable_path: Union[str, Path] = BLENDER_EXECUTABLE_PATH_MISSING_STRING, parent=None):
+    def __init__(self, gui_state: GuiState, parent=None):
         super().__init__(parent=parent)
 
-        self._blender_executable_path = str(blender_executable_path)
+        self._gui_state = gui_state
+        self._blender_executable_path = str(self._gui_state.blender_path)
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
@@ -36,7 +38,7 @@ class VisualizationControlPanel(QWidget):
 
         self._layout.addWidget(QLabel("Blender Executable Path:"))
 
-        self._blender_executable_label = QLineEdit(self._blender_executable_path)
+        self._blender_executable_label = QLabel(self._blender_executable_path)
         self._layout.addWidget(self._blender_executable_label)
 
         self._set_blender_executable_path_button = QPushButton("Choose your Blender Executable")
@@ -84,3 +86,9 @@ class VisualizationControlPanel(QWidget):
 
         logger.info(f"User selected Blender Executable path:{self._blender_executable_path}")
         self._blender_executable_label.setText(self._blender_executable_path)
+
+        if (
+            self._blender_executable_path != BLENDER_EXECUTABLE_PATH_MISSING_STRING
+        ):  # don't persist missing paths across sessions
+            self._gui_state.blender_path = self._blender_executable_path
+            save_gui_state(gui_state=self._gui_state, file_pathstring=get_gui_state_json_path())

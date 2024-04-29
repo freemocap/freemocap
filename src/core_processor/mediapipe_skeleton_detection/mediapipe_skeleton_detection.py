@@ -37,7 +37,7 @@ class MediapipeSkeletonDetection:
 
     async def process_as_frame_loop(self, webcam_id, cb, model_complexity: int = 2):
         with self._cam_manager.start_capture_session_single_cam(
-            webcam_id=webcam_id
+            webcam_id=str(webcam_id)
         ) as session_obj:
             with mp_holistic.Holistic(
                 min_detection_confidence=0.5,

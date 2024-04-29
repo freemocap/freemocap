@@ -4,7 +4,7 @@ import {CaptureType} from "../services/frame-capture";
 import {useFrameCapture} from "../hooks/use-frame-capture";
 
 export const BoardDetection = () => {
-  const [frameCapture, data] = useFrameCapture("0", CaptureType.BoardDetection);
+  const [frameCapture, data] = useFrameCapture(CaptureType.BoardDetection, 8080);
   if (!data) {
     return null;
   }

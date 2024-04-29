@@ -33,8 +33,7 @@ class FrameThread(threading.Thread):
         self._num_frames_processed = 0
         self._elapsed = 0
         self._frame: FramePayload = FramePayload()
-        self._session_id = uuid4()
-        self._session_timestr = get_canonical_time_str()
+        self._session_id = get_canonical_time_str()
         self.setDaemon(True)
 
     @property
@@ -48,7 +47,7 @@ class FrameThread(threading.Thread):
     @property
     def session_writer_path(self):
         return Path().joinpath(
-            freemocap_data_path, f"{self._session_timestr}_{self._session_id}"
+            freemocap_data_path, f"{self._session_id}"
         )
 
     @property

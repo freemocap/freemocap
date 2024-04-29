@@ -31,6 +31,10 @@ const categories = [
       {
         id: "Skeleton Detection",
         route: "/skeleton_detection"
+      },
+      {
+        id: "Config View",
+        route: "/config"
       }
     ],
   },

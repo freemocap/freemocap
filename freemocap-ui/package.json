@@ -8,7 +8,7 @@
   "dependencies": {
     "@emotion/react": "^11.7.1",
     "@emotion/styled": "^11.6.0",
-    "@mui/icons-material": "^5.2.5", 
+    "@mui/icons-material": "^5.2.5",
     "@mui/material": "^5.2.8",
     "@mui/styled-engine": "^5.2.6",
     "@mui/system": "^5.2.8",
@@ -16,6 +16,7 @@
     "@types/dom-mediacapture-record": "^1.0.11",
     "axios": "^0.25.0",
     "class-transformer": "0.5.1",
+    "loglevel": "^1.9.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-redux": "^7.2.6",
@@ -26,7 +27,8 @@
     "react-use-websocket": "^2.9.1",
     "react-webcam": "^6.0.0",
     "reflect-metadata": "^0.1.13",
-    "typescript": "4.5.5"
+    "typescript": "4.5.5",
+    "winston": "^3.13.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.16.1",
@@ -40,7 +42,8 @@
     "@types/react": "^17.0.38",
     "@types/react-dom": "^17.0.11",
     "@types/react-redux": "^7.1.11",
-    "@types/react-router-dom": "^5.1.6"
+    "@types/react-router-dom": "^5.1.6",
+    "@types/winston": "^2.4.4"
   },
   "scripts": {
     "start": "react-scripts start",

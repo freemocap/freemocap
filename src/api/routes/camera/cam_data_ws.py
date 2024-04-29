@@ -38,9 +38,9 @@ async def board_detection_as_ws(web_socket: WebSocket, webcam_id: str):
         return
 
 
-@cam_ws_router.websocket("/ws/skeleton_detection/{webcam_id}")
+@cam_ws_router.websocket("/ws/skeleton_detection")
 async def skeleton_detection_as_ws(
-    web_socket: WebSocket, webcam_id: str, model_complexity: int = 2
+    web_socket: WebSocket, webcam_id: int=0, model_complexity: int = 2
 ):
     logger.info(f"Websocket request for skeleton detection on webcam {webcam_id}")
     await web_socket.accept()

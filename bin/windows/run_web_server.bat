@@ -1,1 +1,1 @@
-uvicorn --factory src.api.app_factory:create_app --port 8080 --host 0.0.0.0 --reload
+uvicorn --factory src.api.app_factory:create_app --port 8080 --host localhost --reload

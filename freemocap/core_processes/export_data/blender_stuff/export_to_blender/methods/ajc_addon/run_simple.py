@@ -2,7 +2,7 @@ import sys
 
 
 def run_simple(recording_path_input: str, blender_file_save_path_input: str):
-    from ajc27_freemocap_blender_addon.run_as_main import ajc27_run_as_main_function
+    from ajc27_freemocap_blender_addon.main import ajc27_run_as_main_function
 
     ajc27_run_as_main_function(recording_path=str(recording_path_input),
                                blend_file_path=str(blender_file_save_path_input))

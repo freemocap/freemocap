@@ -179,11 +179,10 @@ class DataLoader:
             z=self.center_of_mass_xyz[frame_number, 2],
         )
 
-        if self._model_info.segment_connections is None:
-            raise ValueError("Segment connections are not defined.")
+        if self._model_info.center_of_mass_definitions is None:
+            raise ValueError("center of mass definitions are not provided.")
 
-        # TODO: This is throwing an out of bounds error, likely an issue with the skeleton model
-        for segment_number, segment_name in enumerate(self._model_info.segment_connections.keys()):
+        for segment_number, segment_name in enumerate(self._model_info.center_of_mass_definitions.keys()):
             com_data[segment_name] = Point(
                 x=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 0],
                 y=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 1],

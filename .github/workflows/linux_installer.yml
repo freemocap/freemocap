@@ -44,7 +44,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/pyapp-v0.12.0
           export PYAPP_PROJECT_NAME=freemocap
-          export PYAPP_PROJECT_VERSION=v1.2.0
+          export PYAPP_PROJECT_VERSION=v1.2.1
           export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt
           export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
           export PYAPP_PIP_EXTRA_ARGS=--no-deps

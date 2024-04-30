@@ -117,8 +117,6 @@ def save_split_csv(
         column_name_list = column_names[category]
         tracked_points_name = "num_tracked_points_" + category
 
-        print(f"starting data shape: {data.shape}")
-        print(f"desired data shape: {(number_of_frames, getattr(model_info, tracked_points_name) * 3)}")
         data_flat = data.reshape(number_of_frames, getattr(model_info, tracked_points_name) * 3)
         dataframe = pd.DataFrame(data_flat, columns=column_name_list)
         dataframe.to_csv(str(Path(output_data_folder_path) / category_info[category]), index=False)

@@ -2,6 +2,7 @@ import logging
 
 from pydantic import BaseModel
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import MediapipeTrackingParams, MediapipeModelInfo
+from skellytracker.trackers.openpose_tracker.openpose_model_info import OpenPoseModelInfo
 from skellytracker.trackers.base_tracker.base_tracking_params import BaseTrackingParams
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
@@ -39,7 +40,7 @@ class ProcessingParameterModel(BaseModel):
     tracking_parameters_model: BaseTrackingParams = MediapipeTrackingParams()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel()
     post_processing_parameters_model: PostProcessingParametersModel = PostProcessingParametersModel()
-    tracking_model_info: ModelInfo = MediapipeModelInfo()
+    tracking_model_info: ModelInfo = OpenPoseModelInfo()
 
     class Config:
         arbitrary_types_allowed = True

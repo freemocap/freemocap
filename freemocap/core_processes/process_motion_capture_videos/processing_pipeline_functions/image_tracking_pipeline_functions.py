@@ -62,6 +62,7 @@ def run_image_tracking_pipeline(
 
     return image_data_numCams_numFrames_numTrackedPts_XYZ
 
+from skellytracker.trackers.openpose_tracker.openpose_model_info import OpenPoseTrackingParams
 
 def run_image_tracking(
     tracking_params: BaseTrackingParams,
@@ -76,9 +77,22 @@ def run_image_tracking(
     else:
         tracker_type = "MediapipeHolisticTracker"
 
+    tracker_type = "OpenPoseTracker"
+
+    openpose_tracking_params = OpenPoseTrackingParams(
+        num_processes=tracking_params.num_processes,
+        run_image_tracking=tracking_params.run_image_tracking,
+        openpose_exe_path=  r'C:\openpose',
+        output_json_path= str(Path(output_data_folder_path/ "openpose_jsons"),
+        )
+
+    )
+
+
+
     image_data_numCams_numFrames_numTrackedPts_XYZ = process_folder_of_videos(
         tracker_name=tracker_type,
-        tracking_params=tracking_params,
+        tracking_params=openpose_tracking_params,
         synchronized_video_path=synchronized_videos_folder_path,
         output_folder_path=output_data_folder_path,
         annotated_video_path=None,

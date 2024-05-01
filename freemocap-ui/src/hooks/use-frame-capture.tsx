@@ -1,23 +1,23 @@
 import {useEffect, useState} from "react";
 import {CaptureType, FrameCapture, OnMessageHandler} from "../services/frame-capture";
 
-export const useFrameCapture = ( captureType: CaptureType, port:number, onMessage?: OnMessageHandler): [FrameCapture, string] => {
+export const useFrameCapture = ( captureType: CaptureType, port:number, onMessage?: OnMessageHandler): [FrameCapture, {[key: string]: string}] => {
   const [webcam_id] = useState<string>("0");
   const [frameCapture,] = useState(() => new FrameCapture( captureType, port));
 
-  const [data, setDataUrl] = useState<string>("");
+  const [data, setDataUrls] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
-    frameCapture.start_frame_capture(async (ev: MessageEvent<Blob>, data_url: string) => {
-      setDataUrl(data_url);
+    frameCapture.start_frame_capture(async (ev: MessageEvent<Blob>, data_urls: object) => {
+      setDataUrls(data_urls as {[key: string]: string});
       if (onMessage) {
-        await onMessage(ev, data_url);
+        await onMessage(ev, data_urls);
       }
     });
     return () => {
       frameCapture.cleanup()
     }
-  }, [webcam_id]);
+  }, [frameCapture, onMessage, webcam_id]);
 
   window.onbeforeunload = () => {
     frameCapture.cleanup()

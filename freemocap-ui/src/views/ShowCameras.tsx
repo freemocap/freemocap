@@ -10,8 +10,10 @@ export const ShowCameras = () => {
     return null;
   }
   return (
-    <Box>
-      {!frameCapture.isConnectionClosed && <img src={frameCapture.current_data_url} alt={"video capture"}/>}
+      <Box>
+        {!frameCapture.isConnectionClosed && Object.entries(data).map(([cameraId, url]) => (
+            <img key={cameraId} src={url} alt={`video capture from camera ${cameraId}`}/>
+        ))}
     </Box>
   );
 }

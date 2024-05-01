@@ -1,4 +1,6 @@
-export type OnMessageHandler = (ev: MessageEvent<Blob>, data_url: string) => Promise<void>;
+import {decode} from "@msgpack/msgpack";
+
+export type OnMessageHandler = (ev: MessageEvent<Blob>, data_urls: object) => Promise<void>;
 
 export enum CaptureType {
     BoardDetection = "board_detection", SkeletonDetection = "skeleton_detection", ConnectCameras = "connect"
@@ -24,20 +26,28 @@ export class FrameCapture {
     }
 
     public get isConnectionClosed(): boolean {
-        return this._ws_connection.readyState === this._ws_connection.CLOSED;
+        return this._ws_connection ? this._ws_connection.readyState === this._ws_connection.CLOSED : true;
     }
-
     public start_frame_capture(onMessageHandler: OnMessageHandler) {
         console.log(`FrameCapture: start_frame_capture: ${this._host}`)
         this._ws_connection = new WebSocket(this._host);
         this._ws_connection.onmessage = async (ev: MessageEvent<Blob>) => {
-            console.debug(`FrameCapture: onmessage: ${ev.data}`)
-            if (this._current_data_url) {
-                URL.revokeObjectURL(this._current_data_url);
+            console.debug(`FrameCapture: onmessage - received data: ${ev.data.size} bytes`);
+
+            // Read the Blob as an ArrayBuffer
+            const arrayBuffer = await ev.data.arrayBuffer();
+
+            // Decode the MessagePack data into a JavaScript object
+            const framesObject = decode(new Uint8Array(arrayBuffer)) as { [key: string]: Uint8Array };
+            // Iterate over the framesObject to create a data URL for each image
+            const dataUrls = {};
+            for (const [cameraId, imageBytes] of Object.entries(framesObject)) {
+                const blob = new Blob([imageBytes], { type: 'image/jpeg' });
+                dataUrls[cameraId] = URL.createObjectURL(blob);
             }
-            const new_data_url = URL.createObjectURL(ev.data);
-            this._current_data_url = new_data_url;
-            await onMessageHandler(ev, new_data_url);
+
+            // Call the onMessageHandler with the dataUrls object
+            await onMessageHandler(ev, dataUrls);
         }
     }
 

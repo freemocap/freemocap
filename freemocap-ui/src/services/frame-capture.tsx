@@ -11,7 +11,6 @@ export class FrameCapture {
     private readonly _host: string;
     private readonly _base_host: string;
 
-
     constructor(private readonly _captureType: CaptureType = CaptureType.BoardDetection,
                 private readonly _port: number = 8000) {
         this._base_host = `ws://localhost:${_port}/ws`;
@@ -31,18 +30,23 @@ export class FrameCapture {
     public start_frame_capture(onMessageHandler: OnMessageHandler) {
         console.log(`FrameCapture: start_frame_capture: ${this._host}`)
         this._ws_connection = new WebSocket(this._host);
+
         this._ws_connection.onmessage = async (ev: MessageEvent<Blob>) => {
             console.debug(`FrameCapture: onmessage - received data: ${ev.data.size} bytes`);
 
             // Read the Blob as an ArrayBuffer
             const arrayBuffer = await ev.data.arrayBuffer();
 
+
             // Decode the MessagePack data into a JavaScript object
-            const framesObject = decode(new Uint8Array(arrayBuffer)) as { [key: string]: Uint8Array };
+            const payload:any = decode(new Uint8Array(arrayBuffer));
+            const jpegImagesByCamera = payload.jpegImagesByCamera;
+
             // Iterate over the framesObject to create a data URL for each image
             const dataUrls = {};
-            for (const [cameraId, imageBytes] of Object.entries(framesObject)) {
-                const blob = new Blob([imageBytes], { type: 'image/jpeg' });
+            for (const [cameraId, jpegImage] of Object.entries(jpegImagesByCamera)) {
+                // @ts-ignore
+                const blob = new Blob([jpegImage], { type: 'image/jpeg' });
                 dataUrls[cameraId] = URL.createObjectURL(blob);
             }
 

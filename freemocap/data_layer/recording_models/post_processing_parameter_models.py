@@ -1,6 +1,6 @@
 import logging
 
-from pydantic import BaseModel
+from pydantic import ConfigDict, BaseModel
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeTrackingParams
 )
@@ -39,6 +39,4 @@ class ProcessingParameterModel(BaseModel):
     mediapipe_parameters_model: MediapipeTrackingParams = MediapipeTrackingParams()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel()
     post_processing_parameters_model: PostProcessingParametersModel = PostProcessingParametersModel()
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

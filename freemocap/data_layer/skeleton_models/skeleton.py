@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import numpy as np
 
 
@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class Skeleton(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     markers: MarkerInfo
     num_tracked_points: int
     segments: Optional[Dict[str, Segment]] = None
@@ -19,9 +20,6 @@ class Skeleton(BaseModel):
     joint_hierarchy: Optional[Dict[str, List[str]]] = None
     center_of_mass_definitions: Optional[Dict[str, SegmentAnthropometry]] = None
     num_frames: Optional[int] = None
-
-    class Config:
-        arbitrary_types_allowed = True
 
     def add_segments(self, segment_connections: Dict[str, Segment]) -> None:
         """

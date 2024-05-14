@@ -1,11 +1,12 @@
-from pydantic import BaseModel, root_validator, Field, validator
+from pydantic import BaseModel, model_validator, Field, field_validator
 from typing import Dict, List, Optional, Union
 
 
 class VirtualMarkerInfo(BaseModel):
     virtual_markers: Dict[str, Dict[str, List[Union[float, str]]]]
 
-    @validator("virtual_markers", each_item=True)
+    @field_validator("virtual_markers")
+    @classmethod
     def validate_virtual_marker(cls, virtual_marker: Dict[str, List[Union[float, str]]]):
         marker_names = virtual_marker.get("marker_names", [])
         marker_weights = virtual_marker.get("marker_weights", [])
@@ -37,7 +38,7 @@ class MarkerInfo(BaseModel):
     virtual_marker_definition: Optional[VirtualMarkerInfo] = None
     _all_markers: List[str] = Field(default_factory=list)
 
-    @root_validator
+    @model_validator(mode="before")
     def copy_markers_to_all(cls, values):
         """Copy markers to _all_markers at initialization."""
         original_marker_names = values.get("original_marker_names")

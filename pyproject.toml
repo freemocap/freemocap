@@ -78,7 +78,7 @@ dependencies = [
     "libsass==0.21.0",
     "ipykernel==6.23.1",
     "plotly==5.14.1",
-    "pydantic==1.*",
+    "pydantic==2.*",
     "skellytracker==2024.03.1013",
     "PySide6==6.6.*",
     "packaging===23.2",

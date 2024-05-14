@@ -2,7 +2,7 @@ import pprint
 from typing import List, Dict, Tuple
 from typing import Optional, Any
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, model_validator
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeModelInfo,
 )
@@ -30,7 +30,7 @@ class VirtualMarkerDefinition(BaseModel):
         default_factory=list, description="The weights of the markers that define this virtual marker, must sum to 1"
     )
 
-    @root_validator
+    @model_validator(mode="before")
     def check_weights(cls, values):
         marker_weights = values.get("marker_weights")
         if sum(marker_weights) != 1:

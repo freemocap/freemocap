@@ -6,6 +6,7 @@ class VirtualMarkerInfo(BaseModel):
     virtual_markers: Dict[str, Dict[str, List[Union[float, str]]]]
 
     @field_validator("virtual_markers")
+    @classmethod
     def validate_virtual_marker(cls, virtual_marker: Dict[str, List[Union[float, str]]]):
         for virtual_marker_name, virtual_marker_values in virtual_marker.items():
             marker_names = virtual_marker_values.get("marker_names", [])

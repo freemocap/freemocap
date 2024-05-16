@@ -18,7 +18,7 @@ class Segments(BaseModel):
     markers: MarkerInfo
     segment_connections: Dict[str, Segment]
 
-    @model_validator(mode='after')
+    @model_validator(mode='before')
     def check_that_all_markers_exist(cls, values):
         markers = values.markers.all_markers
         segment_connections = values.segment_connections
@@ -34,4 +34,5 @@ class Segments(BaseModel):
                 )
 
         return values
-        return values
+
+

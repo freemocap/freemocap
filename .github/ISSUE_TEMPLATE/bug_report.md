@@ -18,7 +18,7 @@ Steps to reproduce the behavior:
 4. See error
 
 **Expected behavior**
-A clear and concise description of what you expected to happen.
+A clear and concise description of what you expected to happen vs what actually happened.
 
 **Log**
 Please include the log information for the session where you encountered this error. Logs can be found in `freemocap_data/logs_info_and_settings/logs` or copy and pasted from the terminal. Include as much context as possible so we can see upstream errors.
@@ -27,7 +27,7 @@ Please include the log information for the session where you encountered this er
  - OS: [e.g. Windows 11]
  - Python Version: [e.g. 3.11]
  - Freemocap Version: [e.g. 1.2.2, displayed on home screen of the GUI]
- - Are you using a separate Python environment for Freemocap?: [yes/no]
+ - Are you running `freemocap` in a virtual environment?: [yes/no -> IF `NO` - [Please do that and try again](https://freemocap.github.io/documentation/installation.html#detailed-installation-instructions)]
  - Blender Version (If applicable): [e.g. 3.6]
 
 

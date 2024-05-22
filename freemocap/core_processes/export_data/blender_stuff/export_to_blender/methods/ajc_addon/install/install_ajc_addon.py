@@ -3,7 +3,7 @@ import subprocess
 from importlib.metadata import distribution
 from pathlib import Path
 
-from ajc27_freemocap_blender_addon.run_as_main import ajc27_run_as_main_function
+from ajc27_freemocap_blender_addon.main import ajc27_run_as_main_function
 
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.install.bpy_install_addon import (
     INSTALL_ADDON_SCRIPT_PATH,

@@ -21,6 +21,7 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
+from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
 
 logger = logging.getLogger(__name__)
 
@@ -66,11 +67,6 @@ def get_triangulated_data(
         if not processing_parameters.recording_info_model.calibration_toml_check:
             raise FileNotFoundError(
                 f"No calibration file found at: {processing_parameters.recording_info_model.calibration_toml_path}"
-            )
-
-        if not processing_parameters.recording_info_model.data2d_status_check:
-            raise FileNotFoundError(
-                f"No 2d data found at: {processing_parameters.recording_info_model.data_2d_npy_file_path}"
             )
 
         anipose_calibration_object = load_anipose_calibration_toml_from_path(

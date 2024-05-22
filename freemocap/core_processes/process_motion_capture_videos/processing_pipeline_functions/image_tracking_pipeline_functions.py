@@ -14,6 +14,7 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING, RAW_DATA_FOLDER_NAME
+from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +56,15 @@ def run_image_tracking_pipeline(
             use_tqdm=use_tqdm,
         )
 
-    if not processing_parameters.recording_info_model.data2d_status_check:
-        raise FileNotFoundError(
-            f"No 2d data found at: {processing_parameters.recording_info_model.data_2d_npy_file_path}"
+    # TODO: check that skellytracker saved out data correctly
+    try:
+        test_image_tracking_data_shape(
+            synchronized_video_folder_path=processing_parameters.recording_info_model.synchronized_videos_folder_path,
+            image_tracking_data=image_data_numCams_numFrames_numTrackedPts_XYZ,
         )
+    except (ValueError, AssertionError) as e:
+        logger.error(e)
+        raise ValueError("image tracking data is not valid, cannot continue processing")
 
     return image_data_numCams_numFrames_numTrackedPts_XYZ
 

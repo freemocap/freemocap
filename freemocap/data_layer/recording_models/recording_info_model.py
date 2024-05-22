@@ -17,7 +17,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     DATA_3D_NPY_FILE_NAME,
 )
 from freemocap.system.paths_and_filenames.path_getters import create_camera_calibration_file_name, get_blender_file_path
-from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
+from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_exists, test_image_tracking_data_shape
 from freemocap.tests.test_skeleton_data_shape import test_skeleton_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import test_synchronized_video_frame_counts
 from freemocap.tests.test_total_body_center_of_mass_data_shape import test_total_body_center_of_mass_data_shape
@@ -187,11 +187,14 @@ class RecordingFolderStatusChecker:
 
     def check_data2d_status(self) -> bool:
         try:
+            test_image_tracking_data_exists(
+                synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
+                image_tracking_data_file_path=self.recording_info_model.data_2d_npy_file_path,
+            )
             test_image_tracking_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
                 image_tracking_data_file_path=self.recording_info_model.data_2d_npy_file_path,
             )
-
             return True
         except AssertionError:
             return False

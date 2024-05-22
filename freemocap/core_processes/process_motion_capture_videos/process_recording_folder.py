@@ -73,7 +73,7 @@ def process_recording_folder(
             queue=logging_queue,
             use_tqdm=use_tqdm,
         )
-    except (RuntimeError, FileNotFoundError) as e:
+    except (RuntimeError, ValueError) as e:
         logger.error("2D skeleton detection failed, cannot continue processing")
         if logging_queue:
             logging_queue.put(e)

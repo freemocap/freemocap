@@ -20,7 +20,7 @@ class Segments(BaseModel):
 
     @model_validator(mode='before')
     def check_that_all_markers_exist(cls, values):
-        markers = values.markers.all_markers
+        markers = values.get("markers").all_markers
         segment_connections = values.segment_connections
 
         for segment_name, segment_connection in segment_connections.items():

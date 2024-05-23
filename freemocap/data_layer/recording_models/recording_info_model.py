@@ -106,7 +106,7 @@ class RecordingInfoModel:
 
     @property
     def data_2d_npy_file_path(self):
-        return str(Path(self.raw_data_folder_path) / (self.file_prefix + DATA_2D_NPY_FILE_NAME))
+        return str(Path(self.raw_data_folder_path) / (self.active_tracker + DATA_2D_NPY_FILE_NAME))  # For backwards compatibility reasons we don't want underscore from file prefix
 
     @property
     def data_3d_npy_file_path(self):
@@ -118,7 +118,7 @@ class RecordingInfoModel:
             Path(self._path)
             / OUTPUT_DATA_FOLDER_NAME
             / RAW_DATA_FOLDER_NAME
-            / (self.file_prefix + "_" + RAW_3D_NPY_FILE_NAME)
+            / (self.active_tracker + RAW_3D_NPY_FILE_NAME)  # For backwards compatibility reasons we don't want underscore from file prefix
         )
 
     @property

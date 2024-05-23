@@ -11,13 +11,16 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     OUTPUT_DATA_FOLDER_NAME,
     RAW_DATA_FOLDER_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-    RAW_REPROJECTION_ERROR_NPY_FILE_NAME,
+    REPROJECTION_ERROR_NPY_FILE_NAME,
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
     ANNOTATED_VIDEOS_FOLDER_NAME,
     DATA_3D_NPY_FILE_NAME,
 )
 from freemocap.system.paths_and_filenames.path_getters import create_camera_calibration_file_name, get_blender_file_path
-from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_exists, test_image_tracking_data_shape
+from freemocap.tests.test_image_tracking_data_shape import (
+    test_image_tracking_data_exists,
+    test_image_tracking_data_shape,
+)
 from freemocap.tests.test_skeleton_data_shape import test_skeleton_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import test_synchronized_video_frame_counts
 from freemocap.tests.test_total_body_center_of_mass_data_shape import test_total_body_center_of_mass_data_shape
@@ -28,10 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class RecordingInfoModel:
-    def __init__(
-        self,
-        recording_folder_path: Union[Path, str],
-    ):
+    def __init__(self, recording_folder_path: Union[Path, str], active_tracker: str = "mediapipe"):
         if any(
             [
                 Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME,
@@ -48,10 +48,26 @@ class RecordingInfoModel:
             Path(self._path) / create_camera_calibration_file_name(recording_name=self._name)
         )
 
+        self._active_tracker = active_tracker
+
         self._recording_folder_status_checker = RecordingFolderStatusChecker(recording_info_model=self)
 
-        # TODO: consider storing what the "active" file prefix is for a recording (i.e. mediapipe, yolo, etc.)
+    @property
+    def active_tracker(self) -> str:
+        return self._active_tracker
 
+    @active_tracker.setter
+    def active_tracker(self, tracker_name: str):
+        self._active_tracker = tracker_name
+
+    @property
+    def file_prefix(self) -> str:
+        if self.active_tracker != "" and self.active_tracker[-1] != "_":
+            return self.active_tracker + "_"
+        else:
+            return self.active_tracker
+
+    # TODO: Create setters for the path names that depend on tracker name, and an overall setter that sets them all at once
     @property
     def path(self) -> str:
         return str(self._path)
@@ -90,15 +106,20 @@ class RecordingInfoModel:
 
     @property
     def data_2d_npy_file_path(self):
-        return str(Path(self.raw_data_folder_path) / DATA_2D_NPY_FILE_NAME)
+        return str(Path(self.raw_data_folder_path) / (self.file_prefix + DATA_2D_NPY_FILE_NAME))
 
     @property
     def data_3d_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / DATA_3D_NPY_FILE_NAME)
+        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / (self.file_prefix + DATA_3D_NPY_FILE_NAME))
 
     @property
     def raw_data_3d_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / RAW_3D_NPY_FILE_NAME)
+        return str(
+            Path(self._path)
+            / OUTPUT_DATA_FOLDER_NAME
+            / RAW_DATA_FOLDER_NAME
+            / (self.file_prefix + "_" + RAW_3D_NPY_FILE_NAME)
+        )
 
     @property
     def reprojection_error_data_npy_file_path(self):
@@ -106,7 +127,7 @@ class RecordingInfoModel:
             Path(self._path)
             / OUTPUT_DATA_FOLDER_NAME
             / RAW_DATA_FOLDER_NAME
-            / RAW_REPROJECTION_ERROR_NPY_FILE_NAME
+            / (self.file_prefix + REPROJECTION_ERROR_NPY_FILE_NAME)
         )
 
     @property
@@ -115,7 +136,7 @@ class RecordingInfoModel:
             Path(self._path)
             / OUTPUT_DATA_FOLDER_NAME
             / CENTER_OF_MASS_FOLDER_NAME
-            / TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME
+            / (self.file_prefix + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
         )
 
     @property

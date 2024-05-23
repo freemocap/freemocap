@@ -62,14 +62,15 @@ def run_reprojection_error_filtering(
         data3d_numCams_numFrames_numTrackedPoints_reprojectionError=reprojection_filtered_skeleton_reprojection_error_cam_fr_mar,
         path_to_folder_where_data_will_be_saved=processing_parameters.recording_info_model.raw_data_folder_path,
         processing_level="reprojection_filtered",
+        file_prefix=processing_parameters.tracking_model_info.model_name,
     )
     plot_reprojection_error(
         raw_reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
         filtered_reprojection_error_frame_marker=reprojection_filtered_skeleton_reprojection_error_fr_mar,
-        reprojection_error_threshold=np.nanpercentile(
+        reprojection_error_threshold=float(np.nanpercentile(
             skeleton_reprojection_error_cam_fr_mar,
             processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
-        ),
+        )),
         output_folder_path=processing_parameters.recording_info_model.raw_data_folder_path,
     )
     return reprojection_filtered_skel3d_frame_marker_xyz

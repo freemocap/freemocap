@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 from pathlib import Path
+from typing import Optional
 import numpy as np
 
 
@@ -21,7 +22,6 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
-from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 def get_triangulated_data(
     image_data_numCams_numFrames_numTrackedPts_XYZ: np.ndarray,
     processing_parameters: ProcessingParameterModel,
-    kill_event: multiprocessing.Event = None,
-    queue: multiprocessing.Queue = None,
+    kill_event: Optional[multiprocessing.Event] = None,
+    queue: Optional[multiprocessing.Queue] = None,
 ) -> np.ndarray:
     if queue:
         handler = DirectQueueHandler(queue)
@@ -44,6 +44,7 @@ def get_triangulated_data(
         (skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar) = process_single_camera_skeleton_data(
             input_image_data_frame_marker_xyz=image_data_numCams_numFrames_numTrackedPts_XYZ[0],
             raw_data_folder_path=Path(processing_parameters.recording_info_model.raw_data_folder_path),
+            file_prefix=processing_parameters.tracking_model_info.model_name,
         )
     elif not processing_parameters.anipose_triangulate_3d_parameters_model.run_3d_triangulation:
         logger.info(
@@ -89,6 +90,7 @@ def get_triangulated_data(
             data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,
             path_to_folder_where_data_will_be_saved=processing_parameters.recording_info_model.raw_data_folder_path,
             processing_level="raw",
+            file_prefix=processing_parameters.tracking_model_info.model_name,
         )
 
         if processing_parameters.anipose_triangulate_3d_parameters_model.run_reprojection_error_filtering:

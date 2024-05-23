@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 def process_single_camera_skeleton_data(
     input_image_data_frame_marker_xyz: np.ndarray,
     raw_data_folder_path: Union[str, Path],
+    file_prefix: str = "",
     project_to_z_plane: bool = True,
 ) -> [np.ndarray, np.ndarray]:
     if project_to_z_plane:
@@ -37,6 +38,7 @@ def process_single_camera_skeleton_data(
             data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,
             path_to_folder_where_data_will_be_saved=raw_data_folder_path,
             processing_level="raw",
+            file_prefix=file_prefix,
         )
 
     return raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar

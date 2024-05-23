@@ -2,9 +2,9 @@ import logging
 import os
 from pathlib import Path
 import threading
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, Slot, QObject
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -38,7 +38,7 @@ class CalibrationControlPanel(QWidget):
         get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
         kill_thread_event: threading.Event,
         gui_state: GuiState,
-        parent=None,
+        parent: Optional[QObject] = None,
     ):
         super().__init__(parent=parent)
         self.gui_state = gui_state

@@ -39,7 +39,7 @@ def save_data(
     logger.info("Saving post-processed data")
     save_numpy_array_to_disk(
         array_to_save=skel3d_frame_marker_xyz,
-        file_name=DATA_3D_NPY_FILE_NAME,
+        file_name=f"{processing_parameters.tracking_model_info.model_name}_{DATA_3D_NPY_FILE_NAME}",
         save_directory=Path(path_to_folder_where_we_will_save_this_data),
     )
 
@@ -47,7 +47,7 @@ def save_data(
         logger.info("Saving segment center of mass data")
         save_numpy_array_to_disk(
             array_to_save=segment_COM_frame_imgPoint_XYZ,
-            file_name=SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
+            file_name=f"{processing_parameters.tracking_model_info.model_name}_{SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME}",
             save_directory=Path(path_to_folder_where_we_will_save_this_data) / CENTER_OF_MASS_FOLDER_NAME,
         )
     else:
@@ -57,7 +57,7 @@ def save_data(
         logger.info("Saving total body center of mass data")
         save_numpy_array_to_disk(
             array_to_save=totalBodyCOM_frame_XYZ,
-            file_name=TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
+            file_name=f"{processing_parameters.tracking_model_info.model_name}_{TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME}",
             save_directory=Path(path_to_folder_where_we_will_save_this_data) / CENTER_OF_MASS_FOLDER_NAME,
         )
     else:
@@ -67,7 +67,7 @@ def save_data(
         logger.info("Saving rigid bones data")
         save_numpy_array_to_disk(
             array_to_save=rigid_bones_data,
-            file_name=RIGID_BONES_NPY_FILE_NAME,
+            file_name=f"{processing_parameters.tracking_model_info.model_name}_{RIGID_BONES_NPY_FILE_NAME}",
             save_directory=path_to_folder_where_we_will_save_this_data,
         )
     else:

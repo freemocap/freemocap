@@ -39,7 +39,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def __init__(
         self,
         recording_processing_parameters: ProcessingParameterModel,
-        get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
+        get_active_recording_info: Callable[..., RecordingInfoModel],
         kill_thread_event: threading.Event,
         log_update: Callable,
         gui_state: GuiState,
@@ -248,6 +248,9 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     / Path(selected_camera_calibration_toml_path).name
                 )
                 shutil.copyfile(selected_camera_calibration_toml_path, copied_toml_path)
+
+        # set active tracker in recording model to the currently selected tracker
+        session_parameter_model.recording_info_model.active_tracker = session_parameter_model.tracking_model_info.model_name
 
         self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(
             session_parameter_model, kill_event=self._kill_thread_event

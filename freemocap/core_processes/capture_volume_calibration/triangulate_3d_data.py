@@ -103,6 +103,12 @@ if __name__ == "__main__":
         help="use triangulate ransac anipose method ",
         required=False,
     )
+    parser.add_argument(
+        "--file_prefix",
+        type=str,
+        help="file prefix",
+        required=False,
+    )
     args = parser.parse_args()
 
     data_2d = np.load(args.data_2d_path)
@@ -115,6 +121,9 @@ if __name__ == "__main__":
 
     if args.use_triangulate_ransac is None:
         args.use_triangulate_ransac = True
+
+    if args.file_prefix is None:
+        args.file_prefix = ""
 
     if args.calibration_file_path:
         anipose_calibration_object = load_anipose_calibration_toml_from_path(args.calibration_file_path)
@@ -138,4 +147,5 @@ if __name__ == "__main__":
         data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,
         path_to_folder_where_data_will_be_saved=args.output_data_folder_path,
         processing_level="raw",
+        file_prefix=args.file_prefix,
     )

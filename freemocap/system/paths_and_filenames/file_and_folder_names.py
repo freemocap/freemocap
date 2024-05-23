@@ -22,15 +22,11 @@ MOST_RECENT_RECORDING_TOML_FILENAME = "most_recent_recording.toml"
 LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME = "last_successful_calibration.toml"
 GUI_STATE_JSON_FILENAME = "gui_state.json"
 DATA_2D_NPY_FILE_NAME = "2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
-BODY_WORLD_FILE_NAME = "BodyWorld_numCams_numFrames_numTrackedPoints_XYZ.npy"
 
 RAW_3D_NPY_FILE_NAME = "3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
-RAW_REPROJECTION_ERROR_NPY_FILE_NAME = "3dData_numFrames_numTrackedPoints_reprojectionError.npy"
-RAW_FULL_REPROJECTION_ERROR_NPY_FILE_NAME = "3dData_numCams_numFrames_numTrackedPoints_reprojectionError.npy"
-
-REPROJECTION_FILTERED_3D_NPY_FILE_NAME = "reprojection_filtered_3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
-REPROJECTION_FILTERED_REPROJECTION_ERROR_NPY_FILE_NAME = "reprojection_filtered_3dData_numFrames_numTrackedPoints_reprojectionError.npy"
-REPROJECTION_FILTERED_FULL_REPROJECTION_ERROR_NPY_FILE_NAME = "reprojection_filtered_3dData_numCams_numFrames_numTrackedPoints_reprojectionError.npy"
+REPROJECTION_ERROR_NPY_FILE_NAME = "3dData_numFrames_numTrackedPoints_reprojectionError.npy"
+FULL_REPROJECTION_ERROR_NPY_FILE_NAME = "3dData_numCams_numFrames_numTrackedPoints_reprojectionError.npy"
+REPROJECTION_FILTERED_PREFIX = "reprojection_filtered_"
 
 DATA_3D_NPY_FILE_NAME = "skeleton_3d.npy"
 RIGID_BONES_NPY_FILE_NAME = "rigid_bones_3d.npy"

@@ -20,6 +20,9 @@ from freemocap.utilities.download_sample_data import (
 def pytest_sessionstart():
     pytest.sample_session_folder_path = download_sample_data()
     calibration_toml_path = find_calibration_toml_path(pytest.sample_session_folder_path)
+    # TODO: instantiate a RecordingInfoModel here to replace path getters with properties
+    # TODO: refactor process_recording_headless to accept optional RecordingInfoModel
+    # TODO: make this configurable to be able to take different trackers
     process_recording_headless(
         recording_path=pytest.sample_session_folder_path,
         path_to_camera_calibration_toml=calibration_toml_path,

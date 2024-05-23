@@ -113,18 +113,20 @@ def save_split_csv(
 
     number_of_frames = next(iter(split_data.values())).shape[0]
 
+    file_prefix = model_info.model_name + "_"
+
     for category, data in split_data.items():
         column_name_list = column_names[category]
         tracked_points_name = "num_tracked_points_" + category
 
         data_flat = data.reshape(number_of_frames, getattr(model_info, tracked_points_name) * 3)
         dataframe = pd.DataFrame(data_flat, columns=column_name_list)
-        dataframe.to_csv(str(Path(output_data_folder_path) / category_info[category]), index=False)
+        dataframe.to_csv(str(Path(output_data_folder_path) / (file_prefix + category_info[category])), index=False)
 
     logger.info(f"Saved split skeleton data csvs to {output_data_folder_path}")
 
 
-def save_split_npy(output_data_folder_path: str, split_data: Dict[str, np.ndarray]) -> None:
+def save_split_npy(output_data_folder_path: str, split_data: Dict[str, np.ndarray], file_prefix: str = "") -> None:
     """
     Saves the split skeleton data to numpy files.
 
@@ -136,8 +138,11 @@ def save_split_npy(output_data_folder_path: str, split_data: Dict[str, np.ndarra
         logger.debug("No data categories found in model info, skipping data splitting")
         return
 
+    if file_prefix != "" and file_prefix[-1] != "_":
+        file_prefix += "_"
+
     for category, data in split_data.items():
-        np.save(str(Path(output_data_folder_path) / (category + "_3d_xyz.npy")), data)
+        np.save(str(Path(output_data_folder_path) / (file_prefix + category + "_3d_xyz.npy")), data)
 
     logger.info(f"Saved split skeleton data npys to {output_data_folder_path}")
 
@@ -159,7 +164,14 @@ def split_and_save(
     - output_data_folder_path: The path to save the split skeleton data to.
     """
 
-    split_data_dict = split_data(skeleton_3d_data, model_info)
-    column_names = create_column_names(model_info)
-    save_split_csv(output_data_folder_path, split_data_dict, column_names, model_info)
-    save_split_npy(output_data_folder_path, split_data_dict)
+    split_data_dict = split_data(skeleton_3d_data=skeleton_3d_data, model_info=model_info)
+    column_names = create_column_names(model_info=model_info)
+    save_split_csv(
+        output_data_folder_path=output_data_folder_path,
+        split_data=split_data_dict,
+        column_names=column_names,
+        model_info=model_info,
+    )
+    save_split_npy(
+        output_data_folder_path=output_data_folder_path, split_data=split_data_dict, file_prefix=model_info.model_name
+    )

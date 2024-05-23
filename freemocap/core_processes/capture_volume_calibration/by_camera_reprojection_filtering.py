@@ -85,7 +85,7 @@ def filter_by_reprojection_error(
     num_tracked_points: int,
     use_triangulate_ransac: bool = False,
     minimum_cameras_to_reproject: int = 3,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     total_cameras = image_2d_data.shape[0]
     num_cameras_to_remove = 1
 

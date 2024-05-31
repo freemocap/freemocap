@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import pytest
@@ -9,36 +9,54 @@ from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
 )
 
 
-@pytest.mark.usefixtures("synchronized_video_folder_path", "raw_skeleton_npy_file_path", "reprojection_error_file_path")
-def test_skeleton_data_shape(
-    synchronized_video_folder_path: Union[str, Path],
+@pytest.mark.usefixtures("raw_skeleton_npy_file_path", "reprojection_error_file_path")
+def test_skeleton_data_exists(
     raw_skeleton_npy_file_path: Union[str, Path],
-    reprojection_error_file_path,
+    reprojection_error_file_path: Union[str, Path],
 ):
     """
-    test that the `3d detection` process worked correctly by checking:
-
-    1. There is an `.npy` file containing the 3d data in the `output_data_folder`
-    2. The dimensions of that `npy` ( number of frames, [ need to do - number of tracked points], [X,Y,Z] matches the videos in the `synchronized videos` folder
-
-    TODO - check number of tracked points vs 'expected' number of tracked points
+    test that the `3d detection` process worked correctly by checking that there is an `.npy` file containing the 3d data in the `output_data_folder`
     """
 
     assert Path(
         raw_skeleton_npy_file_path
     ).is_file(), f"3d skeleton data file does not exist at {raw_skeleton_npy_file_path}"
 
-    skel3d_frame_marker_xyz = np.load(raw_skeleton_npy_file_path)
+    assert Path(
+        reprojection_error_file_path
+    ).is_file(), f"3d skeleton reprojection error data file does not exist at {reprojection_error_file_path}"
+
+
+@pytest.mark.usefixtures("synchronized_video_folder_path", "raw_skeleton_npy_file_path", "reprojection_error_file_path")
+def test_skeleton_data_shape(
+    synchronized_video_folder_path: Union[str, Path],
+    raw_skeleton_npy_file_path: Optional[Union[str, Path]] = None,
+    reprojection_error_file_path: Optional[Union[str, Path]] = None,
+    raw_skeleton_npy: Optional[np.ndarray] = None,
+    reprojection_error_npy: Optional[np.ndarray] = None,
+):
+    """
+    test that the `3d detection` process worked correctly by checking:
+    1. Dimensions of the raw skeleton numpy array are correct
+    2. Dimensions of the reprojection error numpy array are correct
+    """
+    if raw_skeleton_npy is None and raw_skeleton_npy_file_path is None:
+        raise ValueError("Must provide either raw_skeleton_npy or raw_skeleton_npy_file_path")
+    elif raw_skeleton_npy is None:
+        skel3d_frame_marker_xyz = np.load(raw_skeleton_npy_file_path)
+    else:
+        skel3d_frame_marker_xyz = raw_skeleton_npy
 
     assert (
         len(skel3d_frame_marker_xyz.shape) == 3
     ), f"3d skeleton data file should have 3 dimensions -  {raw_skeleton_npy_file_path}"
 
-    assert Path(
-        reprojection_error_file_path
-    ).is_file(), f"3d skeleton reprojection error data file does not exist at {reprojection_error_file_path}"
-
-    skeleton_reprojection_error_fr_mar = np.load(reprojection_error_file_path)
+    if reprojection_error_npy is None and reprojection_error_file_path is None:
+        raise ValueError("Must provide either raw_skeleton_npy or raw_skeleton_npy_file_path")
+    elif reprojection_error_npy is None:
+        skeleton_reprojection_error_fr_mar = np.load(reprojection_error_file_path)
+    else:
+        skeleton_reprojection_error_fr_mar = reprojection_error_npy
 
     assert (
         len(skeleton_reprojection_error_fr_mar.shape) == 2

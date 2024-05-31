@@ -13,7 +13,7 @@ from freemocap.utilities.get_video_paths import get_video_paths
 @pytest.mark.usefixtures("synchronized_video_folder_path", "image_tracking_data_file_path")
 def test_image_tracking_data_exists(
     synchronized_video_folder_path: Union[str, Path],
-    image_tracking_data_file_path,
+    image_tracking_data_file_path: Union[str, Path],
 ):
     """
     test that the `2d detection` process worked correctly by checking:

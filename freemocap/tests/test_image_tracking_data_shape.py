@@ -64,7 +64,7 @@ def test_image_tracking_data_shape(
     """
     if image_tracking_data is None and image_tracking_data_file_path is None:
         raise ValueError("Must provide either image_tracking_data or image_tracking_data_file_path")
-    elif image_tracking_data is None:
+    elif image_tracking_data is None and image_tracking_data_file_path:
         image_tracking_data = np.load(image_tracking_data_file_path)
 
     list_of_video_paths = get_video_paths(Path(synchronized_video_folder_path))

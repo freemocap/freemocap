@@ -42,7 +42,7 @@ def test_skeleton_data_shape(
     """
     if raw_skeleton_npy is None and raw_skeleton_npy_file_path is None:
         raise ValueError("Must provide either raw_skeleton_npy or raw_skeleton_npy_file_path")
-    elif raw_skeleton_npy is None:
+    elif raw_skeleton_npy is None and raw_skeleton_npy_file_path:
         skel3d_frame_marker_xyz = np.load(raw_skeleton_npy_file_path)
     else:
         skel3d_frame_marker_xyz = raw_skeleton_npy

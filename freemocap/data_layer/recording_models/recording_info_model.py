@@ -21,7 +21,7 @@ from freemocap.tests.test_image_tracking_data_shape import (
     test_image_tracking_data_exists,
     test_image_tracking_data_shape,
 )
-from freemocap.tests.test_skeleton_data_shape import test_skeleton_data_shape
+from freemocap.tests.test_skeleton_data_shape import test_skeleton_data_exists, test_skeleton_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import test_synchronized_video_frame_counts
 from freemocap.tests.test_total_body_center_of_mass_data_shape import test_total_body_center_of_mass_data_shape
 from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import get_number_of_frames_of_videos_in_a_folder
@@ -127,7 +127,7 @@ class RecordingInfoModel:
             Path(self._path)
             / OUTPUT_DATA_FOLDER_NAME
             / RAW_DATA_FOLDER_NAME
-            / (self.file_prefix + REPROJECTION_ERROR_NPY_FILE_NAME)
+            / (self.active_tracker + REPROJECTION_ERROR_NPY_FILE_NAME)
         )
 
     @property
@@ -222,6 +222,10 @@ class RecordingFolderStatusChecker:
 
     def check_data3d_status(self) -> bool:
         try:
+            test_skeleton_data_exists(
+                raw_skeleton_npy_file_path=self.recording_info_model.data_3d_npy_file_path,
+                reprojection_error_file_path=self.recording_info_model.reprojection_error_data_npy_file_path,
+            )
             test_skeleton_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
                 raw_skeleton_npy_file_path=self.recording_info_model.data_3d_npy_file_path,

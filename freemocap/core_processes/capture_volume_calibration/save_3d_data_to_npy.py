@@ -25,25 +25,25 @@ def save_3d_data_to_npy(
     path_to_folder_where_data_will_be_saved = Path(path_to_folder_where_data_will_be_saved)
     Path(path_to_folder_where_data_will_be_saved).mkdir(parents=True, exist_ok=True)  # save spatial XYZ data
     if processing_level == "raw":
-        data_3d_save_path = path_to_folder_where_data_will_be_saved / f"{file_prefix}{RAW_3D_NPY_FILE_NAME}"
+        data_3d_save_path = path_to_folder_where_data_will_be_saved / f"{file_prefix}_{RAW_3D_NPY_FILE_NAME}"
         reprojection_error_save_path = (
-            path_to_folder_where_data_will_be_saved / f"{file_prefix}{REPROJECTION_ERROR_NPY_FILE_NAME}"
+            path_to_folder_where_data_will_be_saved / f"{file_prefix}_{REPROJECTION_ERROR_NPY_FILE_NAME}"
         )
         full_reprojection_error_save_path = (
-            path_to_folder_where_data_will_be_saved / f"{file_prefix}{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
+            path_to_folder_where_data_will_be_saved / f"{file_prefix}_{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
         )
     elif processing_level == "reprojection_filtered":
         data_3d_save_path = (
             path_to_folder_where_data_will_be_saved
-            / f"{REPROJECTION_FILTERED_PREFIX}{file_prefix}{RAW_3D_NPY_FILE_NAME}"
+            / f"{REPROJECTION_FILTERED_PREFIX}{file_prefix}_{RAW_3D_NPY_FILE_NAME}"
         )
         reprojection_error_save_path = (
             path_to_folder_where_data_will_be_saved
-            / f"{REPROJECTION_FILTERED_PREFIX}{file_prefix}{REPROJECTION_ERROR_NPY_FILE_NAME}"
+            / f"{REPROJECTION_FILTERED_PREFIX}{file_prefix}_{REPROJECTION_ERROR_NPY_FILE_NAME}"
         )
         full_reprojection_error_save_path = (
             path_to_folder_where_data_will_be_saved
-            / f"{REPROJECTION_FILTERED_PREFIX}{file_prefix}{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
+            / f"{REPROJECTION_FILTERED_PREFIX}{file_prefix}_{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
         )
     else:
         logger.exception(f"processing_level: {processing_level} not recognized")

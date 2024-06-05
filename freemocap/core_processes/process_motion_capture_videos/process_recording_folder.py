@@ -152,6 +152,9 @@ def process_recording_folder(
         processing_parameters=recording_processing_parameter_model,
         queue=logging_queue,
     )
-    DataSaver(recording_folder_path=recording_processing_parameter_model.recording_info_model.path).save_all()
+    DataSaver(
+        recording_folder_path=recording_processing_parameter_model.recording_info_model.path,
+        model_info=recording_processing_parameter_model.tracking_model_info,
+    ).save_all()
 
     logger.info(f"Done processing {recording_processing_parameter_model.recording_info_model.path}")

@@ -6,6 +6,11 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeModelInfo,
+)
+from skellytracker.trackers.base_tracker.model_info import ModelInfo
+
 from freemocap.data_layer.data_saver.data_loader import DataLoader
 from freemocap.data_layer.data_saver.data_models import InfoDict
 
@@ -15,7 +20,13 @@ from typing import Any, Dict
 
 
 class DataSaver:
-    def __init__(self, recording_folder_path: Union[Path, str], include_hands: bool = True, include_face: bool = True):
+    def __init__(
+        self,
+        recording_folder_path: Union[Path, str],
+        include_hands: bool = True,
+        include_face: bool = True,
+        model_info: ModelInfo = MediapipeModelInfo(),
+    ):
         """
         Initialize DataFrameManager with the given recording_folder_path.
 
@@ -28,7 +39,10 @@ class DataSaver:
         self._recording_name = self.recording_folder_path.name
 
         self._data_loader = DataLoader(
-            recording_folder_path=self.recording_folder_path, include_hands=include_hands, include_face=include_face
+            recording_folder_path=self.recording_folder_path,
+            include_hands=include_hands,
+            include_face=include_face,
+            model_info=model_info,
         )
 
         self.recording_data_by_frame = None
@@ -50,7 +64,7 @@ class DataSaver:
 
     def save_to_json(self, save_path: Union[str, Path] = None):
         dict_to_save = {}
-        dict_to_save["info"] = self._get_info_dict().dict()
+        dict_to_save["info"] = self._get_info_dict().model_dump()
         dict_to_save["data_by_frame"] = self.recording_data_by_frame
 
         if save_path is None:

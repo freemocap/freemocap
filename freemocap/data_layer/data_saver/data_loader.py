@@ -12,16 +12,17 @@ from skellytracker.trackers.base_tracker.model_info import ModelInfo
 from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, SkeletonSchema
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     BODY_3D_DATAFRAME_CSV_FILE_NAME,
+    CENTER_OF_MASS_FOLDER_NAME,
+    DATA_3D_NPY_FILE_NAME,
     RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
     LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
     FACE_3D_DATAFRAME_CSV_FILE_NAME,
+    SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
+    TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
 )
 from freemocap.system.paths_and_filenames.path_getters import (
     get_output_data_folder_path,
     get_timestamps_directory,
-    get_total_body_center_of_mass_file_path,
-    get_segment_center_of_mass_file_path,
-    get_full_npy_file_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ class DataLoader:
         self._output_folder_path = Path(get_output_data_folder_path(self._recording_folder_path))
         self.number_of_frames = None
 
+        self._set_file_prefix()
         self._load_data()
 
     def _load_data(self):
@@ -60,13 +62,13 @@ class DataLoader:
         self._validate_data()
 
     def _load_data_frames(self):
-        self.body_dataframe = self._load_dataframe(BODY_3D_DATAFRAME_CSV_FILE_NAME)
+        self.body_dataframe = self._load_dataframe(self._file_prefix + BODY_3D_DATAFRAME_CSV_FILE_NAME)
         self.number_of_frames = len(self.body_dataframe)
         if self.include_hands:
-            self.right_hand_dataframe = self._load_dataframe(RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
-            self.left_hand_dataframe = self._load_dataframe(LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
+            self.right_hand_dataframe = self._load_dataframe(self._file_prefix + RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
+            self.left_hand_dataframe = self._load_dataframe(self._file_prefix + LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
         if self.include_face:
-            self.face_dataframe = self._load_dataframe(FACE_3D_DATAFRAME_CSV_FILE_NAME)
+            self.face_dataframe = self._load_dataframe(self._file_prefix + FACE_3D_DATAFRAME_CSV_FILE_NAME)
 
     def _load_dataframe(self, filename):
         return pd.read_csv(self._output_folder_path / filename)
@@ -111,14 +113,14 @@ class DataLoader:
         Load additional data like center of mass and segment lengths.
         """
         self.center_of_mass_xyz = np.load(
-            get_total_body_center_of_mass_file_path(output_data_folder=self._output_folder_path)
+            self._output_folder_path / CENTER_OF_MASS_FOLDER_NAME / (self._file_prefix + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
         )
         self.segment_center_of_mass_segment_xyz = np.load(
-            get_segment_center_of_mass_file_path(output_data_folder=self._output_folder_path)
+            self._output_folder_path / CENTER_OF_MASS_FOLDER_NAME / (self._file_prefix + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)
         )
 
     def _load_full_npy_data(self):
-        self.data_frame_name_xyz = np.load(get_full_npy_file_path(output_data_folder=self._output_folder_path))
+        self.data_frame_name_xyz = np.load(self._output_folder_path / (self._file_prefix + DATA_3D_NPY_FILE_NAME))
 
         if not self.number_of_frames:
             self.number_of_frames = self.data_frame_name_xyz.shape[0]
@@ -220,3 +222,9 @@ class DataLoader:
 
     def _load_skeleton_schema(self):  # TODO: replace this with updated Skeleton class
         self.skeleton_schema = SkeletonSchema(schema_dict=MediapipeModelInfo.skeleton_schema)
+
+    def _set_file_prefix(self) -> None:
+        self._file_prefix = self._model_info.model_name
+
+        if self._file_prefix[-1] != "_":
+            self._file_prefix += "_"

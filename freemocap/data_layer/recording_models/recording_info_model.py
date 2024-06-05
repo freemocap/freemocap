@@ -210,11 +210,11 @@ class RecordingFolderStatusChecker:
         try:
             test_image_tracking_data_exists(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
-                image_tracking_data_file_path=self.recording_info_model.data_2d_npy_file_path,
+                image_tracking_data=self.recording_info_model.data_2d_npy_file_path,
             )
             test_image_tracking_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
-                image_tracking_data_file_path=self.recording_info_model.data_2d_npy_file_path,
+                image_tracking_data=self.recording_info_model.data_2d_npy_file_path,
             )
             return True
         except AssertionError:
@@ -223,13 +223,13 @@ class RecordingFolderStatusChecker:
     def check_data3d_status(self) -> bool:
         try:
             test_skeleton_data_exists(
-                raw_skeleton_npy_file_path=self.recording_info_model.data_3d_npy_file_path,
-                reprojection_error_file_path=self.recording_info_model.reprojection_error_data_npy_file_path,
+                raw_skeleton_data=self.recording_info_model.data_3d_npy_file_path,
+                reprojection_error_data=self.recording_info_model.reprojection_error_data_npy_file_path,
             )
             test_skeleton_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
-                raw_skeleton_npy_file_path=self.recording_info_model.data_3d_npy_file_path,
-                reprojection_error_file_path=self.recording_info_model.reprojection_error_data_npy_file_path,
+                raw_skeleton_data=self.recording_info_model.data_3d_npy_file_path,
+                reprojection_error_data=self.recording_info_model.reprojection_error_data_npy_file_path,
             )
             return True
         except AssertionError:
@@ -238,11 +238,11 @@ class RecordingFolderStatusChecker:
     def check_center_of_mass_data_status(self) -> bool:
         try:
             test_total_body_center_of_mass_data_exists(
-                total_body_center_of_mass_file_path=self.recording_info_model.total_body_center_of_mass_npy_file_path,
+                total_body_center_of_mass_data=self.recording_info_model.total_body_center_of_mass_npy_file_path,
             )
             test_total_body_center_of_mass_data_shape(
                 synchronized_video_folder_path=self.recording_info_model.synchronized_videos_folder_path,
-                total_body_center_of_mass_file_path=self.recording_info_model.total_body_center_of_mass_npy_file_path,
+                total_body_center_of_mass_data=self.recording_info_model.total_body_center_of_mass_npy_file_path,
             )
             return True
         except AssertionError:

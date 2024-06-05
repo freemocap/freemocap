@@ -280,17 +280,6 @@ def get_total_body_center_of_mass_file_path(output_data_folder: Union[str, Path]
     raise Exception(f"Could not find a total body center of mass npy file in path {str(output_data_folder)}")
 
 
-def get_segment_center_of_mass_file_path(output_data_folder: Union[str, Path]) -> str:
-    center_of_mass_subfolder_path = Path(output_data_folder) / CENTER_OF_MASS_FOLDER_NAME
-    if center_of_mass_subfolder_path.exists:
-        center_of_mass_npy_path_list = [path.name for path in center_of_mass_subfolder_path.glob("*.npy")]
-
-        if SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME in center_of_mass_npy_path_list:
-            return str(center_of_mass_subfolder_path / SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)
-
-    raise Exception(f"Could not find a total body center of mass npy file in path {str(output_data_folder)}")
-
-
 def get_image_tracking_data_file_name(data_folder_name: Union[str, Path]) -> str:
     raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
     if raw_data_subfolder_path.exists:

@@ -24,6 +24,7 @@ def process_recording_headless(
     path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
     path_to_blender_executable: Optional[Union[str, Path]] = None,
     recording_processing_parameter_model: Optional[ProcessingParameterModel] = None,
+    recording_info_model: Optional[RecordingInfoModel] = None,
     run_blender: bool = True,
     make_jupyter_notebook: bool = True,
     use_tqdm: bool = True,
@@ -32,8 +33,12 @@ def process_recording_headless(
         path_to_blender_executable = get_best_guess_of_blender_path()
     if recording_processing_parameter_model is None:
         recording_processing_parameter_model = ProcessingParameterModel()
-
     rec = recording_processing_parameter_model
+
+    if recording_info_model is None:
+        rec.recording_info_model = RecordingInfoModel(recording_folder_path=Path(recording_path))
+    else:
+        rec.recording_info_model = recording_info_model
 
     logger.info(
         f"Processing recording:\n"

@@ -20,11 +20,11 @@ def pytest_sessionstart():
     SessionInfo.recording_info_model = RecordingInfoModel(
         recording_folder_path=SessionInfo.sample_session_folder_path, active_tracker="mediapipe"
     )
-    # TODO: refactor process_recording_headless to accept optional RecordingInfoModel
     # TODO: make this configurable to be able to take different trackers
     process_recording_headless(
         recording_path=SessionInfo.sample_session_folder_path,
         path_to_camera_calibration_toml=calibration_toml_path,
+        recording_info_model=SessionInfo.recording_info_model,
         run_blender=False,
         make_jupyter_notebook=False,
         use_tqdm=False,

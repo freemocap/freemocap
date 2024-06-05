@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 from typing import Any, Dict
 
+mediapipe_model_info = MediapipeModelInfo()
+
 
 class DataSaver:
     def __init__(
@@ -25,7 +27,7 @@ class DataSaver:
         recording_folder_path: Union[Path, str],
         include_hands: bool = True,
         include_face: bool = True,
-        model_info: ModelInfo = MediapipeModelInfo(),
+        model_info: ModelInfo = mediapipe_model_info,
     ):
         """
         Initialize DataFrameManager with the given recording_folder_path.

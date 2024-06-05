@@ -37,7 +37,7 @@ class VirtualMarkerInfo(BaseModel):
 class MarkerInfo(BaseModel):
     original_marker_names: List[str]
     virtual_marker_definition: Optional[VirtualMarkerInfo] = None
-    all_markers: List[str] = Field(default_factory=list)
+    _all_markers: List[str] = Field(default_factory=list)
 
     @model_validator(mode="before")
     def copy_markers_to_all(cls, values):
@@ -52,13 +52,13 @@ class MarkerInfo(BaseModel):
         """Add virtual markers and update _all_markers."""
         self.virtual_marker_definition = VirtualMarkerInfo(virtual_markers=virtual_markers_dict)
         for virtual_marker_name in self.virtual_marker_definition.virtual_markers.keys():
-            if virtual_marker_name not in self.all_markers:
-                self.all_markers.append(virtual_marker_name)
+            if virtual_marker_name not in self._all_markers:
+                self._all_markers.append(virtual_marker_name)
 
     @property
     def all_markers(self) -> List[str]:
         """Publicly expose the combined list of markers."""
-        return self.all_markers
+        return self._all_markers
 
     @classmethod
     def create(cls, marker_list: List[str]):

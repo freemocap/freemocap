@@ -51,7 +51,7 @@ class ActiveRecordingInfoWidget(QWidget):
                 self.set_active_recording(most_recent_path)
 
         return self._active_recording_info
-    
+
     def get_active_recording_path(self) -> Optional[Path]:
         if self._active_recording_info:
             return Path(self._active_recording_info.path)

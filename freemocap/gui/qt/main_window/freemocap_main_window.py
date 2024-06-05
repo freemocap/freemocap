@@ -298,7 +298,7 @@ class MainWindow(QMainWindow):
         if self._visualization_control_panel.blender_executable_path is None:
             logger.error("Blender executable path is None!")
             return
-        
+
         if not recording_path:
             logger.error("Recording path is None!")
             return

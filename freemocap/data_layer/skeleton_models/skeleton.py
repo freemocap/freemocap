@@ -43,10 +43,10 @@ class Skeleton(BaseModel):
         - joint_hierarchy: A dictionary with joint names as keys and lists of connected marker names as values.
         """
         for joint_name, joint_connections in joint_hierarchy.items():
-            if joint_name not in self.markers.all_markers:
+            if joint_name not in self.markers._all_markers:
                 raise ValueError(f"The joint {joint_name} is not in the list of markers or virtual markers.")
             for connected_marker in joint_connections:
-                if connected_marker not in self.markers.all_markers:
+                if connected_marker not in self.markers._all_markers:
                     raise ValueError(
                         f"The connected marker {connected_marker} for {joint_name} is not in the list of markers or virtual markers."
                     )

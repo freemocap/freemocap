@@ -3,7 +3,7 @@ import multiprocessing
 import shutil
 import threading
 from pathlib import Path
-from typing import Callable, Union
+from typing import Callable
 
 from PySide6.QtCore import Signal, Slot, Qt
 from PySide6.QtGui import QFont
@@ -250,7 +250,9 @@ class ProcessMotionCaptureDataPanel(QWidget):
                 shutil.copyfile(selected_camera_calibration_toml_path, copied_toml_path)
 
         # set active tracker in recording model to the currently selected tracker
-        session_parameter_model.recording_info_model.active_tracker = session_parameter_model.tracking_model_info.model_name
+        session_parameter_model.recording_info_model.active_tracker = (
+            session_parameter_model.tracking_model_info.model_name
+        )
 
         self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(
             session_parameter_model, kill_event=self._kill_thread_event

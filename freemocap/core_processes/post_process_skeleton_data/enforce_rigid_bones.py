@@ -111,6 +111,7 @@ def merge_rigid_marker_data(rigid_marker_data: Dict[str, np.ndarray]) -> np.ndar
     Returns:
     - A numpy array containing the merged center of mass data.
     """
+    # TODO: We could use this more broadly as a skeleton method
 
     rigid_marker_data_list = list(rigid_marker_data.values())
 

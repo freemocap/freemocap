@@ -9,7 +9,7 @@ class VirtualMarkerInfo(BaseModel):
     @classmethod
     def validate_virtual_marker(cls, virtual_marker: Dict[str, List[Union[float, str]]]):
         for virtual_marker_name, virtual_marker_values in virtual_marker.items():
-            marker_names = virtual_marker_values.get("marker_names", [])
+            marker_names = virtual_marker_values.get("marker_names", [])  # TODO: make sure this .get is valid
             marker_weights = virtual_marker_values.get("marker_weights", [])
 
             if len(marker_names) != len(marker_weights):

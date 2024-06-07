@@ -106,7 +106,7 @@ class Skeleton(BaseModel):
         for vm_name, vm_info in self.markers.virtual_marker_definition.virtual_markers.items():
             vm_positions = np.zeros((self.marker_data[next(iter(self.marker_data))].shape[0], 3))
             for marker_name, weight in zip(vm_info["marker_names"], vm_info["marker_weights"]):
-                vm_positions += self.marker_data[marker_name] * weight
+                vm_positions += self.marker_data[str(marker_name)] * weight
             self.virtual_marker_data[vm_name] = vm_positions
 
         self.marker_data.update(self.virtual_marker_data)

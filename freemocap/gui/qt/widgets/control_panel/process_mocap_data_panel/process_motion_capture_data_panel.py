@@ -251,7 +251,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
         # set active tracker in recording model to the currently selected tracker
         session_parameter_model.recording_info_model.active_tracker = (
-            session_parameter_model.tracking_model_info.model_name
+            session_parameter_model.tracking_model_info.name
         )
 
         self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(

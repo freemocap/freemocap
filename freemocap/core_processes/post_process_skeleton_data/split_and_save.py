@@ -16,13 +16,15 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
 logger = logging.getLogger(__name__)
 
 
-# This is dependent on the ordering we currently use for mediapipe, maybe it should live in model_info
+# TODO: This is dependent on the ordering we currently use for mediapipe, maybe it should live in model_info
 category_info = {
     "body": BODY_3D_DATAFRAME_CSV_FILE_NAME,
     "right_hand": RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
     "left_hand": LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
     "face": FACE_3D_DATAFRAME_CSV_FILE_NAME,
 }
+
+# TODO: come up with a sensible way of splitting this for different types of trackers
 
 
 def split_data(
@@ -91,6 +93,26 @@ def create_column_names(model_info: ModelInfo) -> Dict[str, List[str]]:
 
             column_names[category] = category_column_names
 
+    # TODO: this is a quick attempt and probably wrong somehow
+    if column_names == {}:
+        landmark_names = "landmark_names"
+        tracked_points_name = "num_tracked_points"
+        category_column_names = []
+        if hasattr(model_info, landmark_names) and len(getattr(model_info, landmark_names)) == getattr(
+            model_info, tracked_points_name
+        ):
+            for name in getattr(model_info, landmark_names):
+                category_column_names.append(f"{category}_{name}_x")
+                category_column_names.append(f"{category}_{name}_y")
+                category_column_names.append(f"{category}_{name}_z")
+        else:
+            for i in range(getattr(model_info, tracked_points_name)):
+                category_column_names.append(f"{category}_{str(i).zfill(4)}_x")
+                category_column_names.append(f"{category}_{str(i).zfill(4)}_y")
+                category_column_names.append(f"{category}_{str(i).zfill(4)}_z")
+
+        column_names["total"] = category_column_names
+
     return column_names
 
 
@@ -113,7 +135,7 @@ def save_split_csv(
 
     number_of_frames = next(iter(split_data.values())).shape[0]
 
-    file_prefix = model_info.model_name + "_"
+    file_prefix = model_info.name + "_"
 
     for category, data in split_data.items():
         column_name_list = column_names[category]
@@ -173,5 +195,5 @@ def split_and_save(
         model_info=model_info,
     )
     save_split_npy(
-        output_data_folder_path=output_data_folder_path, split_data=split_data_dict, file_prefix=model_info.model_name
+        output_data_folder_path=output_data_folder_path, split_data=split_data_dict, file_prefix=model_info.name
     )

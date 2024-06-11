@@ -7,6 +7,7 @@ from skellytracker.process_folder_of_videos import process_folder_of_videos
 from skellytracker.trackers.base_tracker.base_tracking_params import (
     BaseTrackingParams,
 )
+from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
     ProcessingParameterModel,
@@ -46,6 +47,7 @@ def run_image_tracking_pipeline(
         logger.info(LOG_VIEW_PROGRESS_BAR_STRING)
         # 2d skeleton detection
         image_data_numCams_numFrames_numTrackedPts_XYZ = run_image_tracking(
+            model_info=processing_parameters.tracking_model_info,
             tracking_params=processing_parameters.tracking_parameters_model,
             synchronized_videos_folder_path=Path(
                 processing_parameters.recording_info_model.synchronized_videos_folder_path
@@ -70,20 +72,19 @@ def run_image_tracking_pipeline(
 
 
 def run_image_tracking(
+    model_info: ModelInfo,
     tracking_params: BaseTrackingParams,
     synchronized_videos_folder_path: Path,
     output_data_folder_path: Path,
     kill_event: multiprocessing.Event = None,
     use_tqdm: bool = True,
 ):
-    # TODO: More robust way to determine which tracker is being used
     if hasattr(tracking_params, "use_yolo_crop_method") and tracking_params.use_yolo_crop_method:
-        tracker_type = "YOLOMediapipeComboTracker"
-    else:
-        tracker_type = "MediapipeHolisticTracker"
+        model_info.tracker_name = "YOLOMediapipeComboTracker"
+    # TODO: this shouldn't be handled here
 
     image_data_numCams_numFrames_numTrackedPts_XYZ = process_folder_of_videos(
-        tracker_name=tracker_type,
+        model_info=model_info,
         tracking_params=tracking_params,
         synchronized_video_path=synchronized_videos_folder_path,
         output_folder_path=output_data_folder_path,

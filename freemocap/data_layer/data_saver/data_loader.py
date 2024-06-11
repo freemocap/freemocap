@@ -224,7 +224,7 @@ class DataLoader:
         self.skeleton_schema = SkeletonSchema(schema_dict=MediapipeModelInfo.skeleton_schema)
 
     def _set_file_prefix(self) -> None:
-        self._file_prefix = self._model_info.model_name
+        self._file_prefix = self._model_info.name
 
         if self._file_prefix[-1] != "_":
             self._file_prefix += "_"

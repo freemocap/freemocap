@@ -60,7 +60,7 @@ RUN_BUTTERWORTH_FILTER_NAME = "Run butterworth filter?"
 
 NUMBER_OF_PROCESSES_PARAMETER_NAME = "Max Number of Processes to Use"
 
-
+# TODO: figure out how to generalize this
 def create_mediapipe_parameter_group(
     parameter_model: MediapipeTrackingParams,
 ) -> Parameter:

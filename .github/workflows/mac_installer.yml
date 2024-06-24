@@ -62,7 +62,7 @@ jobs:
           cp ${{ github.workspace }}/freemocap/assets/mac_app_files/freemocap.icns ${{ github.workspace }}/freemocap.app/Contents/Resources
           cp ${{ github.workspace }}/freemocap/assets/mac_app_files/Info.plist ${{ github.workspace }}/freemocap.app/Contents
           tar -czvf freemocap.tar.gz freemocap.app
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: freemocap_mac_app
           path: freemocap.tar.gz

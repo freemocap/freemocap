@@ -57,5 +57,5 @@ jobs:
           tar -czvf freemocap_app.tar.gz freemocap_app
       - uses: actions/upload-artifact@v3
         with:
-          name: freemocap
+          name: freemocap_linux_app
           path: freemocap_app.tar.gz

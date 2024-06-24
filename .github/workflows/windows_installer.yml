@@ -68,5 +68,5 @@ jobs:
           rcedit "freemocap_app.exe" --set-icon "${{ github.workspace }}/freemocap/assets/logo/freemocap_skelly_logo.ico"
       - uses: actions/upload-artifact@v3
         with:
-          name: freemocap
+          name: freemocap_windows_exe
           path: freemocap_app.exe

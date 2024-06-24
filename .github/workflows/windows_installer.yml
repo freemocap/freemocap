@@ -35,7 +35,7 @@ jobs:
         shell: bash
       - name: Download PyApp
         run: |
-          curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.12.0/source.zip"
+          curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.22.0/source.zip"
       - name: Unzip PyApp
         run: |
           unzip pyapp.zip
@@ -47,12 +47,14 @@ jobs:
       - name: Create Windows Installer
         run: |
           WORKSPACE=$(cygpath -u "${{ github.workspace}}")
-          cd $WORKSPACE/pyapp-v0.12.0
+          cd $WORKSPACE/pyapp-v0.22.0
           export PYAPP_PROJECT_NAME=freemocap
           export PYAPP_PROJECT_VERSION=v1.2.2
+          export PYAPP_PYTHON_VERSION=3.11
           export PYAPP_PROJECT_DEPENDENCY_FILE=$WORKSPACE/requirements.txt
           export PYAPP_EXEC_SCRIPT=$WORKSPACE/freemocap/__main__.py
           export PYAPP_PIP_EXTRA_ARGS=--no-deps
+          export PYAPP_EXPOSE_ALL_COMMANDS=true
           cargo build --release
           cargo install pyapp --force --root $WORKSPACE
           cd $WORKSPACE

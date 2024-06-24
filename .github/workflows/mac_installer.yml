@@ -35,18 +35,20 @@ jobs:
           sed '/opencv-python/d' requirements.txt > tmp && mv tmp requirements.txt
       - name: Download PyApp
         run: |
-          curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.12.0/source.zip"
+          curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.22.0/source.zip"
       - name: Unzip PyApp
         run: |
           unzip pyapp.zip
       - name: Create Mac Installer
         run: |
-          cd ${{ github.workspace }}/pyapp-v0.12.0
+          cd ${{ github.workspace }}/pyapp-v0.22.0
           export PYAPP_PROJECT_NAME=freemocap
           export PYAPP_PROJECT_VERSION=v1.2.2
+          export PYAPP_PYTHON_VERSION=3.11
           export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt
           export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
           export PYAPP_PIP_EXTRA_ARGS=--no-deps
+          export PYAPP_EXPOSE_ALL_COMMANDS=true
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}
           cd ${{ github.workspace }}

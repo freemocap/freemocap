@@ -21,7 +21,7 @@ Steps to reproduce the behavior:
 A clear and concise description of what you expected to happen vs what actually happened.
 
 **Log**
-Please include the log information for the session where you encountered this error. Logs can be found in `freemocap_data/logs_info_and_settings/logs` or copy and pasted from the terminal. Include as much context as possible so we can see upstream errors.
+Please include the log information for the session where you encountered this error. Logs can be found in `[path_to_your_user_directory]/freemocap_data/logs_info_and_settings/logs` or copy and pasted from the terminal. Include as much context as possible so we can see upstream errors.
 
 **Environment Information:**
  - OS: [e.g. Windows 11]

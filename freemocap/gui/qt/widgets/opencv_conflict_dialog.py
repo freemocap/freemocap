@@ -30,7 +30,8 @@ class OpencvConflictDialog(QDialog):
             "Choosing `Fix OpenCV version conflict` will remove the existing OpenCV versions and install opencv-contrib-python. "
             "It will also close Freemocap to make the changes take affect, but everything will work when restarted. \n\n"
             "If you choose not to fix the conflict, you will need to manually install opencv-contrib-python and restart Freemocap "
-            "in order for multi-camera calibration to work.\n\n"
+            "in order for multi-camera calibration to work.\n\n To manually fix the conflict, close Freemocap and run `pip uninstall opencv-python opencv-contrib-python` "
+            "followed by `pip install opencv-contrib-python==4.8.1.78`. Then restart Freemocap.\n\n"
         )
         welcome_text_label = QLabel(version_conflict_message)
         welcome_text_label.setWordWrap(True)

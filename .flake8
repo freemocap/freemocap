@@ -12,12 +12,9 @@ exclude =
 
 per-file-ignores = 
     ./freemocap/core_processes/process_motion_capture_videos/process_recording_folder.py:C901
-    ./freemocap/core_processes/detecting_things_in_2d_images/mediapipe_stuff/mediapipe_skeleton_detector.py:C901
-    ./freemocap/core_processes/detecting_things_in_2d_images/mediapipe_stuff/convert_mediapipe_npy_to_csv.py:E203
     ./freemocap/gui/qt/widgets/control_panel/calibration_control_panel.py:C901
     ./experimental/batch_process/batch_process.py:E226
 # C901: function is too complex
-# E203: whitespace before ':' (PEP8 says this doesn't apply to slicing)
 # E226: missing whitespace around arithmetic operator (file slashes misread as arithmetic)
 
 max-line-length = 88

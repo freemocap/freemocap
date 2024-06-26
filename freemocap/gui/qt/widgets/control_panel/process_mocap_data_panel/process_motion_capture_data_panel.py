@@ -3,7 +3,7 @@ import multiprocessing
 import shutil
 import threading
 from pathlib import Path
-from typing import Callable, Union
+from typing import Callable
 
 from PySide6.QtCore import Signal, Slot, Qt
 from PySide6.QtGui import QFont
@@ -39,7 +39,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def __init__(
         self,
         recording_processing_parameters: ProcessingParameterModel,
-        get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
+        get_active_recording_info: Callable[..., RecordingInfoModel],
         kill_thread_event: threading.Event,
         log_update: Callable,
         gui_state: GuiState,
@@ -126,7 +126,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     children=[
                         self._create_new_run_this_step_parameter(run_step_name=RUN_IMAGE_TRACKING_NAME),
                         self._create_num_processes_parameter(),
-                        create_mediapipe_parameter_group(session_processing_parameter_model.mediapipe_parameters_model),
+                        create_mediapipe_parameter_group(session_processing_parameter_model.tracking_parameters_model),
                     ],
                     tip="Methods for tracking 2d points in images (e.g. mediapipe, deeplabcut(TODO), openpose(TODO), etc ...)",
                 ),
@@ -248,6 +248,11 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     / Path(selected_camera_calibration_toml_path).name
                 )
                 shutil.copyfile(selected_camera_calibration_toml_path, copied_toml_path)
+
+        # set active tracker in recording model to the currently selected tracker
+        session_parameter_model.recording_info_model.active_tracker = (
+            session_parameter_model.tracking_model_info.name
+        )
 
         self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(
             session_parameter_model, kill_event=self._kill_thread_event

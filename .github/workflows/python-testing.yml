@@ -29,6 +29,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+      - name: Fix OpenCV conflict
+        run: |
+          pip uninstall -y opencv-python opencv-contrib-python
+          pip install opencv-contrib-python==4.8.1.78
       - name: Install libegl1
         run: |
           sudo apt-get update

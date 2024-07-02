@@ -37,7 +37,7 @@ class ExportToBlenderThreadWorker(QThread):
         self.in_progress.emit(message)
 
     def run(self):
-        logger.info("Beginning to synchronize videos")
+        logger.info("Beginning to export to Blender")
 
         try:
             export_to_blender(

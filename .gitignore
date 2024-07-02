@@ -155,3 +155,4 @@ desktop.ini
 
 node_modules/
 freemocap/system/gui_state.json
+.nuxt

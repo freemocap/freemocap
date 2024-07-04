@@ -30,7 +30,7 @@ REPROJECTION_ERROR_FILTER_THRESHOLD = "Reprojection Error Filter Threshold (%)"
 
 MINIMUM_CAMERAS_TO_REPROJECT = "Minimum Cameras to Reproject"
 
-FLATTEN_SINGLE_CAMERA_DATA = "Flatten Single Camera Data"
+FLATTEN_SINGLE_CAMERA_DATA = "Flatten Single Camera Data (Recommended)"
 
 ANIPOSE_TREE_NAME = "Anipose Triangulation"
 

@@ -2,7 +2,7 @@ import pprint
 from typing import List, Dict, Tuple
 from typing import Optional, Any
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, model_validator
 
 from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
     mediapipe_skeleton_schema,
@@ -31,7 +31,7 @@ class VirtualMarkerDefinition(BaseModel):
         default_factory=list, description="The weights of the markers that define this virtual marker, must sum to 1"
     )
 
-    @root_validator
+    @model_validator(mode="before")
     def check_weights(cls, values):
         marker_weights = values.get("marker_weights")
         if sum(marker_weights) != 1:

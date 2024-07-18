@@ -83,6 +83,7 @@ def run_post_processing_worker(
         task_list=task_list,
         settings=settings_dictionary,
         all_tasks_finished_callback=lambda results: handle_thread_finished(results, post_processed_data_handler),
+        landmark_names= landmark_names,
     )
     worker_thread.start()
     worker_thread.join()

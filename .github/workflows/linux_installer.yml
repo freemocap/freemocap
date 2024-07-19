@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: System Info
         run: |
           uname -a || true
@@ -36,24 +36,26 @@ jobs:
           sed '/opencv-python/d' requirements.txt > tmp && mv tmp requirements.txt
       - name: Download PyApp
         run: |
-          curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.12.0/source.zip"
+          curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.22.0/source.zip"
       - name: Unzip PyApp
         run: |
           unzip pyapp.zip
       - name: Create Linux Installer
         run: |
-          cd ${{ github.workspace }}/pyapp-v0.12.0
+          cd ${{ github.workspace }}/pyapp-v0.22.0
           export PYAPP_PROJECT_NAME=freemocap
           export PYAPP_PROJECT_VERSION=v1.2.2
+          export PYAPP_PYTHON_VERSION=3.11
           export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt
           export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
           export PYAPP_PIP_EXTRA_ARGS=--no-deps
+          export PYAPP_EXPOSE_ALL_COMMANDS=true
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}
           cd ${{ github.workspace }}
           mv ${{ github.workspace }}/bin/pyapp freemocap_app && chmod +x freemocap_app
           tar -czvf freemocap_app.tar.gz freemocap_app
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: freemocap
+          name: freemocap_linux_app
           path: freemocap_app.tar.gz

@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from jon_scratch.pupil_calibration_pipeline.qt_gl_laser_skeleton_visualizer import (
     QtGlLaserSkeletonVisualizer,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from src.cameras.launch_camera_frame_loop import launch_camera_frame_loop
 from src.cameras.multicam_manager.cv_camera_manager import OpenCVCameraManager
 from src.config.home_dir import (
@@ -33,8 +33,7 @@ session_router = APIRouter()
 
 
 class TweakedPydanticBaseModel(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed = True)
 
 
 class SessionCreateModel(BaseModel):

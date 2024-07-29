@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
         with:
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python 3.x
         uses: wntrblm/nox@2022.8.7
         with:
-          python-versions: "3.9, 3.10, 3.11"
+          python-versions: "3.12"
       - name: Install libegl1
         run: |
           sudo apt-get update

@@ -185,6 +185,7 @@ class MainWindow(QMainWindow):
             )
 
     def _handle_processing_finished_signal(self):
+        self._update_skelly_viewer_widget()
         if self._controller_group_box.auto_open_in_blender_checked and not self._kill_thread_event.is_set():
             logger.info("'Auto Open in Blender' checkbox is checked - triggering 'Create Blender Scene'")
             self._export_active_recording_to_blender()

@@ -10,11 +10,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python 3.x
         uses: wntrblm/nox@2022.8.7
         with:
-          python-versions: "3.11"
+          python-versions: "3.12"
       - name: Run noxfile
         run: |
           nox --session lint

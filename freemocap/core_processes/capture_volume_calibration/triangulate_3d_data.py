@@ -92,12 +92,6 @@ if __name__ == "__main__":
         required=False,
     )
     parser.add_argument(
-        "--mediapipe_confidence_cutoff_threshold",
-        type=float,
-        help="confidence cutoff threshold",
-        required=False,
-    )
-    parser.add_argument(
         "--save_data_as_csv",
         type=bool,
         help="save data as csv",
@@ -112,9 +106,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     mediapipe_2d_data = np.load(args.mediapipe_2d_data_path)
-
-    if args.mediapipe_confidence_cutoff_threshold is None:
-        args.mediapipe_confidence_cutoff_threshold = 0.7  # default
 
     if args.output_data_folder_path is None:
         args.output_data_folder_path = Path(args.mediapipe_2d_data_path).parent
@@ -139,7 +130,6 @@ if __name__ == "__main__":
     ) = triangulate_3d_data(
         anipose_calibration_object=anipose_calibration_object,
         mediapipe_2d_data=mediapipe_2d_data,
-        mediapipe_confidence_cutoff_threshold=args.mediapipe_confidence_cutoff_threshold,
         use_triangulate_ransac=args.use_triangulate_ransac,
     )
     save_mediapipe_3d_data_to_npy(

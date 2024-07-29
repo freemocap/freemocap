@@ -179,7 +179,7 @@ def _get_data_to_reproject(
     )
     unique_frame_marker_list = _get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
     logger.info(
-        f"number of frame/marker combos with reprojection error above threshold: {len(unique_frame_marker_list)} ({len(unique_frame_marker_list)/total_frame_marker_combos * 100:.1f} percent of total)"
+        f"number of frame/marker combos with reprojection error above threshold: {len(unique_frame_marker_list)} ({len(unique_frame_marker_list) / total_frame_marker_combos * 100:.1f} percent of total)"
     )
 
     cameras_to_remove, frames_to_reproject, markers_to_reproject = _get_camera_frame_marker_lists_to_reproject(

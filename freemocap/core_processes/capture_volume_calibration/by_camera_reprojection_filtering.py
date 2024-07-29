@@ -63,10 +63,10 @@ def run_reprojection_error_filtering(
     plot_reprojection_error(
         raw_reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
         filtered_reprojection_error_frame_marker=reprojection_filtered_skeleton_reprojection_error_fr_mar,
-        reprojection_error_threshold=np.nanpercentile(
+        reprojection_error_threshold=float(np.nanpercentile(
             skeleton_reprojection_error_cam_fr_mar,
             processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
-        ),
+        )),
         output_folder_path=processing_parameters.recording_info_model.raw_data_folder_path,
     )
     return reprojection_filtered_skel3d_frame_marker_xyz
@@ -82,7 +82,7 @@ def filter_by_reprojection_error(
     output_data_folder_path: Union[str, Path],
     use_triangulate_ransac: bool = False,
     minimum_cameras_to_reproject: int = 3,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     total_cameras = mediapipe_2d_data.shape[0]
     num_cameras_to_remove = 1
 

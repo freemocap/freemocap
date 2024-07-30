@@ -40,7 +40,7 @@ class ActiveRecordingInfoWidget(QWidget):
     def active_recording_view_widget(self):
         return self._active_recording_view_widget
 
-    def get_active_recording_info(self, return_path: bool = False) -> Union[RecordingInfoModel, Path, None]:
+    def get_active_recording_info(self) -> Union[RecordingInfoModel, None]:
         # this is redundant to the `active_recording_info` property,
         # but it will be more intuitive to send this down as a callable
         # rather than relying on 'pass-by-reference' magic lol
@@ -49,9 +49,6 @@ class ActiveRecordingInfoWidget(QWidget):
             most_recent_path = get_most_recent_recording_path()
             if most_recent_path is not None:
                 self.set_active_recording(most_recent_path)
-
-        if return_path:
-            return self._active_recording_info.path
 
         return self._active_recording_info
 

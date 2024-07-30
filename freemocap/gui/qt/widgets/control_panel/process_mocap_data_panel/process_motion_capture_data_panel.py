@@ -39,7 +39,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def __init__(
         self,
         recording_processing_parameters: ProcessingParameterModel,
-        get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
+        get_active_recording_info: Callable[..., Union[RecordingInfoModel, None]],
         kill_thread_event: threading.Event,
         log_update: Callable,
         gui_state: GuiState,
@@ -162,6 +162,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(
             parameter_object=self._parameter_group
         )
+        # TODO: return a new active recording if active recording info is None?
         recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
 
         if self._calibration_control_panel.calibration_toml_path:

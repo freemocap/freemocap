@@ -12,11 +12,7 @@ def main():
 
 
 
-    recording_folder = Path(r'C:\Users\aaron\FreeMocap_Data\recording_sessions\freemocap_test_data')
-
-    output_json_path = recording_folder / 'output_data' / 'raw_data' / 'openpose_jsons'
-    output_json_path.mkdir(parents=True, exist_ok=True)
-
+    recording_folder = Path(r'D:\mdn_treadmill_for_testing')
     openpose_root_folder_path = r'C:\openpose'
 
 
@@ -30,10 +26,7 @@ def main():
         tracking_parameters_model=OpenPoseTrackingParams(
             # net_resolution="-1x656",
             openpose_root_folder_path=str(openpose_root_folder_path),
-            output_json_path=str(output_json_path),
-            track_hands=True,
-            track_face=True,
-            run_image_tracking=False
+            run_image_tracking=True
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(),
         post_processing_parameters_model=PostProcessingParametersModel(),

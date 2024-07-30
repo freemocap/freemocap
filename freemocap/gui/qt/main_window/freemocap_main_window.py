@@ -293,7 +293,10 @@ class MainWindow(QMainWindow):
 
     def _export_active_recording_to_blender(self):
         logger.debug("Exporting active recording to Blender...")
-        recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
+        if (active_recording_info := self._active_recording_info_widget.get_active_recording_info()) is None:
+            logger.error("Active recording info is None, unable to export!")
+            return
+        recording_path = active_recording_info.path
 
         if self._visualization_control_panel.blender_executable_path is None:
             logger.error("Blender executable path is None!")
@@ -322,7 +325,10 @@ class MainWindow(QMainWindow):
 
     def _generate_jupyter_notebook(self):
         logger.info("Exporting active recording to a Jupyter notebook...")
-        recording_path = self._active_recording_info_widget.get_active_recording_info(return_path=True)
+        if (active_recording_info := self._active_recording_info_widget.get_active_recording_info()) is None:
+            logger.error("Active recording info is None, unable to export!")
+            return
+        recording_path = active_recording_info.path
         # TODO: Need to include jupyter notebook in recording files that we keep track of (2023-05-15)
         generate_jupyter_notebook(path_to_recording=recording_path)
 

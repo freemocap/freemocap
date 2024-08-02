@@ -19,6 +19,7 @@ class AniposeTriangulate3DParametersModel(BaseModel):
     confidence_threshold_cutoff: float = 0.5
     use_triangulate_ransac_method: bool = False
     run_3d_triangulation: bool = True
+    flatten_single_camera_data: bool = True
 
 
 class ButterworthFilterParametersModel(BaseModel):

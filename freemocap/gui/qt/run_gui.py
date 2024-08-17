@@ -1,3 +1,4 @@
+import ctypes
 import logging
 import signal
 import sys
@@ -7,6 +8,7 @@ from importlib.metadata import distributions
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
+import freemocap
 from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
@@ -27,7 +29,11 @@ def sigint_handler(*args):
 
 
 def qt_gui_main():
-    logger.info("Starting main...")
+    logger.info("Launchin GUI...")
+    if sys.platform == "win32":
+        myappid = f"{freemocap.__package_name__}_{freemocap.__version__}"  # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
     signal.signal(signal.SIGINT, sigint_handler)
     app = get_qt_app()
     timer = QTimer()

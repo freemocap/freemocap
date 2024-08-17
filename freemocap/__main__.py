@@ -12,12 +12,12 @@ PORT = 8003
 APP_URL = f"http://{HOSTNAME}:{PORT}"
 
 try:
-    from freemocap.gui.qt.freemocap_main import qt_gui_main, logger
+    from freemocap.gui.qt.run_gui import qt_gui_main, logger
 except Exception:
     base_package_path = Path(__file__).parent.parent
     print(f"adding base_package_path: {base_package_path} : to sys.path")
     sys.path.insert(0, str(base_package_path))  # add parent directory to sys.path
-    from freemocap.gui.qt.freemocap_main import qt_gui_main
+    from freemocap.gui.qt.run_gui import qt_gui_main
 
 
 def main():
@@ -25,9 +25,6 @@ def main():
     import ctypes
     import freemocap
     multiprocessing.freeze_support()
-    if sys.platform == "win32":
-        myappid = f"{freemocap.__package_name__}_{freemocap.__version__}"  # arbitrary string
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     frontend_process = multiprocessing.Process(target=qt_gui_main)
     logger.info(f"Starting frontend process")

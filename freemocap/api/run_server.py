@@ -4,6 +4,7 @@ import uvicorn
 
 logger = logging.getLogger(__name__)
 
+APP_FACTORY_IMPORT_STRING = "freemocap.api.app_factory:create_app"
 
 def run_uvicorn_server(
         hostname: str,
@@ -12,7 +13,7 @@ def run_uvicorn_server(
 
     try:
         uvicorn.run(
-            "skellycam.api.app_factory:create_app",
+            APP_FACTORY_IMPORT_STRING,
             host=hostname,
             port=port,
             log_level="info",

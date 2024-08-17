@@ -1,18 +1,15 @@
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, APIRouter
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse
 from fastapi.routing import APIWebSocketRoute, APIRoute
 
-
-
 import freemocap
 from freemocap.__main__ import APP_URL
 from freemocap.api import enabled_routers
-from freemocap.api.controller import create_controller, shutdown_controller
+from freemocap.api.controller import create_controller, get_controller
 from freemocap.api.middleware.cors import cors
 
 logger = logging.getLogger(__name__)
@@ -69,7 +66,7 @@ def customize_swagger_ui(app: FastAPI):
 
 
 @asynccontextmanager
-async def lifespan(app:FastAPI):
+async def lifespan(app: FastAPI):
     logger.info("Skellycam API starting...")
     logger.info(f"Creating `Controller` instance...")
     create_controller()
@@ -77,8 +74,7 @@ async def lifespan(app:FastAPI):
     logger.info(f"Skellycam API  running on: {APP_URL} 👈[click to open backend UI in your browser]\n")
     yield
     logger.info("Shutting down...")
-    shutdown_controller()
-
+    get_controller().close()
 
 def create_app(*args, **kwargs) -> FastAPI:
     logger.info("Creating FastAPI app")

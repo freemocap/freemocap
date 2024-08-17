@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from tarfile import version
 
 from fastapi import FastAPI, APIRouter
 from fastapi.openapi.utils import get_openapi
@@ -8,6 +9,7 @@ from fastapi.routing import APIWebSocketRoute, APIRoute
 
 import freemocap
 from freemocap.api import enabled_routers
+
 from freemocap.api.controller import create_controller, get_controller
 from freemocap.api.middleware.cors import cors
 from freemocap.api.run_server import APP_URL
@@ -20,12 +22,13 @@ def register_routes(app: FastAPI):
     async def read_root():
         return RedirectResponse("/docs")
 
-    for name, router in enabled_routers.items():
-        log_routes(name, router)
-        app.include_router(router)
+    for version_name, routers in enabled_routers.items():
+        for name, router in routers.items():
+            log_routes(version_name=version_name, route_name=name, router=router)
+            app.include_router(router, prefix=f"/{version_name}")
 
 
-def log_routes(name, router: APIRouter):
+def log_routes(version_name: str, route_name:str, router: APIRouter):
     routes_str = ""
     for route in router.routes:
         if isinstance(route, APIRoute):
@@ -44,7 +47,7 @@ def log_routes(name, router: APIRouter):
         for shutdown_handler in router.on_shutdown:
             routes_str += f"\n\t\t{shutdown_handler.__name__}"
 
-    logger.debug(f"Registering `{name}` router:{routes_str}")
+    logger.debug(f"Registering `{route_name}({version_name})` router:{routes_str}")
 
 
 def customize_swagger_ui(app: FastAPI):
@@ -57,7 +60,7 @@ def customize_swagger_ui(app: FastAPI):
             description=f"The FastAPI/Uvicorn/Swagger Backend UI for FreeMoCap: {freemocap.__description__}",
             routes=app.routes,
         )
-        # TODO - add SkellyCam logo?
+        # TODO - add logo?
 
         app.openapi_schema = openapi_schema
         return app.openapi_schema
@@ -71,7 +74,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Creating `Controller` instance...")
     create_controller()
     logger.success(f"Skellycam API (version:{freemocap.__version__}) started successfully 💀📸✨")
-    logger.info(f"Skellycam API  running on: {APP_URL} 👈[click to open backend UI in your browser]\n")
+    logger.api(f"Skellycam API  running on: {APP_URL} 👈[click to open backend UI in your browser]\n")
     yield
     logger.info("Shutting down...")
     get_controller().close()

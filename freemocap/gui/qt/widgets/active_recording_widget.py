@@ -6,7 +6,7 @@ from PySide6.QtCore import Signal, QFileSystemWatcher
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-from freemocap.data_layer.recording_models.recording_info_model import (
+from freemocap.data.recording_models.recording_info_model import (
     RecordingInfoModel,
 )
 from freemocap.system.paths_and_filenames.path_getters import get_most_recent_recording_path

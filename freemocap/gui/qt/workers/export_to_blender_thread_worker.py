@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Signal, QThread
 
-from freemocap.core_processes.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender
+from freemocap.core.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender
 
 logger = logging.getLogger(__name__)
 

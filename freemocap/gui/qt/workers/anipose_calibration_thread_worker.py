@@ -5,10 +5,10 @@ from typing import Union
 
 from PySide6.QtCore import Signal, QThread
 
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
+from freemocap.core.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
 )
-from freemocap.core_processes.capture_volume_calibration.run_anipose_capture_volume_calibration import (
+from freemocap.core.capture_volume_calibration.run_anipose_capture_volume_calibration import (
     run_anipose_capture_volume_calibration,
 )
 

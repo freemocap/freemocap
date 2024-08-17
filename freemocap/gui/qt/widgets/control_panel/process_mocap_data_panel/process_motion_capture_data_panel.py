@@ -10,10 +10,10 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QGroupBox
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-from freemocap.data_layer.recording_models.post_processing_parameter_models import (
+from freemocap.data.recording_models.post_processing_parameter_models import (
     ProcessingParameterModel,
 )
-from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.data.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (

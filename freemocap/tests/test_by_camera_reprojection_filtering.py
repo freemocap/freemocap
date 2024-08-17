@@ -1,6 +1,6 @@
 import numpy as np
 
-from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import (
+from freemocap.core.capture_volume_calibration.by_camera_reprojection_filtering import (
     _get_camera_frame_marker_lists_to_reproject,
     _set_unincluded_data_to_nans,
 )

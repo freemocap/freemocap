@@ -22,13 +22,13 @@ from skellycam import (
 from tqdm import tqdm
 
 
-from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import (
+from freemocap.data.generate_jupyter_notebook.generate_jupyter_notebook import (
     generate_jupyter_notebook,
 )
-from freemocap.data_layer.recording_models.post_processing_parameter_models import (
+from freemocap.data.recording_models.post_processing_parameter_models import (
     ProcessingParameterModel,
 )
-from freemocap.data_layer.recording_models.recording_info_model import (
+from freemocap.data.recording_models.recording_info_model import (
     RecordingInfoModel,
 )
 from freemocap.gui.qt.actions_and_menus.actions import Actions

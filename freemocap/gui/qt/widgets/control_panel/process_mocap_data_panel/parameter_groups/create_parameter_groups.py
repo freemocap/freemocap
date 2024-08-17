@@ -3,7 +3,7 @@ from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeTrackingParams,
 )
 
-from freemocap.data_layer.recording_models.post_processing_parameter_models import (
+from freemocap.data.recording_models.post_processing_parameter_models import (
     ProcessingParameterModel,
     AniposeTriangulate3DParametersModel,
     PostProcessingParametersModel,

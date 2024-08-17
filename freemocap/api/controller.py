@@ -10,6 +10,7 @@ class Controller:
         super().__init__()
 
     def close(self):
+        logger.debug(f"Closing Controller...")
         pass
 
 
@@ -27,11 +28,3 @@ def get_controller() -> Controller:
     if not isinstance(CONTROLLER, Controller):
         raise ValueError("Controller not created!")
     return CONTROLLER
-
-def shutdown_controller():
-    global CONTROLLER
-    if isinstance(CONTROLLER, Controller):
-        CONTROLLER.close()
-        CONTROLLER = None
-    else:
-        raise ValueError("Controller not created!")

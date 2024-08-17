@@ -11,9 +11,9 @@ from fastapi.routing import APIWebSocketRoute, APIRoute
 
 import freemocap
 from freemocap.__main__ import APP_URL
+from freemocap.api import enabled_routers
 from freemocap.api.controller import create_controller, shutdown_controller
 from freemocap.api.middleware.cors import cors
-from freemocap.api.routes.http import enabled_routers
 
 logger = logging.getLogger(__name__)
 

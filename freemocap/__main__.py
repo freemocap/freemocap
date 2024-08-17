@@ -7,9 +7,6 @@ from pathlib import Path
 from freemocap.api import run_server
 from freemocap.api.run_server import run_uvicorn_server
 
-HOSTNAME = "localhost"
-PORT = 8003
-APP_URL = f"http://{HOSTNAME}:{PORT}"
 
 try:
     from freemocap.gui.qt.run_gui import qt_gui_main, logger
@@ -30,7 +27,7 @@ def main():
     logger.info(f"Starting frontend process")
     frontend_process.start()
 
-    backend_process = Process(target=run_uvicorn_server, args=(HOSTNAME, PORT))
+    backend_process = Process(target=run_uvicorn_server)
     logger.info(f"Starting backend process")
     backend_process.start()
 

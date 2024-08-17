@@ -1,12 +1,14 @@
+from asyncio import Future
+from concurrent.futures import ThreadPoolExecutor
+from typing import Dict, Any
+
 import httpx
 import logging
-from typing import Any, Dict
-from concurrent.futures import ThreadPoolExecutor, Future
-
 logger = logging.getLogger(__name__)
 
-class FastAPIClient:
-    def __init__(self, base_url: str = "http://localhost:8003"):
+
+class HTTPClient:
+    def __init__(self, base_url: str):
         self.base_url = base_url
         self.client = httpx.Client(base_url=self.base_url)
         self.executor = ThreadPoolExecutor(max_workers=10)
@@ -48,19 +50,6 @@ class FastAPIClient:
         return response
 
     def close(self) -> None:
-        logger.info("Closing client and executor")
+        logger.info("Closing HTTP client and executor")
         self.client.close()
         self.executor.shutdown()
-
-# Example usage
-if __name__ == "__main__":
-    client = FastAPIClient()
-
-    try:
-        # Example GET request
-        future_response = client.get("/hello")
-        response = future_response.result()
-        print(response.json())
-
-    finally:
-        client.close()

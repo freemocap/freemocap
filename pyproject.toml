@@ -82,6 +82,9 @@ dependencies = [
     "pydantic==2.*",
     "PySide6>=6.6, <6.8",
     "packaging===23.2",
+    "fastapi==0.111.0",
+    "uvicorn==0.29.0",
+    "websockets==12.0",
 ]
 
 requires-python = ">=3.9,<3.13"

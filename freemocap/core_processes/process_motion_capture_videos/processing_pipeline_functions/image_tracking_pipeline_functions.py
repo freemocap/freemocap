@@ -20,14 +20,7 @@ logger = logging.getLogger(__name__)
 
 def run_image_tracking_pipeline(
     processing_parameters: ProcessingParameterModel,
-    kill_event: multiprocessing.Event,
-    queue: multiprocessing.Queue,
-    use_tqdm: bool,
 ) -> np.ndarray:
-    if queue:
-        handler = DirectQueueHandler(queue)
-        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
-        logger.addHandler(handler)
 
     if not processing_parameters.mediapipe_parameters_model.run_image_tracking:
         logger.info(
@@ -51,8 +44,6 @@ def run_image_tracking_pipeline(
             ),
             output_data_folder_path=Path(processing_parameters.recording_info_model.output_data_folder_path)
             / RAW_DATA_FOLDER_NAME,
-            kill_event=kill_event,
-            use_tqdm=use_tqdm,
         )
 
     if not processing_parameters.recording_info_model.data2d_status_check:
@@ -67,8 +58,6 @@ def run_image_tracking(
     tracking_params: MediapipeTrackingParams,
     synchronized_videos_folder_path: Path,
     output_data_folder_path: Path,
-    kill_event: multiprocessing.Event = None,
-    use_tqdm: bool = True,
 ):
     if tracking_params.use_yolo_crop_method:
         tracker_type = "YOLOMediapipeComboTracker"

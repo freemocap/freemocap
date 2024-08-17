@@ -36,7 +36,7 @@ class PostProcessingParametersModel(BaseModel):
 
 class ProcessingParameterModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    recording_info_model: RecordingInfoModel = None
+    recording_info_model: RecordingInfoModel = RecordingInfoModel()
     mediapipe_parameters_model: MediapipeTrackingParams = MediapipeTrackingParams()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel()
     post_processing_parameters_model: PostProcessingParametersModel = PostProcessingParametersModel()

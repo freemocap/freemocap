@@ -93,12 +93,9 @@ def run_post_processing_worker(raw_skel3d_frame_marker_xyz: np.ndarray, settings
 
 
 def post_process_data(
-        recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray, queue: multiprocessing.Queue
+        recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray
 ) -> np.ndarray:
-    if queue:
-        handler = DirectQueueHandler(queue)
-        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
-        logger.addHandler(handler)
+
     filter_sampling_rate, filter_cutoff_frequency, filter_order = get_settings_from_parameter_tree(
         recording_processing_parameter_model
     )

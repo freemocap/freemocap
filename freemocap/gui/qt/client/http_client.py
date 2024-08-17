@@ -4,6 +4,9 @@ from typing import Dict, Any
 
 import httpx
 import logging
+
+from pydantic import BaseModel
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,30 +25,12 @@ class HTTPClient:
         response.raise_for_status()
         return response
 
-    def post(self, endpoint: str, data: Dict[str, Any]) -> Future:
+    def post(self, endpoint: str, data: BaseModel) -> Future:
         logger.info(f"POST request to {endpoint} with data {data}")
         return self.executor.submit(self._post, endpoint, data)
 
-    def _post(self, endpoint: str, data: Dict[str, Any]) -> httpx.Response:
-        response = self.client.post(endpoint, json=data)
-        response.raise_for_status()
-        return response
-
-    def put(self, endpoint: str, data: Dict[str, Any]) -> Future:
-        logger.info(f"PUT request to {endpoint} with data {data}")
-        return self.executor.submit(self._put, endpoint, data)
-
-    def _put(self, endpoint: str, data: Dict[str, Any]) -> httpx.Response:
-        response = self.client.put(endpoint, json=data)
-        response.raise_for_status()
-        return response
-
-    def delete(self, endpoint: str) -> Future:
-        logger.info(f"DELETE request to {endpoint}")
-        return self.executor.submit(self._delete, endpoint)
-
-    def _delete(self, endpoint: str) -> httpx.Response:
-        response = self.client.delete(endpoint)
+    def _post(self, endpoint: str, data: BaseModel) -> httpx.Response:
+        response = self.client.post(endpoint, json=data.dict())
         response.raise_for_status()
         return response
 

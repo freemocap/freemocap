@@ -9,6 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class WebSocketClient:
+    """
+    A simple WebSocket client that connects to a WebSocket server and handles incoming messages.
+    Intended to be used as part of the FastAPIClient class.
+    """
     def __init__(self, base_url: str):
         self.websocket_url = base_url.replace("http", "ws") + "/ws/connect"
         self.loop = asyncio.get_event_loop()
@@ -37,16 +41,13 @@ class WebSocketClient:
             self._handle_binary_message(message)
 
     def _handle_text_message(self, message: str) -> None:
-        # Add your text message handling logic here
-        pass
+        logger.info(f"Received text message: {message}")
 
     def _handle_binary_message(self, message: bytes) -> None:
-        # Add your binary message handling logic here
-        pass
+        logger.info(f"Received binary message of length {len(message)}")
 
     def _handle_json_message(self, message: Dict[str, Any]) -> None:
-        # Add your JSON message handling logic here
-        pass
+        logger.info(f"Received JSON message: {message}")
 
     def start_websocket(self) -> None:
         self.loop.run_until_complete(self._ws_connect())

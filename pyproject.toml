@@ -72,7 +72,7 @@ dependencies = [
     "skellyforge==2024.07.1006",
     "skelly_synchronize==2024.07.1032",
     "skellytracker[all]==2024.06.1016",
-    "ajc27_freemocap_blender_addon==v2024.07.1021",
+    "ajc27_freemocap_blender_addon==v2024.07.1022",
     "opencv-contrib-python==4.8.*",
     "toml==0.10.2",
     "aniposelib==0.4.3",
@@ -100,7 +100,7 @@ Documentation = "https://freemocap.github.io/documentation/"
 Github = "https://github.com/freemocap/freemocap"
 
 [tool.bumpver]
-current_version = "v1.2.2"
+current_version = "v1.3.0"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

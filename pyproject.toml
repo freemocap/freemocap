@@ -69,7 +69,7 @@ keywords = [
 dependencies = [
     "skellycam==2024.07.1092",
     "skelly_viewer==2024.07.1023",
-    "skellyforge==2024.8.1007",
+    "skellyforge==2024.8.1008",
     "skelly_synchronize==2024.07.1032",
     "skellytracker[all]==2024.08.1017",
     "ajc27_freemocap_blender_addon==v2024.07.1022",

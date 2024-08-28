@@ -159,14 +159,6 @@ def create_3d_triangulation_parameter_group(
         type="group",
         children=[
             dict(
-                name=ANIPOSE_CONFIDENCE_CUTOFF,
-                type="float",
-                value=parameter_model.confidence_threshold_cutoff,
-                tip="Confidence threshold cut-off for triangulation. "
-                "NOTE - Never trust a machine learning model's estimates of their own confidence! "
-                "TODO - Something similar that uses `reprojection_error` instead of `confidence`",
-            ),
-            dict(
                 name=USE_RANSAC_METHOD,
                 type="bool",
                 value=parameter_model.use_triangulate_ransac_method,
@@ -267,7 +259,6 @@ def extract_parameter_model_from_parameter_tree(
             run_reprojection_error_filtering=parameter_values_dictionary[RUN_REPROJECTION_ERROR_FILTERING],
             reprojection_error_confidence_cutoff=parameter_values_dictionary[REPROJECTION_ERROR_FILTER_THRESHOLD],
             minimum_cameras_to_reproject=parameter_values_dictionary[MINIMUM_CAMERAS_TO_REPROJECT],
-            confidence_threshold_cutoff=parameter_values_dictionary[ANIPOSE_CONFIDENCE_CUTOFF],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
             flatten_single_camera_data=parameter_values_dictionary[FLATTEN_SINGLE_CAMERA_DATA],
             run_3d_triangulation=parameter_values_dictionary[RUN_3D_TRIANGULATION_NAME],

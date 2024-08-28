@@ -20,7 +20,7 @@ def processing_pipeline_check(processing_parameters: ProcessingParameterModel) -
             )
 
     if not processing_parameters.anipose_triangulate_3d_parameters_model.run_3d_triangulation:
-        if not status_check_dict["data3d_status_check"]:
+        if not status_check_dict["data3d_status_check"] and not status_check_dict["single_video_check"]:
             raise FileNotFoundError(
                 f"No 3d data found at: {processing_parameters.recording_info_model.data_3d_npy_file_path}"
             )

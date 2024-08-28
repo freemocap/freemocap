@@ -18,6 +18,7 @@ class AniposeTriangulate3DParametersModel(BaseModel):
     minimum_cameras_to_reproject: int = 3
     use_triangulate_ransac_method: bool = False
     run_3d_triangulation: bool = True
+    flatten_single_camera_data: bool = True
 
 
 class ButterworthFilterParametersModel(BaseModel):

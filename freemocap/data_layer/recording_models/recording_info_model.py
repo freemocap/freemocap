@@ -15,6 +15,11 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     SYNCHRONIZED_VIDEOS_FOLDER_NAME,
     ANNOTATED_VIDEOS_FOLDER_NAME,
     DATA_3D_NPY_FILE_NAME,
+    OLD_DATA_2D_NPY_FILE_NAME,
+    OLD_DATA_3D_NPY_FILE_NAME,
+    OLD_RAW_3D_NPY_FILE_NAME,
+    OLD_REPROJECTION_ERROR_NPY_FILE_NAME,
+    OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
 )
 from freemocap.system.paths_and_filenames.path_getters import create_camera_calibration_file_name, get_blender_file_path
 from freemocap.tests.test_image_tracking_data_shape import (
@@ -23,7 +28,10 @@ from freemocap.tests.test_image_tracking_data_shape import (
 )
 from freemocap.tests.test_skeleton_data_shape import test_skeleton_data_exists, test_skeleton_data_shape
 from freemocap.tests.test_synchronized_video_frame_counts import test_synchronized_video_frame_counts
-from freemocap.tests.test_total_body_center_of_mass_data_shape import test_total_body_center_of_mass_data_exists, test_total_body_center_of_mass_data_shape
+from freemocap.tests.test_total_body_center_of_mass_data_shape import (
+    test_total_body_center_of_mass_data_exists,
+    test_total_body_center_of_mass_data_shape,
+)
 from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import get_number_of_frames_of_videos_in_a_folder
 from freemocap.utilities.get_video_paths import get_video_paths
 
@@ -106,41 +114,74 @@ class RecordingInfoModel:
 
     @property
     def data_2d_npy_file_path(self):
-        return str(Path(self.raw_data_folder_path) / (self.file_prefix + DATA_2D_NPY_FILE_NAME))
-    
-    # TODO: we can add "old_...._file_path" properties for backwards compatibility
-    # would include the paths used in the active recording info widget: data_2d_npy_file_path, data_3d_npy_file_path, and total_body_center_of_mass_npy_file_path
+        data_2d_path = Path(self.raw_data_folder_path) / (self.file_prefix + DATA_2D_NPY_FILE_NAME)
+        old_data_2d_path = Path(self.raw_data_folder_path) / OLD_DATA_2D_NPY_FILE_NAME
+        if self.active_tracker == "mediapipe" and old_data_2d_path.exists() and not data_2d_path.exists():
+            return str(old_data_2d_path)
+        else:
+            return str(data_2d_path)
 
     @property
     def data_3d_npy_file_path(self):
-        return str(Path(self._path) / OUTPUT_DATA_FOLDER_NAME / (self.file_prefix + DATA_3D_NPY_FILE_NAME))
+        data_3d_path = Path(self._path) / OUTPUT_DATA_FOLDER_NAME / (self.file_prefix + DATA_3D_NPY_FILE_NAME)
+        old_data_3d_path = Path(self._path) / OUTPUT_DATA_FOLDER_NAME / OLD_DATA_3D_NPY_FILE_NAME
+        if self.active_tracker == "mediapipe" and old_data_3d_path.exists() and not data_3d_path.exists():
+            return str(old_data_3d_path)
+        else:
+            return str(data_3d_path)
 
     @property
     def raw_data_3d_npy_file_path(self):
-        return str(
+        raw_data_path = (
             Path(self._path)
             / OUTPUT_DATA_FOLDER_NAME
             / RAW_DATA_FOLDER_NAME
             / (self.file_prefix + RAW_3D_NPY_FILE_NAME)
         )
+        old_raw_data_path = Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / OLD_RAW_3D_NPY_FILE_NAME
+        if self.active_tracker == "mediapipe" and old_raw_data_path.exists() and not raw_data_path.exists():
+            return str(old_raw_data_path)
+        else:
+            return str(raw_data_path)
 
     @property
     def reprojection_error_data_npy_file_path(self):
-        return str(
+        reprojection_error_path = (
             Path(self._path)
             / OUTPUT_DATA_FOLDER_NAME
             / RAW_DATA_FOLDER_NAME
             / (self.file_prefix + REPROJECTION_ERROR_NPY_FILE_NAME)
         )
+        raw_reprojection_error_path = (
+            Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / OLD_REPROJECTION_ERROR_NPY_FILE_NAME
+        )
+        if (
+            self.active_tracker == "mediapipe"
+            and raw_reprojection_error_path.exists()
+            and not reprojection_error_path.exists()
+        ):
+            return str(raw_reprojection_error_path)
+        else:
+            return str(reprojection_error_path)
 
     @property
     def total_body_center_of_mass_npy_file_path(self):
-        return str(
+        total_body_com_path = (
             Path(self._path)
             / OUTPUT_DATA_FOLDER_NAME
             / CENTER_OF_MASS_FOLDER_NAME
             / (self.file_prefix + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
         )
+        raw_total_body_com_path = (
+            Path(self._path)
+            / OUTPUT_DATA_FOLDER_NAME
+            / CENTER_OF_MASS_FOLDER_NAME
+            / OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME
+        )
+        if self.active_tracker == "mediapipe" and raw_total_body_com_path.exists() and not total_body_com_path.exists():
+            return str(raw_total_body_com_path)
+        else:
+            return str(total_body_com_path)
 
     @property
     def blender_file_path(self):
@@ -220,7 +261,6 @@ class RecordingFolderStatusChecker:
                 image_tracking_data=self.recording_info_model.data_2d_npy_file_path,
             )
             return True
-        # TODO: We can retry this with the backwards compatible naming
         except AssertionError:
             return False
 
@@ -236,7 +276,6 @@ class RecordingFolderStatusChecker:
                 reprojection_error_data=self.recording_info_model.reprojection_error_data_npy_file_path,
             )
             return True
-        # TODO: We can retry this with the backwards compatible naming
         except AssertionError:
             return False
 
@@ -250,7 +289,6 @@ class RecordingFolderStatusChecker:
                 total_body_center_of_mass_data=self.recording_info_model.total_body_center_of_mass_npy_file_path,
             )
             return True
-        # TODO: We can retry this with the backwards compatible naming
         except AssertionError:
             return False
 

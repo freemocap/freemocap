@@ -30,6 +30,8 @@ REPROJECTION_ERROR_FILTER_THRESHOLD = "Reprojection Error Filter Threshold (%)"
 
 MINIMUM_CAMERAS_TO_REPROJECT = "Minimum Cameras to Reproject"
 
+FLATTEN_SINGLE_CAMERA_DATA = "Flatten Single Camera Data (Recommended)"
+
 ANIPOSE_TREE_NAME = "Anipose Triangulation"
 
 YOLO_CROP_TREE_NAME = "YOLO Crop"
@@ -165,6 +167,12 @@ def create_3d_triangulation_parameter_group(
                 "NOTE - Much slower than the 'simple' method, but might be more accurate and better at rejecting bad camera views. Needs more testing and evaluation to see if it's worth it. ",
             ),
             dict(
+                name=FLATTEN_SINGLE_CAMERA_DATA,
+                type="bool",
+                value=parameter_model.flatten_single_camera_data,
+                tip="If true, flatten the data from single camera recordings.",
+            ),
+            dict(
                 name=REPROJECTION_ERROR_FILTERING_TREE_NAME,
                 type="group",
                 children=[
@@ -253,6 +261,7 @@ def extract_parameter_model_from_parameter_tree(
             reprojection_error_confidence_cutoff=parameter_values_dictionary[REPROJECTION_ERROR_FILTER_THRESHOLD],
             minimum_cameras_to_reproject=parameter_values_dictionary[MINIMUM_CAMERAS_TO_REPROJECT],
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
+            flatten_single_camera_data=parameter_values_dictionary[FLATTEN_SINGLE_CAMERA_DATA],
             run_3d_triangulation=parameter_values_dictionary[RUN_3D_TRIANGULATION_NAME],
         ),
         post_processing_parameters_model=PostProcessingParametersModel(

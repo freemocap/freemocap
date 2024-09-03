@@ -45,6 +45,7 @@ def get_triangulated_data(
             input_image_data_frame_marker_xyz=image_data_numCams_numFrames_numTrackedPts_XYZ[0],
             raw_data_folder_path=Path(processing_parameters.recording_info_model.raw_data_folder_path),
             file_prefix=processing_parameters.tracking_model_info.name,
+            project_to_z_plane=processing_parameters.anipose_triangulate_3d_parameters_model.flatten_single_camera_data,
         )
     elif not processing_parameters.anipose_triangulate_3d_parameters_model.run_3d_triangulation:
         logger.info(

@@ -13,6 +13,18 @@ from freemocap.core_processes.export_data.blender_stuff.export_to_blender.method
     install_ajc_addon,
 )
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.run_simple import run_simple
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
+    OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
+    OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
+    OLD_DATA_2D_NPY_FILE_NAME,
+    OLD_DATA_3D_NPY_FILE_NAME,
+    OLD_RAW_3D_NPY_FILE_NAME,
+    OLD_REPROJECTION_ERROR_NPY_FILE_NAME,
+    REPROJECTION_ERROR_NPY_FILE_NAME,
+    SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
+    TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
+    
+)
 
 logger = logging.getLogger(__name__)
 
@@ -126,33 +138,44 @@ def ajc_blender_addon_validator(recording_folder_path: Union[str, Path], active_
         active_tracker = active_tracker + "_"
 
     if not (output_data_path / (active_tracker + "body_3d_xyz.npy")).exists():
-        raise FileNotFoundError(f"Could not find required file: {output_data_path / (active_tracker + 'body_3d_xyz.npy')}")
+        raise FileNotFoundError(
+            f"Could not find required file: {output_data_path / (active_tracker + 'body_3d_xyz.npy')}"
+        )
 
     if not (output_data_path / (active_tracker + "right_hand_3d_xyz.npy")).exists():
-        raise FileNotFoundError(f"Could not find required file: {output_data_path / (active_tracker + 'right_hand_3d_xyz.npy')}")
+        raise FileNotFoundError(
+            f"Could not find required file: {output_data_path / (active_tracker + 'right_hand_3d_xyz.npy')}"
+        )
 
     if not (output_data_path / (active_tracker + "left_hand_3d_xyz.npy")).exists():
-        raise FileNotFoundError(f"Could not find required file: {output_data_path / (active_tracker + 'left_hand_3d_xyz.npy')}")
+        raise FileNotFoundError(
+            f"Could not find required file: {output_data_path / (active_tracker + 'left_hand_3d_xyz.npy')}"
+        )
 
     if not (output_data_path / (active_tracker + "face_3d_xyz.npy")).exists():
-        raise FileNotFoundError(f"Could not find required file: {output_data_path / (active_tracker + 'face_3d_xyz.npy')}")
-
-    if not (output_data_path / "center_of_mass" / (active_tracker + "total_body_center_of_mass_xyz.npy")).exists():
         raise FileNotFoundError(
-            f"Could not find required file: {output_data_path / 'center_of_mass' / (active_tracker + 'total_body_center_of_mass_xyz.npy')}"
+            f"Could not find required file: {output_data_path / (active_tracker + 'face_3d_xyz.npy')}"
         )
 
-    if not (output_data_path / "center_of_mass" / (active_tracker + "segmentCOM_frame_joint_xyz.npy")).exists():
-        raise FileNotFoundError(
-            f"Could not find required file: {output_data_path / 'center_of_mass' / (active_tracker + 'segmentCOM_frame_joint_xyz.npy')}"
-        )
+    if not (output_data_path / "center_of_mass" / (active_tracker + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)).exists():
+        if active_tracker != "mediapipe_" or not (output_data_path / "center_of_mass" / OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME).exists():
+            raise FileNotFoundError(
+                f"Could not find required file: {output_data_path / 'center_of_mass' / (active_tracker + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)}"
+            )
+
+    if not (output_data_path / "center_of_mass" / (active_tracker + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)).exists():
+        if active_tracker != "mediapipe_" or not (output_data_path / "center_of_mass" / OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME).exists():
+            raise FileNotFoundError(
+                f"Could not find required file: {output_data_path / 'center_of_mass' / (active_tracker + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)}"
+            )
 
     if not (
-        output_data_path / "raw_data" / (active_tracker + "3dData_numFrames_numTrackedPoints_reprojectionError.npy")
+        output_data_path / "raw_data" / (active_tracker + REPROJECTION_ERROR_NPY_FILE_NAME)
     ).exists():
-        raise FileNotFoundError(
-            f"Could not find required file: {output_data_path / 'raw_data' / (active_tracker + '3dData_numFrames_numTrackedPoints_reprojectionError.npy')}"
-        )
+        if active_tracker != "mediapipe_" or not (output_data_path / "raw_data" / OLD_REPROJECTION_ERROR_NPY_FILE_NAME).exists():
+            raise FileNotFoundError(
+                f"Could not find required file: {output_data_path / 'raw_data' / (active_tracker + REPROJECTION_ERROR_NPY_FILE_NAME)}"
+            )
 
 
 if __name__ == "__main__":

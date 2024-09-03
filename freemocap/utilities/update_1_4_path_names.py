@@ -25,20 +25,24 @@ def update_1_4_path_names(freemocap_data_folder_path: Optional[Union[str, Path]]
             if not recording_folder.is_dir():
                 continue
 
-            if recording_folder.name == OUTPUT_DATA_FOLDER_NAME:  # this covers cases where the recording folder isn't a subfolder of a session
-                rename_skeleton_file_path(recording_folder)
-                if (recording_folder / RAW_DATA_FOLDER_NAME).exists():
-                    rename_raw_data_paths(recording_folder / RAW_DATA_FOLDER_NAME)
-                if (recording_folder / CENTER_OF_MASS_FOLDER_NAME).exists():
-                    rename_COM_paths(recording_folder / CENTER_OF_MASS_FOLDER_NAME)
-            elif (recording_folder / OUTPUT_DATA_FOLDER_NAME).exists():
-                rename_skeleton_file_path(recording_folder)
-                if (recording_folder / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME).exists():
-                    rename_raw_data_paths(recording_folder / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME)
-                if (recording_folder / OUTPUT_DATA_FOLDER_NAME / CENTER_OF_MASS_FOLDER_NAME).exists():
-                    rename_COM_paths(recording_folder / CENTER_OF_MASS_FOLDER_NAME)
-            else:
-                continue
+            update_recording_folder(recording_folder)
+
+
+def update_recording_folder(recording_folder: Path) -> None:
+    if (
+        recording_folder.name == OUTPUT_DATA_FOLDER_NAME
+    ):  # this covers cases where the recording folder isn't a subfolder of a session
+        rename_skeleton_file_path(recording_folder)
+        if (recording_folder / RAW_DATA_FOLDER_NAME).exists():
+            rename_raw_data_paths(recording_folder / RAW_DATA_FOLDER_NAME)
+        if (recording_folder / CENTER_OF_MASS_FOLDER_NAME).exists():
+            rename_COM_paths(recording_folder / CENTER_OF_MASS_FOLDER_NAME)
+    elif (recording_folder / OUTPUT_DATA_FOLDER_NAME).exists():
+        rename_skeleton_file_path(recording_folder)
+        if (recording_folder / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME).exists():
+            rename_raw_data_paths(recording_folder / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME)
+        if (recording_folder / OUTPUT_DATA_FOLDER_NAME / CENTER_OF_MASS_FOLDER_NAME).exists():
+            rename_COM_paths(recording_folder / CENTER_OF_MASS_FOLDER_NAME)
 
 
 def rename_raw_data_paths(raw_data_folder_path: Path) -> None:

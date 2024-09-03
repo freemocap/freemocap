@@ -1837,6 +1837,7 @@ class CameraGroup:
         return error, merged, charuco_frames
 
     def get_rows_videos(self, videos, board, verbose=True):
+        # TODO: rewrite this to use skellytracker
         all_rows = []
 
         for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):

@@ -107,6 +107,9 @@ class RecordingInfoModel:
     @property
     def data_2d_npy_file_path(self):
         return str(Path(self.raw_data_folder_path) / (self.file_prefix + DATA_2D_NPY_FILE_NAME))
+    
+    # TODO: we can add "old_...._file_path" properties for backwards compatibility
+    # would include the paths used in the active recording info widget: data_2d_npy_file_path, data_3d_npy_file_path, and total_body_center_of_mass_npy_file_path
 
     @property
     def data_3d_npy_file_path(self):
@@ -217,6 +220,7 @@ class RecordingFolderStatusChecker:
                 image_tracking_data=self.recording_info_model.data_2d_npy_file_path,
             )
             return True
+        # TODO: We can retry this with the backwards compatible naming
         except AssertionError:
             return False
 
@@ -232,6 +236,7 @@ class RecordingFolderStatusChecker:
                 reprojection_error_data=self.recording_info_model.reprojection_error_data_npy_file_path,
             )
             return True
+        # TODO: We can retry this with the backwards compatible naming
         except AssertionError:
             return False
 
@@ -245,6 +250,7 @@ class RecordingFolderStatusChecker:
                 total_body_center_of_mass_data=self.recording_info_model.total_body_center_of_mass_npy_file_path,
             )
             return True
+        # TODO: We can retry this with the backwards compatible naming
         except AssertionError:
             return False
 

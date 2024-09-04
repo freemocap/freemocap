@@ -12,6 +12,7 @@ exclude =
 
 per-file-ignores = 
     ./freemocap/core_processes/process_motion_capture_videos/process_recording_folder.py:C901
+    ./freemocap/core_processes/export_data/blender_stuff/export_to_blender/methods/ajc_addon/run_ajc_addon_main.py:C901
     ./freemocap/gui/qt/widgets/control_panel/calibration_control_panel.py:C901
     ./experimental/batch_process/batch_process.py:E226
 # C901: function is too complex

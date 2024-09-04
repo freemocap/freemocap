@@ -16,14 +16,10 @@ from freemocap.core_processes.export_data.blender_stuff.export_to_blender.method
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
     OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
-    OLD_DATA_2D_NPY_FILE_NAME,
-    OLD_DATA_3D_NPY_FILE_NAME,
-    OLD_RAW_3D_NPY_FILE_NAME,
     OLD_REPROJECTION_ERROR_NPY_FILE_NAME,
     REPROJECTION_ERROR_NPY_FILE_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
-    
 )
 
 logger = logging.getLogger(__name__)
@@ -158,21 +154,28 @@ def ajc_blender_addon_validator(recording_folder_path: Union[str, Path], active_
         )
 
     if not (output_data_path / "center_of_mass" / (active_tracker + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)).exists():
-        if active_tracker != "mediapipe_" or not (output_data_path / "center_of_mass" / OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME).exists():
+        if (
+            active_tracker != "mediapipe_"
+            or not (output_data_path / "center_of_mass" / OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME).exists()
+        ):
             raise FileNotFoundError(
                 f"Could not find required file: {output_data_path / 'center_of_mass' / (active_tracker + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)}"
             )
 
     if not (output_data_path / "center_of_mass" / (active_tracker + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)).exists():
-        if active_tracker != "mediapipe_" or not (output_data_path / "center_of_mass" / OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME).exists():
+        if (
+            active_tracker != "mediapipe_"
+            or not (output_data_path / "center_of_mass" / OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME).exists()
+        ):
             raise FileNotFoundError(
                 f"Could not find required file: {output_data_path / 'center_of_mass' / (active_tracker + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)}"
             )
 
-    if not (
-        output_data_path / "raw_data" / (active_tracker + REPROJECTION_ERROR_NPY_FILE_NAME)
-    ).exists():
-        if active_tracker != "mediapipe_" or not (output_data_path / "raw_data" / OLD_REPROJECTION_ERROR_NPY_FILE_NAME).exists():
+    if not (output_data_path / "raw_data" / (active_tracker + REPROJECTION_ERROR_NPY_FILE_NAME)).exists():
+        if (
+            active_tracker != "mediapipe_"
+            or not (output_data_path / "raw_data" / OLD_REPROJECTION_ERROR_NPY_FILE_NAME).exists()
+        ):
             raise FileNotFoundError(
                 f"Could not find required file: {output_data_path / 'raw_data' / (active_tracker + REPROJECTION_ERROR_NPY_FILE_NAME)}"
             )

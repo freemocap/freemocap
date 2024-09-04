@@ -26,6 +26,9 @@ def save_gui_state(gui_state: GuiState, file_pathstring: str) -> None:
 
 
 def load_gui_state(file_pathstring: str) -> GuiState:
-    with open(file_pathstring, "r") as file:
-        gui_state = GuiState(**json.load(file))
+    try:
+        with open(file_pathstring, "r") as file:
+            gui_state = GuiState(**json.load(file))
+    except (FileNotFoundError, OSError):
+        gui_state = GuiState()
     return gui_state

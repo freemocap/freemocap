@@ -22,7 +22,7 @@ class GuiState(BaseModel):
 
 def save_gui_state(gui_state: GuiState, file_pathstring: str) -> None:
     with open(file_pathstring, "w") as file:
-        json.dump(gui_state.dict(), file, indent=4)
+        json.dump(gui_state.model_dump(mode="json"), file, indent=4)
 
 
 def load_gui_state(file_pathstring: str) -> GuiState:

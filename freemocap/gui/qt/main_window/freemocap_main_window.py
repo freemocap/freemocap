@@ -114,12 +114,7 @@ class MainWindow(QMainWindow):
         self._freemocap_data_folder_path = freemocap_data_folder_path
         self._pipedream_pings = pipedream_pings
 
-        try:
-            self._gui_state = load_gui_state(get_gui_state_json_path())
-            logger.info("Successfully loaded previous settings")
-        except Exception:
-            logger.info("Failed to find previous GUI settings, using default settings")
-            self._gui_state = GuiState()
+        self._gui_state = load_gui_state(get_gui_state_json_path())
 
         self._kill_thread_event = multiprocessing.Event()
 

@@ -67,7 +67,7 @@ keywords = [
 ]
 
 dependencies = [
-    "skellycam==2024.09.1093",
+    "skellycam==2024.09.1094",
     "skelly_viewer==2024.07.1023",
     "skellyforge==2024.8.1008",
     "skelly_synchronize==2024.07.1032",

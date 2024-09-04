@@ -42,7 +42,7 @@ def update_recording_folder(recording_folder: Path) -> None:
         if (recording_folder / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME).exists():
             rename_raw_data_paths(recording_folder / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME)
         if (recording_folder / OUTPUT_DATA_FOLDER_NAME / CENTER_OF_MASS_FOLDER_NAME).exists():
-            rename_COM_paths(recording_folder / CENTER_OF_MASS_FOLDER_NAME)
+            rename_COM_paths(recording_folder / OUTPUT_DATA_FOLDER_NAME / CENTER_OF_MASS_FOLDER_NAME)
 
 
 def rename_raw_data_paths(raw_data_folder_path: Path) -> None:
@@ -71,6 +71,7 @@ def rename_skeleton_file_path(output_data_folder_path: Path) -> None:
 
 def rename_COM_paths(COM_data_folder_path: Path) -> None:
     print(f"renaming center of mass files in {COM_data_folder_path}")
+
     for file in COM_data_folder_path.iterdir():
         if file.name == "segmentCOM_frame_joint_xyz.npy":
             file.rename(file.parent / "mediapipe_segmentCOM_frame_joint_xyz.npy")

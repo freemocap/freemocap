@@ -63,7 +63,7 @@ def get_freemocap_data_folder_path(create_folder: bool = True) -> str:
                 str(Path(freemocap_data_folder_path) / LOGS_INFO_AND_SETTINGS_FOLDER_NAME / GUI_STATE_JSON_FILENAME)
             )
         freemocap_data_folder_path = Path(gui_state.freemocap_data_folder_path)
-    except Exception as e:
+    except Exception as e:  # TODO: figure out specific exceptions to catch
         print(e)  # Cannot log this due to circular import from logging config
     finally:
         if freemocap_data_folder_path is None:

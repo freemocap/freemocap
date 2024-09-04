@@ -29,6 +29,6 @@ def load_gui_state(file_pathstring: str) -> GuiState:
     try:
         with open(file_pathstring, "r") as file:
             gui_state = GuiState(**json.load(file))
-    except (FileNotFoundError, OSError):
+    except OSError:
         gui_state = GuiState()
     return gui_state

@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+from typing import Optional
 
 
 from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data
@@ -32,9 +33,9 @@ logger = logging.getLogger(__name__)
 def process_recording_folder(
     recording_processing_parameter_model: ProcessingParameterModel,
     kill_event: multiprocessing.Event = None,
-    logging_queue: multiprocessing.Queue = None,
+    logging_queue: Optional[multiprocessing.Queue] = None,
     use_tqdm: bool = True,
-) -> bool:
+) -> None:
     """
 
     Parameters
@@ -72,7 +73,7 @@ def process_recording_folder(
             queue=logging_queue,
             use_tqdm=use_tqdm,
         )
-    except (RuntimeError, FileNotFoundError) as e:
+    except (RuntimeError, ValueError) as e:
         logger.error("2D skeleton detection failed, cannot continue processing")
         if logging_queue:
             logging_queue.put(e)
@@ -103,14 +104,20 @@ def process_recording_folder(
             logging_queue.put(exception)
         raise exception
 
-    # TODO: move the rotate by 90 function into skellyforge to skip duplication of responsibility
-    rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
-    # TODO: find out if skellyforge does all the error handling we need - if not add it to post_process_data
-    skel3d_frame_marker_xyz = post_process_data(
-        recording_processing_parameter_model=recording_processing_parameter_model,
-        raw_skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
-        queue=logging_queue,
-    )
+    try:
+        # TODO: move the rotate by 90 function into skellyforge to skip duplication of responsibility
+        rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
+        # TODO: find out if skellyforge does all the error handling we need - if not add it to post_process_data
+        skel3d_frame_marker_xyz = post_process_data(
+            recording_processing_parameter_model=recording_processing_parameter_model,
+            raw_skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
+            queue=logging_queue,
+        )
+    except (RuntimeError, ValueError, AttributeError) as e:
+        logger.error("Post processing failed, cannot continue processing")
+        if logging_queue:
+            logging_queue.put(e)
+        raise e
 
     if kill_event is not None and kill_event.is_set():
         exception = KillEventException("Process was killed")
@@ -118,11 +125,17 @@ def process_recording_folder(
             logging_queue.put(exception)
         raise exception
 
-    anatomical_data_dict = calculate_anatomical_data(
-        processing_parameters=recording_processing_parameter_model,
-        skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
-        queue=logging_queue,
-    )
+    try:
+        anatomical_data_dict = calculate_anatomical_data(
+            processing_parameters=recording_processing_parameter_model,
+            skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+            queue=logging_queue,
+        )
+    except (RuntimeError, ValueError, TypeError, KeyError, AttributeError) as e:
+        logger.error("Anatomical data calculation failed, cannot continue processing")
+        if logging_queue:
+            logging_queue.put(e)
+        raise e
 
     if kill_event is not None and kill_event.is_set():
         exception = KillEventException("Process was killed")
@@ -135,9 +148,13 @@ def process_recording_folder(
         skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
         segment_COM_frame_imgPoint_XYZ=anatomical_data_dict["segment_COM"],
         totalBodyCOM_frame_XYZ=anatomical_data_dict["total_body_COM"],
+        rigid_bones_data=anatomical_data_dict["rigid_bones_data"],
         processing_parameters=recording_processing_parameter_model,
         queue=logging_queue,
     )
-    DataSaver(recording_folder_path=recording_processing_parameter_model.recording_info_model.path).save_all()
+    DataSaver(
+        recording_folder_path=recording_processing_parameter_model.recording_info_model.path,
+        model_info=recording_processing_parameter_model.tracking_model_info,
+    ).save_all()
 
     logger.info(f"Done processing {recording_processing_parameter_model.recording_info_model.path}")

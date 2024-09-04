@@ -4,8 +4,8 @@ from pathlib import Path
 
 import numpy as np
 
-from freemocap.core_processes.capture_volume_calibration.save_mediapipe_3d_data_to_npy import (
-    save_mediapipe_3d_data_to_npy,
+from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
+    save_3d_data_to_npy,
 )
 
 logger = logging.getLogger(__name__)
@@ -13,14 +13,14 @@ logger = logging.getLogger(__name__)
 
 def triangulate_3d_data(
     anipose_calibration_object,
-    mediapipe_2d_data: np.ndarray,
+    image_2d_data: np.ndarray,
     use_triangulate_ransac: bool = False,
     kill_event: multiprocessing.Event = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    number_of_cameras = mediapipe_2d_data.shape[0]
-    number_of_frames = mediapipe_2d_data.shape[1]
-    number_of_tracked_points = mediapipe_2d_data.shape[2]
-    number_of_spatial_dimensions = mediapipe_2d_data.shape[3]
+    number_of_cameras = image_2d_data.shape[0]
+    number_of_frames = image_2d_data.shape[1]
+    number_of_tracked_points = image_2d_data.shape[2]
+    number_of_spatial_dimensions = image_2d_data.shape[3]
 
     if not number_of_spatial_dimensions == 2:
         logger.error(
@@ -30,7 +30,7 @@ def triangulate_3d_data(
 
     # reshape data to collapse across 'frames' so it becomes [number_of_cameras,
     # number_of_2d_points(numFrames*numPoints), XY]
-    data2d_flat = mediapipe_2d_data.reshape(number_of_cameras, -1, 2)
+    data2d_flat = image_2d_data.reshape(number_of_cameras, -1, 2)
 
     logger.info(
         f"Reconstructing 3d points from 2d points with shape: \n"
@@ -74,9 +74,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--mediapipe_2d_data_path",
+        "--data_2d_path",
         type=str,
-        help="path to mediapipe 2d data",
+        help="path to 2d data",
         required=True,
     )
     parser.add_argument(
@@ -103,12 +103,18 @@ if __name__ == "__main__":
         help="use triangulate ransac anipose method ",
         required=False,
     )
+    parser.add_argument(
+        "--file_prefix",
+        type=str,
+        help="file prefix",
+        required=False,
+    )
     args = parser.parse_args()
 
-    mediapipe_2d_data = np.load(args.mediapipe_2d_data_path)
+    data_2d = np.load(args.data_2d_path)
 
     if args.output_data_folder_path is None:
-        args.output_data_folder_path = Path(args.mediapipe_2d_data_path).parent
+        args.output_data_folder_path = Path(args.data_2d_path).parent
 
     if args.save_data_as_csv is None:
         args.save_data_as_csv = True  # default
@@ -116,11 +122,14 @@ if __name__ == "__main__":
     if args.use_triangulate_ransac is None:
         args.use_triangulate_ransac = True
 
+    if args.file_prefix is None:
+        args.file_prefix = ""
+
     if args.calibration_file_path:
         anipose_calibration_object = load_anipose_calibration_toml_from_path(args.calibration_file_path)
     else:
         anipose_calibration_object = load_anipose_calibration_toml_from_path(
-            Path(args.mediapipe_2d_data_path).parent.parent / "camera_calibration_data.toml"
+            Path(args.data_2d_path).parent.parent / "camera_calibration_data.toml"
         )
 
     (
@@ -129,13 +138,14 @@ if __name__ == "__main__":
         skeleton_reprojection_error_cam_fr_mar,
     ) = triangulate_3d_data(
         anipose_calibration_object=anipose_calibration_object,
-        mediapipe_2d_data=mediapipe_2d_data,
+        image_2d_data=data_2d,
         use_triangulate_ransac=args.use_triangulate_ransac,
     )
-    save_mediapipe_3d_data_to_npy(
+    save_3d_data_to_npy(
         data3d_numFrames_numTrackedPoints_XYZ=skel3d_frame_marker_xyz,
         data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
         data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,
         path_to_folder_where_data_will_be_saved=args.output_data_folder_path,
         processing_level="raw",
+        file_prefix=args.file_prefix,
     )

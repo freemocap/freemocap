@@ -1,405 +1,140 @@
 import logging
-from typing import List
-
+from typing import Dict, Tuple
 import numpy as np
-import pandas as pd
-from rich.progress import track
 
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
-    mediapipe_body_landmark_names,
-)
+from freemocap.data_layer.skeleton_models.segments import SegmentAnthropometry
+from freemocap.data_layer.skeleton_models.skeleton import Skeleton
 
 logger = logging.getLogger(__name__)
 
 
-def mediapipe_body_names_match_expected(mediapipe_body_landmark_names: List[str]) -> bool:
+def calculate_all_segments_com(
+    segment_positions: Dict[str, Dict[str, np.ndarray]], center_of_mass_definitions: Dict[str, SegmentAnthropometry]
+) -> Dict[str, np.ndarray]:
     """
-    Check if the mediapipe folks have changed their landmark names. If they have, then this function may need to be updated.
+    Calculates the center of mass (COM) for each segment based on provided segment positions
+    and anthropometric data.
 
-    Args:
-        mediapipe_body_landmark_names: List of strings, each string is the name of a mediapipe landmark.
+    Parameters:
+    - segment_positions: A dictionary where each key is a segment name, and the value is another
+      dictionary with 'proximal' and 'distal' keys containing the respective marker positions
+      as numpy arrays.
+    - center_of_mass_definitions: A dictionary containing anthropometric information for each segment.
+      Each key is a segment name with a value that is a dictionary, which includes the
+      'segment_com_length' key representing the percentage distance from the proximal marker
+      to the segment's COM.
 
     Returns:
-        bool: True if the mediapipe landmark names are as expected, False otherwise.
+    - A dictionary where each key is a segment name, and the value is the calculated COM
+      position as a numpy array.
     """
-    expected_mediapipe_body_landmark_names = [
-        "nose",
-        "left_eye_inner",
-        "left_eye",
-        "left_eye_outer",
-        "right_eye_inner",
-        "right_eye",
-        "right_eye_outer",
-        "left_ear",
-        "right_ear",
-        "mouth_left",
-        "mouth_right",
-        "left_shoulder",
-        "right_shoulder",
-        "left_elbow",
-        "right_elbow",
-        "left_wrist",
-        "right_wrist",
-        "left_pinky",
-        "right_pinky",
-        "left_index",
-        "right_index",
-        "left_thumb",
-        "right_thumb",
-        "left_hip",
-        "right_hip",
-        "left_knee",
-        "right_knee",
-        "left_ankle",
-        "right_ankle",
-        "left_heel",
-        "right_heel",
-        "left_foot_index",
-        "right_foot_index",
-    ]
-    return mediapipe_body_landmark_names == expected_mediapipe_body_landmark_names
-
-
-def return_indices_of_joints(list_of_indices, list_of_joint_names):
-    indices = []
-    for name in list_of_joint_names:
-        this_name_index = list_of_indices.index(name)
-        indices.append(this_name_index)
-
-    return indices
-
-
-# %%
-
-
-def return_XYZ_coordinates_of_markers(freemocap_data, indices_list, frame):
-    XYZ_coordinates = []
-    for index in indices_list:
-        this_joint_coordinate = freemocap_data[frame, index, :]
-        XYZ_coordinates.append(this_joint_coordinate)
-
-    return XYZ_coordinates
-
-
-# %%
-
-
-def build_virtual_trunk_marker(freemocap_data, list_of_indices, trunk_joint_connection, frame):
-    trunk_marker_indices = return_indices_of_joints(list_of_indices, trunk_joint_connection)
-
-    trunk_XYZ_coordinates = return_XYZ_coordinates_of_markers(freemocap_data, trunk_marker_indices, frame)
-
-    trunk_proximal = (trunk_XYZ_coordinates[0] + trunk_XYZ_coordinates[1]) / 2
-    trunk_distal = (trunk_XYZ_coordinates[2] + trunk_XYZ_coordinates[3]) / 2
-
-    return trunk_proximal, trunk_distal
-
-
-# %%
-
-
-def build_mediapipe_skeleton(mediapipe_pose_data, segment_dataframe, mediapipe_indices) -> list:
-    """This function takes in the mediapipe pose data array and the segment_conn_len_perc_dataframe.
-    For each frame of data, it loops through each segment we want to find and identifies the names
-    of the proximal and distal joints of that segment. Then it searches the mediapipe_indices list
-    to find the index that corresponds to the name of that segment. We plug the index into the
-    mediapipe_pose_data array to find the proximal/distal joints' XYZ coordinates at that frame.
-    The segment, its proximal joint and its distal joint gets thrown into a dictionary.
-    And then that dictionary gets saved to a list for each frame. By the end of the function, you
-    have a list that contains the skeleton segment XYZ coordinates for each frame."""
-
-    num_frames = mediapipe_pose_data.shape[0]
-    num_frame_range = range(num_frames)
-
-    mediapipe_frame_segment_joint_XYZ = []  # empty list to hold all the skeleton XYZ coordinates/frame
-
-    for frame in track(num_frame_range, description="Building a MediaPipe Skeleton"):
-        trunk_joint_connection = [
-            "left_shoulder",
-            "right_shoulder",
-            "left_hip",
-            "right_hip",
-        ]
-        trunk_virtual_markers = build_virtual_trunk_marker(
-            mediapipe_pose_data, mediapipe_indices, trunk_joint_connection, frame
-        )
-
-        mediapipe_pose_skeleton_coordinates = {}
-        for (
-            segment,
-            segment_info,
-        ) in (
-            segment_dataframe.iterrows()
-        ):  # iterate through the data frame by the segment name and all the info for that segment
-            if segment == "trunk":
-                # based on index, extract coordinate data from fmc mediapipe data
-                mediapipe_pose_skeleton_coordinates[segment] = [
-                    trunk_virtual_markers[0],
-                    trunk_virtual_markers[1],
-                ]
-            elif segment == "left_hand" or segment == "right_hand":
-                proximal_joint_hand = segment_info["Joint_Connection"][0]
-                if segment == "left_hand":
-                    distal_joint_hand = "left_index"
-                else:
-                    distal_joint_hand = "right_index"
-
-                proximal_joint_hand_index = mediapipe_indices.index(proximal_joint_hand)
-                distal_joint_hand_index = mediapipe_indices.index(distal_joint_hand)
-
-                mediapipe_pose_skeleton_coordinates[segment] = [
-                    mediapipe_pose_data[frame, proximal_joint_hand_index, :],
-                    mediapipe_pose_data[frame, distal_joint_hand_index, :],
-                ]
-
-            elif segment == "left_foot" or segment == "right_foot":
-                if segment == "left_foot":
-                    proximal_joint_foot_name = "left_ankle"
-                else:
-                    proximal_joint_foot_name = "right_ankle"
-
-                proximal_joint_foot_index = mediapipe_indices.index(proximal_joint_foot_name)
-
-                distal_joint_foot = segment_info["Joint_Connection"][1]
-                distal_joint_foot_index = mediapipe_indices.index(distal_joint_foot)
-                mediapipe_pose_skeleton_coordinates[segment] = [
-                    mediapipe_pose_data[frame, proximal_joint_foot_index, :],
-                    mediapipe_pose_data[frame, distal_joint_foot_index, :],
-                ]
-
-            else:
-                proximal_joint_name = segment_info["Joint_Connection"][0]
-                distal_joint_name = segment_info["Joint_Connection"][1]
-
-                # get the mediapipe index for the proximal and distal joint for this segment
-                proximal_joint_index = mediapipe_indices.index(proximal_joint_name)
-                distal_joint_index = mediapipe_indices.index(distal_joint_name)
-
-                # use the mediapipe indices to get the XYZ coordinates for the prox/distal joints and throw it in a dictionary
-                # mediapipe_pose_skeleton_coordinates[segment] = {'proximal':mediapipe_pose_data[frame,proximal_joint_index,:],'distal':mediapipe_pose_data[frame,distal_joint_index,:]}
-                mediapipe_pose_skeleton_coordinates[segment] = [
-                    mediapipe_pose_data[frame, proximal_joint_index, :],
-                    mediapipe_pose_data[frame, distal_joint_index, :],
-                ]
-
-        mediapipe_frame_segment_joint_XYZ.append(mediapipe_pose_skeleton_coordinates)
-
-    return mediapipe_frame_segment_joint_XYZ
-
-
-# %%
-# values for segment weight and segment mass percentages taken from Winter anthropometry tables
-# https://imgur.com/a/aD74j
-# Winter, D.A. (2005) Biomechanics and Motor Control of Human Movement. 3rd Edition, John Wiley & Sons, Inc., Hoboken.
-
-
-BODY_SEGMENT_NAMES = [
-    "head",
-    "trunk",
-    "right_upper_arm",
-    "left_upper_arm",
-    "right_forearm",
-    "left_forearm",
-    "right_hand",
-    "left_hand",
-    "right_thigh",
-    "left_thigh",
-    "right_shin",
-    "left_shin",
-    "right_foot",
-    "left_foot",
-]
-
-joint_connections = [
-    ["left_ear", "right_ear"],
-    ["mid_chest_marker", "mid_hip_marker"],
-    ["right_shoulder", "right_elbow"],
-    ["left_shoulder", "left_elbow"],
-    ["right_elbow", "right_wrist"],
-    ["left_elbow", "left_wrist"],
-    ["right_wrist", "right_hand_marker"],
-    ["left_wrist", "left_hand_marker"],
-    ["right_hip", "right_knee"],
-    ["left_hip", "left_knee"],
-    ["right_knee", "right_ankle"],
-    ["left_knee", "left_ankle"],
-    ["right_back_of_foot_marker", "right_foot_index"],
-    ["left_back_of_foot_marker", "left_foot_index"],
-]
-
-segment_COM_lengths = [
-    0.5,
-    0.5,
-    0.436,
-    0.436,
-    0.430,
-    0.430,
-    0.506,
-    0.506,
-    0.433,
-    0.433,
-    0.433,
-    0.433,
-    0.5,
-    0.5,
-]
-
-segment_COM_percentages = [
-    0.081,
-    0.497,
-    0.028,
-    0.028,
-    0.016,
-    0.016,
-    0.006,
-    0.006,
-    0.1,
-    0.1,
-    0.0465,
-    0.0465,
-    0.0145,
-    0.0145,
-]
-
-
-# %%
-def calculate_segment_COM(
-    segment_conn_len_perc_dataframe,
-    skelcoordinates_frame_segment_joint_XYZ,
-    num_frame_range,
-):
-    segment_COM_frame_dict = []
-    for frame in track(num_frame_range, description="Calculating Segment Center of Mass"):
-        segment_COM_dict = {}
-        for segment, segment_info in segment_conn_len_perc_dataframe.iterrows():
-            this_segment_XYZ = skelcoordinates_frame_segment_joint_XYZ[frame][segment]
-
-            # for mediapipe
-            this_segment_proximal = this_segment_XYZ[0]
-            this_segment_distal = this_segment_XYZ[1]
-            this_segment_COM_length = segment_info["Segment_COM_Length"]
-
-            this_segment_COM = this_segment_proximal + this_segment_COM_length * (
-                this_segment_distal - this_segment_proximal
-            )
-            segment_COM_dict[segment] = this_segment_COM
-        segment_COM_frame_dict.append(segment_COM_dict)
-    return segment_COM_frame_dict
-
-
-# %%
-
-
-def reformat_segment_COM(segment_COM_frame_dict, num_frame_range, num_segments):
-    segment_COM_frame_imgPoint_XYZ = np.empty([int(len(num_frame_range)), int(num_segments), 3])
-    for frame in num_frame_range:
-        this_frame_skeleton = segment_COM_frame_dict[frame]
-        for joint_count, segment in enumerate(this_frame_skeleton.keys()):
-            segment_COM_frame_imgPoint_XYZ[frame, joint_count, :] = this_frame_skeleton[segment]
-    return segment_COM_frame_imgPoint_XYZ
-
-
-# %%
-
-
-def calculate_total_body_COM(segment_conn_len_perc_dataframe, segment_COM_frame_dict, num_frame_range):
-    logger.info("Calculating Total Body Center of Mass")
-    totalBodyCOM_frame_XYZ = np.empty([int(len(num_frame_range)), 3])
-
-    for frame in track(num_frame_range, description="Calculating Total Body Center of Mass..."):
-        this_frame_total_body_percentages = []
-        this_frame_skeleton = segment_COM_frame_dict[frame]
-
-        for segment, segment_info in segment_conn_len_perc_dataframe.iterrows():
-            this_segment_COM = this_frame_skeleton[segment]
-            this_segment_COM_percentage = segment_info["Segment_COM_Percentage"]
-
-            this_segment_total_body_percentage = this_segment_COM * this_segment_COM_percentage
-            this_frame_total_body_percentages.append(this_segment_total_body_percentage)
-
-        this_frame_total_body_COM = np.nansum(this_frame_total_body_percentages, axis=0)
-
-        totalBodyCOM_frame_XYZ[frame, :] = this_frame_total_body_COM
-
-    return totalBodyCOM_frame_XYZ
-
-
-# %%
-
-
-def build_anthropometric_dataframe(
-    segments: list,
-    joint_connections: list,
-    segment_COM_lengths: list,
-    segment_COM_percentages: list,
-) -> pd.DataFrame:
-    # load anthropometric data into a pandas dataframe
-    df = pd.DataFrame(
-        list(
-            zip(
-                segments,
-                joint_connections,
-                segment_COM_lengths,
-                segment_COM_percentages,
-            )
-        ),
-        columns=[
-            "Segment_Name",
-            "Joint_Connection",
-            "Segment_COM_Length",
-            "Segment_COM_Percentage",
-        ],
-    )
-    segment_conn_len_perc_dataframe = df.set_index("Segment_Name")
-    return segment_conn_len_perc_dataframe
-
-
-def calculate_center_of_mass(
-    freemocap_marker_data_array: np.ndarray,
-    pose_estimation_skeleton: list,
-    anthropometric_info_dataframe: pd.DataFrame,
-):
-    num_frames = freemocap_marker_data_array.shape[0]
-    num_frame_range = range(num_frames)
-    num_segments = len(anthropometric_info_dataframe)
-
-    segment_COM_frame_dict = calculate_segment_COM(
-        anthropometric_info_dataframe, pose_estimation_skeleton, num_frame_range
-    )
-    segment_COM_frame_imgPoint_XYZ = reformat_segment_COM(segment_COM_frame_dict, num_frame_range, num_segments)
-    totalBodyCOM_frame_XYZ = calculate_total_body_COM(
-        anthropometric_info_dataframe, segment_COM_frame_dict, num_frame_range
+
+    segment_com_data = {}
+
+    for segment_name, segment_info in center_of_mass_definitions.items():
+        proximal = segment_positions[segment_name]["proximal"]
+        distal = segment_positions[segment_name]["distal"]
+
+        com_length = segment_info.segment_com_length
+
+        segment_com = proximal + (distal - proximal) * com_length
+
+        segment_com_data[segment_name] = segment_com
+
+    return segment_com_data
+
+
+def calculate_total_body_center_of_mass(
+    segment_center_of_mass_data: Dict[str, np.ndarray],
+    center_of_mass_definitions: Dict[str, SegmentAnthropometry],
+    num_frames: int,
+) -> np.ndarray:
+    """
+    Calculates the total body center of mass for each frame based on segment COM positions and anthropometric data.
+
+    Parameters:
+    - segment_com_data: A dictionary with segment names as keys and COM positions as values for each frame.
+    - center_of_mass_definitions: A dictionary containing segment mass percentages.
+    - num_frames: The number of frames in the data.
+
+    Returns:
+    - A numpy array containing the position of the total body center of mass for each frame.
+    """
+    total_body_com = np.zeros((num_frames, 3))
+
+    for segment_name, segment_info in center_of_mass_definitions.items():
+
+        segment_com = segment_center_of_mass_data.get(segment_name)
+        if segment_com is None:
+            raise ValueError(f"Segment {segment_name} not found in segment center of mass data.")
+
+        segment_mass_percentage = segment_info.segment_com_percentage
+
+        total_body_com += segment_com * segment_mass_percentage
+
+    return total_body_com
+
+
+def get_all_segment_markers(skeleton: Skeleton) -> Dict[str, Dict[str, np.ndarray]]:
+    """
+    Retrieves the proximal and distal marker positions for all segments within a skeleton.
+
+    Parameters:
+    - skeleton: The Skeleton instance containing segment information and marker data.
+
+    Returns:
+    - A dictionary where each key is a segment name, and the value is another dictionary
+      with 'proximal' and 'distal' keys containing the respective marker positions as numpy arrays.
+    """
+    segment_positions = {}
+
+    if skeleton.segments is None:
+        raise ValueError("Segments must be defined before getting segment markers.")
+
+    for segment_name in skeleton.segments.keys():
+        segment_positions[segment_name] = skeleton.get_segment_markers(segment_name)
+
+    return segment_positions
+
+
+def merge_segment_com_data(segment_com_data: Dict[str, np.ndarray]) -> np.ndarray:
+    """
+    Merges the center of mass data from multiple segments into a single array.
+
+    Parameters:
+    - segment_com_data: A dictionary where each key is a segment name and the value is the center of mass data for that segment.
+
+    Returns:
+    - A numpy array containing the merged center of mass data.
+    """
+    com_data_list = list(segment_com_data.values())
+
+    return np.stack(com_data_list, axis=1)
+
+
+def calculate_center_of_mass_from_skeleton(skeleton: Skeleton) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Calculates the segment and total body center of mass for a skeleton based on anthropometric data.
+
+    Parameters:
+    - skeleton: The Skeleton instance containing marker data and segment information.
+    - anthropometric_data: A dictionary containing segment mass percentages
+
+    Returns:
+    - A tuple containing the segment center of mass data and the total body center of mass.
+    """
+    if skeleton.center_of_mass_definitions is None:
+        raise ValueError("Segment center of mass definitions must be defined before calculating center of mass.")
+
+    if skeleton.segments is None:
+        raise ValueError("Segments must be defined before calculating center of mass.")
+
+    segment_3d_positions = get_all_segment_markers(skeleton)  # TODO: Should this be a method of the skeleton model?
+    segment_com_data = calculate_all_segments_com(segment_3d_positions, skeleton.center_of_mass_definitions)
+    total_body_com = calculate_total_body_center_of_mass(
+        segment_com_data, skeleton.center_of_mass_definitions, skeleton.num_frames
     )
 
-    return (
-        segment_COM_frame_dict,
-        segment_COM_frame_imgPoint_XYZ,
-        totalBodyCOM_frame_XYZ,
-    )
+    merged_segment_com_data = merge_segment_com_data(segment_com_data)
 
-
-def run_center_of_mass_calculations(processed_skel3d_frame_marker_xyz: np.ndarray):
-    anthropometric_info_dataframe = build_anthropometric_dataframe(
-        BODY_SEGMENT_NAMES, joint_connections, segment_COM_lengths, segment_COM_percentages
-    )
-    if not mediapipe_body_names_match_expected(mediapipe_body_landmark_names):
-        raise ValueError(
-            "Mediapipe body landmark names do not match expected names - Perhaps they altered the names in a new version? This code will need to be updated"
-        )
-
-    skelcoordinates_frame_segment_joint_XYZ = build_mediapipe_skeleton(
-        processed_skel3d_frame_marker_xyz,
-        anthropometric_info_dataframe,
-        mediapipe_body_landmark_names,
-    )
-    (
-        segment_COM_frame_dict,
-        segment_COM_frame_imgPoint_XYZ,
-        totalBodyCOM_frame_XYZ,
-    ) = calculate_center_of_mass(
-        processed_skel3d_frame_marker_xyz,
-        skelcoordinates_frame_segment_joint_XYZ,
-        anthropometric_info_dataframe,
-    )
-
-    return segment_COM_frame_imgPoint_XYZ, totalBodyCOM_frame_XYZ
+    return merged_segment_com_data, total_body_com

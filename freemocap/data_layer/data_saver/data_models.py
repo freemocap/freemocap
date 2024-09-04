@@ -4,8 +4,8 @@ from typing import Optional, Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from freemocap.core_processes.detecting_things_in_2d_images.mediapipe_stuff.data_models.mediapipe_skeleton_names_and_connections import (
-    mediapipe_skeleton_schema,
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
+    MediapipeModelInfo,
 )
 
 
@@ -110,11 +110,11 @@ class FrameData(BaseModel):
 
 class InfoDict(BaseModel):
     """
-    A dictionary of information about this recording, such as the measured segement lengths and the schemas that we can use to interpret the tracked points (i.e./e.g. how to connect the dots of skeleton)
+    A dictionary of information about this recording, such as the measured segement lengths and the segment connections that we can use to interpret the tracked points (i.e./e.g. how to connect the dots of skeleton)
     """
 
     # segment_lengths: Dict[str, Any] = Field(default_factory=dict, description="The lengths of the segments of the body")
-    schemas: List[BaseModel] = Field(default_factory=list, description="The schemas for the tracked points")
+    schemas: Optional[Dict[str, Any]] = Field(default_factory=dict, description="The segment connections for the tracked points")
 
 
 if __name__ == "__main__":
@@ -123,6 +123,6 @@ if __name__ == "__main__":
 
     print("=====================================\n\n===============================")
 
-    skeleton_schema = SkeletonSchema(schema_dict=mediapipe_skeleton_schema)
+    skeleton_schema = SkeletonSchema(schema_dict=MediapipeModelInfo.skeleton_schema)
 
     pprint.pp(skeleton_schema.dict())

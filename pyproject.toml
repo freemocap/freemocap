@@ -69,10 +69,10 @@ keywords = [
 dependencies = [
     "skellycam==2024.07.1092",
     "skelly_viewer==2024.07.1023",
-    "skellyforge==2024.07.1006",
+    "skellyforge==2024.8.1008",
     "skelly_synchronize==2024.07.1032",
-    "skellytracker[all]==2024.06.1016",
-    "ajc27_freemocap_blender_addon==v2024.07.1022",
+    "skellytracker[all]==2024.08.1018",
+    "ajc27_freemocap_blender_addon==v2024.09.1024",
     "opencv-contrib-python==4.8.*",
     "toml==0.10.2",
     "aniposelib==0.4.3",

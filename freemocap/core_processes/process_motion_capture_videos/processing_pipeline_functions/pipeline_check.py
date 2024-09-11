@@ -18,7 +18,7 @@ def processing_pipeline_check(processing_parameters: ProcessingParameterModel) -
         if not status_check_dict["data2d_status_check"]:
             raise FileNotFoundError(
                 f"No 2d data found at: {processing_parameters.recording_info_model.data_2d_npy_file_path}\n"
-                "::: 2d data is required if you have turned off `Run 2dimage tracking?` in the processing parameters"
+                "::: 2d data is required if you have turned off `Run 2d image tracking?` in the processing parameters"
             )
 
     if not processing_parameters.anipose_triangulate_3d_parameters_model.run_3d_triangulation:

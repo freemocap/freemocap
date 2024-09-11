@@ -1,5 +1,5 @@
 # Byte-compiled / optimized / DLL files
-.idea/*
+*.idea/*
 
 __pycache__/
 Data/
@@ -156,3 +156,4 @@ desktop.ini
 node_modules/
 freemocap/system/gui_state.json
 .nuxt
+/tauri-nuxt-vue/.idea/

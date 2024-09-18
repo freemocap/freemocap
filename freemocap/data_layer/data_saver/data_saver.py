@@ -9,6 +9,7 @@ import pandas as pd
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeModelInfo,
 )
+from skellytracker.trackers.yolo_tracker.yolo_model_info import YOLOModelInfo
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 from freemocap.data_layer.data_saver.data_loader import DataLoader
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 from typing import Any, Dict
 
 mediapipe_model_info = MediapipeModelInfo()
+yolo_model_info = YOLOModelInfo()
 
 
 class DataSaver:
@@ -27,7 +29,7 @@ class DataSaver:
         recording_folder_path: Union[Path, str],
         include_hands: bool = True,
         include_face: bool = True,
-        model_info: ModelInfo = mediapipe_model_info,
+        model_info: ModelInfo = yolo_model_info,
     ):
         """
         Initialize DataFrameManager with the given recording_folder_path.

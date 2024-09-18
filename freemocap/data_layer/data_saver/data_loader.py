@@ -7,6 +7,7 @@ import pandas as pd
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeModelInfo,
 )
+from skellytracker.trackers.yolo_tracker.yolo_model_info import YOLOModelInfo
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, SkeletonSchema
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 # TODO: Need to generalize this beyond mediapipe, and make COM data optional
 mediapipe_model_info = MediapipeModelInfo()
-
+yolo_model_info = YOLOModelInfo()
 
 class DataLoader:
     def __init__(
@@ -38,7 +39,7 @@ class DataLoader:
         recording_folder_path: Union[str, Path],
         include_hands: bool = True,
         include_face: bool = True,
-        model_info: ModelInfo = mediapipe_model_info,
+        model_info: ModelInfo = yolo_model_info,
     ):
         self._recording_folder_path = Path(recording_folder_path)
         self.include_hands = include_hands
@@ -148,7 +149,7 @@ class DataLoader:
         face_points = {}
 
         body_points = self._process_dataframe(self.body_dataframe.iloc[frame_number, :])
-        center_of_mass_points = self._get_center_of_mass_data(frame_number)
+
 
         if self.include_hands:
             left_hand_points, right_hand_points = self._load_hand_data(frame_number)
@@ -158,10 +159,15 @@ class DataLoader:
 
         all_points = {}
         all_points.update(body_points)
-        all_points.update(center_of_mass_points)
         all_points.update(right_hand_points)
         all_points.update(left_hand_points)
         all_points.update(face_points)
+
+        try:
+            center_of_mass_points = self._get_center_of_mass_data(frame_number)
+            all_points.update(center_of_mass_points)
+        except AttributeError:
+            logger.warning("No center of mass data found.")
 
         return all_points
 
@@ -182,7 +188,7 @@ class DataLoader:
         )
 
         if self._model_info.center_of_mass_definitions is None:
-            raise ValueError("center of mass definitions are not provided.")
+            raise AttributeError("center of mass definitions are not provided.")
 
         for segment_number, segment_name in enumerate(self._model_info.center_of_mass_definitions.keys()):
             com_data[segment_name] = Point(
@@ -219,9 +225,6 @@ class DataLoader:
         for frame_number in range(self.number_of_frames):
             recording_data_by_frame_number[frame_number] = self.load_frame_data(frame_number).to_dict()
         return recording_data_by_frame_number
-
-    def _load_skeleton_schema(self):  # TODO: replace this with updated Skeleton class
-        self.skeleton_schema = SkeletonSchema(schema_dict=MediapipeModelInfo.skeleton_schema)
 
     def _set_file_prefix(self) -> None:
         self._file_prefix = self._model_info.name

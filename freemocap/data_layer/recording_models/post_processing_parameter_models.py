@@ -1,7 +1,7 @@
 import logging
 
 from pydantic import BaseModel, ConfigDict
-from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import MediapipeTrackingParams, MediapipeModelInfo
+from skellytracker.trackers.yolo_tracker.yolo_model_info import YOLOModelInfo, YOLOTrackingParams
 from skellytracker.trackers.base_tracker.base_tracking_params import BaseTrackingParams
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
@@ -37,7 +37,7 @@ class PostProcessingParametersModel(BaseModel):
 class ProcessingParameterModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     recording_info_model: RecordingInfoModel = None
-    tracking_parameters_model: BaseTrackingParams = MediapipeTrackingParams()
+    tracking_parameters_model: BaseTrackingParams = YOLOTrackingParams()
     anipose_triangulate_3d_parameters_model: AniposeTriangulate3DParametersModel = AniposeTriangulate3DParametersModel()
     post_processing_parameters_model: PostProcessingParametersModel = PostProcessingParametersModel()
-    tracking_model_info: ModelInfo = MediapipeModelInfo()
+    tracking_model_info: ModelInfo = YOLOModelInfo()

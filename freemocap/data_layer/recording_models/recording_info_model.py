@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 class RecordingInfoModel:
-    def __init__(self, recording_folder_path: Union[Path, str], active_tracker: str = "mediapipe"):
+    def __init__(self, recording_folder_path: Union[Path, str], active_tracker: str = "yolo"):
         if any(
             [
                 Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME,

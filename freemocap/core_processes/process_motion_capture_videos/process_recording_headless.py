@@ -36,9 +36,9 @@ def process_recording_headless(
     rec = recording_processing_parameter_model
 
     if recording_info_model is None:
-        rec.recording_info_model = RecordingInfoModel(recording_folder_path=Path(recording_path))
+        rec.set_recording_info_model(RecordingInfoModel(recording_folder_path=Path(recording_path)))
     else:
-        rec.recording_info_model = recording_info_model
+        rec.set_recording_info_model(recording_info_model)
 
     logger.info(
         f"Processing recording:\n"
@@ -48,7 +48,7 @@ def process_recording_headless(
         f"Recording processing parameter model: {rec.model_dump()}"
     )
 
-    rec.recording_info_model = RecordingInfoModel(recording_folder_path=Path(recording_path))
+    rec.set_recording_info_model(RecordingInfoModel(recording_folder_path=Path(recording_path)))
 
     if path_to_camera_calibration_toml:
         rec.recording_info_model.calibration_toml_path = Path(path_to_camera_calibration_toml)

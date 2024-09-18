@@ -2,6 +2,8 @@ from pyqtgraph.parametertree import Parameter
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeTrackingParams,
 )
+from skellytracker.trackers.yolo_tracker.yolo_model_info import YOLOTrackingParams, YOLOModelInfo
+from skellytracker.trackers.base_tracker.base_tracking_params import BaseTrackingParams
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import (
     ProcessingParameterModel,
@@ -38,7 +40,9 @@ YOLO_CROP_TREE_NAME = "YOLO Crop"
 
 USE_YOLO_CROP_METHOD = "Use YOLO Crop Method"
 
-YOLO_MODEL_SIZE = "YOLO Model Size"
+YOLO_CROP_MODEL_SIZE = "YOLO Crop Model Size"
+
+YOLO_MODEL_SIZE  = "YOLO Model Size"
 
 BOUNDING_BOX_BUFFER_METHOD = "Buffer Bounding Box:"
 
@@ -53,6 +57,8 @@ MINIMUM_DETECTION_CONFIDENCE = "Minimum Detection Confidence"
 MEDIAPIPE_MODEL_COMPLEXITY = "Model Complexity"
 
 MEDIAPIPE_TREE_NAME = "Mediapipe"
+
+YOLO_TREE_NAME = "YOLO"
 
 RUN_IMAGE_TRACKING_NAME = "Run 2d image tracking?"
 
@@ -87,7 +93,7 @@ def create_mediapipe_parameter_group(
                         tip="If true, `skellytracker` will use YOLO to pre-crop the person from the image before running the `mediapipe` tracker",
                     ),
                     dict(
-                        name=YOLO_MODEL_SIZE,
+                        name=YOLO_CROP_MODEL_SIZE,
                         type="list",
                         limits=["nano", "small", "medium", "large", "extra_large", "high_res"],
                         value=parameter_model.yolo_model_size,
@@ -148,6 +154,22 @@ def create_mediapipe_parameter_group(
         ],
     )
 
+def create_yolo_parameter_group(
+    parameter_model: YOLOTrackingParams = YOLOTrackingParams(),
+) -> Parameter:
+    return Parameter.create(
+        name=YOLO_TREE_NAME,
+        type="group",
+        children=[
+            dict(
+                name=YOLO_MODEL_SIZE,
+                type="list",
+                limits=YOLOModelInfo.model_dictionary.keys(),
+                value=parameter_model.model_size,
+                tip="Smaller models are faster but may be less accurate",
+            ),
+        ]
+    )
 
 def create_3d_triangulation_parameter_group(
     parameter_model: AniposeTriangulate3DParametersModel = None,
@@ -233,14 +255,11 @@ def create_post_processing_parameter_group(
         tip="Low-pass, zero-lag, Butterworth filter to remove high frequency oscillations/noise from the data. ",
     )
 
+def get_tracking_parameters_for_active_tracker(parameter_values_dictionary: dict, active_tracker: str) -> BaseTrackingParams:
+    print(parameter_values_dictionary)
 
-def extract_parameter_model_from_parameter_tree(
-    parameter_object: Parameter,
-) -> ProcessingParameterModel:
-    parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
-
-    return ProcessingParameterModel(
-        tracking_parameters_model=MediapipeTrackingParams(
+    if active_tracker == "mediapipe":
+        return MediapipeTrackingParams(
             mediapipe_model_complexity=get_integer_from_mediapipe_model_complexity(
                 parameter_values_dictionary[MEDIAPIPE_MODEL_COMPLEXITY]
             ),
@@ -250,11 +269,32 @@ def extract_parameter_model_from_parameter_tree(
             run_image_tracking=parameter_values_dictionary[RUN_IMAGE_TRACKING_NAME],
             num_processes=parameter_values_dictionary[NUMBER_OF_PROCESSES_PARAMETER_NAME],
             use_yolo_crop_method=parameter_values_dictionary[USE_YOLO_CROP_METHOD],
-            yolo_model_size=parameter_values_dictionary[YOLO_MODEL_SIZE],
+            yolo_model_size=parameter_values_dictionary[YOLO_CROP_MODEL_SIZE],
             buffer_size_method=get_bounding_box_buffer_method_from_string(
                 parameter_values_dictionary[BOUNDING_BOX_BUFFER_METHOD]
             ),
             bounding_box_buffer_percentage=parameter_values_dictionary[BOUNDING_BOX_BUFFER_PERCENTAGE],
+        )
+    elif active_tracker == "yolo":
+        return YOLOTrackingParams(
+            model_size=parameter_values_dictionary[YOLO_MODEL_SIZE],
+        )
+    else:
+        raise ValueError(f"Unknown tracker: {active_tracker}")
+
+
+def extract_parameter_model_from_parameter_tree(
+    parameter_object: Parameter,
+    active_tracker: str,
+) -> ProcessingParameterModel:
+    parameter_values_dictionary = extract_processing_parameter_model_from_tree(parameter_object=parameter_object)
+
+    # TODO: decide which tracking params are active based on active tracker, and pass that into processing parameter model
+
+    return ProcessingParameterModel(
+        tracking_parameters_model=get_tracking_parameters_for_active_tracker(
+            parameter_values_dictionary=parameter_values_dictionary,
+            active_tracker=active_tracker,
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
             run_reprojection_error_filtering=parameter_values_dictionary[RUN_REPROJECTION_ERROR_FILTERING],

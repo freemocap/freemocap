@@ -59,7 +59,7 @@ def process_recording_without_gui(
 ):
     rec = ProcessingParameterModel()
 
-    rec.recording_info_model = RecordingInfoModel(recording_folder_path=Path(recording_path))
+    rec.set_recording_info_model(RecordingInfoModel(recording_folder_path=Path(recording_path)))
 
     if path_to_camera_calibration_toml:
         rec.recording_info_model.calibration_toml_path = Path(path_to_camera_calibration_toml)

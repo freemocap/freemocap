@@ -20,6 +20,7 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
     create_mediapipe_parameter_group,
     create_3d_triangulation_parameter_group,
     create_post_processing_parameter_group,
+    create_yolo_parameter_group,
     extract_parameter_model_from_parameter_tree,
     RUN_IMAGE_TRACKING_NAME,
     RUN_3D_TRIANGULATION_NAME,
@@ -51,7 +52,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._get_active_recording_info = get_active_recording_info
         self._log_update = log_update
         self._recording_processing_parameter_model = recording_processing_parameters
-        self._recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
+        self._recording_processing_parameter_model.set_recording_info_model(self._get_active_recording_info())
 
         self._layout = QVBoxLayout()
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -116,6 +117,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self,
         session_processing_parameter_model: ProcessingParameterModel,
     ):
+        self._active_tracker_parameter = self._new_parameter_group_for_active_tracker(session_processing_parameter_model)
+        # TODO: Find out how/where/when to change this based on active tracker changing
         return Parameter.create(
             name="Processing Parameters",
             type="group",
@@ -126,7 +129,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     children=[
                         self._create_new_run_this_step_parameter(run_step_name=RUN_IMAGE_TRACKING_NAME),
                         self._create_num_processes_parameter(),
-                        create_mediapipe_parameter_group(session_processing_parameter_model.tracking_parameters_model),
+                        self._create_new_choose_active_tracker_parameter(session_processing_parameter_model),
+                        self._active_tracker_parameter,
                     ],
                     tip="Methods for tracking 2d points in images (e.g. mediapipe, deeplabcut(TODO), openpose(TODO), etc ...)",
                 ),
@@ -156,13 +160,25 @@ class ProcessMotionCaptureDataPanel(QWidget):
             ],
         )
 
+    def _new_parameter_group_for_active_tracker(self, session_processing_parameter_model):
+        active_tracker = self._get_active_recording_info().active_tracker
+        if active_tracker == "mediapipe":
+            tracker_parameter_group = create_mediapipe_parameter_group(session_processing_parameter_model.tracking_parameters_model)
+        elif active_tracker == "yolo":
+            tracker_parameter_group = create_yolo_parameter_group(session_processing_parameter_model.tracking_parameters_model)
+        else:
+            raise ValueError(f"Unknown tracker: {active_tracker}")
+        return tracker_parameter_group
+
     def _create_session_parameter_model(
         self,
     ) -> ProcessingParameterModel:
+        active_recording_info = self._get_active_recording_info()
         recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(
-            parameter_object=self._parameter_group
+            parameter_object=self._parameter_group,
+            active_tracker=active_recording_info.active_tracker,
         )
-        recording_processing_parameter_model.recording_info_model = self._get_active_recording_info()
+        recording_processing_parameter_model.set_recording_info_model(active_recording_info)
 
         if self._calibration_control_panel.calibration_toml_path:
             recording_processing_parameter_model.recording_info_model.calibration_toml_path = (
@@ -189,6 +205,17 @@ class ProcessMotionCaptureDataPanel(QWidget):
         )
         parameter.sigValueChanged.connect(self.enable_this_parameter_group)
 
+        return parameter
+    
+    def _create_new_choose_active_tracker_parameter(self, processing_parameter_model: ProcessingParameterModel):
+        parameter = Parameter.create(
+            name="Choose Active Tracker",
+            type="list",
+            limits=["mediapipe", "yolo"],
+            value=self._get_active_recording_info().active_tracker,
+            tip="Choose the tracker you want to use for this recording.",
+        )
+        parameter.sigValueChanged.connect(self._set_active_tracker, processing_parameter_model)
         return parameter
 
     def _create_num_processes_parameter(self):
@@ -217,10 +244,19 @@ class ProcessMotionCaptureDataPanel(QWidget):
             for child in parameter.children():
                 self.set_parameter_enabled(child, enabled_bool)
 
+    def _set_active_tracker(self, parameter, processing_parameter_model: ProcessingParameterModel):
+        active_recording_info = self._get_active_recording_info()
+        active_recording_info.active_tracker = parameter.value()
+        self._recording_processing_parameter_model.set_recording_info_model(active_recording_info)
+
+        self._parameter_group.removeChild(self._active_tracker_parameter)
+        self._active_tracker_parameter = self._new_parameter_group_for_active_tracker(processing_parameter_model)
+        self._parameter_group.addChild(self._active_tracker_parameter)
+
     def _launch_process_motion_capture_data_thread_worker(self):
         logger.debug("Launching process motion capture data process")
         session_parameter_model = self._create_session_parameter_model()
-        session_parameter_model.recording_info_model = self._get_active_recording_info()
+        session_parameter_model.set_recording_info_model(self._get_active_recording_info())
 
         if session_parameter_model.recording_info_model is None:
             logger.error("No active recording selected.")

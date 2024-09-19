@@ -1,3 +1,4 @@
+import multiprocessing
 from pathlib import Path
 try:
     from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel, AniposeTriangulate3DParametersModel, PostProcessingParametersModel
@@ -8,7 +9,7 @@ except ImportError as e:
     if 'ProcessingParameterModel' not in dir() or 'process_folder_of_videos' not in dir() or 'YOLOModelInfo' not in dir():
         raise e
 
-def process_videos_YOLO(recording_folder: Path):
+def process_videos_YOLO(recording_folder: Path, num_processes: int = multiprocessing.cpu_count() - 1):
     """
     Process a recording folder from the synchronized videos
     """
@@ -20,6 +21,7 @@ def process_videos_YOLO(recording_folder: Path):
     yolo_processing_parameters = ProcessingParameterModel(
         recording_info_model=recording_model,
         tracking_parameters_model=YOLOTrackingParams(
+            num_processes=num_processes,
             model_size="medium",
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(),

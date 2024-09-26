@@ -24,6 +24,8 @@ category_info = {
     "face": FACE_3D_DATAFRAME_CSV_FILE_NAME,
 }
 
+DEFAULT_CATEGORY_NAME = "body"
+
 # TODO: come up with a sensible way of splitting this for different types of trackers
 
 
@@ -56,7 +58,8 @@ def split_data(
             split_data[category] = skeleton_3d_data[:, prev_index:current_index, :]
 
     if split_data == {}:
-        logger.debug("No data categories found in model info, skipping data splitting")
+        logger.debug("No data categories found in model info, defaulting to single 'body' category")
+        split_data[DEFAULT_CATEGORY_NAME] = skeleton_3d_data
 
     return split_data
 
@@ -93,13 +96,15 @@ def create_column_names(model_info: ModelInfo) -> Dict[str, List[str]]:
 
             column_names[category] = category_column_names
 
-    # TODO: this is a quick attempt and probably wrong somehow
+    # cover the case where no data categories are found
     if column_names == {}:
         landmark_names = "landmark_names"
         tracked_points_name = "num_tracked_points"
         category_column_names = []
-        if hasattr(model_info, landmark_names) and len(getattr(model_info, landmark_names)) == getattr(
-            model_info, tracked_points_name
+        if (
+            hasattr(model_info, landmark_names)
+            and hasattr(model_info, tracked_points_name)
+            and len(getattr(model_info, landmark_names)) == getattr(model_info, tracked_points_name)
         ):
             for name in getattr(model_info, landmark_names):
                 category_column_names.append(f"{category}_{name}_x")
@@ -111,7 +116,7 @@ def create_column_names(model_info: ModelInfo) -> Dict[str, List[str]]:
                 category_column_names.append(f"{category}_{str(i).zfill(4)}_y")
                 category_column_names.append(f"{category}_{str(i).zfill(4)}_z")
 
-        column_names["total"] = category_column_names
+        column_names[DEFAULT_CATEGORY_NAME] = category_column_names
 
     return column_names
 
@@ -130,7 +135,7 @@ def save_split_csv(
     - column_names: A dictionary where each key is a category and the value is a list of column names for the data.
     """
     if split_data == {}:
-        logger.debug("No data categories found in model info, skipping data splitting")
+        logger.debug("No data categories found in model info, skipping saving split csv files")
         return
 
     number_of_frames = next(iter(split_data.values())).shape[0]
@@ -139,7 +144,10 @@ def save_split_csv(
 
     for category, data in split_data.items():
         column_name_list = column_names[category]
-        tracked_points_name = "num_tracked_points_" + category
+        if len(split_data) == 1:
+            tracked_points_name = "num_tracked_points"
+        else:
+            tracked_points_name = "num_tracked_points_" + category
 
         data_flat = data.reshape(number_of_frames, getattr(model_info, tracked_points_name) * 3)
         dataframe = pd.DataFrame(data_flat, columns=column_name_list)
@@ -157,7 +165,7 @@ def save_split_npy(output_data_folder_path: str, split_data: Dict[str, np.ndarra
     """
 
     if split_data == {}:
-        logger.debug("No data categories found in model info, skipping data splitting")
+        logger.debug("No data categories found in model info, skipping saving split npy files")
         return
 
     if file_prefix != "" and file_prefix[-1] != "_":

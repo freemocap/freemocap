@@ -38,11 +38,13 @@ class DataLoader:
         recording_folder_path: Union[str, Path],
         include_hands: bool = True,
         include_face: bool = True,
+        include_com: bool = True,
         model_info: ModelInfo = mediapipe_model_info,
     ):
         self._recording_folder_path = Path(recording_folder_path)
         self.include_hands = include_hands
         self.include_face = include_face
+        self.include_com = include_com
         self._model_info = model_info
 
         self._recording_name = self._recording_folder_path.name
@@ -65,10 +67,21 @@ class DataLoader:
         self.body_dataframe = self._load_dataframe(self._file_prefix + BODY_3D_DATAFRAME_CSV_FILE_NAME)
         self.number_of_frames = len(self.body_dataframe)
         if self.include_hands:
-            self.right_hand_dataframe = self._load_dataframe(self._file_prefix + RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
-            self.left_hand_dataframe = self._load_dataframe(self._file_prefix + LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
+            try:
+                self.right_hand_dataframe = self._load_dataframe(self._file_prefix + RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
+                self.left_hand_dataframe = self._load_dataframe(self._file_prefix + LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
+            except FileNotFoundError:
+                logger.warning("Unable to load hand data from file.")
+                self.right_hand_dataframe = None
+                self.left_hand_dataframe = None
+                self.include_hands = False
         if self.include_face:
-            self.face_dataframe = self._load_dataframe(self._file_prefix + FACE_3D_DATAFRAME_CSV_FILE_NAME)
+            try:
+                self.face_dataframe = self._load_dataframe(self._file_prefix + FACE_3D_DATAFRAME_CSV_FILE_NAME)
+            except FileNotFoundError:
+                logger.warning("Unable to load face data from file.")
+                self.face_dataframe = None
+                self.include_face = False
 
     def _load_dataframe(self, filename):
         return pd.read_csv(self._output_folder_path / filename)
@@ -112,12 +125,18 @@ class DataLoader:
         """
         Load additional data like center of mass and segment lengths.
         """
-        self.center_of_mass_xyz = np.load(
-            self._output_folder_path / CENTER_OF_MASS_FOLDER_NAME / (self._file_prefix + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
-        )
-        self.segment_center_of_mass_segment_xyz = np.load(
-            self._output_folder_path / CENTER_OF_MASS_FOLDER_NAME / (self._file_prefix + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)
-        )
+        try:
+            self.center_of_mass_xyz = np.load(
+                self._output_folder_path / CENTER_OF_MASS_FOLDER_NAME / (self._file_prefix + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
+            )
+            self.segment_center_of_mass_segment_xyz = np.load(
+                self._output_folder_path / CENTER_OF_MASS_FOLDER_NAME / (self._file_prefix + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)
+            )
+        except FileNotFoundError:
+            logger.warning("Unable to load center of mass data from file.")
+            self.center_of_mass_xyz = None
+            self.segment_center_of_mass_segment_xyz = None
+            self.include_com = False
 
     def _load_full_npy_data(self):
         self.data_frame_name_xyz = np.load(self._output_folder_path / (self._file_prefix + DATA_3D_NPY_FILE_NAME))
@@ -146,9 +165,12 @@ class DataLoader:
         right_hand_points = {}
         left_hand_points = {}
         face_points = {}
+        center_of_mass_points = {}
 
         body_points = self._process_dataframe(self.body_dataframe.iloc[frame_number, :])
-        center_of_mass_points = self._get_center_of_mass_data(frame_number)
+
+        if self.include_com:
+            center_of_mass_points = self._get_center_of_mass_data(frame_number)
 
         if self.include_hands:
             left_hand_points, right_hand_points = self._load_hand_data(frame_number)

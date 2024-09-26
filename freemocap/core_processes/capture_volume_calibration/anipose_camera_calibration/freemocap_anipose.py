@@ -714,7 +714,7 @@ class CameraGroup:
 
         for ip in iterator:
             subp = points[:, ip, :]
-            good = ~np.isnan(subp[:, 0])
+            good = ~np.isnan(subp[:, 0]) # this only checks if x is not nan?
             if np.sum(good) >= 2:
                 out[ip] = triangulate_simple(subp[good], cam_mats[good])
 

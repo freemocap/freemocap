@@ -33,7 +33,7 @@ def load_most_recent_anipose_calibration_toml(save_copy_of_calibration_to_this_p
 
 def load_anipose_calibration_toml_from_path(
     camera_calibration_data_toml_path: Union[str, Path],
-    save_copy_of_calibration_to_this_path: Union[str, Path, None],
+    save_copy_of_calibration_to_this_path: Union[str, Path, None] = None,
 ):
     logger.info(f"loading camera calibration file from:{str(camera_calibration_data_toml_path)}")
     try:

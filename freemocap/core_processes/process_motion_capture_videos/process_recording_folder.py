@@ -61,7 +61,9 @@ def process_recording_folder(
     try:
         processing_pipeline_check(processing_parameters=recording_processing_parameter_model)
     except FileNotFoundError as e:
-        logger.error("processing parameters are not valid for recording status")
+        logger.error(
+            "processing parameters are not valid for recording status"
+            f" ::: {e}")
         if logging_queue:
             logging_queue.put(e)
         raise e

@@ -1,13 +1,10 @@
 import multiprocessing
 from pathlib import Path
-try:
-    from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel, AniposeTriangulate3DParametersModel, PostProcessingParametersModel
-    from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
-    from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
-    from skellytracker.trackers.yolo_tracker.yolo_model_info import YOLOTrackingParams, YOLOModelInfo
-except ImportError as e:
-    if 'ProcessingParameterModel' not in dir() or 'process_folder_of_videos' not in dir() or 'YOLOModelInfo' not in dir():
-        raise e
+
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel, AniposeTriangulate3DParametersModel, PostProcessingParametersModel
+from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
+from skellytracker.trackers.yolo_tracker.yolo_model_info import YOLOTrackingParams, YOLOModelInfo
 
 def process_videos_YOLO(recording_folder: Path, num_processes: int = multiprocessing.cpu_count() - 1):
     """

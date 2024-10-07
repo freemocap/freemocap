@@ -42,7 +42,7 @@ if __name__ == "__main__":
         calibration.reprojection_error(points_3d=data_3d, points_2d=data_2d_flat, mean=False)
         end = perf_counter_ns()
         times.append((end - start) / 1e9)
-        print(f"This round eprojection error time is: {(end - start) / 1e9} seconds for {data_2d.shape[1]} frames")
+        print(f"This round reprojection error time is: {(end - start) / 1e9} seconds for {data_2d.shape[1]} frames")
         print(f"This round average time per frame is: {(end - start) / 1e9 / data_2d.shape[1]} seconds\n")
     print(f"\tAverage reprojection error time across trials is: {np.mean(times)} seconds for {data_2d.shape[1]} frames over {num_trials} runs")
     print(f"\tAverage time per frame is: {np.mean(times) / (data_2d.shape[1] * num_trials)} seconds\n")

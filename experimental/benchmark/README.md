@@ -9,3 +9,7 @@ Install py-spy through pip or your system package manager, and run with:
 ```
 sudo py-spy record -f speedscope -- python experimental/benchmark/{PATH TO BENCHMARK FILE}.py
 ```
+
+The different benchmarks are in the `experimental/benchmark` folder.
+
+You will need to change the path to the data you would like to benchmark on. You can download the data test data from within the Freemocap GUI.

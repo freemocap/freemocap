@@ -39,7 +39,7 @@ if __name__ == "__main__":
     )
 
     num_trials = 5
-    print("Benchmarking ___:\n")
+    print("Benchmarking calibrate_videos:\n")
     times = []
     for i in range(num_trials):
         start = perf_counter_ns()

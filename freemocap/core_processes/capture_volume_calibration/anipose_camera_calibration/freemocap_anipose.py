@@ -714,7 +714,7 @@ class CameraGroup:
 
         for ip in iterator:
             subp = points[:, ip, :]
-            good = ~np.isnan(subp[:, 0]) # this only checks if x is not nan?
+            good = ~np.isnan(subp[:, 0])
             if np.sum(good) >= 2:
                 out[ip] = triangulate_simple(subp[good], cam_mats[good])
 
@@ -1064,7 +1064,7 @@ class CameraGroup:
         error = self.average_error(p2ds)
         return error
 
-    @jit(parallel=False, forceobj=True)
+    @jit(parallel=True, forceobj=True)
     def _error_fun_bundle(self, params, p2ds, n_cam_params, extra):
         """Error function for bundle adjustment"""
         good = ~np.isnan(p2ds)

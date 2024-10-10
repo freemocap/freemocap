@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import CameraGroup
 from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
     save_3d_data_to_npy,
 )
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def triangulate_3d_data(
-    anipose_calibration_object,
+    anipose_calibration_object: CameraGroup,
     image_2d_data: np.ndarray,
     use_triangulate_ransac: bool = False,
     kill_event: multiprocessing.Event = None,

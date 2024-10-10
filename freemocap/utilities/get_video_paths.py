@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 
 
-def get_video_paths(path_to_video_folder: Union[str, Path]) -> list:
+def get_video_paths(path_to_video_folder: Union[str, Path]) -> List[Path]:
     """Search the folder for 'mp4' files (case insensitive) and return them as a list"""
 
     list_of_video_paths = list(Path(path_to_video_folder).glob("*.mp4")) + list(

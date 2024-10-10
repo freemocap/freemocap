@@ -18,6 +18,7 @@ from skellyforge.freemocap_utils.constants import (
 from skellyforge.freemocap_utils.postprocessing_widgets.task_worker_thread import TaskWorkerThread
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
@@ -43,14 +44,15 @@ def save_numpy_array_to_disk(array_to_save: np.ndarray, file_name: str, save_dir
     )
 
 
-def get_settings_from_parameter_tree(recording_processing_parameter_model):
+def get_settings_from_parameter_tree(recording_processing_parameter_model: ProcessingParameterModel):
     rec = recording_processing_parameter_model
 
     filter_sampling_rate = rec.post_processing_parameters_model.framerate
     filter_cutoff_frequency = rec.post_processing_parameters_model.butterworth_filter_parameters.cutoff_frequency
     filter_order = rec.post_processing_parameters_model.butterworth_filter_parameters.order
+    run_butterworth_filter = rec.post_processing_parameters_model.run_butterworth_filter
 
-    return filter_sampling_rate, filter_cutoff_frequency, filter_order
+    return filter_sampling_rate, filter_cutoff_frequency, filter_order, run_butterworth_filter
 
 
 def adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filter_order):
@@ -65,13 +67,23 @@ def adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filte
 
 
 def run_post_processing_worker(
-    raw_skel3d_frame_marker_xyz: np.ndarray, settings_dictionary: dict, landmark_names: list
+    raw_skel3d_frame_marker_xyz: np.ndarray,
+    settings_dictionary: dict,
+    landmark_names: list,
+    run_butterworth_filter: bool,
 ) -> np.ndarray:
     def handle_thread_finished(results, post_processed_data_handler: PostProcessedDataHandler):
-        processed_skeleton = results[TASK_FILTERING]["result"]
+        # TODO: skellyforge should handle getting the final task results regardless of what was run
+        if hasattr(results, TASK_FILTERING) and results[TASK_FILTERING] is not None:
+            processed_skeleton = results[TASK_FILTERING]["result"]
+        else:
+            processed_skeleton = results[TASK_INTERPOLATION]["result"]
         post_processed_data_handler.data_callback(processed_skeleton=processed_skeleton)
 
     task_list = [TASK_INTERPOLATION, TASK_FILTERING, TASK_FINDING_GOOD_FRAME, TASK_SKELETON_ROTATION]
+
+    if not run_butterworth_filter:
+        task_list.remove(TASK_FILTERING)
 
     post_processed_data_handler = PostProcessedDataHandler()
 
@@ -93,20 +105,23 @@ def run_post_processing_worker(
 
 
 def post_process_data(
-    recording_processing_parameter_model, raw_skel3d_frame_marker_xyz: np.ndarray, queue: multiprocessing.Queue
+    recording_processing_parameter_model: ProcessingParameterModel,
+    raw_skel3d_frame_marker_xyz: np.ndarray,
+    queue: multiprocessing.Queue,
 ) -> np.ndarray:
     if queue:
         handler = DirectQueueHandler(queue)
         handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
         logger.addHandler(handler)
-    filter_sampling_rate, filter_cutoff_frequency, filter_order = get_settings_from_parameter_tree(
-        recording_processing_parameter_model
+    filter_sampling_rate, filter_cutoff_frequency, filter_order, run_butterworth_filter = (
+        get_settings_from_parameter_tree(recording_processing_parameter_model)
     )
     adjusted_settings = adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filter_order)
     processed_skeleton_array = run_post_processing_worker(
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
         settings_dictionary=adjusted_settings,
         landmark_names=get_landmark_names(model_info=recording_processing_parameter_model.tracking_model_info),
+        run_butterworth_filter=run_butterworth_filter,
     )
 
     return processed_skeleton_array

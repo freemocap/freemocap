@@ -29,7 +29,7 @@ numba_logger.setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-@jit(nopython=True, parallel=True)
+@jit(nopython=True, parallel=False)
 def triangulate_simple(points, camera_mats):
     num_cams = len(camera_mats)
     A = np.zeros((num_cams * 2, 4))

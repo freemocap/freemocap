@@ -36,7 +36,7 @@ jobs:
           sed '/opencv-python/d' requirements.txt > tmp && mv tmp requirements.txt
       - name: Remove freemocap dependency
         run: |
-          sed '/freemocap/d' requirements.txt > tmp && mv tmp requirements.txt
+          sed 's|freemocap.*|freemocap==1.4.7|' requirements.txt > tmp && mv tmp requirements.txt
       - name: Download PyApp
         run: |
           curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.22.0/source.zip"

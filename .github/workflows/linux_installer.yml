@@ -31,6 +31,7 @@ jobs:
       - name: Freeze dependencies to requirements.txt
         run: |
           pip freeze > ${{ github.workspace }}/requirements.txt
+          cat ${{ github.workspace }}/requirements.txt
       - name: Remove opencv-python dependency
         run: |
           sed '/opencv-python/d' requirements.txt > tmp && mv tmp requirements.txt

@@ -54,6 +54,7 @@ jobs:
           export PYAPP_PROJECT_DEPENDENCY_FILE=$WORKSPACE/requirements.txt
           export PYAPP_EXEC_SCRIPT=$WORKSPACE/freemocap/__main__.py
           export PYAPP_PIP_EXTRA_ARGS=--no-deps
+          export PYAPP_UV_ENABLED=true
           export PYAPP_EXPOSE_ALL_COMMANDS=true
           cargo build --release
           cargo install pyapp --force --root $WORKSPACE

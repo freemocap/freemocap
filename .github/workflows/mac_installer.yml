@@ -18,7 +18,7 @@ jobs:
           env
       - name: Download Python Standalone (should verify sha here)
         run: |
-          curl -L -o python.tar.gz "https://github.com/indygreg/python-build-standalone/releases/download/20241008/cpython-3.12.7+20241008-aarch64-apple-darwin-install_only.tar.gz"
+          curl -L -o python.tar.gz "https://github.com/indygreg/python-build-standalone/releases/download/20241008/cpython-3.12.7+20241008-x86_64-apple-darwin-install_only.tar.gz"
       - name: Unpack Python Standalone
         run: |
           tar -xzf python.tar.gz

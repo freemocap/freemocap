@@ -34,7 +34,7 @@ jobs:
           cat ${{ github.workspace }}/requirements.txt
       - name: Remove opencv-python and freemocap dependency
         run: |
-          sed -E '/opencv-python|freemocap @ file:///Users/runner/work/freemocap/freemocap/d' requirements.txt > tmp && mv tmp requirements.txt
+          sed -E '/opencv-python|freemocap @ file:\/\/\/Users\/runne\/work\/freemocap\/freemocap/d' requirements.txt > tmp && mv tmp requirements.txt
       - name: Add current freemocap version
         run: |
           echo freemocap==v1.4.7 >> requirements.txt

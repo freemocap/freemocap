@@ -45,7 +45,8 @@ jobs:
           unzip pyapp.zip
       - name: Create Mac Installer
         run: |
-          cd ${{ github.workspace }}/pyapp-v0.22.0
+          cd ${{ github.workspace }}/pyapp-v0.24.0
+          export RUST_BACKTRACE=1
           export PYAPP_PROJECT_NAME=freemocap
           export PYAPP_PROJECT_VERSION=v1.4.7
           export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt

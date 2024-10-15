@@ -1,3 +1,4 @@
+# see https://gist.github.com/trappitsch/c72a9ac067067abef705d77871225aab
 name: Create Mac Installer
 
 on:
@@ -15,24 +16,27 @@ jobs:
           uname -a || true
           gcc --version || true
           env
-      - name: Set up Python 3.x
-        uses: actions/setup-python@v4
-        with:
-          # Semantic version range syntax or exact version of a Python version
-          python-version: '3.11'
-          # Optional - x64 or x86 architecture, defaults to x64
-          architecture: 'x64'
-          cache: 'pip'
+      - name: Download Python Standalone (should verify sha here)
+        run: |
+          curl -L -o python.tar.gz "https://github.com/indygreg/python-build-standalone/releases/download/20241008/cpython-3.12.7+20241008-aarch64-apple-darwin-install_only.tar.gz"
+      - name: Unpack Python Standalone
+        run: |
+          tar -xzf python.tar.gz
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e .
+          ${{ github.workspace }}/python/bin/pip install .
       - name: Freeze dependencies to requirements.txt
         run: |
-          pip freeze > ${{ github.workspace }}/requirements.txt
+         ${{ github.workspace }}/python/bin pip freeze > ${{ github.workspace }}/requirements.txt
       - name: Remove opencv-python dependency
         run: |
           sed '/opencv-python/d' requirements.txt > tmp && mv tmp requirements.txt
+      - name: Install flit
+        run: |
+          ${{ github.workspace }}/python/bin/pip install flit
+      - name: Build package
+        run: |
+          ${{ github.workspace }}/python/bin/python3 -m flit build
       - name: Download PyApp
         run: |
           curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.22.0/source.zip"
@@ -44,13 +48,15 @@ jobs:
           cd ${{ github.workspace }}/pyapp-v0.22.0
           export PYAPP_PROJECT_NAME=freemocap
           export PYAPP_PROJECT_VERSION=v1.4.7
-          export PYAPP_PYTHON_VERSION=3.11
           export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt
           export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
           export PYAPP_FULL_ISOLATION=true
           export PYAPP_SKIP_INSTALL=true
           export PYAPP_DISTRIBUTION_EMBED=true
+          export PYAPP_DISTRIBUTION_PATH=${{ github.workspace }}/python.tar.gz
           export PYAPP_EXPOSE_ALL_COMMANDS=true
+          export PYAPP_DISTRIBUTION_PYTHON_PATH=${{ github.workspace }}/python/bin/python3
+          export PYAPP_DISTRIBUTION_PATH=${{ github.workspace }}/dist/freemocap-1.4.7-py3-none-any.whl
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}
           cd ${{ github.workspace }}

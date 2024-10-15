@@ -31,12 +31,12 @@ jobs:
         run: |
           pip freeze > ${{ github.workspace }}/requirements.txt
           cat ${{ github.workspace }}/requirements.txt
-      - name: Remove opencv-python dependency
+      - name: Remove opencv-python and freemocap dependency
         run: |
-          sed '/opencv-python/d' requirements.txt > tmp && mv tmp requirements.txt
-      - name: Change freemocap dependency
+          sed -E '/opencv-python|freemocap @ file:///Users/runner/work/freemocap/freemocap/d' requirements.txt > tmp && mv tmp requirements.txt
+      - name: Add current freemocap version
         run: |
-          sed 's|freemocap @ file:///Users/runner/work/freemocap/freemocap|freemocap==1.4.7|' requirements.txt > tmp && mv tmp requirements.txt
+          echo freemocap==v1.4.7 >> requirements.txt
       - name: Download PyApp
         run: |
           curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.22.0/source.zip"

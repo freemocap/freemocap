@@ -49,7 +49,7 @@ jobs:
           export RUST_BACKTRACE=1
           export PYAPP_PROJECT_NAME=freemocap
           export PYAPP_PROJECT_VERSION=v1.4.7
-          export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt
+          export PYAPP_PROJECT_PATH=${{ github.workspace }}/dist/freemocap-1.4.7-py3-none-any.whl
           export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
           export PYAPP_FULL_ISOLATION=true
           export PYAPP_SKIP_INSTALL=true

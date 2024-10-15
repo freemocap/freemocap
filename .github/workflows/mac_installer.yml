@@ -56,6 +56,7 @@ jobs:
           export PYAPP_SKIP_INSTALL=true
           export PYAPP_DISTRIBUTION_EMBED=true
           export PYAPP_DISTRIBUTION_PATH=${{ github.workspace }}/new_python.tar.gz
+          export PYAPP_DISTRIBUTION_PATHON_PATH=bin/python3
           export PYAPP_EXPOSE_ALL_COMMANDS=true
           cargo build --release
           cd ${{ github.workspace }}

@@ -59,7 +59,9 @@ jobs:
           export PYAPP_DISTRIBUTION_PYTHON_PATH=bin/python3
           export PYAPP_EXPOSE_ALL_COMMANDS=true
           cargo build --release
+          cargo install pyapp --force --root /Users/runner/work/freemocap/freemocap
           cd ${{ github.workspace }}
+          ls
           mv ${{ github.workspace }}/bin/pyapp freemocap_app
       - name: Bundle Mac App
         run: |

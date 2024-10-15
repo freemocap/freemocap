@@ -47,7 +47,9 @@ jobs:
           export PYAPP_PYTHON_VERSION=3.11
           export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt
           export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
-          export PYAPP_PIP_EXTRA_ARGS=--no-deps
+          export PYAPP_FULL_ISOLATION=true
+          export PYAPP_SKIP_INSTALL=true
+          export PYAPP_DISTRIBUTION_EMBED=true
           export PYAPP_EXPOSE_ALL_COMMANDS=true
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}

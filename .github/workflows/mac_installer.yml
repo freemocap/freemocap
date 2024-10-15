@@ -25,12 +25,13 @@ jobs:
       - name: Install dependencies
         run: |
           ${{ github.workspace }}/python/bin/pip install .
-      - name: Freeze dependencies to requirements.txt
+      - name: Fix opencv dependency
+        run: | 
+          ${{ github.workspace }}/python/bin/pip uninstall -y opencv-python opencv-contrib-python
+          ${{ github.workspace }}/python/bin/pip install opencv-contrib-python==4.8.1.78
+      - name: Rebundle Python
         run: |
-         ${{ github.workspace }}/python/bin/pip freeze > ${{ github.workspace }}/requirements.txt
-      - name: Remove opencv-python dependency
-        run: |
-          sed '/opencv-python/d' requirements.txt > tmp && mv tmp requirements.txt
+          tar -czvf new_python.tar.gz python
       - name: Install flit
         run: |
           ${{ github.workspace }}/python/bin/pip install flit
@@ -54,11 +55,9 @@ jobs:
           export PYAPP_FULL_ISOLATION=true
           export PYAPP_SKIP_INSTALL=true
           export PYAPP_DISTRIBUTION_EMBED=true
-          export PYAPP_DISTRIBUTION_PATH=${{ github.workspace }}/python.tar.gz
+          export PYAPP_DISTRIBUTION_PATH=${{ github.workspace }}/new_python.tar.gz
           export PYAPP_EXPOSE_ALL_COMMANDS=true
-          export PYAPP_DISTRIBUTION_PYTHON_PATH=${{ github.workspace }}/python/bin/python3
           cargo build --release
-          cargo install pyapp --force --root ${{ github.workspace }}
           cd ${{ github.workspace }}
           mv ${{ github.workspace }}/bin/pyapp freemocap_app
       - name: Bundle Mac App

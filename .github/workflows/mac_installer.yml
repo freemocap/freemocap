@@ -57,7 +57,6 @@ jobs:
           export PYAPP_DISTRIBUTION_PATH=${{ github.workspace }}/python.tar.gz
           export PYAPP_EXPOSE_ALL_COMMANDS=true
           export PYAPP_DISTRIBUTION_PYTHON_PATH=${{ github.workspace }}/python/bin/python3
-          export PYAPP_DISTRIBUTION_PATH=${{ github.workspace }}/dist/freemocap-1.4.7-py3-none-any.whl
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}
           cd ${{ github.workspace }}

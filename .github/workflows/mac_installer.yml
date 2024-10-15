@@ -39,7 +39,7 @@ jobs:
           ${{ github.workspace }}/python/bin/python3 -m flit build --no-use-vcs
       - name: Download PyApp
         run: |
-          curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.22.0/source.zip"
+          curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.24.0/source.zip"
       - name: Unzip PyApp
         run: |
           unzip pyapp.zip

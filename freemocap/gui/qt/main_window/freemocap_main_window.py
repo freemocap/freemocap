@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
 )
 from skelly_viewer import SkellyViewer
-from skellycam import SkellyCamCameraPanel
+from skellycam import SkellyCamCameraPanel, SkellyCamCameraControlPanel
 from tqdm import tqdm
 
 from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import (
@@ -128,8 +128,8 @@ class FreemocapMainWindow(QMainWindow):
         self._tools_dock_widget = self._create_tools_dock_widget()
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._tools_dock_widget)
 
-        # self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
-        # self._tools_dock_widget.setWidget(self._control_panel_widget)
+        self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
+        self._tools_dock_widget.setWidget(self._control_panel_widget)
 
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
@@ -211,6 +211,10 @@ class FreemocapMainWindow(QMainWindow):
         self._skellycam_widget = SkellyCamCameraPanel(
             parent=self,
         )
+        self._skellycam_widget_control_panel = SkellyCamCameraControlPanel(
+            camera_panel=self._skellycam_widget,
+        )
+
         # self._skellycam_widget.videos_saved_to_this_folder_signal.connect(
         #     self._handle_videos_saved_to_this_folder_signal
         # )
@@ -269,7 +273,7 @@ class FreemocapMainWindow(QMainWindow):
         )
 
         return ControlPanelWidget(
-            camera_configuration_parameter_tree_widget=self._camera_configuration_parameter_tree_widget,
+            skellycam_widget_control_panel=self._skellycam_widget_control_panel,
             process_motion_capture_data_panel=self._process_motion_capture_data_panel,
             visualize_data_widget=self._visualization_control_panel,
             parent=self,

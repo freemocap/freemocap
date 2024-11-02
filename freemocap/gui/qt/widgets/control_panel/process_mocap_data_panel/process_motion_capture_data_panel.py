@@ -29,7 +29,7 @@ from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
 )
 from freemocap.gui.user_settings import UserSettings
-
+from skellycam import SkellyCamCameraControlPanel
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +46,6 @@ class ProcessMotionCaptureDataPanel(QWidget):
         parent=None,
     ):
         super().__init__(parent=parent)
-
         self._kill_thread_event = kill_thread_event
         self._get_active_recording_info = get_active_recording_info
         self._log_update = log_update

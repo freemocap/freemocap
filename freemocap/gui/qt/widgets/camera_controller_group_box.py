@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QRadioButton,
     QCheckBox,
 )
-from skellycam import SkellyCamCameraPanel
+from skellycam import SkellyCamCameraPanel, SkellyCamCameraControlPanel
 
 from freemocap.gui.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
@@ -28,12 +28,14 @@ logger = logging.getLogger(__name__)
 
 
 class CameraControllerGroupBox(QGroupBox):
-    def __init__(self, skellycam_widget: SkellyCamCameraPanel,
+    def __init__(self,
+                 skellycam_widget: SkellyCamCameraPanel,
                  user_settings: UserSettings,
                  parent=None):
         super().__init__(parent=parent)
         self.setStyleSheet("font-size: 12px;")
         self._skellycam_widget = skellycam_widget
+
         # self._skellycam_controller = SkellyCamControllerWidget(
         #     camera_viewer_widget=skellycam_widget,
         #     parent=self,
@@ -51,16 +53,16 @@ class CameraControllerGroupBox(QGroupBox):
 
         self._layout.addLayout(self._make_options_layout())
 
-        # self._calibration_videos_radio_button.toggled.connect(self._set_record_button_text)
-        # self._annotate_charuco_checkbox.toggled.connect(self._on_annotate_charuco_checkbox_changed)
-        # self._mocap_videos_radio_button.toggled.connect(self._set_record_button_text)
-        # # self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
-        # # self._stop_recording_button.clicked.connect(self._set_record_button_text)
-        #
-        # self._auto_process_videos_checkbox.toggled.connect(self._on_auto_process_videos_checkbox_changed)
-        # self._generate_jupyter_notebook_checkbox.toggled.connect(self._on_generate_jupyter_notebook_checkbox_changed)
-        # self._auto_open_in_blender_checkbox.toggled.connect(self._on_auto_open_in_blender_checkbox_changed)
-        # self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
+        self._calibration_videos_radio_button.toggled.connect(self._set_record_button_text)
+        self._annotate_charuco_checkbox.toggled.connect(self._on_annotate_charuco_checkbox_changed)
+        self._mocap_videos_radio_button.toggled.connect(self._set_record_button_text)
+        # self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
+        self._stop_recording_button.clicked.connect(self._set_record_button_text)
+
+        self._auto_process_videos_checkbox.toggled.connect(self._on_auto_process_videos_checkbox_changed)
+        self._generate_jupyter_notebook_checkbox.toggled.connect(self._on_generate_jupyter_notebook_checkbox_changed)
+        self._auto_open_in_blender_checkbox.toggled.connect(self._on_auto_open_in_blender_checkbox_changed)
+        self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
 
     @property
     def mocap_videos_radio_button_checked(self) -> bool:
@@ -150,18 +152,18 @@ class CameraControllerGroupBox(QGroupBox):
 
     def _make_record_button_layout(self):
         button_vbox = QVBoxLayout()
-        # self._start_recording_button = self._skellycam_controller.start_recording_button
-        # self._stop_recording_button = self._skellycam_controller.stop_recording_button
-        # self._start_recording_button.setStyleSheet("font-size: 14px;")
-        # self._stop_recording_button.setStyleSheet("font-size: 14px;")
-        # self._start_recording_button.setText(MOCAP_RECORDING_BUTTON_TEXT)
-        # self._start_recording_button.setObjectName("start_recording_button")
-        # self._stop_recording_button.setObjectName("stop_recording_button")
-        # self._start_recording_button.show()
-        # self._start_recording_button.setEnabled(False)
-        # self._stop_recording_button.show()
-        # button_vbox.addWidget(self._start_recording_button)
-        # button_vbox.addWidget(self._stop_recording_button)
+        self._start_recording_button = self._skellycam_widget.recording_panel.start_recording_button
+        self._stop_recording_button = self._skellycam_widget.recording_panel.stop_recording_button
+        self._start_recording_button.setStyleSheet("font-size: 14px;")
+        self._stop_recording_button.setStyleSheet("font-size: 14px;")
+        self._start_recording_button.setText(MOCAP_RECORDING_BUTTON_TEXT)
+        self._start_recording_button.setObjectName("start_recording_button")
+        self._stop_recording_button.setObjectName("stop_recording_button")
+        self._start_recording_button.show()
+        self._start_recording_button.setEnabled(False)
+        self._stop_recording_button.show()
+        button_vbox.addWidget(self._start_recording_button)
+        button_vbox.addWidget(self._stop_recording_button)
         return button_vbox
 
     def _create_videos_will_save_to_layout(self):

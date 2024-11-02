@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QTabWidget,
 )
-# from skellycam import SkellyCamParameterTreeWidget
+from skellycam import SkellyCamCameraControlPanel
 
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
@@ -32,8 +32,8 @@ class ControlPanelDockWidget(QDockWidget):
 class ControlPanelWidget(QWidget):
     def __init__(
         self,
-        camera_configuration_parameter_tree_widget: 'SkellyCamParameterTreeWidget',
-        process_motion_capture_data_panel: ProcessMotionCaptureDataPanel,
+            skellycam_widget_control_panel:SkellyCamCameraControlPanel,
+            process_motion_capture_data_panel: ProcessMotionCaptureDataPanel,
         visualize_data_widget: QWidget,
         parent=None,
     ):
@@ -46,7 +46,7 @@ class ControlPanelWidget(QWidget):
         self._layout.addWidget(self._tab_widget)
 
         self._tab_widget.addTab(
-            camera_configuration_parameter_tree_widget,
+            skellycam_widget_control_panel,
             "Camera Configuration",
         )
         self._tab_widget.addTab(process_motion_capture_data_panel, "Process Data")

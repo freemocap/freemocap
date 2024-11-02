@@ -5,7 +5,7 @@ import threading
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QLabel, QHBoxLayout, QFrame
 
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
+from freemocap.gui.qt.utilities.user_settings import GuiState
 from freemocap.utilities.fix_opencv_conflict import fix_opencv_conflict
 
 logger = logging.getLogger(__name__)

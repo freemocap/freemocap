@@ -14,7 +14,7 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
     ProcessingParameterModel,
 )
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
+from freemocap.gui.qt.utilities.user_settings import GuiState
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
     create_mediapipe_parameter_group,

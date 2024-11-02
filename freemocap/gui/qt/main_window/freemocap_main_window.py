@@ -34,11 +34,6 @@ from freemocap.gui.qt.style_sheet.scss_file_watcher import SCSSFileWatcher
 from freemocap.gui.qt.style_sheet.set_css_style_sheet import apply_css_style_sheet
 from freemocap.gui.qt.utilities.copy_timestamps_folder import copy_directory_if_contains_timestamps
 from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
-from freemocap.gui.qt.utilities.save_and_load_gui_state import (
-    GuiState,
-    load_gui_state,
-    save_gui_state,
-)
 from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
 )
@@ -63,6 +58,7 @@ from freemocap.gui.qt.widgets.set_data_folder_dialog import SetDataFolderDialog
 from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
 from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
+from freemocap.gui.user_settings import UserSettings
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -109,7 +105,7 @@ class MainWindow(QMainWindow):
         self._freemocap_data_folder_path = freemocap_data_folder_path
         self._pipedream_pings = pipedream_pings
 
-        self._gui_state = load_gui_state(get_gui_state_json_path())
+        self._user_settings = UserSettings.load_user_settings()
 
         self._kill_thread_event = multiprocessing.Event()
 
@@ -216,7 +212,7 @@ class MainWindow(QMainWindow):
         return self._active_recording_info_widget.active_recording_info.synchronized_videos_folder_path
 
     def _create_central_tab_widget(self):
-        self._home_widget = HomeWidget(actions=self._actions, gui_state=self._gui_state, parent=self)
+        self._home_widget = HomeWidget(actions=self._actions, gui_state=self._user_settings, parent=self)
 
         self._skellycam_widget = SkellyCamCameraPanel(
             parent=self,
@@ -226,7 +222,7 @@ class MainWindow(QMainWindow):
         # )
 
         self._controller_group_box = CameraControllerGroupBox(
-            skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
+            skellycam_widget=self._skellycam_widget, gui_state=self._user_settings, parent=self
         )
 
         self._skelly_viewer_widget = SkellyViewer()
@@ -249,7 +245,7 @@ class MainWindow(QMainWindow):
 
     def _create_directory_view_widget(self):
         return DirectoryViewWidget(
-            gui_state=self._gui_state,
+            gui_state=self._user_settings,
             get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
         )
 
@@ -259,7 +255,7 @@ class MainWindow(QMainWindow):
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             recording_processing_parameters=ProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
-            gui_state=self._gui_state,
+            gui_state=self._user_settings,
             kill_thread_event=self._kill_thread_event,
             log_update=log_update,
         )
@@ -267,7 +263,7 @@ class MainWindow(QMainWindow):
             self._handle_processing_finished_signal
         )
 
-        self._visualization_control_panel = VisualizationControlPanel(parent=self, gui_state=self._gui_state)
+        self._visualization_control_panel = VisualizationControlPanel(parent=self, gui_state=self._user_settings)
         self._visualization_control_panel.export_to_blender_button.clicked.connect(
             self._export_active_recording_to_blender
         )
@@ -416,22 +412,22 @@ class MainWindow(QMainWindow):
         self._central_tab_widget.setCurrentIndex(2)
 
     def reset_to_default_gui_settings(self):
-        self._gui_state = GuiState()
+        self._user_settings = UserSettings()
 
-        self._home_widget._send_pings_checkbox.setChecked(self._gui_state.send_user_pings)
-        self._controller_group_box._auto_process_videos_checkbox.setChecked(self._gui_state.auto_process_videos_on_save)
+        self._home_widget._send_pings_checkbox.setChecked(self._user_settings.send_user_pings)
+        self._controller_group_box._auto_process_videos_checkbox.setChecked(self._user_settings.auto_process_videos_on_save)
         self._controller_group_box._generate_jupyter_notebook_checkbox.setChecked(
-            self._gui_state.generate_jupyter_notebook
+            self._user_settings.generate_jupyter_notebook
         )
-        self._controller_group_box._auto_open_in_blender_checkbox.setChecked(self._gui_state.auto_open_in_blender)
-        self._controller_group_box._charuco_square_size_line_edit.setText(str(self._gui_state.charuco_square_size))
+        self._controller_group_box._auto_open_in_blender_checkbox.setChecked(self._user_settings.auto_open_in_blender)
+        self._controller_group_box._charuco_square_size_line_edit.setText(str(self._user_settings.charuco_square_size))
         self._process_motion_capture_data_panel._calibration_control_panel._charuco_square_size_line_edit.setText(
-            str(self._gui_state.charuco_square_size)
+            str(self._user_settings.charuco_square_size)
         )
-        self._visualization_control_panel._blender_executable_label.setText(str(self._gui_state.blender_path))
-        self._visualization_control_panel._blender_executable_path = str(self._gui_state.blender_path)
+        self._visualization_control_panel._blender_executable_label.setText(str(self._user_settings.blender_path))
+        self._visualization_control_panel._blender_executable_path = str(self._user_settings.blender_path)
 
-        save_gui_state(self._gui_state, get_gui_state_json_path())
+        self._user_settings.save_user_settings()
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())
 
@@ -461,21 +457,21 @@ class MainWindow(QMainWindow):
         logger.info("Opening `Welcome to Freemocap` dialog... ")
 
         self._welcome_screen_dialog = WelcomeScreenDialog(
-            gui_state=self._gui_state, kill_thread_event=self._kill_thread_event, parent=self
+            gui_state=self._user_settings, kill_thread_event=self._kill_thread_event, parent=self
         )
 
         self._welcome_screen_dialog.exec()
 
     def open_opencv_conflict_dialog(self):
         self._opencv_conflict_dialog = OpencvConflictDialog(
-            gui_state=self._gui_state, kill_thread_event=self._kill_thread_event, parent=self
+            gui_state=self._user_settings, kill_thread_event=self._kill_thread_event, parent=self
         )
 
         self._opencv_conflict_dialog.exec()
 
     def open_settings_dialog(self):
         self._settings_dialog = SetDataFolderDialog(
-            gui_state=self._gui_state, kill_thread_event=self._kill_thread_event, parent=self
+            gui_state=self._user_settings, kill_thread_event=self._kill_thread_event, parent=self
         )
 
         self._settings_dialog.exec()

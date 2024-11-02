@@ -15,9 +15,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
 )
 from skelly_viewer import SkellyViewer
-
+from skellycam import SkellyCamCameraPanel
 from tqdm import tqdm
-
 
 from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import (
     generate_jupyter_notebook,
@@ -64,7 +63,6 @@ from freemocap.gui.qt.widgets.set_data_folder_dialog import SetDataFolderDialog
 from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
 from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
-
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -88,10 +86,10 @@ logger = logging.getLogger(__name__)
 
 class MainWindow(QMainWindow):
     def __init__(
-        self,
-        freemocap_data_folder_path: Union[str, Path],
-        pipedream_pings: PipedreamPings,
-        parent=None,
+            self,
+            freemocap_data_folder_path: Union[str, Path],
+            pipedream_pings: PipedreamPings,
+            parent=None,
     ):
         super().__init__(parent=parent)
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
@@ -134,8 +132,8 @@ class MainWindow(QMainWindow):
             "Watch the terminal output for status updates, we're working on integrating better status updates into the GUI"
         )
 
-        # self._central_tab_widget = self._create_central_tab_widget()
-        # self.setCentralWidget(self._central_tab_widget)
+        self._central_tab_widget = self._create_central_tab_widget()
+        self.setCentralWidget(self._central_tab_widget)
 
         self._tools_dock_widget = self._create_tools_dock_widget()
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._tools_dock_widget)
@@ -165,8 +163,8 @@ class MainWindow(QMainWindow):
         self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
         if (
-            self._controller_group_box.auto_process_videos_checked
-            and self._controller_group_box.mocap_videos_radio_button_checked
+                self._controller_group_box.auto_process_videos_checked
+                and self._controller_group_box.mocap_videos_radio_button_checked
         ):
             logger.info("'Auto process videos' checkbox is checked - triggering 'Process Motion Capture Data' button")
             self._process_motion_capture_data_panel.process_motion_capture_data_button.click()
@@ -204,7 +202,9 @@ class MainWindow(QMainWindow):
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
         SCSSFileWatcher(
-            path_to_scss_file=get_scss_stylesheet_path(), path_to_css_file=get_css_stylesheet_path(), parent=self
+            path_to_scss_file=get_scss_stylesheet_path(),
+            path_to_css_file=get_css_stylesheet_path(),
+            parent=self
         )
         css_file_watcher = CSSFileWatcher(path_to_css_file=get_css_stylesheet_path(), parent=self)
         return css_file_watcher
@@ -218,24 +218,23 @@ class MainWindow(QMainWindow):
     def _create_central_tab_widget(self):
         self._home_widget = HomeWidget(actions=self._actions, gui_state=self._gui_state, parent=self)
 
-        # self._skellycam_widget = SkellyCamWidget(
-        #     self._create_new_synchronized_videos_folder,
-        #     parent=self,
-        # )
+        self._skellycam_widget = SkellyCamCameraPanel(
+            parent=self,
+        )
         # self._skellycam_widget.videos_saved_to_this_folder_signal.connect(
         #     self._handle_videos_saved_to_this_folder_signal
         # )
 
-        # self._controller_group_box = CameraControllerGroupBox(
-        #     skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
-        # )
+        self._controller_group_box = CameraControllerGroupBox(
+            skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
+        )
 
         self._skelly_viewer_widget = SkellyViewer()
 
         center_tab_widget = CentralTabWidget(
             parent=self,
-            # skelly_cam_widget=self._skellycam_widget,
-            # camera_controller_widget=self._controller_group_box,
+            skelly_cam_widget=self._skellycam_widget,
+            camera_controller_widget=self._controller_group_box,
             welcome_to_freemocap_widget=self._home_widget,
             skelly_viewer_widget=self._skelly_viewer_widget,
             directory_view_widget=self._directory_view_widget,
@@ -352,7 +351,7 @@ class MainWindow(QMainWindow):
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
         except (
-            AttributeError
+                AttributeError
         ):  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
             logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
@@ -506,12 +505,12 @@ class MainWindow(QMainWindow):
 
         if not synchronization_bool:
             for video_path in tqdm(
-                video_paths,
-                desc="Importing videos...",
-                colour=[255, 128, 0],
-                unit="video",
-                unit_scale=True,
-                leave=False,
+                    video_paths,
+                    desc="Importing videos...",
+                    colour=[255, 128, 0],
+                    unit="video",
+                    unit_scale=True,
+                    leave=False,
             ):
                 if not Path(video_path).exists():
                     logger.error(f"{video_path} does not exist!")

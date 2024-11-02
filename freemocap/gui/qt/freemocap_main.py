@@ -9,6 +9,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
+from freemocap.utilities.fix_opencv_conflict import fix_opencv_conflict
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
@@ -46,9 +47,8 @@ def freemocap_gui_main(global_kill_flag=multiprocessing.Value("b", False)):
 
         if freemocap_main_window._gui_state.show_welcome_screen:
             freemocap_main_window.open_welcome_screen_dialog()
-        installed_packages = {dist.metadata["Name"] for dist in distributions()}
-        if "opencv-python" in installed_packages and "opencv-contrib-python" in installed_packages:
-            freemocap_main_window.open_opencv_conflict_dialog()
+
+        fix_opencv_conflict()
 
         timer.timeout.connect(freemocap_main_window.update)
         error_code = app.exec()
@@ -62,6 +62,8 @@ def freemocap_gui_main(global_kill_flag=multiprocessing.Value("b", False)):
         logger.info("`main` exited with the 'reboot' code, so let's reboot!")
 
     sys.exit()
+
+
 
 
 if __name__ == "__main__":

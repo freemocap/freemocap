@@ -9,9 +9,10 @@ __package_name__ = "freemocap"
 __repo_url__ = f"https://github.com/freemocap/{__package_name__}/"
 __repo_issues_url__ = f"{__repo_url__}issues"
 
-from freemocap.system.logging.configure_logging import configure_logging, LogLevel
+from freemocap.system.logging_configuration.configure_logging import configure_logging
+from freemocap.system.logging_configuration.logger_builder import LogLevels
 
-configure_logging(LogLevel.TRACE)
+configure_logging(LogLevels.TRACE)
 import logging
 
 logger = logging.getLogger(__name__)

@@ -5,7 +5,6 @@ from typing import Optional, Union
 
 import toml
 
-from freemocap.gui.qt.utilities.save_and_load_gui_state import load_gui_state
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     LOGS_INFO_AND_SETTINGS_FOLDER_NAME,
     LOG_FILE_FOLDER_NAME,
@@ -46,6 +45,8 @@ def create_log_file_name():
 def create_camera_calibration_file_name(recording_name: str):
     return f"{recording_name}_camera_calibration.toml"
 
+def get_user_settings_path():
+    return str(Path(get_freemocap_data_folder_path()) / "user_settings.toml")
 
 freemocap_data_folder_path = None
 

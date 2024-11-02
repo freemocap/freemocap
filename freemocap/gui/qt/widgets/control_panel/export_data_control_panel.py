@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
 )
 
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+from freemocap.gui.qt.utilities.user_settings import GuiState, save_gui_state
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 logger = logging.getLogger(__name__)

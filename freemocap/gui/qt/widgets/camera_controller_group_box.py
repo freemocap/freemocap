@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 # from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+from freemocap.gui.qt.utilities.user_settings import GuiState, save_gui_state
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
 from freemocap.system.paths_and_filenames.path_getters import (
     create_new_recording_folder_path,

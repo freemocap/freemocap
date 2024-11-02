@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 )
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+from freemocap.gui.qt.utilities.user_settings import GuiState, save_gui_state
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )

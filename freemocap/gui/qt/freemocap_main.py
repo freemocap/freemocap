@@ -28,7 +28,7 @@ def sigint_handler(*args):
     QApplication.quit()
 
 
-def freemocap_gui_main(global_kill_flag=multiprocessing.Value("b", False)):
+def freemocap_gui_main(global_kill_flag=multiprocessing.Value):
     logger.info("Starting main...")
     signal.signal(signal.SIGINT, sigint_handler)
     app = get_qt_app()
@@ -37,7 +37,7 @@ def freemocap_gui_main(global_kill_flag=multiprocessing.Value("b", False)):
 
     pipedream_pings = PipedreamPings()
 
-    while True:
+    while global_kill_flag.value:
         freemocap_main_window = MainWindow(
             freemocap_data_folder_path=get_freemocap_data_folder_path(), pipedream_pings=pipedream_pings
         )
@@ -45,7 +45,7 @@ def freemocap_gui_main(global_kill_flag=multiprocessing.Value("b", False)):
 
         freemocap_main_window.show()
 
-        if freemocap_main_window._gui_state.show_welcome_screen:
+        if freemocap_main_window._user_settings.show_welcome_screen:
             freemocap_main_window.open_welcome_screen_dialog()
 
         fix_opencv_conflict()

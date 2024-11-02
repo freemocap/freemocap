@@ -2,7 +2,7 @@ import logging
 import multiprocessing
 import shutil
 from pathlib import Path
-from typing import Union, List, Callable
+from typing import List, Callable
 
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QIcon
@@ -69,8 +69,7 @@ from freemocap.system.paths_and_filenames.path_getters import (
     get_css_stylesheet_path,
     get_scss_stylesheet_path,
     get_blender_file_path,
-    get_most_recent_recording_path,
-    get_gui_state_json_path,
+    get_most_recent_recording_path, get_freemocap_data_folder_path,
 )
 from freemocap.system.user_data.pipedream_pings import PipedreamPings
 from freemocap.utilities.remove_empty_directories import remove_empty_directories
@@ -80,14 +79,9 @@ EXIT_CODE_REBOOT = -123456789
 logger = logging.getLogger(__name__)
 
 
-class MainWindow(QMainWindow):
-    def __init__(
-            self,
-            freemocap_data_folder_path: Union[str, Path],
-            pipedream_pings: PipedreamPings,
-            parent=None,
-    ):
-        super().__init__(parent=parent)
+class FreemocapMainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
         logger.info("Initializing FreeMoCap MainWindow")
 
@@ -102,8 +96,8 @@ class MainWindow(QMainWindow):
 
         self._css_file_watcher = self._set_up_stylesheet()
 
-        self._freemocap_data_folder_path = freemocap_data_folder_path
-        self._pipedream_pings = pipedream_pings
+        self._freemocap_data_folder_path = get_freemocap_data_folder_path()
+        self._pipedream_pings = PipedreamPings()
 
         self._user_settings = UserSettings.load_user_settings()
 
@@ -212,7 +206,7 @@ class MainWindow(QMainWindow):
         return self._active_recording_info_widget.active_recording_info.synchronized_videos_folder_path
 
     def _create_central_tab_widget(self):
-        self._home_widget = HomeWidget(actions=self._actions, gui_state=self._user_settings, parent=self)
+        self._home_widget = HomeWidget(actions=self._actions, user_settings=self._user_settings, parent=self)
 
         self._skellycam_widget = SkellyCamCameraPanel(
             parent=self,
@@ -222,7 +216,9 @@ class MainWindow(QMainWindow):
         # )
 
         self._controller_group_box = CameraControllerGroupBox(
-            skellycam_widget=self._skellycam_widget, gui_state=self._user_settings, parent=self
+            skellycam_widget=self._skellycam_widget,
+            user_settings=self._user_settings,
+            parent=self
         )
 
         self._skelly_viewer_widget = SkellyViewer()
@@ -245,7 +241,7 @@ class MainWindow(QMainWindow):
 
     def _create_directory_view_widget(self):
         return DirectoryViewWidget(
-            gui_state=self._user_settings,
+            user_settings=self._user_settings,
             get_active_recording_info_callable=self._active_recording_info_widget.get_active_recording_info,
         )
 
@@ -255,7 +251,7 @@ class MainWindow(QMainWindow):
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             recording_processing_parameters=ProcessingParameterModel(),
             get_active_recording_info=self._active_recording_info_widget.get_active_recording_info,
-            gui_state=self._user_settings,
+            user_settings=self._user_settings,
             kill_thread_event=self._kill_thread_event,
             log_update=log_update,
         )
@@ -263,7 +259,7 @@ class MainWindow(QMainWindow):
             self._handle_processing_finished_signal
         )
 
-        self._visualization_control_panel = VisualizationControlPanel(parent=self, gui_state=self._user_settings)
+        self._visualization_control_panel = VisualizationControlPanel(parent=self, user_settings=self._user_settings)
         self._visualization_control_panel.export_to_blender_button.clicked.connect(
             self._export_active_recording_to_blender
         )
@@ -415,7 +411,8 @@ class MainWindow(QMainWindow):
         self._user_settings = UserSettings()
 
         self._home_widget._send_pings_checkbox.setChecked(self._user_settings.send_user_pings)
-        self._controller_group_box._auto_process_videos_checkbox.setChecked(self._user_settings.auto_process_videos_on_save)
+        self._controller_group_box._auto_process_videos_checkbox.setChecked(
+            self._user_settings.auto_process_videos_on_save)
         self._controller_group_box._generate_jupyter_notebook_checkbox.setChecked(
             self._user_settings.generate_jupyter_notebook
         )
@@ -562,7 +559,7 @@ if __name__ == "__main__":
     import sys
 
     app = QApplication(sys.argv)
-    main_window = MainWindow(pipedream_pings=PipedreamPings())
+    main_window = FreemocapMainWindow()
     main_window.show()
     app.exec()
     for process in multiprocessing.active_children():

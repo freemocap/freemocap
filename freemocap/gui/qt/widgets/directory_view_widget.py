@@ -6,9 +6,10 @@ from typing import Union, Callable
 from PySide6 import QtGui
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget, QPushButton, QFileSystemModel
+
+from freemocap.gui.user_settings import UserSettings
 # from qtpy import QtGui
 
-from freemocap.gui.qt.utilities.user_settings import GuiState
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path
 
@@ -18,14 +19,14 @@ logger = logging.getLogger(__name__)
 class DirectoryViewWidget(QWidget):
     new_active_recording_selected_signal = Signal(str)
 
-    def __init__(self, gui_state: GuiState, get_active_recording_info_callable: Callable):
+    def __init__(self, user_settings: UserSettings, get_active_recording_info_callable: Callable):
         self._root_folder = None
         logger.debug("Creating QtDirectoryViewWidget")
         super().__init__()
         self._minimum_width = 300
         self.setMinimumWidth(self._minimum_width)
 
-        self._gui_state = gui_state
+        self._user_settings = user_settings
         self._get_active_recording_info_callable = get_active_recording_info_callable
 
         self._layout = QVBoxLayout()
@@ -47,14 +48,14 @@ class DirectoryViewWidget(QWidget):
         self._tree_view_widget.setAlternatingRowColors(True)
         self._tree_view_widget.setColumnWidth(0, 250)
 
-        self._path_label = QLabel(str(self._gui_state.freemocap_data_folder_path))
+        self._path_label = QLabel(str(self._user_settings.freemocap_data_folder_path))
 
-        if self._gui_state.freemocap_data_folder_path is not None:
-            self.set_folder_as_root(self._gui_state.freemocap_data_folder_path)
+        if self._user_settings.freemocap_data_folder_path is not None:
+            self.set_folder_as_root(self._user_settings.freemocap_data_folder_path)
 
         self._show_freemocap_data_folder_button = QPushButton("Show FreeMoCap Data Folder")
         self._show_freemocap_data_folder_button.clicked.connect(
-            lambda: self.set_folder_as_root(self._gui_state.freemocap_data_folder_path)
+            lambda: self.set_folder_as_root(self._user_settings.freemocap_data_folder_path)
         )
 
         self._layout.addWidget(self._show_freemocap_data_folder_button)
@@ -147,8 +148,8 @@ if __name__ == "__main__":
     from PySide6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    gui_state = GuiState()
-    directory_view_widget = DirectoryViewWidget(gui_state=gui_state)
+    user_settings = UserSettings()
+    directory_view_widget = DirectoryViewWidget(user_settings=user_settings)
 
     directory_view_widget.show()
 

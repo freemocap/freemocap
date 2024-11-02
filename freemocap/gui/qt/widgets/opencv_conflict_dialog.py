@@ -5,14 +5,14 @@ import threading
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QLabel, QHBoxLayout, QFrame
 
-from freemocap.gui.qt.utilities.user_settings import GuiState
+from freemocap.gui.user_settings import UserSettings
 from freemocap.utilities.fix_opencv_conflict import fix_opencv_conflict
 
 logger = logging.getLogger(__name__)
 
 
 class OpencvConflictDialog(QDialog):
-    def __init__(self, gui_state: GuiState, kill_thread_event: threading.Event, parent=None) -> None:
+    def __init__(self, gui_state: UserSettings, kill_thread_event: threading.Event, parent=None) -> None:
         super().__init__(parent=parent)
         self.gui_state = gui_state
         self.kill_thread_event = kill_thread_event

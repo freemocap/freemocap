@@ -41,10 +41,10 @@ class LoggingQueueListener(QThread):
         logger.info("Starting LoggingQueueListener thread")
         try:
             while not self._exit_event.is_set():
-                if self._logging_queue.empty():
-                    # if self._parent._keep_logging:
-                    #     QtCore.QMetaObject.invokeMethod(self._parent, "log_progress", QtCore.Qt.QueuedConnection)
-                    continue
+                # if self._logging_queue.empty():
+                #     # if self._parent._keep_logging:
+                #     #     QtCore.QMetaObject.invokeMethod(self._parent, "log_progress", QtCore.Qt.QueuedConnection)
+                #     continue
 
                 record = self._logging_queue.get(block=True)
 

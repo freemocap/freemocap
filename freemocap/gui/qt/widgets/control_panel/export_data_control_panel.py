@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
 )
 
-from freemocap.gui.qt.utilities.user_settings import GuiState, save_gui_state
+from freemocap.gui.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 logger = logging.getLogger(__name__)
@@ -18,11 +18,11 @@ BLENDER_EXECUTABLE_PATH_MISSING_STRING = "BLENDER EXECUTABLE NOT FOUND"
 
 
 class VisualizationControlPanel(QWidget):
-    def __init__(self, gui_state: GuiState, parent=None):
+    def __init__(self, user_settings: UserSettings, parent=None):
         super().__init__(parent=parent)
 
-        self._gui_state = gui_state
-        self._blender_executable_path = str(self._gui_state.blender_path)
+        self._user_settings = user_settings
+        self._blender_executable_path = str(self._user_settings.blender_path)
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 
@@ -90,5 +90,5 @@ class VisualizationControlPanel(QWidget):
         if (
             self._blender_executable_path != BLENDER_EXECUTABLE_PATH_MISSING_STRING
         ):  # don't persist missing paths across sessions
-            self._gui_state.blender_path = self._blender_executable_path
-            save_gui_state(gui_state=self._gui_state, file_pathstring=get_gui_state_json_path())
+            self._user_settings.blender_path = self._blender_executable_path
+            self._user_settings.sav

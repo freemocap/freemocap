@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [ main, development ]
     paths:
-      - 'pyproject.toml'
+      - '../../old_pyproject.toml'
 
 jobs:
   build:

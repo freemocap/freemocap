@@ -1,32 +1,51 @@
-# __main__.py
+import logging
+import multiprocessing
 import sys
-from multiprocessing import freeze_support
-from pathlib import Path
+import time
 
+from skellycam.api.run_skellycam_server import run_server
+from skellycam.utilities.clean_path import clean_path
+from skellycam.utilities.setup_windows_app_id import setup_app_id_for_windows
 
-try:
-    from freemocap.gui.qt.freemocap_main import qt_gui_main
-except Exception:
-    base_package_path = Path(__file__).parent.parent
-    print(f"adding base_package_path: {base_package_path} : to sys.path")
-    sys.path.insert(0, str(base_package_path))  # add parent directory to sys.path
-    from freemocap.gui.qt.freemocap_main import qt_gui_main
+from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
+
+logger = logging.getLogger(__name__)
+
+from skellycam.gui.gui_main import gui_main
 
 
 def main():
-    # set up so you can change the taskbar icon - https://stackoverflow.com/a/74531530/14662833
-    import ctypes
-    import freemocap
-
+    logger.info(f"Running from __main__: {__name__} - {clean_path(__file__)}")
     if sys.platform == "win32":
-        myappid = f"{freemocap.__package_name__}_{freemocap.__version__}"  # arbitrary string
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        setup_app_id_for_windows()
 
-    qt_gui_main()
+    global_kill_flag = multiprocessing.Value('b', False)
+
+    server_process = multiprocessing.Process(target=run_server, args=(global_kill_flag,))
+    logger.info("Starting backend server process")
+    server_process.start()
+    time.sleep(1)  # Give the backend time to startup
+
+    logger.info("Starting frontend GUI")
+    gui_main(global_kill_flag) # blocks until GUI is closed
+
+    logger.info("Frontend GUI ended")
+    global_kill_flag.value = True
+    server_process.join()
+    logger.info("Exiting `main`...")
+
 
 
 if __name__ == "__main__":
-    freeze_support()
-    print(f"Running `freemocap.__main__` from - {__file__}")
+    multiprocessing.freeze_support()
 
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.info("Keyboard interrupt - shutting down!")
+    except Exception as e:
+        logger.exception("An unexpected error occurred", exc_info=e)
+        raise
+    print("\n\n--------------------------------------------------\n--------------------------------------------------")
+    print(f"Thank you for using FreeMoCap {SKULL_EMOJI_STRING} {SPARKLES_EMOJI_STRING}")
+    print("--------------------------------------------------\n--------------------------------------------------\n\n")

@@ -15,10 +15,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
 )
 from skelly_viewer import SkellyViewer
-from skellycam import (
-    SkellyCamParameterTreeWidget,
-    SkellyCamWidget,
-)
+
 from tqdm import tqdm
 
 

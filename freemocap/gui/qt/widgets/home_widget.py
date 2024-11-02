@@ -20,8 +20,8 @@ from freemocap.gui.qt.actions_and_menus.actions import (
     IMPORT_VIDEOS_ACTION_NAME,
     Actions,
 )
-from freemocap.gui.qt.utilities.user_settings import GuiState, save_gui_state
 from freemocap.gui.qt.widgets.logo_svg_widget import LogoSvgWidget
+from freemocap.gui.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
@@ -36,10 +36,10 @@ class WelcomeScreenButton(QPushButton):
 
 
 class HomeWidget(QWidget):
-    def __init__(self, actions: Actions, gui_state: GuiState, parent: QWidget = None):
+    def __init__(self, actions: Actions, user_settings: UserSettings, parent: QWidget = None):
         super().__init__(parent=parent)
 
-        self.gui_state = gui_state
+        self._user_settings = user_settings
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
@@ -152,7 +152,7 @@ class HomeWidget(QWidget):
         self._layout.addLayout(hbox)
         hbox.addStretch(1)
         self._send_pings_checkbox = QCheckBox("Send anonymous usage information")
-        self._send_pings_checkbox.setChecked(self.gui_state.send_user_pings)
+        self._send_pings_checkbox.setChecked(self._user_settings.send_user_pings)
         self._send_pings_checkbox.stateChanged.connect(self._on_send_pings_checkbox_changed)
         hbox.addWidget(self._send_pings_checkbox)
 
@@ -163,8 +163,8 @@ class HomeWidget(QWidget):
         return self._send_pings_checkbox.isChecked()
 
     def _on_send_pings_checkbox_changed(self):
-        self.gui_state.send_user_pings = self._send_pings_checkbox.isChecked()
-        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self._user_settings.send_user_pings = self._send_pings_checkbox.isChecked()
+        self._user_settings.save_user_settings()
 
     def _welcome_to_freemocap_title(self):
         logger.debug("Creating `welcome to freemocap` layout")

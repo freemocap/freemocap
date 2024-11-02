@@ -20,10 +20,10 @@ from PySide6.QtWidgets import (
 )
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 
-from freemocap.gui.qt.utilities.user_settings import GuiState, save_gui_state
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
+from freemocap.gui.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.path_getters import (
     get_gui_state_json_path,
     get_last_successful_calibration_toml_path,
@@ -37,11 +37,11 @@ class CalibrationControlPanel(QWidget):
         self,
         get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
         kill_thread_event: threading.Event,
-        gui_state: GuiState,
+        user_settings: UserSettings,
         parent: Optional[QObject] = None,
     ):
         super().__init__(parent=parent)
-        self.gui_state = gui_state
+        self._user_settings = user_settings
         self._has_a_toml_path = False
         self._calibration_toml_path = None
         self._get_active_recording_info = get_active_recording_info
@@ -265,7 +265,7 @@ class CalibrationControlPanel(QWidget):
         self._charuco_square_size_label = QLabel("Charuco square size (mm)")
         self._charuco_square_size_label.setStyleSheet("QLabel { font-size: 12px;  }")
 
-        self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
+        self._charuco_square_size_line_edit.setText(str(self._user_settings.charuco_square_size))
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
@@ -275,8 +275,8 @@ class CalibrationControlPanel(QWidget):
         return charuco_square_size_form_layout
 
     def _on_charuco_square_size_line_edit_changed(self):
-        self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
-        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self._user_settings.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        self._user_settings.save_user_settings()
 
     @Slot(str)
     def _log_calibration_progress_callbacks(self, message: str):

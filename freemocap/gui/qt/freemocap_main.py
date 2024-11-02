@@ -3,19 +3,14 @@ import multiprocessing
 import signal
 import sys
 from pathlib import Path
-from importlib.metadata import distributions
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
-from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
+from freemocap.gui.qt.main_window.freemocap_main_window import FreemocapMainWindow, EXIT_CODE_REBOOT
 from freemocap.utilities.fix_opencv_conflict import fix_opencv_conflict
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
-
-from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
-from freemocap.system.paths_and_filenames.path_getters import get_freemocap_data_folder_path
-from freemocap.system.user_data.pipedream_pings import PipedreamPings
 
 repo = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(repo))
@@ -28,19 +23,17 @@ def sigint_handler(*args):
     QApplication.quit()
 
 
-def freemocap_gui_main(global_kill_flag=multiprocessing.Value):
+def freemocap_gui_main(global_kill_flag:multiprocessing.Value):
     logger.info("Starting main...")
     signal.signal(signal.SIGINT, sigint_handler)
-    app = get_qt_app()
+    app =  QApplication()
     timer = QTimer()
     timer.start(500)
 
-    pipedream_pings = PipedreamPings()
 
-    while global_kill_flag.value:
-        freemocap_main_window = MainWindow(
-            freemocap_data_folder_path=get_freemocap_data_folder_path(), pipedream_pings=pipedream_pings
-        )
+
+    while not global_kill_flag.value:
+        freemocap_main_window = FreemocapMainWindow()
         logger.info("Showing main window - Ready to start!")
 
         freemocap_main_window.show()
@@ -67,4 +60,4 @@ def freemocap_gui_main(global_kill_flag=multiprocessing.Value):
 
 
 if __name__ == "__main__":
-    freemocap_gui_main()
+    freemocap_gui_main(multiprocessing.Value("b", False))

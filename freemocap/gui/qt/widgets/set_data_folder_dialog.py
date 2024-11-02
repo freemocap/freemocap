@@ -3,12 +3,12 @@ import threading
 
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QLabel, QHBoxLayout, QFileDialog
 
-from freemocap.gui.qt.utilities.user_settings import GuiState, save_gui_state
+from freemocap.gui.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 
 class SetDataFolderDialog(QDialog):
-    def __init__(self, gui_state: GuiState, kill_thread_event: threading.Event, parent=None) -> None:
+    def __init__(self, gui_state: UserSettings, kill_thread_event: threading.Event, parent=None) -> None:
         super().__init__(parent=parent)
         self.gui_state = gui_state
         self.kill_thread_event = kill_thread_event
@@ -64,6 +64,6 @@ class SetDataFolderDialog(QDialog):
         if self.new_folder_path is not None:
             freemocap_data_folder_path = Path(self.new_folder_path)
             self.gui_state.freemocap_data_folder_path = str(freemocap_data_folder_path)
-            save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+            save_gui_state(user_settings=self.gui_state, file_pathstring=get_gui_state_json_path())
 
             self.accept()

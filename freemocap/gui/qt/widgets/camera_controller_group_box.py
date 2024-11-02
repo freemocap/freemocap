@@ -12,14 +12,13 @@ from PySide6.QtWidgets import (
     QRadioButton,
     QCheckBox,
 )
-# from skellycam import SkellyCamControllerWidget, SkellyCamWidget
+from skellycam import SkellyCamCameraPanel
 
-from freemocap.gui.qt.utilities.user_settings import GuiState, save_gui_state
+from freemocap.gui.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
 from freemocap.system.paths_and_filenames.path_getters import (
     create_new_recording_folder_path,
     create_new_default_recording_name,
-    get_gui_state_json_path,
 )
 
 CALIBRATION_RECORDING_BUTTON_TEXT = "\U0001F534 \U0001F4D0 Start Calibration Recording"
@@ -29,7 +28,9 @@ logger = logging.getLogger(__name__)
 
 
 class CameraControllerGroupBox(QGroupBox):
-    def __init__(self, skellycam_widget: "SkellyCamWidget", gui_state: GuiState, parent=None):
+    def __init__(self, skellycam_widget: SkellyCamCameraPanel,
+                 user_settings: UserSettings,
+                 parent=None):
         super().__init__(parent=parent)
         self.setStyleSheet("font-size: 12px;")
         self._skellycam_widget = skellycam_widget
@@ -39,7 +40,7 @@ class CameraControllerGroupBox(QGroupBox):
         # )
         # self._skellycam_controller.check_recording_type = (self.check_recording_type,)
 
-        self.gui_state = gui_state
+        self._user_settings = user_settings
 
         self._layout = QHBoxLayout()
         self._layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -50,16 +51,16 @@ class CameraControllerGroupBox(QGroupBox):
 
         self._layout.addLayout(self._make_options_layout())
 
-        self._calibration_videos_radio_button.toggled.connect(self._set_record_button_text)
-        self._annotate_charuco_checkbox.toggled.connect(self._on_annotate_charuco_checkbox_changed)
-        self._mocap_videos_radio_button.toggled.connect(self._set_record_button_text)
-        # self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
-        # self._stop_recording_button.clicked.connect(self._set_record_button_text)
-
-        self._auto_process_videos_checkbox.toggled.connect(self._on_auto_process_videos_checkbox_changed)
-        self._generate_jupyter_notebook_checkbox.toggled.connect(self._on_generate_jupyter_notebook_checkbox_changed)
-        self._auto_open_in_blender_checkbox.toggled.connect(self._on_auto_open_in_blender_checkbox_changed)
-        self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
+        # self._calibration_videos_radio_button.toggled.connect(self._set_record_button_text)
+        # self._annotate_charuco_checkbox.toggled.connect(self._on_annotate_charuco_checkbox_changed)
+        # self._mocap_videos_radio_button.toggled.connect(self._set_record_button_text)
+        # # self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
+        # # self._stop_recording_button.clicked.connect(self._set_record_button_text)
+        #
+        # self._auto_process_videos_checkbox.toggled.connect(self._on_auto_process_videos_checkbox_changed)
+        # self._generate_jupyter_notebook_checkbox.toggled.connect(self._on_generate_jupyter_notebook_checkbox_changed)
+        # self._auto_open_in_blender_checkbox.toggled.connect(self._on_auto_open_in_blender_checkbox_changed)
+        # self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
 
     @property
     def mocap_videos_radio_button_checked(self) -> bool:
@@ -104,15 +105,15 @@ class CameraControllerGroupBox(QGroupBox):
         self._mocap_videos_radio_button.setChecked(True)
         hbox.addWidget(QLabel(" - "))
         self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
-        self._auto_process_videos_checkbox.setChecked(self.gui_state.auto_process_videos_on_save)
+        self._auto_process_videos_checkbox.setChecked(self._user_settings.auto_process_videos_on_save)
         hbox.addWidget(self._auto_process_videos_checkbox)
 
         self._generate_jupyter_notebook_checkbox = QCheckBox("Generate Jupyter Notebook")
-        self._generate_jupyter_notebook_checkbox.setChecked(self.gui_state.generate_jupyter_notebook)
+        self._generate_jupyter_notebook_checkbox.setChecked(self._user_settings.generate_jupyter_notebook)
         hbox.addWidget(self._generate_jupyter_notebook_checkbox)
 
         self._auto_open_in_blender_checkbox = QCheckBox("Auto Open in Blender")
-        self._auto_open_in_blender_checkbox.setChecked(self.gui_state.auto_open_in_blender)
+        self._auto_open_in_blender_checkbox.setChecked(self._user_settings.auto_open_in_blender)
         hbox.addWidget(self._auto_open_in_blender_checkbox)
         return hbox
 
@@ -127,14 +128,14 @@ class CameraControllerGroupBox(QGroupBox):
         hbox.addWidget(QLabel("Charuco square size (mm)", parent=self))
         self._charuco_square_size_line_edit = QLineEdit(parent=self)
         self._charuco_square_size_line_edit.setFixedWidth(100)
-        self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
+        self._charuco_square_size_line_edit.setText(str(self._user_settings.charuco_square_size))
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
         hbox.addWidget(self._charuco_square_size_line_edit)
 
         self._annotate_charuco_checkbox = QCheckBox("Display Charuco Overlay")
-        self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_charuco_images)
+        self._annotate_charuco_checkbox.setChecked(self._user_settings.annotate_charuco_images)
         self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
         hbox.addWidget(self._annotate_charuco_checkbox)
         hbox.addStretch()
@@ -239,21 +240,21 @@ class CameraControllerGroupBox(QGroupBox):
 
     def _on_annotate_charuco_checkbox_changed(self):
         self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
-        self.gui_state.annotate_charuco_images = self._annotate_charuco_checkbox.isChecked()
-        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self._user_settings.annotate_charuco_images = self._annotate_charuco_checkbox.isChecked()
+        self._user_settings.save()
 
     def _on_auto_process_videos_checkbox_changed(self):
-        self.gui_state.auto_process_videos_on_save = self._auto_process_videos_checkbox.isChecked()
-        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self._user_settings.auto_process_videos_on_save = self._auto_process_videos_checkbox.isChecked()
+        self._user_settings.save()
 
     def _on_generate_jupyter_notebook_checkbox_changed(self):
-        self.gui_state.generate_jupyter_notebook = self._generate_jupyter_notebook_checkbox.isChecked()
-        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self._user_settings.generate_jupyter_notebook = self._generate_jupyter_notebook_checkbox.isChecked()
+        self._user_settings.save()
 
     def _on_auto_open_in_blender_checkbox_changed(self):
-        self.gui_state.auto_open_in_blender = self._auto_open_in_blender_checkbox.isChecked()
-        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self._user_settings.auto_open_in_blender = self._auto_open_in_blender_checkbox.isChecked()
+        self._user_settings.save()
 
     def _on_charuco_square_size_line_edit_changed(self):
-        self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
-        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self._user_settings.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        self._user_settings.save()

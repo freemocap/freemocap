@@ -14,7 +14,6 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
     ProcessingParameterModel,
 )
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
-from freemocap.gui.qt.utilities.user_settings import GuiState
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
     create_mediapipe_parameter_group,
@@ -29,6 +28,7 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
 )
+from freemocap.gui.user_settings import UserSettings
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         get_active_recording_info: Callable[..., RecordingInfoModel],
         kill_thread_event: threading.Event,
         log_update: Callable,
-        gui_state: GuiState,
+        user_settings: UserSettings,
         parent=None,
     ):
         super().__init__(parent=parent)
@@ -65,7 +65,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._calibration_control_panel = CalibrationControlPanel(
             get_active_recording_info=self._get_active_recording_info,
             kill_thread_event=self._kill_thread_event,
-            gui_state=gui_state,
+            user_settings=user_settings,
             parent=self,
         )
         vbox.addWidget(self._calibration_control_panel)

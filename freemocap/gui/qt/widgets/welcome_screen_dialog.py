@@ -3,13 +3,13 @@ import threading
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QCheckBox, QPushButton, QLabel, QHBoxLayout, QFrame
 
-from freemocap.gui.qt.utilities.user_settings import GuiState, save_gui_state
+from freemocap.gui.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 
 class WelcomeScreenDialog(QDialog):
-    def __init__(self, gui_state: GuiState, kill_thread_event: threading.Event, parent=None) -> None:
+    def __init__(self, gui_state: UserSettings, kill_thread_event: threading.Event, parent=None) -> None:
         super().__init__(parent=parent)
         self.gui_state = gui_state
         self.kill_thread_event = kill_thread_event
@@ -73,4 +73,4 @@ class WelcomeScreenDialog(QDialog):
 
     def _dont_show_again_checkbox_changed(self) -> None:
         self.gui_state.show_welcome_screen = not self._dont_show_again_checkbox.isChecked()
-        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self.gui_state.save_user_settings()

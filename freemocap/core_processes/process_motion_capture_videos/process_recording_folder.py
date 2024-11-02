@@ -22,8 +22,8 @@ from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_
 )
 from freemocap.data_layer.data_saver.data_saver import DataSaver
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
-from freemocap.system.logging.queue_logger import DirectQueueHandler
-from freemocap.system.logging.configure_logging import log_view_logging_format_string
+# from freemocap.system.logging.queue_logger import DirectQueueHandler
+# from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 from freemocap.utilities.kill_event_exception import KillEventException
 
@@ -53,10 +53,10 @@ def process_recording_folder(
         Whether or not to use tqdm to show progress bar in terminal
 
     """
-    if logging_queue:
-        handler = DirectQueueHandler(logging_queue)
-        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
-        logger.addHandler(handler)
+    # if logging_queue:
+    #     handler = DirectQueueHandler(logging_queue)
+    #     handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
+    #     logger.addHandler(handler)
 
     try:
         processing_pipeline_check(processing_parameters=recording_processing_parameter_model)

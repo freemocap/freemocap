@@ -3,9 +3,10 @@ from copy import copy
 from pathlib import Path
 from typing import Union, Callable
 
+from PySide6 import QtGui
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget, QPushButton, QFileSystemModel
-from qtpy import QtGui
+# from qtpy import QtGui
 
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.system.open_file import open_file

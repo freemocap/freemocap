@@ -134,14 +134,14 @@ class MainWindow(QMainWindow):
             "Watch the terminal output for status updates, we're working on integrating better status updates into the GUI"
         )
 
-        self._central_tab_widget = self._create_central_tab_widget()
-        self.setCentralWidget(self._central_tab_widget)
+        # self._central_tab_widget = self._create_central_tab_widget()
+        # self.setCentralWidget(self._central_tab_widget)
 
         self._tools_dock_widget = self._create_tools_dock_widget()
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._tools_dock_widget)
 
-        self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
-        self._tools_dock_widget.setWidget(self._control_panel_widget)
+        # self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
+        # self._tools_dock_widget.setWidget(self._control_panel_widget)
 
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
@@ -190,16 +190,16 @@ class MainWindow(QMainWindow):
         self._central_tab_widget.set_camera_view_tab_enabled(True)
         self._central_tab_widget.setCurrentIndex(1)
         self._controller_group_box.show()
-        self._skellycam_widget.detect_available_cameras()
+        # self._skellycam_widget.detect_available_cameras()
 
     def update(self):
         super().update()
 
-        try:
-            if not self._skellycam_widget.is_recording:
-                self._controller_group_box.update_recording_name_string()
-        except Exception as e:
-            logger.exception(e)
+        # try:
+        #     # if not self._skellycam_widget.is_recording:
+        #     #     self._controller_group_box.update_recording_name_string()
+        # except Exception as e:
+        #     logger.exception(e)
 
     def _set_up_stylesheet(self):
         apply_css_style_sheet(self, get_css_stylesheet_path())
@@ -218,24 +218,24 @@ class MainWindow(QMainWindow):
     def _create_central_tab_widget(self):
         self._home_widget = HomeWidget(actions=self._actions, gui_state=self._gui_state, parent=self)
 
-        self._skellycam_widget = SkellyCamWidget(
-            self._create_new_synchronized_videos_folder,
-            parent=self,
-        )
-        self._skellycam_widget.videos_saved_to_this_folder_signal.connect(
-            self._handle_videos_saved_to_this_folder_signal
-        )
+        # self._skellycam_widget = SkellyCamWidget(
+        #     self._create_new_synchronized_videos_folder,
+        #     parent=self,
+        # )
+        # self._skellycam_widget.videos_saved_to_this_folder_signal.connect(
+        #     self._handle_videos_saved_to_this_folder_signal
+        # )
 
-        self._controller_group_box = CameraControllerGroupBox(
-            skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
-        )
+        # self._controller_group_box = CameraControllerGroupBox(
+        #     skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
+        # )
 
         self._skelly_viewer_widget = SkellyViewer()
 
         center_tab_widget = CentralTabWidget(
             parent=self,
-            skelly_cam_widget=self._skellycam_widget,
-            camera_controller_widget=self._controller_group_box,
+            # skelly_cam_widget=self._skellycam_widget,
+            # camera_controller_widget=self._controller_group_box,
             welcome_to_freemocap_widget=self._home_widget,
             skelly_viewer_widget=self._skelly_viewer_widget,
             directory_view_widget=self._directory_view_widget,
@@ -255,7 +255,7 @@ class MainWindow(QMainWindow):
         )
 
     def _create_control_panel_widget(self, log_update: Callable):
-        self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(self._skellycam_widget)
+        # self._camera_configuration_parameter_tree_widget = SkellyCamParameterTreeWidget(self._skellycam_widget)
 
         self._process_motion_capture_data_panel = ProcessMotionCaptureDataPanel(
             recording_processing_parameters=ProcessingParameterModel(),

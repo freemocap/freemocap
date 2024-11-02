@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QWidget, QLabel, QTabWidget
 
 # from skelly_viewer import SkellyViewer
-from skellycam import SkellyCamWidget
+# from skellycam import SkellyCamWidget
 
 from freemocap.gui.qt.widgets.home_widget import (
     HomeWidget,
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class CentralTabWidget(QTabWidget):
     def __init__(
         self,
-        skelly_cam_widget: SkellyCamWidget,
+        skelly_cam_widget: "SkellyCamWidget",
         camera_controller_widget: QWidget,
         welcome_to_freemocap_widget: HomeWidget,
         skelly_viewer_widget: QWidget,

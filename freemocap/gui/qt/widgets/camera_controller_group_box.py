@@ -53,8 +53,8 @@ class CameraControllerGroupBox(QGroupBox):
         self._calibration_videos_radio_button.toggled.connect(self._set_record_button_text)
         self._annotate_charuco_checkbox.toggled.connect(self._on_annotate_charuco_checkbox_changed)
         self._mocap_videos_radio_button.toggled.connect(self._set_record_button_text)
-        self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
-        self._stop_recording_button.clicked.connect(self._set_record_button_text)
+        # self._skellycam_widget.cameras_connected_signal.connect(lambda: self._start_recording_button.setEnabled(True))
+        # self._stop_recording_button.clicked.connect(self._set_record_button_text)
 
         self._auto_process_videos_checkbox.toggled.connect(self._on_auto_process_videos_checkbox_changed)
         self._generate_jupyter_notebook_checkbox.toggled.connect(self._on_generate_jupyter_notebook_checkbox_changed)

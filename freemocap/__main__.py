@@ -3,15 +3,16 @@ import multiprocessing
 import sys
 import time
 
-from skellycam.api.run_skellycam_server import run_server
-from skellycam.utilities.clean_path import clean_path
-from skellycam.utilities.setup_windows_app_id import setup_app_id_for_windows
+from freemocap.api.run_freemocap_server import run_server
+from freemocap.gui.qt.freemocap_main import freemocap_gui_main
+from freemocap.utilities.clean_path import clean_path
+from freemocap.utilities.setup_windows_app_id import setup_app_id_for_windows
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
 
 logger = logging.getLogger(__name__)
 
-from skellycam.gui.gui_main import gui_main
+
 
 
 def main():
@@ -27,7 +28,7 @@ def main():
     time.sleep(1)  # Give the backend time to startup
 
     logger.info("Starting frontend GUI")
-    gui_main(global_kill_flag) # blocks until GUI is closed
+    freemocap_gui_main(global_kill_flag) # blocks until GUI is closed
 
     logger.info("Frontend GUI ended")
     global_kill_flag.value = True

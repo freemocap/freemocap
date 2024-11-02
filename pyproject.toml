@@ -5,7 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "aniposelib>=0.7.0",
     "freemocap-blender-addon",
+    "libsass>=0.23.0",
+    "mediapipe==0.10.14",
+    "requests>=2.32.3",
+    "skelly-synchronize",
     "skelly-viewer",
     "skellycam",
     "skellyforge",
@@ -18,3 +23,4 @@ skellytracker = { git = "https://github.com/freemocap/skellytracker" }
 skellyforge = { git = "https://github.com/freemocap/skellyforge" }
 skelly-viewer = { git = "https://github.com/freemocap/skellyviewer" }
 freemocap-blender-addon = { git = "https://github.com/freemocap/freemocap_blender_addon" }
+skelly-synchronize = { git = "https://github.com/freemocap/skelly_synchronize" }

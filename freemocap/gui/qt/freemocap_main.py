@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 import signal
 import sys
 from pathlib import Path
@@ -26,7 +27,7 @@ def sigint_handler(*args):
     QApplication.quit()
 
 
-def qt_gui_main():
+def freemocap_gui_main(global_kill_flag=multiprocessing.Value("b", False)):
     logger.info("Starting main...")
     signal.signal(signal.SIGINT, sigint_handler)
     app = get_qt_app()
@@ -64,4 +65,4 @@ def qt_gui_main():
 
 
 if __name__ == "__main__":
-    qt_gui_main()
+    freemocap_gui_main()

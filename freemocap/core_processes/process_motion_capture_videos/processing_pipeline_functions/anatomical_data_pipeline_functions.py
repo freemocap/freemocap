@@ -10,8 +10,8 @@ from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mas
 from freemocap.core_processes.post_process_skeleton_data.create_skeleton import create_skeleton_model
 from freemocap.core_processes.post_process_skeleton_data.enforce_rigid_bones import enforce_rigid_bones_from_skeleton
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
-from freemocap.system.logging.queue_logger import DirectQueueHandler
-from freemocap.system.logging.configure_logging import log_view_logging_format_string
+# from freemocap.system.logging.queue_logger import DirectQueueHandler
+# from freemocap.system.logging.configure_logging import log_view_logging_format_string
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +21,10 @@ def calculate_anatomical_data(
     skel3d_frame_marker_xyz: np.ndarray,
     queue: multiprocessing.Queue,
 ) -> Dict[str, Union[np.ndarray, None]]:
-    if queue:
-        handler = DirectQueueHandler(queue)
-        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
-        logger.addHandler(handler)
+    # if queue:
+    #     handler = DirectQueueHandler(queue)
+    #     handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
+    #     logger.addHandler(handler)
 
     logger.info("Creating skeleton model...")
     skeleton = create_skeleton_model(

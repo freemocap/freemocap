@@ -19,8 +19,8 @@ from skellyforge.freemocap_utils.postprocessing_widgets.task_worker_thread impor
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
-from freemocap.system.logging.configure_logging import log_view_logging_format_string
-from freemocap.system.logging.queue_logger import DirectQueueHandler
+# from freemocap.system.logging.configure_logging import log_view_logging_format_string
+# from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
 
 logger = logging.getLogger(__name__)
@@ -109,10 +109,10 @@ def post_process_data(
     raw_skel3d_frame_marker_xyz: np.ndarray,
     queue: multiprocessing.Queue,
 ) -> np.ndarray:
-    if queue:
-        handler = DirectQueueHandler(queue)
-        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
-        logger.addHandler(handler)
+    # if queue:
+        # handler = DirectQueueHandler(queue)
+        # handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
+        # logger.addHandler(handler)
     filter_sampling_rate, filter_cutoff_frequency, filter_order, run_butterworth_filter = (
         get_settings_from_parameter_tree(recording_processing_parameter_model)
     )

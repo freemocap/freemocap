@@ -19,8 +19,8 @@ from freemocap.core_processes.post_process_skeleton_data.process_single_camera_s
     process_single_camera_skeleton_data,
 )
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
-from freemocap.system.logging.queue_logger import DirectQueueHandler
-from freemocap.system.logging.configure_logging import log_view_logging_format_string
+# from freemocap.system.logging.queue_logger import DirectQueueHandler
+# from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
 
 logger = logging.getLogger(__name__)
@@ -32,10 +32,10 @@ def get_triangulated_data(
     kill_event: Optional[multiprocessing.Event] = None,
     queue: Optional[multiprocessing.Queue] = None,
 ) -> np.ndarray:
-    if queue:
-        handler = DirectQueueHandler(queue)
-        handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
-        logger.addHandler(handler)
+    # if queue:
+    #     handler = DirectQueueHandler(queue)
+    #     handler.setFormatter(logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S"))
+    #     logger.addHandler(handler)
 
     if image_data_numCams_numFrames_numTrackedPts_XYZ.shape[0] == 1:
         logger.info("Skipping 3d triangulation for single camera data")

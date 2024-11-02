@@ -9,12 +9,12 @@ from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QApplication, QPlainTextEdit
 
 from freemocap.gui.qt.utilities.colors import get_next_color, rgb_color_generator
-from freemocap.system.logging.configure_logging import log_view_logging_format_string
+# from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
 
 logger = logging.getLogger(__name__)
 
-log_view_logging_formatter = logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S")
+# log_view_logging_formatter = logging.Formatter(fmt=log_view_logging_format_string, datefmt="%Y-%m-%dT%H:%M:%S")
 
 level_colors = {
     "DEBUG": (169, 169, 169),  # dimmed gray
@@ -42,8 +42,8 @@ class LoggingQueueListener(QThread):
         try:
             while not self._exit_event.is_set():
                 if self._logging_queue.empty():
-                    if self._parent._keep_logging:
-                        QtCore.QMetaObject.invokeMethod(self._parent, "log_progress", QtCore.Qt.QueuedConnection)
+                    # if self._parent._keep_logging:
+                    #     QtCore.QMetaObject.invokeMethod(self._parent, "log_progress", QtCore.Qt.QueuedConnection)
                     continue
 
                 record = self._logging_queue.get(block=True)
@@ -71,7 +71,7 @@ class LogViewWidget(QPlainTextEdit):
 
         self._logging_queue = multiprocessing.Queue(-1)
         self._queue_handler = QueueHandler(self._logging_queue)
-        self._queue_handler.setFormatter(log_view_logging_formatter)
+        # self._queue_handler.setFormatter(log_view_logging_formatter)
         self._queue_handler.setLevel(logging.INFO)
         logging.getLogger("").handlers.append(self._queue_handler)
 
@@ -95,56 +95,56 @@ class LogViewWidget(QPlainTextEdit):
         full_message = record.getMessage().split(":::::")[-1].strip()
         message_content = full_message.split("||||")[-1].strip()
         code_path_str = full_message.split("||||")[0].strip()
-        package, method, line = code_path_str.split(":")
-
-        if message_content == LOG_VIEW_PROGRESS_BAR_STRING + ".":
-            self._keep_logging = True
-            return
-        else:
-            self._keep_logging = False
-
-        # Set color for the level
-        r, g, b = level_colors.get(level.strip(), (255, 255, 255))
-        color_level = f"<span style='color:rgb({r},{g},{b});'>{level}</span>"
-
-        # Set color for the timestamp using the timestamp_color_generator
-        r, g, b = next(self.timestamp_color_generator)
-        color_timestamp = f"<span style='color:rgb({r},{g},{b});'>{timestamp}</span>"
-
-        # Get color for process and thread ID
-        if process_id_str not in process_colors:
-            process_colors[process_id_str] = get_next_color()
-        r, g, b = process_colors[process_id_str]
-        process_str = f"ProcessID:{process_id_str}"
-
-        color_process_id = f"<span style='color:rgb({r},{g},{b});'>[{process_str},</span>"
-
-        thread_process_id_str = f"{thread_id_str}:{process_id_str}"
-        if thread_process_id_str not in thread_colors:
-            thread_colors[thread_process_id_str] = get_next_color()
-        r, g, b = thread_colors[thread_process_id_str]
-        thread_str = f"ThreadID:{thread_id_str}"
-        color_thread_id = f"<span style='color:rgb({r},{g},{b});'>{thread_str}]</span>"
-
-        color_process_id_thread_id = f"{color_process_id} {color_thread_id}"
-        color_process_id_thread_id.ljust(25)
-
-        # Choose a color for the message using the log_message_color_generator
-
-        if package + method not in code_path_colors:
-            code_path_colors[package + method] = get_next_color()
-
-        r, g, b = code_path_colors[package + method]
-        color_code_path = f"<span style='color:rgb({r},{g},{b});'>{code_path_str}</span>"
-
-        r, g, b = (255, 255, 255)
-        color_message = f"<span style='color:rgb({r},{g},{b});'>{message_content}</span>"
-
-        # Combine colored parts
-        colored_log_entry = (
-            f"{color_timestamp}[{color_level}] {color_process_id_thread_id} {color_code_path} ::: {color_message}"
-        )
-        self.appendHtml(colored_log_entry)
+        # package, method, line = code_path_str.split(":")
+        # #
+        # # if message_content == LOG_VIEW_PROGRESS_BAR_STRING + ".":
+        # #     self._keep_logging = True
+        # #     return
+        # # else:
+        # #     self._keep_logging = False
+        #
+        # # Set color for the level
+        # r, g, b = level_colors.get(level.strip(), (255, 255, 255))
+        # color_level = f"<span style='color:rgb({r},{g},{b});'>{level}</span>"
+        #
+        # # Set color for the timestamp using the timestamp_color_generator
+        # r, g, b = next(self.timestamp_color_generator)
+        # color_timestamp = f"<span style='color:rgb({r},{g},{b});'>{timestamp}</span>"
+        #
+        # # Get color for process and thread ID
+        # if process_id_str not in process_colors:
+        #     process_colors[process_id_str] = get_next_color()
+        # r, g, b = process_colors[process_id_str]
+        # process_str = f"ProcessID:{process_id_str}"
+        #
+        # color_process_id = f"<span style='color:rgb({r},{g},{b});'>[{process_str},</span>"
+        #
+        # thread_process_id_str = f"{thread_id_str}:{process_id_str}"
+        # if thread_process_id_str not in thread_colors:
+        #     thread_colors[thread_process_id_str] = get_next_color()
+        # r, g, b = thread_colors[thread_process_id_str]
+        # thread_str = f"ThreadID:{thread_id_str}"
+        # color_thread_id = f"<span style='color:rgb({r},{g},{b});'>{thread_str}]</span>"
+        #
+        # color_process_id_thread_id = f"{color_process_id} {color_thread_id}"
+        # color_process_id_thread_id.ljust(25)
+        #
+        # # Choose a color for the message using the log_message_color_generator
+        #
+        # if package + method not in code_path_colors:
+        #     code_path_colors[package + method] = get_next_color()
+        #
+        # r, g, b = code_path_colors[package + method]
+        # color_code_path = f"<span style='color:rgb({r},{g},{b});'>{code_path_str}</span>"
+        #
+        # r, g, b = (255, 255, 255)
+        # color_message = f"<span style='color:rgb({r},{g},{b});'>{message_content}</span>"
+        #
+        # # Combine colored parts
+        # colored_log_entry = (
+        #     f"{color_timestamp}[{color_level}] {color_process_id_thread_id} {color_code_path} ::: {color_message}"
+        # )
+        # self.appendHtml(colored_log_entry)
 
     @QtCore.Slot()
     def log_progress(self, bar_length: int = 100, cycles_per_update: int = 2500) -> None:

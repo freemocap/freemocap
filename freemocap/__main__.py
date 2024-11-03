@@ -4,7 +4,7 @@ import sys
 import time
 
 from freemocap.api.run_freemocap_server import run_server
-from freemocap.gui.qt.freemocap_main import freemocap_gui_main
+from freemocap.frontend.qt.freemocap_main import freemocap_gui_main
 from freemocap.utilities.clean_path import clean_path
 from freemocap.utilities.setup_windows_app_id import setup_app_id_for_windows
 

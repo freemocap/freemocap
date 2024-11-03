@@ -20,10 +20,10 @@ from PySide6.QtWidgets import (
 )
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 
-from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
+from freemocap.frontend.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
-from freemocap.gui.user_settings import UserSettings
+from freemocap.frontend.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.path_getters import (
     get_gui_state_json_path,
     get_last_successful_calibration_toml_path,

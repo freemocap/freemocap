@@ -7,7 +7,7 @@ from PySide6 import QtGui
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget, QPushButton, QFileSystemModel
 
-from freemocap.gui.user_settings import UserSettings
+from freemocap.frontend.user_settings import UserSettings
 # from qtpy import QtGui
 
 from freemocap.system.open_file import open_file

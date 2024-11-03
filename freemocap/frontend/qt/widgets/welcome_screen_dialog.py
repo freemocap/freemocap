@@ -3,7 +3,7 @@ import threading
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QCheckBox, QPushButton, QLabel, QHBoxLayout, QFrame
 
-from freemocap.gui.user_settings import UserSettings
+from freemocap.frontend.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 

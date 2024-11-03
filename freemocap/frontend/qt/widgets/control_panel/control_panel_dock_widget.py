@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 )
 from skellycam import SkellyCamCameraControlPanel
 
-from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
+from freemocap.frontend.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
 

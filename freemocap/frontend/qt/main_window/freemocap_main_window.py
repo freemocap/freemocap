@@ -27,38 +27,39 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
 from freemocap.data_layer.recording_models.recording_info_model import (
     RecordingInfoModel,
 )
-from freemocap.gui.qt.actions_and_menus.actions import Actions
-from freemocap.gui.qt.actions_and_menus.menu_bar import MenuBar
-from freemocap.gui.qt.style_sheet.css_file_watcher import CSSFileWatcher
-from freemocap.gui.qt.style_sheet.scss_file_watcher import SCSSFileWatcher
-from freemocap.gui.qt.style_sheet.set_css_style_sheet import apply_css_style_sheet
-from freemocap.gui.qt.utilities.copy_timestamps_folder import copy_directory_if_contains_timestamps
-from freemocap.gui.qt.utilities.get_qt_app import get_qt_app
-from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
+from freemocap.frontend.client.frontend_client import FrontendClient
+from freemocap.frontend.qt.actions_and_menus.actions import Actions
+from freemocap.frontend.qt.actions_and_menus.menu_bar import MenuBar
+from freemocap.frontend.qt.style_sheet.css_file_watcher import CSSFileWatcher
+from freemocap.frontend.qt.style_sheet.scss_file_watcher import SCSSFileWatcher
+from freemocap.frontend.qt.style_sheet.set_css_style_sheet import apply_css_style_sheet
+from freemocap.frontend.qt.utilities.copy_timestamps_folder import copy_directory_if_contains_timestamps
+from freemocap.frontend.qt.utilities.get_qt_app import get_qt_app
+from freemocap.frontend.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
 )
-from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingInfoWidget
-from freemocap.gui.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
-from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
-from freemocap.gui.qt.widgets.control_panel.control_panel_dock_widget import (
+from freemocap.frontend.qt.widgets.active_recording_widget import ActiveRecordingInfoWidget
+from freemocap.frontend.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
+from freemocap.frontend.qt.widgets.central_tab_widget import CentralTabWidget
+from freemocap.frontend.qt.widgets.control_panel.control_panel_dock_widget import (
     ControlPanelWidget,
 )
-from freemocap.gui.qt.widgets.control_panel.export_data_control_panel import VisualizationControlPanel
-from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
+from freemocap.frontend.qt.widgets.control_panel.export_data_control_panel import VisualizationControlPanel
+from freemocap.frontend.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
-from freemocap.gui.qt.widgets.directory_view_widget import DirectoryViewWidget
-from freemocap.gui.qt.widgets.home_widget import (
+from freemocap.frontend.qt.widgets.directory_view_widget import DirectoryViewWidget
+from freemocap.frontend.qt.widgets.home_widget import (
     HomeWidget,
 )
-from freemocap.gui.qt.widgets.import_videos_wizard import ImportVideosWizard
-from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
-from freemocap.gui.qt.widgets.opencv_conflict_dialog import OpencvConflictDialog
-from freemocap.gui.qt.widgets.set_data_folder_dialog import SetDataFolderDialog
-from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
-from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
-from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
-from freemocap.gui.user_settings import UserSettings
+from freemocap.frontend.qt.widgets.import_videos_wizard import ImportVideosWizard
+from freemocap.frontend.qt.widgets.log_view_widget import LogViewWidget
+from freemocap.frontend.qt.widgets.opencv_conflict_dialog import OpencvConflictDialog
+from freemocap.frontend.qt.widgets.set_data_folder_dialog import SetDataFolderDialog
+from freemocap.frontend.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
+from freemocap.frontend.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
+from freemocap.frontend.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
+from freemocap.frontend.user_settings import UserSettings
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -82,6 +83,8 @@ logger = logging.getLogger(__name__)
 class FreemocapMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self._client = FrontendClient()
+        self._client.connect_websocket()
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
         logger.info("Initializing FreeMoCap MainWindow")
 

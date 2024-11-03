@@ -7,7 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
-from freemocap.gui.qt.main_window.freemocap_main_window import FreemocapMainWindow, EXIT_CODE_REBOOT
+from freemocap.frontend.qt.main_window.freemocap_main_window import FreemocapMainWindow, EXIT_CODE_REBOOT
 from freemocap.utilities.fix_opencv_conflict import fix_opencv_conflict
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)

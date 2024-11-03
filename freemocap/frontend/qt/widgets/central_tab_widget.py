@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QVBoxLayout, QWidget, QLabel, QTabWidget
 # from skelly_viewer import SkellyViewer
 # from skellycam import SkellyCamWidget
 
-from freemocap.gui.qt.widgets.home_widget import (
+from freemocap.frontend.qt.widgets.home_widget import (
     HomeWidget,
 )
 

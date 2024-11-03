@@ -14,14 +14,14 @@ from PySide6.QtWidgets import (
 from packaging import version
 
 import freemocap
-from freemocap.gui.qt.actions_and_menus.actions import (
+from freemocap.frontend.qt.actions_and_menus.actions import (
     CREATE_NEW_RECORDING_ACTION_NAME,
     LOAD_RECORDING_ACTION_NAME,
     IMPORT_VIDEOS_ACTION_NAME,
     Actions,
 )
-from freemocap.gui.qt.widgets.logo_svg_widget import LogoSvgWidget
-from freemocap.gui.user_settings import UserSettings
+from freemocap.frontend.qt.widgets.logo_svg_widget import LogoSvgWidget
+from freemocap.frontend.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 

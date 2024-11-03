@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 from skellycam import SkellyCamCameraPanel, SkellyCamCameraControlPanel
 
-from freemocap.gui.user_settings import UserSettings
+from freemocap.frontend.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
 from freemocap.system.paths_and_filenames.path_getters import (
     create_new_recording_folder_path,

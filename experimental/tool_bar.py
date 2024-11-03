@@ -1,8 +1,8 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QToolBar, QWidget
 
-from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
-from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
+from freemocap.frontend.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
+from freemocap.frontend.qt.widgets.control_panel.process_mocap_data_panel.process_motion_capture_data_panel import (
     ProcessMotionCaptureDataPanel,
 )
 

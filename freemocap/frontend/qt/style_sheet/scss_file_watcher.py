@@ -5,7 +5,7 @@ from typing import Union
 from PySide6 import QtCore
 from PySide6.QtCore import Slot, QFileSystemWatcher
 
-from freemocap.gui.qt.style_sheet.compile_scss_to_css import compile_scss_to_css
+from freemocap.frontend.qt.style_sheet.compile_scss_to_css import compile_scss_to_css
 
 logger = logging.getLogger(__name__)
 

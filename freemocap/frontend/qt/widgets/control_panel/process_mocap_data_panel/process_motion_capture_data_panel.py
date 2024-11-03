@@ -14,8 +14,8 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
     ProcessingParameterModel,
 )
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
-from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
-from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
+from freemocap.frontend.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
+from freemocap.frontend.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
     create_mediapipe_parameter_group,
     create_3d_triangulation_parameter_group,
     create_post_processing_parameter_group,
@@ -25,10 +25,10 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
     RUN_BUTTERWORTH_FILTER_NAME,
     NUMBER_OF_PROCESSES_PARAMETER_NAME,
 )
-from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
+from freemocap.frontend.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
 )
-from freemocap.gui.user_settings import UserSettings
+from freemocap.frontend.user_settings import UserSettings
 from skellycam import SkellyCamCameraControlPanel
 logger = logging.getLogger(__name__)
 

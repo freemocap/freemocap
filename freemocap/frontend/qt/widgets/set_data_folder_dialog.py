@@ -3,7 +3,7 @@ import threading
 
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QLabel, QHBoxLayout, QFileDialog
 
-from freemocap.gui.user_settings import UserSettings
+from freemocap.frontend.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 

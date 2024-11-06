@@ -3,7 +3,7 @@ import multiprocessing
 import sys
 import time
 
-from freemocap.api.run_freemocap_server import run_server
+from freemocap.api.run_freemocap_server import run_freemocap_server
 from freemocap.frontend.qt.freemocap_main import freemocap_gui_main
 from freemocap.utilities.clean_path import clean_path
 from freemocap.utilities.setup_windows_app_id import setup_app_id_for_windows
@@ -22,7 +22,7 @@ def main():
 
     global_kill_flag = multiprocessing.Value('b', False)
 
-    server_process = multiprocessing.Process(target=run_server, args=(global_kill_flag,))
+    server_process = multiprocessing.Process(target=run_freemocap_server, args=(global_kill_flag,))
     logger.info("Starting backend server process")
     server_process.start()
     time.sleep(1)  # Give the backend time to startup

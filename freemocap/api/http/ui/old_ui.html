@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>FreeMoCap UI Tester</title>
+    <title>SkellyCam API UI Tester</title>
     <style>
         .image {
             width: 640px;
@@ -28,7 +28,7 @@
     <script>
         let ws;
         let isConnected = false;
-        const websocket_url = 'ws://localhost:8005/websocket/connect';
+        const latestImages = {};
         const imageElements = {};
 
         function updateStatus() {
@@ -36,11 +36,12 @@
         }
 
         function connectWebSocket() {
-            ws = new WebSocket(websocket_url);
+            ws = new WebSocket('ws://localhost:8005/websocket/connect');
 
             // websocket helpers
             const decoder = new TextDecoder('utf-8');
-            
+
+
             ws.onopen = () => {
                 isConnected = true;
                 updateStatus();

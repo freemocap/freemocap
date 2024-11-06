@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
 )
+
+from freemocap.frontend.client.frontend_client import FrontendClient
 from skelly_viewer import SkellyViewer
 from skellycam import SkellyCamCameraPanel, SkellyCamCameraControlPanel
 from tqdm import tqdm
@@ -27,7 +29,6 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
 from freemocap.data_layer.recording_models.recording_info_model import (
     RecordingInfoModel,
 )
-from freemocap.frontend.client.frontend_client import FrontendClient
 from freemocap.frontend.qt.actions_and_menus.actions import Actions
 from freemocap.frontend.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.frontend.qt.style_sheet.css_file_watcher import CSSFileWatcher
@@ -83,7 +84,7 @@ logger = logging.getLogger(__name__)
 class FreemocapMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self._client = FrontendClient()
+        self._client = FrontendClient(parent=self)
         self._client.connect_websocket()
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
         logger.info("Initializing FreeMoCap MainWindow")
@@ -97,7 +98,7 @@ class FreemocapMainWindow(QMainWindow):
         dummy_widget.setLayout(self._layout)
         self.setCentralWidget(dummy_widget)
 
-        self._css_file_watcher = self._set_up_stylesheet()
+        # self._css_file_watcher = self._set_up_stylesheet()
 
         self._freemocap_data_folder_path = get_freemocap_data_folder_path()
         self._pipedream_pings = PipedreamPings()

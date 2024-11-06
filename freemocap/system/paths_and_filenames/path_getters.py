@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Optional, Union
 
 import toml
-
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     LOGS_INFO_AND_SETTINGS_FOLDER_NAME,
     LOG_FILE_FOLDER_NAME,
@@ -57,13 +56,11 @@ def get_freemocap_data_folder_path(create_folder: bool = True) -> str:
     try:
         if freemocap_data_folder_path is None:
             freemocap_data_folder_path = Path(os_independent_home_dir(), BASE_FREEMOCAP_DATA_FOLDER_NAME)
-        if Path(get_gui_state_json_path()).exists():
-            gui_state = load_gui_state(get_gui_state_json_path())
-        else:  # if GUI state isn't in new location, look in old location
-            gui_state = load_gui_state(
-                str(Path(freemocap_data_folder_path) / LOGS_INFO_AND_SETTINGS_FOLDER_NAME / GUI_STATE_JSON_FILENAME)
-            )
-        freemocap_data_folder_path = Path(gui_state.freemocap_data_folder_path)
+        # if Path(get_gui_state_json_path()).exists():
+        #     gui_state = UserSettings.load_user_settings()
+        # else:  # if GUI state isn't in new location, look in old location
+        #     gui_state = UserSettings.load_user_settings()
+        # freemocap_data_folder_path = Path(gui_state.freemocap_data_folder_path)
     except Exception as e:  # TODO: figure out specific exceptions to catch
         print(e)  # Cannot log this due to circular import from logging config
     finally:
@@ -164,11 +161,11 @@ def get_logs_info_and_settings_folder_path(create_folder: bool = True):
 def get_css_stylesheet_path():
     # return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "ElegantDark.qss")
     # return str(Path(__file__).parent.parent / "gui" / "qt" / "style_sheet" / "FunkyTown.qss")
-    return str(Path(__file__).parent.parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.css")
+    return str(Path(__file__).parent.parent.parent / "frontend" / "qt" / "style_sheet" / "css_qt_style_sheet.css")
 
 
 def get_scss_stylesheet_path():
-    return str(Path(__file__).parent.parent.parent / "gui" / "qt" / "style_sheet" / "qt_style_sheet.scss")
+    return str(Path(__file__).parent.parent.parent / "frontend" / "qt" / "style_sheet" / "scss_qt_style_sheet.scss")
 
 
 def get_most_recent_recording_toml_path():

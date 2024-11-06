@@ -17,7 +17,7 @@ enabled_routers = {
         "state": state_router,
         "shutdown": app_shutdown_router
     },
-    "/skellycam": {
+    "/cameras": {
         "connect": connect_cameras_router,
         # "detect": detect_cameras_router,
         "record": record_cameras_router,

@@ -1,8 +1,10 @@
 import logging
 import multiprocessing
+import sys
 import time
 
 from freemocap.api.server.server_singleton import create_server_manager
+from freemocap.utilities.setup_windows_app_id import setup_app_id_for_windows
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,10 @@ def run_freemocap_server(global_kill_flag: multiprocessing.Value):
 
 
 if __name__ == "__main__":
+
+    multiprocessing.freeze_support()
+    if sys.platform == "win32":
+        setup_app_id_for_windows()
     outer_global_kill_flag = multiprocessing.Value("b", False)
     run_freemocap_server(outer_global_kill_flag)
     outer_global_kill_flag.value = True

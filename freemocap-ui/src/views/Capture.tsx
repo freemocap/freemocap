@@ -3,7 +3,7 @@ import React, {useState} from "react";
 import Webcam from "react-webcam";
 import {useAsync} from "react-use";
 import {StartStopProcess} from "../components/start-stop-process";
-import {BrowserCam} from "../services/cam";
+import {AvailableCameraDevices} from "../services/detectCameraDevices";
 import {StreamByDeviceId} from "../services/recorder";
 
 class ViewState {
@@ -15,7 +15,7 @@ export const WebcamStreamCapture = () => {
   const [devices, setDevices] = useState<ViewState>(() => new ViewState());
   // grab all devices
   useAsync(async () => {
-    const cam = new BrowserCam();
+    const cam = new AvailableCameraDevices();
     const devices = await cam.findAllCameras();
     setDevices(prev => {
       return {

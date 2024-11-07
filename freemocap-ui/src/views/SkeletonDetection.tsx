@@ -1,10 +1,10 @@
 import React from "react";
 import {Box} from "@mui/material";
-import {CaptureType} from "../services/frame-capture";
-import {useFrameCapture} from "../hooks/use-frame-capture";
+import {CaptureType} from "../services/websocket-connection";
+import {useWebsocket} from "../hooks/use-websocket";
 
 export const SkeletonDetection = () => {
-    const [frameCapture, data] = useFrameCapture(CaptureType.SkeletonDetection, 8080,);
+    const [frameCapture, data] = useWebsocket(CaptureType.SkeletonDetection, 8080,);
     if (!data) {
         return null;
     }

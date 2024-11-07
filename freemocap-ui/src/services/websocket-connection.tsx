@@ -1,19 +1,19 @@
 export type OnMessageHandler = (ev: MessageEvent<Blob>, data_urls: { [key: string]: string }) => Promise<void>;
 
 export enum CaptureType {
-    BoardDetection = "board_detection", SkeletonDetection = "skeleton_detection", ConnectCameras = "connect"
+    ConnectCameras = "connect"
 }
 
-export class FrameCapture {
+export class WebsocketConnection {
     private _ws_connection!: WebSocket;
-    private readonly _host: string;
-    private readonly _base_host: string;
+    private readonly _host_url: string;
+    private readonly _base_host_url: string;
 
-    constructor(private readonly _captureType: CaptureType = CaptureType.BoardDetection,
+    constructor(private readonly _captureType: CaptureType = CaptureType.ConnectCameras,
                 private readonly _port: number = 8005) {
-        this._base_host = `ws://localhost:${_port}/websocket`;
-        this._host = `${this._base_host}/${this._captureType}`
-        console.log(`FrameCapture : ${this._host}`)
+        this._base_host_url = `ws://localhost:${_port}/websocket`;
+        this._host_url = `${this._base_host_url}/${this._captureType}`
+        console.log(`WebsocketConnection.constructor: ${this._host_url}`);
     }
 
     private _current_data_url!: string;
@@ -25,10 +25,10 @@ export class FrameCapture {
     public get isConnectionClosed(): boolean {
         return this._ws_connection ? this._ws_connection.readyState === this._ws_connection.CLOSED : true;
     }
-    public start_frame_capture(onMessageHandler: OnMessageHandler) {
-        console.log(`FrameCapture: start_frame_capture: ${this._host}`)
+    public connect_to_cameras(onMessageHandler: OnMessageHandler) {
+        console.log(`WebsocketConnection.connect_to_cameras, connecting to ${this._host_url}`);
         const decoder = new TextDecoder('utf-8');
-        this._ws_connection = new WebSocket(this._host);
+        this._ws_connection = new WebSocket(this._host_url);
 
         this._ws_connection.onmessage = async (ev: MessageEvent<Blob>) => {
             // Ensure the event.data is a Blob
@@ -41,7 +41,7 @@ export class FrameCapture {
 
                 // Parse the JSON string to a JavaScript object
                 const data = JSON.parse(jsonString);
-                console.log(`Received message with length: ${jsonString.length} from mf_payload# ${data.multi_frame_number}`);
+                console.log(`Received message with length: ${jsonString.length} bytes, type: ${typeof data}`);
                 const jpegImagesByCamera = data.jpeg_images;
 
                 // Iterate over the framesObject to create a data URL for each image
@@ -56,14 +56,9 @@ export class FrameCapture {
 
 
             } else {
-                console.log(`Received message with length: ${JSON.stringify(ev.data)}`);
+                console.log(`Received non-Blob message with length: ${JSON.stringify(ev.data)}, type: ${typeof ev.data}`);
             }
         };
-
-
-
-
-
     }
 
     public cleanup() {

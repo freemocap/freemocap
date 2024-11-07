@@ -1,13 +1,13 @@
 import {Box, Typography} from "@mui/material";
 import React from "react";
 import {useAsync} from "react-use";
-import {BrowserCam} from "../services/cam";
+import {AvailableCameraDevices} from "../services/detectCameraDevices";
 
 export const DefaultView = () => {
   const [Container] = [Box, Box];
   const [devices, setDevices] = React.useState<MediaDeviceInfo[]>([]);
   useAsync(async () => {
-    const cam = new BrowserCam();
+    const cam = new AvailableCameraDevices();
     const deviceInfos = await cam.findAllCameras();
     setDevices(deviceInfos)
   });

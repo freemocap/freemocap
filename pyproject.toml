@@ -24,3 +24,9 @@ skellyforge = { git = "https://github.com/freemocap/skellyforge" }
 skelly-viewer = { git = "https://github.com/freemocap/skellyviewer" }
 freemocap-blender-addon = { git = "https://github.com/freemocap/freemocap_blender_addon" }
 skelly-synchronize = { git = "https://github.com/freemocap/skelly_synchronize" }
+
+[project.scripts]
+skellycam = "freemocap.__main__:main"
+
+[tool.uv]
+package = true

@@ -1,3 +1,45 @@
+
+# SPECIAL INSTRUCTIONS FOR THE `jon/development` BRANCH 
+
+## Installation
+### Python server
+0. Install `uv` 
+   - https://github.com/astral-sh/uv?tab=readme-ov-file#installation
+1. clone the repo 
+   - `git clone https://github.com/freemocap/freemocap`
+2. Change directory to the repo: 
+   - `cd freemocap`
+3. **Change to the `jon/development` branch:**
+   - `git switch jon/development`
+4. Create virtual environment: 
+   - `uv venv`
+5. Activate virtual environment
+   - Windows: `.venv/bin/activate`
+   - Mac/Linux: `source .venv/bin/activate`
+6. Install dependencies
+  - `uv sync`
+  - 
+### React GUI
+0. Install Node.js
+   - https://nodejs.org/en/download/
+1. Change directory to the `freemocap-ui` folder 
+   - `cd freemocap-ui`
+2. Install dependencies
+   - `npm install`
+
+## Run the FreeMoCap application in development mode 
+1. Start the Python Server:
+   - `python freemocap/__main__.py`
+   - The server should start on `http://localhost:8005`
+2. Start the React GUI:
+   - `npm run dev`
+   - An Electron window should pop up with the FreeMoCap GUI
+
+
+# STANDARD README CONTINUES BELOW
+___
+___
+___
 <p align="center">
     <img src="https://github.com/freemocap/freemocap/assets/15314521/da1af7fe-f808-43dc-8f59-c579715d6593" height="240" alt="Project Logo">
 </p> 

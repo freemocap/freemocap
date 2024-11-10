@@ -26,7 +26,7 @@ freemocap-blender-addon = { git = "https://github.com/freemocap/freemocap_blende
 skelly-synchronize = { git = "https://github.com/freemocap/skelly_synchronize" }
 
 [project.scripts]
-skellycam = "freemocap.__main__:main"
+freemocap = "freemocap.__main__:main"
 
 [tool.uv]
 package = true

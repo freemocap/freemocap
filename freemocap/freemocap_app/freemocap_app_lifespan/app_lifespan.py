@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
 
     logger.info("Adding middleware...")
 
-    logger.info(f"Creating `Controller` instance...")
+
     logger.success(f"Skellycam API (version:{freemocap.__version__}) started successfully 💀📸✨")
     logger.api(f"Skellycam API  running on: \nSwagger API docs - {APP_URL} \n Test UI: test ui: {APP_URL}/ui 👈[click to open backend UI in your browser]\n")
 

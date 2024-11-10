@@ -28,7 +28,7 @@
     <script>
         let ws;
         let isConnected = false;
-        const websocket_url = 'ws://localhost:8005/websocket/connect';
+        const websocket_url = 'ws://localhost:8005/skellycam/websocket/connect';
         const imageElements = {};
 
         function updateStatus() {
@@ -128,24 +128,24 @@
 
 <!-- API Calls Section -->
 <!-- Camera Connection API Calls -->
-<button onclick="callApi('http://localhost:8005/cameras/connect/detect')">Connect to Cameras</button>
+<button onclick="callApi('http://localhost:8005/skellycam/cameras/connect')">Connect to Cameras</button>
 
 <div>
-    <button onclick="callApi('http://localhost:8005/cameras/connect/apply', 'POST')">Connect/Update Cameras</button>
-    <button onclick="callApi('http://localhost:8005/cameras/close')">Close Camera Connections</button>
+    <button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/apply', 'POST')">Connect/Update Cameras</button>
+    <button onclick="callApi('http://localhost:8005/skellycam/cameras/close')">Close Camera Connections</button>
 
     <!-- Root and App API Calls -->
     <button onclick="sendMessage('Hello from the client')">Send WS Message</button>
     <button onclick="callApi('http://localhost:8005/')">Read Root</button>
-    <button onclick="callApi('http://localhost:8005/app/state')">App State</button>
-    <button onclick="callApi('http://localhost:8005/app/healthcheck')">Hello👋</button>
-    <button onclick="callApi('http://localhost:8005/app_state/shutdown')">goodbye👋</button>
+    <button onclick="callApi('http://localhost:8005/skellycam/app/state')">App State</button>
+    <button onclick="callApi('http://localhost:8005/skellycam/app/healthcheck')">Hello👋</button>
+    <button onclick="callApi('http://localhost:8005/skellycam/app_state/shutdown')">goodbye👋</button>
 
 
     <!-- Camera Operation API Calls -->
-    <button onclick="callApi('http://localhost:8005/cameras/detect')">Detect Cameras</button>
-    <button onclick="callApi('http://localhost:8005/cameras/record/start')">Start Recording</button>
-    <button onclick="callApi('http://localhost:8005/cameras/record/stop')">Stop Recording</button>
+    <button onclick="callApi('http://localhost:8005/skellycam/cameras/detect')">Detect Cameras</button>
+    <button onclick="callApi('http://localhost:8005/skellycam/cameras/record/start')">Start Recording</button>
+    <button onclick="callApi('http://localhost:8005/skellycam/cameras/record/stop')">Stop Recording</button>
 </div>
 <!-- Results and Logs Section -->
 <pre id="result"></pre>

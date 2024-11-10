@@ -36,6 +36,13 @@
    - An Electron window should pop up with the FreeMoCap GUI
 
 
+## Build the FreeMoCap application 
+(NOTE - This is not necessary for development, and does not handle the Python server yet)
+1. Change directory to the `freemocap/freemocap-ui` folder
+   - `npm run build`
+   - The build will be in the `freemocap/freemocap-ui/releases` folder
+---
+---
 # STANDARD README CONTINUES BELOW
 ___
 ___

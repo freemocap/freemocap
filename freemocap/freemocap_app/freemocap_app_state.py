@@ -7,32 +7,12 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
-from skellycam.app.app_controller.ipc_flags import IPCFlags
-from skellycam.core.camera_group.camera.config.camera_config import CameraConfigs
-from skellycam.core.camera_group.camera.config.update_instructions import UpdateInstructions
-from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.camera_group.camera_group_dto import CameraGroupDTO
-from skellycam.core.camera_group.shmorchestrator.camera_group_shmorchestrator import CameraGroupSharedMemoryOrchestrator
-from skellycam.core.camera_group.shmorchestrator.shared_memory.multi_frame_escape_ring_buffer import \
-    MultiFrameEscapeSharedMemoryRingBuffer
-from skellycam.core.recorders.timestamps.framerate_tracker import CurrentFrameRate
-from skellycam.system.device_detection.camera_device_info import AvailableDevices, \
-    available_devices_to_default_camera_configs
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AppState:
-    ipc_flags: IPCFlags
-    ipc_queue: multiprocessing.Queue
-    config_update_queue: multiprocessing.Queue
-
-    shmorchestrator: Optional[CameraGroupSharedMemoryOrchestrator] = None
-    camera_group_dto: Optional[CameraGroupDTO] = None
-    camera_group: Optional[CameraGroup] = None
-    available_devices: Optional[AvailableDevices] = None
-    current_framerate: Optional[CurrentFrameRate] = None
+class FreemocapAppState:
 
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value):
@@ -126,7 +106,7 @@ class AppStateDTO(BaseModel):
     record_frames_flag_status: bool
 
     @classmethod
-    def from_state(cls, state: AppState):
+    def from_state(cls, state: FreemocapAppState):
         return cls(
             camera_configs=state.camera_group_configs,
             available_devices=state.available_devices,

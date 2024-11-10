@@ -4,8 +4,8 @@ from fastapi import FastAPI
 
 from freemocap.api.middleware.add_middleware import add_middleware
 from freemocap.api.middleware.cors import cors
-from freemocap.app.app_lifespan.app_lifespan import lifespan
-from freemocap.app.app_lifespan.app_setup import register_routes, customize_swagger_ui
+from freemocap.freemocap_app.freemocap_app_lifespan.app_lifespan import lifespan
+from freemocap.freemocap_app.freemocap_app_lifespan.app_setup import register_routes, customize_swagger_ui
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse
 from starlette.responses import FileResponse
 
 import freemocap
-from freemocap.api.routers import enabled_routers
+from freemocap.api.routers import FREEMOCAP_ROUTERS
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def register_routes(app: FastAPI):
     # async def favicon():
     #     return FileResponse(SKELLYCAM_FAVICON_ICO_PATH)
 
-    for prefix, routers in enabled_routers.items():
+    for prefix, routers in FREEMOCAP_ROUTERS.items():
         for name, router in routers.items():
             logger.api(f"Registering route: `{prefix}/{name}`")
             app.include_router(router, prefix=prefix)

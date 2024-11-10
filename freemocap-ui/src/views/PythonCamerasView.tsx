@@ -12,6 +12,7 @@ export const PythonCamerasView = () => {
   return (
       <Box sx={{display: "flex", flexDirection: "column"}}>
         Hi wowowwwee
+          <br/>
         websocket status: {websocketConnection.isConnectionClosed ? "closed" : "open"}
         {!websocketConnection.isConnectionClosed && Object.entries(dataUrls).map(([cameraId, url]) => (
             <img key={cameraId} src={url} alt={`video capture from camera ${cameraId}`}/>

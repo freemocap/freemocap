@@ -11,7 +11,7 @@ export class WebsocketConnection {
 
     constructor(private readonly _captureType: CaptureType = CaptureType.ConnectCameras,
                 private readonly _port: number = 8005) {
-        this._base_host_url = `ws://localhost:${_port}/websocket`;
+        this._base_host_url = `ws://localhost:${_port}/skellycam/websocket`;
         this._host_url = `${this._base_host_url}/${this._captureType}`
         console.log(`WebsocketConnection.constructor: ${this._host_url}`);
     }

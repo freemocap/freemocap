@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {CaptureType, WebsocketConnection, OnMessageHandler} from "../services/websocket-connection";
+import {CaptureType, WebsocketConnection, OnMessageHandler} from "@/services/websocket-connection";
 
 export const useWebsocket = (captureType: CaptureType,
                              port: number,

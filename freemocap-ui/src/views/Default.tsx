@@ -1,7 +1,7 @@
 import {Box, Typography} from "@mui/material";
 import React from "react";
 import {useAsync} from "react-use";
-import {AvailableCameraDevices} from "../services/detectCameraDevices";
+import {AvailableCameraDevices} from "@/services/detectCameraDevices";
 
 export const DefaultView = () => {
   const [Container] = [Box, Box];

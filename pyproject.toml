@@ -99,6 +99,9 @@ Homepage = "https://freemocap.org"
 Documentation = "https://freemocap.github.io/documentation/"
 Github = "https://github.com/freemocap/freemocap"
 
+[tool.uv]
+override-dependencies = ["opencv-python; sys_platform == 'never'"]
+
 [tool.bumpver]
 current_version = "v1.4.7"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"

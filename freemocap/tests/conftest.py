@@ -1,4 +1,3 @@
-from typing import Optional
 import pytest
 
 from freemocap.core_processes.process_motion_capture_videos.process_recording_headless import (

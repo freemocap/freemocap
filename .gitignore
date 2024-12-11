@@ -158,3 +158,4 @@ freemocap/system/gui_state.json
 .nuxt
 /tauri-nuxt-vue/.idea/
 /freemocap-ui/release/
+/freemocap-ui/dist*

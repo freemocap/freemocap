@@ -4,15 +4,15 @@ import subprocess
 from pathlib import Path
 from typing import Union, List
 
-from ajc27_freemocap_blender_addon.main import ajc27_run_as_main_function
+from freemocap_blender_addon.main import run_as_main_function
 
-from freemocap.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.get_numpy_path import (
+from freemocap.core_processes.export_data.blender_stuff.export_to_blender.blender_addon.get_numpy_path import (
     get_numpy_path,
 )
-from freemocap.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.install.install_ajc_addon import (
-    install_ajc_addon,
+from freemocap.core_processes.export_data.blender_stuff.export_to_blender.blender_addon.install.install_blender_addon import (
+    install_blender_addon,
 )
-from freemocap.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.run_simple import run_simple
+from freemocap.core_processes.export_data.blender_stuff.export_to_blender.blender_addon.run_simple import run_simple
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
     OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
@@ -39,27 +39,28 @@ def run_subprocess(command_list: List[str], append_to_python_path: List[str] = N
     return process
 
 
-def run_ajc_blender_addon_subprocess(
+def run_blender_addon_subprocess(
     recording_folder_path: Union[str, Path],
     blender_file_path: Union[str, Path],
     blender_exe_path: Union[str, Path],
 ):
     try:
         # TODO: pass active tracker into here
-        ajc_blender_addon_validator(recording_folder_path=recording_folder_path)
+        blender_addon_validator(recording_folder_path=recording_folder_path)
     except FileNotFoundError as e:
         logger.error("Missing required files to run AJC addon, did something go wrong during processing?")
         raise e
 
-    ajc_addon_main_file_path = inspect.getfile(ajc27_run_as_main_function)
-    logger.debug(f"Running ajc27_freemocap_blender_addon as a subprocess using script at : {ajc_addon_main_file_path}")
+    addon_main_file_path = inspect.getfile(run_as_main_function)
+    logger.debug(f"Running freemocap_blender_addon as a subprocess using script at : {addon_main_file_path}")
 
-    addon_root_directory = str(Path(ajc_addon_main_file_path).parent.parent)
+    addon_root_directory = str(Path(addon_main_file_path).parent.parent)
 
     # path_to_blenders_numpy = get_blenders_numpy(blender_exe_path=blender_exe_path)
     # blender_numpy_root = str(Path(path_to_blenders_numpy).parent.parent)
 
-    install_ajc_addon(blender_exe_path=blender_exe_path, ajc_addon_main_file_path=ajc_addon_main_file_path)
+    install_blender_addon(blender_exe_path=blender_exe_path,
+                          addon_main_file_path=addon_main_file_path)
     try:
         blender_exe_path = Path(blender_exe_path)
         if not blender_exe_path.exists():
@@ -123,7 +124,7 @@ def get_blenders_numpy(blender_exe_path: Union[str, Path]) -> str:
     return numpy_path
 
 
-def ajc_blender_addon_validator(recording_folder_path: Union[str, Path], active_tracker: str = "mediapipe"):
+def blender_addon_validator(recording_folder_path: Union[str, Path], active_tracker: str = "mediapipe"):
     """
     Check if the required files exist in the recording folder
     """
@@ -190,7 +191,7 @@ if __name__ == "__main__":
     blender_file_path_in = str(Path(recording_path_in) / (str(Path(recording_path_in).stem) + ".blend"))
     blender_exe_path_in = get_best_guess_of_blender_path()
 
-    run_ajc_blender_addon_subprocess(
+    run_blender_addon_subprocess(
         recording_folder_path=recording_path_in,
         blender_file_path=blender_file_path_in,
         blender_exe_path=blender_exe_path_in,

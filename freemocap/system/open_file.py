@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 
-def open_file(filename):
+def open_file(filename:str):
     if sys.platform == "win32":
         os.startfile(filename)  # noqa
     else:

@@ -52,7 +52,7 @@ class LoggerBuilder:
     DEFAULT_LOGGING = {"version": 1, "disable_existing_loggers": False}
     # https://www.alt-codes.net/editor.php
     format_string = (
-        "┌────────────────────<%(levelname)8s >┤ %(delta_t)s | %(name)s.%(funcName)s():%(lineno)s | %(asctime)s | PID:%(process)d:%(processName)s TID:%(thread)d:%(threadName)s \n%(message)s"
+        "%(message)s||-<%(levelname)8s >┤ %(delta_t)s | %(name)s.%(funcName)s():%(lineno)s | %(asctime)s | PID:%(process)d:%(processName)s TID:%(thread)d:%(threadName)s"
     )
 
     def __init__(self, level: LogLevels):

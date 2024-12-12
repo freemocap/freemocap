@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import Union, List
 
-from freemocap_blender_addon.main import ajc27_run_as_main_function
+from ajc27_freemocap_blender_addon.main import ajc27_run_as_main_function
 
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.get_numpy_path import (
     get_numpy_path,
@@ -52,7 +52,7 @@ def run_ajc_blender_addon_subprocess(
         raise e
 
     ajc_addon_main_file_path = inspect.getfile(ajc27_run_as_main_function)
-    logger.debug(f"Running freemocap_blender_addon as a subprocess using script at : {ajc_addon_main_file_path}")
+    logger.debug(f"Running ajc27_freemocap_blender_addon as a subprocess using script at : {ajc_addon_main_file_path}")
 
     addon_root_directory = str(Path(ajc_addon_main_file_path).parent.parent)
 

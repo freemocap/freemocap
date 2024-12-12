@@ -3,13 +3,13 @@ import subprocess
 from importlib.metadata import distribution
 from pathlib import Path
 
-from freemocap_blender_addon.main import ajc27_run_as_main_function
+from ajc27_freemocap_blender_addon.main import ajc27_run_as_main_function
 
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.install.bpy_install_addon import (
     INSTALL_ADDON_SCRIPT_PATH,
 )
 
-FREEMOCAP_BLENDER_ADDON_PACKAGE_NAME = "freemocap_blender_addon"
+FREEMOCAP_BLENDER_ADDON_PACKAGE_NAME = "ajc27_freemocap_blender_addon"
 
 
 def get_package_path(package_name: str):

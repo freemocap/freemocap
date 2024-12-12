@@ -27,10 +27,9 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",
     "Topic :: Multimedia :: Video",
@@ -84,7 +83,7 @@ dependencies = [
     "packaging===23.2",
 ]
 
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 
 dynamic = ["version", "description"]
 

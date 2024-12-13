@@ -51,7 +51,7 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 --
 ## QUICKSTART
 
-#### 0. Create a a Python 3.9 through 3.11 environment (python3.11 recommended)¶
+#### 0. Create a a Python 3.10 through 3.12 environment (python3.11 recommended)¶
 #### 1. Install software via [pip](https://pypi.org/project/freemocap/#description):
 
 ```

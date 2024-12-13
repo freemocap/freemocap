@@ -27,10 +27,9 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",
     "Topic :: Multimedia :: Video",
@@ -72,7 +71,7 @@ dependencies = [
     "skellyforge==2024.8.1008",
     "skelly_synchronize==2024.07.1032",
     "skellytracker[all]==2024.09.1019",
-    "ajc27_freemocap_blender_addon==v2024.09.1024",
+    "ajc27_freemocap_blender_addon==v2024.12.1033",
     "opencv-contrib-python==4.8.*",
     "toml==0.10.2",
     "aniposelib==0.4.3",
@@ -84,7 +83,7 @@ dependencies = [
     "packaging===23.2",
 ]
 
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 
 dynamic = ["version", "description"]
 

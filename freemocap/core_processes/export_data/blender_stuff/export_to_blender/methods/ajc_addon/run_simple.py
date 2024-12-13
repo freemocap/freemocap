@@ -9,7 +9,7 @@ def run_simple(recording_path_input: str, blender_file_save_path_input: str):
 
 
 if __name__ == "__main__":
-    print(f"\n\n\n\nRunning {__file__} as a subprocess to install the addon...\n\n\n")
+    print(f"\nRunning {__file__} as a subprocess to install the addon...\n")
     argv = sys.argv
     print(f"Received command line arguments: {argv}")
     argv = argv[argv.index("--") + 1:]
@@ -17,4 +17,4 @@ if __name__ == "__main__":
     blender_file_save_path_input = str(argv[1])
     run_simple(recording_path_input=recording_path_input, blender_file_save_path_input=blender_file_save_path_input)
 
-    print("\n\n\nDone!\n\n\n")
+    print("\nDone!\n")

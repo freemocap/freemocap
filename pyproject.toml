@@ -23,7 +23,7 @@ skellycam = { git = "https://github.com/freemocap/skellycam", branch = "jon/deve
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "jon/development" }
 skellyforge = { git = "https://github.com/freemocap/skellyforge" }
 skelly-viewer = { git = "https://github.com/freemocap/skellyviewer" }
-freemocap-blender-addon = { git = "https://github.com/freemocap/freemocap_blender_addon" }
+freemocap-blender-addon = { git = "https://github.com/freemocap/freemocap_blender_addon"}#, branch = "jon/development" }
 skelly-synchronize = { git = "https://github.com/freemocap/skelly_synchronize" }
 
 [project.scripts]

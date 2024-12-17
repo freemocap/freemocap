@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     tags: [ v* ]
+    branches:
+      - jon/development
 
 jobs:
   build:

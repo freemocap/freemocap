@@ -1,9 +1,9 @@
 import {useEffect, useState} from "react";
 import {CaptureType, WebsocketConnection, OnMessageHandler} from "@/services/websocket-connection";
 
-export const useWebsocket = (captureType: CaptureType,
-                             port: number,
-                             onMessage?: OnMessageHandler): [WebsocketConnection, { [key: string]: string }] => {
+export const oldUseWebsocket = (captureType: CaptureType,
+                                port: number,
+                                onMessage?: OnMessageHandler): [WebsocketConnection, { [key: string]: string }] => {
 
     const [webcam_id] = useState<string>("0");
     const [websocketConnection,] = useState(() => new WebsocketConnection(captureType, port));

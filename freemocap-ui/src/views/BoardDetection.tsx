@@ -1,7 +1,7 @@
 import React from "react";
 import {Box} from "@mui/material";
 import {CaptureType} from "../services/websocket-connection";
-import {useWebsocket} from "../hooks/use-websocket";
+import {oldUseWebsocket} from "../hooks/old-use-websocket";
 
 export const BoardDetection = () => {
   // const [frameCapture, data] = useWebsocket(CaptureType.BoardDetection, 8080);

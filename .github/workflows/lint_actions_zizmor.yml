@@ -1,10 +1,10 @@
-name: GitHub Actions Security Analysis with zizmor 🌈
+name: GitHub Actions Security Analysis with zizmor
 
 on:
-  workflow_dispatch:
   pull_request:
     branches: ["**"]
     paths: [".github/workflows/*.yml"]
+  workflow_dispatch:
 
 jobs:
   zizmor:

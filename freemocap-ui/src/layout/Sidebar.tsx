@@ -22,6 +22,10 @@ const categories = [
         id: 'JS Camera',
         route: '/jontestplayground'
       },
+      {
+        id: 'Websocket',
+        route: '/websocketConnection'
+      },
       // {
       //   id: "Board Detection",
       //   route: "/charuco_board_detection"

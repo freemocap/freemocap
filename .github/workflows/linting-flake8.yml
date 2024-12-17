@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persistent-credentials: false
+          persist-credentials: false
       - name: Set up Python 3.x
         uses: wntrblm/nox@2022.8.7
         with:

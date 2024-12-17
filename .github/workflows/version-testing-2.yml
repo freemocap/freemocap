@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persistent-credentials: false
+          persist-credentials: false
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
         with:

@@ -40,7 +40,7 @@
 
             // websocket helpers
             const decoder = new TextDecoder('utf-8');
-            
+
             ws.onopen = () => {
                 isConnected = true;
                 updateStatus();
@@ -128,7 +128,7 @@
 
 <!-- API Calls Section -->
 <!-- Camera Connection API Calls -->
-<button onclick="callApi('http://localhost:8005/skellycam/cameras/connect')">Connect to Cameras</button>
+<button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/detect')">Connect to Cameras</button>
 
 <div>
     <button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/apply', 'POST')">Connect/Update Cameras</button>

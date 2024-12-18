@@ -106,15 +106,15 @@ class DataSaver:
             timestamp_by_camera = frame_data["timestamps"]["by_camera"]
             
             for point_name, coordinates in frame_data["tracked_points"].items():
-                for dimension, value in coordinates.items():
-                    tidy_data.append({
-                        "frame": frame_number,
-                        "timestamp": timestamp,
-                        "timestamp_by_camera": timestamp_by_camera,
-                        "point_name": point_name,
-                        "dimension": dimension,
-                        "value": value
-                    })
+                tidy_data.append({
+                    "frame": frame_number,
+                    "timestamp": timestamp,
+                    "timestamp_by_camera": timestamp_by_camera,
+                    "keypoint": point_name,
+                    "x": coordinates.get("x", None),
+                    "y": coordinates.get("y", None),
+                    "z": coordinates.get("z", None),
+                })
 
         # Convert to DataFrame
         tidy_df = pd.DataFrame(tidy_data)

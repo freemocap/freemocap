@@ -92,12 +92,7 @@ class DataSaver:
         df.to_csv(save_path, index=False)
         logger.info(f"Saved recording data to {save_path}")
 
-
     def save_to_tidy_csv(self, save_path: Union[str, Path] = None):
-        """
-        Convert data to tidy format and save it as a CSV.
-        """
-        # Prepare a list to hold tidy data
         tidy_data = []
 
         # Iterate over frames and tracked points

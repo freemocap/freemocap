@@ -63,6 +63,7 @@ class DataSaver:
         self.save_to_json()
         self.save_to_csv()
         self.save_to_npy()
+        self.save_to_tidy_csv()
 
     def save_to_json(self, save_path: Union[str, Path] = None):
         dict_to_save = {}
@@ -90,6 +91,41 @@ class DataSaver:
 
         df.to_csv(save_path, index=False)
         logger.info(f"Saved recording data to {save_path}")
+
+
+    def save_to_tidy_csv(self, save_path: Union[str, Path] = None):
+        """
+        Convert data to tidy format and save it as a CSV.
+        """
+        # Prepare a list to hold tidy data
+        tidy_data = []
+
+        # Iterate over frames and tracked points
+        for frame_number, frame_data in self.recording_data_by_frame.items():
+            timestamp = frame_data["timestamps"]["mean"]
+            timestamp_by_camera = frame_data["timestamps"]["by_camera"]
+            
+            for point_name, coordinates in frame_data["tracked_points"].items():
+                for dimension, value in coordinates.items():
+                    tidy_data.append({
+                        "frame": frame_number,
+                        "timestamp": timestamp,
+                        "timestamp_by_camera": timestamp_by_camera,
+                        "point_name": point_name,
+                        "dimension": dimension,
+                        "value": value
+                    })
+
+        # Convert to DataFrame
+        tidy_df = pd.DataFrame(tidy_data)
+
+        # Set the save path if not provided
+        if save_path is None:
+            save_path = self.recording_folder_path / f"{self._recording_name}_by_frame.csv"
+
+        # Save the DataFrame to a CSV file
+        tidy_df.to_csv(save_path, index=False)
+        logger.info(f"Saved tidy recording data to {save_path}")
 
     def save_to_npy(self, save_path: Union[str, Path] = None):
         if save_path is None:
@@ -123,6 +159,6 @@ class DataSaver:
 if __name__ == "__main__":
     # recording_data_saver = DataSaver(recording_folder_path=get_sample_data_path())
     recording_data_saver = DataSaver(
-        recording_folder_path=r"C:\Users\jonma\freemocap_data\recording_sessions\session_2023-04-14_15_29_45\recording_15_47_37_gmt-4"
+        recording_folder_path=r"C:\Users\aaron\FreeMocap_Data\recording_sessions\freemocap_sample_data"
     )
     recording_data_by_frame_number = recording_data_saver.save_all()

@@ -1,9 +1,11 @@
 import React, {createContext, useContext, ReactNode} from "react";
 import {useWebSocket} from "@/hooks/useWebSocket";
+import {FrontendFramePayloadSchema} from "@/models/FrontendImagePayload";
+import {z} from "zod";
 
 interface WebSocketContextProps {
     isConnected: boolean;
-    messages: string[];
+    latestFrontendPayload: z.infer<typeof FrontendFramePayloadSchema> | null;
     connect: () => void;
     disconnect: () => void;
 }
@@ -14,10 +16,10 @@ interface WebSocketProviderProps {
 const WebSocketContext = createContext<WebSocketContextProps | undefined>(undefined);
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({url, children}) => {
-    const {isConnected, messages, connect, disconnect} = useWebSocket(url);
+    const {isConnected, latestFrontendPayload, connect, disconnect} = useWebSocket(url);
 
     return(
-        <WebSocketContext.Provider value={{isConnected, messages, connect, disconnect}}>
+        <WebSocketContext.Provider value={{isConnected, latestFrontendPayload, connect, disconnect}}>
             {children}
         </WebSocketContext.Provider>
     )

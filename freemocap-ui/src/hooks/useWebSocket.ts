@@ -1,12 +1,41 @@
 import {useCallback, useEffect, useState} from 'react';
+import {z} from 'zod';
+import {FrontendFramePayloadSchema} from "@/models/FrontendImagePayload";
 
 const MAX_RECONNECT_ATTEMPTS = 20;
 
 export const useWebSocket = (wsUrl: string) => {
     const [isConnected, setIsConnected] = useState(false);
-    const [messages, setMessages] = useState<string[]>([]);
+    const [latestFrontendPayload, setLatestFrontendPayload] = useState<z.infer<typeof FrontendFramePayloadSchema> | null>(null);
     const [websocket, setWebSocket] = useState<WebSocket | null>(null);
     const [connectAttempt, setConnectAttempt] = useState(0);
+
+    const handleIncomingMessage = (data: Blob | string) => {
+        if (typeof data === 'string') {
+            parseAndValidateMessage(data);
+        } else if (data instanceof Blob) {
+            // If data is a Blob, convert it to text
+            data.text().then(text => {
+                parseAndValidateMessage(text);
+            }).catch(error => {
+                console.error('Error reading Blob data:', error);
+            });
+        }
+    };
+
+    const parseAndValidateMessage = (data: string) => {
+        try {
+            const parsedData = JSON.parse(data);
+            const frontendImagePayload = FrontendFramePayloadSchema.parse(parsedData);
+            setLatestFrontendPayload(frontendImagePayload);
+        } catch (e) {
+            if (e instanceof z.ZodError) {
+                console.error('Validation failed with errors:', e.errors);
+            } else {
+                console.error('Error parsing message data:', e);
+            }
+        }
+    };
 
     const connect = useCallback(() => {
         if (websocket && websocket.readyState !== WebSocket.CLOSED) {
@@ -31,7 +60,7 @@ export const useWebSocket = (wsUrl: string) => {
 
         ws.onmessage = (event) => {
             console.log('Websocket message received with length: ', event.data.length);
-            setMessages(prevMessages => [...prevMessages, event.data]);
+            handleIncomingMessage(event.data);
         };
 
         ws.onerror = (error) => {
@@ -59,5 +88,5 @@ export const useWebSocket = (wsUrl: string) => {
         };
     }, [connect]);
 
-    return {isConnected, messages, connect, disconnect};
+    return {isConnected, latestFrontendPayload, connect, disconnect};
 };

@@ -3,7 +3,7 @@ import {Box} from '@mui/material';
 import {useWebSocketContext} from '@/context/WebSocketContext';
 
 const WebsocketConnection = () => {
-    const {isConnected, messages} = useWebSocketContext();
+    const {isConnected} = useWebSocketContext();
 
     return (
         <Box sx={{display: 'flex', flexDirection: 'column'}}>

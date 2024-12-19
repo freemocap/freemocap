@@ -5,7 +5,7 @@ import {WebSocketProvider} from "@/context/WebSocketContext";
 
 function App() {
     const _port = 8005;
-    const wsUrl = `ws://localhost:${_port}/skellycam/websocket/connect`;
+    const wsUrl = `ws://localhost:${_port}/websocket/connect`;
     return (
         <WebSocketProvider url={wsUrl}>
             <React.Fragment>

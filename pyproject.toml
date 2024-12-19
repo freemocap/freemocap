@@ -6,8 +6,8 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "aniposelib>=0.7.0",
-#    "freemocap-blender-addon",
-    "ajc27_freemocap_blender_addon",
+    #    "freemocap-blender-addon",
+    "ajc27_freemocap_blender_addon==v2024.12.1032",
     "libsass>=0.23.0",
     "opencv-contrib-python>=4.8.1.78",
     "pyinstaller>=6.11.0",
@@ -17,6 +17,8 @@ dependencies = [
     "skellycam",
     "skellyforge",
     "skellytracker",
+    "pydantic>=2.10.4",
+    #    "ltrt"
 ]
 
 [tool.uv.sources]
@@ -26,6 +28,7 @@ skellyforge = { git = "https://github.com/freemocap/skellyforge" }
 skelly-viewer = { git = "https://github.com/freemocap/skellyviewer" }
 #freemocap-blender-addon = { git = "https://github.com/freemocap/freemocap_blender_addon"}#, branch = "jon/development" }
 skelly-synchronize = { git = "https://github.com/freemocap/skelly_synchronize" }
+#ltrt = { git = "https://github.com/freemocap/LTRT" }
 
 [project.scripts]
 freemocap = "freemocap.__main__:main"

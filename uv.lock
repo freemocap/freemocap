@@ -23,11 +23,11 @@ wheels = [
 
 [[package]]
 name = "ajc27-freemocap-blender-addon"
-version = "2024.12.1033"
+version = "2024.12.1032"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/30/fa/e0d919f79062058907c70ea6ceb6194d34715886dc12338e76fb82cf29a5/ajc27_freemocap_blender_addon-2024.12.1033.tar.gz", hash = "sha256:f05d28dcfdd1650ba68be277555a2e5b5d384d23dad076e8de918320d76e361d", size = 1654194 }
+sdist = { url = "https://files.pythonhosted.org/packages/04/e6/0077aa5a43e54b321456633a900ccbb13ee1582cffc599f9b6b2e6ab4d23/ajc27_freemocap_blender_addon-2024.12.1032.tar.gz", hash = "sha256:cc1d01fbdb7b5ed373e8bf1c4eef876bf3688292f9fced36edabb6456d1c8086", size = 1654203 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/6b/bac1c5d976ad2654d4c95e2cab9e8162b05c99e247b4658e78cb9531af0f/ajc27_freemocap_blender_addon-2024.12.1033-py3-none-any.whl", hash = "sha256:65b01abc89005c34c646669d60195148b3279599cb475fee05d80c681533562b", size = 1897867 },
+    { url = "https://files.pythonhosted.org/packages/48/d9/9d87e245b8c58a6dc648e65497a923dfada3156f9a2f3b09e56bfc971683/ajc27_freemocap_blender_addon-2024.12.1032-py3-none-any.whl", hash = "sha256:3b129f3dd7b78ce4f9b03af3fc682c2213f725cbc77805ddfda4e96ff30f8cfe", size = 1897863 },
 ]
 
 [[package]]
@@ -430,6 +430,7 @@ dependencies = [
     { name = "aniposelib" },
     { name = "libsass" },
     { name = "opencv-contrib-python" },
+    { name = "pydantic" },
     { name = "pyinstaller" },
     { name = "requests" },
     { name = "skelly-synchronize" },
@@ -441,10 +442,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ajc27-freemocap-blender-addon" },
+    { name = "ajc27-freemocap-blender-addon", specifier = "==2024.12.1032" },
     { name = "aniposelib", specifier = ">=0.7.0" },
     { name = "libsass", specifier = ">=0.23.0" },
     { name = "opencv-contrib-python", specifier = ">=4.8.1.78" },
+    { name = "pydantic", specifier = ">=2.10.4" },
     { name = "pyinstaller", specifier = ">=6.11.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "skelly-synchronize", git = "https://github.com/freemocap/skelly_synchronize" },
@@ -1529,7 +1531,7 @@ dependencies = [
 [[package]]
 name = "skellycam"
 version = "2023.9.1086"
-source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#9cca1656fccca7b5e2087401471f2d80864b9778" }
+source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#af16d58bca84477a604a04d9daa540cafeabf59f" }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },

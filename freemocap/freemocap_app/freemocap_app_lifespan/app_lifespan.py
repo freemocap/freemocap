@@ -19,9 +19,8 @@ async def lifespan(app: FastAPI):
     Path(get_freemocap_data_folder_path()).mkdir(parents=True, exist_ok=True)
 
 
-
     logger.success(f"FreeMoCap API (version:{freemocap.__version__}) started successfully 💀📸✨")
-    logger.api(f"FreeMoCap API  running on: \nSwagger API docs - {APP_URL} \n Test UI: {APP_URL}/ui 👈[click to open backend UI in your browser]")
+    logger.api(f"FreeMoCap API  running on: \n\t\t\tSwagger API docs - {APP_URL} \n\t\t\tTest UI: {APP_URL}/ui 👈[click to open backend UI in your browser]")
 
     # Let the app do its thing
     yield

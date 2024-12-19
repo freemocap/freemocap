@@ -1,12 +1,11 @@
-import logging
 import multiprocessing
 import threading
 import time
 from typing import Optional
 
+import logging
 import uvicorn
 from uvicorn import Server
-from skellycam import create_skellycam_app_controller
 
 from freemocap.api.server.server_constants import HOSTNAME, PORT
 from freemocap.freemocap_app.freemocap_app_lifespan.create_app import create_app
@@ -22,7 +21,6 @@ class UvicornServerManager:
                  port: int = PORT,
                  log_level: str = "info"):
         self._global_kill_flag = global_kill_flag
-        create_skellycam_app_controller(global_kill_flag=global_kill_flag)
         self.hostname: str = hostname
         self.port: int = port
         self.server_thread: Optional[threading.Thread] = None
@@ -64,6 +62,7 @@ class UvicornServerManager:
     def shutdown_server(self):
         logger.info("Shutting down Uvicorn Server...")
         self._global_kill_flag.value = True
+        kill_process_on_port(port=self.port)
         if self.server:
             self.server.should_exit = True
             waiting_time = 0

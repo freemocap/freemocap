@@ -3,15 +3,15 @@ import logging
 import multiprocessing
 from typing import Optional
 
-from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
-
-from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
-
 from skellycam.core.frames.payloads.frontend_image_payload import FrontendFramePayload
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 from skellycam.core.recorders.timestamps.framerate_tracker import CurrentFrameRate
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
+from skellycam.skellycam_app.skellycam_app_state import SkellycamAppStateDTO
 from skellycam.utilities.wait_functions import async_wait_1ms
+from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
+
+from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class FreemocapWebsocketServer:
         logger.info("Ending listener for client messages...")
 
     async def _handle_ipc_queue_message(self, message: Optional[object] = None):
-        if isinstance(message, FreemocapAppState):
+        if isinstance(message, FreemocapAppState) or isinstance(message, SkellycamAppStateDTO):
             logger.trace(f"Relaying AppStateDTO to frontend")
 
         elif isinstance(message, RecordingInfo):
@@ -87,28 +87,30 @@ class FreemocapWebsocketServer:
         """
         logger.info(
             f"Starting frontend image payload relay...")
-        mf_payload: Optional[MultiFramePayload] = None
+
         camera_group_uuid = None
         latest_mf_number = -1
         try:
             while True:
                 await async_wait_1ms()
                 #TODO - clean this up once the architecture firms up, names too long
+                if not self._freemocap_app_state.skellycam_app_state.camera_group:
+                    latest_mf_number = -1
+                    continue
+
                 if not self._freemocap_app_state.skellycam_app_state.shmorchestrator or not self._freemocap_app_state.skellycam_app_state.shmorchestrator.valid or not self._freemocap_app_state.skellycam_app_state.frame_escape_shm.ready_to_read:
                     latest_mf_number = -1
-                    mf_payload = None
                     continue
 
                 if self._freemocap_app_state.skellycam_app_state.camera_group and camera_group_uuid != self._freemocap_app_state.skellycam_app_state.camera_group.uuid:
                     latest_mf_number = -1
-                    mf_payload = None
                     camera_group_uuid = self._freemocap_app_state.skellycam_app_state.camera_group.uuid
                     continue
 
                 if not self._freemocap_app_state.skellycam_app_state.frame_escape_shm.latest_mf_number.value > latest_mf_number:
                     continue
 
-                mf_payload = self._freemocap_app_state.skellycam_app_state.frame_escape_shm.get_multi_frame_payload(camera_configs=self._freemocap_app_state.skellycam_app_state.camera_group.camera_configs,
+                mf_payload:MultiFramePayload = self._freemocap_app_state.skellycam_app_state.frame_escape_shm.get_multi_frame_payload(camera_configs=self._freemocap_app_state.skellycam_app_state.camera_group.camera_configs,
                                                                                       retrieve_type="latest")
                 await self._send_frontend_payload(mf_payload)
                 latest_mf_number = mf_payload.multi_frame_number

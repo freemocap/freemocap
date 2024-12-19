@@ -6,7 +6,7 @@ export const PythonCamerasView = () => {
     const { latestFrontendPayload } = useWebSocketContext();
 
     return (
-        <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+        <Box sx={{ display: "flex", flexDirection: "column", height: "70vh" }}>
             <ConnectToCamerasButton />
             {latestFrontendPayload && latestFrontendPayload.jpeg_images && (
                 <Box
@@ -28,8 +28,8 @@ export const PythonCamerasView = () => {
                                     display: "flex",
                                     justifyContent: "center",
                                     alignItems: "center",
-                                    flexBasis: "calc(50% - 20px)",
-                                    margin: "10px",
+                                    flexBasis: "calc(50% - 5px)",
+                                    margin: "1px",
                                     boxSizing: "border-box"
                                 }}
                             >

@@ -8,6 +8,8 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.multi_frame_escap
 from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState, get_skellycam_app_state
 from skellycam.skellycam_app.skellycam_app_controller.skellycam_app_controller import create_skellycam_app_controller
 
+from freemocap.pipelines.pipeline_abcs import FreemocapProcessingServer
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,6 +17,7 @@ logger = logging.getLogger(__name__)
 class FreemocapAppState:
     global_kill_flag: multiprocessing.Value
     skellycam_app_state: SkellycamAppState
+    processing_server: ProcessingServer|None = None
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value):
         create_skellycam_app_controller(global_kill_flag=global_kill_flag)
@@ -33,6 +36,13 @@ class FreemocapAppState:
     @property
     def skellycam_ipc_queue(self):
         return self.skellycam_app_state.ipc_queue
+
+    def create_image_processing_server(self, processing_server: FreemocapProcessingServer):
+        if not self.frame_escape_shm:
+            raise ValueError("Cannot create image processing server without frame escape shared memory!")
+        return FreemocapProcessingServer.create(skellycam_app_state=self.skellycam_app_state)
+
+
 
 FREEMOCAP_APP_STATE: Optional[FreemocapAppState] = None
 def create_freemocap_app_state(global_kill_flag: multiprocessing.Value) -> FreemocapAppState:

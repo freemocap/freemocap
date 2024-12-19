@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class FreemocapWebsocketServer:
     def __init__(self, websocket: WebSocket):
         self.websocket = websocket
-        self._freemocap_app_state: FreemocapAppState =  get_freemocap_app_state()
+        self._freemocap_app_state: FreemocapAppState = get_freemocap_app_state()
         self.frontend_image_relay_task: Optional[asyncio.Task] = None
 
     async def __aenter__(self):
@@ -52,7 +52,8 @@ class FreemocapWebsocketServer:
             while True:
                 if self._freemocap_app_state.skellycam_ipc_queue.qsize() > 0:
                     try:
-                        await self._handle_ipc_queue_message(message=self._freemocap_app_state.skellycam_ipc_queue.get())
+                        await self._handle_ipc_queue_message(
+                            message=self._freemocap_app_state.skellycam_ipc_queue.get())
                     except multiprocessing.queues.Empty:
                         continue
                 else:
@@ -93,26 +94,31 @@ class FreemocapWebsocketServer:
         try:
             while True:
                 await async_wait_1ms()
-                #TODO - clean this up once the architecture firms up, names too long
+                # TODO - clean this up once the architecture firms up, names too long
                 if not self._freemocap_app_state.skellycam_app_state.camera_group:
                     latest_mf_number = -1
                     continue
 
-                if not self._freemocap_app_state.skellycam_app_state.shmorchestrator or not self._freemocap_app_state.skellycam_app_state.shmorchestrator.valid or not self._freemocap_app_state.skellycam_app_state.frame_escape_shm.ready_to_read:
+                if (not self._freemocap_app_state.skellycam_app_state.shmorchestrator or
+                        not self._freemocap_app_state.skellycam_app_state.shmorchestrator.valid or
+                        not self._freemocap_app_state.skellycam_app_state.frame_escape_shm.ready_to_read):
                     latest_mf_number = -1
                     continue
 
                 if self._freemocap_app_state.skellycam_app_state.camera_group and camera_group_uuid != self._freemocap_app_state.skellycam_app_state.camera_group.uuid:
                     latest_mf_number = -1
                     camera_group_uuid = self._freemocap_app_state.skellycam_app_state.camera_group.uuid
+                    image_processing_shms_by_camera = self._freemocap_app_state.create_image_processing_shms_by_camera()
                     continue
 
                 if not self._freemocap_app_state.skellycam_app_state.frame_escape_shm.latest_mf_number.value > latest_mf_number:
                     continue
 
-                mf_payload:MultiFramePayload = self._freemocap_app_state.skellycam_app_state.frame_escape_shm.get_multi_frame_payload(camera_configs=self._freemocap_app_state.skellycam_app_state.camera_group.camera_configs,
-                                                                                      retrieve_type="latest")
+                mf_payload: MultiFramePayload = self._freemocap_app_state.skellycam_app_state.frame_escape_shm.get_multi_frame_payload(
+                    camera_configs=self._freemocap_app_state.skellycam_app_state.camera_group.camera_configs,
+                    retrieve_type="latest")
                 await self._send_frontend_payload(mf_payload)
+
                 latest_mf_number = mf_payload.multi_frame_number
 
         except WebSocketDisconnect:
@@ -132,7 +138,9 @@ class FreemocapWebsocketServer:
             raise RuntimeError("Websocket is not connected, cannot send payload!")
 
         await self.websocket.send_bytes(frontend_payload.model_dump_json().encode('utf-8'))
+        self._freemocap_app_state.send_images_to_processing(mf_payload)
 
         if not self.websocket.client_state == WebSocketState.CONNECTED:
             logger.error("Websocket shut down while sending payload!")
             raise RuntimeError("Websocket shut down while sending payload!")
+

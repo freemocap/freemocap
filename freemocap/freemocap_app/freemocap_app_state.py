@@ -5,7 +5,8 @@ from typing import Optional
 
 from skellycam.core.camera_group.shmorchestrator.shared_memory.multi_frame_escape_ring_buffer import \
     MultiFrameEscapeSharedMemoryRingBuffer
-from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState
+from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState, get_skellycam_app_state
+from skellycam.skellycam_app.skellycam_app_controller.skellycam_app_controller import create_skellycam_app_controller
 
 logger = logging.getLogger(__name__)
 
@@ -13,12 +14,13 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FreemocapAppState:
     global_kill_flag: multiprocessing.Value
-    skellycam_app_state: Optional[SkellycamAppState] = None
-
+    skellycam_app_state: SkellycamAppState
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value):
+        create_skellycam_app_controller(global_kill_flag=global_kill_flag)
+
         return cls(global_kill_flag=global_kill_flag,
-                   skellycam_app_state=SkellycamAppState.create(global_kill_flag=global_kill_flag))
+                   skellycam_app_state=get_skellycam_app_state())
 
     @property
     def frame_escape_shm(self) -> MultiFrameEscapeSharedMemoryRingBuffer:

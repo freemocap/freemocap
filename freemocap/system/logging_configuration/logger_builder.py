@@ -8,7 +8,7 @@ from .logging_color_helpers import (
     get_hashed_color,
 )
 from ..paths_and_filenames.path_getters import get_log_file_path
-
+MAX_DELTA_T_LEN = 10
 
 class LogLevels(Enum):
     ALL = logging.NOTSET  # 0 # All logs, including those from third-party libraries
@@ -44,7 +44,11 @@ class DeltaTimeFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         current_time = datetime.now().timestamp()
         delta_ms = (current_time - self.prev_time) * 1000
-        record.delta_t = f"Δt:{delta_ms:.6f}ms"
+        delta_t_str = f"Δt:{delta_ms:.3f}"
+        if len(delta_t_str) > MAX_DELTA_T_LEN-2:
+            delta_t_str = delta_t_str[:MAX_DELTA_T_LEN-2]
+        delta_t_str += "ms"
+        record.delta_t = delta_t_str
         self.prev_time = current_time
         return True
 
@@ -52,7 +56,7 @@ class LoggerBuilder:
     DEFAULT_LOGGING = {"version": 1, "disable_existing_loggers": False}
     # https://www.alt-codes.net/editor.php
     format_string = (
-        "%(message)s||-<%(levelname)8s >┤ %(delta_t)s | %(name)s.%(funcName)s():%(lineno)s | %(asctime)s | PID:%(process)d:%(processName)s TID:%(thread)d:%(threadName)s"
+        f"|-<%(levelname)8s >┤ %(delta_t){MAX_DELTA_T_LEN}s | %(message)s | %(name)s.%(funcName)s():%(lineno)s | %(asctime)s | PID:%(process)d:%(processName)s TID:%(thread)d:%(threadName)s"
     )
 
     def __init__(self, level: LogLevels):
@@ -108,7 +112,7 @@ class LoggerBuilder:
             )
 
             formatted_record = formatted_record.replace(record.getMessage(),
-                                                        color_code + "└» " + record.getMessage() + "\033[0m")
+                                                        color_code + "» " + record.getMessage() + "\033[0m")
             formatted_record = color_code + formatted_record + "\033[0m"
             # Output the final colorized and formatted record to the console
             print(formatted_record)

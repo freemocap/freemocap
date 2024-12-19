@@ -14,19 +14,18 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup actions
-    logger.api("Skellycam API starting...")
-    logger.info(f"Skellycam API base folder path: {get_freemocap_data_folder_path()}")
+    logger.api(f"FreeMoCap API starting (app: {app})...")
+    logger.info(f"FreeMoCap API base folder path: {get_freemocap_data_folder_path()}")
     Path(get_freemocap_data_folder_path()).mkdir(parents=True, exist_ok=True)
 
-    logger.info("Adding middleware...")
 
 
-    logger.success(f"Skellycam API (version:{freemocap.__version__}) started successfully 💀📸✨")
-    logger.api(f"Skellycam API  running on: \nSwagger API docs - {APP_URL} \n Test UI: test ui: {APP_URL}/ui 👈[click to open backend UI in your browser]\n")
+    logger.success(f"FreeMoCap API (version:{freemocap.__version__}) started successfully 💀📸✨")
+    logger.api(f"FreeMoCap API  running on: \nSwagger API docs - {APP_URL} \n Test UI: {APP_URL}/ui 👈[click to open backend UI in your browser]")
 
     # Let the app do its thing
     yield
 
     # Shutdown actions
-    logger.api("Skellycam API ending...")
-    logger.success("Skellycam API shutdown complete - Goodbye!👋")
+    logger.api("FreeMoCap API ending...")
+    logger.success("FreeMoCap API shutdown complete - Goodbye!👋")

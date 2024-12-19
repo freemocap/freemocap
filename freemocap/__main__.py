@@ -4,6 +4,7 @@ import sys
 import threading
 import time
 
+from freemocap.freemocap_app.freemocap_app_state import create_freemocap_app_state
 from freemocap.run_freemocap_server import run_freemocap_server
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
 from freemocap.utilities.clean_path import clean_path
@@ -18,27 +19,11 @@ def main():
         setup_app_id_for_windows()
 
     global_kill_flag = multiprocessing.Value('b', False)
-
+    create_freemocap_app_state(global_kill_flag=global_kill_flag)
     logger.info("Starting server...")
-    server_thread = threading.Thread(run_freemocap_server(global_kill_flag), daemon=True)
-    server_thread.start()
+    run_freemocap_server(global_kill_flag)
 
-    while server_thread.is_alive():
-        time.sleep(1)
-        if global_kill_flag.value:
-            break
-
-    # server_process = multiprocessing.Process(target=run_freemocap_server, args=(global_kill_flag,))
-    # logger.info("Starting backend server process")
-    # server_process.start()
-    # time.sleep(1)  # Give the backend time to startup
-    #
-    # logger.info("Starting frontend GUI")
-    # freemocap_gui_main(global_kill_flag) # blocks until GUI is closed
-    #
-    # logger.info("Frontend GUI ended")
     global_kill_flag.value = True
-    # server_process.join()
     logger.info("Exiting `main`...")
 
 

@@ -23,3 +23,26 @@ class FreemocapAppState:
     @property
     def frame_escape_shm(self) -> MultiFrameEscapeSharedMemoryRingBuffer:
         return self.skellycam_app_state.shmorchestrator.multi_frame_escape_ring_shm
+
+    @property
+    def skellycam_ipc_flags(self):
+        return self.skellycam_app_state.ipc_flags
+
+    @property
+    def skellycam_ipc_queue(self):
+        return self.skellycam_app_state.ipc_queue
+
+FREEMOCAP_APP_STATE: Optional[FreemocapAppState] = None
+def create_freemocap_app_state(global_kill_flag: multiprocessing.Value) -> FreemocapAppState:
+    global FREEMOCAP_APP_STATE
+    if FREEMOCAP_APP_STATE is None:
+        FREEMOCAP_APP_STATE = FreemocapAppState.create(global_kill_flag=global_kill_flag)
+    else:
+        raise ValueError("FreemocapAppState already exists!")
+    return FREEMOCAP_APP_STATE
+
+def get_freemocap_app_state() -> FreemocapAppState:
+    global FREEMOCAP_APP_STATE
+    if FREEMOCAP_APP_STATE is None:
+        raise ValueError("FreemocapAppState does not exist!")
+    return FREEMOCAP_APP_STATE

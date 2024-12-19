@@ -31,12 +31,11 @@ def customize_swagger_ui(app: FastAPI):
         if app.openapi_schema:
             return app.openapi_schema
         openapi_schema = get_openapi(
-            title="Welcome to the SkellyCam API 💀📸✨",
+            title="Welcome to the FreeMoCap API 💀📸✨",
             version=freemocap.__version__,
             description=f"The FastAPI/Uvicorn/Swagger Backend UI for FreeMoCap: {freemocap.__description__}",
             routes=app.routes,
         )
-        # TODO - add SkellyCam logo?
 
         app.openapi_schema = openapi_schema
         return app.openapi_schema

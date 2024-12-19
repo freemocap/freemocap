@@ -5,18 +5,18 @@ import {BrowserCamerasView} from "@/views/BrowserCamerasView";
 import {PythonToJsTest} from "@/views/PythonToJsTest";
 import {PythonCamerasView} from "@/views/PythonCamerasView";
 import {DefaultView} from "@/views/Default";
-import WebsocketConnection from "@/views/WebsocketConnection";
+import WebsocketConnectionStatus from "@/components/WebsocketConnectionStatus";
 
 export const Router = () => {
     return (
         <Routes>
-            <Route path={'/'} element={<React.Fragment/>}/>
-            <Route path={'/default'} element={<DefaultView/>}/>
+            {/*<Route path={'/'} element={<React.Fragment/>}/>*/}
+            {/*<Route path={'/default'} element={<DefaultView/>}/>*/}
             <Route path={'/config'} element={<ConfigView/>}/>
-            <Route path={'/jontestplayground'} element={<BrowserCamerasView/>}/>
-            <Route path={'/pythonToJs'} element={<PythonToJsTest/>}/>
+            {/*<Route path={'/jontestplayground'} element={<BrowserCamerasView/>}/>*/}
+            {/*<Route path={'/pythonToJs'} element={<PythonToJsTest/>}/>*/}
             <Route path={'/show_cameras'} element={<PythonCamerasView/>}/>
-            <Route path={'/websocketConnection'} element={<WebsocketConnection/>}/>
+            <Route path={'/websocketConnection'} element={<WebsocketConnectionStatus/>}/>
         </Routes>
     )
 }

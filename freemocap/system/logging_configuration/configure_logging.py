@@ -1,6 +1,6 @@
 import logging
 
-from .log_test_messages import log_test_messages
+from .log_test_messages import log_test_messages, print_log_level_messages
 from .logger_builder import LoggerBuilder, LogLevels
 
 # Suppress some external loggers that are too verbose for our context/taste
@@ -39,6 +39,8 @@ def configure_logging(level: LogLevels = LogLevels.DEBUG):
 
     builder = LoggerBuilder(level)
     builder.configure()
+    print_log_level_messages(logging.getLogger(__name__))
+
 
 
 if __name__ == "__main__":

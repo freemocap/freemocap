@@ -12,7 +12,7 @@ __repo_issues_url__ = f"{__repo_url__}issues"
 from freemocap.system.logging_configuration.configure_logging import configure_logging
 from freemocap.system.logging_configuration.logger_builder import LogLevels
 
-# configure_logging(LogLevels.TRACE)
+configure_logging(LogLevels.LOOP)
 import logging
 
 logger = logging.getLogger(__name__)

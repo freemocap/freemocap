@@ -92,24 +92,26 @@ class DataSaver:
         df.to_csv(save_path, index=False)
         logger.info(f"Saved recording data to {save_path}")
 
-    def save_to_tidy_csv(self, save_path: Union[str, Path] = None):
+    def save_to_tidy_csv(self, save_path: Union[str, Path, None] = None):
         tidy_data = []
 
         # Iterate over frames and tracked points
         for frame_number, frame_data in self.recording_data_by_frame.items():
             timestamp = frame_data["timestamps"]["mean"]
             timestamp_by_camera = frame_data["timestamps"]["by_camera"]
-            
+
             for point_name, coordinates in frame_data["tracked_points"].items():
-                tidy_data.append({
-                    "frame": frame_number,
-                    "timestamp": timestamp,
-                    "timestamp_by_camera": timestamp_by_camera,
-                    "keypoint": point_name,
-                    "x": coordinates.get("x", None),
-                    "y": coordinates.get("y", None),
-                    "z": coordinates.get("z", None),
-                })
+                tidy_data.append(
+                    {
+                        "frame": frame_number,
+                        "timestamp": timestamp,
+                        "timestamp_by_camera": timestamp_by_camera,
+                        "keypoint": point_name,
+                        "x": coordinates.get("x", None),
+                        "y": coordinates.get("y", None),
+                        "z": coordinates.get("z", None),
+                    }
+                )
 
         # Convert to DataFrame
         tidy_df = pd.DataFrame(tidy_data)

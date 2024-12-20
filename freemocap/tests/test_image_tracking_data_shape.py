@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import pytest
@@ -43,7 +43,7 @@ def test_image_tracking_data_shape(
     number_of_videos = len(list_of_video_paths)
     assert (
         image2d_camera_frame_marker_xyz.shape[0] == number_of_videos
-    ), f"Number of videos in image_tracking_data does not match number of videos in synchronized videos folder"
+    ), f"Number of videos in image_tracking_data ({image2d_camera_frame_marker_xyz.shape[0]}) does not match number of videos in synchronized videos folder ({number_of_videos})"
 
     frame_counts = list(get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path).values())
 

@@ -1,6 +1,7 @@
 name: Linting Flake8
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [ main, development ]
     paths:
@@ -11,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Set up Python 3.x
         uses: wntrblm/nox@2022.8.7
         with:

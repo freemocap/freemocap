@@ -1531,7 +1531,7 @@ dependencies = [
 [[package]]
 name = "skellycam"
 version = "2023.9.1086"
-source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#7c303bd2e64c06d86c79b1e7330a96a7f56fe3ff" }
+source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#9ca828a339dd814378d7daa6fcccd9969a4cf9be" }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },

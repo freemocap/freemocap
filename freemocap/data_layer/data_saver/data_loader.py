@@ -197,7 +197,7 @@ class DataLoader:
         Calculate the center of mass for a given frame number.
         """
         com_data = {}
-        com_data["full_body_com"] = Point(
+        com_data["com_full_body"] = Point(
             x=self.center_of_mass_xyz[frame_number, 0],
             y=self.center_of_mass_xyz[frame_number, 1],
             z=self.center_of_mass_xyz[frame_number, 2],
@@ -207,7 +207,7 @@ class DataLoader:
             raise ValueError("center of mass definitions are not provided.")
 
         for segment_number, segment_name in enumerate(self._model_info.center_of_mass_definitions.keys()):
-            com_data[segment_name] = Point(
+            com_data[f'com_{segment_name}'] = Point(
                 x=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 0],
                 y=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 1],
                 z=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 2],

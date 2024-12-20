@@ -1,13 +1,14 @@
 import logging
+import multiprocessing
 from abc import ABC, abstractmethod
 from multiprocessing import Process, Queue
 from typing import Dict, OrderedDict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from skellycam.core import CameraId
 from skellycam.core.camera_group.shmorchestrator.shared_memory.ring_buffer_camera_shared_memory import \
     RingBufferCameraSharedMemory
-from skellycam.core.camera_group.shmorchestrator.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBuffer, \
+from skellycam.core.camera_group.shmorchestrator.shared_memory.ring_buffer_shared_memory import \
     SharedMemoryRingBufferDTO
 from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState
 
@@ -15,19 +16,23 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineStageConfig(BaseModel, ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     pass
 
 
 class PipelineConfig(BaseModel, ABC):
-    stage_configs: Dict[str, PipelineStageConfig]
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    stage_configs: Dict[str, PipelineStageConfig] = Field(default_factory=dict)
 
 
 class PipelineData(BaseModel, ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     data: object
     metadata: dict[object, object] = Field(default_factory=dict)
 
 
 class PipelineStage(BaseModel, ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     config: PipelineConfig
 
     @abstractmethod
@@ -36,6 +41,7 @@ class PipelineStage(BaseModel, ABC):
 
 
 class PipelineModel(BaseModel, ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     config: PipelineConfig
     stages: OrderedDict[str, PipelineStage]
 
@@ -49,8 +55,8 @@ class PipelineModel(BaseModel, ABC):
 
 
 class CameraProcessingNode(BaseModel, ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     camera_id: CameraId
-    image_ring_shm: SharedMemoryRingBuffer
     process: Process
     output_queue: Queue
     config: PipelineConfig
@@ -60,13 +66,10 @@ class CameraProcessingNode(BaseModel, ABC):
                config: PipelineConfig,
                camera_id: CameraId,
                camera_ring_shm_dto: SharedMemoryRingBufferDTO,
-               input_queue: Queue,
-               output_queue: Queue):
+               output_queue: Queue,
+               shutdown_event: multiprocessing.Event):
         return cls(camera_id=camera_id,
-                   image_ring_shm=SharedMemoryRingBuffer.recreate(camera_ring_shm_dto,
-                                                                  read_only=True),
-                   input_queue=input_queue,
-                   output_queue=output_queue,
+                   process=Process(target=cls._run, args=(config, camera_ring_shm_dto, output_queue)),
                    config=config)
 
     def start(self):
@@ -78,18 +81,30 @@ class CameraProcessingNode(BaseModel, ABC):
     def join(self):
         self.process.join()
 
+    @staticmethod
+    def _run(config: PipelineConfig, camera_ring_shm_dto: SharedMemoryRingBufferDTO, output_queue: Queue):
+        pass
+
 
 class AggregationProcessNode(BaseModel, ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     config: PipelineConfig
     process: Process
     input_queues: Dict[CameraId, Queue]
     output_queue: Queue
+    shutdown_event: multiprocessing.Event
 
     @classmethod
-    def create(cls, config: PipelineConfig, input_queues: Dict[CameraId, Queue], output_queue: Queue):
+    def create(cls,
+               config: PipelineConfig,
+               input_queues: Dict[CameraId, Queue],
+               output_queue: Queue,
+               shutdown_event: multiprocessing.Event):
         return cls(config=config,
+                   process=Process(target=cls._run, args=(config, input_queues, output_queue, shutdown_event)),
                    input_queues=input_queues,
-                   output_queue=output_queue)
+                   output_queue=output_queue,
+                   shutdown_event=shutdown_event)
 
     def start(self):
         self.process.start()
@@ -100,58 +115,116 @@ class AggregationProcessNode(BaseModel, ABC):
     def join(self):
         self.process.join()
 
+    @staticmethod
+    def _run(config: PipelineConfig, input_queues: Dict[CameraId, Queue], output_queue: Queue,
+             shutdown_event: multiprocessing.Event):
+        pass
 
-class CameraGroupProcessingTree(ABC):
+
+class CameraGroupProcessingPipeline(BaseModel, ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     camera_processes: Dict[CameraId, CameraProcessingNode]
     aggregation_process: Process
     queues_by_camera_id: Dict[CameraId, Queue]
     output_queue: Queue
+    shutdown_event: multiprocessing.Event
 
     @classmethod
     def create(cls, *args, **kwargs):
         pass
 
+    def start(self):
+        self.aggregation_process.start()
+        for camera_id, camera_process in self.camera_processes.items():
+            camera_process.start()
+
+    def shutdown(self):
+        self.shutdown_event.set()
+        self.aggregation_process.join()
+        for camera_id, camera_process in self.camera_processes.items():
+            camera_process.join()
+
+    def intake_data(self, data: PipelineData):
+        for camera_id, camera_process in self.camera_processes.items():
+            camera_process.intake_data(data)
+
 
 class CameraGroupProcessingServer(BaseModel, ABC):
-    process_tree: CameraGroupProcessingTree
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    processing_pipeline: CameraGroupProcessingPipeline
+    shutdown_event: multiprocessing.Event
 
-    def process_data(self, data: PipelineData) -> PipelineData:
-        return self.pipeline.process_data(data)
+    def intake_data(self, data: PipelineData):
+        self.processing_pipeline.intake_data(data)
 
+    def start(self):
+        self.processing_pipeline.start()
 
-class FreeMoCapProcessingTree(CameraGroupProcessingTree):
+    def shutdown(self):
+        self.shutdown_event.set()
+        self.processing_pipeline.shutdown()
+
+class FreemocapCameraProcessingNode(CameraProcessingNode):
+    @staticmethod
+    def _run(config: PipelineConfig, camera_ring_shm_dto: SharedMemoryRingBufferDTO, output_queue: Queue):
+        pass
+
+class FreemocapAggregationProcessNode(AggregationProcessNode):
+    @staticmethod
+    def _run(config: PipelineConfig, input_queues: Dict[CameraId, Queue], output_queue: Queue,
+             shutdown_event: multiprocessing.Event):
+        pass
+
+class FreemocapPipelineConfig(PipelineConfig):
+    pass
+
+class FreemocapProcessingPipeline(CameraGroupProcessingPipeline):
     camera_ring_buffer_shms: Dict[CameraId, RingBufferCameraSharedMemory]
+    shutdown_event: multiprocessing.Event
 
     @classmethod
     def create(cls,
                skellycam_app_state: SkellycamAppState,
-               pipeline_config: PipelineConfig = PipelineConfig()):
+               shutdown_event: multiprocessing.Event,
+               pipeline_config: FreemocapPipelineConfig = FreemocapPipelineConfig()):
+        if skellycam_app_state.camera_ring_buffer_shms is None:
+            raise ValueError("Cannot create FreeMoCapProcessingTree without camera ring buffer SHMs!")
         camera_ring_buffer_shms = skellycam_app_state.camera_ring_buffer_shms
         camera_processes = {}
         queues_by_camera_id = {}
         output_queue = Queue()
         for camera_id, camera_shm in camera_ring_buffer_shms.items():
             camera_shm_dto = camera_shm.to_dto()
-            input_queue = Queue()
+            camera_output_queue = Queue()
             camera_processes[camera_id] = CameraProcessingNode.create(config=pipeline_config,
                                                                       camera_id=camera_id,
                                                                       camera_ring_shm_dto=camera_shm_dto,
-                                                                      input_queue=input_queue,
-                                                                      output_queue=output_queue)
-            queues_by_camera_id[camera_id] = input_queue
+                                                                      output_queue=camera_output_queue,
+                                                                      shutdown_event=shutdown_event,
+                                                                      )
+            queues_by_camera_id[camera_id] = camera_output_queue
 
         aggregation_process = AggregationProcessNode.create(config=PipelineConfig(),
                                                             input_queues=queues_by_camera_id,
-                                                            output_queue=Queue())
+                                                            output_queue=output_queue,
+                                                            shutdown_event=shutdown_event,
+                                                            )
 
         return cls(camera_processes=camera_processes,
                    camera_ring_buffer_shms=camera_ring_buffer_shms,
                    aggregation_process=aggregation_process,
                    queues_by_camera_id=queues_by_camera_id,
-                   output_queue=aggregation_process.output_queue)
+                   output_queue=aggregation_process.output_queue,
+                   shutdown_event=shutdown_event,
+                   )
 
 
 class FreemocapProcessingServer(CameraGroupProcessingServer):
     @classmethod
-    def create(cls, skellycam_app_state: SkellycamAppState):
-        return cls(process_tree=CameraGroupProcessingTree.create(skellycam_app_state))
+    def create(cls,
+               skellycam_app_state: SkellycamAppState):
+        shutdown_event = multiprocessing.Event()
+        return cls(processing_pipeline=FreemocapProcessingPipeline.create(skellycam_app_state=skellycam_app_state,
+                                                                          shutdown_event=shutdown_event),
+                   shutdown_event=shutdown_event,
+                   )

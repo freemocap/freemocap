@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class FreemocapAppState:
     global_kill_flag: multiprocessing.Value
     skellycam_app_state: SkellycamAppState
-    processing_server: ProcessingServer|None = None
+
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value):
         create_skellycam_app_controller(global_kill_flag=global_kill_flag)
@@ -37,7 +37,7 @@ class FreemocapAppState:
     def skellycam_ipc_queue(self):
         return self.skellycam_app_state.ipc_queue
 
-    def create_image_processing_server(self, processing_server: FreemocapProcessingServer):
+    def create_processing_server(self) -> FreemocapProcessingServer:
         if not self.frame_escape_shm:
             raise ValueError("Cannot create image processing server without frame escape shared memory!")
         return FreemocapProcessingServer.create(skellycam_app_state=self.skellycam_app_state)

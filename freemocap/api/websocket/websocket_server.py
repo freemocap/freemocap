@@ -12,6 +12,7 @@ from skellycam.utilities.wait_functions import async_wait_1ms
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
+from freemocap.pipelines.pipeline_abcs import FreemocapProcessingServer
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,7 @@ class FreemocapWebsocketServer:
 
         camera_group_uuid = None
         latest_mf_number = -1
+        processing_server: Optional[FreemocapProcessingServer] = None #Starts when camera group is detected, should probably be handled differently but this works fn
         try:
             while True:
                 await async_wait_1ms()
@@ -108,7 +110,9 @@ class FreemocapWebsocketServer:
                 if self._freemocap_app_state.skellycam_app_state.camera_group and camera_group_uuid != self._freemocap_app_state.skellycam_app_state.camera_group.uuid:
                     latest_mf_number = -1
                     camera_group_uuid = self._freemocap_app_state.skellycam_app_state.camera_group.uuid
-                    image_processing_shms_by_camera = self._freemocap_app_state.create_image_processing_shms_by_camera()
+                    if processing_server:
+                        processing_server.shutdown()
+                    processing_server = self._freemocap_app_state.create_processing_server()
                     continue
 
                 if not self._freemocap_app_state.skellycam_app_state.frame_escape_shm.latest_mf_number.value > latest_mf_number:
@@ -118,7 +122,8 @@ class FreemocapWebsocketServer:
                     camera_configs=self._freemocap_app_state.skellycam_app_state.camera_group.camera_configs,
                     retrieve_type="latest")
                 await self._send_frontend_payload(mf_payload)
-
+                if processing_server:
+                    processing_server.process_image_payload(mf_payload)
                 latest_mf_number = mf_payload.multi_frame_number
 
         except WebSocketDisconnect:

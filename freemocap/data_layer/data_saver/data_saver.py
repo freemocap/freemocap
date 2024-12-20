@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -49,6 +49,7 @@ class DataSaver:
 
         self.recording_data_by_frame = None
         self.number_of_frames = None
+        self.model_info = model_info
 
     def save_all(self):
         """
@@ -92,6 +93,26 @@ class DataSaver:
         df.to_csv(save_path, index=False)
         logger.info(f"Saved recording data to {save_path}")
 
+    def _parse_keypoint_name(self, keypoint_name: str) -> Tuple[str, str]:
+        if keypoint_name.startswith("right_hand"):
+            split_point_name = keypoint_name.split("right_hand_", maxsplit=1)
+            model = f"{self.model_info.name}_hand"
+            keypoint = f"right_{split_point_name[1]}"
+        elif keypoint_name.startswith("left_hand"):
+            split_point_name = keypoint_name.split("left_hand_", maxsplit=1)
+            model = f"{self.model_info.name}_hand"
+            keypoint = f"left_{split_point_name[1]}"
+        else:
+            split_point_name = keypoint_name.split("_", maxsplit=1)
+            if len(split_point_name) != 2:
+                model = self.model_info.name
+                keypoint = keypoint_name
+            else:
+                model = f"{self.model_info.name}_{split_point_name[0]}"
+                keypoint = split_point_name[1]
+
+        return model, keypoint
+
     def save_to_tidy_csv(self, save_path: Union[str, Path, None] = None):
         tidy_data = []
 
@@ -101,12 +122,14 @@ class DataSaver:
             timestamp_by_camera = frame_data["timestamps"]["by_camera"]
 
             for point_name, coordinates in frame_data["tracked_points"].items():
+                model, keypoint = self._parse_keypoint_name(point_name)
                 tidy_data.append(
                     {
                         "frame": frame_number,
                         "timestamp": timestamp,
                         "timestamp_by_camera": timestamp_by_camera,
-                        "keypoint": point_name,
+                        "model": model,
+                        "keypoint": keypoint,
                         "x": coordinates.get("x", None),
                         "y": coordinates.get("y", None),
                         "z": coordinates.get("z", None),

@@ -12,7 +12,7 @@ from skellycam.utilities.wait_functions import async_wait_1ms
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
-from freemocap.pipelines.pipeline_abcs import FreemocapProcessingServer
+from freemocap.pipelines.dummy_pipeline import DummyProcessingServer
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class FreemocapWebsocketServer:
 
         camera_group_uuid = None
         latest_mf_number = -1
-        processing_server: Optional[FreemocapProcessingServer] = None #Starts when camera group is detected, should probably be handled differently but this works fn
+        processing_server: Optional[DummyProcessingServer] = None #Starts when camera group is detected, should probably be handled differently but this works fn
         try:
             while True:
                 await async_wait_1ms()
@@ -123,7 +123,7 @@ class FreemocapWebsocketServer:
                     retrieve_type="latest")
                 await self._send_frontend_payload(mf_payload)
                 if processing_server:
-                    processing_server.process_image_payload(mf_payload)
+                    processing_server.intake_data(mf_payload)
                 latest_mf_number = mf_payload.multi_frame_number
 
         except WebSocketDisconnect:
@@ -143,7 +143,6 @@ class FreemocapWebsocketServer:
             raise RuntimeError("Websocket is not connected, cannot send payload!")
 
         await self.websocket.send_bytes(frontend_payload.model_dump_json().encode('utf-8'))
-        self._freemocap_app_state.send_images_to_processing(mf_payload)
 
         if not self.websocket.client_state == WebSocketState.CONNECTED:
             logger.error("Websocket shut down while sending payload!")

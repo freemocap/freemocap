@@ -8,28 +8,26 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.ring_buffer_camer
     RingBufferCameraSharedMemory
 
 from freemocap.pipelines.pipeline_abcs import CameraProcessingNode, PipelineStageConfig, logger, PipelineData, \
-    AggregationProcessNode, PipelineConfig, CameraGroupProcessingPipeline, CameraGroupProcessingServer, StageConfigKeys
+    AggregationProcessNode, PipelineConfig, CameraGroupProcessingPipeline, CameraGroupProcessingServer
 
 
 class DummyCameraPipelineConfig(PipelineStageConfig):
-    pass
+    param1: int = 1
 
 
 class DummyAggregationProcessConfig(PipelineStageConfig):
-    pass
+    param2: int = 2
 
 
 class DummyPipelineConfig(PipelineConfig):
-    stage_configs: Dict[CameraId, PipelineStageConfig] = {
-        StageConfigKeys.CAMERA_PROCESSES: Dict[CameraId, DummyCameraPipelineConfig],
-        StageConfigKeys.AGGREGATION_PROCESS: DummyAggregationProcessConfig}
+    camera_node_configs: dict[CameraId, DummyCameraPipelineConfig]
+    aggregation_node_config: DummyAggregationProcessConfig
+
 
     @classmethod
     def create(cls, camera_ids: list[CameraId]):
-        camera_processes = {camera_id: DummyCameraPipelineConfig() for camera_id in camera_ids}
-        return cls(stage_configs={StageConfigKeys.CAMERA_PROCESSES: camera_processes,
-                                  StageConfigKeys.AGGREGATION_PROCESS: DummyAggregationProcessConfig()})
-
+        return cls(camera_node_configs={camera_id: DummyCameraPipelineConfig() for camera_id in camera_ids},
+                   aggregation_node_config=DummyAggregationProcessConfig())
 
 class DummyCameraProcessingNode(CameraProcessingNode):
 
@@ -47,7 +45,6 @@ class DummyCameraProcessingNode(CameraProcessingNode):
                 logger.loop(f"Processing image from camera {camera_ring_shm.camera_id}")
                 # TODO - process image
                 output_queue.put(PipelineData(data=image))
-
 
 class DummyAggregationProcessNode(AggregationProcessNode):
 
@@ -67,12 +64,10 @@ class DummyAggregationProcessNode(AggregationProcessNode):
                 # TODO - process aggregated data
                 output_queue.put(PipelineData(data=data_by_camera_id))
 
-
 class DummyProcessingPipeline(CameraGroupProcessingPipeline):
     config: DummyPipelineConfig
     camera_processes: Dict[CameraId, DummyCameraProcessingNode]
     aggregation_process: DummyAggregationProcessNode
-
 
 class DummyProcessingServer(CameraGroupProcessingServer):
     processing_pipeline: DummyProcessingPipeline

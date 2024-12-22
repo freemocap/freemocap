@@ -43,7 +43,7 @@ class FreemocapAppState:
         if not self.frame_escape_shm:
             raise ValueError("Cannot create image processing server without frame escape shared memory!")
         self.pipeline_shutdown_event.clear()
-        return DummyProcessingServer.create(camera_shm_dtos=self.skellycam_app_state.camera_group.camera_configs,
+        return DummyProcessingServer.create(camera_shm_dtos=self.skellycam_app_state.camera_ring_buffer_shms,
                                             pipeline_config=DummyPipelineConfig.create(
                                                 camera_ids=self.skellycam_app_state.camera_group.camera_ids),
                                             shutdown_event=self.pipeline_shutdown_event,

@@ -2,7 +2,7 @@ import logging
 import multiprocessing
 import sys
 
-from freemocap.freemocap_app.freemocap_app_state import create_freemocap_app_state
+from freemocap.freemocap_app.freemocap_app_state import create_freemocap_app_state, get_freemocap_app_state
 from freemocap.run_freemocap_server import run_freemocap_server
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
 from freemocap.utilities.clean_path import clean_path
@@ -21,6 +21,8 @@ def main():
     run_freemocap_server(global_kill_flag)
 
     global_kill_flag.value = True
+    get_freemocap_app_state().close()
+
     logger.info("Exiting `main`...")
 
 

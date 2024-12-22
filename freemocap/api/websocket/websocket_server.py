@@ -13,6 +13,7 @@ from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
 from freemocap.pipelines.dummy_pipeline import DummyProcessingServer
+from freemocap.pipelines.pipeline_abcs import ReadTypes
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,7 @@ class FreemocapWebsocketServer:
                     if processing_server:
                         processing_server.shutdown()
                     processing_server = self._freemocap_app_state.create_processing_server()
+                    processing_server.start()
                     continue
 
                 if not self._freemocap_app_state.skellycam_app_state.frame_escape_shm.latest_mf_number.value > latest_mf_number:
@@ -120,7 +122,7 @@ class FreemocapWebsocketServer:
 
                 mf_payload: MultiFramePayload = self._freemocap_app_state.skellycam_app_state.frame_escape_shm.get_multi_frame_payload(
                     camera_configs=self._freemocap_app_state.skellycam_app_state.camera_group.camera_configs,
-                    retrieve_type="latest")
+                    retrieve_type=ReadTypes.LATEST.value)
                 await self._send_frontend_payload(mf_payload)
                 if processing_server:
                     processing_server.intake_data(mf_payload)

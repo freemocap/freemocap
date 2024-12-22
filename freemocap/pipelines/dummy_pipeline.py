@@ -1,5 +1,6 @@
 import multiprocessing
 import time
+from enum import Enum
 from multiprocessing import Queue
 from typing import Dict
 
@@ -8,7 +9,7 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.ring_buffer_camer
     RingBufferCameraSharedMemory
 
 from freemocap.pipelines.pipeline_abcs import CameraProcessingNode, PipelineStageConfig, logger, PipelineData, \
-    AggregationProcessNode, PipelineConfig, CameraGroupProcessingPipeline, CameraGroupProcessingServer
+    AggregationProcessNode, PipelineConfig, CameraGroupProcessingPipeline, CameraGroupProcessingServer, ReadTypes
 
 
 class DummyCameraPipelineConfig(PipelineStageConfig):
@@ -23,11 +24,14 @@ class DummyPipelineConfig(PipelineConfig):
     camera_node_configs: dict[CameraId, DummyCameraPipelineConfig]
     aggregation_node_config: DummyAggregationProcessConfig
 
-
     @classmethod
     def create(cls, camera_ids: list[CameraId]):
         return cls(camera_node_configs={camera_id: DummyCameraPipelineConfig() for camera_id in camera_ids},
                    aggregation_node_config=DummyAggregationProcessConfig())
+
+
+
+
 
 class DummyCameraProcessingNode(CameraProcessingNode):
 
@@ -35,16 +39,26 @@ class DummyCameraProcessingNode(CameraProcessingNode):
     def _run(config: DummyPipelineConfig,
              camera_ring_shm_dto: RingBufferCameraSharedMemory,
              output_queue: Queue,
-             shutdown_event: multiprocessing.Event):
+             shutdown_event: multiprocessing.Event,
+             read_type: ReadTypes = ReadTypes.LATEST,
+             ):
         camera_ring_shm = RingBufferCameraSharedMemory.recreate(dto=camera_ring_shm_dto,
                                                                 read_only=True)
         while not shutdown_event.is_set():
             time.sleep(0.001)
             if camera_ring_shm.ready_to_read:
-                image = camera_ring_shm.read()
-                logger.loop(f"Processing image from camera {camera_ring_shm.camera_id}")
+
+                if read_type == ReadTypes.LATEST:
+                    image = camera_ring_shm.retrieve_latest_frame(increment=True)
+                elif read_type == ReadTypes.NEXT:
+                    image = camera_ring_shm.retrieve_next_frame()
+                else:
+                    raise ValueError(f"Invalid read_type: {read_type}")
+
+                logger.trace(f"Processing image from camera {camera_ring_shm.camera_id}")
                 # TODO - process image
                 output_queue.put(PipelineData(data=image))
+
 
 class DummyAggregationProcessNode(AggregationProcessNode):
 
@@ -60,14 +74,16 @@ class DummyAggregationProcessNode(AggregationProcessNode):
                         if not input_queues[camera_id].empty():
                             data_by_camera_id[camera_id] = input_queues[camera_id].get()
             if len(data_by_camera_id) == len(input_queues):
-                logger.loop(f"Processing aggregated data from cameras {data_by_camera_id.keys()}")
+                logger.trace(f"Processing aggregated data from cameras {data_by_camera_id.keys()}")
                 # TODO - process aggregated data
                 output_queue.put(PipelineData(data=data_by_camera_id))
 
+
 class DummyProcessingPipeline(CameraGroupProcessingPipeline):
     config: DummyPipelineConfig
-    camera_processes: Dict[CameraId, DummyCameraProcessingNode]
-    aggregation_process: DummyAggregationProcessNode
+    camera_node: Dict[CameraId, DummyCameraProcessingNode]
+    aggregation_node: DummyAggregationProcessNode
+
 
 class DummyProcessingServer(CameraGroupProcessingServer):
     processing_pipeline: DummyProcessingPipeline

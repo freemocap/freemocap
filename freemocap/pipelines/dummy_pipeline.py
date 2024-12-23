@@ -1,6 +1,5 @@
 import multiprocessing
 import time
-from enum import Enum
 from multiprocessing import Queue, Process
 from typing import Dict
 
@@ -30,19 +29,16 @@ class DummyPipelineConfig(PipelineConfig):
                    aggregation_node_config=DummyAggregationProcessConfig())
 
 
-
-
-
 class DummyCameraProcessingNode(CameraProcessingNode):
     @classmethod
     def create(cls,
                config: DummyCameraPipelineConfig,
                camera_id: CameraId,
                camera_ring_shm_dto: RingBufferCameraSharedMemoryDTO,
-                output_queue: Queue,
-                shutdown_event: multiprocessing.Event,
-                read_type: ReadTypes = ReadTypes.LATEST_AND_INCREMENT
-                ):
+               output_queue: Queue,
+               shutdown_event: multiprocessing.Event,
+               read_type: ReadTypes = ReadTypes.LATEST_AND_INCREMENT
+               ):
         return cls(config=config,
                    camera_id=camera_id,
                    camera_ring_shm=RingBufferCameraSharedMemory.recreate(dto=camera_ring_shm_dto,
@@ -138,16 +134,16 @@ class DummyProcessingPipeline(CameraGroupProcessingPipeline):
         camera_output_queues = {camera_id: Queue() for camera_id in camera_shm_dtos.keys()}
         aggregation_output_queue = Queue()
         camera_nodes = {camera_id: DummyCameraProcessingNode.create(config=config,
-                                                                   camera_id=CameraId(camera_id),
-                                                                   camera_ring_shm_dto=camera_shm_dtos[camera_id],
-                                                                   output_queue=camera_output_queues[camera_id],
-                                                                   read_type=read_type,
-                                                                   shutdown_event=shutdown_event)
-                            for camera_id, config in config.camera_node_configs.items()}
+                                                                    camera_id=CameraId(camera_id),
+                                                                    camera_ring_shm_dto=camera_shm_dtos[camera_id],
+                                                                    output_queue=camera_output_queues[camera_id],
+                                                                    read_type=read_type,
+                                                                    shutdown_event=shutdown_event)
+                        for camera_id, config in config.camera_node_configs.items()}
         aggregation_process = DummyAggregationProcessNode.create(config=config.aggregation_node_config,
-                                                            input_queues=camera_output_queues,
-                                                            output_queue=aggregation_output_queue,
-                                                            shutdown_event=shutdown_event)
+                                                                 input_queues=camera_output_queues,
+                                                                 output_queue=aggregation_output_queue,
+                                                                 shutdown_event=shutdown_event)
 
         return cls(config=config,
                    camera_nodes=camera_nodes,
@@ -155,17 +151,19 @@ class DummyProcessingPipeline(CameraGroupProcessingPipeline):
                    shutdown_event=shutdown_event,
                    )
 
+
 class DummyProcessingServer(CameraGroupProcessingServer):
     processing_pipeline: DummyProcessingPipeline
     pipeline_config: DummyPipelineConfig
 
     @classmethod
     def create(cls,
-               config:DummyPipelineConfig,
-                camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
-                read_type: ReadTypes,
+               config: DummyPipelineConfig,
+               camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
+               read_type: ReadTypes,
                shutdown_event: multiprocessing.Event):
         processing_pipeline = DummyProcessingPipeline.create(
+            config=config,
             camera_shm_dtos=camera_shm_dtos,
             read_type=read_type,
             shutdown_event=shutdown_event,

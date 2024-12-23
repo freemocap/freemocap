@@ -122,7 +122,7 @@ class FreemocapWebsocketServer:
 
                 mf_payload: MultiFramePayload = self._freemocap_app_state.skellycam_app_state.frame_escape_shm.get_multi_frame_payload(
                     camera_configs=self._freemocap_app_state.skellycam_app_state.camera_group.camera_configs,
-                    retrieve_type=ReadTypes.LATEST.value)
+                    retrieve_type=ReadTypes.LATEST_READ_ONLY.value)
                 await self._send_frontend_payload(mf_payload)
                 if processing_server:
                     processing_server.intake_data(mf_payload)

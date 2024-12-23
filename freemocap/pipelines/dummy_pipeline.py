@@ -32,19 +32,20 @@ class DummyPipelineConfig(PipelineConfig):
 class DummyCameraProcessingNode(CameraProcessingNode):
     @classmethod
     def create(cls,
-               config: DummyCameraPipelineConfig,
                camera_id: CameraId,
+               config: DummyCameraPipelineConfig,
                camera_ring_shm_dto: RingBufferCameraSharedMemoryDTO,
                output_queue: Queue,
                shutdown_event: multiprocessing.Event,
                read_type: ReadTypes = ReadTypes.LATEST_AND_INCREMENT
                ):
-        return cls(config=config,
-                   camera_id=camera_id,
+        return cls(camera_id=camera_id,
+                   config=config,
                    camera_ring_shm=RingBufferCameraSharedMemory.recreate(dto=camera_ring_shm_dto,
                                                                          read_only=False),
                    process=Process(target=cls._run,
-                                   kwargs=dict(config=config,
+                                   kwargs=dict(camera_id=camera_id,
+                                               config=config,
                                                camera_ring_shm_dto=camera_ring_shm_dto,
                                                output_queue=output_queue,
                                                read_type=read_type,
@@ -56,31 +57,39 @@ class DummyCameraProcessingNode(CameraProcessingNode):
                    )
 
     @staticmethod
-    def _run(config: DummyPipelineConfig,
+    def _run(camera_id: CameraId,
+             config: DummyPipelineConfig,
              camera_ring_shm_dto: RingBufferCameraSharedMemory,
              output_queue: Queue,
              shutdown_event: multiprocessing.Event,
              read_type: ReadTypes = ReadTypes.LATEST_AND_INCREMENT
              ):
-        logger.trace(f"Starting camera processing node for camera {camera_ring_shm_dto.camera_id}")
+        logger.trace(f"Starting camera processing node for camera {camera_id}")
         camera_ring_shm = RingBufferCameraSharedMemory.recreate(dto=camera_ring_shm_dto,
-                                                                read_only=False)
-        while not shutdown_event.is_set():
-            time.sleep(0.001)
-            if camera_ring_shm.ready_to_read:
+                                                                    read_only=False)
+        try:
+            while not shutdown_event.is_set():
+                time.sleep(0.001)
+                if camera_ring_shm.ready_to_read:
 
-                if read_type == ReadTypes.LATEST_AND_INCREMENT:
-                    image = camera_ring_shm.retrieve_latest_frame(increment=True)
-                elif read_type == ReadTypes.LATEST_READ_ONLY:
-                    image = camera_ring_shm.retrieve_latest_frame(increment=False)
-                elif read_type == ReadTypes.NEXT:
-                    image = camera_ring_shm.retrieve_next_frame()
-                else:
-                    raise ValueError(f"Invalid read_type: {read_type}")
+                    if read_type == ReadTypes.LATEST_AND_INCREMENT:
+                        image = camera_ring_shm.retrieve_latest_frame(increment=True)
+                    elif read_type == ReadTypes.LATEST_READ_ONLY:
+                        image = camera_ring_shm.retrieve_latest_frame(increment=False)
+                    elif read_type == ReadTypes.NEXT:
+                        image = camera_ring_shm.retrieve_next_frame()
+                    else:
+                        raise ValueError(f"Invalid read_type: {read_type}")
 
-                logger.trace(f"Processing image from camera {camera_ring_shm.camera_id}")
-                # TODO - process image
-                output_queue.put(PipelineData(data=image))
+                    # TODO - process image
+                    output_queue.put(PipelineData(data=image))
+        except Exception as e:
+            logger.exception(f"Error in camera processing node for camera {camera_id}", exc_info=e)
+            raise
+        finally:
+            logger.trace(f"Shutting down camera processing node for camera {camera_id}")
+            shutdown_event.set()
+            camera_ring_shm.close()
 
 
 class DummyAggregationProcessNode(AggregationProcessNode):
@@ -104,19 +113,24 @@ class DummyAggregationProcessNode(AggregationProcessNode):
     @staticmethod
     def _run(config: PipelineConfig, input_queues: Dict[CameraId, Queue], output_queue: Queue,
              shutdown_event: multiprocessing.Event):
-        while not shutdown_event.is_set():
-            data_by_camera_id = {camera_id: None for camera_id in input_queues.keys()}
-            while any([input_queues[camera_id].empty() for camera_id in input_queues.keys()]):
-                time.sleep(0.001)
-                for camera_id in input_queues.keys():
-                    if not input_queues[camera_id] is None:
-                        if not input_queues[camera_id].empty():
-                            data_by_camera_id[camera_id] = input_queues[camera_id].get()
-            if len(data_by_camera_id) == len(input_queues):
-                logger.trace(f"Processing aggregated data from cameras {data_by_camera_id.keys()}")
-                # TODO - process aggregated data
-                output_queue.put(PipelineData(data=data_by_camera_id))
-
+        try:
+            while not shutdown_event.is_set():
+                data_by_camera_id = {camera_id: None for camera_id in input_queues.keys()}
+                while any([input_queues[camera_id].empty() for camera_id in input_queues.keys()]):
+                    time.sleep(0.001)
+                    for camera_id in input_queues.keys():
+                        if not input_queues[camera_id] is None:
+                            if not input_queues[camera_id].empty():
+                                data_by_camera_id[camera_id] = input_queues[camera_id].get()
+                if len(data_by_camera_id) == len(input_queues):
+                    # TODO - process aggregated data
+                    output_queue.put(PipelineData(data=data_by_camera_id))
+        except Exception as e:
+            logger.exception(f"Error in aggregation processing node", exc_info=e)
+            raise
+        finally:
+            logger.trace(f"Shutting down aggregation processing node")
+            shutdown_event.set()
 
 class DummyProcessingPipeline(CameraGroupProcessingPipeline):
     config: DummyPipelineConfig

@@ -1,88 +1,94 @@
+import logging
 import multiprocessing
 import time
 from multiprocessing import Queue, Process
 from typing import Dict
 
 from skellycam import CameraId
-from skellycam.core.camera_group.shmorchestrator.shared_memory.ring_buffer_camera_shared_memory import \
-    RingBufferCameraSharedMemory, RingBufferCameraSharedMemoryDTO
+from skellycam.core.camera_group.camera.config.camera_config import CameraConfig, CameraConfigs
+from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
+    CameraSharedMemoryDTOs
+from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_shared_memory import \
+    CameraSharedMemoryDTO, SingleSlotCameraSharedMemory
+from skellycam.core.frames.payloads.metadata.frame_metadata_enum import FRAME_METADATA_MODEL
 
-from freemocap.pipelines.pipeline_abcs import CameraProcessingNode, PipelineStageConfig, logger, PipelineData, \
-    AggregationProcessNode, PipelineConfig, CameraGroupProcessingPipeline, CameraGroupProcessingServer, ReadTypes
+from freemocap.pipelines.pipeline_abcs import CameraProcessingNode, PipelineStageConfig, PipelineData, \
+    AggregationProcessNode, PipelineConfig, CameraGroupProcessingPipeline, CameraGroupProcessingServer
+
+logger = logging.getLogger(__name__)
 
 
-class DummyCameraPipelineConfig(PipelineStageConfig):
+class DummyPipelineCameraLayerOutputData(PipelineData):
+    data: object
+
+
+class DummyPipelineAggregationLayerOutputData(PipelineData):
+    pass
+
+class DummyPipelineCameraNodeConfig(PipelineStageConfig):
+    camera_config: CameraConfig
     param1: int = 1
 
 
-class DummyAggregationProcessConfig(PipelineStageConfig):
+class DummyPipelineAggregationNodeConfig(PipelineStageConfig):
     param2: int = 2
 
 
 class DummyPipelineConfig(PipelineConfig):
-    camera_node_configs: dict[CameraId, DummyCameraPipelineConfig]
-    aggregation_node_config: DummyAggregationProcessConfig
+    camera_node_configs: dict[CameraId, DummyPipelineCameraNodeConfig]
+    aggregation_node_config: DummyPipelineAggregationNodeConfig
 
     @classmethod
-    def create(cls, camera_ids: list[CameraId]):
-        return cls(camera_node_configs={camera_id: DummyCameraPipelineConfig() for camera_id in camera_ids},
-                   aggregation_node_config=DummyAggregationProcessConfig())
+    def create(cls, camera_configs: CameraConfigs):
+        return cls(camera_node_configs={camera_id: DummyPipelineCameraNodeConfig(camera_config = camera_config) for camera_id, camera_config in camera_configs.items()},
+                   aggregation_node_config=DummyPipelineAggregationNodeConfig())
 
 
 class DummyCameraProcessingNode(CameraProcessingNode):
     @classmethod
     def create(cls,
                camera_id: CameraId,
-               config: DummyCameraPipelineConfig,
-               camera_ring_shm_dto: RingBufferCameraSharedMemoryDTO,
+               config: DummyPipelineCameraNodeConfig,
+               camera_shm_dto: CameraSharedMemoryDTO,
                output_queue: Queue,
                shutdown_event: multiprocessing.Event,
-               read_type: ReadTypes = ReadTypes.LATEST_AND_INCREMENT
                ):
         return cls(camera_id=camera_id,
                    config=config,
-                   camera_ring_shm=RingBufferCameraSharedMemory.recreate(dto=camera_ring_shm_dto,
+                   camera_ring_shm=SingleSlotCameraSharedMemory.recreate(camera_config=config.camera_config,
+                                                                         camera_shm_dto=camera_shm_dto,
                                                                          read_only=False),
                    process=Process(target=cls._run,
                                    kwargs=dict(camera_id=camera_id,
                                                config=config,
-                                               camera_ring_shm_dto=camera_ring_shm_dto,
+                                               camera_shm_dto=camera_shm_dto,
                                                output_queue=output_queue,
-                                               read_type=read_type,
                                                shutdown_event=shutdown_event
                                                )
                                    ),
-                   read_type=read_type,
                    shutdown_event=shutdown_event
                    )
 
     @staticmethod
     def _run(camera_id: CameraId,
-             config: DummyPipelineConfig,
-             camera_ring_shm_dto: RingBufferCameraSharedMemory,
+             config: DummyPipelineCameraNodeConfig,
+             camera_shm_dto: CameraSharedMemoryDTO,
              output_queue: Queue,
              shutdown_event: multiprocessing.Event,
-             read_type: ReadTypes = ReadTypes.LATEST_AND_INCREMENT
              ):
         logger.trace(f"Starting camera processing node for camera {camera_id}")
-        camera_ring_shm = RingBufferCameraSharedMemory.recreate(dto=camera_ring_shm_dto,
-                                                                    read_only=False)
+        camera_ring_shm = SingleSlotCameraSharedMemory.recreate(
+            camera_config=config.camera_config,
+            camera_shm_dto=camera_shm_dto,
+            read_only=False)
         try:
             while not shutdown_event.is_set():
                 time.sleep(0.001)
-                if camera_ring_shm.ready_to_read:
-
-                    if read_type == ReadTypes.LATEST_AND_INCREMENT:
-                        image = camera_ring_shm.retrieve_latest_frame(increment=True)
-                    elif read_type == ReadTypes.LATEST_READ_ONLY:
-                        image = camera_ring_shm.retrieve_latest_frame(increment=False)
-                    elif read_type == ReadTypes.NEXT:
-                        image = camera_ring_shm.retrieve_next_frame()
-                    else:
-                        raise ValueError(f"Invalid read_type: {read_type}")
-
+                if camera_ring_shm.new_frame_available:
+                    frame = camera_ring_shm.retrieve_frame()
+                    print(f"\t\tCamera Node for Camera#{camera_id} received frame {frame.metadata[FRAME_METADATA_MODEL.FRAME_NUMBER.value]} with image shape {frame.image.shape}")
                     # TODO - process image
-                    output_queue.put(PipelineData(data=image))
+                    output_queue.put(DummyPipelineCameraLayerOutputData(data=frame.metadata))
         except Exception as e:
             logger.exception(f"Error in camera processing node for camera {camera_id}", exc_info=e)
             raise
@@ -115,22 +121,33 @@ class DummyAggregationProcessNode(AggregationProcessNode):
              shutdown_event: multiprocessing.Event):
         try:
             while not shutdown_event.is_set():
-                data_by_camera_id = {camera_id: None for camera_id in input_queues.keys()}
-                while any([input_queues[camera_id].empty() for camera_id in input_queues.keys()]):
+                data_by_camera_id:dict[CameraId, DummyCameraProcessingNode|None] = {camera_id: None for camera_id in input_queues.keys()}
+                while any([input_queues[camera_id] is None for camera_id in input_queues.keys()]):
                     time.sleep(0.001)
                     for camera_id in input_queues.keys():
-                        if not input_queues[camera_id] is None:
+                        if data_by_camera_id[camera_id] is None:
                             if not input_queues[camera_id].empty():
-                                data_by_camera_id[camera_id] = input_queues[camera_id].get()
+                                camera_node_output = input_queues[camera_id].get()
+                                if not isinstance(camera_node_output, DummyPipelineCameraLayerOutputData):
+                                    raise ValueError(f"Unexpected data type received from camera {camera_id}: {type(camera_node_output)}")
+                                if not camera_node_output.camera_id or camera_node_output.camera_id != camera_id:
+                                    raise ValueError(f"Unexpected camera ID received from camera {camera_id}: {camera_node_output.camera_id}")
+                                data_by_camera_id[camera_id] = camera_node_output
+
+                print(
+                    f"Aggregation layer received from cameras: {data_by_camera_id.keys()} with data: {data_by_camera_id.values()}")
                 if len(data_by_camera_id) == len(input_queues):
                     # TODO - process aggregated data
-                    output_queue.put(PipelineData(data=data_by_camera_id))
+                    output_queue.put(DummyPipelineAggregationLayerOutputData(data=data_by_camera_id))
+                else:
+                    raise ValueError("Not all camera data received!")
         except Exception as e:
             logger.exception(f"Error in aggregation processing node", exc_info=e)
             raise
         finally:
             logger.trace(f"Shutting down aggregation processing node")
             shutdown_event.set()
+
 
 class DummyProcessingPipeline(CameraGroupProcessingPipeline):
     config: DummyPipelineConfig
@@ -140,8 +157,7 @@ class DummyProcessingPipeline(CameraGroupProcessingPipeline):
     @classmethod
     def create(cls,
                config: PipelineConfig,
-               camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
-               read_type: ReadTypes,
+               camera_shm_dtos: CameraSharedMemoryDTOs,
                shutdown_event: multiprocessing.Event):
         if not all(camera_id in camera_shm_dtos.keys() for camera_id in config.camera_node_configs.keys()):
             raise ValueError("Camera IDs provided in config not in camera shared memory DTOS!")
@@ -149,9 +165,8 @@ class DummyProcessingPipeline(CameraGroupProcessingPipeline):
         aggregation_output_queue = Queue()
         camera_nodes = {camera_id: DummyCameraProcessingNode.create(config=config,
                                                                     camera_id=CameraId(camera_id),
-                                                                    camera_ring_shm_dto=camera_shm_dtos[camera_id],
+                                                                    camera_shm_dto=camera_shm_dtos[camera_id],
                                                                     output_queue=camera_output_queues[camera_id],
-                                                                    read_type=read_type,
                                                                     shutdown_event=shutdown_event)
                         for camera_id, config in config.camera_node_configs.items()}
         aggregation_process = DummyAggregationProcessNode.create(config=config.aggregation_node_config,
@@ -172,16 +187,13 @@ class DummyProcessingServer(CameraGroupProcessingServer):
 
     @classmethod
     def create(cls,
-               config: DummyPipelineConfig,
-               camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
-               read_type: ReadTypes,
+               pipeline_config: DummyPipelineConfig,
+               camera_shm_dtos: CameraSharedMemoryDTOs,
                shutdown_event: multiprocessing.Event):
         processing_pipeline = DummyProcessingPipeline.create(
-            config=config,
+            config=pipeline_config,
             camera_shm_dtos=camera_shm_dtos,
-            read_type=read_type,
             shutdown_event=shutdown_event,
-
         )
 
         return cls(processing_pipeline=processing_pipeline,

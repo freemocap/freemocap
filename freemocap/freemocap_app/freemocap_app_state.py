@@ -3,16 +3,14 @@ import multiprocessing
 from dataclasses import dataclass
 from typing import Optional
 
-from skellycam.core import CameraId
 from skellycam.core.camera_group.shmorchestrator.shared_memory.multi_frame_escape_ring_buffer import \
     MultiFrameEscapeSharedMemoryRingBuffer
-from skellycam.core.camera_group.shmorchestrator.shared_memory.ring_buffer_camera_shared_memory import \
-    RingBufferCameraSharedMemory
+from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
+    SingleSlotCameraGroupSharedMemory, CameraSharedMemoryDTOs
 from skellycam.skellycam_app.skellycam_app_controller.skellycam_app_controller import create_skellycam_app_controller
 from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState, get_skellycam_app_state
 
-from freemocap.pipelines.dummy_pipeline import DummyProcessingServer, DummyPipelineConfig, DummyProcessingPipeline
-from freemocap.pipelines.pipeline_abcs import ReadTypes
+from freemocap.pipelines.dummy_pipeline import DummyProcessingServer, DummyPipelineConfig
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +20,7 @@ class FreemocapAppState:
     global_kill_flag: multiprocessing.Value
     pipeline_shutdown_event: multiprocessing.Event
     skellycam_app_state: SkellycamAppState
-    camera_ring_buffer_shms: Optional[dict[CameraId, RingBufferCameraSharedMemory]] = None
+    camera_group_shm: SingleSlotCameraGroupSharedMemory | None = None
 
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value):
@@ -31,6 +29,10 @@ class FreemocapAppState:
         return cls(global_kill_flag=global_kill_flag,
                    pipeline_shutdown_event=multiprocessing.Event(),
                    skellycam_app_state=get_skellycam_app_state())
+
+    @property
+    def camera_configs(self):
+        return self.skellycam_app_state.camera_group_configs
 
     @property
     def frame_escape_shm(self) -> MultiFrameEscapeSharedMemoryRingBuffer:
@@ -44,20 +46,16 @@ class FreemocapAppState:
     def skellycam_ipc_queue(self):
         return self.skellycam_app_state.ipc_queue
 
-    def get_camera_ring_buffer_shm_dtos(self) -> dict[CameraId, RingBufferCameraSharedMemory]:
-        if not self.camera_ring_buffer_shms:
-            self._create_camera_ring_buffer_shms()
-        return {camera_id: shm.to_dto() for camera_id, shm in self.camera_ring_buffer_shms.items()}
+    def get_camera_shm_dtos(self) -> CameraSharedMemoryDTOs:
+        if not self.camera_group_shm:
+            self._create_camera_group_shm()
+        return {camera_id: shm.to_dto() for camera_id, shm in self.camera_group_shm.camera_shms.items()}
 
-    def _create_camera_ring_buffer_shms(self):
+    def _create_camera_group_shm(self):
         if self.skellycam_app_state.camera_group is None:
             raise ValueError("Cannot get RingBufferCameraSharedMemory without CameraGroup!")
-        self.camera_ring_buffer_shms = {camera_id: RingBufferCameraSharedMemory.create(camera_config=config,
-                                                                                       memory_allocation=100_000_000,
-                                                                                       # 100 MB
-                                                                                       read_only=False)
-                                        for camera_id, config in
-                                        self.skellycam_app_state.camera_group.camera_configs.items()}
+        self.camera_group_shm = SingleSlotCameraGroupSharedMemory.create(camera_configs=self.camera_configs,
+                                                                         read_only=True)
 
     def create_processing_server(self) -> DummyProcessingServer:
         if not self.frame_escape_shm:
@@ -66,9 +64,8 @@ class FreemocapAppState:
         self.pipeline_shutdown_event.clear()
 
         return DummyProcessingServer.create(
-            config =DummyPipelineConfig.create(camera_ids=self.skellycam_app_state.camera_group.camera_ids),
-            camera_shm_dtos=self.get_camera_ring_buffer_shm_dtos(),
-            read_type=ReadTypes.LATEST_AND_INCREMENT,
+            pipeline_config=DummyPipelineConfig.create(camera_configs=self.camera_configs),
+            camera_shm_dtos=self.get_camera_shm_dtos(),
             shutdown_event=self.pipeline_shutdown_event,
         )
 
@@ -76,9 +73,8 @@ class FreemocapAppState:
         self.pipeline_shutdown_event.set()
         self.skellycam_app_state.close()
 
-        if self.camera_ring_buffer_shms:
-            for camera_id, shm in self.camera_ring_buffer_shms.items():
-                shm.close()
+        if self.camera_group_shm:
+            self.camera_group_shm.close_and_unlink()
 
 
 FREEMOCAP_APP_STATE: Optional[FreemocapAppState] = None

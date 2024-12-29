@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from skellycam.core import CameraId
 from skellycam.core.camera_group.shmorchestrator.shared_memory.ring_buffer_camera_shared_memory import \
     RingBufferCameraSharedMemory, RingBufferCameraSharedMemoryDTO
+from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_shared_memory import \
+    CameraSharedMemoryDTO
 from skellycam.core.frames.payloads.frame_payload import FramePayload
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 
@@ -16,8 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class ReadTypes(str, Enum):
-    LATEST_READ_ONLY = "latest_read_only"
-    LATEST_AND_INCREMENT = "latest_and_increment"
+    LATEST = "latest"
     NEXT = "next"
 
 
@@ -51,7 +52,6 @@ class CameraProcessingNode(ABC):
     config: PipelineStageConfig
     camera_id: CameraId
     camera_ring_shm: RingBufferCameraSharedMemory
-    read_type: ReadTypes
 
     process: Process
     shutdown_event: multiprocessing.Event
@@ -62,7 +62,6 @@ class CameraProcessingNode(ABC):
                camera_id: CameraId,
                camera_ring_shm_dto: RingBufferCameraSharedMemoryDTO,
                output_queue: Queue,
-               read_type: ReadTypes,
                shutdown_event: multiprocessing.Event):
         raise NotImplementedError("You need to re-implement this method with your pipeline's version of the CameraProcessingNode "
                                   "abstract base class! See example in the `freemocap/.../dummy_pipeline.py` file.")
@@ -88,10 +87,10 @@ class CameraProcessingNode(ABC):
 
 
     @staticmethod
-    def _run(config: PipelineStageConfig,
-             camera_ring_shm_dto: RingBufferCameraSharedMemoryDTO,
+    def _run(camera_id:CameraId,
+             config: PipelineStageConfig,
+             camera_shm_dto: CameraSharedMemoryDTO,
              output_queue: Queue,
-             read_type: ReadTypes,
              shutdown_event: multiprocessing.Event):
         raise NotImplementedError("Add your camera process logic here! See example in the `freemocap/.../dummy_pipeline.py` file.")
         # logger.trace(f"Starting camera processing node for camera {camera_ring_shm_dto.camera_id}")
@@ -194,7 +193,6 @@ class CameraGroupProcessingPipeline(ABC):
     def create(cls,
                config: PipelineConfig,
                camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
-               read_type: ReadTypes,
                shutdown_event: multiprocessing.Event):
         raise NotImplementedError("You need to re-implement this method with your pipeline's version of the CameraGroupProcessingPipeline "
                                   "and CameraProcessingNode abstract base classes! See example in the `freemocap/.../dummy_pipeline.py` file.")
@@ -253,7 +251,6 @@ class CameraGroupProcessingServer(ABC):
     def create(cls,
                processing_pipeline: CameraGroupProcessingPipeline,
                camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
-                read_type: ReadTypes,
                shutdown_event: multiprocessing.Event):
         raise NotImplementedError("You need to re-implement this method with your pipeline's version of the CameraGroupProcessingServer "
                                   "and CameraGroupProcessingPipeline abstract base classes! See example in the `freemocap/.../dummy_pipeline.py` file.")

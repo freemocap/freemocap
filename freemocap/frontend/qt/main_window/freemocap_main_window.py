@@ -14,8 +14,6 @@ from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
 )
-
-from freemocap.frontend.client.frontend_client import FrontendClient
 from skelly_viewer import SkellyViewer
 from skellycam import SkellyCamCameraPanel, SkellyCamCameraControlPanel
 from tqdm import tqdm
@@ -29,6 +27,7 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
 from freemocap.data_layer.recording_models.recording_info_model import (
     RecordingInfoModel,
 )
+from freemocap.frontend.client.frontend_client import FrontendClient
 from freemocap.frontend.qt.actions_and_menus.actions import Actions
 from freemocap.frontend.qt.actions_and_menus.menu_bar import MenuBar
 from freemocap.frontend.qt.style_sheet.css_file_watcher import CSSFileWatcher

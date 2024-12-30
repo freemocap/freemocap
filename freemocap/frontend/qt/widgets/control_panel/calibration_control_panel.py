@@ -1,7 +1,7 @@
 import logging
 import os
-from pathlib import Path
 import threading
+from pathlib import Path
 from typing import Callable, Optional, Union
 
 from PySide6.QtCore import Qt, Slot, QObject
@@ -18,14 +18,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLayout,
 )
-from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 
+from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.frontend.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
 from freemocap.frontend.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.path_getters import (
-    get_gui_state_json_path,
     get_last_successful_calibration_toml_path,
 )
 

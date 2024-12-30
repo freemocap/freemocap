@@ -29,7 +29,7 @@ from freemocap.frontend.qt.workers.process_motion_capture_data_thread_worker imp
     ProcessMotionCaptureDataThreadWorker,
 )
 from freemocap.frontend.user_settings import UserSettings
-from skellycam import SkellyCamCameraControlPanel
+
 logger = logging.getLogger(__name__)
 
 

@@ -1,4 +1,3 @@
-from typing import Optional
 import pytest
 
 from freemocap.core_processes.process_motion_capture_videos.process_recording_headless import (
@@ -9,6 +8,7 @@ from freemocap.data_layer.recording_models.recording_info_model import Recording
 from freemocap.utilities.download_sample_data import (
     download_sample_data,
 )
+
 
 class SessionInfo:
     sample_session_folder_path: str

@@ -8,6 +8,7 @@ from .logging_color_helpers import (
     get_hashed_color,
 )
 from ..paths_and_filenames.path_getters import get_log_file_path
+
 MAX_DELTA_T_LEN = 10
 
 class LogLevels(Enum):

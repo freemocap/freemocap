@@ -1,9 +1,9 @@
+import logging
 from pathlib import Path
 from typing import Dict, List
-import logging
+
 import numpy as np
 import pandas as pd
-
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import (

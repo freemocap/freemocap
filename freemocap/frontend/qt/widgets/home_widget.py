@@ -23,7 +23,6 @@ from freemocap.frontend.qt.actions_and_menus.actions import (
 from freemocap.frontend.qt.widgets.logo_svg_widget import LogoSvgWidget
 from freemocap.frontend.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
-from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,6 @@ import subprocess
 from pathlib import Path
 from typing import Union, List
 
-
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.get_numpy_path import (
     get_numpy_path,
 )

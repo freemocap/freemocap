@@ -3,12 +3,12 @@ import logging
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QWidget, QLabel, QTabWidget
 
-# from skelly_viewer import SkellyViewer
-# from skellycam import SkellyCamWidget
-
 from freemocap.frontend.qt.widgets.home_widget import (
     HomeWidget,
 )
+
+# from skelly_viewer import SkellyViewer
+# from skellycam import SkellyCamWidget
 
 logger = logging.getLogger(__name__)
 

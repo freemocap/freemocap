@@ -1,6 +1,5 @@
-from typing import Optional, Union
 from pathlib import Path
-
+from typing import Optional, Union
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     RAW_DATA_FOLDER_NAME,

@@ -1,6 +1,6 @@
 import logging
 
-from .log_test_messages import log_test_messages, print_log_level_messages
+from .log_test_messages import log_test_messages
 from .logger_builder import LoggerBuilder, LogLevels
 
 # Suppress some external loggers that are too verbose for our context/taste

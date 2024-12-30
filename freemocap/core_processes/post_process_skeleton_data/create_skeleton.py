@@ -1,6 +1,5 @@
 from typing import List, Dict, Optional
 
-
 from freemocap.data_layer.skeleton_models.marker_info import MarkerInfo
 from freemocap.data_layer.skeleton_models.segments import Segment, SegmentAnthropometry
 from freemocap.data_layer.skeleton_models.skeleton import Skeleton

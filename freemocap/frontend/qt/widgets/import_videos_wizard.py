@@ -21,13 +21,14 @@ from PySide6.QtWidgets import (
     QWidget,
     QFileSystemModel,
 )
-from skelly_synchronize import create_audio_debug_plots, create_brightness_debug_plots
 
 from freemocap.frontend.qt.workers.synchronize_videos_thread_worker import SynchronizeVideosThreadWorker
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import SYNCHRONIZED_VIDEOS_FOLDER_NAME
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path
 from freemocap.utilities.get_video_paths import get_video_paths
+
+# from skelly_synchronize import create_audio_debug_plots, create_brightness_debug_plots
 
 no_files_found_string = "No '.mp4' video files found! \n \n Note - We only look for `.mp4` files (for now). If your videos are a different format, convert them to `mp4` via online tools like `www.cloudconvert.com`, or softwares like `HandBrake`, `ffmpeg` or any video editing software"
 

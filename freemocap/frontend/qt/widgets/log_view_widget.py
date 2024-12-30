@@ -8,9 +8,9 @@ from PySide6 import QtCore, QtGui
 from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QApplication, QPlainTextEdit
 
-from freemocap.frontend.qt.utilities.colors import get_next_color, rgb_color_generator
+from freemocap.frontend.qt.utilities.colors import rgb_color_generator
+
 # from freemocap.system.logging.configure_logging import log_view_logging_format_string
-from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
 
 logger = logging.getLogger(__name__)
 

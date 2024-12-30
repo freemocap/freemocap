@@ -1,6 +1,7 @@
 from copy import deepcopy
-import numpy as np
 from typing import Dict, List, Union
+
+import numpy as np
 
 from freemocap.data_layer.skeleton_models.segments import Segment
 from freemocap.data_layer.skeleton_models.skeleton import Skeleton

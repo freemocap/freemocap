@@ -15,6 +15,7 @@ from skellycam.core.frames.payloads.frame_payload import FramePayload
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 from skellytracker import SkellyTrackerTypes
 from skellytracker.trackers.base_tracker.base_tracker import BaseImageAnnotator
+from skellytracker.trackers.base_tracker.base_tracker import BaseTrackerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,24 @@ logger = logging.getLogger(__name__)
 class ReadTypes(str, Enum):
     LATEST = "latest"
     NEXT = "next"
+
+
+class BasePipelineData(BaseModel, ABC):
+    data: object
+    metadata: dict[object, object] = Field(default_factory=dict)
+
+
+class BaseAggregationLayerOutputData(BasePipelineData):
+    pass
+
+
+class BaseCameraNodeOutputData(BasePipelineData):
+    pass
+
+
+class BasePipelineOutputData(ABC):
+    camera_node_output: dict[CameraId, BaseCameraNodeOutputData]
+    aggregation_layer_output: BaseAggregationLayerOutputData
 
 
 class BasePipelineStageConfig(BaseModel, ABC):
@@ -34,16 +53,9 @@ class BasePipelineConfig(BaseModel, ABC):
     aggregation_node_config: BasePipelineStageConfig = Field(default_factory=BasePipelineStageConfig)
 
     @classmethod
-    def create(cls, camera_ids: list[CameraId]):
+    def create(cls, camera_ids: list[CameraId], tracker_config: BaseTrackerConfig):
         return cls(camera_node_configs={camera_id: BasePipelineStageConfig() for camera_id in camera_ids},
                    aggregation_node_config=BasePipelineStageConfig())
-
-
-
-
-class BasePipelineData(BaseModel, ABC):
-    data: object
-    metadata: dict[object, object] = Field(default_factory=dict)
 
 
 @dataclass
@@ -188,7 +200,7 @@ class BaseProcessingPipeline(ABC):
     aggregation_node: BaseAggregationNode
     shutdown_event: multiprocessing.Event
 
-    annotator: BaseImageAnnotator|None = None
+    annotator: BaseImageAnnotator | None = None
     latest_pipeline_data: BasePipelineData | None = None
 
     @classmethod
@@ -228,26 +240,32 @@ class BaseProcessingPipeline(ABC):
         for camera_id, frame_payload in multiframe_payload.frames.items():
             self.camera_nodes[camera_id].intake_data(frame_payload)
 
-    def get_next_data(self) -> BasePipelineData | None:
+    def get_next_data(self) -> BasePipelineOutputData | None:
         if self.aggregation_node.output_queue.empty():
             return None
         data = self.aggregation_node.output_queue.get()
         return data
 
-    def get_latest_data(self) -> BasePipelineData | None:
+    def get_latest_data(self) -> BasePipelineOutputData | None:
         while not self.aggregation_node.output_queue.empty():
             self.latest_pipeline_data = self.aggregation_node.output_queue.get()
 
         return self.latest_pipeline_data
 
     def annotate_images(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
-        for camera_id, frame in multiframe_payload.frames.items():
-            frame.image = self.annotator.annotate_image(image=frame.image,
-                                                        latest_observation = self.latest_pipeline_data.get_camera_data(camera_id),)
+        latest_output = self.get_latest_data()
+        if latest_output is not None:
+            for camera_id, frame in multiframe_payload.frames.items():
+
+                if latest_output.camera_node_output[camera_id] is not None:
+                    frame.image = self.annotator.annotate_image(image=frame.image,
+                                                                latest_observation=latest_output.camera_node_output[camera_id].data, # type: ignore
+
+                                                                )
         return multiframe_payload
 
     def start(self):
-        logger.debug(f"Starting {self.__class__.__name__} with camera processes {self.camera_nodes.keys()}...")
+        logger.debug(f"Starting {self.__class__.__name__} with camera processes {list(self.camera_nodes.keys())}...")
         self.aggregation_node.start()
         for camera_id, camera_node in self.camera_nodes.items():
             camera_node.start()
@@ -282,7 +300,6 @@ class BaseProcessingServer(ABC):
         # return cls(processing_pipeline=processing_pipeline,
         #            shutdown_event=shutdown_event)
 
-
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__}...")
         self.processing_pipeline.start()
@@ -290,7 +307,7 @@ class BaseProcessingServer(ABC):
     def intake_data(self, multiframe_payload: MultiFramePayload):
         self.processing_pipeline.intake_data(multiframe_payload)
 
-    def annotate_image(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
+    def annotate_images(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
         return self.processing_pipeline.annotate_images(multiframe_payload)
 
     def shutdown_pipeline(self):

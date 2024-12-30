@@ -13,7 +13,7 @@ from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
 from freemocap.pipelines.dummy_pipeline import DummyProcessingServer
-from freemocap.pipelines.pipeline_abcs import ReadTypes
+from freemocap.pipelines.pipeline_abcs import ReadTypes, BaseProcessingServer
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class FreemocapWebsocketServer:
 
         camera_group_uuid = None
         latest_mf_number = -1
-        processing_server: Optional[DummyProcessingServer] = None #Starts when camera group is detected, should probably be handled differently but this works fn
+        processing_server: BaseProcessingServer|None = None #Starts when camera group is detected, should probably be handled differently but this works fn
         try:
             while True:
                 await async_wait_1ms()
@@ -128,6 +128,7 @@ class FreemocapWebsocketServer:
 
                 if processing_server:
                     processing_server.intake_data(mf_payload)
+                    mf_payload = processing_server.annotate_images(mf_payload)
 
                 await self._send_frontend_payload(mf_payload)
 

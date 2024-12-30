@@ -10,32 +10,32 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camer
 from skellycam.core.frames.payloads.metadata.frame_metadata_enum import FRAME_METADATA_MODEL
 from skellytracker import SkellyTrackerTypes
 
-from freemocap.pipelines.pipeline_abcs import CameraProcessingNode, PipelineStageConfig, PipelineData
+from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig, BasePipelineData
 
 logger = logging.getLogger(__name__)
 
 
-class CalibrationPipelineAggregationLayerOutputData(PipelineData):
+class CalibrationPipelineAggregationLayerOutputData(BasePipelineData):
     pass
 
 
-class CalibrationPipelineAggregationNodeConfig(PipelineStageConfig):
+class CalibrationPipelineAggregationNodeConfig(BasePipelineStageConfig):
     param2: int = 2
 
-class CalibrationPipelineCameraNodeConfig(PipelineStageConfig):
+class CalibrationPipelineCameraNodeConfig(BasePipelineStageConfig):
     camera_config: CameraConfig
     param1: int = 1
 
 
 
 
-class CalibrationCameraNodeOutputData(PipelineData):
+class CalibrationCameraNodeOutputData(BasePipelineData):
     data: object
 
 
 
 
-class CalibrationCameraProcessingNode(CameraProcessingNode):
+class CalibrationCameraNode(BaseCameraNode):
     @classmethod
     def create(cls,
                camera_id: CameraId,

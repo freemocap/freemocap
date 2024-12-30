@@ -10,7 +10,9 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camer
 from skellycam.skellycam_app.skellycam_app_controller.skellycam_app_controller import create_skellycam_app_controller
 from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState, get_skellycam_app_state
 
-from freemocap.pipelines.dummy_pipeline import DummyProcessingServer, DummyPipelineConfig
+from freemocap.pipelines.calibration_pipeline.calibration_pipeline_main import CalibrationPipelineConfig, \
+    CalibrationProcessingServer
+from freemocap.pipelines.pipeline_abcs import BaseProcessingServer
 
 logger = logging.getLogger(__name__)
 
@@ -57,14 +59,21 @@ class FreemocapAppState:
         self.camera_group_shm = SingleSlotCameraGroupSharedMemory.create(camera_configs=self.camera_configs,
                                                                          read_only=True)
 
-    def create_processing_server(self) -> DummyProcessingServer:
+    def create_processing_server(self) -> BaseProcessingServer:
         if not self.frame_escape_shm:
             raise ValueError("Cannot create image processing server without frame escape shared memory!")
 
         self.pipeline_shutdown_event.clear()
 
-        return DummyProcessingServer.create(
-            pipeline_config=DummyPipelineConfig.create(camera_configs=self.camera_configs),
+        # if processing_server_type == ProcessingServerTypes.DUMMY:
+        #     return processing_server_type.value.create(
+        #         pipeline_config=DummyPipelineConfig.create(camera_configs=self.camera_configs),
+        #         camera_shm_dtos=self.get_camera_shm_dtos(),
+        #         shutdown_event=self.pipeline_shutdown_event,
+        #     )
+
+        return CalibrationProcessingServer.create(
+            pipeline_config=CalibrationPipelineConfig.create(camera_configs=self.camera_configs),
             camera_shm_dtos=self.get_camera_shm_dtos(),
             shutdown_event=self.pipeline_shutdown_event,
         )
@@ -77,7 +86,7 @@ class FreemocapAppState:
             self.camera_group_shm.close_and_unlink()
 
 
-FREEMOCAP_APP_STATE: Optional[FreemocapAppState] = None
+FREEMOCAP_APP_STATE: FreemocapAppState|None = None
 
 
 def create_freemocap_app_state(global_kill_flag: multiprocessing.Value) -> FreemocapAppState:

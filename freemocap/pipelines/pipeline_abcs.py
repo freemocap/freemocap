@@ -24,34 +24,31 @@ class ReadTypes(str, Enum):
     NEXT = "next"
 
 
-class PipelineStageConfig(BaseModel, ABC):
+class BasePipelineStageConfig(BaseModel, ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     pass
 
 
-class PipelineConfig(BaseModel, ABC):
-    camera_node_configs: dict[CameraId, PipelineStageConfig] = Field(default_factory=dict)
-    aggregation_node_config: PipelineStageConfig = Field(default_factory=PipelineStageConfig)
+class BasePipelineConfig(BaseModel, ABC):
+    camera_node_configs: dict[CameraId, BasePipelineStageConfig] = Field(default_factory=dict)
+    aggregation_node_config: BasePipelineStageConfig = Field(default_factory=BasePipelineStageConfig)
 
     @classmethod
     def create(cls, camera_ids: list[CameraId]):
-        return cls(camera_node_configs={camera_id: PipelineStageConfig() for camera_id in camera_ids},
-                   aggregation_node_config=PipelineStageConfig())
+        return cls(camera_node_configs={camera_id: BasePipelineStageConfig() for camera_id in camera_ids},
+                   aggregation_node_config=BasePipelineStageConfig())
 
 
-class CameraGroupPipelineConfig(PipelineConfig):
-    camera_node_configs: dict[CameraId, PipelineStageConfig]
-    aggregation_node_configs: PipelineStageConfig
 
 
-class PipelineData(BaseModel, ABC):
+class BasePipelineData(BaseModel, ABC):
     data: object
     metadata: dict[object, object] = Field(default_factory=dict)
 
 
 @dataclass
-class CameraProcessingNode(ABC):
-    config: PipelineStageConfig
+class BaseCameraNode(ABC):
+    config: BasePipelineStageConfig
     camera_id: CameraId
     camera_ring_shm: RingBufferCameraSharedMemory
 
@@ -60,7 +57,7 @@ class CameraProcessingNode(ABC):
 
     @classmethod
     def create(cls,
-               config: PipelineConfig,
+               config: BasePipelineStageConfig,
                camera_id: CameraId,
                camera_ring_shm_dto: RingBufferCameraSharedMemoryDTO,
                output_queue: Queue,
@@ -89,7 +86,7 @@ class CameraProcessingNode(ABC):
 
     @staticmethod
     def _run(camera_id: CameraId,
-             config: PipelineStageConfig,
+             config: BasePipelineStageConfig,
              camera_shm_dto: CameraSharedMemoryDTO,
              output_queue: Queue,
              shutdown_event: multiprocessing.Event,
@@ -127,8 +124,8 @@ class CameraProcessingNode(ABC):
 
 
 @dataclass
-class AggregationProcessNode(ABC):
-    config: PipelineStageConfig
+class BaseAggregationNode(ABC):
+    config: BasePipelineStageConfig
     process: Process
     input_queues: dict[CameraId, Queue]
     output_queue: Queue
@@ -136,7 +133,7 @@ class AggregationProcessNode(ABC):
 
     @classmethod
     def create(cls,
-               config: PipelineConfig,
+               config: BasePipelineStageConfig,
                input_queues: dict[CameraId, Queue],
                output_queue: Queue,
                shutdown_event: multiprocessing.Event):
@@ -155,7 +152,7 @@ class AggregationProcessNode(ABC):
         #            shutdown_event=shutdown_event)
 
     @staticmethod
-    def _run(config: PipelineConfig,
+    def _run(config: BasePipelineStageConfig,
              input_queues: dict[CameraId, Queue],
              output_queue: Queue,
              shutdown_event: multiprocessing.Event):
@@ -185,18 +182,18 @@ class AggregationProcessNode(ABC):
 
 
 @dataclass
-class CameraGroupProcessingPipeline(ABC):
-    config: PipelineConfig
-    camera_nodes: dict[CameraId, CameraProcessingNode]
-    aggregation_node: AggregationProcessNode
-    annotator: BaseImageAnnotator
+class BaseProcessingPipeline(ABC):
+    config: BasePipelineStageConfig
+    camera_nodes: dict[CameraId, BaseCameraNode]
+    aggregation_node: BaseAggregationNode
     shutdown_event: multiprocessing.Event
 
-    latest_pipeline_data: PipelineData|None = None
+    annotator: BaseImageAnnotator|None = None
+    latest_pipeline_data: BasePipelineData | None = None
 
     @classmethod
     def create(cls,
-               config: PipelineConfig,
+               config: BasePipelineStageConfig,
                camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
                shutdown_event: multiprocessing.Event):
         raise NotImplementedError(
@@ -231,22 +228,23 @@ class CameraGroupProcessingPipeline(ABC):
         for camera_id, frame_payload in multiframe_payload.frames.items():
             self.camera_nodes[camera_id].intake_data(frame_payload)
 
-    def get_next_data(self) -> PipelineData|None:
+    def get_next_data(self) -> BasePipelineData | None:
         if self.aggregation_node.output_queue.empty():
             return None
         data = self.aggregation_node.output_queue.get()
         return data
 
-    def get_latest_data(self) -> PipelineData|None:
-        data: PipelineData|None = None
+    def get_latest_data(self) -> BasePipelineData | None:
         while not self.aggregation_node.output_queue.empty():
-            data = self.aggregation_node.output_queue.get()
-        self._latest_pipeline_data = data
-        return data
+            self.latest_pipeline_data = self.aggregation_node.output_queue.get()
 
-    def annotate_image(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
-        return self._annotator.annotate_image(multiframe_payload)
+        return self.latest_pipeline_data
 
+    def annotate_images(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
+        for camera_id, frame in multiframe_payload.frames.items():
+            frame.image = self.annotator.annotate_image(image=frame.image,
+                                                        latest_observation = self.latest_pipeline_data.get_camera_data(camera_id),)
+        return multiframe_payload
 
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__} with camera processes {self.camera_nodes.keys()}...")
@@ -263,14 +261,14 @@ class CameraGroupProcessingPipeline(ABC):
 
 
 @dataclass
-class CameraGroupProcessingServer(ABC):
+class BaseProcessingServer(ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    processing_pipeline: CameraGroupProcessingPipeline
+    processing_pipeline: BaseProcessingPipeline
     shutdown_event: multiprocessing.Event
 
     @classmethod
     def create(cls,
-               processing_pipeline: CameraGroupProcessingPipeline,
+               processing_pipeline: BaseProcessingPipeline,
                camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
                shutdown_event: multiprocessing.Event):
         raise NotImplementedError(
@@ -289,11 +287,11 @@ class CameraGroupProcessingServer(ABC):
         logger.debug(f"Starting {self.__class__.__name__}...")
         self.processing_pipeline.start()
 
-    def intake_data(self, multiframe_payload: MultiFramePayload, annotate_image: bool = False) -> MultiFramePayload|None:
+    def intake_data(self, multiframe_payload: MultiFramePayload):
         self.processing_pipeline.intake_data(multiframe_payload)
-        if annotate_image:
-            return self.annotate_image(multiframe_payload)
 
+    def annotate_image(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
+        return self.processing_pipeline.annotate_images(multiframe_payload)
 
     def shutdown_pipeline(self):
         logger.debug(f"Shutting down {self.__class__.__name__}...")

@@ -112,7 +112,7 @@ class FreemocapWebsocketServer:
                     latest_mf_number = -1
                     camera_group_uuid = self._freemocap_app_state.skellycam_app_state.camera_group.uuid
                     if processing_server:
-                        processing_server.shutdown()
+                        processing_server.shutdown_pipeline()
                     processing_server = self._freemocap_app_state.create_processing_server()
 
                     processing_server.start()
@@ -127,7 +127,7 @@ class FreemocapWebsocketServer:
 
 
                 if processing_server:
-                    mf_payload = processing_server.intake_data(mf_payload, annotate_images=True)
+                    processing_server.intake_data(mf_payload)
 
                 await self._send_frontend_payload(mf_payload)
 

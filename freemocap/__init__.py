@@ -21,4 +21,4 @@ configure_logging(LogLevels.LOOP)
 
 if get_process_name().lower() == "mainprocess":
     print_log_level_messages(logger)
-logger.info(f"Initializing {__package_name__} package, version: {__version__}, from file: {__file__}")
+logger.trace(f"Initializing {__package_name__} package, version: {__version__}, from file: {__file__}")

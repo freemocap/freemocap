@@ -1,5 +1,6 @@
-from pydantic import BaseModel, model_validator, Field, field_validator
 from typing import Dict, List, Optional, Union
+
+from pydantic import BaseModel, model_validator, Field, field_validator
 
 
 class VirtualMarkerInfo(BaseModel):

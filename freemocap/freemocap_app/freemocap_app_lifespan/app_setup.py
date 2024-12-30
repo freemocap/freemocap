@@ -3,7 +3,6 @@ import logging
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse
-from starlette.responses import FileResponse
 
 import freemocap
 from freemocap.api.routers import FREEMOCAP_ROUTERS

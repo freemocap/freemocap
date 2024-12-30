@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QRadioButton,
     QCheckBox,
 )
-from skellycam import SkellyCamCameraPanel, SkellyCamCameraControlPanel
+from skellycam import SkellyCamCameraPanel
 
 from freemocap.frontend.user_settings import UserSettings
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING

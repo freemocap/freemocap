@@ -8,10 +8,10 @@ from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import QLabel, QMenu, QTreeView, QVBoxLayout, QWidget, QPushButton, QFileSystemModel
 
 from freemocap.frontend.user_settings import UserSettings
-# from qtpy import QtGui
-
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path
+
+# from qtpy import QtGui
 
 logger = logging.getLogger(__name__)
 

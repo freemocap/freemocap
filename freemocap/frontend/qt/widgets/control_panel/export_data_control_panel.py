@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
 )
 
 from freemocap.frontend.user_settings import UserSettings
-from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 logger = logging.getLogger(__name__)
 BLENDER_EXECUTABLE_PATH_MISSING_STRING = "BLENDER EXECUTABLE NOT FOUND"

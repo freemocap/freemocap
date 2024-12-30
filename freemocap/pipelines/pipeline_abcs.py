@@ -13,6 +13,8 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camer
     CameraSharedMemoryDTO
 from skellycam.core.frames.payloads.frame_payload import FramePayload
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
+from skellytracker import SkellyTrackerTypes
+from skellytracker.trackers.base_tracker.base_tracker import BaseImageAnnotator
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +65,9 @@ class CameraProcessingNode(ABC):
                camera_ring_shm_dto: RingBufferCameraSharedMemoryDTO,
                output_queue: Queue,
                shutdown_event: multiprocessing.Event):
-        raise NotImplementedError("You need to re-implement this method with your pipeline's version of the CameraProcessingNode "
-                                  "abstract base class! See example in the `freemocap/.../dummy_pipeline.py` file.")
+        raise NotImplementedError(
+            "You need to re-implement this method with your pipeline's version of the CameraProcessingNode "
+            "abstract base class! See example in the `freemocap/.../dummy_pipeline.py` file.")
         # return cls(config=config,
         #            camera_id=camera_id,
         #            camera_ring_shm=RingBufferCameraSharedMemory.recreate(dto=camera_ring_shm_dto,
@@ -84,15 +87,15 @@ class CameraProcessingNode(ABC):
     def intake_data(self, frame_payload: FramePayload):
         self.camera_ring_shm.put_frame(frame_payload.image, frame_payload.metadata)
 
-
-
     @staticmethod
-    def _run(camera_id:CameraId,
+    def _run(camera_id: CameraId,
              config: PipelineStageConfig,
              camera_shm_dto: CameraSharedMemoryDTO,
              output_queue: Queue,
-             shutdown_event: multiprocessing.Event):
-        raise NotImplementedError("Add your camera process logic here! See example in the `freemocap/.../dummy_pipeline.py` file.")
+             shutdown_event: multiprocessing.Event,
+             tracker: SkellyTrackerTypes):
+        raise NotImplementedError(
+            "Add your camera process logic here! See example in the `freemocap/.../dummy_pipeline.py` file.")
         # logger.trace(f"Starting camera processing node for camera {camera_ring_shm_dto.camera_id}")
         # camera_ring_shm = RingBufferCameraSharedMemory.recreate(dto=camera_ring_shm_dto,
         #                                                         read_only=False)
@@ -123,7 +126,6 @@ class CameraProcessingNode(ABC):
         self.process.join()
 
 
-
 @dataclass
 class AggregationProcessNode(ABC):
     config: PipelineStageConfig
@@ -138,8 +140,9 @@ class AggregationProcessNode(ABC):
                input_queues: dict[CameraId, Queue],
                output_queue: Queue,
                shutdown_event: multiprocessing.Event):
-        raise NotImplementedError("You need to re-implement this method with your pipeline's version of the AggregationProcessNode "
-                                    "abstract base class! See example in the `freemocap/.../dummy_pipeline.py` file.")
+        raise NotImplementedError(
+            "You need to re-implement this method with your pipeline's version of the AggregationProcessNode "
+            "abstract base class! See example in the `freemocap/.../dummy_pipeline.py` file.")
         # return cls(config=config,
         #            process=Process(target=cls._run,
         #                            kwargs=dict(config=config,
@@ -156,7 +159,8 @@ class AggregationProcessNode(ABC):
              input_queues: dict[CameraId, Queue],
              output_queue: Queue,
              shutdown_event: multiprocessing.Event):
-        raise NotImplementedError("Add your aggregation process logic here! See example in the `freemocap/.../dummy_pipeline.py` file.")
+        raise NotImplementedError(
+            "Add your aggregation process logic here! See example in the `freemocap/.../dummy_pipeline.py` file.")
         # while not shutdown_event.is_set():
         #     data_by_camera_id = {camera_id: None for camera_id in input_queues.keys()}
         #     while any([input_queues[camera_id].empty() for camera_id in input_queues.keys()]):
@@ -180,26 +184,29 @@ class AggregationProcessNode(ABC):
         self.process.join()
 
 
-
 @dataclass
 class CameraGroupProcessingPipeline(ABC):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     config: PipelineConfig
     camera_nodes: dict[CameraId, CameraProcessingNode]
     aggregation_node: AggregationProcessNode
+    annotator: BaseImageAnnotator
     shutdown_event: multiprocessing.Event
+
+    latest_pipeline_data: PipelineData|None = None
 
     @classmethod
     def create(cls,
                config: PipelineConfig,
                camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
                shutdown_event: multiprocessing.Event):
-        raise NotImplementedError("You need to re-implement this method with your pipeline's version of the CameraGroupProcessingPipeline "
-                                  "and CameraProcessingNode abstract base classes! See example in the `freemocap/.../dummy_pipeline.py` file.")
+        raise NotImplementedError(
+            "You need to re-implement this method with your pipeline's version of the CameraGroupProcessingPipeline "
+            "and CameraProcessingNode abstract base classes! See example in the `freemocap/.../dummy_pipeline.py` file.")
         # if not all(camera_id in camera_shm_dtos.keys() for camera_id in config.camera_node_configs.keys()):
         #     raise ValueError("Camera IDs provided in config not in camera shared memory DTOS!")
         # camera_output_queues = {camera_id: Queue() for camera_id in camera_shm_dtos.keys()}
         # aggregation_output_queue = Queue()
+        # self._annotator = SkellyTrackerTypes.DUMMY.create().annotator # Returns annotator for dummy tracker, NOT the same one that will be created in the camera/nodes, but will be able to process their output
         # camera_nodes = {camera_id: CameraProcessingNode.create(config=config,
         #                                                        camera_id=CameraId(camera_id),
         #                                                        camera_ring_shm_dto=camera_shm_dtos[camera_id],
@@ -224,6 +231,23 @@ class CameraGroupProcessingPipeline(ABC):
         for camera_id, frame_payload in multiframe_payload.frames.items():
             self.camera_nodes[camera_id].intake_data(frame_payload)
 
+    def get_next_data(self) -> PipelineData|None:
+        if self.aggregation_node.output_queue.empty():
+            return None
+        data = self.aggregation_node.output_queue.get()
+        return data
+
+    def get_latest_data(self) -> PipelineData|None:
+        data: PipelineData|None = None
+        while not self.aggregation_node.output_queue.empty():
+            data = self.aggregation_node.output_queue.get()
+        self._latest_pipeline_data = data
+        return data
+
+    def annotate_image(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
+        return self._annotator.annotate_image(multiframe_payload)
+
+
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__} with camera processes {self.camera_nodes.keys()}...")
         self.aggregation_node.start()
@@ -244,16 +268,14 @@ class CameraGroupProcessingServer(ABC):
     processing_pipeline: CameraGroupProcessingPipeline
     shutdown_event: multiprocessing.Event
 
-    def intake_data(self, multiframe_payload: MultiFramePayload):
-        self.processing_pipeline.intake_data(multiframe_payload)
-
     @classmethod
     def create(cls,
                processing_pipeline: CameraGroupProcessingPipeline,
                camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
                shutdown_event: multiprocessing.Event):
-        raise NotImplementedError("You need to re-implement this method with your pipeline's version of the CameraGroupProcessingServer "
-                                  "and CameraGroupProcessingPipeline abstract base classes! See example in the `freemocap/.../dummy_pipeline.py` file.")
+        raise NotImplementedError(
+            "You need to re-implement this method with your pipeline's version of the CameraGroupProcessingServer "
+            "and CameraGroupProcessingPipeline abstract base classes! See example in the `freemocap/.../dummy_pipeline.py` file.")
         # processing_pipeline = CameraGroupProcessingPipeline.create(
         #     camera_shm_dtos=camera_shm_dtos,
         #     read_type=read_type,
@@ -266,6 +288,12 @@ class CameraGroupProcessingServer(ABC):
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__}...")
         self.processing_pipeline.start()
+
+    def intake_data(self, multiframe_payload: MultiFramePayload, annotate_image: bool = False) -> MultiFramePayload|None:
+        self.processing_pipeline.intake_data(multiframe_payload)
+        if annotate_image:
+            return self.annotate_image(multiframe_payload)
+
 
     def shutdown_pipeline(self):
         logger.debug(f"Shutting down {self.__class__.__name__}...")

@@ -1,9 +1,9 @@
+import logging
 import multiprocessing
 import threading
 import time
 from typing import Optional
 
-import logging
 import uvicorn
 from uvicorn import Server
 

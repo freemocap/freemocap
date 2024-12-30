@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import toml
+
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     LOGS_INFO_AND_SETTINGS_FOLDER_NAME,
     LOG_FILE_FOLDER_NAME,

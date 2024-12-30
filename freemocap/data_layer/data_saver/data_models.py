@@ -3,7 +3,6 @@ from typing import List, Dict, Tuple
 from typing import Optional, Any
 
 from pydantic import BaseModel, Field, model_validator
-
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeModelInfo,
 )

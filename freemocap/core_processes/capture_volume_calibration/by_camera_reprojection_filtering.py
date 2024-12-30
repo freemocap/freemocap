@@ -1,9 +1,9 @@
 import logging
 from pathlib import Path
 from typing import Tuple, Union
-from matplotlib import pyplot as plt
-import numpy as np
 
+import numpy as np
+from matplotlib import pyplot as plt
 
 from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
     save_3d_data_to_npy,

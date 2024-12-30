@@ -114,6 +114,7 @@ class FreemocapWebsocketServer:
                     if processing_server:
                         processing_server.shutdown()
                     processing_server = self._freemocap_app_state.create_processing_server()
+
                     processing_server.start()
                     continue
 
@@ -123,9 +124,13 @@ class FreemocapWebsocketServer:
                 mf_payload: MultiFramePayload = self._freemocap_app_state.skellycam_app_state.frame_escape_shm.get_multi_frame_payload(
                     camera_configs=self._freemocap_app_state.camera_configs,
                     retrieve_type=ReadTypes.LATEST.value)
-                await self._send_frontend_payload(mf_payload)
+
+
                 if processing_server:
-                    processing_server.intake_data(mf_payload)
+                    mf_payload = processing_server.intake_data(mf_payload, annotate_images=True)
+
+                await self._send_frontend_payload(mf_payload)
+
                 latest_mf_number = mf_payload.multi_frame_number
 
         except WebSocketDisconnect:
@@ -139,6 +144,7 @@ class FreemocapWebsocketServer:
     async def _send_frontend_payload(self,
                                      mf_payload: MultiFramePayload):
         frontend_payload = FrontendFramePayload.from_multi_frame_payload(multi_frame_payload=mf_payload)
+
         logger.loop(f"Sending frontend payload through websocket...")
         if not self.websocket.client_state == WebSocketState.CONNECTED:
             logger.error("Websocket is not connected, cannot send payload!")

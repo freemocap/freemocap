@@ -4,10 +4,10 @@ from typing import Union, Dict, Any
 
 import numpy as np
 import pandas as pd
+from skellytracker.trackers.base_tracker.model_info import ModelInfo
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeModelInfo,
 )
-from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, SkeletonSchema
 from freemocap.system.paths_and_filenames.file_and_folder_names import (

@@ -4,7 +4,6 @@ from typing import Union, Dict, Any
 
 import websocket
 from PySide6.QtWidgets import QWidget
-
 from skellycam.app.app_state import AppStateDTO
 from skellycam.core.frames.payloads.frontend_image_payload import FrontendFramePayload
 from skellycam.core.recorders.timestamps.framerate_tracker import CurrentFrameRate

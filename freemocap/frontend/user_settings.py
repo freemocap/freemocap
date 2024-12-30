@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+
 from pydantic import BaseModel
 
 from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import (

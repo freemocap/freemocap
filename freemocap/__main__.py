@@ -2,13 +2,24 @@ import logging
 import multiprocessing
 import sys
 
+import freemocap
 from freemocap.freemocap_app.freemocap_app_state import create_freemocap_app_state, get_freemocap_app_state
 from freemocap.run_freemocap_server import run_freemocap_server
+from freemocap.system.logging_configuration.configure_logging import configure_logging
+from freemocap.system.logging_configuration.log_test_messages import print_log_level_messages
+from freemocap.system.logging_configuration.logger_builder import LogLevels
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
 from freemocap.utilities.clean_path import clean_path
+from freemocap.utilities.get_process_name import get_process_name
 from freemocap.utilities.setup_windows_app_id import setup_app_id_for_windows
 
 logger = logging.getLogger(__name__)
+configure_logging(LogLevels.LOOP)
+
+if get_process_name().lower() == "mainprocess":
+    print_log_level_messages(logger)
+logger.trace(f"Initializing {freemocap.__package_name__} package, version: {freemocap.__version__}, from file: {__file__}")
+
 
 
 def main():

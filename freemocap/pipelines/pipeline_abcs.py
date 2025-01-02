@@ -1,11 +1,10 @@
 import logging
 import multiprocessing
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from multiprocessing import Process, Queue
 
-from pydantic import BaseModel, Field, ConfigDict
 from skellycam.core import CameraId
 from skellycam.core.camera_group.shmorchestrator.shared_memory.ring_buffer_camera_shared_memory import \
     RingBufferCameraSharedMemory, RingBufferCameraSharedMemoryDTO
@@ -13,9 +12,7 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camer
     CameraSharedMemoryDTO
 from skellycam.core.frames.payloads.frame_payload import FramePayload
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
-from skellytracker import SkellyTrackerTypes
-from skellytracker.trackers.base_tracker.base_tracker import BaseImageAnnotator
-from skellytracker.trackers.base_tracker.base_tracker import BaseTrackerConfig
+from skellytracker.trackers.base_tracker.base_tracker import BaseTrackerConfig, BaseTracker, BaseImageAnnotator
 
 logger = logging.getLogger(__name__)
 
@@ -24,33 +21,32 @@ class ReadTypes(str, Enum):
     LATEST = "latest"
     NEXT = "next"
 
-
-class BasePipelineData(BaseModel, ABC):
+@dataclass
+class BasePipelineData( ABC):
     data: object
-    metadata: dict[object, object] = Field(default_factory=dict)
+    metadata: dict[object, object] = field(default_factory=dict)
 
-
+@dataclass
 class BaseAggregationLayerOutputData(BasePipelineData):
     pass
 
-
+@dataclass
 class BaseCameraNodeOutputData(BasePipelineData):
     pass
 
-
+@dataclass
 class BasePipelineOutputData(ABC):
     camera_node_output: dict[CameraId, BaseCameraNodeOutputData]
     aggregation_layer_output: BaseAggregationLayerOutputData
 
-
-class BasePipelineStageConfig(BaseModel, ABC):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+@dataclass
+class BasePipelineStageConfig( ABC):
     pass
 
-
-class BasePipelineConfig(BaseModel, ABC):
-    camera_node_configs: dict[CameraId, BasePipelineStageConfig] = Field(default_factory=dict)
-    aggregation_node_config: BasePipelineStageConfig = Field(default_factory=BasePipelineStageConfig)
+@dataclass
+class BasePipelineConfig( ABC):
+    camera_node_configs: dict[CameraId, BasePipelineStageConfig] = field(default_factory=dict)
+    aggregation_node_config: BasePipelineStageConfig = field(default_factory=BasePipelineStageConfig)
 
     @classmethod
     def create(cls, camera_ids: list[CameraId], tracker_config: BaseTrackerConfig):
@@ -102,7 +98,7 @@ class BaseCameraNode(ABC):
              camera_shm_dto: CameraSharedMemoryDTO,
              output_queue: Queue,
              shutdown_event: multiprocessing.Event,
-             tracker: SkellyTrackerTypes):
+             tracker: BaseTracker):
         raise NotImplementedError(
             "Add your camera process logic here! See example in the `freemocap/.../dummy_pipeline.py` file.")
         # logger.trace(f"Starting camera processing node for camera {camera_ring_shm_dto.camera_id}")
@@ -280,7 +276,6 @@ class BaseProcessingPipeline(ABC):
 
 @dataclass
 class BaseProcessingServer(ABC):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     processing_pipeline: BaseProcessingPipeline
     shutdown_event: multiprocessing.Event
 

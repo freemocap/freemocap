@@ -8,9 +8,8 @@ from skellycam import CameraId
 from skellycam.core.camera_group.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
     CameraSharedMemoryDTOs
-from skellytracker import SkellyTrackerTypes
 from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoImageAnnotator
-from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
+from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig, CharucoTracker
 
 from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node import CalibrationAggregationNodeConfig, \
     CalibrationAggregationProcessNode
@@ -67,7 +66,7 @@ class CalibrationPipeline(BaseProcessingPipeline):
                                                                              output_queue=aggregation_output_queue,
                                                                              shutdown_event=shutdown_event),
                    # NOTE - this `annotator` is not the same annotator as the one that will be created in the tracker, but will be able to process its outputs
-                   annotator=SkellyTrackerTypes.CHARUCO.value.create().annotator,
+                   annotator=CharucoTracker.create().annotator,
                    shutdown_event=shutdown_event,
                    )
 

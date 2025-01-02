@@ -7,9 +7,8 @@ from skellycam import CameraId
 from skellycam.core.camera_group.camera.config.camera_config import CameraConfig
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_shared_memory import \
     CameraSharedMemoryDTO, SingleSlotCameraSharedMemory
-from skellytracker import SkellyTrackerTypes
-from skellytracker.trackers.charuco_tracker.charuco_observations import CharucoObservation
-from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig, CharucoTracker
 
 from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig, BasePipelineData, \
     BaseCameraNodeOutputData
@@ -66,7 +65,7 @@ class CalibrationCameraNode(BaseCameraNode):
              camera_shm_dto: CameraSharedMemoryDTO,
              output_queue: Queue,
              shutdown_event: multiprocessing.Event,
-             tracker: SkellyTrackerTypes = SkellyTrackerTypes.CHARUCO,
+             tracker: CharucoTracker
              ):
         logger.trace(f"Camera#{camera_id} processing node started!")
         camera_ring_shm = SingleSlotCameraSharedMemory.recreate(

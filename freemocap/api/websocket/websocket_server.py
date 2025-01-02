@@ -48,7 +48,7 @@ class FreemocapWebsocketServer:
         """
         Relay messages from the sub-processes to the frontend via the websocket.
         """
-        logger.info("Starting websocket relay listener...")
+        logger.info("Websocket relay listener started...")
 
         try:
             while True:
@@ -89,7 +89,7 @@ class FreemocapWebsocketServer:
         Relay image payloads from the shared memory to the frontend via the websocket.
         """
         logger.info(
-            f"Starting frontend image payload relay...")
+            f"Frontend image payload started...")
 
         camera_group_uuid = None
         latest_mf_number = -1

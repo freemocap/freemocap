@@ -14,9 +14,9 @@ from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, Ba
 
 logger = logging.getLogger(__name__)
 
-
+@dataclass
 class CalibrationAggregationLayerOutputData(BaseAggregationLayerOutputData):
-    pass
+    data: object = None
 
 
 @dataclass
@@ -25,10 +25,11 @@ class CalibrationPipelineOutputData(BasePipelineOutputData):
     aggregation_layer_output: CalibrationAggregationLayerOutputData
 
 
+@dataclass
 class CalibrationAggregationNodeConfig(BasePipelineStageConfig):
     param2: int = 2
 
-
+@dataclass
 class CalibrationAggregationProcessNode(BaseAggregationNode):
     @classmethod
     def create(cls,
@@ -55,7 +56,7 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
         logger.trace(f"Aggregation processing node started!")
         try:
             while not shutdown_event.is_set():
-                data_by_camera_id: dict[CameraId, CalibrationCameraNode | None] = {camera_id: None for
+                data_by_camera_id: dict[CameraId, CalibrationCameraNodeOutputData | None] = {camera_id: None for
                                                                                    camera_id in
                                                                                    input_queues.keys()}
                 while any([value is None for value in data_by_camera_id.values()]):
@@ -63,7 +64,7 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                     for camera_id in input_queues.keys():
                         if data_by_camera_id[camera_id] is None:
                             if not input_queues[camera_id].empty():
-                                camera_node_output = input_queues[camera_id].get()
+                                camera_node_output:CalibrationCameraNodeOutputData = input_queues[camera_id].get()
                                 if not isinstance(camera_node_output, CalibrationCameraNodeOutputData):
                                     raise ValueError(
                                         f"Unexpected data type received from camera {camera_id}: {type(camera_node_output)}")

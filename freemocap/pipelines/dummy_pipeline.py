@@ -55,9 +55,9 @@ class DummyCameraProcessingNode(BaseCameraNode):
                ):
         return cls(camera_id=camera_id,
                    config=config,
-                   camera_ring_shm=SingleSlotCameraSharedMemory.recreate(camera_config=config.camera_config,
-                                                                         camera_shm_dto=camera_shm_dto,
-                                                                         read_only=False),
+                   incoming_frame_shm=SingleSlotCameraSharedMemory.recreate(camera_config=config.camera_config,
+                                                                            camera_shm_dto=camera_shm_dto,
+                                                                            read_only=False),
                    process=Process(target=cls._run,
                                    kwargs=dict(camera_id=camera_id,
                                                config=config,

@@ -74,7 +74,7 @@ class FreemocapAppState:
 
         return CalibrationProcessingServer.create(
             pipeline_config=CalibrationPipelineConfig.create(camera_configs=self.camera_configs,
-                                                             tracker_config=CharucoTrackerConfig.create()
+                                                             tracker_config=CharucoTrackerConfig()
                                                              ),
             camera_shm_dtos=self.get_camera_shm_dtos(),
             shutdown_event=self.pipeline_shutdown_event,

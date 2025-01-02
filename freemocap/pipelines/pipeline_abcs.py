@@ -6,13 +6,14 @@ from enum import Enum
 from multiprocessing import Process, Queue
 
 from skellycam.core import CameraId
-from skellycam.core.camera_group.shmorchestrator.shared_memory.ring_buffer_camera_shared_memory import \
-    RingBufferCameraSharedMemory, RingBufferCameraSharedMemoryDTO
+from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
+    SingleSlotCameraSharedMemory
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_shared_memory import \
     CameraSharedMemoryDTO
 from skellycam.core.frames.payloads.frame_payload import FramePayload
+from skellycam.core.frames.payloads.metadata.frame_metadata import FrameMetadata
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
-from skellytracker.trackers.base_tracker.base_tracker import BaseTrackerConfig, BaseTracker, BaseImageAnnotator
+from skellytracker.trackers.base_tracker.base_tracker import BaseTrackerConfig, BaseImageAnnotator
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,7 @@ class ReadTypes(str, Enum):
 
 @dataclass
 class BasePipelineData( ABC):
-    data: object
-    metadata: dict[object, object] = field(default_factory=dict)
+    pass
 
 @dataclass
 class BaseAggregationLayerOutputData(BasePipelineData):
@@ -32,12 +32,20 @@ class BaseAggregationLayerOutputData(BasePipelineData):
 
 @dataclass
 class BaseCameraNodeOutputData(BasePipelineData):
-    pass
+    frame_metadata: FrameMetadata
+    time_to_retrieve_frame_ns: int
+    time_to_process_frame_ns: int
 
 @dataclass
 class BasePipelineOutputData(ABC):
     camera_node_output: dict[CameraId, BaseCameraNodeOutputData]
     aggregation_layer_output: BaseAggregationLayerOutputData
+    @property
+    def multi_frame_number(self) -> int:
+        frame_numbers = [camera_node_output.frame_metadata.frame_number for camera_node_output in self.camera_node_output.values()]
+        if len(set(frame_numbers)) > 1:
+            raise ValueError("Frame numbers from camera nodes do not match!")
+        return frame_numbers[0]
 
 @dataclass
 class BasePipelineStageConfig( ABC):
@@ -58,7 +66,7 @@ class BasePipelineConfig( ABC):
 class BaseCameraNode(ABC):
     config: BasePipelineStageConfig
     camera_id: CameraId
-    camera_ring_shm: RingBufferCameraSharedMemory
+    incoming_frame_shm: SingleSlotCameraSharedMemory
 
     process: Process
     shutdown_event: multiprocessing.Event
@@ -67,7 +75,7 @@ class BaseCameraNode(ABC):
     def create(cls,
                config: BasePipelineStageConfig,
                camera_id: CameraId,
-               camera_ring_shm_dto: RingBufferCameraSharedMemoryDTO,
+               incoming_frame_shm_dto: CameraSharedMemoryDTO,
                output_queue: Queue,
                shutdown_event: multiprocessing.Event):
         raise NotImplementedError(
@@ -90,12 +98,12 @@ class BaseCameraNode(ABC):
         #          )
 
     def intake_data(self, frame_payload: FramePayload):
-        self.camera_ring_shm.put_frame(frame_payload.image, frame_payload.metadata)
+        self.incoming_frame_shm.put_frame(frame_payload.image, frame_payload.metadata)
 
     @staticmethod
     def _run(camera_id: CameraId,
              config: BasePipelineStageConfig,
-             camera_shm_dto: CameraSharedMemoryDTO,
+             incoming_frame_shm_dto: CameraSharedMemoryDTO,
              output_queue: Queue,
              shutdown_event: multiprocessing.Event):
         raise NotImplementedError(
@@ -187,12 +195,16 @@ class BaseAggregationNode(ABC):
         self.shutdown_event.set()
         self.process.join()
 
+@dataclass
+class PipelineImageAnnotator(ABC):
+    pass
 
 @dataclass
 class BaseProcessingPipeline(ABC):
     config: BasePipelineStageConfig
     camera_nodes: dict[CameraId, BaseCameraNode]
     aggregation_node: BaseAggregationNode
+    image_annotator: PipelineImageAnnotator
     shutdown_event: multiprocessing.Event
 
     annotator: BaseImageAnnotator | None = None
@@ -201,7 +213,7 @@ class BaseProcessingPipeline(ABC):
     @classmethod
     def create(cls,
                config: BasePipelineStageConfig,
-               camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
+               camera_shm_dtos: dict[CameraId, CameraSharedMemoryDTO],
                shutdown_event: multiprocessing.Event):
         raise NotImplementedError(
             "You need to re-implement this method with your pipeline's version of the CameraGroupProcessingPipeline "
@@ -247,15 +259,23 @@ class BaseProcessingPipeline(ABC):
 
         return self.latest_pipeline_data
 
+    def get_output_for_frame(self, target_frame_number:int) -> BasePipelineOutputData | None:
+        while not self.aggregation_node.output_queue.empty():
+            self.latest_pipeline_data:BasePipelineOutputData = self.aggregation_node.output_queue.get()
+            if self.latest_pipeline_data.multi_frame_number > target_frame_number:
+                raise ValueError(f"We missed the target frame number {target_frame_number} - current output is for frame {self.latest_pipeline_data.multi_frame_number}")
+            if self.latest_pipeline_data.multi_frame_number == target_frame_number:
+                return self.latest_pipeline_data
+
+        return self.latest_pipeline_data
     def annotate_images(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
-        latest_output = self.get_latest_data()
-        if latest_output is not None:
+        pipeline_output = self.get_output_for_frame(target_frame_number=multiframe_payload.multi_frame_number)
+        if pipeline_output is not None:
             for camera_id, frame in multiframe_payload.frames.items():
 
-                if latest_output.camera_node_output[camera_id] is not None:
+                if pipeline_output.camera_node_output[camera_id] is not None:
                     frame.image = self.annotator.annotate_image(image=frame.image,
-                                                                latest_observation=latest_output.camera_node_output[camera_id].data, # type: ignore
-
+                                                                latest_observation=pipeline_output.camera_node_output[camera_id].charuco_observation, # type: ignore
                                                                 )
         return multiframe_payload
 
@@ -281,7 +301,7 @@ class BaseProcessingServer(ABC):
     @classmethod
     def create(cls,
                processing_pipeline: BaseProcessingPipeline,
-               camera_shm_dtos: dict[CameraId, RingBufferCameraSharedMemoryDTO],
+               camera_shm_dtos: dict[CameraId, CameraSharedMemoryDTO],
                shutdown_event: multiprocessing.Event):
         raise NotImplementedError(
             "You need to re-implement this method with your pipeline's version of the CameraGroupProcessingServer "

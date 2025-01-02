@@ -24,8 +24,24 @@
             font-size: small;
         }
 
+        #threejs-container {
+            width: 40%;
+            height: 400px;
+        }
+
+        #content-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #images-container {
+            width: 55%;
+        }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
     <script>
+
         let ws;
         let isConnected = false;
         const websocket_url = 'ws://localhost:8005/websocket/connect';
@@ -61,14 +77,30 @@
                     // Parse the JSON string to a JavaScript object
                     const data = JSON.parse(jsonString);
                     addLogEntry(`Received message with length: ${jsonString.length} from mf_payload# ${data.multi_frame_number}`);
-                    console.log(`Received message with length: ${jsonString.length} from mf_payload# ${data.multi_frame_number}`);
 
                     // Now you can use the data object to update your UI
                     updateImages(data.jpeg_images);
+                    // updateSpheres(data.object_points);
                 } else {
-                    console.error("Received data is not a Blob.");
+                    console.log("Received data: ", event.data);
                 }
             };
+        }
+
+        function updateCharucoSpheres(objectPoints) {
+            // Remove existing spheres
+            while (scene.children.length > 2) { // Keep the axes and grid helpers
+                scene.remove(scene.children[2]);
+            }
+
+            // Add new spheres
+            objectPoints.forEach(point => {
+                const geometry = new THREE.SphereGeometry(0.1, 10, 10);
+                const material = new THREE.MeshBasicMaterial({color: 0xff0000});
+                const sphere = new THREE.Mesh(geometry, material);
+                sphere.position.set(point.x, point.y, point.z);
+                scene.add(sphere);
+            });
         }
 
         function sendMessage(message) {
@@ -102,6 +134,11 @@
             const logEntry = document.createElement('div');
             logEntry.innerText = entry;
             logContainer.prepend(logEntry);
+
+            // Limit the number of log entries to 30
+            if (logContainer.children.length > 30) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
         }
 
         async function callApi(endpoint, method = 'GET') {
@@ -116,6 +153,34 @@
                 addLogEntry(`Error: ${endpoint} - ${error.message}`);
             }
         }
+
+        function initThreeJS() {
+            const container = document.getElementById('threejs-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+
+            const gridHelper = new THREE.GridHelper(10, 10);
+            scene.add(gridHelper);
+
+            camera.position.y = 5;
+            camera.position.z = 15;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                renderer.render(scene, camera);
+            }
+
+            animate();
+        }
+
+        window.onload = initThreeJS;
     </script>
 </head>
 <body>
@@ -131,26 +196,30 @@
 <button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/detect')">Connect to Cameras</button>
 
 <div>
-    <button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/apply', 'POST')">Connect/Update Cameras</button>
+    <button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/apply', 'POST')">Connect/Update Cameras
+    </button>
     <button onclick="callApi('http://localhost:8005/skellycam/cameras/close')">Close Camera Connections</button>
 
-<!--    &lt;!&ndash; Root and App API Calls &ndash;&gt;-->
-<!--    <button onclick="sendMessage('Hello from the client')">Send WS Message</button>-->
-<!--    <button onclick="callApi('http://localhost:8005/')">Read Root</button>-->
-<!--    <button onclick="callApi('http://localhost:8005/skellycam/app/state')">App State</button>-->
-<!--    <button onclick="callApi('http://localhost:8005/skellycam/app/healthcheck')">Hello👋</button>-->
-<!--    <button onclick="callApi('http://localhost:8005/skellycam/app_state/shutdown')">goodbye👋</button>-->
+    <!--    &lt;!&ndash; Root and App API Calls &ndash;&gt;-->
+    <!--    <button onclick="sendMessage('Hello from the client')">Send WS Message</button>-->
+    <!--    <button onclick="callApi('http://localhost:8005/')">Read Root</button>-->
+    <!--    <button onclick="callApi('http://localhost:8005/skellycam/app/state')">App State</button>-->
+    <!--    <button onclick="callApi('http://localhost:8005/skellycam/app/healthcheck')">Hello👋</button>-->
+    <!--    <button onclick="callApi('http://localhost:8005/skellycam/app_state/shutdown')">goodbye👋</button>-->
 
 
-<!--    &lt;!&ndash; Camera Operation API Calls &ndash;&gt;-->
-<!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/detect')">Detect Cameras</button>-->
-<!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/record/start')">Start Recording</button>-->
-<!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/record/stop')">Stop Recording</button>-->
+    <!--    &lt;!&ndash; Camera Operation API Calls &ndash;&gt;-->
+    <!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/detect')">Detect Cameras</button>-->
+    <!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/record/start')">Start Recording</button>-->
+    <!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/record/stop')">Stop Recording</button>-->
 </div>
-<!-- Results and Logs Section -->
-<pre id="result"></pre>
-<h2>Images</h2>
-<div id="images-container"></div>
+<!-- Content Container -->
+<div id="content-container">
+    <!-- Three.js Viewer Section -->
+    <div id="threejs-container"></div>
+    <!-- Images Section -->
+    <div id="images-container"></div>
+</div>
 
 <h3>Loggs</h3>
 <div id="log-container"></div>

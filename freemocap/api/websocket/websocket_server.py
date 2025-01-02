@@ -13,7 +13,7 @@ from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
 from freemocap.pipelines.calibration_pipeline import CalibrationProcessingServer
-from freemocap.pipelines.dummy_pipeline import DummyProcessingServer
+from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node import CalibrationPipelineOutputData
 from freemocap.pipelines.pipeline_abcs import ReadTypes, BaseProcessingServer
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ class FreemocapWebsocketServer:
 
         camera_group_uuid = None
         latest_mf_number = -1
-        processing_server: BaseProcessingServer|None = None #Starts when camera group is detected, should probably be handled differently but this works fn
+        processing_server: BaseProcessingServer | None = None  # Starts when camera group is detected, should probably be handled differently but this works fn
         try:
             while True:
                 await async_wait_1ms()
@@ -114,7 +114,7 @@ class FreemocapWebsocketServer:
                     camera_group_uuid = self._freemocap_app_state.skellycam_app_state.camera_group.uuid
                     if processing_server:
                         processing_server.shutdown_pipeline()
-                    processing_server:CalibrationProcessingServer = self._freemocap_app_state.create_processing_server()
+                    processing_server: CalibrationProcessingServer = self._freemocap_app_state.create_processing_server()
 
                     processing_server.start()
                     continue
@@ -126,12 +126,11 @@ class FreemocapWebsocketServer:
                     camera_configs=self._freemocap_app_state.camera_configs,
                     retrieve_type=ReadTypes.LATEST.value)
 
-
                 if processing_server:
                     processing_server.intake_data(mf_payload)
-                    mf_payload = processing_server.annotate_images(mf_payload)
+                    mf_payload, latest_pipeline_output = processing_server.annotate_images(mf_payload)
 
-                await self._send_frontend_payload(mf_payload)
+                await self._send_frontend_payload(mf_payload, latest_pipeline_output)
 
                 latest_mf_number = mf_payload.multi_frame_number
 
@@ -144,7 +143,9 @@ class FreemocapWebsocketServer:
             raise
 
     async def _send_frontend_payload(self,
-                                     mf_payload: MultiFramePayload):
+                                     mf_payload: MultiFramePayload,
+                                     latest_pipeline_output: CalibrationPipelineOutputData | None = None
+                                     ):
         frontend_payload = FrontendFramePayload.from_multi_frame_payload(multi_frame_payload=mf_payload)
 
         logger.loop(f"Sending frontend payload through websocket...")
@@ -154,7 +155,7 @@ class FreemocapWebsocketServer:
 
         await self.websocket.send_bytes(frontend_payload.model_dump_json().encode('utf-8'))
 
+
         if not self.websocket.client_state == WebSocketState.CONNECTED:
             logger.error("Websocket shut down while sending payload!")
             raise RuntimeError("Websocket shut down while sending payload!")
-

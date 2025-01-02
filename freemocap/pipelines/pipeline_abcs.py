@@ -278,11 +278,11 @@ class BaseProcessingPipeline(ABC):
 
         return self.latest_pipeline_data
 
-    def annotate_images(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
+    def annotate_images(self, multiframe_payload: MultiFramePayload) -> tuple[MultiFramePayload, BasePipelineOutputData | None]:
         pipeline_output = self.get_output_for_frame(target_frame_number=multiframe_payload.multi_frame_number)
         if pipeline_output is None:
-            return multiframe_payload
-        return self.annotator.annotate_images(multiframe_payload, pipeline_output)
+            return multiframe_payload, None
+        return self.annotator.annotate_images(multiframe_payload, pipeline_output) , pipeline_output
 
 
 
@@ -328,7 +328,7 @@ class BaseProcessingServer(ABC):
     def intake_data(self, multiframe_payload: MultiFramePayload):
         self.processing_pipeline.intake_data(multiframe_payload)
 
-    def annotate_images(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
+    def annotate_images(self, multiframe_payload: MultiFramePayload) -> tuple[MultiFramePayload, BasePipelineOutputData | None]:
         return self.processing_pipeline.annotate_images(multiframe_payload)
 
     def shutdown_pipeline(self):

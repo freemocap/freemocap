@@ -280,8 +280,10 @@ class BaseProcessingPipeline(ABC):
 
     def annotate_images(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
         pipeline_output = self.get_output_for_frame(target_frame_number=multiframe_payload.multi_frame_number)
-        if pipeline_output is not None:
-            return self.annotator.annotate_images(multiframe_payload, pipeline_output)
+        if pipeline_output is None:
+            return multiframe_payload
+        return self.annotator.annotate_images(multiframe_payload, pipeline_output)
+
 
 
     def start(self):

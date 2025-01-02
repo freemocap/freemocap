@@ -14,7 +14,7 @@ from freemocap.utilities.get_process_name import get_process_name
 from freemocap.utilities.setup_windows_app_id import setup_app_id_for_windows
 
 logger = logging.getLogger(__name__)
-configure_logging(LogLevels.LOOP)
+configure_logging(LogLevels.TRACE)
 
 if get_process_name().lower() == "mainprocess":
     print_log_level_messages(logger)

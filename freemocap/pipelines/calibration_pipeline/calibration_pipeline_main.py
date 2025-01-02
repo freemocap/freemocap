@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 
-
+@dataclass
 class CalibrationPipelineConfig(BasePipelineConfig):
     camera_node_configs: dict[CameraId, CalibrationPipelineCameraNodeConfig]
     aggregation_node_config: CalibrationAggregationNodeConfig

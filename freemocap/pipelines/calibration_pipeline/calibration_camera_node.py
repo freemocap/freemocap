@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+from dataclasses import dataclass
 from multiprocessing import Queue, Process
 
 import time
@@ -15,25 +16,25 @@ from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageC
 
 logger = logging.getLogger(__name__)
 
-
+@dataclass
 class CalibrationPipelineAggregationLayerOutputData(BasePipelineData):
     pass
 
-
+@dataclass
 class CalibrationPipelineAggregationNodeConfig(BasePipelineStageConfig):
     param2: int = 2
 
-
+@dataclass
 class CalibrationPipelineCameraNodeConfig(BasePipelineStageConfig):
     camera_config: CameraConfig
     tracker_config: CharucoTrackerConfig
     param1: int = 1
 
-
+@dataclass
 class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
     data: CharucoObservation
 
-
+@dataclass
 class CalibrationCameraNode(BaseCameraNode):
     @classmethod
     def create(cls,
@@ -65,7 +66,6 @@ class CalibrationCameraNode(BaseCameraNode):
              camera_shm_dto: CameraSharedMemoryDTO,
              output_queue: Queue,
              shutdown_event: multiprocessing.Event,
-             tracker: CharucoTracker
              ):
         logger.trace(f"Camera#{camera_id} processing node started!")
         camera_ring_shm = SingleSlotCameraSharedMemory.recreate(
@@ -73,7 +73,7 @@ class CalibrationCameraNode(BaseCameraNode):
             camera_shm_dto=camera_shm_dto,
             read_only=False)
 
-        charuco_tracker = tracker.value.create(config=config.tracker_config)
+        charuco_tracker = CharucoTracker.create(config=config.tracker_config)
 
         try:
             while not shutdown_event.is_set():

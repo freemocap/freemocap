@@ -97,8 +97,7 @@ class BaseCameraNode(ABC):
              config: BasePipelineStageConfig,
              camera_shm_dto: CameraSharedMemoryDTO,
              output_queue: Queue,
-             shutdown_event: multiprocessing.Event,
-             tracker: BaseTracker):
+             shutdown_event: multiprocessing.Event):
         raise NotImplementedError(
             "Add your camera process logic here! See example in the `freemocap/.../dummy_pipeline.py` file.")
         # logger.trace(f"Starting camera processing node for camera {camera_ring_shm_dto.camera_id}")

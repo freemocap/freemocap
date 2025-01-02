@@ -10,7 +10,7 @@ from skellycam.skellycam_app.skellycam_app_controller.skellycam_app_controller i
 from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState, get_skellycam_app_state
 from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
 
-from freemocap.pipelines.calibration_pipeline.calibration_pipeline_main import CalibrationPipelineConfig, \
+from freemocap.pipelines.calibration_pipeline import CalibrationPipelineConfig, \
     CalibrationProcessingServer
 from freemocap.pipelines.pipeline_abcs import BaseProcessingServer
 

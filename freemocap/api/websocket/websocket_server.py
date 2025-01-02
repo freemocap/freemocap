@@ -12,6 +12,7 @@ from skellycam.utilities.wait_functions import async_wait_1ms
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
+from freemocap.pipelines.calibration_pipeline import CalibrationProcessingServer
 from freemocap.pipelines.dummy_pipeline import DummyProcessingServer
 from freemocap.pipelines.pipeline_abcs import ReadTypes, BaseProcessingServer
 
@@ -113,7 +114,7 @@ class FreemocapWebsocketServer:
                     camera_group_uuid = self._freemocap_app_state.skellycam_app_state.camera_group.uuid
                     if processing_server:
                         processing_server.shutdown_pipeline()
-                    processing_server = self._freemocap_app_state.create_processing_server()
+                    processing_server:CalibrationProcessingServer = self._freemocap_app_state.create_processing_server()
 
                     processing_server.start()
                     continue

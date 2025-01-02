@@ -7,12 +7,12 @@ from typing import Dict
 
 from skellycam import CameraId
 
-from freemocap.pipelines.calibration_pipeline.calibration_camera_node import CalibrationCameraNode, \
-    CalibrationCameraNodeOutputData
+from freemocap.pipelines.calibration_pipeline.calibration_camera_node import CalibrationCameraNodeOutputData
 from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BaseAggregationNode, BasePipelineOutputData
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class CalibrationAggregationLayerOutputData(BaseAggregationLayerOutputData):
@@ -20,14 +20,15 @@ class CalibrationAggregationLayerOutputData(BaseAggregationLayerOutputData):
 
 
 @dataclass
+class CalibrationAggregationNodeConfig(BasePipelineStageConfig):
+    param2: int = 2
+
+
+@dataclass
 class CalibrationPipelineOutputData(BasePipelineOutputData):
     camera_node_output: dict[CameraId, CalibrationCameraNodeOutputData]
     aggregation_layer_output: CalibrationAggregationLayerOutputData
 
-
-@dataclass
-class CalibrationAggregationNodeConfig(BasePipelineStageConfig):
-    param2: int = 2
 
 @dataclass
 class CalibrationAggregationProcessNode(BaseAggregationNode):
@@ -57,14 +58,14 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
         try:
             while not shutdown_event.is_set():
                 data_by_camera_id: dict[CameraId, CalibrationCameraNodeOutputData | None] = {camera_id: None for
-                                                                                   camera_id in
-                                                                                   input_queues.keys()}
+                                                                                             camera_id in
+                                                                                             input_queues.keys()}
                 while any([value is None for value in data_by_camera_id.values()]):
                     time.sleep(0.001)
                     for camera_id in input_queues.keys():
                         if data_by_camera_id[camera_id] is None:
                             if not input_queues[camera_id].empty():
-                                camera_node_output:CalibrationCameraNodeOutputData = input_queues[camera_id].get()
+                                camera_node_output: CalibrationCameraNodeOutputData = input_queues[camera_id].get()
                                 if not isinstance(camera_node_output, CalibrationCameraNodeOutputData):
                                     raise ValueError(
                                         f"Unexpected data type received from camera {camera_id}: {type(camera_node_output)}")
@@ -73,7 +74,7 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
 
                 if len(data_by_camera_id) == len(input_queues):
                     # TODO - process aggregated data
-                    output_queue.put(CalibrationPipelineOutputData(camera_node_output=data_by_camera_id, #type: ignore
+                    output_queue.put(CalibrationPipelineOutputData(camera_node_output=data_by_camera_id,  # type: ignore
                                                                    aggregation_layer_output=CalibrationAggregationLayerOutputData(
                                                                        data=None)
                                                                    )

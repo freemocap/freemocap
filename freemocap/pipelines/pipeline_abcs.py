@@ -13,7 +13,8 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camer
 from skellycam.core.frames.payloads.frame_payload import FramePayload
 from skellycam.core.frames.payloads.metadata.frame_metadata import FrameMetadata
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
-from skellytracker.trackers.base_tracker.base_tracker import BaseTrackerConfig, BaseImageAnnotator
+from skellytracker.trackers.base_tracker.base_tracker import BaseTrackerConfig, BaseImageAnnotator, \
+    BaseImageAnnotatorConfig
 
 logger = logging.getLogger(__name__)
 
@@ -197,17 +198,25 @@ class BaseAggregationNode(ABC):
 
 @dataclass
 class PipelineImageAnnotator(ABC):
-    pass
+    camera_node_annotators: dict[CameraId, BaseImageAnnotator]
+
+    @classmethod
+    def create(cls, configs: dict[CameraId, BaseImageAnnotatorConfig]):
+        raise NotImplementedError(
+            "You need to re-implement this method with your pipeline's version of the PipelineImageAnnotator ")
+
+    def annotate_images(self, multiframe_payload: MultiFramePayload, pipeline_output: BasePipelineOutputData) -> MultiFramePayload:
+        raise NotImplementedError(
+            "You need to re-implement this method with your pipeline's version of the PipelineImageAnnotator ")
 
 @dataclass
 class BaseProcessingPipeline(ABC):
     config: BasePipelineStageConfig
     camera_nodes: dict[CameraId, BaseCameraNode]
     aggregation_node: BaseAggregationNode
-    image_annotator: PipelineImageAnnotator
+    annotator: PipelineImageAnnotator
     shutdown_event: multiprocessing.Event
 
-    annotator: BaseImageAnnotator | None = None
     latest_pipeline_data: BasePipelineData | None = None
 
     @classmethod
@@ -268,16 +277,12 @@ class BaseProcessingPipeline(ABC):
                 return self.latest_pipeline_data
 
         return self.latest_pipeline_data
+
     def annotate_images(self, multiframe_payload: MultiFramePayload) -> MultiFramePayload:
         pipeline_output = self.get_output_for_frame(target_frame_number=multiframe_payload.multi_frame_number)
         if pipeline_output is not None:
-            for camera_id, frame in multiframe_payload.frames.items():
+            return self.annotator.annotate_images(multiframe_payload, pipeline_output)
 
-                if pipeline_output.camera_node_output[camera_id] is not None:
-                    frame.image = self.annotator.annotate_image(image=frame.image,
-                                                                latest_observation=pipeline_output.camera_node_output[camera_id].charuco_observation, # type: ignore
-                                                                )
-        return multiframe_payload
 
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__} with camera processes {list(self.camera_nodes.keys())}...")

@@ -13,11 +13,11 @@ from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
 from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoImageAnnotator, CharucoAnnotatorConfig
 
 from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node import CalibrationAggregationNodeConfig, \
-    CalibrationAggregationProcessNode, CalibrationAggregationLayerOutputData, CalibrationPipelineOutputData
+    CalibrationAggregationProcessNode, CalibrationPipelineOutputData
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node import CalibrationPipelineCameraNodeConfig, \
-    CalibrationCameraNode, CalibrationCameraNodeOutputData
+    CalibrationCameraNode
 from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, BaseProcessingPipeline, BaseProcessingServer, \
-    PipelineImageAnnotator, BasePipelineOutputData
+    PipelineImageAnnotator
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +36,6 @@ class CalibrationPipelineConfig(BasePipelineConfig):
                    aggregation_node_config=CalibrationAggregationNodeConfig())
 
 
-
-
 @dataclass
 class CalibrationPipelineImageAnnotator(PipelineImageAnnotator):
     camera_node_annotators: dict[CameraId, CharucoImageAnnotator]
@@ -48,10 +46,12 @@ class CalibrationPipelineImageAnnotator(PipelineImageAnnotator):
                                            for camera_id, config in configs.items()}
                    )
 
-    def annotate_images(self, multiframe_payload: MultiFramePayload, pipeline_output: CalibrationPipelineOutputData) -> MultiFramePayload:
+    def annotate_images(self, multiframe_payload: MultiFramePayload,
+                        pipeline_output: CalibrationPipelineOutputData) -> MultiFramePayload:
         for camera_id, annotator in self.camera_node_annotators.items():
-            multiframe_payload = annotator.annotate_image(multiframe_payload.frames[camera_id],
-                                                          pipeline_output.camera_node_output[camera_id].charuco_observation)
+            multiframe_payload.frames[camera_id].image = annotator.annotate_image(
+                image=multiframe_payload.frames[camera_id].image,
+                latest_observation = pipeline_output.camera_node_output[camera_id].charuco_observation)
         return multiframe_payload
 
 

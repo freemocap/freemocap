@@ -60,18 +60,12 @@ class FreemocapAppState:
         self.processing_camera_shms = SingleSlotCameraGroupSharedMemory.create(camera_configs=self.camera_configs,
                                                                          read_only=True)
 
-    def create_processing_server(self) -> BaseProcessingServer:
+    def create_processing_server(self) -> CalibrationProcessingServer:
         if not self.frame_escape_shm:
             raise ValueError("Cannot create image processing server without frame escape shared memory!")
 
         self.pipeline_shutdown_event.clear()
 
-        # if processing_server_type == ProcessingServerTypes.DUMMY:
-        #     return processing_server_type.value.create(
-        #         pipeline_config=DummyPipelineConfig.create(camera_configs=self.camera_configs),
-        #         camera_shm_dtos=self.get_camera_shm_dtos(),
-        #         shutdown_event=self.pipeline_shutdown_event,
-        #     )
 
         return CalibrationProcessingServer.create(
             pipeline_config=CalibrationPipelineConfig.create(camera_configs=self.camera_configs,

@@ -1357,7 +1357,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2023.9.1086"
-source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#e72c6bd2e96f82bc41412f807d4af03016e31fc0" }
+source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#3c7d44daec1ecfcc211bdf4ccd09e60a12e25d18" }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
@@ -1376,6 +1376,7 @@ dependencies = [
     { name = "pyside6" },
     { name = "scipy" },
     { name = "setproctitle" },
+    { name = "skellytracker" },
     { name = "tabulate" },
     { name = "tzlocal" },
     { name = "uvicorn" },

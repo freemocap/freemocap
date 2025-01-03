@@ -16,8 +16,7 @@ from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node impor
     CalibrationAggregationProcessNode, CalibrationPipelineOutputData
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node import CalibrationPipelineCameraNodeConfig, \
     CalibrationCameraNode
-from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, BaseProcessingPipeline, BaseProcessingServer, \
-    PipelineImageAnnotator
+from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, BaseProcessingPipeline,PipelineImageAnnotator
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,6 @@ class CalibrationPipelineConfig(BasePipelineConfig):
                    aggregation_node_config=CalibrationAggregationNodeConfig())
 
 
-@dataclass
 class CalibrationPipelineImageAnnotator(PipelineImageAnnotator):
     camera_node_annotators: dict[CameraId, CharucoImageAnnotator]
 
@@ -51,11 +49,10 @@ class CalibrationPipelineImageAnnotator(PipelineImageAnnotator):
         for camera_id, annotator in self.camera_node_annotators.items():
             multiframe_payload.frames[camera_id].image = annotator.annotate_image(
                 image=multiframe_payload.frames[camera_id].image,
-                latest_observation = pipeline_output.camera_node_output[camera_id].charuco_observation)
+                latest_observation=pipeline_output.camera_node_output[camera_id].charuco_observation)
         return multiframe_payload
 
 
-@dataclass
 class CalibrationPipeline(BaseProcessingPipeline):
     config: CalibrationPipelineConfig
     camera_nodes: Dict[CameraId, CalibrationCameraNode]
@@ -72,12 +69,15 @@ class CalibrationPipeline(BaseProcessingPipeline):
         camera_output_queues = {camera_id: Queue() for camera_id in camera_shm_dtos.keys()}
         aggregation_output_queue = Queue()
 
+        all_ready_events = {camera_id: multiprocessing.Event() for camera_id in camera_shm_dtos.keys()}
+        all_ready_events[-1] = multiprocessing.Event()
         camera_nodes = {camera_id: CalibrationCameraNode.create(config=config,
                                                                 camera_id=CameraId(camera_id),
                                                                 camera_shm_dto=camera_shm_dtos[
                                                                     camera_id],
                                                                 output_queue=camera_output_queues[
                                                                     camera_id],
+                                                                all_ready_events=all_ready_events,
                                                                 shutdown_event=shutdown_event)
                         for camera_id, config in config.camera_node_configs.items()}
         return cls(config=config,
@@ -85,29 +85,12 @@ class CalibrationPipeline(BaseProcessingPipeline):
                    aggregation_node=CalibrationAggregationProcessNode.create(config=config.aggregation_node_config,
                                                                              input_queues=camera_output_queues,
                                                                              output_queue=aggregation_output_queue,
+                                                                             all_ready_events=all_ready_events,
                                                                              shutdown_event=shutdown_event),
                    # NOTE - this `annotator` is not the same annotator as the one that will be created in the tracker, but will be able to process its outputs
                    annotator=CalibrationPipelineImageAnnotator.create(
                        configs={camera_id: config.tracker_config.annotator_config for camera_id, config in
                                 config.camera_node_configs.items()}),
+                   all_ready_events=all_ready_events,
                    shutdown_event=shutdown_event,
                    )
-
-
-class CalibrationProcessingServer(BaseProcessingServer):
-    processing_pipeline: CalibrationPipeline
-    pipeline_config: CalibrationPipelineConfig
-
-    @classmethod
-    def create(cls,
-               pipeline_config: CalibrationPipelineConfig,
-               camera_shm_dtos: CameraSharedMemoryDTOs,
-               shutdown_event: multiprocessing.Event):
-        processing_pipeline = CalibrationPipeline.create(
-            config=pipeline_config,
-            camera_shm_dtos=camera_shm_dtos,
-            shutdown_event=shutdown_event,
-        )
-
-        return cls(processing_pipeline=processing_pipeline,
-                   shutdown_event=shutdown_event)

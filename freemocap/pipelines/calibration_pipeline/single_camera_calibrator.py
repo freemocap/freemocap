@@ -29,6 +29,19 @@ class SingleCameraCalibrationDTO:
     translation_vectors: list[np.ndarray[..., 3]]
     reprojection_error_by_view: list[float]
 
+    def to_serializable_dict(self  ):
+        return {
+            "camera_matrix": self.camera_matrix.tolist(),
+            "distortion_coefficients": self.distortion_coefficients.tolist(),
+            "mean_reprojection_errors": self.mean_reprojection_errors,
+            "camera_calibration_residuals": self.camera_calibration_residuals,
+            "charuco_observations": [obs.to_serializable_dict() for obs in self.charuco_observations],
+            "object_points_views": [obj.tolist() for obj in self.object_points_views],
+            "image_points_views": [img.tolist() for img in self.image_points_views],
+            "rotation_vectors": [rot.tolist() for rot in self.rotation_vectors],
+            "translation_vectors": [trans.tolist() for trans in self.translation_vectors],
+        }
+
 @dataclass
 class SingleCameraCalibrator:
 

@@ -10,9 +10,7 @@ from skellycam.skellycam_app.skellycam_app_controller.skellycam_app_controller i
 from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState, get_skellycam_app_state
 from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
 
-from freemocap.pipelines.calibration_pipeline import CalibrationPipelineConfig, \
-    CalibrationProcessingServer
-from freemocap.pipelines.pipeline_abcs import BaseProcessingServer
+from freemocap.pipelines.calibration_pipeline import CalibrationPipelineConfig, CalibrationPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -60,15 +58,15 @@ class FreemocapAppState:
         self.processing_camera_shms = SingleSlotCameraGroupSharedMemory.create(camera_configs=self.camera_configs,
                                                                          read_only=True)
 
-    def create_processing_server(self) -> CalibrationProcessingServer:
+    def create_processing_pipeline(self) -> CalibrationPipeline:
         if not self.frame_escape_shm:
             raise ValueError("Cannot create image processing server without frame escape shared memory!")
 
         self.pipeline_shutdown_event.clear()
 
 
-        return CalibrationProcessingServer.create(
-            pipeline_config=CalibrationPipelineConfig.create(camera_configs=self.camera_configs,
+        return CalibrationPipeline.create(
+            config=CalibrationPipelineConfig.create(camera_configs=self.camera_configs,
                                                              tracker_config=CharucoTrackerConfig()
                                                              ),
             camera_shm_dtos=self.get_processor_camera_shms_dtos(),
@@ -76,6 +74,7 @@ class FreemocapAppState:
         )
 
     def close(self):
+        self.global_kill_flag.value = True
         self.pipeline_shutdown_event.set()
         self.skellycam_app_state.close()
 

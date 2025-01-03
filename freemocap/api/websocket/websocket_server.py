@@ -1,6 +1,8 @@
 import asyncio
+import json
 import logging
 import multiprocessing
+from dataclasses import asdict
 from typing import Optional
 
 from skellycam.core.frames.payloads.frontend_image_payload import FrontendFramePayload
@@ -12,9 +14,9 @@ from skellycam.utilities.wait_functions import async_wait_1ms
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
-from freemocap.pipelines.calibration_pipeline import CalibrationProcessingServer
+from freemocap.pipelines.calibration_pipeline import  CalibrationPipeline
 from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node import CalibrationPipelineOutputData
-from freemocap.pipelines.pipeline_abcs import ReadTypes, BaseProcessingServer
+from freemocap.pipelines.pipeline_abcs import ReadTypes,BaseProcessingPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +96,7 @@ class FreemocapWebsocketServer:
 
         camera_group_uuid = None
         latest_mf_number = -1
-        processing_server: BaseProcessingServer | None = None  # Starts when camera group is detected, should probably be handled differently but this works fn
+        processing_pipeline: BaseProcessingPipeline | None = None  # Starts when camera group is detected, should probably be handled differently but this works fn
         try:
             while True:
                 await async_wait_1ms()
@@ -112,11 +114,11 @@ class FreemocapWebsocketServer:
                 if self._freemocap_app_state.skellycam_app_state.camera_group and camera_group_uuid != self._freemocap_app_state.skellycam_app_state.camera_group.uuid:
                     latest_mf_number = -1
                     camera_group_uuid = self._freemocap_app_state.skellycam_app_state.camera_group.uuid
-                    if processing_server:
-                        processing_server.shutdown_pipeline()
-                    processing_server: CalibrationProcessingServer = self._freemocap_app_state.create_processing_server()
+                    if processing_pipeline:
+                        processing_pipeline.shutdown()
+                    processing_pipeline: CalibrationPipeline = self._freemocap_app_state.create_processing_pipeline()
 
-                    processing_server.start()
+                    processing_pipeline.start()
                     continue
 
                 if not self._freemocap_app_state.skellycam_app_state.frame_escape_shm.latest_mf_number.value > latest_mf_number:
@@ -126,9 +128,10 @@ class FreemocapWebsocketServer:
                     camera_configs=self._freemocap_app_state.camera_configs,
                     retrieve_type=ReadTypes.LATEST.value)
 
-                if processing_server:
-                    processing_server.intake_data(mf_payload)
-                    mf_payload, latest_pipeline_output = processing_server.annotate_images(mf_payload)
+                latest_pipeline_output: CalibrationPipelineOutputData | None = None
+                if processing_pipeline and processing_pipeline.ready_to_intake:
+                    processing_pipeline.intake_data(mf_payload)
+                    mf_payload, latest_pipeline_output = processing_pipeline.annotate_images(mf_payload)
 
                 await self._send_frontend_payload(mf_payload, latest_pipeline_output)
 
@@ -147,13 +150,15 @@ class FreemocapWebsocketServer:
                                      latest_pipeline_output: CalibrationPipelineOutputData | None = None
                                      ):
         frontend_payload = FrontendFramePayload.from_multi_frame_payload(multi_frame_payload=mf_payload)
+        frontend_dict = frontend_payload.model_dump()
+        frontend_dict['latest_pipeline_output'] = latest_pipeline_output.to_serializable_dict() if latest_pipeline_output else {}
 
         logger.loop(f"Sending frontend payload through websocket...")
         if not self.websocket.client_state == WebSocketState.CONNECTED:
             logger.error("Websocket is not connected, cannot send payload!")
             raise RuntimeError("Websocket is not connected, cannot send payload!")
 
-        await self.websocket.send_bytes(frontend_payload.model_dump_json().encode('utf-8'))
+        await self.websocket.send_bytes(json.dumps(frontend_dict).encode('utf-8'))
 
 
         if not self.websocket.client_state == WebSocketState.CONNECTED:

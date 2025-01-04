@@ -1,11 +1,8 @@
 import asyncio
-import json
 import logging
 import multiprocessing
-from dataclasses import asdict
 from typing import Optional
 
-from skellycam.core.frames.payloads.frontend_image_payload import FrontendFramePayload
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 from skellycam.core.recorders.timestamps.framerate_tracker import CurrentFrameRate
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -14,9 +11,10 @@ from skellycam.utilities.wait_functions import async_wait_1ms
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
-from freemocap.pipelines.calibration_pipeline import  CalibrationPipeline
+from freemocap.pipelines.calibration_pipeline import CalibrationPipeline
 from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node import CalibrationPipelineOutputData
-from freemocap.pipelines.pipeline_abcs import ReadTypes,BaseProcessingPipeline
+from freemocap.pipelines.freemocap_frontend_payload import FreemocapFrontendPayload
+from freemocap.pipelines.pipeline_abcs import ReadTypes, BaseProcessingPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -144,22 +142,25 @@ class FreemocapWebsocketServer:
         except Exception as e:
             logger.exception(f"Error in image payload relay: {e.__class__}: {e}")
             raise
+        finally:
+            logger.info("Ending Frontend Image relay task...")
+            self._freemocap_app_state.global_kill_flag.flag = True
+            if processing_pipeline:
+                processing_pipeline.shutdown()
 
     async def _send_frontend_payload(self,
                                      mf_payload: MultiFramePayload,
                                      latest_pipeline_output: CalibrationPipelineOutputData | None = None
                                      ):
-        frontend_payload = FrontendFramePayload.from_multi_frame_payload(multi_frame_payload=mf_payload)
-        frontend_dict = frontend_payload.model_dump()
-        frontend_dict['latest_pipeline_output'] = latest_pipeline_output.to_serializable_dict() if latest_pipeline_output else {}
+        frontend_payload = FreemocapFrontendPayload.create(multi_frame_payload=mf_payload,
+                                                           latest_pipeline_output=latest_pipeline_output)
 
         logger.loop(f"Sending frontend payload through websocket...")
         if not self.websocket.client_state == WebSocketState.CONNECTED:
             logger.error("Websocket is not connected, cannot send payload!")
             raise RuntimeError("Websocket is not connected, cannot send payload!")
 
-        await self.websocket.send_bytes(json.dumps(frontend_dict).encode('utf-8'))
-
+        await self.websocket.send_bytes(frontend_payload.model_dump_json().encode('utf-8'))
 
         if not self.websocket.client_state == WebSocketState.CONNECTED:
             logger.error("Websocket shut down while sending payload!")

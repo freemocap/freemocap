@@ -117,9 +117,10 @@ class CalibrationCameraNode(BaseCameraNode):
                         )
                     if not camera_calibration_estimator.has_calibration and not observation.charuco_empty and frame.frame_number % 10 == 0:
                         camera_calibration_estimator.add_observation(observation)
-                        if len(camera_calibration_estimator.charuco_observations) == 30:
-                            camera_calibration_estimator.update_calibration_estimate()
+                        # if len(camera_calibration_estimator.charuco_observations) == 30:
+                        #     camera_calibration_estimator.update_calibration_estimate()
                     time_to_process = time.perf_counter_ns() - tik
+                    print(f"Camera {camera_id} processed frame {frame.frame_number}")
                     output_queue.put(CalibrationCameraNodeOutputData(
                         frame_metadata=FrameMetadata.from_frame_metadata_array(frame.metadata),
                         charuco_observation=observation,

@@ -1,5 +1,5 @@
 import React from 'react';
-import {Paperbase} from "@/layout/paperbase_theme.tsx/Paperbase";
+import {Paperbase} from "@/layout/paperbase_theme/Paperbase";
 import {WebSocketProvider} from "@/context/WebSocketContext";
 
 

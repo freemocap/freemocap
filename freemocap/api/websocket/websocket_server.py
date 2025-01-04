@@ -94,6 +94,8 @@ class FreemocapWebsocketServer:
 
         camera_group_uuid = None
         latest_mf_number = -1
+        previous_pipeline_output: CalibrationPipelineOutputData | None = None
+        payloads_being_processed = {}
         processing_pipeline: BaseProcessingPipeline | None = None  # Starts when camera group is detected, should probably be handled differently but this works fn
         try:
             while True:
@@ -126,12 +128,17 @@ class FreemocapWebsocketServer:
                     camera_configs=self._freemocap_app_state.camera_configs,
                     retrieve_type=ReadTypes.LATEST.value)
 
-                latest_pipeline_output: CalibrationPipelineOutputData | None = None
                 if processing_pipeline and processing_pipeline.ready_to_intake:
                     processing_pipeline.intake_data(mf_payload)
-                    mf_payload, latest_pipeline_output = processing_pipeline.annotate_images(mf_payload)
+                    # payloads_being_processed[mf_payload.multi_frame_number] = mf_payload
+                    print(f"Payloads being processed: {payloads_being_processed.keys()}")
+                    # mf_payload, latest_pipeline_output = processing_pipeline.annotate_images(mf_payload)
+                    # latest_pipeline_output = await processing_pipeline.get_next_data_async()
+                    latest_pipeline_output = processing_pipeline.get_next_data()
 
-                await self._send_frontend_payload(mf_payload, latest_pipeline_output)
+                    annotated_payload = processing_pipeline.annotate_images(mf_payload, latest_pipeline_output)
+                    await self._send_frontend_payload(annotated_payload, latest_pipeline_output)
+
 
                 latest_mf_number = mf_payload.multi_frame_number
 

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import multiprocessing
 from abc import ABC
@@ -286,6 +287,12 @@ class BaseProcessingPipeline(ABC):
         data = self.aggregation_node.output_queue.get()
         return data
 
+    async def get_next_data_async(self) -> BasePipelineOutputData:
+        while self.aggregation_node.output_queue.empty():
+            await asyncio.sleep(0.001)
+        data = self.aggregation_node.output_queue.get()
+        return data
+
     def get_latest_data(self) -> BasePipelineOutputData | None:
         while not self.aggregation_node.output_queue.empty():
             self.latest_pipeline_data = self.aggregation_node.output_queue.get()
@@ -303,11 +310,11 @@ class BaseProcessingPipeline(ABC):
                 return self.latest_pipeline_data
 
 
-    def annotate_images(self, multiframe_payload: MultiFramePayload) -> tuple[MultiFramePayload, BasePipelineOutputData | None]:
-        pipeline_output = self.get_output_for_frame(target_frame_number=multiframe_payload.multi_frame_number)
+    def annotate_images(self, multiframe_payload: MultiFramePayload,
+                        pipeline_output:BasePipelineOutputData|None) -> MultiFramePayload:
         if pipeline_output is None:
-            return multiframe_payload, None
-        return self.annotator.annotate_images(multiframe_payload, pipeline_output) , pipeline_output
+            return multiframe_payload
+        return self.annotator.annotate_images(multiframe_payload, pipeline_output)
 
 
 

@@ -21,16 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class CalibrationPipelineAggregationLayerOutputData(BasePipelineData):
-    pass
-
-
-@dataclass
-class CalibrationPipelineAggregationNodeConfig(BasePipelineStageConfig):
-    param2: int = 2
-
-
-@dataclass
 class CalibrationPipelineCameraNodeConfig(BasePipelineStageConfig):
     camera_config: CameraConfig
     tracker_config: CharucoTrackerConfig
@@ -120,7 +110,6 @@ class CalibrationCameraNode(BaseCameraNode):
                         # if len(camera_calibration_estimator.charuco_observations) == 30:
                         #     camera_calibration_estimator.update_calibration_estimate()
                     time_to_process = time.perf_counter_ns() - tik
-                    print(f"Camera {camera_id} processed frame {frame.frame_number}")
                     output_queue.put(CalibrationCameraNodeOutputData(
                         frame_metadata=FrameMetadata.from_frame_metadata_array(frame.metadata),
                         charuco_observation=observation,

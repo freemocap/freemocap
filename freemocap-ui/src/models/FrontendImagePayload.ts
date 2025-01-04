@@ -7,5 +7,5 @@ export const FrontendFramePayloadSchema = z.object({
     multi_frame_metadata: z.any(), // Allow any value for multi_frame_metadata
     utc_ns_to_perf_ns: z.any(), // Allow any value for utc_ns_to_perf_ns
     multi_frame_number: z.number().int().default(0),
-    latest_pipeline_output: z.any(), // Allow any value for latest_pipeline_output
+    latest_pipeline_output: z.record(z.string().nullable()), // Allow dictionary-like structure
 });

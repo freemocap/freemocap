@@ -8,7 +8,7 @@ import uvicorn
 from uvicorn import Server
 
 from freemocap.api.server.server_constants import HOSTNAME, PORT
-from freemocap.freemocap_app.freemocap_app_lifespan.create_app import create_app
+from freemocap.freemocap_app.create_app import create_app
 from freemocap.utilities.kill_process_on_port import kill_process_on_port
 
 logger = logging.getLogger(__name__)

@@ -88,22 +88,23 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                             f"Unexpected data type received from camera {camera_id}: {type(camera_node_output)}")
                     camera_node_incoming_data[camera_id] = camera_node_output
 
+                print(f"Aggregation node received data from camera nodes: {[(camera_id, value.frame_metadata.frame_number) for camera_id, value in camera_node_incoming_data.items()]}")
                 frame_numbers = set(
                     [camera_node_output.frame_metadata.frame_number for camera_node_output in
                      camera_node_incoming_data.values()])
                 if len(frame_numbers) > 1:
-                    logger.exception(f"Frame numbers from camera nodes do not match! got {camera_node_incoming_data}")
-                    raise ValueError(f"Frame numbers from camera nodes do not match! got {camera_node_incoming_data}")
+                    logger.exception(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
+                    raise ValueError(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
                 latest_frame_number = frame_numbers.pop()
                 # TODO - add aggregation logic here
+                output= CalibrationPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
+                                              aggregation_layer_output=CalibrationAggregationLayerOutputData(
+                                                  data={"multi_frame_number": latest_frame_number}
+                                              )
+                                                )
 
-                output_queue.put(CalibrationPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
-                                                               aggregation_layer_output=CalibrationAggregationLayerOutputData(
-                                                                   data={"multi_frame_number": latest_frame_number}
-                                                               )
-
-                                                               )
-                                 )
+                print(f"Aggregation node output for frame {latest_frame_number}: mf_number: {output.multi_frame_number}")
+                output_queue.put(output)
         except Exception as e:
             logger.exception(f"Error in aggregation processing node", exc_info=e)
             raise

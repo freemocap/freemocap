@@ -295,7 +295,7 @@ class BaseProcessingPipeline(ABC):
     def get_output_for_frame(self, target_frame_number:int) -> BasePipelineOutputData | None:
         while not self.aggregation_node.output_queue.empty():
             self.latest_pipeline_data:BasePipelineOutputData = self.aggregation_node.output_queue.get()
-
+            print(f"Frame Annotator got data for frame {self.latest_pipeline_data.multi_frame_number}")
             if self.latest_pipeline_data.multi_frame_number > target_frame_number:
                 raise ValueError(f"We missed the target frame number {target_frame_number} - current output is for frame {self.latest_pipeline_data.multi_frame_number}")
 

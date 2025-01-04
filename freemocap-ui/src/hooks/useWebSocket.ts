@@ -30,7 +30,7 @@ export const useWebSocket = (wsUrl: string) => {
             setLatestFrontendPayload(frontendImagePayload);
         } catch (e) {
             if (e instanceof z.ZodError) {
-                console.error('Validation failed with errors:', e.errors);
+                console.error('Validation failed with errors:', JSON.stringify(e.errors,null,2));
             } else {
                 console.error('Error parsing message data:', e);
             }
@@ -59,7 +59,7 @@ export const useWebSocket = (wsUrl: string) => {
         };
 
         ws.onmessage = (event) => {
-            console.log('Websocket message received with length: ', event.data.length);
+            // console.log('Websocket message received with length: ', event.data.length);
             handleIncomingMessage(event.data);
         };
 

@@ -88,7 +88,6 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                             f"Unexpected data type received from camera {camera_id}: {type(camera_node_output)}")
                     camera_node_incoming_data[camera_id] = camera_node_output
 
-                print(f"Aggregation node received data from camera nodes: {[(camera_id, value.frame_metadata.frame_number) for camera_id, value in camera_node_incoming_data.items()]}")
                 frame_numbers = set(
                     [camera_node_output.frame_metadata.frame_number for camera_node_output in
                      camera_node_incoming_data.values()])
@@ -103,7 +102,6 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                                               )
                                                 )
 
-                print(f"Aggregation node output for frame {latest_frame_number}: mf_number: {output.multi_frame_number}")
                 output_queue.put(output)
         except Exception as e:
             logger.exception(f"Error in aggregation processing node", exc_info=e)

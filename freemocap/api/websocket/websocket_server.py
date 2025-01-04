@@ -131,7 +131,6 @@ class FreemocapWebsocketServer:
                 if processing_pipeline and processing_pipeline.ready_to_intake:
                     processing_pipeline.intake_data(mf_payload)
                     # payloads_being_processed[mf_payload.multi_frame_number] = mf_payload
-                    print(f"Payloads being processed: {payloads_being_processed.keys()}")
                     # mf_payload, latest_pipeline_output = processing_pipeline.annotate_images(mf_payload)
                     # latest_pipeline_output = await processing_pipeline.get_next_data_async()
                     latest_pipeline_output = processing_pipeline.get_next_data()

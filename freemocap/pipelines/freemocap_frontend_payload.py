@@ -33,7 +33,7 @@ class FreemocapFrontendPayload(FrontendFramePayload):
                multi_frame_payload: FrontendFramePayload,
                latest_pipeline_output: CalibrationPipelineOutputData | None = None):
 
-        latest_pipeline_output_dict = latest_pipeline_output.to_serializable_dict() if latest_pipeline_output is not None else None
+        latest_pipeline_output_dict = latest_pipeline_output.to_serializable_dict() if latest_pipeline_output is not None else {"hi": "wowww"}
         return cls(
             **FrontendFramePayload.from_multi_frame_payload(multi_frame_payload).model_dump(),
             latest_pipeline_output_dict=latest_pipeline_output_dict

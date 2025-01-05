@@ -35,3 +35,6 @@ freemocap = "freemocap.__main__:main"
 
 [tool.uv]
 package = true
+dev-dependencies = [
+    "pydantic2zod>=0.1.1",
+]

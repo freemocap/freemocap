@@ -271,6 +271,15 @@ class BaseProcessingPipeline(ABC):
         #            shutdown_event=shutdown_event,
         #            )
 
+    async def process_multiframe_payload(self, multiframe_payload: MultiFramePayload, annotate_images: bool = True) -> tuple[MultiFramePayload, BasePipelineOutputData]:
+        self.intake_data(multiframe_payload)
+        pipeline_output = await self.get_next_data_async()
+        if not multiframe_payload.multi_frame_number == pipeline_output.multi_frame_number:
+            raise ValueError(f"Frame number mismatch: {multiframe_payload.multi_frame_number} != {pipeline_output.multi_frame_number}")
+        annotated_payload = self.annotate_images(multiframe_payload, pipeline_output)
+        return annotated_payload, pipeline_output
+
+
     def intake_data(self, multiframe_payload: MultiFramePayload):
         if not self.ready_to_intake:
             raise ValueError("Pipeline not ready to intake data!")

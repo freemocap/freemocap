@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from skellycam.core.frames.payloads.frontend_image_payload import FrontendFramePayload
 
 from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node import CalibrationPipelineOutputData
+from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 
 
 class CharucoBoardPayload(BaseModel):
@@ -30,7 +31,7 @@ class FreemocapFrontendPayload(FrontendFramePayload):
 
     @classmethod
     def create(cls,
-               multi_frame_payload: FrontendFramePayload,
+               multi_frame_payload: MultiFramePayload,
                latest_pipeline_output: CalibrationPipelineOutputData | None = None):
 
         latest_pipeline_output_dict = latest_pipeline_output.to_serializable_dict() if latest_pipeline_output is not None else {"hi": "wowww"}

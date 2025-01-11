@@ -133,9 +133,8 @@ class FreemocapWebsocketServer:
                     # payloads_being_processed[mf_payload.multi_frame_number] = mf_payload
                     # mf_payload, latest_pipeline_output = processing_pipeline.annotate_images(mf_payload)
                     # latest_pipeline_output = await processing_pipeline.get_next_data_async()
-                    latest_pipeline_output = processing_pipeline.get_next_data()
+                    annotated_payload, latest_pipeline_output = await processing_pipeline.process_multiframe_payload(mf_payload, annotate_images=True)
 
-                    annotated_payload = processing_pipeline.annotate_images(mf_payload, latest_pipeline_output)
                     await self._send_frontend_payload(annotated_payload, latest_pipeline_output)
 
 
@@ -156,7 +155,7 @@ class FreemocapWebsocketServer:
 
     async def _send_frontend_payload(self,
                                      mf_payload: MultiFramePayload,
-                                     latest_pipeline_output: CalibrationPipelineOutputData | None = None
+                                     latest_pipeline_output: BaseProcessingPipeline | None = None
                                      ):
         frontend_payload = FreemocapFrontendPayload.create(multi_frame_payload=mf_payload,
                                                            latest_pipeline_output=latest_pipeline_output)

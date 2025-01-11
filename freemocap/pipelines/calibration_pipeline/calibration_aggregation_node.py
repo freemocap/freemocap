@@ -67,13 +67,15 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
              shutdown_event: multiprocessing.Event):
         all_ready_events[-1].set()
         logger.trace(f"Aggregation processing node ready!")
+        while not all([value.is_set() for value in all_ready_events.values()]):
+            time.sleep(0.001)
+        logger.trace(f"All processing nodes ready!")
         try:
             camera_node_incoming_data: dict[CameraId, CalibrationCameraNodeOutputData | None] = {camera_id: None for
                                                                                                  camera_id in
                                                                                                  input_queues.keys()}
 
-            while not all([value.is_set() for value in all_ready_events.values()]):
-                time.sleep(0.001)
+
 
             while not shutdown_event.is_set():
 

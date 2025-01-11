@@ -10,7 +10,7 @@ export const BaseContent = () => {
             <Box sx={{py: 6,
                 px: 4,
                 flex: 1,
-                bgcolor: '#9008c6', border: '5px solid black'}}>
+                bgcolor: '#173f70', border: '1px solid charcoal'}}>
                 <Router/>
             </Box>
         </React.Fragment>

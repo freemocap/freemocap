@@ -13,7 +13,7 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camer
 from skellycam.core.frames.payloads.metadata.frame_metadata_enum import FRAME_METADATA_MODEL
 
 from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig, BasePipelineData, \
-    BaseAggregationNode, BasePipelineConfig, BaseProcessingPipeline, BaseProcessingServer
+    BaseAggregationNode, BasePipelineConfig, BaseProcessingPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -179,20 +179,3 @@ class DummyPipeline(BaseProcessingPipeline):
                    )
 
 
-class DummyProcessingServer(BaseProcessingServer):
-    processing_pipeline: DummyPipeline
-    pipeline_config: DummyPipelineConfig
-
-    @classmethod
-    def create(cls,
-               pipeline_config: DummyPipelineConfig,
-               camera_shm_dtos: CameraSharedMemoryDTOs,
-               shutdown_event: multiprocessing.Event):
-        processing_pipeline = DummyPipeline.create(
-            config=pipeline_config,
-            camera_shm_dtos=camera_shm_dtos,
-            shutdown_event=shutdown_event,
-        )
-
-        return cls(processing_pipeline=processing_pipeline,
-                   shutdown_event=shutdown_event)

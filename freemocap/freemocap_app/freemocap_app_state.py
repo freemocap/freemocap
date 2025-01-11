@@ -9,8 +9,12 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camer
 from skellycam.skellycam_app.skellycam_app_controller.skellycam_app_controller import create_skellycam_app_controller
 from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState, get_skellycam_app_state
 from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
+from skellytracker.trackers.mediapipe_tracker import MediapipeTrackerConfig
 
 from freemocap.pipelines.calibration_pipeline import CalibrationPipelineConfig, CalibrationPipeline
+from freemocap.pipelines.dummy_pipeline import DummyPipeline, DummyPipelineConfig
+from freemocap.pipelines.mocap_pipeline import MocapPipeline, MocapPipelineConfig
+from freemocap.pipelines.pipeline_types import PipelineTypes
 
 logger = logging.getLogger(__name__)
 
@@ -58,20 +62,36 @@ class FreemocapAppState:
         self.processing_camera_shms = SingleSlotCameraGroupSharedMemory.create(camera_configs=self.camera_configs,
                                                                          read_only=True)
 
-    def create_processing_pipeline(self) -> CalibrationPipeline:
+    def create_processing_pipeline(self, pipeline_type: PipelineTypes) -> CalibrationPipeline:
         if not self.frame_escape_shm:
             raise ValueError("Cannot create image processing server without frame escape shared memory!")
 
         self.pipeline_shutdown_event.clear()
 
-
-        return CalibrationPipeline.create(
-            config=CalibrationPipelineConfig.create(camera_configs=self.camera_configs,
-                                                             tracker_config=CharucoTrackerConfig()
-                                                             ),
-            camera_shm_dtos=self.get_processor_camera_shms_dtos(),
-            shutdown_event=self.pipeline_shutdown_event,
-        )
+        if pipeline_type  == PipelineTypes.CALIBRATION:
+            return CalibrationPipeline.create(
+                config=CalibrationPipelineConfig.create(camera_configs=self.camera_configs,
+                                                                 tracker_config=CharucoTrackerConfig()
+                                                                 ),
+                camera_shm_dtos=self.get_processor_camera_shms_dtos(),
+                shutdown_event=self.pipeline_shutdown_event,
+            )
+        elif pipeline_type == PipelineTypes.MOCAP:
+            return MocapPipeline.create(
+                config=MocapPipelineConfig.create(camera_configs=self.camera_configs,
+                                                    tracker_config=MediapipeTrackerConfig()
+                                                  ),
+                camera_shm_dtos=self.get_processor_camera_shms_dtos(),
+                shutdown_event=self.pipeline_shutdown_event,
+            )
+        elif pipeline_type == PipelineTypes.DUMMY:
+            return DummyPipeline.create(
+                config=DummyPipelineConfig.create(camera_configs=self.camera_configs),
+                camera_shm_dtos=self.get_processor_camera_shms_dtos(),
+                shutdown_event=self.pipeline_shutdown_event,
+            )
+        else:
+            raise ValueError(f"Unknown pipeline type: {pipeline_type}")
 
     def close(self):
         self.global_kill_flag.value = True

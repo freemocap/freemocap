@@ -13,7 +13,11 @@ export const ConnectToCamerasButton = () => {
     };
 
     return (
-        <Button variant="contained" onClick={handleDetectCameras}>
+        <Button
+            variant="contained"
+            onClick={handleDetectCameras}
+            sx={ {fontSize: '1.25rem'}}
+        >
             Detect/Connect to Cameras
         </Button>
     );

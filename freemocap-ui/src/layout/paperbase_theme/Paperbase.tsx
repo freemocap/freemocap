@@ -36,7 +36,7 @@ export const Paperbase = function () {
           </Box>
 
           <Box sx={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-            <Box component="main" sx={{flex: 1, bgcolor: '#08561e'}}>
+            <Box component="main" sx={{flex: 1, bgcolor: '#081627'}}>
               <IconButton
                 color="primary"
                 aria-label={collapsed ? 'expand' : 'collapse'}
@@ -47,7 +47,7 @@ export const Paperbase = function () {
                 </IconButton>
               <BaseContent />
             </Box>
-            <Box component="footer" sx={{p: 2, bgcolor: '#457b00'}}>
+            <Box component="footer" sx={{p: 1, bgcolor: '#081627'}}>
               <Copyright />
             </Box>
           </Box>

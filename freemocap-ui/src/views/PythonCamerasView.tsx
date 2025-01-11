@@ -2,12 +2,12 @@ import {Box, Button} from "@mui/material";
 import React from "react";
 import {ConnectToCamerasButton} from "@/components/ConnectToCamerasButton";
 import {useWebSocketContext} from "@/context/WebSocketContext";
+import {Viewport3d} from "@/components/viewport3d/Viewport3d";
 export const PythonCamerasView = () => {
     const { latestFrontendPayload } = useWebSocketContext();
 
     return (
         <Box sx={{ display: "flex", flexDirection: "column", height: "70vh" }}>
-            <ConnectToCamerasButton />
             {latestFrontendPayload && latestFrontendPayload.jpeg_images && (
                 <Box
                     sx={{
@@ -48,6 +48,9 @@ export const PythonCamerasView = () => {
                     ))}
                 </Box>
             )}
+
+            <Viewport3d />
+
         </Box>
     );
 }

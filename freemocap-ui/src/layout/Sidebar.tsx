@@ -10,6 +10,7 @@ import ListItemText from '@mui/material/ListItemText';
 import HomeIcon from '@mui/icons-material/Home';
 import {useNavigate} from "react-router";
 import WebsocketConnectionStatus from "@/components/WebsocketConnectionStatus";
+import {ConnectToCamerasButton} from "@/components/ConnectToCamerasButton";
 
 const sidebarItems = [
     {
@@ -89,6 +90,8 @@ export const Sidebar = function (props: DrawerProps) {
                 ))}
             </List>
             <WebsocketConnectionStatus/>
+            <ConnectToCamerasButton />
+
         </Drawer>
 )
     ;

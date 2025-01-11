@@ -4,7 +4,7 @@ import * as React from "react";
 
 export const Copyright =  function() {
   return (
-    <Typography variant="body2" color="text.secondary" align="center">
+    <Typography variant="body2" color="#696969" align="center">
       {'Copyright © '}
       <Link color="inherit" href="https://github.com/freemocap/">
         FreeMoCap Foundation

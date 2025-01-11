@@ -57,7 +57,7 @@ class LoggerBuilder:
     DEFAULT_LOGGING = {"version": 1, "disable_existing_loggers": False}
     # https://www.alt-codes.net/editor.php
     format_string = (
-        f"|-<%(levelname)8s >┤ %(delta_t){MAX_DELTA_T_LEN}s | %(message)s | %(name)s.%(funcName)s():%(lineno)s | %(asctime)s | PID:%(process)d:%(processName)s TID:%(thread)d:%(threadName)s"
+        f"%(message)s |-<%(levelname)8s >┤ %(delta_t){MAX_DELTA_T_LEN}s | %(name)s.%(funcName)s():%(lineno)s | %(asctime)s | PID:%(process)d:%(processName)s TID:%(thread)d:%(threadName)s"
     )
 
     def __init__(self, level: LogLevels):
@@ -113,7 +113,7 @@ class LoggerBuilder:
             )
 
             formatted_record = formatted_record.replace(record.getMessage(),
-                                                        color_code + "» " + record.getMessage() + "\033[0m")
+                                                        color_code + record.getMessage() + "\033[0m")
             formatted_record = color_code + formatted_record + "\033[0m"
             # Output the final colorized and formatted record to the console
             print(formatted_record)

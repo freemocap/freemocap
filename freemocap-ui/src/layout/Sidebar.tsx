@@ -17,6 +17,10 @@ const sidebarItems = [
         id: 'Views',
         children: [
             {
+                id: '3d Viewport',
+                route: '/viewport3d'
+            },
+            {
                 id: 'Camera Views',
                 route: "/show_cameras"
             },

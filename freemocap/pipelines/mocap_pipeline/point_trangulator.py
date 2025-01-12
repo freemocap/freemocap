@@ -82,6 +82,7 @@ class PointTriangulator:
     def create(cls):
         calibration_toml_path = get_last_successful_calibration_toml_path()
         calibration_data = toml.load(calibration_toml_path)
+        calibration_data.pop("metadata")
         #hacky use of enumerate to get camera id from (old style anipose) camera names
         camera_calibrations = {CameraId(camera_id): CameraCalibrationData.from_tuple(data) for camera_id, data in enumerate(calibration_data.items()) if camera_id != "metadata"}
         return cls(camera_calibrations=camera_calibrations)
@@ -90,12 +91,15 @@ class PointTriangulator:
         f=9
 
 
-@jit(nopython=True, parallel=False)
-def triangulate_simple(points2d_by_camera: dict[CameraId, np.ndarray], camera_extrinsic_matricies: dict[CameraId, np.ndarray]):
-    number_of_cameras = len(points2d_by_camera)
+# @jit(nopython=True, parallel=False)
+def triangulate_simple(points2d_by_camera: np.ndarray, camera_extrinsic_matricies:  np.ndarray):
+    number_of_cameras = points2d_by_camera.shape[0]
+    if number_of_cameras != camera_extrinsic_matricies.shape[0]:
+        raise ValueError(f"Expected number of cameras to match, got {number_of_cameras} and {camera_extrinsic_matricies.shape[0]}")
     A = np.zeros((number_of_cameras * 2, 4))
-    for camera_number, points_2d, camera_matrix in enumerate(zip(points2d_by_camera.values(), camera_extrinsic_matricies.values())):
-        x, y = points_2d
+    for camera_number in range(number_of_cameras):
+        x, y = points2d_by_camera[camera_number]
+        camera_matrix = camera_extrinsic_matricies[camera_number]
         A[(camera_number * 2) : (camera_number * 2 + 1)] = x * camera_matrix[2] - camera_matrix[0]
         A[(camera_number * 2 + 1) : (camera_number * 2 + 2)] = y * camera_matrix[2] - camera_matrix[1]
     u, s, vh = np.linalg.svd(A, full_matrices=True)
@@ -105,6 +109,6 @@ def triangulate_simple(points2d_by_camera: dict[CameraId, np.ndarray], camera_ex
 
 if __name__ == "__main__":
     point_triangulator = PointTriangulator.create()
-    points2d_by_camera = {CameraId(0): np.array([[1, 2], [3, 4]]), CameraId(1): np.array([[5, 6], [7, 8]])}
-    camera_extrinsic_matricies = {CameraId(0): np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), CameraId(1): np.array([[10, 11, 12], [13, 14, 15], [16, 17, 18]])}
+    points2d_by_camera = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    camera_extrinsic_matricies = np.array([[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]], [[13, 14, 15, 16], [17, 18, 19, 20], [21, 22, 23, 24]]])
     triangulate_simple(points2d_by_camera, camera_extrinsic_matricies)

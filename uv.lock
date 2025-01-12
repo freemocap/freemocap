@@ -1513,7 +1513,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#9d839e8379ca5ae30615be64dc802aa94d2073bf" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#0c8805cf0a74fd0b4673c150d28278eb4ac93ac8" }
 dependencies = [
     { name = "mediapipe" },
     { name = "numpy" },

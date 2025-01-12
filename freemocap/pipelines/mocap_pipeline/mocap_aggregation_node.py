@@ -102,10 +102,10 @@ class MocapAggregationProcessNode(BaseAggregationNode):
 
                 observations_by_camera = {camera_id: camera_node_output.mediapipe_observation for
                                           camera_id, camera_node_output in camera_node_incoming_data.items()}
-                aggregation_output:MocapAggregationLayerOutputData = point_triangulator.triangulate(observations_by_camera=observations_by_camera)
+                # aggregation_output:MocapAggregationLayerOutputData = point_triangulator.triangulate(observations_by_camera=observations_by_camera)
 
                 output = MocapPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
-                                                 aggregation_layer_output=aggregation_output
+                                                 aggregation_layer_output=MocapAggregationLayerOutputData(data={'multi_frame_number': latest_frame_number})
                                                  )
 
                 output_queue.put(output)

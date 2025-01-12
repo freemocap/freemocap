@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import multiprocessing
-from abc import ABC
+from abc import ABC, abstractproperty, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from multiprocessing import Process, Queue
@@ -30,7 +30,11 @@ class BasePipelineData( ABC):
 
 @dataclass
 class BaseAggregationLayerOutputData(BasePipelineData):
-    pass
+    multi_frame_number: int
+    points3d: dict[str, tuple]
+
+    def to_serializable_dict(self):
+        return {"multi_frame_number": self.multi_frame_number, "points3d": self.points3d}
 
 @dataclass
 class BaseCameraNodeOutputData(BasePipelineData):
@@ -49,6 +53,10 @@ class BasePipelineOutputData(ABC):
         if len(set(frame_numbers)) > 1:
             raise ValueError(f"Frame numbers from camera nodes do not match - got {frame_numbers}")
         return frame_numbers[0]
+
+    @abstractmethod
+    def to_serializable_dict(self):
+        pass
 
 @dataclass
 class BasePipelineStageConfig( ABC):

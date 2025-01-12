@@ -92,7 +92,7 @@ class MocapCameraNode(BaseCameraNode):
                     frame = frame_intake_shm.retrieve_frame()
                     time_to_retrieve = time.perf_counter_ns() - tik
                     tik = time.perf_counter_ns()
-                    observation = mediapipe_tracker.process_image(frame.image, annotate_image=False)
+                    observation, raw_results = mediapipe_tracker.process_image(frame.image, annotate_image=False)
 
                     time_to_process = time.perf_counter_ns() - tik
                     output_queue.put(MocapCameraNodeOutputData(

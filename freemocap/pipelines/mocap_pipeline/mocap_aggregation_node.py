@@ -16,11 +16,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MocapAggregationLayerOutputData(BaseAggregationLayerOutputData):
-    data: object = None
-
-    def to_serializable_dict(self):
-        return {"data": self.data}
-
+    pass
 
 @dataclass
 class MocapAggregationNodeConfig(BasePipelineStageConfig):
@@ -100,12 +96,15 @@ class MocapAggregationProcessNode(BaseAggregationNode):
                     raise ValueError(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
                 latest_frame_number = frame_numbers.pop()
 
-                observations_by_camera = {camera_id: camera_node_output.mediapipe_observation for
-                                          camera_id, camera_node_output in camera_node_incoming_data.items()}
-                # aggregation_output:MocapAggregationLayerOutputData = point_triangulator.triangulate(observations_by_camera=observations_by_camera)
+                points2d_by_camera = {camera_id: camera_node_output.mediapipe_observation.all_points_2d() for
+                                      camera_id, camera_node_output in camera_node_incoming_data.items()}
+                points3d: dict[str, tuple] = point_triangulator.triangulate(points2d_by_camera=points2d_by_camera,
+                                                                            scale_by=0.001)
 
                 output = MocapPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
-                                                 aggregation_layer_output=MocapAggregationLayerOutputData(data={'multi_frame_number': latest_frame_number})
+                                                 aggregation_layer_output=MocapAggregationLayerOutputData(
+                                                     multi_frame_number=latest_frame_number,
+                                                     points3d=points3d)
                                                  )
 
                 output_queue.put(output)

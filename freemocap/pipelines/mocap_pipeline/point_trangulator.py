@@ -8,6 +8,7 @@ from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
 from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
 
+MINIUMUM_CAMERAS_FOR_TRIANGULATION = 2
 
 @dataclass
 class CameraCalibrationData:
@@ -50,10 +51,12 @@ class CameraCalibrationData:
 
     @property
     def extrinsics_matrix(self):
-        m =  np.hstack((self.rotation_matrix, self.translation))
-        if m.shape != (3, 4):
-            raise ValueError(f"Expected extrinsic matrix to be of shape (3, 4), got {m.shape}")
-        return m
+        extrinsics_matrix = np.zeros((3, 4))
+        extrinsics_matrix[:, :3] = self.rotation_matrix
+        extrinsics_matrix[:, 3] = self.translation
+        if extrinsics_matrix.shape != (3, 4):
+            raise ValueError(f"Expected extrinsic matrix to be of shape (3, 4), got {extrinsics_matrix.shape}")
+        return extrinsics_matrix
 
     def undistort_2d_points(self, points: np.ndarray):
         shape = points.shape
@@ -87,12 +90,47 @@ class PointTriangulator:
         camera_calibrations = {CameraId(camera_id): CameraCalibrationData.from_tuple(data) for camera_id, data in enumerate(calibration_data.items()) if camera_id != "metadata"}
         return cls(camera_calibrations=camera_calibrations)
 
-    def triangulate(self, observations_by_camera: dict[CameraId, MediapipeObservation]):
-        f=9
+    @property
+    def camera_calibrations_array(self) -> np.ndarray:
+        array =  np.array([calibration.extrinsics_matrix for calibration in self.camera_calibrations.values()])
+        if not array.shape == (len(self.camera_calibrations), 3, 4):
+            raise ValueError(f"Expected extrinsics matrix to be of shape (num_cams, 3, 4), got {array.shape}")
+        return array
 
+    def triangulate(self, points2d_by_camera: dict[CameraId, dict[str, tuple]], scale_by: float) -> dict[str, tuple]:
+        all_camera_extrinsics_matrix = self.camera_calibrations_array.copy()
+        point_names: list[str] = []
+        points3d: dict[str, tuple] = {name: (np.isnan, np.isnan, np.isnan) for name in point_names}
 
-# @jit(nopython=True, parallel=False)
-def triangulate_simple(points2d_by_camera: np.ndarray, camera_extrinsic_matricies:  np.ndarray):
+        for camera_id, points2d in points2d_by_camera.items():
+            if not point_names:
+                point_names = list(points2d.keys())
+                continue
+            if point_names != list(points2d.keys()):
+                raise ValueError(f"Expected point names to match, got {point_names} and {list(points2d.keys())}")
+
+        for point_name in point_names:
+            point2d_views = [points2d[point_name] for points2d in points2d_by_camera.values()]
+            good_camera_matrices = []
+            good_points2d_views = []
+
+            for index, point2d in enumerate(point2d_views):
+                if np.isnan(point2d).any():
+                    continue
+                good_camera_matrices.append(all_camera_extrinsics_matrix[index])
+                good_points2d_views.append(point2d)
+
+            if len(good_points2d_views) < MINIUMUM_CAMERAS_FOR_TRIANGULATION:
+                continue
+            good_point2d_views_array = np.array(good_points2d_views)
+            good_camera_extrinsics_matrix = np.array(good_camera_matrices)
+            _validate_input(good_point2d_views_array, good_camera_extrinsics_matrix)
+            points3d[point_name] = triangulate_simple(good_point2d_views_array, good_camera_extrinsics_matrix)
+            points3d[point_name] = tuple([point * scale_by for point in points3d[point_name]])
+
+        return points3d
+
+def _validate_input(points2d_by_camera: np.ndarray, camera_extrinsic_matricies:  np.ndarray):
     number_of_cameras, points_dimensions = points2d_by_camera.shape
     if points_dimensions != 2:
         raise ValueError(f"Expected points to be of shape (num_cams, 2), got {points2d_by_camera.shape}")
@@ -100,6 +138,11 @@ def triangulate_simple(points2d_by_camera: np.ndarray, camera_extrinsic_matricie
         raise ValueError(f"Expected number of cameras to match, got {number_of_cameras} and {camera_extrinsic_matricies.shape[0]}")
     if camera_extrinsic_matricies.shape[1:] != (3, 4):
         raise ValueError(f"Expected camera extrinsic matricies to be of shape (num_cams, 3, 4), got {camera_extrinsic_matricies.shape}")
+
+# @jit(nopython=True, parallel=False)
+def triangulate_simple(points2d_by_camera: np.ndarray, camera_extrinsic_matricies:  np.ndarray) -> tuple:
+    number_of_cameras, points_dimensions = points2d_by_camera.shape
+    _validate_input(points2d_by_camera, camera_extrinsic_matricies)
     A = np.zeros((number_of_cameras * 2, 4))
     for camera_number in range(number_of_cameras):
         x, y = points2d_by_camera[camera_number]
@@ -109,10 +152,11 @@ def triangulate_simple(points2d_by_camera: np.ndarray, camera_extrinsic_matricie
     u, s, vh = np.linalg.svd(A, full_matrices=True)
     points_3d = vh[-1]
     points_3d = points_3d[:3] / points_3d[3]
-    return points_3d
+    return tuple(points_3d)
 
 if __name__ == "__main__":
-    point_triangulator = PointTriangulator.create()
-    points2d_by_camera = np.array([[1, 2], [3, 4], [5, 6]])
-    camera_extrinsic_matricies = np.array([[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]], [[13, 14, 15, 16], [17, 18, 19, 20], [21, 22, 23, 24]], [[25, 26, 27, 28], [29, 30, 31, 32], [33, 34, 35, 36]]])
-    triangulate_simple(points2d_by_camera, camera_extrinsic_matricies)
+    _point_triangulator = PointTriangulator.create()
+    _points2d_by_camera = np.array([[1, 2], [3, 4], [5, 6]])
+    _camera_extrinsic_matricies = np.array([[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]], [[13, 14, 15, 16], [17, 18, 19, 20], [21, 22, 23, 24]], [[25, 26, 27, 28], [29, 30, 31, 32], [33, 34, 35, 36]]])
+    triangulate_simple(_points2d_by_camera, _camera_extrinsic_matricies)
+    _point_triangulator.triangulate()

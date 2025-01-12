@@ -1,25 +1,29 @@
-import React, {createContext, useContext, ReactNode} from "react";
+import React, {createContext, ReactNode, useContext} from "react";
 import {useWebSocket} from "@/hooks/useWebSocket";
-import {FrontendFramePayloadSchema} from "@/models/FrontendImagePayload";
 import {z} from "zod";
+import {FrontendFramePayloadSchema, JpegImagesSchema, Points3dSchema} from "@/models/FrontendFramePayloadSchema";
 
 interface WebSocketContextProps {
     isConnected: boolean;
     latestFrontendPayload: z.infer<typeof FrontendFramePayloadSchema> | null;
+    latestImages:z.infer<typeof JpegImagesSchema> |null;
+    latestPoints3d: z.infer<typeof Points3dSchema> | null;
     connect: () => void;
     disconnect: () => void;
 }
+
 interface WebSocketProviderProps {
     url: string;
     children: ReactNode;
 }
+
 const WebSocketContext = createContext<WebSocketContextProps | undefined>(undefined);
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({url, children}) => {
-    const {isConnected, latestFrontendPayload, connect, disconnect} = useWebSocket(url);
+    const {isConnected, latestFrontendPayload, latestImages, latestPoints3d, connect, disconnect} = useWebSocket(url);
 
-    return(
-        <WebSocketContext.Provider value={{isConnected, latestFrontendPayload, connect, disconnect}}>
+    return (
+        <WebSocketContext.Provider value={{isConnected, latestFrontendPayload,latestImages, latestPoints3d, connect, disconnect}}>
             {children}
         </WebSocketContext.Provider>
     )

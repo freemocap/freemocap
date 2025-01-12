@@ -96,7 +96,7 @@ class CalibrationCameraNode(BaseCameraNode):
                     frame = frame_intake_shm.retrieve_frame()
                     time_to_retrieve = time.perf_counter_ns() - tik
                     tik = time.perf_counter_ns()
-                    observation = charuco_tracker.process_image(frame.image, annotate_image=False)
+                    observation, raw_results = charuco_tracker.process_image(frame.image, annotate_image=False)
                     if camera_calibration_estimator is None:
                         camera_calibration_estimator = SingleCameraCalibrator.create_initial(
                             image_size=frame.image.shape[:2],

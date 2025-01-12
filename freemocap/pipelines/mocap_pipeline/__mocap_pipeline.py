@@ -4,18 +4,18 @@ from dataclasses import dataclass
 from multiprocessing import Queue
 from typing import Dict
 
+from freemocap.pipelines.mocap_pipeline.mocap_aggregation_node import MocapAggregationNodeConfig, \
+    MocapPipelineOutputData, MocapAggregationProcessNode
+from freemocap.pipelines.mocap_pipeline.mocap_camera_node import MocapPipelineCameraNodeConfig, MocapCameraNode
+from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, PipelineImageAnnotator, BaseProcessingPipeline
 from skellycam import CameraId
 from skellycam.core.camera_group.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
     CameraSharedMemoryDTOs
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 from skellytracker.trackers.mediapipe_tracker import MediapipeTrackerConfig
-from skellytracker.trackers.mediapipe_tracker.mediapipe_annotator import MediapipeImageAnnotator, MediapipeAnnotatorConfig
-
-from freemocap.pipelines.mocap_pipeline.mocap_aggregation_node import MocapAggregationNodeConfig, \
-    MocapPipelineOutputData, MocapAggregationProcessNode
-from freemocap.pipelines.mocap_pipeline.mocap_camera_node import MocapPipelineCameraNodeConfig, MocapCameraNode
-from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, PipelineImageAnnotator, BaseProcessingPipeline
+from skellytracker.trackers.mediapipe_tracker.mediapipe_annotator import MediapipeImageAnnotator, \
+    MediapipeAnnotatorConfig
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +28,8 @@ class MocapPipelineConfig(BasePipelineConfig):
     @classmethod
     def create(cls, camera_configs: CameraConfigs, tracker_config: MediapipeTrackerConfig):
         return cls(camera_node_configs={camera_id: MocapPipelineCameraNodeConfig(camera_config=camera_config,
-                                                                                       tracker_config=tracker_config)
-                                        for
-                                        camera_id, camera_config in camera_configs.items()},
+                                                                                 tracker_config=tracker_config)
+                                        for camera_id, camera_config in camera_configs.items()},
                    aggregation_node_config=MocapAggregationNodeConfig())
 
 
@@ -71,21 +70,21 @@ class MocapPipeline(BaseProcessingPipeline):
         all_ready_events = {camera_id: multiprocessing.Event() for camera_id in camera_shm_dtos.keys()}
         all_ready_events[-1] = multiprocessing.Event()
         camera_nodes = {camera_id: MocapCameraNode.create(config=config,
-                                                                camera_id=CameraId(camera_id),
-                                                                camera_shm_dto=camera_shm_dtos[
-                                                                    camera_id],
-                                                                output_queue=camera_output_queues[
-                                                                    camera_id],
-                                                                all_ready_events=all_ready_events,
-                                                                shutdown_event=shutdown_event)
+                                                          camera_id=CameraId(camera_id),
+                                                          camera_shm_dto=camera_shm_dtos[
+                                                              camera_id],
+                                                          output_queue=camera_output_queues[
+                                                              camera_id],
+                                                          all_ready_events=all_ready_events,
+                                                          shutdown_event=shutdown_event)
                         for camera_id, config in config.camera_node_configs.items()}
         return cls(config=config,
                    camera_nodes=camera_nodes,
                    aggregation_node=MocapAggregationProcessNode.create(config=config.aggregation_node_config,
-                                                                             input_queues=camera_output_queues,
-                                                                             output_queue=aggregation_output_queue,
-                                                                             all_ready_events=all_ready_events,
-                                                                             shutdown_event=shutdown_event),
+                                                                       input_queues=camera_output_queues,
+                                                                       output_queue=aggregation_output_queue,
+                                                                       all_ready_events=all_ready_events,
+                                                                       shutdown_event=shutdown_event),
                    # NOTE - this `annotator` is not the same annotator as the one that will be created in the tracker, but will be able to process its outputs
                    annotator=MocapPipelineImageAnnotator.create(
                        configs={camera_id: config.tracker_config.annotator_config for camera_id, config in

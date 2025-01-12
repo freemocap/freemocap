@@ -1,12 +1,15 @@
 import {useCallback, useEffect, useState} from 'react';
 import {z} from 'zod';
-import {FrontendFramePayloadSchema} from "@/models/FrontendImagePayload";
+import {FrontendFramePayloadSchema, JpegImagesSchema, Points3dSchema} from "@/models/FrontendFramePayloadSchema";
 
 const MAX_RECONNECT_ATTEMPTS = 20;
 
 export const useWebSocket = (wsUrl: string) => {
     const [isConnected, setIsConnected] = useState(false);
     const [latestFrontendPayload, setLatestFrontendPayload] = useState<z.infer<typeof FrontendFramePayloadSchema> | null>(null);
+    const [latestImages, setLatestImages] = useState<z.infer<typeof JpegImagesSchema> | null>(null);
+    const [latestPoints3d, setLatestPoints3d] = useState<z.infer<typeof Points3dSchema> | null>(null);
+
     const [websocket, setWebSocket] = useState<WebSocket | null>(null);
     const [connectAttempt, setConnectAttempt] = useState(0);
 
@@ -28,6 +31,8 @@ export const useWebSocket = (wsUrl: string) => {
             const parsedData = JSON.parse(data);
             const frontendImagePayload = FrontendFramePayloadSchema.parse(parsedData);
             setLatestFrontendPayload(frontendImagePayload);
+            setLatestImages(frontendImagePayload.jpeg_images)
+            setLatestPoints3d(frontendImagePayload.points3d)
         } catch (e) {
             if (e instanceof z.ZodError) {
                 console.error('Validation failed with errors:', JSON.stringify(e.errors,null,2));
@@ -88,5 +93,5 @@ export const useWebSocket = (wsUrl: string) => {
         };
     }, [connect]);
 
-    return {isConnected, latestFrontendPayload, connect, disconnect};
+    return {isConnected, latestFrontendPayload, latestImages, latestPoints3d, connect, disconnect};
 };

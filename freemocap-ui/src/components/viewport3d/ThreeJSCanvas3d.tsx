@@ -62,7 +62,7 @@ export function ThreeJSCanvas3d() {
                     )}
                 {numPoints > 0 && (
                     <instancedMesh ref={sphereRef}
-                                   args={[new SphereGeometry(0.1, 16, 16),
+                                   args={[new SphereGeometry(0.05, 16, 16),
                                        new MeshStandardMaterial({color: 'red'}), numPoints]}/>
                 )}
             </Canvas>

@@ -1,6 +1,6 @@
 import {Box, Button} from "@mui/material";
 import React from "react";
-import {ConnectToCamerasButton} from "@/components/ConnectToCamerasButton";
+import {ConnectToCamerasButton} from "@/components/ui-components/ConnectToCamerasButton";
 import {useWebSocketContext} from "@/context/WebSocketContext";
 import {ThreeJSCanvas3d} from "@/components/viewport3d/ThreeJSCanvas3d";
 export const Viewport3d = () => {

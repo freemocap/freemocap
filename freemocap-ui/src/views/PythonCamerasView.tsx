@@ -49,7 +49,6 @@ export const PythonCamerasView = () => {
                 </Box>
             )}
 
-            <ThreeJSCanvas3d />
 
         </Box>
     );

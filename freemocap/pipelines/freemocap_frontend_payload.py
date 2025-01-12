@@ -1,4 +1,5 @@
 import numpy as np
+from freemocap.pipelines.pipeline_abcs import BasePipelineOutputData
 from pydantic import BaseModel
 from skellycam.core.frames.payloads.frontend_image_payload import FrontendFramePayload
 
@@ -27,15 +28,18 @@ class CharucoBoardPayload(BaseModel):
 
 
 class FreemocapFrontendPayload(FrontendFramePayload):
-    latest_pipeline_output_dict: dict[str, object] | None
+    latest_pipeline_output: dict[str, object] | None
+    points3d: dict[str, tuple] | None
 
     @classmethod
     def create(cls,
                multi_frame_payload: MultiFramePayload,
-               latest_pipeline_output: CalibrationPipelineOutputData | None = None):
+               latest_pipeline_output: BasePipelineOutputData | None = None):
 
         latest_pipeline_output_dict = latest_pipeline_output.to_serializable_dict() if latest_pipeline_output is not None else {"hi": "wowww"}
+
         return cls(
             **FrontendFramePayload.from_multi_frame_payload(multi_frame_payload).model_dump(),
-            latest_pipeline_output_dict=latest_pipeline_output_dict
+            latest_pipeline_output=latest_pipeline_output_dict,
+            points3d=latest_pipeline_output.aggregation_layer_output.points3d if latest_pipeline_output is not None else None
         )

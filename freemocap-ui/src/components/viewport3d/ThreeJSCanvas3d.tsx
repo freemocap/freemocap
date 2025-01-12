@@ -11,12 +11,12 @@ export function ThreeJSCanvas3d() {
         <div className="h-screen w-screen" >
             <Canvas shadows camera={{position:[5,5,5], fov:75}}>
                 <CameraControls makeDefault />
-                <Environment preset="studio" />
-                <ambientLight intensity={0.3} />
+                {/*<Environment preset="studio" />*/}
+                <ambientLight intensity={0.1} />
                 <directionalLight
                 castShadow
                 position={[0,0.01, 0]}
-                intensity={1.5}
+                intensity={.1}
                 shadow-mapSize={1024}
                 />
                 <Grid
@@ -28,8 +28,8 @@ export function ThreeJSCanvas3d() {
                     sectionSize={3}
                     sectionThickness={1}
                     // @ts-ignore
-                    sectionColor={[0.5, 0.5, 0.5]}
-                    fadeDistance={30}
+                    sectionColor={[0.5, 0., 0.5]}
+                    fadeDistance={20}
                     />
                 <Axes3dArrows />
 

@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from multiprocessing import Queue, Process
 from typing import Dict
 
-from skellycam import CameraId
-
 from freemocap.pipelines.mocap_pipeline.mocap_camera_node import MocapCameraNodeOutputData
+from freemocap.pipelines.mocap_pipeline.point_trangulator import PointTriangulator
 from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BaseAggregationNode, BasePipelineOutputData
+from skellycam import CameraId
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +17,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MocapAggregationLayerOutputData(BaseAggregationLayerOutputData):
     data: object = None
+
     def to_serializable_dict(self):
         return {"data": self.data}
+
 
 @dataclass
 class MocapAggregationNodeConfig(BasePipelineStageConfig):
@@ -32,7 +34,8 @@ class MocapPipelineOutputData(BasePipelineOutputData):
 
     def to_serializable_dict(self):
         return {
-            "camera_node_output": {camera_id: camera_node_output.to_serializable_dict() for camera_id, camera_node_output in
+            "camera_node_output": {camera_id: camera_node_output.to_serializable_dict() for
+                                   camera_id, camera_node_output in
                                    self.camera_node_output.items()},
             "aggregation_layer_output": self.aggregation_layer_output.to_serializable_dict()
         }
@@ -67,15 +70,14 @@ class MocapAggregationProcessNode(BaseAggregationNode):
              shutdown_event: multiprocessing.Event):
         all_ready_events[-1].set()
         logger.trace(f"Aggregation processing node ready!")
+        point_triangulator = PointTriangulator.create()
         while not all([value.is_set() for value in all_ready_events.values()]):
             time.sleep(0.001)
         logger.trace(f"All processing nodes ready!")
         try:
             camera_node_incoming_data: dict[CameraId, MocapCameraNodeOutputData | None] = {camera_id: None for
-                                                                                                 camera_id in
-                                                                                                 input_queues.keys()}
-
-
+                                                                                           camera_id in
+                                                                                           input_queues.keys()}
 
             while not shutdown_event.is_set():
 
@@ -97,12 +99,14 @@ class MocapAggregationProcessNode(BaseAggregationNode):
                     logger.exception(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
                     raise ValueError(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
                 latest_frame_number = frame_numbers.pop()
-                # TODO - add aggregation logic here
-                output= MocapPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
-                                              aggregation_layer_output=MocapAggregationLayerOutputData(
-                                                  data={"multi_frame_number": latest_frame_number}
-                                              )
-                                                )
+
+                observations_by_camera = {camera_id: camera_node_output.mediapipe_observation for
+                                          camera_id, camera_node_output in camera_node_incoming_data.items()}
+                aggregation_output:MocapAggregationLayerOutputData = point_triangulator.triangulate(observations_by_camera=observations_by_camera)
+
+                output = MocapPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
+                                                 aggregation_layer_output=aggregation_output
+                                                 )
 
                 output_queue.put(output)
         except Exception as e:

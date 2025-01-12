@@ -1,19 +1,19 @@
-from dataclasses import field, dataclass
+from dataclasses import dataclass
+
 import cv2
 import numpy as np
-
 import toml
-from freemocap.pipelines.mocap_pipeline.mocap_camera_node import MocapCameraNode, MocapCameraNodeOutputData
-from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
-from numba import jit
-from skellycam import  CameraId
+from skellycam import CameraId
 from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
+
+from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
+
 
 @dataclass
 class CameraCalibrationData:
     name: str
     size: tuple[int, int]
-    matrix: np.ndarray # 3x3
+    matrix: np.ndarray # 3x3•
     distortion: np.ndarray # 1x5
     rotation_vector: np.ndarray # 3x1 rodriques rotation vector
     translation: np.ndarray # 3x1 XYZ translation vector
@@ -93,9 +93,13 @@ class PointTriangulator:
 
 # @jit(nopython=True, parallel=False)
 def triangulate_simple(points2d_by_camera: np.ndarray, camera_extrinsic_matricies:  np.ndarray):
-    number_of_cameras = points2d_by_camera.shape[0]
+    number_of_cameras, points_dimensions = points2d_by_camera.shape
+    if points_dimensions != 2:
+        raise ValueError(f"Expected points to be of shape (num_cams, 2), got {points2d_by_camera.shape}")
     if number_of_cameras != camera_extrinsic_matricies.shape[0]:
         raise ValueError(f"Expected number of cameras to match, got {number_of_cameras} and {camera_extrinsic_matricies.shape[0]}")
+    if camera_extrinsic_matricies.shape[1:] != (3, 4):
+        raise ValueError(f"Expected camera extrinsic matricies to be of shape (num_cams, 3, 4), got {camera_extrinsic_matricies.shape}")
     A = np.zeros((number_of_cameras * 2, 4))
     for camera_number in range(number_of_cameras):
         x, y = points2d_by_camera[camera_number]
@@ -109,6 +113,6 @@ def triangulate_simple(points2d_by_camera: np.ndarray, camera_extrinsic_matricie
 
 if __name__ == "__main__":
     point_triangulator = PointTriangulator.create()
-    points2d_by_camera = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
-    camera_extrinsic_matricies = np.array([[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]], [[13, 14, 15, 16], [17, 18, 19, 20], [21, 22, 23, 24]]])
+    points2d_by_camera = np.array([[1, 2], [3, 4], [5, 6]])
+    camera_extrinsic_matricies = np.array([[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]], [[13, 14, 15, 16], [17, 18, 19, 20], [21, 22, 23, 24]], [[25, 26, 27, 28], [29, 30, 31, 32], [33, 34, 35, 36]]])
     triangulate_simple(points2d_by_camera, camera_extrinsic_matricies)

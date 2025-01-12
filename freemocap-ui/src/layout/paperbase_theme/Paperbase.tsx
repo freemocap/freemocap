@@ -5,9 +5,9 @@ import Box from '@mui/material/Box';
 import {HashRouter} from 'react-router-dom';
 import {CssBaseline} from "@mui/material";
 import paperbaseTheme from '../content/paperbase-theme';
-import {Sidebar} from "@/layout/Sidebar";
+import {Sidebar} from "@/components/ui-components/Sidebar";
 import {BaseContent} from "@/layout/content/BaseContent";
-import {Copyright} from "@/layout/Copyright";
+import {Copyright} from "@/components/ui-components/Copyright";
 import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 

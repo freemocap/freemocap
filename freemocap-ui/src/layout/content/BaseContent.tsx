@@ -1,5 +1,5 @@
 import React from 'react';
-import {Header} from "../Header";
+import {Header} from "../../components/ui-components/Header";
 import Box from "@mui/material/Box";
 import {Router} from "../routing/router";
 

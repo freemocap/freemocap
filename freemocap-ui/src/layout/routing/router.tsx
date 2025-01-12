@@ -5,7 +5,7 @@ import {BrowserCamerasView} from "@/views/BrowserCamerasView";
 import {PythonToJsTest} from "@/views/PythonToJsTest";
 import {PythonCamerasView} from "@/views/PythonCamerasView";
 import {DefaultView} from "@/views/Default";
-import WebsocketConnectionStatus from "@/components/WebsocketConnectionStatus";
+import WebsocketConnectionStatus from "@/components/ui-components/WebsocketConnectionStatus";
 import {Viewport3d} from "@/views/Viewport3d";
 
 export const Router = () => {

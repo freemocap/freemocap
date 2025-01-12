@@ -5,12 +5,10 @@ import List from '@mui/material/List';
 import Box from '@mui/material/Box';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
-import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import HomeIcon from '@mui/icons-material/Home';
 import {useNavigate} from "react-router";
-import WebsocketConnectionStatus from "@/components/WebsocketConnectionStatus";
-import {ConnectToCamerasButton} from "@/components/ConnectToCamerasButton";
+import WebsocketConnectionStatus from "@/components/ui-components/WebsocketConnectionStatus";
+import {ConnectToCamerasButton} from "@/components/ui-components/ConnectToCamerasButton";
 
 const sidebarItems = [
     {

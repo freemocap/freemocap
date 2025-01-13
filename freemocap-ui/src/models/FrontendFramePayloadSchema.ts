@@ -10,10 +10,10 @@ export const JpegImagesSchema = z.record(
 export const Points3dSchema = z.record(
     z.string(), // The keys are strings
     z.tuple([
-        z.number(), // X
-        z.number(), // Y
-        z.number()  // Z
-    ])
+        z.number().nullable(), // X can be a number or null
+        z.number().nullable(), // Y can be a number or null
+        z.number().nullable()  // Z can be a number or null
+    ]).nullable() // The tuple itself can be null
 );
 
 // Update the FrontendFramePayloadSchema to use the defined schemas

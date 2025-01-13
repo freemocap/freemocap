@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class MocapAggregationLayerOutputData(BaseAggregationLayerOutputData):
     pass
 
+
 @dataclass
 class MocapAggregationNodeConfig(BasePipelineStageConfig):
     param2: int = 2
@@ -96,10 +97,21 @@ class MocapAggregationProcessNode(BaseAggregationNode):
                     raise ValueError(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
                 latest_frame_number = frame_numbers.pop()
 
-                points2d_by_camera = {camera_id: camera_node_output.mediapipe_observation.all_points_2d() for
-                                      camera_id, camera_node_output in camera_node_incoming_data.items()}
-                points3d: dict[str, tuple] = point_triangulator.triangulate(points2d_by_camera=points2d_by_camera,
-                                                                            scale_by=0.001)
+                # TODO: Fix triangulation, until then just return the single camera 3d estimates
+                # points2d_by_camera = {camera_id: camera_node_output.mediapipe_observation.all_points(dimensions=2) for
+                #                       camera_id, camera_node_output in camera_node_incoming_data.items()}
+                # points3d: dict[str, tuple] = point_triangulator.triangulate(points2d_by_camera=points2d_by_camera,
+                #                                                             scale_by=0.001)
+
+                points3d = {}
+                for camera_id, camera_node_output in camera_node_incoming_data.items():
+                    if camera_node_output is None:
+                        raise ValueError(f"Camera {camera_id} did not send any data!")
+
+                    points3d.update({f"Cam{camera_id}.{name}": tuple(point_xyz) for name, point_xyz in
+                                     camera_node_output.mediapipe_observation.all_points(dimensions=3, scale_by=0.001).items()})
+
+
 
                 output = MocapPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
                                                  aggregation_layer_output=MocapAggregationLayerOutputData(

@@ -12,13 +12,18 @@ export function ThreeJSCanvas3d() {
     const numPoints = Object.keys(latestPoints3d || {}).length
 
     useEffect(() => {
-        if (sphereRef.current) {
+        if (sphereRef.current && latestPoints3d) {
             let index = 0;
-            Object.entries(latestPoints3d || {}).forEach(([key, [x, y, z]]) => {
-                const matrix = new Matrix4();
-                matrix.setPosition(x, y, z);
-                sphereRef.current?.setMatrixAt(index, matrix);
-                index++
+            Object.entries(latestPoints3d).forEach(([key, point]) => {
+                if (point && point.length === 3) {
+                    const [x, y, z] = point;
+                    if (x !== null && y !== null && z !== null) {
+                        const matrix = new Matrix4();
+                        matrix.setPosition(x, y, z);
+                        sphereRef.current?.setMatrixAt(index, matrix);
+                        index++;
+                    }
+                }
             });
             sphereRef.current.instanceMatrix.needsUpdate = true;
         }

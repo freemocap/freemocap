@@ -1,3 +1,4 @@
+import json
 import logging
 import multiprocessing
 import time
@@ -5,6 +6,7 @@ from dataclasses import dataclass
 from multiprocessing import Queue, Process
 from typing import Dict
 
+import numpy as np
 from pydantic import BaseModel
 from skellycam import CameraId
 from tabulate import tabulate
@@ -68,9 +70,12 @@ class SharedViewAccumulator(BaseModel):
         for frame_number, camera_view_records in self.camera_view_records_by_frame.items():
             for camera_id, camera_view_record in camera_view_records.items():
                 for other_camera_view_record in camera_view_records.values():
-                    if other_camera_view_record.camera_id != camera_id:
-                        if camera_view_records[camera_id].can_see_target and other_camera_view_record.can_see_target:
-                            shared_views_by_camera[camera_id][other_camera_view_record.camera_id] += 1
+                    if other_camera_view_record.camera_id == camera_id:
+                        continue
+                        # shared_views_by_camera[camera_id][other_camera_view_record.camera_id] += 1
+
+                    if camera_view_records[camera_id].can_see_target and other_camera_view_record.can_see_target:
+                        shared_views_by_camera[camera_id][other_camera_view_record.camera_id] += 1
         return shared_views_by_camera
 
     @property
@@ -85,25 +90,6 @@ class SharedViewAccumulator(BaseModel):
                                                                  for camera_id, camera_node_output in
                                                                  camera_node_output.items()}
 
-    def as_pretty_table(self) -> str:
-        """
-        Print the shared views per camera in rows with totals beneath, using 'tabulate' to format the table
-        """
-        shared_views_per_camera_by_camera = self.shared_views_per_camera_by_camera
-        shared_views_total_per_camera = self.shared_views_total_per_camera
-        camera_ids = [str(camera_id) for camera_id in self.camera_ids]
-
-        headers = [''] + camera_ids
-        table_data = []
-        for camera_id, shared_views in shared_views_per_camera_by_camera.items():
-            camera_row = [str(camera_id)]
-            camera_row.extend(str(shared_views.get(other_camera_id, 0)) for other_camera_id in camera_ids)
-            table_data.append(camera_row)
-
-        shared_totals_row = ['Total'] + [shared_views_total_per_camera.get(camera_id, 0) for camera_id in camera_ids]
-        table_data.append(shared_totals_row)
-
-        return tabulate(table_data, headers=headers)
 
 
 @dataclass
@@ -176,11 +162,11 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                 incoming_data.append(camera_node_incoming_data)
                 shared_view_accumulator.receive_camera_node_output(multi_frame_number=multi_frame_number,
                                                                    camera_node_output=camera_node_incoming_data)
-                logger.trace(f"Shared view accumulator:\n {shared_view_accumulator.as_pretty_table()}")
+                logger.trace(f"Shared view accumulator:\n {json.dumps(shared_view_accumulator.shared_views_per_camera_by_camera, indent=2)}")
                 output = CalibrationPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
                                                        aggregation_layer_output=CalibrationAggregationLayerOutputData(
                                                            multi_frame_number=multi_frame_number,
-                                                           points3d={f"camera_{camera_id}": (camera_id, 1, 2) for
+                                                           points3d={f"camera_{camera_id}": (camera_id, np.sin(camera_id)*10, np.cos(camera_id)*10) for
                                                                      camera_id in input_queues.keys()},
                                                            data=shared_view_accumulator.model_dump()
                                                        )

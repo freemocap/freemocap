@@ -89,6 +89,9 @@ class MocapAggregationProcessNode(BaseAggregationNode):
                             f"Unexpected data type received from camera {camera_id}: {type(camera_node_output)}")
                     camera_node_incoming_data[camera_id] = camera_node_output
 
+                if any([camera_node_output is None for camera_node_output in camera_node_incoming_data.values()]):
+                    logger.exception(f"Received None from camera nodes! got {camera_node_incoming_data}")
+                    raise ValueError(f"Received None from camera nodes! got {camera_node_incoming_data}")
                 frame_numbers = set(
                     [camera_node_output.frame_metadata.frame_number for camera_node_output in
                      camera_node_incoming_data.values()])

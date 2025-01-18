@@ -33,11 +33,16 @@ class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
     charuco_observation: CharucoObservation
     calibration_dto: SingleCameraCalibrationDTO
 
+    @property
+    def can_see_target(self) -> bool:
+        return not self.charuco_observation.charuco_empty
+
     def to_serializable_dict(self) -> dict:
         return dict(
             frame_metadata=self.frame_metadata.model_dump(),
             charuco_observation=self.charuco_observation.to_serializable_dict(),
             calibration_dto=self.calibration_dto.to_serializable_dict(),
+            can_see_target=self.can_see_target,
         )
 
 @dataclass

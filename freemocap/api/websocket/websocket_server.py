@@ -99,7 +99,7 @@ class FreemocapWebsocketServer:
         try:
             while True:
                 await async_wait_1ms()
-                # TODO - clean this up once the architecture firms up, names too long
+                # TODO - clean this up once the architecture firms up, names are too long for my taste atm
                 if not self._freemocap_app_state.skellycam_app_state.camera_group:
                     latest_mf_number = -1
                     continue
@@ -115,7 +115,7 @@ class FreemocapWebsocketServer:
                     camera_group_uuid = self._freemocap_app_state.skellycam_app_state.camera_group.uuid
                     if processing_pipeline:
                         processing_pipeline.shutdown()
-                    processing_pipeline: BaseProcessingPipeline = self._freemocap_app_state.create_processing_pipeline(pipeline_type=PipelineTypes.MOCAP)
+                    processing_pipeline: BaseProcessingPipeline = self._freemocap_app_state.create_processing_pipeline(pipeline_type=PipelineTypes.CALIBRATION)
 
                     processing_pipeline.start()
                     continue

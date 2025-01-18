@@ -47,6 +47,8 @@ class CameraCalibrationData:
 
     @property
     def rotation_matrix(self):
+        if self.rotation_vector is None:
+            return np.eye(3)
         return cv2.Rodrigues(self.rotation_vector)[0]
 
     @property

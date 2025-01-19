@@ -4,655 +4,43 @@
 import itertools
 import logging
 import multiprocessing
-import queue
 import time
-from collections import defaultdict, Counter
+from collections import defaultdict
 from copy import copy
 
 import cv2
 import numpy as np
 import toml
-from aniposelib.boards import extract_points, extract_rtvecs, get_video_params, merge_rows, CharucoBoard
+from aniposelib.boards import extract_points, extract_rtvecs, get_video_params, merge_rows
 from aniposelib.utils import get_rtvec, make_M
 from numba import jit
 from scipy import optimize
-from scipy import signal
-from scipy.cluster.hierarchy import linkage, fcluster
-from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
 from tqdm import trange
 
-numba_logger = logging.getLogger("numba")
-numba_logger.setLevel(logging.WARNING)
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_stuff.anipose_camera import \
+    Camera
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_stuff.anipose_functions import \
+    get_error_dict, subset_extra, resample_points, medfilt_data, interpolate_data, remap_ids, transform_points, \
+    get_connections, get_initial_extrinsics
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_stuff.anipose_triangulate_simple import \
+    anipose_triangulate_simple
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_stuff.fisheye_camera import \
+    FisheyeCamera
+
 
 logger = logging.getLogger(__name__)
 
 
-@jit(nopython=True, parallel=False)
-def triangulate_simple(points, camera_mats):
-    num_cams = len(camera_mats)
-    A = np.zeros((num_cams * 2, 4))
-    for i in range(num_cams):
-        x, y = points[i]
-        mat = camera_mats[i]
-        A[(i * 2) : (i * 2 + 1)] = x * mat[2] - mat[0]
-        A[(i * 2 + 1) : (i * 2 + 2)] = y * mat[2] - mat[1]
-    u, s, vh = np.linalg.svd(A, full_matrices=True)
-    p3d = vh[-1]
-    p3d = p3d[:3] / p3d[3]
-    return p3d
-
-
-def get_error_dict(errors_full, min_points=10):
-    n_cams = errors_full.shape[0]
-    errors_norm = np.linalg.norm(errors_full, axis=2)
-
-    good = ~np.isnan(errors_full[:, :, 0])
-
-    error_dict = dict()
-
-    for i in range(n_cams):
-        for j in range(i + 1, n_cams):
-            subset = good[i] & good[j]
-            err_subset = errors_norm[:, subset][[i, j]]
-            err_subset_mean = np.mean(err_subset, axis=0)
-            if np.sum(subset) > min_points:
-                percents = np.percentile(err_subset_mean, [15, 75])
-                # percents = np.percentile(err_subset, [25, 75])
-                error_dict[(i, j)] = (err_subset.shape[1], percents)
-    return error_dict
-
-
-def check_errors(cgroup, imgp):
-    p3ds = cgroup.triangulate(imgp)
-    errors_full = cgroup.reprojection_error(p3ds, imgp, mean=False)
-    return get_error_dict(errors_full)
-
-
-def subset_extra(extra, ixs):
-    if extra is None:
-        return None
-
-    new_extra = {
-        "objp": extra["objp"][ixs],
-        "ids": extra["ids"][ixs],
-        "rvecs": extra["rvecs"][:, ixs],
-        "tvecs": extra["tvecs"][:, ixs],
-    }
-    return new_extra
-
-
-def resample_points_extra(imgp, extra, n_samp=25):
-    n_cams, n_points, _ = imgp.shape
-    ids = remap_ids(extra["ids"])
-    n_ids = np.max(ids) + 1
-    good = ~np.isnan(imgp[:, :, 0])
-    ixs = np.arange(n_points)
-
-    cam_counts = np.zeros((n_ids, n_cams), dtype="int64")
-    for idnum in range(n_ids):
-        cam_counts[idnum] = np.sum(good[:, ids == idnum], axis=1)
-    cam_counts_random = cam_counts + np.random.random(size=cam_counts.shape)
-    best_boards = np.argsort(-cam_counts_random, axis=0)
-
-    cam_totals = np.zeros(n_cams, dtype="int64")
-
-    include = set()
-    for cam_num in range(n_cams):
-        for board_id in best_boards[:, cam_num]:
-            include.update(ixs[ids == board_id])
-            cam_totals += cam_counts[board_id]
-            if cam_totals[cam_num] >= n_samp or cam_counts_random[board_id, cam_num] < 1:
-                break
-
-    final_ixs = sorted(include)
-    newp = imgp[:, final_ixs]
-    extra = subset_extra(extra, final_ixs)
-    return newp, extra
-
-
-def resample_points(imgp, extra=None, n_samp=25):
-    # if extra is not None:
-    #     return resample_points_extra(imgp, extra, n_samp)
-
-    n_cams = imgp.shape[0]
-    good = ~np.isnan(imgp[:, :, 0])
-    ixs = np.arange(imgp.shape[1])
-
-    num_cams = np.sum(~np.isnan(imgp[:, :, 0]), axis=0)
-
-    include = set()
-
-    for i in range(n_cams):
-        for j in range(i + 1, n_cams):
-            subset = good[i] & good[j]
-            n_good = np.sum(subset)
-            if n_good > 0:
-                ## pick points, prioritizing points seen by more cameras
-                arr = np.copy(num_cams[subset]).astype("float64")
-                arr += np.random.random(size=arr.shape)
-                picked_ix = np.argsort(-arr)[:n_samp]
-                picked = ixs[subset][picked_ix]
-                include.update(picked)
-
-    final_ixs = sorted(include)
-    newp = imgp[:, final_ixs]
-    extra = subset_extra(extra, final_ixs)
-    return newp, extra
-
-
-def medfilt_data(values, size=15):
-    padsize = size + 5
-    vpad = np.pad(values, (padsize, padsize), mode="reflect")
-    vpadf = signal.medfilt(vpad, kernel_size=size)
-    return vpadf[padsize:-padsize]
-
-
-def nan_helper(y):
-    return np.isnan(y), lambda z: z.nonzero()[0]
-
-
-def interpolate_data(vals):
-    nans, ix = nan_helper(vals)
-    out = np.copy(vals)
-    try:
-        out[nans] = np.interp(ix(nans), ix(~nans), vals[~nans])
-    except ValueError:
-        out[:] = 0
-    return out
-
-
-def remap_ids(ids):
-    unique_ids = np.unique(ids)
-    ids_out = np.copy(ids)
-    for i, num in enumerate(unique_ids):
-        ids_out[ids == num] = i
-    return ids_out
-
-
-def transform_points(points, rvecs, tvecs):
-    """Rotate points by given rotation vectors and translate.
-    Rodrigues' rotation formula is used.
-    """
-    theta = np.linalg.norm(rvecs, axis=1)[:, np.newaxis]
-    with np.errstate(invalid="ignore"):
-        v = rvecs / theta
-        v = np.nan_to_num(v)
-    dot = np.sum(points * v, axis=1)[:, np.newaxis]
-    cos_theta = np.cos(theta)
-    sin_theta = np.sin(theta)
-
-    rotated = cos_theta * points + sin_theta * np.cross(v, points) + dot * (1 - cos_theta) * v
-
-    return rotated + tvecs
-
-
-def get_connections(xs, cam_names=None, both=True):
-    n_cams = xs.shape[0]
-    n_points = xs.shape[1]
-
-    if cam_names is None:
-        cam_names = np.arange(n_cams)
-
-    connections = defaultdict(int)
-
-    for rnum in range(n_points):
-        ixs = np.where(~np.isnan(xs[:, rnum, 0]))[0]
-        keys = [cam_names[ix] for ix in ixs]
-        for i in range(len(keys)):
-            for j in range(i + 1, len(keys)):
-                a = keys[i]
-                b = keys[j]
-                connections[(a, b)] += 1
-                if both:
-                    connections[(b, a)] += 1
-
-    return connections
-
-
-def get_calibration_graph(rtvecs, cam_names=None):
-    n_cams = rtvecs.shape[0]
-    n_points = rtvecs.shape[1]
-
-    if cam_names is None:
-        cam_names = np.arange(n_cams)
-
-    connections = get_connections(rtvecs, np.arange(n_cams))
-
-    components = dict(zip(np.arange(n_cams), range(n_cams)))
-    edges = set(connections.items())
-
-    graph = defaultdict(list)
-
-    for edgenum in range(n_cams - 1):
-        if len(edges) == 0:
-            component_names = dict()
-            for k, v in list(components.items()):
-                component_names[cam_names[k]] = v
-            raise ValueError(
-                """
-Could not build calibration graph.
-Some group of cameras could not be paired by simultaneous calibration board detections.
-Check which cameras have different group numbers below to see the missing edges.
-{}""".format(
-                    component_names
-                )
-            )
-
-        (a, b), weight = max(edges, key=lambda x: x[1])
-        graph[a].append(b)
-        graph[b].append(a)
-
-        match = components[a]
-        replace = components[b]
-        for k, v in components.items():
-            if match == v:
-                components[k] = replace
-
-        for e in edges.copy():
-            (a, b), w = e
-            if components[a] == components[b]:
-                edges.remove(e)
-
-    return graph
-
-
-def find_calibration_pairs(graph, source=None):
-    pairs = []
-    explored = set()
-
-    if source is None:
-        source = sorted(graph.keys())[0]
-
-    q = queue.deque()
-    q.append(source)
-
-    while len(q) > 0:
-        item = q.pop()
-        explored.add(item)
-
-        for new in graph[item]:
-            if new not in explored:
-                q.append(new)
-                pairs.append((item, new))
-    return pairs
-
-
-def compute_camera_matrices(rtvecs, pairs):
-    extrinsics = dict()
-    source = pairs[0][0]
-    extrinsics[source] = np.identity(4)
-    for a, b in pairs:
-        ext = get_transform(rtvecs, b, a)
-        extrinsics[b] = np.matmul(ext, extrinsics[a])
-    return extrinsics
-
-
-def get_transform(rtvecs, left, right):
-    L = []
-    for dix in range(rtvecs.shape[1]):
-        d = rtvecs[:, dix]
-        good = ~np.isnan(d[:, 0])
-
-        if good[left] and good[right]:
-            M_left = make_M(d[left, 0:3], d[left, 3:6])
-            M_right = make_M(d[right, 0:3], d[right, 3:6])
-            M = np.matmul(M_left, inverse(M_right))
-            L.append(M)
-    L_best = select_matrices(L)
-    M_mean = mean_transform(L_best)
-    # M_mean = mean_transform_robust(L, M_mean, error=0.5)
-    # M_mean = mean_transform_robust(L, M_mean, error=0.2)
-    M_mean = mean_transform_robust(L, M_mean, error=0.1)
-    return M_mean
-
-
-def get_most_common(vals):
-    Z = linkage(whiten(vals), "ward")
-    n_clust = max(len(vals) / 10, 3)
-    clusts = fcluster(Z, t=n_clust, criterion="maxclust")
-    cc = Counter(clusts[clusts >= 0])
-    most = cc.most_common(n=1)
-    top = most[0][0]
-    good = clusts == top
-    return good
-
-
-def select_matrices(Ms):
-    Ms = np.array(Ms)
-    rvecs = [cv2.Rodrigues(M[:3, :3])[0][:, 0] for M in Ms]
-    tvecs = np.array([M[:3, 3] for M in Ms])
-    best = get_most_common(np.hstack([rvecs, tvecs]))
-    Ms_best = Ms[best]
-    return Ms_best
-
-
-def mean_transform(M_list):
-    rvecs = [cv2.Rodrigues(M[:3, :3])[0][:, 0] for M in M_list]
-    tvecs = [M[:3, 3] for M in M_list]
-
-    rvec = np.mean(rvecs, axis=0)
-    tvec = np.mean(tvecs, axis=0)
-
-    return make_M(rvec, tvec)
-
-
-def mean_transform_robust(M_list, approx=None, error=0.3):
-    if approx is None:
-        M_list_robust = M_list
-    else:
-        M_list_robust = []
-        for M in M_list:
-            rot_error = (M - approx)[:3, :3]
-            m = np.max(np.abs(rot_error))
-            if m < error:
-                M_list_robust.append(M)
-    return mean_transform(M_list_robust)
-
-
-def get_initial_extrinsics(rtvecs, cam_names=None):
-    graph = get_calibration_graph(rtvecs, cam_names)
-    pairs = find_calibration_pairs(graph, source=0)
-    extrinsics = compute_camera_matrices(rtvecs, pairs)
-
-    n_cams = rtvecs.shape[0]
-    rvecs = []
-    tvecs = []
-    for cnum in range(n_cams):
-        rvec, tvec = get_rtvec(extrinsics[cnum])
-        rvecs.append(rvec)
-        tvecs.append(tvec)
-    rvecs = np.array(rvecs)
-    tvecs = np.array(tvecs)
-    return rvecs, tvecs
-
-
-class Camera:
-    def __init__(
-        self,
-        matrix=np.eye(3),
-        dist=np.zeros(5),
-        size=None,
-        rvec=np.zeros(3),
-        tvec=np.zeros(3),
-        name=None,
-        extra_dist=False,
-    ):
-        self.set_camera_matrix(matrix)
-        self.set_distortions(dist)
-        self.set_size(size)
-        self.set_rotation(rvec)
-        self.set_translation(tvec)
-        self.set_name(name)
-        self.extra_dist = extra_dist
-
-    def get_dict(self):
-        return {
-            "name": self.get_name(),
-            "size": list(self.get_size()),
-            "matrix": self.get_camera_matrix().tolist(),
-            "distortions": self.get_distortions().tolist(),
-            "rotation": self.get_rotation().tolist(),
-            "translation": self.get_translation().tolist(),
-        }
-
-    def load_dict(self, d):
-        self.set_camera_matrix(d["matrix"])
-        self.set_rotation(d["rotation"])
-        self.set_translation(d["translation"])
-        self.set_distortions(d["distortions"])
-        self.set_name(d["name"])
-        self.set_size(d["size"])
-
-    def from_dict(d):
-        cam = Camera()
-        cam.load_dict(d)
-        return cam
-
-    def get_camera_matrix(self):
-        return self.matrix
-
-    def get_distortions(self):
-        return self.dist
-
-    def set_camera_matrix(self, matrix):
-        self.matrix = np.array(matrix, dtype="float64")
-
-    def set_focal_length(self, fx, fy=None):
-        if fy is None:
-            fy = fx
-        self.matrix[0, 0] = fx
-        self.matrix[1, 1] = fy
-
-    def get_focal_length(self, both=False):
-        fx = self.matrix[0, 0]
-        fy = self.matrix[1, 1]
-        if both:
-            return (fx, fy)
-        else:
-            return (fx + fy) / 2.0
-
-    def set_distortions(self, dist):
-        self.dist = np.array(dist, dtype="float64").ravel()
-
-    def set_rotation(self, rvec):
-        self.rvec = np.array(rvec, dtype="float64").ravel()
-
-    def get_rotation(self):
-        return self.rvec
-
-    def set_translation(self, tvec):
-        self.tvec = np.array(tvec, dtype="float64").ravel()
-
-    def get_translation(self):
-        return self.tvec
-
-    def get_extrinsics_mat(self):
-        return make_M(self.rvec, self.tvec)
-
-    def get_name(self):
-        return self.name
-
-    def set_name(self, name):
-        self.name = str(name)
-
-    def set_size(self, size):
-        """set size as (width, height)"""
-        self.size = size
-
-    def get_size(self):
-        """get size as (width, height)"""
-        return self.size
-
-    def resize_camera(self, scale):
-        """resize the camera by scale factor, updating intrinsics to match"""
-        size = self.get_size()
-        new_size = size[0] * scale, size[1] * scale
-        matrix = self.get_camera_matrix()
-        new_matrix = matrix * scale
-        new_matrix[2, 2] = 1
-        self.set_size(new_size)
-        self.set_camera_matrix(new_matrix)
-
-    def get_params(self):
-        params = np.zeros(8 + self.extra_dist, dtype="float64")
-        params[0:3] = self.get_rotation()
-        params[3:6] = self.get_translation()
-        params[6] = self.get_focal_length()
-        dist = self.get_distortions()
-        params[7] = dist[0]
-        if self.extra_dist:
-            params[8] = dist[1]
-        return params
-
-    def set_params(self, params):
-        self.set_rotation(params[0:3])
-        self.set_translation(params[3:6])
-        self.set_focal_length(params[6])
-
-        dist = np.zeros(5, dtype="float64")
-        dist[0] = params[7]
-        if self.extra_dist:
-            dist[1] = params[8]
-        self.set_distortions(dist)
-
-    def distort_points(self, points):
-        shape = points.shape
-        points = points.reshape(-1, 1, 2)
-        new_points = np.dstack([points, np.ones((points.shape[0], 1, 1))])
-        out, _ = cv2.projectPoints(
-            new_points,
-            np.zeros(3),
-            np.zeros(3),
-            self.matrix.astype("float64"),
-            self.dist.astype("float64"),
-        )
-        return out.reshape(shape)
-
-    def undistort_points(self, points):
-        shape = points.shape
-        points = points.reshape(-1, 1, 2)
-        out = cv2.undistortPoints(points, self.matrix.astype("float64"), self.dist.astype("float64"))
-        return out.reshape(shape)
-
-    def project(self, points):
-        points = points.reshape(-1, 1, 3)
-        out, _ = cv2.projectPoints(
-            points,
-            self.rvec,
-            self.tvec,
-            self.matrix.astype("float64"),
-            self.dist.astype("float64"),
-        )
-        return out
-
-    def single_camera_reprojection_error(self, p3d, p2d):
-        projecting_3d_points_onto_2d_image_plane_og = self.project(p3d)
-        projecting_3d_points_onto_2d_image_plane = projecting_3d_points_onto_2d_image_plane_og.reshape(p2d.shape)
-        return p2d - projecting_3d_points_onto_2d_image_plane
-
-    def copy(self):
-        return Camera(
-            matrix=self.get_camera_matrix().copy(),
-            dist=self.get_distortions().copy(),
-            size=self.get_size(),
-            rvec=self.get_rotation().copy(),
-            tvec=self.get_translation().copy(),
-            name=self.get_name(),
-            extra_dist=self.extra_dist,
-        )
-
-
-class FisheyeCamera(Camera):
-    def __init__(
-        self,
-        matrix=np.eye(3),
-        dist=np.zeros(4),
-        size=None,
-        rvec=np.zeros(3),
-        tvec=np.zeros(3),
-        name=None,
-        extra_dist=False,
-    ):
-        self.set_camera_matrix(matrix)
-        self.set_distortions(dist)
-        self.set_size(size)
-        self.set_rotation(rvec)
-        self.set_translation(tvec)
-        self.set_name(name)
-        self.extra_dist = extra_dist
-
-    def from_dict(d):
-        cam = FisheyeCamera()
-        cam.load_dict(d)
-        return cam
-
-    def get_dict(self):
-        d = super().get_dict()
-        d["fisheye"] = True
-        return d
-
-    def distort_points(self, points):
-        shape = points.shape
-        points = points.reshape(-1, 1, 2)
-        new_points = np.dstack([points, np.ones((points.shape[0], 1, 1))])
-        out, _ = cv2.fisheye.projectPoints(
-            new_points,
-            np.zeros(3),
-            np.zeros(3),
-            self.matrix.astype("float64"),
-            self.dist.astype("float64"),
-        )
-        return out.reshape(shape)
-
-    def undistort_points(self, points):
-        shape = points.shape
-        points = points.reshape(-1, 1, 2)
-        out = cv2.fisheye.undistortPoints(
-            points.astype("float64"),
-            self.matrix.astype("float64"),
-            self.dist.astype("float64"),
-        )
-        return out.reshape(shape)
-
-    def project(self, points):
-        points = points.reshape(-1, 1, 3)
-        out, _ = cv2.fisheye.projectPoints(
-            points,
-            self.rvec,
-            self.tvec,
-            self.matrix.astype("float64"),
-            self.dist.astype("float64"),
-        )
-        return out
-
-    def set_params(self, params):
-        self.set_rotation(params[0:3])
-        self.set_translation(params[3:6])
-        self.set_focal_length(params[6])
-
-        dist = np.zeros(4, dtype="float64")
-        dist[0] = params[7]
-        if self.extra_dist:
-            dist[1] = params[8]
-        # dist[2] = params[9]
-        # dist[3] = params[10]
-        self.set_distortions(dist)
-
-    def get_params(self):
-        params = np.zeros(8 + self.extra_dist, dtype="float64")
-        params[0:3] = self.get_rotation()
-        params[3:6] = self.get_translation()
-        params[6] = self.get_focal_length()
-        dist = self.get_distortions()
-        params[7] = dist[0]
-        if self.extra_dist:
-            params[8] = dist[1]
-        # params[9] = dist[2]
-        # params[10] = dist[3]
-        return params
-
-    def copy(self):
-        return FisheyeCamera(
-            matrix=self.get_camera_matrix().copy(),
-            dist=self.get_distortions().copy(),
-            size=self.get_size(),
-            rvec=self.get_rotation().copy(),
-            tvec=self.get_translation().copy(),
-            name=self.get_name(),
-            extra_dist=self.extra_dist,
-        )
-
-
-class CameraGroup:
+class AniposeCameraGroup:
     def __init__(self, cameras, metadata={}):
         self.cameras = cameras
         self.metadata = metadata
 
     def subset_cameras(self, indices):
         cams = [self.cameras[ix].copy() for ix in indices]
-        return CameraGroup(cams, self.metadata)
+        return AniposeCameraGroup(cams, self.metadata)
 
     def subset_cameras_names(self, names):
         cur_names = self.get_names()
@@ -664,67 +52,71 @@ class CameraGroup:
             indices.append(cur_names_dict[name])
         return self.subset_cameras(indices)
 
-    def project(self, points):
+    def project(self, points3d: np.ndarray):
         """Given an Nx3 array of points, this returns an CxNx2 array of 2D points,
         where C is the number of cameras"""
-        points = points.reshape(-1, 1, 3)
-        n_points = points.shape[0]
+        points3d = points3d.reshape(-1, 1, 3)
+        n_points = points3d.shape[0]
         n_cams = len(self.cameras)
 
-        out = np.empty((n_cams, n_points, 2), dtype="float64")
-        for cnum, cam in enumerate(self.cameras):
-            out[cnum] = cam.project(points).reshape(n_points, 2)
+        projected_points2d= np.empty((n_cams, n_points, 2), dtype="float64")
+        for camera_number, camera in enumerate(self.cameras):
+            projected_points2d[camera_number] = camera.project(points3d).reshape(n_points, 2)
 
-        return out
+        #check shape
+        assert projected_points2d.shape == (n_cams, n_points, 2), f"Invalid projected_points2d shape, should be {n_cams, n_points, 2}, but shape is {projected_points2d.shape}"
 
-    def triangulate(self, points, undistort=True, progress=False, kill_event: multiprocessing.Event = None):
+        return projected_points2d
+
+    def triangulate(self, points2d, undistort=True, progress=False, kill_event: multiprocessing.Event = None):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
 
-        assert points.shape[0] == len(
+        assert points2d.shape[0] == len(
             self.cameras
         ), "Invalid points shape, first dim should be equal to" " number of cameras ({}), but shape is {}".format(
-            len(self.cameras), points.shape
+            len(self.cameras), points2d.shape
         )
 
         one_point = False
-        if len(points.shape) == 2:
-            points = points.reshape(-1, 1, 2)
+        if len(points2d.shape) == 2:
+            points2d = points2d.reshape(-1, 1, 2)
             one_point = True
 
         if undistort:
-            new_points = np.empty(points.shape)
-            for cnum, cam in enumerate(self.cameras):
+            new_points = np.empty(points2d.shape)
+            for camera_number, camera in enumerate(self.cameras):
                 # must copy in order to satisfy opencv underneath
-                sub = np.copy(points[cnum])
-                new_points[cnum] = cam.undistort_points(sub)
-            points = new_points
+                sub = np.copy(points2d[camera_number])
+                new_points[camera_number] = camera.undistort_points(sub)
+            points2d = new_points
 
-        n_cams, n_points, _ = points.shape
+        n_cams, n_points, _ = points2d.shape
 
-        out = np.empty((n_points, 3))
-        out[:] = np.nan
+        triangulated_points3d = np.empty((n_points, 3))
+        triangulated_points3d[:] = np.nan
 
-        cam_mats = np.array([cam.get_extrinsics_mat() for cam in self.cameras])
+        camera_matricies = np.array([camera.get_extrinsics_mat() for camera in self.cameras])
 
         if progress:
-            iterator = trange(n_points, ncols=70)
+            points_iterator = trange(n_points, ncols=70)
         else:
-            iterator = range(n_points)
+            points_iterator = range(n_points)
 
-        for ip in iterator:
-            subp = points[:, ip, :]
-            good = ~np.isnan(subp[:, 0])
-            if np.sum(good) >= 2:
-                out[ip] = triangulate_simple(subp[good], cam_mats[good])
+        for point_index in points_iterator:
+            point_xy = points2d[:, point_index, :]
+            point_xy_no_nans = ~np.isnan(point_xy[:, 0])
+            if np.sum(point_xy_no_nans) >= 2:
+                triangulated_points3d[point_index] = anipose_triangulate_simple(point_xy[point_xy_no_nans],
+                                                                                camera_matricies[point_xy_no_nans])
 
             if kill_event is not None and kill_event.is_set():
                 return None
 
         if one_point:
-            out = out[0]
+            triangulated_points3d = triangulated_points3d[0]
 
-        return out
+        return triangulated_points3d
 
     def triangulate_possible(
         self,
@@ -1754,7 +1146,7 @@ class CameraGroup:
     def copy(self):
         cameras = [cam.copy() for cam in self.cameras]
         metadata = copy(self.metadata)
-        return CameraGroup(cameras, metadata)
+        return AniposeCameraGroup(cameras, metadata)
 
     def set_rotations(self, rvecs):
         for cam, rvec in zip(self.cameras, rvecs):
@@ -1900,7 +1292,7 @@ class CameraGroup:
             else:
                 cam = Camera.from_dict(d)
             cameras.append(cam)
-        return CameraGroup(cameras)
+        return AniposeCameraGroup(cameras)
 
     @staticmethod
     def from_names(names, fisheye=False):
@@ -1911,7 +1303,7 @@ class CameraGroup:
             else:
                 cam = Camera(name=name)
             cameras.append(cam)
-        return CameraGroup(cameras)
+        return AniposeCameraGroup(cameras)
 
     def load_dicts(self, arr):
         for cam, d in zip(self.cameras, arr):
@@ -1930,7 +1322,7 @@ class CameraGroup:
         master_dict = toml.load(fname)
         keys = sorted(master_dict.keys())
         items = [master_dict[k] for k in keys if k != "metadata"]
-        cgroup = CameraGroup.from_dicts(items)
+        cgroup = AniposeCameraGroup.from_dicts(items)
         if "metadata" in master_dict:
             cgroup.metadata = master_dict["metadata"]
         return cgroup
@@ -1940,177 +1332,3 @@ class CameraGroup:
             cam.resize_camera(scale)
 
 
-class AniposeCharucoBoard(CharucoBoard):
-    def __init__(
-        self,
-        squaresX,
-        squaresY,
-        square_length,
-        marker_length,
-        marker_bits=4,
-        dict_size=50,
-        aruco_dict=None,
-        manually_verify=False,
-    ):
-        self.squaresX = squaresX
-        self.squaresY = squaresY
-        self.square_length = square_length
-        self.marker_length = marker_length
-        self.manually_verify = manually_verify
-
-        ARUCO_DICTS = {
-            (4, 50): cv2.aruco.DICT_4X4_50,
-            (5, 50): cv2.aruco.DICT_5X5_50,
-            (6, 50): cv2.aruco.DICT_6X6_50,
-            (7, 50): cv2.aruco.DICT_7X7_50,
-            (4, 100): cv2.aruco.DICT_4X4_100,
-            (5, 100): cv2.aruco.DICT_5X5_100,
-            (6, 100): cv2.aruco.DICT_6X6_100,
-            (7, 100): cv2.aruco.DICT_7X7_100,
-            (4, 250): cv2.aruco.DICT_4X4_250,
-            (5, 250): cv2.aruco.DICT_5X5_250,
-            (6, 250): cv2.aruco.DICT_6X6_250,
-            (7, 250): cv2.aruco.DICT_7X7_250,
-            (4, 1000): cv2.aruco.DICT_4X4_1000,
-            (5, 1000): cv2.aruco.DICT_5X5_1000,
-            (6, 1000): cv2.aruco.DICT_6X6_1000,
-            (7, 1000): cv2.aruco.DICT_7X7_1000,
-        }
-
-        dkey = (marker_bits, dict_size)
-        self.dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICTS[dkey])
-
-        self.board = cv2.aruco.CharucoBoard(
-            size=[squaresX, squaresY],
-            squareLength=square_length,
-            markerLength=marker_length,
-            dictionary=self.dictionary,
-        )
-
-        total_size = (squaresX - 1) * (squaresY - 1)
-
-        objp = np.zeros((total_size, 3), np.float64)
-        objp[:, :2] = np.mgrid[0 : (squaresX - 1), 0 : (squaresY - 1)].T.reshape(-1, 2)
-        objp *= square_length
-        self.objPoints = objp
-
-        self.empty_detection = np.zeros((total_size, 1, 2)) * np.nan
-        self.total_size = total_size
-
-    def detect_markers(self, image, camera=None, refine=True):
-        if len(image.shape) == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = image
-
-        params = cv2.aruco.DetectorParameters()
-        params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_CONTOUR
-        params.adaptiveThreshWinSizeMin = 100
-        params.adaptiveThreshWinSizeMax = 700
-        params.adaptiveThreshWinSizeStep = 50
-        params.adaptiveThreshConstant = 0
-
-        try:
-            corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(gray, self.dictionary, parameters=params)
-        except Exception:
-            ids = None
-
-        if ids is None:
-            return [], []
-
-        if camera is None:
-            K = D = None
-        else:
-            K = camera.get_camera_matrix()
-            D = camera.get_distortions()
-
-        if refine:
-            detectedCorners, detectedIds, rejectedCorners, recoveredIdxs = cv2.aruco.refineDetectedMarkers(
-                gray, self.board, corners, ids, rejectedImgPoints, K, D, parameters=params
-            )
-        else:
-            detectedCorners, detectedIds = corners, ids
-
-        return detectedCorners, detectedIds
-
-    def detect_image(self, image, camera=None):
-        if len(image.shape) == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = image
-
-        corners, ids = self.detect_markers(image, camera, refine=True)
-        if len(corners) > 0:
-            ret, detectedCorners, detectedIds = cv2.aruco.interpolateCornersCharuco(corners, ids, gray, self.board)
-            if detectedIds is None:
-                detectedCorners = detectedIds = np.float64([])
-        else:
-            detectedCorners = detectedIds = np.float64([])
-
-        if (
-            len(detectedCorners) > 0
-            and self.manually_verify
-            and not self.manually_verify_board_detection(gray, detectedCorners, detectedIds)
-        ):
-            detectedCorners = detectedIds = np.float64([])
-
-        return detectedCorners, detectedIds
-
-    def manually_verify_board_detection(self, image, corners, ids=None):
-        height, width = image.shape[:2]
-        image = cv2.aruco.drawDetectedCornersCharuco(image, corners, ids)
-        cv2.putText(
-            image,
-            "(a) Accept (d) Reject",
-            (int(width / 1.35), int(height / 16)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            255,
-            1,
-            cv2.LINE_AA,
-        )
-        cv2.imshow("verify_detection", image)
-        while 1:
-            key = cv2.waitKey(0) & 0xFF
-            if key == ord("a"):
-                cv2.putText(
-                    image,
-                    "Accepted!",
-                    (int(width / 2.5), int(height / 1.05)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    255,
-                    2,
-                    cv2.LINE_AA,
-                )
-                cv2.imshow("verify_detection", image)
-                cv2.waitKey(100)
-                return True
-            elif key == ord("d"):
-                cv2.putText(
-                    image,
-                    "Rejected!",
-                    (int(width / 2.5), int(height / 1.05)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    255,
-                    2,
-                    cv2.LINE_AA,
-                )
-                cv2.imshow("verify_detection", image)
-                cv2.waitKey(100)
-                return False
-
-    def estimate_pose_points(self, camera, corners, ids):
-        if corners is None or ids is None or len(corners) < 5:
-            return None, None
-
-        n_corners = corners.size // 2
-        corners = np.reshape(corners, (n_corners, 1, 2))
-
-        K = camera.get_camera_matrix()
-        D = camera.get_distortions()
-
-        ret, rvec, tvec = cv2.aruco.estimatePoseCharucoBoard(corners, ids, self.board, K, D, None, None)
-
-        return rvec, tvec

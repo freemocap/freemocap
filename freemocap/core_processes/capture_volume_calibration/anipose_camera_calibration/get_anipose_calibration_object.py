@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Union
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
-    freemocap_anipose,
+    anipose_camera_group,
 )
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_camera_group import \
+    AniposeCameraGroup
 from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
 
 logger = logging.getLogger(__name__)
@@ -14,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def load_most_recent_anipose_calibration_toml(
     save_copy_of_calibration_to_this_path: Union[str, Path, None] = None
-) -> freemocap_anipose.CameraGroup:
+) -> AniposeCameraGroup:
     most_recent_calibration_toml_path = get_last_successful_calibration_toml_path()
     logger.info(f"loading `most recent calibration from:{str(most_recent_calibration_toml_path)}")
     if save_copy_of_calibration_to_this_path is not None:
@@ -26,7 +28,7 @@ def load_most_recent_anipose_calibration_toml(
         )
 
     try:
-        camera_group = freemocap_anipose.CameraGroup.load(str(most_recent_calibration_toml_path))
+        camera_group = AniposeCameraGroup.load(str(most_recent_calibration_toml_path))
     except Exception as e:
         logger.exception(e)
         raise
@@ -36,10 +38,10 @@ def load_most_recent_anipose_calibration_toml(
 def load_anipose_calibration_toml_from_path(
     camera_calibration_data_toml_path: Union[str, Path],
     save_copy_of_calibration_to_this_path: Union[str, Path, None] = None,
-) -> freemocap_anipose.CameraGroup:
+) -> AniposeCameraGroup:
     logger.info(f"loading camera calibration file from:{str(camera_calibration_data_toml_path)}")
     try:
-        anipose_calibration_object = freemocap_anipose.CameraGroup.load(str(camera_calibration_data_toml_path))
+        anipose_calibration_object = AniposeCameraGroup.load(str(camera_calibration_data_toml_path))
         if save_copy_of_calibration_to_this_path is not None:
             copy_toml_path = str(
                 Path(save_copy_of_calibration_to_this_path) / Path(camera_calibration_data_toml_path).name
@@ -61,10 +63,10 @@ def load_anipose_calibration_toml_from_path(
 
 def load_calibration_from_session_id(
     session_calibration_file_path: Union[str, Path],
-) -> freemocap_anipose.CameraGroup:
+) -> AniposeCameraGroup:
     logger.info(f"loading camera calibration file from:{str(session_calibration_file_path)}")
     try:
-        return freemocap_anipose.CameraGroup.load(str(session_calibration_file_path))
+        return AniposeCameraGroup.load(str(session_calibration_file_path))
     except Exception as e:
         logger.error(f"Failed to load anipose calibration info from {str(session_calibration_file_path)}")
         raise e

@@ -4,8 +4,10 @@ from typing import Callable, Union
 
 import numpy as np
 
+import \
+    freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_stuff.anipose_charuco_board
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
-    freemocap_anipose,
+    anipose_camera_group,
 )
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
@@ -48,7 +50,7 @@ class AniposeCameraCalibrator:
 
     def _initialize_anipose_objects(self):
         list_of_camera_names = [this_video_path.stem for this_video_path in self._list_of_video_paths]
-        self._anipose_camera_group_object = freemocap_anipose.CameraGroup.from_names(list_of_camera_names)
+        self._anipose_camera_group_object = freemocap_anipose.AniposeCameraGroup.from_names(list_of_camera_names)
 
         # add metadata
         self._anipose_camera_group_object.metadata["charuco_square_size"] = self._charuco_square_size
@@ -58,7 +60,7 @@ class AniposeCameraCalibrator:
         )
         self._anipose_camera_group_object.metadata["date_time_calibrated"] = str(np.datetime64("now"))
 
-        self._anipose_charuco_board = freemocap_anipose.AniposeCharucoBoard(
+        self._anipose_charuco_board = freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_stuff.anipose_charuco_board.AniposeCharucoBoard(
             self._charuco_board_object.number_of_squares_width,
             self._charuco_board_object.number_of_squares_height,
             square_length=self._charuco_square_size,  # mm

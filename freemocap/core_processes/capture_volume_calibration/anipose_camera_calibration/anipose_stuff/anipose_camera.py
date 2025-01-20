@@ -3,7 +3,7 @@ import numpy as np
 from aniposelib.utils import make_M
 
 
-class Camera:
+class AniposeCamera:
     def __init__(
         self,
         matrix=np.eye(3),
@@ -46,45 +46,45 @@ class Camera:
         return cam
 
     def get_camera_matrix(self):
-        return self.matrix
+        return self.camera_matrix
 
     def get_distortions(self):
-        return self.dist
+        return self.distortion_coefficients
 
     def set_camera_matrix(self, matrix):
-        self.matrix = np.array(matrix, dtype="float64")
+        self.camera_matrix = np.array(matrix, dtype="float64")
 
     def set_focal_length(self, fx, fy=None):
         if fy is None:
             fy = fx
-        self.matrix[0, 0] = fx
-        self.matrix[1, 1] = fy
+        self.camera_matrix[0, 0] = fx
+        self.camera_matrix[1, 1] = fy
 
     def get_focal_length(self, both=False):
-        fx = self.matrix[0, 0]
-        fy = self.matrix[1, 1]
+        fx = self.camera_matrix[0, 0]
+        fy = self.camera_matrix[1, 1]
         if both:
             return (fx, fy)
         else:
             return (fx + fy) / 2.0
 
     def set_distortions(self, dist):
-        self.dist = np.array(dist, dtype="float64").ravel()
+        self.distortion_coefficients = np.array(dist, dtype="float64").ravel()
 
     def set_rotation(self, rvec):
-        self.rvec = np.array(rvec, dtype="float64").ravel()
+        self.rotation_vector = np.array(rvec, dtype="float64").ravel()
 
     def get_rotation(self):
-        return self.rvec
+        return self.rotation_vector
 
     def set_translation(self, tvec):
-        self.tvec = np.array(tvec, dtype="float64").ravel()
+        self.translation_vector = np.array(tvec, dtype="float64").ravel()
 
     def get_translation(self):
-        return self.tvec
+        return self.translation_vector
 
     def get_extrinsics_mat(self):
-        return make_M(self.rvec, self.tvec)
+        return make_M(self.rotation_vector, self.translation_vector)
 
     def get_name(self):
         return self.name
@@ -132,48 +132,31 @@ class Camera:
             dist[1] = params[8]
         self.set_distortions(dist)
 
-    def distort_points(self, points):
-        shape = points.shape
-        points = points.reshape(-1, 1, 2)
-        new_points = np.dstack([points, np.ones((points.shape[0], 1, 1))])
-        out, _ = cv2.projectPoints(
-            new_points,
-            np.zeros(3),
-            np.zeros(3),
-            self.matrix.astype("float64"),
-            self.dist.astype("float64"),
-        )
-        return out.reshape(shape)
 
     def undistort_points(self, points):
         shape = points.shape
         points = points.reshape(-1, 1, 2)
-        out = cv2.undistortPoints(points, self.matrix.astype("float64"), self.dist.astype("float64"))
+        out = cv2.undistortPoints(points, self.camera_matrix.astype("float64"), self.distortion_coefficients.astype("float64"))
         return out.reshape(shape)
 
-    def project(self, points):
-        points = points.reshape(-1, 1, 3)
-        out, _ = cv2.projectPoints(
-            points,
-            self.rvec,
-            self.tvec,
-            self.matrix.astype("float64"),
-            self.dist.astype("float64"),
+    def project_3d_to_2d(self, points3d:np.ndarray) -> np.ndarray:
+        if not points3d.shape[-1] == 3:
+            raise ValueError("points3d must have shape (N, 3)")
+        points3d = points3d.reshape(-1, 1, 3)
+        projected_2d_points, _ = cv2.projectPoints(
+            points3d,
+            self.rotation_vector,
+            self.translation_vector,
+            self.camera_matrix.astype("float64"),
+            self.distortion_coefficients.astype("float64"),
         )
-        return out
+        if projected_2d_points.shape != (points3d.shape[0], 1, 2):
+            raise ValueError(f"projected_2d_points has incorrect shape: {projected_2d_points.shape}")
+
+        return projected_2d_points
 
     def single_camera_reprojection_error(self, p3d, p2d):
         projecting_3d_points_onto_2d_image_plane_og = self.project(p3d)
         projecting_3d_points_onto_2d_image_plane = projecting_3d_points_onto_2d_image_plane_og.reshape(p2d.shape)
         return p2d - projecting_3d_points_onto_2d_image_plane
 
-    def copy(self):
-        return Camera(
-            matrix=self.get_camera_matrix().copy(),
-            dist=self.get_distortions().copy(),
-            size=self.get_size(),
-            rvec=self.get_rotation().copy(),
-            tvec=self.get_translation().copy(),
-            name=self.get_name(),
-            extra_dist=self.extra_dist,
-        )

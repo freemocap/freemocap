@@ -1,14 +1,26 @@
 import queue
 from collections import defaultdict, Counter
+from typing import Any
 
 import cv2
 import numpy as np
-from aniposelib.utils import make_M, get_rtvec
 from scipy import signal
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
 
+def make_M(rvec, tvec):
+    out = np.zeros((4,4))
+    rotmat, _ = cv2.Rodrigues(rvec)
+    out[:3,:3] = rotmat
+    out[:3, 3] = tvec.flatten()
+    out[3, 3] = 1
+    return out
+
+def get_rtvec(M):
+    rvec = cv2.Rodrigues(M[:3, :3])[0].flatten()
+    tvec = M[:3, 3].flatten()
+    return rvec, tvec
 
 def get_error_dict(errors_full, min_points=10):
     n_cams = errors_full.shape[0]
@@ -32,7 +44,7 @@ def get_error_dict(errors_full, min_points=10):
 
 def check_errors(cgroup, imgp):
     p3ds = cgroup.triangulate(imgp)
-    errors_full = cgroup.reprojection_error(p3ds, imgp, mean=False)
+    errors_full = cgroup.calculate_reprojection_error(p3ds, imgp, mean=False)
     return get_error_dict(errors_full)
 
 
@@ -78,34 +90,68 @@ def resample_points_extra(imgp, extra, n_samp=25):
     return newp, extra
 
 
-def resample_points(imgp, extra=None, n_samp=25):
-    # if extra is not None:
-    #     return resample_points_extra(imgp, extra, n_samp)
+def resample_points_based_on_shared_views(points2d: np.ndarray,
+                                          extra_data: dict[str, Any] |None = None,
+                                          number_of_samples_to_return: int = 25) -> tuple[np.ndarray, dict[str, Any] | None]:
+    """
+    Resample 2D points to prioritize those seen by multiple cameras.
 
-    n_cams = imgp.shape[0]
-    good = ~np.isnan(imgp[:, :, 0])
-    ixs = np.arange(imgp.shape[1])
+    :param points2d: A 3D array of shape (N_cams, N_points, 2) containing 2D points for each camera.
+                     NaN values represent missing data for a camera.
+    :param extra_data: Optional dictionary containing additional data (like {'objp', 'ids', 'rvecs', 'tvecs'})
+                  that should be resampled in the same way as points2d.
+    :param number_of_samples_to_return: The maximum number of points to sample, prioritizing those visible in more cameras.
+    :return: A tuple containing the resampled points2d and the resampled extra dictionary.
+    """
 
-    num_cams = np.sum(~np.isnan(imgp[:, :, 0]), axis=0)
+    n_cams = points2d.shape[0]
+    points2d_valid = ~np.isnan(points2d[:, :, 0])  # Boolean array indicating valid (non-NaN) points
+    point_indices = np.arange(points2d.shape[1])
+    num_cams = np.sum(points2d_valid, axis=0)  # Number of cameras observing each point
 
-    include = set()
+    included_points = set()
 
-    for i in range(n_cams):
-        for j in range(i + 1, n_cams):
-            subset = good[i] & good[j]
-            n_good = np.sum(subset)
+    # Iterate over each unique pair of cameras
+    for first_cam in range(n_cams):
+        for second_cam in range(first_cam + 1, n_cams):
+            # Determine which points are visible in both selected cameras
+            visible_in_both = points2d_valid[first_cam] & points2d_valid[second_cam]
+            n_good = np.sum(visible_in_both)
+
             if n_good > 0:
-                ## pick points, prioritizing points seen by more cameras
-                arr = np.copy(num_cams[subset]).astype("float64")
-                arr += np.random.random(size=arr.shape)
-                picked_ix = np.argsort(-arr)[:n_samp]
-                picked = ixs[subset][picked_ix]
-                include.update(picked)
+                # Select points seen by the most cameras, adding a small random value for tie-breaking
+                visibility_scores = num_cams[visible_in_both].astype(np.float64)
+                visibility_scores += np.random.random(size=visibility_scores.shape)
 
-    final_ixs = sorted(include)
-    newp = imgp[:, final_ixs]
-    extra = subset_extra(extra, final_ixs)
-    return newp, extra
+                # Pick the top n_samp points based on visibility scores
+                picked_indices = np.argsort(-visibility_scores)[:number_of_samples_to_return]
+                selected_points = point_indices[visible_in_both][picked_indices]
+
+                # Add selected points to the set of included points
+                included_points.update(selected_points)
+
+    # Sort the final indices of included points for consistent ordering
+    final_indices = sorted(included_points)
+    resampled_ponts = points2d[:, final_indices]
+
+    # Subset the extra data if provided
+    if extra_data is not None:
+        extra_data = subset_extra_data(extra_data, final_indices)
+
+    return resampled_ponts, extra_data
+
+
+def subset_extra_data(extra_data: dict[str, Any], indices: np.ndarray) -> dict[str, Any]:
+    """
+    Subset the extra data dictionary based on the selected indices.
+
+    :param extra_data: The dictionary containing extra data.
+    :param indices: The indices to subset the data.
+    :return: A new dictionary with data subset according to the provided indices.
+    """
+    if not extra_data:
+        return extra_data
+    return {key: value[indices] for key, value in extra_data.items() if key in extra_data}
 
 
 def medfilt_data(values, size=15):
@@ -332,3 +378,22 @@ def get_initial_extrinsics(rtvecs, cam_names=None):
     rvecs = np.array(rvecs)
     tvecs = np.array(tvecs)
     return rvecs, tvecs
+
+
+def calculate_error_bounds(error_dict: dict[tuple[int, int], tuple[int, np.ndarray]]) -> tuple[float, float]:
+    """Calculate the maximum and minimum error bounds from an error dictionary.
+
+    Args:
+        error_dict (Dict[Tuple[int, int], Tuple[int, np.ndarray]]): Dictionary containing error statistics
+            for camera pairs, where the key is a tuple of camera indices and the value is a tuple of
+            (number of observations, percentiles).
+
+    Returns:
+        Tuple[float, float]: A tuple of (max_error, min_error) based on the percentiles of error means.
+    """
+    max_error = 0.0
+    min_error = float('inf')
+    for _, (_, percents) in error_dict.items():
+        max_error = max(percents[-1], max_error)
+        min_error = min(percents[0], min_error)
+    return max_error, min_error

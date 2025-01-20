@@ -50,8 +50,8 @@ def triangulate_3d_data(
 
     spatial_data3d_numFrames_numTrackedPoints_XYZ = data3d_flat.reshape(number_of_frames, number_of_tracked_points, 3)
 
-    data3d_reprojectionError_flat = anipose_calibration_object.reprojection_error(data3d_flat, data2d_flat, mean=True)
-    data3d_reprojectionError_full = anipose_calibration_object.reprojection_error(data3d_flat, data2d_flat, mean=False)
+    data3d_reprojectionError_flat = anipose_calibration_object.calculate_reprojection_error(data3d_flat, data2d_flat, mean=True)
+    data3d_reprojectionError_full = anipose_calibration_object.calculate_reprojection_error(data3d_flat, data2d_flat, mean=False)
     reprojectionError_cam_frame_marker = np.linalg.norm(data3d_reprojectionError_full, axis=2).reshape(
         number_of_cameras, number_of_frames, number_of_tracked_points
     )

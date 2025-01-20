@@ -13,7 +13,7 @@ from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig, Charuco
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator, \
-    SingleCameraCalibrationDTO
+    SingleCameraCalibrationEstimate
 from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig, BasePipelineData, \
     BaseCameraNodeOutputData
 
@@ -31,7 +31,7 @@ class CalibrationPipelineCameraNodeConfig(BasePipelineStageConfig):
 class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
     frame_metadata: FrameMetadata
     charuco_observation: CharucoObservation
-    calibration_dto: SingleCameraCalibrationDTO
+    calibration_estimate: SingleCameraCalibrationEstimate
 
     @property
     def can_see_target(self) -> bool:
@@ -41,7 +41,7 @@ class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
         return dict(
             frame_metadata=self.frame_metadata.model_dump(),
             charuco_observation=self.charuco_observation.to_serializable_dict(),
-            calibration_dto=self.calibration_dto.to_serializable_dict(),
+            calibration_estimate=self.calibration_estimate.to_serializable_dict(),
             can_see_target=self.can_see_target,
         )
 
@@ -118,7 +118,7 @@ class CalibrationCameraNode(BaseCameraNode):
                     output_queue.put(CalibrationCameraNodeOutputData(
                         frame_metadata=FrameMetadata.from_frame_metadata_array(frame.metadata),
                         charuco_observation=observation,
-                        calibration_dto=camera_calibration_estimator.to_dto(),
+                        calibration_estimate=camera_calibration_estimator.to_dto(),
                         time_to_retrieve_frame_ns=time_to_retrieve,
                         time_to_process_frame_ns=time_to_process
                     ),

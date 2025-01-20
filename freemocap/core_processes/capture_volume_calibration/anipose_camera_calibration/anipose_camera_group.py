@@ -323,6 +323,7 @@ class CalibrationInputData:
 @dataclass
 class AniposeCameraGroupCalibrator:
     camera_calibration_estimates: dict[CameraId, AniposeCameraCalibrationEstimate]
+    
     max_iterations: int = 10
     starting_error_threshold: float = 15.0
     ending_error_threshold: float = 1.0
@@ -379,7 +380,7 @@ class AniposeCameraGroupCalibrator:
         points2d, extra_data = resample_points_based_on_shared_views(
             original_points2d,
             original_extra_data,
-            number_of_samples_to_return=number_of_samples_full
+            number_of_samples_to_return=self.number_of_samples_full
         )
         initial_error = self.get_mean_reprojection_error(points2d, median=True)
 
@@ -387,15 +388,15 @@ class AniposeCameraGroupCalibrator:
 
         # Calculate dynamic error thresholds for each iteration
         error_thresholds = np.exp(
-            np.linspace(np.log(starting_error_threshold), np.log(ending_error_threshold), num=max_iterations))
+            np.linspace(np.log(self.starting_error_threshold), np.log(self.ending_error_threshold), num=self.max_iterations))
 
         logger.debug(f"Error thresholds we will use for each bundle adjustment iteration: {error_thresholds}")
 
         # Iterative bundle adjustment
-        dynamic_error_threshold = starting_error_threshold
-        for iteration in range(max_iterations):
+        dynamic_error_threshold = self.starting_error_threshold
+        for iteration in range(self.max_iterations):
             resampled_points2d, resampled_extra_data = resample_points_based_on_shared_views(
-                original_points2d, original_extra_data, number_of_samples_to_return=number_of_samples_full
+                original_points2d, original_extra_data, number_of_samples_to_return=self.number_of_samples_full
             )
 
             # Triangulate 3D points from resampled 2D points
@@ -421,7 +422,7 @@ class AniposeCameraGroupCalibrator:
             # Update error list and check for convergence
             current_error = np.median(normalized_errors)
             error_list.append(current_error)
-            if current_error < error_threshold:
+            if current_error < self.error_threshold:
 
                 logger.debug(f"Converged after {iteration + 1} iterations")
                 break
@@ -438,19 +439,18 @@ class AniposeCameraGroupCalibrator:
                 resampled_points2d[:, good_points_mask],
                 filtered_extra_data,
                 loss="linear",
-                function_tolerance=function_tolerance,
-                maximum_number_function_evals=max_number_function_evals,
+                function_tolerance=self.function_tolerance,
+                maximum_number_function_evals=self.max_number_function_evals,
             )
 
         # Final adjustments and error calculation
         final_resampled_points2d, final_resampled_extra_data = resample_points_based_on_shared_views(
-            original_points2d, original_extra_data, number_of_samples_to_return=number_of_samples_full
+            original_points2d, original_extra_data, number_of_samples_to_return=self.number_of_samples_full
         )
         self.final_adjustments(points2d=final_resampled_points2d,
                                extra_data=final_resampled_extra_data,
                                error_threshold=dynamic_error_threshold,
-                               function_tolerance=function_tolerance,
-                               max_number_function_evals=max_number_function_evals)
+)
 
         final_error = self.get_mean_reprojection_error(final_resampled_points2d, median=True)
         print("Final error: ", final_error)

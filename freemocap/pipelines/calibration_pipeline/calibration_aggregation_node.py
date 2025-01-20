@@ -48,6 +48,7 @@ class CalibrationAggregationNodeConfig(BasePipelineStageConfig):
 class CameraViewRecord(BaseModel):
     camera_id: CameraId
     can_see_target: bool
+    camera_node_output: CalibrationCameraNodeOutputData
 
 
 class SharedViewAccumulator(BaseModel):
@@ -86,7 +87,8 @@ class SharedViewAccumulator(BaseModel):
     def receive_camera_node_output(self, multi_frame_number: int,
                                    camera_node_output: dict[CameraId, CalibrationCameraNodeOutputData]):
         self.camera_view_records_by_frame[multi_frame_number] = {camera_id: CameraViewRecord(camera_id=camera_id,
-                                                                                             can_see_target=camera_node_output.can_see_target)
+                                                                                             can_see_target=camera_node_output.can_see_target,
+                                                                                             camera_node_output=camera_node_output)
                                                                  for camera_id, camera_node_output in
                                                                  camera_node_output.items()}
 

@@ -18,7 +18,7 @@ DEFAULT_INTRINSICS_COEFFICIENTS_COUNT = 5
 MIN_CHARUCO_CORNERS = 6
 
 @dataclass
-class SingleCameraCalibrationDTO:
+class SingleCameraCalibrationEstimate:
     camera_matrix: np.ndarray[3, 3]
     distortion_coefficients: np.ndarray[..., 1]
     mean_reprojection_errors: list[float]
@@ -241,8 +241,8 @@ class SingleCameraCalibrator:
 
         print(f"Mean reprojection errors: {self.mean_reprojection_errors}")
 
-    def to_dto(self) -> SingleCameraCalibrationDTO:
-        return SingleCameraCalibrationDTO(
+    def to_dto(self) -> SingleCameraCalibrationEstimate:
+        return SingleCameraCalibrationEstimate(
             camera_matrix=self.camera_matrix,
             distortion_coefficients=self.distortion_coefficients,
             mean_reprojection_errors=self.mean_reprojection_errors,

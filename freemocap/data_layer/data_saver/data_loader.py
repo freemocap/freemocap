@@ -9,7 +9,7 @@ from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
 )
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
-from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, SkeletonSchema
+from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, SkeletonSchema, ReprojectionError
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     BODY_3D_DATAFRAME_CSV_FILE_NAME,
     CENTER_OF_MASS_FOLDER_NAME,
@@ -19,6 +19,10 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     FACE_3D_DATAFRAME_CSV_FILE_NAME,
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
+    RAW_DATA_FOLDER_NAME,
+    REPROJECTION_ERROR_NPY_FILE_NAME,
+    FULL_REPROJECTION_ERROR_NPY_FILE_NAME,
+    REPROJECTION_FILTERED_PREFIX
 )
 from freemocap.system.paths_and_filenames.path_getters import (
     get_output_data_folder_path,
@@ -39,16 +43,19 @@ class DataLoader:
         include_hands: bool = True,
         include_face: bool = True,
         include_com: bool = True,
+        include_reprojection_error: bool = True,
         model_info: ModelInfo = mediapipe_model_info,
     ):
         self._recording_folder_path = Path(recording_folder_path)
         self.include_hands = include_hands
         self.include_face = include_face
         self.include_com = include_com
+        self.include_reprojection_error = include_reprojection_error
         self._model_info = model_info
 
         self._recording_name = self._recording_folder_path.name
         self._output_folder_path = Path(get_output_data_folder_path(self._recording_folder_path))
+        self._raw_data_folder_path = self._output_folder_path / RAW_DATA_FOLDER_NAME
         self.number_of_frames = None
 
         self._set_file_prefix()
@@ -59,6 +66,7 @@ class DataLoader:
         self._load_data_frames()
         self._load_full_npy_data()
         self._load_center_of_mass_data()
+        self._load_reprojection_error_data()
         # self._load_segment_lengths()
         # self._load_skeleton_schema()
         self._validate_data()
@@ -92,6 +100,8 @@ class DataLoader:
         self._validate_dataframe(self.face_dataframe, "face")
         self._validate_numpy_array(self.center_of_mass_xyz, "center of mass")
         self._validate_numpy_array(self.segment_center_of_mass_segment_xyz, "segment center of mass")
+        self._validate_numpy_array(self.reprojection_error_frame_name_value, "average reprojection error")
+        self._validate_numpy_array(self.reprojection_error_camera_frame_name_value, "reprojection error by camera", frame_index=1)
 
     def _validate_dataframe(self, df, df_name):
         if df is not None and len(df) != self.number_of_frames:
@@ -99,11 +109,11 @@ class DataLoader:
                 f"The number of frames in the {df_name} dataframe ({len(df)}) is different from the expected number of frames ({self.number_of_frames})."
             )
 
-    def _validate_numpy_array(self, np_array, np_array_name):
-        if np_array is not None and np_array.shape[0] != self.number_of_frames:
+    def _validate_numpy_array(self, np_array, np_array_name, frame_index: int = 0):
+        if np_array is not None and np_array.shape[frame_index] != self.number_of_frames:
             print(f"\n\n {np_array.shape} \n\n")
             raise ValueError(
-                f"The number of frames in the {np_array_name} data ({np_array.shape[0]}) is different from the expected number of frames ({self.number_of_frames})."
+                f"The number of frames in the {np_array_name} data ({np_array.shape[frame_index]}) is different from the expected number of frames ({self.number_of_frames})."
             )
 
     def _load_timestamps(self):
@@ -138,6 +148,36 @@ class DataLoader:
             self.segment_center_of_mass_segment_xyz = None
             self.include_com = False
 
+    def _load_reprojection_error_data(self):
+        """
+        Load reprojection error averaged across cameras and by camera.
+        Defaults to using reprojection filtered values if they exist.
+        """
+        filtered_average_error_path = self._raw_data_folder_path / f"{REPROJECTION_FILTERED_PREFIX}{self._file_prefix}{REPROJECTION_ERROR_NPY_FILE_NAME}"
+        filtered_by_camera_path = self._raw_data_folder_path / f"{REPROJECTION_FILTERED_PREFIX}{self._file_prefix}{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
+
+        raw_average_error_path = self._raw_data_folder_path / f"{self._file_prefix}{REPROJECTION_ERROR_NPY_FILE_NAME}"
+        raw_by_camera_path = self._raw_data_folder_path / f"{self._file_prefix}{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
+
+        try:
+            if filtered_average_error_path.exists():
+                logger.debug(f"Loading filtered average reprojection error from {filtered_average_error_path}")
+                self.reprojection_error_frame_name_value = np.load(filtered_average_error_path)
+            else:
+                logger.debug(f"Loading unfiltered average reprojection error from {raw_average_error_path}")
+                self.reprojection_error_frame_name_value = np.load(raw_average_error_path)
+            if filtered_by_camera_path.exists():
+                logger.debug(f"Loading filtered by camera reprojection error from {filtered_by_camera_path}")
+                self.reprojection_error_camera_frame_name_value = np.load(filtered_by_camera_path)
+            else:
+                logger.debug(f"Loading unfiltered by camera reprojection error from {raw_by_camera_path}")
+                self.reprojection_error_camera_frame_name_value = np.load(raw_by_camera_path)
+        except FileNotFoundError:
+            logger.warning("unable to load reprojection error data from file.")
+            self.reprojection_error_frame_name_value = None
+            self.reprojection_error_camera_frame_name_value = None
+            self.include_reprojection_error = None
+
     def _load_full_npy_data(self):
         self.data_frame_name_xyz = np.load(self._output_folder_path / (self._file_prefix + DATA_3D_NPY_FILE_NAME))
 
@@ -146,7 +186,9 @@ class DataLoader:
 
     def load_frame_data(self, frame_number: int) -> FrameData:
         return FrameData(
-            timestamps=self.get_timestamps(frame_number), tracked_points=self.get_tracked_points(frame_number)
+            timestamps=self.get_timestamps(frame_number),
+            tracked_points=self.get_tracked_points(frame_number),
+            reprojection_error=self._get_reprojection_error_data(frame_number),
         )
 
     def get_timestamps(self, frame_number):
@@ -214,6 +256,22 @@ class DataLoader:
             )
 
         return com_data
+
+    def _get_reprojection_error_data(self, frame_number: int) -> Dict[str, ReprojectionError]:
+        """
+        Get reprojection error data for a given frame number.
+        """
+        if self.reprojection_error_frame_name_value is None or self.reprojection_error_camera_frame_name_value is None:
+            return {}
+        num_cams = self.reprojection_error_camera_frame_name_value.shape[0]
+        reprojection_error_data = {}
+        for index, point_name in enumerate(self._model_info.landmark_names):
+            reprojection_error_data[point_name] = ReprojectionError(value=self.reprojection_error_frame_name_value[frame_number, index])
+            for cam in range(num_cams):
+                reprojection_error_data[f"{point_name}_cam{cam}"] = ReprojectionError(value=self.reprojection_error_camera_frame_name_value[cam, frame_number, index])
+
+        return reprojection_error_data
+
 
     def _process_dataframe(self, data_frame) -> Dict[str, Any]:
         """

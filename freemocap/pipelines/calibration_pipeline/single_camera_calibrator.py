@@ -1,56 +1,52 @@
-import json
-from dataclasses import dataclass, field
-
 import cv2
 import numpy as np
-
+from numpydantic import NDArray, Shape
+from pydantic import BaseModel, Field
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservations, CharucoObservation
 
 
-@dataclass
-class SingleCameraCalibrationError:
+class SingleCameraCalibrationError(BaseModel):
     mean_reprojection_error: float
     reprojection_error_by_view: list[float]
-    jacobian: list[np.ndarray]
+    jacobian: list[NDArray[Shape["*, ..."], np.float32]]  # TODO - figure out this shape
 
 
 DEFAULT_INTRINSICS_COEFFICIENTS_COUNT = 5
 MIN_CHARUCO_CORNERS = 6
 
-@dataclass
-class SingleCameraCalibrationEstimate:
-    camera_matrix: np.ndarray[3, 3]
-    distortion_coefficients: np.ndarray[..., 1]
+
+class SingleCameraCalibrationEstimate(BaseModel):
+    camera_matrix: NDArray[Shape["3, 3"], np.float32]
+    distortion_coefficients: NDArray[Shape["5"], np.float32]
     mean_reprojection_errors: list[float]
     camera_calibration_residuals: list[float]
     charuco_observations: CharucoObservations
-    object_points_views: list[np.ndarray[..., 3]]
-    image_points_views: list[np.ndarray[..., 2]]
-    rotation_vectors: list[np.ndarray[..., 3]]
-    translation_vectors: list[np.ndarray[..., 3]]
+    object_points_views: list[NDArray[Shape["*, 3"], np.float32]]
+    image_points_views: list[NDArray[Shape["*, 2"], np.float32]]
+    rotation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
+    translation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
     reprojection_error_by_view: list[float]
+    #
+    # def to_serializable_dict(self  ):
+    #     d =  {
+    #         "camera_matrix": self.camera_matrix.tolist() if self.camera_matrix is not None else None,
+    #         "distortion_coefficients": self.distortion_coefficients.tolist() if self.distortion_coefficients is not None else None,
+    #         "mean_reprojection_errors": self.mean_reprojection_errors if self.mean_reprojection_errors else None,
+    #         "camera_calibration_residuals": self.camera_calibration_residuals if self.camera_calibration_residuals else None,
+    #         "charuco_observations": [obs.to_serializable_dict() for obs in self.charuco_observations] if self.charuco_observations else None,
+    #         "object_points_views": [obj.tolist() for obj in self.object_points_views] if self.object_points_views else None,
+    #         "image_points_views": [img.tolist() for img in self.image_points_views] if self.image_points_views else None,
+    #         "rotation_vectors": [rot.tolist() for rot in self.rotation_vectors] if self.rotation_vectors else None,
+    #         "translation_vectors": [trans.tolist() for trans in self.translation_vectors] if self.translation_vectors else None,
+    #         "reprojection_error_by_view": self.reprojection_error_by_view if self.reprojection_error_by_view else None,
+    #     }
+    #     try:
+    #         json.dumps(d).encode('utf-8')
+    #     except Exception as e:
+    #         raise ValueError(f"Failed to serialize SingleCameraCalibrationDTO to JSON: {e}")
 
-    def to_serializable_dict(self  ):
-        d =  {
-            "camera_matrix": self.camera_matrix.tolist() if self.camera_matrix is not None else None,
-            "distortion_coefficients": self.distortion_coefficients.tolist() if self.distortion_coefficients is not None else None,
-            "mean_reprojection_errors": self.mean_reprojection_errors if self.mean_reprojection_errors else None,
-            "camera_calibration_residuals": self.camera_calibration_residuals if self.camera_calibration_residuals else None,
-            "charuco_observations": [obs.to_serializable_dict() for obs in self.charuco_observations] if self.charuco_observations else None,
-            "object_points_views": [obj.tolist() for obj in self.object_points_views] if self.object_points_views else None,
-            "image_points_views": [img.tolist() for img in self.image_points_views] if self.image_points_views else None,
-            "rotation_vectors": [rot.tolist() for rot in self.rotation_vectors] if self.rotation_vectors else None,
-            "translation_vectors": [trans.tolist() for trans in self.translation_vectors] if self.translation_vectors else None,
-            "reprojection_error_by_view": self.reprojection_error_by_view if self.reprojection_error_by_view else None,
-        }
-        try:
-            json.dumps(d).encode('utf-8')
-        except Exception as e:
-            raise ValueError(f"Failed to serialize SingleCameraCalibrationDTO to JSON: {e}")
 
-@dataclass
-class SingleCameraCalibrator:
-
+class SingleCameraCalibrator(BaseModel):
     """
     SingleCameraCalibrator class for estimating camera calibration parameters.
 
@@ -72,22 +68,21 @@ class SingleCameraCalibrator:
     image_size: tuple[int, ...]
 
     charuco_corner_ids: list[int]
-    charuco_corners_in_object_coordinates: np.ndarray[..., 3]
+    charuco_corners_in_object_coordinates: NDArray[Shape["*, 3"], np.float32]
 
     aruco_marker_ids: list[int]
-    aruco_corners_in_object_coordinates: list[np.ndarray[..., 3]]
+    aruco_corners_in_object_coordinates: NDArray[Shape["*, 3"], np.float32]
 
-    distortion_coefficients: np.ndarray[..., 1]
-    camera_matrix: np.ndarray[3, 3]
+    distortion_coefficients: NDArray[Shape["5"], np.float32]
+    camera_matrix: NDArray[Shape["3, 3"], np.float32]
 
-    charuco_observations: CharucoObservations = field(default_factory=list)
-    object_points_views: list[np.ndarray[..., 3]] = field(default_factory=list)
-    image_points_views: list[np.ndarray[..., 2]] = field(default_factory=list)
-    rotation_vectors: list[np.ndarray[..., 3]] = field(default_factory=list)
-    translation_vectors: list[np.ndarray[..., 3]] = field(default_factory=list)
-    reprojection_error_by_view:list[float] = field(default_factory=list)
-    mean_reprojection_errors: list[float] = field(default_factory=list)
-    camera_calibration_residuals: list[float] = field(default_factory=list)
+    charuco_observations: CharucoObservations = Field(default_factory=CharucoObservations)
+    object_points_views: list[NDArray[Shape["*, 3"], np.float32]]
+    rotation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
+    translation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
+    reprojection_error_by_view: list[float]
+    mean_reprojection_errors: list[float]
+    camera_calibration_residuals: list[float]
 
     @property
     def has_calibration(self):
@@ -105,7 +100,6 @@ class SingleCameraCalibrator:
         camera_matrix[0, 2] = image_size[0] / 2  # x_center
         camera_matrix[1, 2] = image_size[1] / 2  # y_center
 
-
         if not number_of_distortion_coefficients in [4, 5, 8, 12, 14]:
             raise ValueError("Invalid number of distortion coefficients. Must be 4, 5, 8, 12, or 14.")
 
@@ -121,8 +115,13 @@ class SingleCameraCalibrator:
                    aruco_corners_in_object_coordinates=aruco_corners_in_object_coordinates,
                    camera_matrix=camera_matrix,
                    distortion_coefficients=np.zeros(number_of_distortion_coefficients),
+                   object_points_views=[],
+                   rotation_vectors=[],
+                   translation_vectors=[],
+                   reprojection_error_by_view=[],
+                   mean_reprojection_errors=[],
+                   camera_calibration_residuals=[],
                    )
-
 
     def add_observation(self, observation: CharucoObservation):
         if observation.charuco_empty or len(observation.detected_charuco_corner_ids) < MIN_CHARUCO_CORNERS:
@@ -133,7 +132,6 @@ class SingleCameraCalibrator:
         self.image_points_views.append(np.squeeze(observation.detected_charuco_corners_image_coordinates))
         self.object_points_views.append(
             self.charuco_corners_in_object_coordinates[np.squeeze(observation.detected_charuco_corner_ids), :])
-
 
     def update_calibration_estimate(self):
         if len(self.object_points_views) < len(self.charuco_corner_ids):
@@ -151,7 +149,6 @@ class SingleCameraCalibrator:
                                                          cameraMatrix=self.camera_matrix,
                                                          distCoeffs=self.distortion_coefficients,
                                                          )
-
 
         if not residual:
             raise ValueError(f"Camera Calibration failed! Check your input data:",
@@ -189,7 +186,7 @@ class SingleCameraCalibrator:
         rotation_vector, translation_vector = self.get_board_pose(
             object_points=observation.detected_charuco_corners_in_object_coordinates,
             image_points=observation.detected_charuco_corners_image_coordinates
-            )
+        )
         axis_length = 5
         return cv2.drawFrameAxes(image,
                                  self.camera_matrix,
@@ -214,11 +211,9 @@ class SingleCameraCalibrator:
         self.image_points_views = [self.image_points_views[i] for i in sorted_indices[:number_of_views_to_keep]]
         self.rotation_vectors = [self.rotation_vectors[i] for i in sorted_indices[:number_of_views_to_keep]]
         self.translation_vectors = [self.translation_vectors[i] for i in sorted_indices[:number_of_views_to_keep]]
-        self.reprojection_error_by_view = [self.reprojection_error_by_view[i] for i in sorted_indices[:number_of_views_to_keep]]
+        self.reprojection_error_by_view = [self.reprojection_error_by_view[i] for i in
+                                           sorted_indices[:number_of_views_to_keep]]
         self.charuco_observations = [self.charuco_observations[i] for i in sorted_indices[:number_of_views_to_keep]]
-
-
-
 
     def _update_reprojection_error(self):
         if len(self.image_points_views) != len(self.object_points_views):
@@ -235,9 +230,11 @@ class SingleCameraCalibrator:
                                                                  self.camera_matrix,
                                                                  self.distortion_coefficients)
 
-            self.reprojection_error_by_view.append(np.mean(np.abs(self.image_points_views[view_index] - np.squeeze(projected_image_points))))
+            self.reprojection_error_by_view.append(
+                np.mean(np.abs(self.image_points_views[view_index] - np.squeeze(projected_image_points))))
 
-        self.mean_reprojection_errors.append(np.mean(self.reprojection_error_by_view) if self.reprojection_error_by_view else -1)
+        self.mean_reprojection_errors.append(
+            np.mean(self.reprojection_error_by_view) if self.reprojection_error_by_view else -1)
 
         print(f"Mean reprojection errors: {self.mean_reprojection_errors}")
 

@@ -20,14 +20,12 @@ from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageC
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class CalibrationPipelineCameraNodeConfig(BasePipelineStageConfig):
     camera_config: CameraConfig
     tracker_config: CharucoTrackerConfig
     param1: int = 1
 
 
-@dataclass
 class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
     frame_metadata: FrameMetadata
     charuco_observation: CharucoObservation
@@ -45,7 +43,6 @@ class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
             can_see_target=self.can_see_target,
         )
 
-@dataclass
 class CalibrationCameraNode(BaseCameraNode):
     @classmethod
     def create(cls,

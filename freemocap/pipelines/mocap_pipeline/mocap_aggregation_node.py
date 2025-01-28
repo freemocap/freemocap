@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from multiprocessing import Queue, Process
 from typing import Dict
 
+from skellycam import CameraId
+
 from freemocap.pipelines.mocap_pipeline.mocap_camera_node import MocapCameraNodeOutputData
 from freemocap.pipelines.mocap_pipeline.point_trangulator import PointTriangulator
 from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BaseAggregationNode, BasePipelineOutputData
-from skellycam import CameraId
 
 logger = logging.getLogger(__name__)
 
@@ -24,21 +25,11 @@ class MocapAggregationNodeConfig(BasePipelineStageConfig):
     param2: int = 2
 
 
-@dataclass
 class MocapPipelineOutputData(BasePipelineOutputData):
     camera_node_output: dict[CameraId, MocapCameraNodeOutputData]
     aggregation_layer_output: MocapAggregationLayerOutputData
 
-    def to_serializable_dict(self):
-        return {
-            "camera_node_output": {camera_id: camera_node_output.to_serializable_dict() for
-                                   camera_id, camera_node_output in
-                                   self.camera_node_output.items()},
-            "aggregation_layer_output": self.aggregation_layer_output.to_serializable_dict()
-        }
 
-
-@dataclass
 class MocapAggregationProcessNode(BaseAggregationNode):
     @classmethod
     def create(cls,
@@ -112,9 +103,8 @@ class MocapAggregationProcessNode(BaseAggregationNode):
                         raise ValueError(f"Camera {camera_id} did not send any data!")
 
                     points3d.update({f"Cam{camera_id}.{name}": tuple(point_xyz) for name, point_xyz in
-                                     camera_node_output.mediapipe_observation.all_points(dimensions=3, scale_by=0.001).items()})
-
-
+                                     camera_node_output.mediapipe_observation.all_points(dimensions=3,
+                                                                                         scale_by=0.001).items()})
 
                 output = MocapPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
                                                  aggregation_layer_output=MocapAggregationLayerOutputData(

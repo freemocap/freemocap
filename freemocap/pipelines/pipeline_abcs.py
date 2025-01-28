@@ -1,11 +1,13 @@
 import asyncio
 import logging
 import multiprocessing
-from abc import ABC, abstractproperty, abstractmethod
-from dataclasses import dataclass, field
+from abc import ABC
 from enum import Enum
 from multiprocessing import Process, Queue
 
+import numpy as np
+from numpydantic import NDArray, Shape
+from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core import CameraId
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
     SingleSlotCameraSharedMemory
@@ -24,26 +26,23 @@ class ReadTypes(str, Enum):
     LATEST = "latest"
     NEXT = "next"
 
-@dataclass
-class BasePipelineData( ABC):
+class BasePipelineData(BaseModel,ABC):
     pass
 
-@dataclass
+
 class BaseAggregationLayerOutputData(BasePipelineData):
     multi_frame_number: int
-    points3d: dict[str, tuple]
+    points3d: dict[str, NDArray[Shape["3"], np.float32]]
 
-    def to_serializable_dict(self):
-        return {"multi_frame_number": self.multi_frame_number, "points3d": self.points3d}
 
-@dataclass
+
 class BaseCameraNodeOutputData(BasePipelineData):
     frame_metadata: FrameMetadata
     time_to_retrieve_frame_ns: int
     time_to_process_frame_ns: int
 
-@dataclass
-class BasePipelineOutputData(ABC):
+
+class BasePipelineOutputData(BasePipelineData):
     camera_node_output: dict[CameraId, BaseCameraNodeOutputData]
     aggregation_layer_output: BaseAggregationLayerOutputData
 
@@ -54,18 +53,14 @@ class BasePipelineOutputData(ABC):
             raise ValueError(f"Frame numbers from camera nodes do not match - got {frame_numbers}")
         return frame_numbers[0]
 
-    @abstractmethod
-    def to_serializable_dict(self):
-        pass
 
-@dataclass
-class BasePipelineStageConfig( ABC):
+class BasePipelineStageConfig(BaseModel, ABC):
     pass
 
-@dataclass
-class BasePipelineConfig( ABC):
-    camera_node_configs: dict[CameraId, BasePipelineStageConfig] = field(default_factory=dict)
-    aggregation_node_config: BasePipelineStageConfig = field(default_factory=BasePipelineStageConfig)
+
+class BasePipelineConfig(BaseModel, ABC):
+    camera_node_configs: dict[CameraId, BasePipelineStageConfig]
+    aggregation_node_config: BasePipelineStageConfig
 
     @classmethod
     def create(cls, camera_ids: list[CameraId], tracker_config: BaseTrackerConfig):
@@ -73,8 +68,8 @@ class BasePipelineConfig( ABC):
                    aggregation_node_config=BasePipelineStageConfig())
 
 
-@dataclass
-class BaseCameraNode(ABC):
+class BaseCameraNode(BaseModel, ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     config: BasePipelineStageConfig
     camera_id: CameraId
     incoming_frame_shm: SingleSlotCameraSharedMemory
@@ -152,8 +147,8 @@ class BaseCameraNode(ABC):
         self.process.join()
 
 
-@dataclass
-class BaseAggregationNode(ABC):
+class BaseAggregationNode(BaseModel, ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     config: BasePipelineStageConfig
     process: Process
     input_queues: dict[CameraId, Queue]
@@ -211,8 +206,8 @@ class BaseAggregationNode(ABC):
         self.shutdown_event.set()
         self.process.join()
 
-@dataclass
-class PipelineImageAnnotator(ABC):
+
+class PipelineImageAnnotator(BaseModel, ABC):
     camera_node_annotators: dict[CameraId, BaseImageAnnotator]
 
     @classmethod
@@ -224,7 +219,7 @@ class PipelineImageAnnotator(ABC):
         raise NotImplementedError(
             "You need to re-implement this method with your pipeline's version of the PipelineImageAnnotator ")
 
-@dataclass
+
 class BaseProcessingPipeline(ABC):
     config: BasePipelineStageConfig
     camera_nodes: dict[CameraId, BaseCameraNode]
@@ -332,8 +327,6 @@ class BaseProcessingPipeline(ABC):
         if pipeline_output is None:
             return multiframe_payload
         return self.annotator.annotate_images(multiframe_payload, pipeline_output)
-
-
 
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__} with camera processes {list(self.camera_nodes.keys())}...")

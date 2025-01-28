@@ -7,10 +7,9 @@ from multiprocessing import Queue, Process
 from typing import Dict
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from skellycam import CameraId
 from tabulate import tabulate
-
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node import CalibrationCameraNodeOutputData
 from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BaseAggregationNode, BasePipelineOutputData
@@ -46,6 +45,7 @@ class CalibrationAggregationNodeConfig(BasePipelineStageConfig):
 
 
 class CameraViewRecord(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     camera_id: CameraId
     can_see_target: bool
     camera_node_output: CalibrationCameraNodeOutputData

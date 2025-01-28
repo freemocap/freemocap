@@ -36,7 +36,7 @@ class FreemocapFrontendPayload(FrontendFramePayload):
                multi_frame_payload: MultiFramePayload,
                latest_pipeline_output: BasePipelineOutputData | None = None):
 
-        latest_pipeline_output_dict = latest_pipeline_output.to_serializable_dict() if latest_pipeline_output is not None else {"hi": "wowww"}
+        latest_pipeline_output_dict = latest_pipeline_output.model_dump() if latest_pipeline_output is not None else {"hi": "wowww"}
 
         return cls(
             **FrontendFramePayload.from_multi_frame_payload(multi_frame_payload).model_dump(),

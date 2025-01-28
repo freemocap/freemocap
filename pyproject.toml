@@ -18,6 +18,7 @@ dependencies = [
     "skellyforge",
     "skellytracker",
     "pydantic>=2.10.4",
+    "numpydantic>=1.6.7",
     #    "ltrt"
 ]
 
@@ -36,5 +37,20 @@ freemocap = "freemocap.__main__:main"
 [tool.uv]
 package = true
 dev-dependencies = [
-    "pydantic2zod>=0.1.1",
+#    "pydantic2zod>=0.1.1",
+    "bumpver",
 ]
+
+
+[tool.bumpver]
+current_version = "v1.4.7"
+version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
+commit_message = "Bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = true
+
+[tool.bumpver.file_patterns]
+#"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
+"freemocap/__init__.py" = ["{version}"]
+".github/workflows/*_installer.yml" = ['export PYAPP_PROJECT_VERSION={version}']

@@ -30,7 +30,7 @@ class CharucoBoardPayload(BaseModel):
 
 class FreemocapFrontendPayload(FrontendFramePayload):
     latest_pipeline_output: BasePipelineOutputData | None
-    # points3d: dict[CameraId, NDArray[Shape["3 xyz"], np.float64]] | None
+    points3d: dict[CameraId, NDArray[Shape["3 xyz"], np.float64]] | None
 
 
     @classmethod
@@ -38,11 +38,8 @@ class FreemocapFrontendPayload(FrontendFramePayload):
                multi_frame_payload: MultiFramePayload,
                latest_pipeline_output: BasePipelineOutputData | None = None):
 
-        # latest_pipeline_output_dict = latest_pipeline_output.model_dump() if latest_pipeline_output is not None else {"hi": "wowww"}
-
         return cls(
             **FrontendFramePayload.from_multi_frame_payload(multi_frame_payload).model_dump(),
             latest_pipeline_output=latest_pipeline_output,
-            # points3d=latest_pipeline_output.aggregation_layer_output.points3d if latest_pipeline_output is not None else None
-
+            points3d=latest_pipeline_output.aggregation_layer_output.points3d if latest_pipeline_output is not None else None
         )

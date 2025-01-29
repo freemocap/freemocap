@@ -1,8 +1,15 @@
+import logging
+
 import cv2
 import numpy as np
 from numpydantic import NDArray, Shape
 from pydantic import BaseModel, Field
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservations, CharucoObservation
+
+from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
+from freemocap.pipelines.calibration_pipeline.single_camera_calibration_estimate import SingleCameraCalibrationEstimate
+
+logger = logging.getLogger(__name__)
 
 
 class SingleCameraCalibrationError(BaseModel):
@@ -14,13 +21,6 @@ class SingleCameraCalibrationError(BaseModel):
 DEFAULT_INTRINSICS_COEFFICIENTS_COUNT = 5
 MIN_CHARUCO_CORNERS = 6
 
-
-class SingleCameraCalibrationEstimate(BaseModel):
-    camera_matrix: NDArray[Shape["3, 3"], np.float64]
-    distortion_coefficients: NDArray[Shape["5"], np.float64]
-    mean_reprojection_errors: list[float]
-    camera_calibration_residuals: list[float]
-    reprojection_error_by_view: list[float]
 
 class SingleCameraCalibrator(BaseModel):
     """
@@ -64,6 +64,44 @@ class SingleCameraCalibrator(BaseModel):
     @property
     def has_calibration(self):
         return len(self.mean_reprojection_errors) > 0
+
+    @property
+    def current_estimate(self) -> SingleCameraCalibrationEstimate:
+        return SingleCameraCalibrationEstimate(
+            camera_matrix=self.camera_matrix,
+            distortion_coefficients=self.distortion_coefficients,
+            mean_reprojection_errors=self.mean_reprojection_errors,
+            camera_calibration_residuals=self.camera_calibration_residuals,
+            reprojection_error_by_view=self.reprojection_error_by_view,
+            # charuco_observations=self.charuco_observations,
+            # object_points_views=self.object_points_views,
+            # image_points_views=self.image_points_views,
+            # rotation_vectors=self.rotation_vectors,
+            # translation_vectors=self.translation_vectors,
+            #
+        )
+
+    @classmethod
+    def from_camera_node_outputs(cls, camera_node_outputs: list[CalibrationCameraNodeOutputData], calibrate_camera: bool = True):
+        view0 = camera_node_outputs[0]
+        camera_id = view0.camera_id
+        observation = view0.camera_node_output.charuco_observation
+        instance = cls.create_initial(
+            image_size=view0.camera_node_output.image_size,
+            aruco_marker_ids=observation.all_aruco_ids,
+            aruco_corners_in_object_coordinates=observation.all_aruco_corners_in_object_coordinates,
+            charuco_corner_ids=observation.all_charuco_ids,
+            charuco_corners_in_object_coordinates=observation.all_charuco_corners_in_object_coordinates,
+        )
+        for view in camera_node_outputs:
+            if view.camera_id != camera_id:
+                raise ValueError("All camera views must be from the same camera")
+            instance.add_observation(view.camera_node_output.charuco_observation)
+
+        if calibrate_camera:
+            logger.info(f"Calibrating camera {view0.camera_id} with {len(instance.object_points_views)} views")
+            instance.update_calibration_estimate()
+        return instance
 
     @classmethod
     def create_initial(cls,
@@ -215,18 +253,3 @@ class SingleCameraCalibrator(BaseModel):
             np.mean(self.reprojection_error_by_view) if self.reprojection_error_by_view else -1)
 
         print(f"Mean reprojection errors: {self.mean_reprojection_errors}")
-
-    def to_dto(self) -> SingleCameraCalibrationEstimate:
-        return SingleCameraCalibrationEstimate(
-            camera_matrix=self.camera_matrix,
-            distortion_coefficients=self.distortion_coefficients,
-            mean_reprojection_errors=self.mean_reprojection_errors,
-            camera_calibration_residuals=self.camera_calibration_residuals,
-            reprojection_error_by_view=self.reprojection_error_by_view,
-            # charuco_observations=self.charuco_observations,
-            # object_points_views=self.object_points_views,
-            # image_points_views=self.image_points_views,
-            # rotation_vectors=self.rotation_vectors,
-            # translation_vectors=self.translation_vectors,
-            #
-        )

@@ -1,4 +1,3 @@
-import json
 import logging
 import multiprocessing
 import time
@@ -7,11 +6,14 @@ from multiprocessing import Queue, Process
 from typing import Dict
 
 import numpy as np
-from pydantic import BaseModel
 from skellycam import CameraId, CameraName
+
+from freemocap.pipelines.calibration_pipeline.multi_camera_calibrator import MultiCameraCalibrator
+from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import SharedViewAccumulator
+
 camera_name: CameraName
 
-from freemocap.pipelines.calibration_pipeline.calibration_camera_node import CalibrationCameraNodeOutputData
+from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
 from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BaseAggregationNode, BasePipelineOutputData
 
@@ -20,8 +22,6 @@ logger = logging.getLogger(__name__)
 
 class CalibrationAggregationLayerOutputData(BaseAggregationLayerOutputData):
     data: object = None
-
-
 
 
 class CalibrationPipelineOutputData(BasePipelineOutputData):
@@ -39,54 +39,6 @@ class CalibrationPipelineOutputData(BasePipelineOutputData):
 
 class CalibrationAggregationNodeConfig(BasePipelineStageConfig):
     pass
-
-class CameraViewRecord(BaseModel):
-    camera_id: CameraId
-    can_see_target: bool
-    camera_node_output: CalibrationCameraNodeOutputData
-
-
-class SharedViewAccumulator(BaseModel):
-    """
-    Keeps track of the data feeds from each camera, and keeps track of the frames where each can see the calibration target,
-    and counts the number of shared views each camera has with each other camera (i.e. frames where both cameras can see the target)
-    """
-    camera_ids: list[CameraId]
-    camera_view_records_by_frame: dict[int, Dict[CameraId, CameraViewRecord]]
-
-    @classmethod
-    def create(cls, camera_ids: list[CameraId]):
-        return cls(camera_ids=camera_ids, camera_view_records_by_frame={})
-
-    @property
-    def shared_views_per_camera_by_camera(self) -> dict[CameraId, dict[CameraId, int]]:
-        shared_views_by_camera = {
-            camera_id: {other_camera_id: 0 for other_camera_id in self.camera_ids if other_camera_id != camera_id}
-            for camera_id in self.camera_ids}
-        for frame_number, camera_view_records in self.camera_view_records_by_frame.items():
-            for camera_id, camera_view_record in camera_view_records.items():
-                for other_camera_view_record in camera_view_records.values():
-                    if other_camera_view_record.camera_id == camera_id:
-                        continue
-                        # shared_views_by_camera[camera_id][other_camera_view_record.camera_id] += 1
-
-                    if camera_view_records[camera_id].can_see_target and other_camera_view_record.can_see_target:
-                        shared_views_by_camera[camera_id][other_camera_view_record.camera_id] += 1
-        return shared_views_by_camera
-
-    @property
-    def shared_views_total_per_camera(self) -> dict[CameraId, int]:
-        return {camera_id: sum(shared_views.values()) for camera_id, shared_views in
-                self.shared_views_per_camera_by_camera.items()}
-
-    def receive_camera_node_output(self, multi_frame_number: int,
-                                   camera_node_output: dict[CameraId, CalibrationCameraNodeOutputData]):
-        self.camera_view_records_by_frame[multi_frame_number] = {camera_id: CameraViewRecord(camera_id=camera_id,
-                                                                                             can_see_target=camera_node_output.can_see_target,
-                                                                                             camera_node_output=camera_node_output)
-                                                                 for camera_id, camera_node_output in
-                                                                 camera_node_output.items()}
-
 
 
 @dataclass
@@ -128,6 +80,7 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
         shared_view_accumulator: SharedViewAccumulator = SharedViewAccumulator.create(
             camera_ids=list(input_queues.keys()))
         incoming_data: list[dict[CameraId, CalibrationCameraNodeOutputData | None]] = []
+        calibrated = False
         try:
 
             while not shutdown_event.is_set():
@@ -141,8 +94,7 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                     if not isinstance(camera_node_output, CalibrationCameraNodeOutputData):
                         raise ValueError(
                             f"Unexpected data type received from camera {camera_id}: {type(camera_node_output)}")
-                    camera_node_incoming_data[
-                        camera_id] = camera_node_output  # type: ignore # noqa //Not sure why this is throwing a linter error, might be too many nested types are confusing the poor machine
+                    camera_node_incoming_data[camera_id] = camera_node_output
 
                 if any([camera_node_output is None for camera_node_output in camera_node_incoming_data.values()]):
                     logger.exception(f"Received None from camera nodes! got {camera_node_incoming_data}")
@@ -155,19 +107,37 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                     logger.exception(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
                     raise ValueError(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
                 multi_frame_number = frame_numbers.pop()
-                # Accumulate shared views
-                incoming_data.append(camera_node_incoming_data)
-                # shared_view_accumulator.receive_camera_node_output(multi_frame_number=multi_frame_number,
-                #                                                    camera_node_output=camera_node_incoming_data)
-                # logger.trace(f"Shared view accumulator:\n {json.dumps(shared_view_accumulator.shared_views_per_camera_by_camera, indent=2)}")
-                output = CalibrationPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
-                                                       aggregation_layer_output=CalibrationAggregationLayerOutputData(
-                                                           multi_frame_number=multi_frame_number,
-                                                           points3d={camera_id: (camera_id, np.sin(camera_id)*10, np.cos(camera_id)*10) for
-                                                                     camera_id in input_queues.keys()},
-                                                           # data=shared_view_accumulator.model_dump()
-                                                       )
-                                                       )
+                if multi_frame_number % 10 == 0:
+                    # Accumulate shared views
+                    incoming_data.append(camera_node_incoming_data)
+                    shared_view_accumulator.receive_camera_node_output(multi_frame_number=multi_frame_number,
+                                                                       camera_node_output=camera_node_incoming_data)
+                    logger.trace(f"Shared view accumulator:\n {shared_view_accumulator.shared_views_per_camera_by_camera}")
+                    min_shared_views_to_calibrate =  20
+                    if shared_view_accumulator.all_cameras_have_min_shared_views(min_shared_views_to_calibrate) and not calibrated:
+                        calibrated = True
+                        multi_camera_calibrator = MultiCameraCalibrator.initialize(shared_charuco_views=shared_view_accumulator.shared_camera_views(),
+                                                                                   calibrate_cameras=True)
+
+
+                radius = 5
+                frequency = 0.1
+
+                output = CalibrationPipelineOutputData(
+                    camera_node_output=camera_node_incoming_data,  # type: ignore
+                    aggregation_layer_output=CalibrationAggregationLayerOutputData(
+                        multi_frame_number=multi_frame_number,
+                        points3d={
+                            camera_id: (
+                                camera_id,
+                                radius * np.cos(multi_frame_number * frequency) + camera_id * 5,
+                                radius * np.sin(multi_frame_number * frequency) + camera_id * 5
+                            )
+                            for camera_id in input_queues.keys()
+                        },
+                        # data=shared_view_accumulator.model_dump()
+                    )
+                )
 
                 output_queue.put(output)
         except Exception as e:

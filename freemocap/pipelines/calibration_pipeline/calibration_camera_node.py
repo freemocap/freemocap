@@ -10,11 +10,10 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camer
     CameraSharedMemoryDTO, SingleSlotCameraSharedMemory
 from skellycam.core.frames.payloads.metadata.frame_metadata import FrameMetadata
 from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig, CharucoTracker
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator, \
-    SingleCameraCalibrationEstimate
-from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig, BaseCameraNodeOutputData
+from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
+from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator
+from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig
 
 logger = logging.getLogger(__name__)
 
@@ -23,16 +22,6 @@ class CalibrationPipelineCameraNodeConfig(BasePipelineStageConfig):
     camera_config: CameraConfig
     tracker_config: CharucoTrackerConfig
     param1: int = 1
-
-
-class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
-    frame_metadata: FrameMetadata
-    charuco_observation: CharucoObservation
-    calibration_estimate: SingleCameraCalibrationEstimate | None = None
-
-    @property
-    def can_see_target(self) -> bool:
-        return not self.charuco_observation.charuco_empty
 
 
 @dataclass
@@ -108,7 +97,7 @@ class CalibrationCameraNode(BaseCameraNode):
                     output_queue.put(CalibrationCameraNodeOutputData(
                         frame_metadata=FrameMetadata.from_frame_metadata_array(frame.metadata),
                         charuco_observation=observation,
-                        calibration_estimate=camera_calibration_estimator.to_dto(),
+                        calibration_estimate=camera_calibration_estimator.current_estimate,
                         time_to_retrieve_frame_ns=time_to_retrieve,
                         time_to_process_frame_ns=time_to_process
                     ),

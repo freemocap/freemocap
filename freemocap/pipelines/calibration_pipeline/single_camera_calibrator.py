@@ -20,31 +20,7 @@ class SingleCameraCalibrationEstimate(BaseModel):
     distortion_coefficients: NDArray[Shape["5"], np.float64]
     mean_reprojection_errors: list[float]
     camera_calibration_residuals: list[float]
-    charuco_observations: CharucoObservations
-    object_points_views: list[NDArray[Shape["*, 3"], np.float32]]
-    image_points_views: list[NDArray[Shape["*, 2"], np.float32]]
-    rotation_vectors: list[NDArray[Shape["*, 3"], np.float64]]
-    translation_vectors: list[NDArray[Shape["*, 3"], np.float64]]
     reprojection_error_by_view: list[float]
-    #
-    # def to_serializable_dict(self  ):
-    #     d =  {
-    #         "camera_matrix": self.camera_matrix.tolist() if self.camera_matrix is not None else None,
-    #         "distortion_coefficients": self.distortion_coefficients.tolist() if self.distortion_coefficients is not None else None,
-    #         "mean_reprojection_errors": self.mean_reprojection_errors if self.mean_reprojection_errors else None,
-    #         "camera_calibration_residuals": self.camera_calibration_residuals if self.camera_calibration_residuals else None,
-    #         "charuco_observations": [obs.to_serializable_dict() for obs in self.charuco_observations] if self.charuco_observations else None,
-    #         "object_points_views": [obj.tolist() for obj in self.object_points_views] if self.object_points_views else None,
-    #         "image_points_views": [img.tolist() for img in self.image_points_views] if self.image_points_views else None,
-    #         "rotation_vectors": [rot.tolist() for rot in self.rotation_vectors] if self.rotation_vectors else None,
-    #         "translation_vectors": [trans.tolist() for trans in self.translation_vectors] if self.translation_vectors else None,
-    #         "reprojection_error_by_view": self.reprojection_error_by_view if self.reprojection_error_by_view else None,
-    #     }
-    #     try:
-    #         json.dumps(d).encode('utf-8')
-    #     except Exception as e:
-    #         raise ValueError(f"Failed to serialize SingleCameraCalibrationDTO to JSON: {e}")
-
 
 class SingleCameraCalibrator(BaseModel):
     """
@@ -246,10 +222,11 @@ class SingleCameraCalibrator(BaseModel):
             distortion_coefficients=self.distortion_coefficients,
             mean_reprojection_errors=self.mean_reprojection_errors,
             camera_calibration_residuals=self.camera_calibration_residuals,
-            charuco_observations=self.charuco_observations,
-            object_points_views=self.object_points_views,
-            image_points_views=self.image_points_views,
-            rotation_vectors=self.rotation_vectors,
-            translation_vectors=self.translation_vectors,
             reprojection_error_by_view=self.reprojection_error_by_view,
+            # charuco_observations=self.charuco_observations,
+            # object_points_views=self.object_points_views,
+            # image_points_views=self.image_points_views,
+            # rotation_vectors=self.rotation_vectors,
+            # translation_vectors=self.translation_vectors,
+            #
         )

@@ -46,6 +46,8 @@
         let isConnected = false;
         const websocket_url = 'ws://localhost:8005/websocket/connect';
         const imageElements = {};
+        const spheres = {};
+        let scene; // Declare scene globally
 
         function updateStatus() {
             document.getElementById('ws-status').innerText = isConnected ? 'Connected' : 'Disconnected';
@@ -80,36 +82,48 @@
 
                     // Now you can use the data object to update your UI
                     updateImages(data.jpeg_images);
-                    // updateSpheres(data.object_points);
+                    updateSpheres(data.latest_pipeline_output?.aggregation_layer_output?.points3d);
                 } else {
                     console.log("Received data: ", event.data);
                 }
             };
         }
 
-        function updateCharucoSpheres(objectPoints) {
-            // Remove existing spheres
-            while (scene.children.length > 2) { // Keep the axes and grid helpers
-                scene.remove(scene.children[2]);
+        function updateSpheres(points3d) {
+            if (!points3d) {
+                return; // Exit the function if points3d is undefined or null
             }
 
-            // Add new spheres
-            objectPoints.forEach(point => {
-                const geometry = new THREE.SphereGeometry(0.1, 10, 10);
-                const material = new THREE.MeshBasicMaterial({color: 0xff0000});
-                const sphere = new THREE.Mesh(geometry, material);
-                sphere.position.set(point.x, point.y, point.z);
-                scene.add(sphere);
-            });
-        }
+            // Mark all spheres as not updated
+            for (const id in spheres) {
+                spheres[id].updated = false;
+            }
 
-        function sendMessage(message) {
-            if (isConnected) {
-                ws.send(message);
-            } else {
-                alert('WebSocket is not connected.');
+            for (const [point_id, coords] of Object.entries(points3d)) {
+                if (!spheres[point_id]) {
+                    // Create a new sphere
+                    const geometry = new THREE.SphereGeometry(1, 10, 10);
+                    const material = new THREE.MeshBasicMaterial({color: 0xff0000});
+                    const sphere = new THREE.Mesh(geometry, material);
+                    scene.add(sphere);
+                    spheres[point_id] = {mesh: sphere, updated: true};
+                } else {
+                    // Update existing sphere position
+                    spheres[point_id].mesh.position.set(coords.x, coords.y, coords.z);
+                    spheres[point_id].updated = true;
+                }
+            }
+
+            // Hide spheres not in the current payload
+            for (const id in spheres) {
+                if (!spheres[id].updated) {
+                    spheres[id].mesh.visible = false;
+                } else {
+                    spheres[id].mesh.visible = true;
+                }
             }
         }
+
 
         function updateImages(images) {
             const container = document.getElementById('images-container');
@@ -156,8 +170,14 @@
 
         function initThreeJS() {
             const container = document.getElementById('threejs-container');
-            const scene = new THREE.Scene();
+            scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            // add light
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(1, 1, 1).normalize();
+            scene.add(light);
+
+
             const renderer = new THREE.WebGLRenderer();
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
@@ -170,7 +190,7 @@
             scene.add(gridHelper);
 
             camera.position.y = 5;
-            camera.position.z = 15;
+            camera.position.z = 25;
 
             function animate() {
                 requestAnimationFrame(animate);
@@ -196,9 +216,9 @@
 <button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/detect')">Connect to Cameras</button>
 
 <div>
-<!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/apply', 'POST')">Connect/Update Cameras-->
-<!--    </button>-->
-<!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/close')">Close Camera Connections</button>-->
+    <!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/apply', 'POST')">Connect/Update Cameras-->
+    <!--    </button>-->
+    <!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/close')">Close Camera Connections</button>-->
 
     <!--    &lt;!&ndash; Root and App API Calls &ndash;&gt;-->
     <!--    <button onclick="sendMessage('Hello from the client')">Send WS Message</button>-->

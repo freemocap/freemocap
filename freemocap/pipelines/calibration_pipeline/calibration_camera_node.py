@@ -14,8 +14,7 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 
 from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator, \
     SingleCameraCalibrationEstimate
-from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig, BasePipelineData, \
-    BaseCameraNodeOutputData
+from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig, BaseCameraNodeOutputData
 
 logger = logging.getLogger(__name__)
 
@@ -29,19 +28,13 @@ class CalibrationPipelineCameraNodeConfig(BasePipelineStageConfig):
 class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
     frame_metadata: FrameMetadata
     charuco_observation: CharucoObservation
-    calibration_estimate: SingleCameraCalibrationEstimate
+    calibration_estimate: SingleCameraCalibrationEstimate | None = None
 
     @property
     def can_see_target(self) -> bool:
         return not self.charuco_observation.charuco_empty
 
-    def to_serializable_dict(self) -> dict:
-        return dict(
-            frame_metadata=self.frame_metadata.model_dump(),
-            charuco_observation=self.charuco_observation.to_serializable_dict(),
-            calibration_estimate=self.calibration_estimate.to_serializable_dict(),
-            can_see_target=self.can_see_target,
-        )
+
 @dataclass
 class CalibrationCameraNode(BaseCameraNode):
     @classmethod

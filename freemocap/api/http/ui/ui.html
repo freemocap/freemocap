@@ -39,7 +39,7 @@
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
+<!--    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>-->
     <script>
 
         let ws;
@@ -109,21 +109,16 @@
                     spheres[point_id] = {mesh: sphere, updated: true};
                 } else {
                     // Update existing sphere position
-                    spheres[point_id].mesh.position.set(coords.x, coords.y, coords.z);
+                    spheres[point_id].mesh.position.set(coords[0], coords[1], coords[2]);
                     spheres[point_id].updated = true;
                 }
             }
 
             // Hide spheres not in the current payload
             for (const id in spheres) {
-                if (!spheres[id].updated) {
-                    spheres[id].mesh.visible = false;
-                } else {
-                    spheres[id].mesh.visible = true;
-                }
+                spheres[id].mesh.visible = spheres[id].updated;
             }
         }
-
 
         function updateImages(images) {
             const container = document.getElementById('images-container');
@@ -172,16 +167,13 @@
             const container = document.getElementById('threejs-container');
             scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-            // add light
-            const light = new THREE.DirectionalLight(0xffffff, 1);
-            light.position.set(1, 1, 1).normalize();
-            scene.add(light);
-
 
             const renderer = new THREE.WebGLRenderer();
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
 
+            // Initialize OrbitControls
+            // const controls = new THREE.OrbitControls(camera, renderer.domElement);
 
             const axesHelper = new THREE.AxesHelper(5);
             scene.add(axesHelper);
@@ -192,8 +184,14 @@
             camera.position.y = 5;
             camera.position.z = 25;
 
+            // Add light
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(1, 1, 1).normalize();
+            scene.add(light);
+
             function animate() {
                 requestAnimationFrame(animate);
+                // controls.update(); // Required for damping to work
                 renderer.render(scene, camera);
             }
 

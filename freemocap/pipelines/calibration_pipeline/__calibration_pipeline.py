@@ -16,7 +16,7 @@ from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node impor
     CalibrationAggregationProcessNode, CalibrationPipelineOutputData
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node import CalibrationPipelineCameraNodeConfig, \
     CalibrationCameraNode
-from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, BaseProcessingPipeline,PipelineImageAnnotator
+from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, BaseProcessingPipeline, PipelineImageAnnotator
 
 logger = logging.getLogger(__name__)
 

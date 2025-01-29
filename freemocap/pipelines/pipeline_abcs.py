@@ -2,6 +2,7 @@ import asyncio
 import logging
 import multiprocessing
 from abc import ABC
+from dataclasses import dataclass
 from enum import Enum
 from multiprocessing import Process, Queue
 
@@ -32,7 +33,7 @@ class BasePipelineData(BaseModel,ABC):
 
 class BaseAggregationLayerOutputData(BasePipelineData):
     multi_frame_number: int
-    points3d: dict[str, NDArray[Shape["3"], np.float32]]
+    points3d: dict[CameraId, NDArray[Shape["3"], np.float64]]
 
 
 
@@ -68,8 +69,8 @@ class BasePipelineConfig(BaseModel, ABC):
                    aggregation_node_config=BasePipelineStageConfig())
 
 
-class BaseCameraNode(BaseModel, ABC):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+@dataclass
+class BaseCameraNode(ABC):
     config: BasePipelineStageConfig
     camera_id: CameraId
     incoming_frame_shm: SingleSlotCameraSharedMemory
@@ -147,8 +148,8 @@ class BaseCameraNode(BaseModel, ABC):
         self.process.join()
 
 
-class BaseAggregationNode(BaseModel, ABC):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+@dataclass
+class BaseAggregationNode(ABC):
     config: BasePipelineStageConfig
     process: Process
     input_queues: dict[CameraId, Queue]
@@ -219,8 +220,8 @@ class PipelineImageAnnotator(BaseModel, ABC):
         raise NotImplementedError(
             "You need to re-implement this method with your pipeline's version of the PipelineImageAnnotator ")
 
-
-class BaseProcessingPipeline(ABC):
+@dataclass
+class BaseProcessingPipeline( ABC):
     config: BasePipelineStageConfig
     camera_nodes: dict[CameraId, BaseCameraNode]
     aggregation_node: BaseAggregationNode
@@ -229,18 +230,19 @@ class BaseProcessingPipeline(ABC):
     all_ready_events: dict[CameraId|str, multiprocessing.Event]
 
     latest_pipeline_data: BasePipelineData | None = None
+    started: bool = False
 
     @property
-    def alive(self  ):
+    def alive(self  ) -> bool:
         return all([camera_node.process.is_alive() for camera_node in self.camera_nodes.values()]) and self.aggregation_node.process.is_alive()
 
     @property
-    def nodes_ready(self):
+    def nodes_ready(self) -> bool:
         return all(value.is_set() for value in self.all_ready_events.values())
 
     @property
-    def ready_to_intake(self):
-        return self.alive and self.nodes_ready
+    def ready_to_intake(self) -> bool:
+        return self.alive and self.nodes_ready and not self.shutdown_event.is_set() and self.started
 
     @classmethod
     def create(cls,
@@ -333,9 +335,11 @@ class BaseProcessingPipeline(ABC):
         self.aggregation_node.start()
         for camera_id, camera_node in self.camera_nodes.items():
             camera_node.start()
+        self.started = True
 
     def shutdown(self):
         logger.debug(f"Shutting down {self.__class__.__name__}...")
+        self.started = False
         self.shutdown_event.set()
         self.aggregation_node.stop()
         for camera_id, camera_process in self.camera_nodes.items():

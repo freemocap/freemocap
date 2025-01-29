@@ -7,9 +7,10 @@ from multiprocessing import Queue, Process
 from typing import Dict
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
-from skellycam import CameraId
-from tabulate import tabulate
+from pydantic import BaseModel
+from skellycam import CameraId, CameraName
+camera_name: CameraName
+
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node import CalibrationCameraNodeOutputData
 from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BaseAggregationNode, BasePipelineOutputData
@@ -17,35 +18,29 @@ from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, Ba
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class CalibrationAggregationLayerOutputData(BaseAggregationLayerOutputData):
     data: object = None
 
-    def to_serializable_dict(self):
-        return {"data": self.data}
 
 
-@dataclass
+
 class CalibrationPipelineOutputData(BasePipelineOutputData):
     camera_node_output: dict[CameraId, CalibrationCameraNodeOutputData]
     aggregation_layer_output: CalibrationAggregationLayerOutputData
 
-    def to_serializable_dict(self):
-        return {
-            "camera_node_output": {camera_id: camera_node_output.to_serializable_dict() for
-                                   camera_id, camera_node_output in
-                                   self.camera_node_output.items()},
-            "aggregation_layer_output": self.aggregation_layer_output.to_serializable_dict()
-        }
+    # def to_serializable_dict(self):
+    #     return {
+    #         "camera_node_output": {camera_id: camera_node_output.to_serializable_dict() for
+    #                                camera_id, camera_node_output in
+    #                                self.camera_node_output.items()},
+    #         "aggregation_layer_output": self.aggregation_layer_output.to_serializable_dict()
+    #     }
 
 
-@dataclass
 class CalibrationAggregationNodeConfig(BasePipelineStageConfig):
-    param2: int = 2
-
+    pass
 
 class CameraViewRecord(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     camera_id: CameraId
     can_see_target: bool
     camera_node_output: CalibrationCameraNodeOutputData
@@ -168,7 +163,7 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                 output = CalibrationPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
                                                        aggregation_layer_output=CalibrationAggregationLayerOutputData(
                                                            multi_frame_number=multi_frame_number,
-                                                           points3d={f"camera_{camera_id}": (camera_id, np.sin(camera_id)*10, np.cos(camera_id)*10) for
+                                                           points3d={camera_id: (camera_id, np.sin(camera_id)*10, np.cos(camera_id)*10) for
                                                                      camera_id in input_queues.keys()},
                                                            data=shared_view_accumulator.model_dump()
                                                        )

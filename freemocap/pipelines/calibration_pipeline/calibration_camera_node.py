@@ -42,7 +42,7 @@ class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
             calibration_estimate=self.calibration_estimate.to_serializable_dict(),
             can_see_target=self.can_see_target,
         )
-
+@dataclass
 class CalibrationCameraNode(BaseCameraNode):
     @classmethod
     def create(cls,

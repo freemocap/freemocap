@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from numpydantic import NDArray, Shape
 from pydantic import BaseModel, Field
+from skellycam import CameraId
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservations, CharucoObservation
 
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
@@ -41,6 +42,7 @@ class SingleCameraCalibrator(BaseModel):
                                                         relative to the world coordinate space for each view.
         error (SingleCameraCalibrationError | None): Calibration error details.
     """
+    camera_id: CameraId
     image_size: tuple[int, ...]
 
     charuco_corner_ids: list[int]
@@ -82,12 +84,14 @@ class SingleCameraCalibrator(BaseModel):
         )
 
     @classmethod
-    def from_camera_node_outputs(cls, camera_node_outputs: list[CalibrationCameraNodeOutputData], calibrate_camera: bool = True):
-        view0 = camera_node_outputs[0]
-        camera_id = view0.camera_id
-        observation = view0.camera_node_output.charuco_observation
+    def from_camera_node_outputs(cls, camera_node_outputs: list[CalibrationCameraNodeOutputData],
+                                 calibrate_camera: bool = True):
+        output0 = camera_node_outputs[0]
+        camera_id = output0.camera_id
+        observation = output0.charuco_observation
         instance = cls.create_initial(
-            image_size=view0.camera_node_output.image_size,
+            camera_id=camera_id,
+            image_size=observation.image_size,
             aruco_marker_ids=observation.all_aruco_ids,
             aruco_corners_in_object_coordinates=observation.all_aruco_corners_in_object_coordinates,
             charuco_corner_ids=observation.all_charuco_ids,
@@ -95,16 +99,17 @@ class SingleCameraCalibrator(BaseModel):
         )
         for view in camera_node_outputs:
             if view.camera_id != camera_id:
-                raise ValueError("All camera views must be from the same camera")
+                raise ValueError(f"Camera ID mismatch: {view.camera_id} != {camera_id}")
             instance.add_observation(view.camera_node_output.charuco_observation)
 
         if calibrate_camera:
-            logger.info(f"Calibrating camera {view0.camera_id} with {len(instance.object_points_views)} views")
+            logger.info(f"Calibrating camera {output0.camera_id} with {len(instance.object_points_views)} views")
             instance.update_calibration_estimate()
         return instance
 
     @classmethod
     def create_initial(cls,
+                       camera_id: CameraId,
                        image_size: tuple[int, ...],
                        aruco_marker_ids: list[int],
                        aruco_corners_in_object_coordinates: list[np.ndarray[..., 3]],
@@ -123,7 +128,8 @@ class SingleCameraCalibrator(BaseModel):
         if len(aruco_marker_ids) != len(aruco_corners_in_object_coordinates):
             raise ValueError("Number of aruco marker IDs must match the number of aruco corners.")
 
-        return cls(image_size=image_size,
+        return cls(camera_id=camera_id,
+                   image_size=image_size,
                    charuco_corner_ids=charuco_corner_ids,
                    charuco_corners_in_object_coordinates=charuco_corners_in_object_coordinates,
                    aruco_marker_ids=aruco_marker_ids,
@@ -140,6 +146,10 @@ class SingleCameraCalibrator(BaseModel):
                    )
 
     def add_observation(self, observation: CharucoObservation):
+        if observation.image_size != self.image_size:
+            raise ValueError(f"Image size mismatch: {observation.image_size} != {self.image_size}")
+        if observation.camera_id != self.camera_id:
+            raise ValueError(f"Camera ID mismatch: {observation.camera_id} != {self.camera_id}")
         if observation.charuco_empty or len(observation.detected_charuco_corner_ids) < MIN_CHARUCO_CORNERS:
             return
         self._validate_observation(observation)

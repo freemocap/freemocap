@@ -17,15 +17,20 @@ class MultiCameraCalibrator(BaseModel):
                    shared_charuco_views: dict[FrameNumber, dict[CameraId, CalibrationCameraNodeOutputData]],
                    calibrate_cameras: bool = True):
         # Find the principal camera
-        principal_camera_id = min(key for key in shared_charuco_views.keys())
-        principal_camera_6dof = Positional6DOF(translation=[0., 0., 0.],
-                                               rotation=[0., 0., 0.])
 
         # Calculate the calibration estimate for each camera
-        camera_node_outputs_by_camera = {camera_id: [] for camera_id in shared_charuco_views[0].keys()}
+
+        camera_node_outputs_by_camera = {}
+
         for frame_number, camera_node_outputs in shared_charuco_views.items():
             for camera_id in camera_node_outputs.keys():
+                if camera_id not in camera_node_outputs_by_camera:
+                    camera_node_outputs_by_camera[camera_id] = []
                 camera_node_outputs_by_camera[camera_id].append(camera_node_outputs[camera_id])
+
+        principal_camera_id = min(key for key in camera_node_outputs_by_camera.keys())
+        principal_camera_6dof = Positional6DOF(translation=[0., 0., 0.],
+                                               rotation=[0., 0., 0.])
 
         camera_estimates = {}
         for camera_id, camera_node_outputs in camera_node_outputs_by_camera.items():

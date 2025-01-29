@@ -83,6 +83,7 @@ class CalibrationCameraNode(BaseCameraNode):
                     observation, raw_results = charuco_tracker.process_image(frame.image, annotate_image=False)
                     if camera_calibration_estimator is None:
                         camera_calibration_estimator = SingleCameraCalibrator.create_initial(
+                            camera_id=camera_id,
                             image_size=frame.image.shape[:2],
                             aruco_marker_ids=list(charuco_tracker.detector.board.getIds()),
                             aruco_corners_in_object_coordinates=charuco_tracker.aruco_corners_in_object_coordinates,

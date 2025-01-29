@@ -21,7 +21,6 @@ from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, BaseProcessing
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class CalibrationPipelineConfig(BasePipelineConfig):
     camera_node_configs: dict[CameraId, CalibrationPipelineCameraNodeConfig]
     aggregation_node_config: CalibrationAggregationNodeConfig
@@ -52,7 +51,7 @@ class CalibrationPipelineImageAnnotator(PipelineImageAnnotator):
                 latest_observation=pipeline_output.camera_node_output[camera_id].charuco_observation)
         return multiframe_payload
 
-
+@dataclass
 class CalibrationPipeline(BaseProcessingPipeline):
     config: CalibrationPipelineConfig
     camera_nodes: Dict[CameraId, CalibrationCameraNode]

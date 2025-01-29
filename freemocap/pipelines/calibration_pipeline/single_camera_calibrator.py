@@ -16,15 +16,15 @@ MIN_CHARUCO_CORNERS = 6
 
 
 class SingleCameraCalibrationEstimate(BaseModel):
-    camera_matrix: NDArray[Shape["3, 3"], np.float32]
-    distortion_coefficients: NDArray[Shape["5"], np.float32]
+    camera_matrix: NDArray[Shape["3, 3"], np.float64]
+    distortion_coefficients: NDArray[Shape["5"], np.float64]
     mean_reprojection_errors: list[float]
     camera_calibration_residuals: list[float]
     charuco_observations: CharucoObservations
     object_points_views: list[NDArray[Shape["*, 3"], np.float32]]
     image_points_views: list[NDArray[Shape["*, 2"], np.float32]]
-    rotation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
-    translation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
+    rotation_vectors: list[NDArray[Shape["*, 3"], np.float64]]
+    translation_vectors: list[NDArray[Shape["*, 3"], np.float64]]
     reprojection_error_by_view: list[float]
     #
     # def to_serializable_dict(self  ):
@@ -71,13 +71,14 @@ class SingleCameraCalibrator(BaseModel):
     charuco_corners_in_object_coordinates: NDArray[Shape["*, 3"], np.float32]
 
     aruco_marker_ids: list[int]
-    aruco_corners_in_object_coordinates: NDArray[Shape["*, 3"], np.float32]
+    aruco_corners_in_object_coordinates: NDArray[Shape["* aruco_ids, 4 corners, 3 xyz"], np.float32]
 
-    distortion_coefficients: NDArray[Shape["5"], np.float32]
-    camera_matrix: NDArray[Shape["3, 3"], np.float32]
+    distortion_coefficients: NDArray[Shape["5"], np.float64]
+    camera_matrix: NDArray[Shape["3 rows, 3 columns"], np.float64]
 
     charuco_observations: CharucoObservations = Field(default_factory=CharucoObservations)
     object_points_views: list[NDArray[Shape["*, 3"], np.float32]]
+    image_points_views: list[NDArray[Shape["*, 2"], np.float32]]
     rotation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
     translation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
     reprojection_error_by_view: list[float]
@@ -116,6 +117,7 @@ class SingleCameraCalibrator(BaseModel):
                    camera_matrix=camera_matrix,
                    distortion_coefficients=np.zeros(number_of_distortion_coefficients),
                    object_points_views=[],
+                   image_points_views=[],
                    rotation_vectors=[],
                    translation_vectors=[],
                    reprojection_error_by_view=[],

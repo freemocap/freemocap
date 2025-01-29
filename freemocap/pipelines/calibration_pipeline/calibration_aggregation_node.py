@@ -157,15 +157,15 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                 multi_frame_number = frame_numbers.pop()
                 # Accumulate shared views
                 incoming_data.append(camera_node_incoming_data)
-                shared_view_accumulator.receive_camera_node_output(multi_frame_number=multi_frame_number,
-                                                                   camera_node_output=camera_node_incoming_data)
-                logger.trace(f"Shared view accumulator:\n {json.dumps(shared_view_accumulator.shared_views_per_camera_by_camera, indent=2)}")
+                # shared_view_accumulator.receive_camera_node_output(multi_frame_number=multi_frame_number,
+                #                                                    camera_node_output=camera_node_incoming_data)
+                # logger.trace(f"Shared view accumulator:\n {json.dumps(shared_view_accumulator.shared_views_per_camera_by_camera, indent=2)}")
                 output = CalibrationPipelineOutputData(camera_node_output=camera_node_incoming_data,  # type: ignore
                                                        aggregation_layer_output=CalibrationAggregationLayerOutputData(
                                                            multi_frame_number=multi_frame_number,
                                                            points3d={camera_id: (camera_id, np.sin(camera_id)*10, np.cos(camera_id)*10) for
                                                                      camera_id in input_queues.keys()},
-                                                           data=shared_view_accumulator.model_dump()
+                                                           # data=shared_view_accumulator.model_dump()
                                                        )
                                                        )
 

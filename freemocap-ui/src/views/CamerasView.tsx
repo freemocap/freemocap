@@ -4,7 +4,7 @@ import { useWebSocketContext } from "@/context/WebSocketContext";
 import {CameraImagesGrid} from "@/components/camera-views/CameraImagesGrid";
 
 
-export const PythonCamerasView = () => {
+export const CamerasView = () => {
     const {latestImages} = useWebSocketContext();
     const [showAnnotation, setShowAnnotation] = useState(true);
     const toggleAnnotation = () => {

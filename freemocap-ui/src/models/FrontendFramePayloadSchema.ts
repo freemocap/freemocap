@@ -27,3 +27,5 @@ export const FrontendFramePayloadSchema = z.object({
     latest_pipeline_output: z.any(), // Allow any value for latest_pipeline_output
     points3d: Points3dSchema // Add the Points3DSchema
 });
+
+

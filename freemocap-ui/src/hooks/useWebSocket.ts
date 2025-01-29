@@ -1,12 +1,14 @@
 import {useCallback, useEffect, useState} from 'react';
 import {z} from 'zod';
 import {FrontendFramePayloadSchema, JpegImagesSchema, Points3dSchema} from "@/models/FrontendFramePayloadSchema";
+import {SkellyCamAppStateSchema} from "@/models/SkellyCamAppStateSchema";
 
 const MAX_RECONNECT_ATTEMPTS = 20;
 
 export const useWebSocket = (wsUrl: string) => {
     const [isConnected, setIsConnected] = useState(false);
     const [latestFrontendPayload, setLatestFrontendPayload] = useState<z.infer<typeof FrontendFramePayloadSchema> | null>(null);
+    const [latestSkellyCamAppState, setLatestSkellyCamAppState] = useState<z.infer<typeof SkellyCamAppStateSchema> | null>(null);
     const [latestImages, setLatestImages] = useState<z.infer<typeof JpegImagesSchema> | null>(null);
     const [latestPoints3d, setLatestPoints3d] = useState<z.infer<typeof Points3dSchema> | null>(null);
 
@@ -29,18 +31,27 @@ export const useWebSocket = (wsUrl: string) => {
     const parseAndValidateMessage = (data: string) => {
         try {
             const parsedData = JSON.parse(data);
-            const frontendImagePayload = FrontendFramePayloadSchema.parse(parsedData);
-            setLatestFrontendPayload(frontendImagePayload);
-            setLatestImages(frontendImagePayload.jpeg_images)
-            setLatestPoints3d(frontendImagePayload.points3d)
+
+            if (parsedData.type === 'FrontendFramePayload') {
+                const frontendImagePayload = FrontendFramePayloadSchema.parse(parsedData);
+                setLatestFrontendPayload(frontendImagePayload);
+                setLatestImages(frontendImagePayload.jpeg_images);
+                setLatestPoints3d(frontendImagePayload.points3d);
+            } else if (parsedData.type === 'SkellycamAppStateDTO') {
+                const skellycamAppState = SkellyCamAppStateSchema.parse(parsedData);
+                setLatestSkellyCamAppState(skellycamAppState);
+            } else {
+                console.warn('Received unknown message type:', parsedData.type);
+            }
         } catch (e) {
             if (e instanceof z.ZodError) {
-                console.error('Validation failed with errors:', JSON.stringify(e.errors,null,2));
+                console.error('Validation failed with errors:', JSON.stringify(e.errors, null, 2));
             } else {
                 console.error('Error parsing message data:', e);
             }
         }
     };
+
 
     const connect = useCallback(() => {
         if (websocket && websocket.readyState !== WebSocket.CLOSED) {
@@ -93,5 +104,5 @@ export const useWebSocket = (wsUrl: string) => {
         };
     }, [connect]);
 
-    return {isConnected, latestFrontendPayload, latestImages, latestPoints3d, connect, disconnect};
+    return {isConnected, latestFrontendPayload, latestImages, latestPoints3d, latestSkellyCamAppState ,connect, disconnect};
 };

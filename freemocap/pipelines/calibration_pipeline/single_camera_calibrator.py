@@ -97,10 +97,10 @@ class SingleCameraCalibrator(BaseModel):
             charuco_corner_ids=observation.all_charuco_ids,
             charuco_corners_in_object_coordinates=observation.all_charuco_corners_in_object_coordinates,
         )
-        for view in camera_node_outputs:
-            if view.camera_id != camera_id:
-                raise ValueError(f"Camera ID mismatch: {view.camera_id} != {camera_id}")
-            instance.add_observation(view.camera_node_output.charuco_observation)
+        for camera_node_outputs in camera_node_outputs:
+            if camera_node_outputs.camera_id != camera_id:
+                raise ValueError(f"Camera ID mismatch: {camera_node_outputs.camera_id} != {camera_id}")
+            instance.add_observation(camera_node_outputs.camera_node_output.charuco_observation)
 
         if calibrate_camera:
             logger.info(f"Calibrating camera {output0.camera_id} with {len(instance.object_points_views)} views")
@@ -148,8 +148,6 @@ class SingleCameraCalibrator(BaseModel):
     def add_observation(self, observation: CharucoObservation):
         if observation.image_size != self.image_size:
             raise ValueError(f"Image size mismatch: {observation.image_size} != {self.image_size}")
-        if observation.camera_id != self.camera_id:
-            raise ValueError(f"Camera ID mismatch: {observation.camera_id} != {self.camera_id}")
         if observation.charuco_empty or len(observation.detected_charuco_corner_ids) < MIN_CHARUCO_CORNERS:
             return
         self._validate_observation(observation)

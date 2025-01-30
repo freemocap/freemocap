@@ -1,17 +1,21 @@
 import React from 'react';
-import {Header} from "../../components/ui-components/Header";
 import Box from "@mui/material/Box";
-import {Router} from "../routing/router";
+import ErrorBoundary from "@/components/common/ErrorBoundary";
+import {Router} from "@/layout/routing/router";
 
 export const BaseContent = () => {
     return (
         <React.Fragment>
             {/*<Header title="FreeeeMoCap " onDrawerToggle={() => {}}/>*/}
-            <Box sx={{py: 6,
+            <Box sx={{
+                py: 6,
                 px: 4,
                 flex: 1,
-                bgcolor: '#173f70', border: '1px solid charcoal'}}>
-                <Router/>
+                bgcolor: '#113157', border: '1px solid charcoal'
+            }}>
+                <ErrorBoundary>
+                    <Router/>
+                </ErrorBoundary>
             </Box>
         </React.Fragment>
     )

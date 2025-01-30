@@ -1,16 +1,12 @@
-import {Box, Button} from "@mui/material";
+import {Box} from "@mui/material";
 import React from "react";
-import {ConnectToCamerasButton} from "@/components/ui-components/ConnectToCamerasButton";
-import {useWebSocketContext} from "@/context/WebSocketContext";
-import {ThreeJSCanvas3d} from "@/components/viewport3d/ThreeJSCanvas3d";
+import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
+
 export const Viewport3d = () => {
-    const { latestFrontendPayload } = useWebSocketContext();
-
     return (
-        <Box sx={{ display: "flex", flexDirection: "column", height: "81vh" }}>
-
-            <ThreeJSCanvas3d />
-
+        <Box sx={{display: "flex", flexDirection: "column", height: "81vh"}}>
+            {/*<ThreeJSCanvas/>*/}
+            <ThreeJsCanvas/>
         </Box>
     );
 }

@@ -6,14 +6,11 @@ from multiprocessing import Queue, Process
 from typing import Dict
 
 import numpy as np
-from skellycam import CameraId, CameraName
-
-from freemocap.pipelines.calibration_pipeline.multi_camera_calibrator import MultiCameraCalibrator
-from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import SharedViewAccumulator
-
-camera_name: CameraName
+from skellycam import CameraId
 
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
+from freemocap.pipelines.calibration_pipeline.multi_camera_calibrator import MultiCameraCalibrator
+from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import SharedViewAccumulator
 from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BaseAggregationNode, BasePipelineOutputData
 
@@ -27,14 +24,6 @@ class CalibrationAggregationLayerOutputData(BaseAggregationLayerOutputData):
 class CalibrationPipelineOutputData(BasePipelineOutputData):
     camera_node_output: dict[CameraId, CalibrationCameraNodeOutputData]
     aggregation_layer_output: CalibrationAggregationLayerOutputData
-
-    # def to_serializable_dict(self):
-    #     return {
-    #         "camera_node_output": {camera_id: camera_node_output.to_serializable_dict() for
-    #                                camera_id, camera_node_output in
-    #                                self.camera_node_output.items()},
-    #         "aggregation_layer_output": self.aggregation_layer_output.to_serializable_dict()
-    #     }
 
 
 class CalibrationAggregationNodeConfig(BasePipelineStageConfig):
@@ -79,7 +68,6 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
 
         shared_view_accumulator: SharedViewAccumulator = SharedViewAccumulator.create(
             camera_ids=list(input_queues.keys()))
-        incoming_data: list[dict[CameraId, CalibrationCameraNodeOutputData | None]] = []
         calibrated = False
         try:
 
@@ -109,19 +97,17 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                 multi_frame_number = frame_numbers.pop()
                 if multi_frame_number % 10 == 0:
                     # Accumulate shared views
-                    incoming_data.append(camera_node_incoming_data)
                     shared_view_accumulator.receive_camera_node_output(multi_frame_number=multi_frame_number,
                                                                        camera_node_output=camera_node_incoming_data)
-                    logger.trace(f"Shared view accumulator:\n {shared_view_accumulator.shared_views_per_camera_by_camera}")
-                    min_shared_views_to_calibrate =  20
-                    if shared_view_accumulator.all_cameras_have_min_shared_views(min_shared_views_to_calibrate) and not calibrated:
+                    logger.trace(f"Shared view accumulator: {shared_view_accumulator.shared_view_count_by_camera}")
+                    if shared_view_accumulator.all_cameras_have_min_shared_views(10) and not calibrated:
                         calibrated = True
-                        multi_camera_calibrator = MultiCameraCalibrator.initialize(shared_charuco_views=shared_view_accumulator.shared_camera_views(),
-                                                                                   calibrate_cameras=True)
-
+                        multi_camera_calibrator = MultiCameraCalibrator.initialize(
+                            shared_charuco_views=shared_view_accumulator.shared_target_views,
+                            calibrate_cameras=True)
 
                 radius = 5
-                frequency = 0.1
+                frequency = 0.01
 
                 output = CalibrationPipelineOutputData(
                     camera_node_output=camera_node_incoming_data,  # type: ignore

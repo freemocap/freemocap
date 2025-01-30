@@ -130,8 +130,10 @@ class FreemocapWebsocketServer:
                 if processing_pipeline and processing_pipeline.ready_to_intake:
                     processing_pipeline.intake_data(mf_payload)
                     annotated_payload, latest_pipeline_output = await processing_pipeline.process_multiframe_payload(mf_payload, annotate_images=True)
-
-                    await self._send_frontend_payload(annotated_payload, latest_pipeline_output)
+                else:
+                    annotated_payload = mf_payload
+                    latest_pipeline_output = None
+                await self._send_frontend_payload(annotated_payload, latest_pipeline_output)
 
 
                 latest_mf_number = mf_payload.multi_frame_number

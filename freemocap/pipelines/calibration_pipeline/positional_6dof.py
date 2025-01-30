@@ -12,6 +12,9 @@ class Positional6DoF(BaseModel):
 
     @property
     def transformation_matrix(self) -> TransformationMatrix:
+        return self.get_transformation_matrix()
+
+    def get_transformation_matrix(self, return_jacobian:bool=False) -> TransformationMatrix | tuple[TransformationMatrix, NDArray[Shape['3, 9'], np.float32]]:
         """
         Returns the transformation matrix for this 6DoF pose in the form of a 4x4 matrix (homogeneous coordinates)
         the left upper 3x3 matrix is the rotation matrix, and the rightmost column is the translation vector.
@@ -20,14 +23,15 @@ class Positional6DoF(BaseModel):
 
         transformation_matrix = np.zeros((4, 4))
 
-        transformation_matrix[:3, :3], _ = cv2.Rodrigues(self.rotation)
+        transformation_matrix[:3, :3], jacobian = cv2.Rodrigues(self.rotation)
         transformation_matrix[:3, 3] = self.translation.flatten()
         transformation_matrix[3, 3] = 1
+        if return_jacobian:
+            return transformation_matrix, jacobian
         return transformation_matrix
 
 
 if __name__ == "__main__":
     positional_6dof = Positional6DoF()
     print(positional_6dof.transformation_matrix)
-    print(positional_6dof.transformation_matrix.shape)
     print(positional_6dof.model_dump_json(indent=2))

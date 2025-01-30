@@ -5,15 +5,15 @@ from pydantic import BaseModel
 from pydantic import Field
 
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
-    TransformationMatrix
+    TransformationMatrix, CameraMatrix, CameraDistortionCoefficients
 from freemocap.pipelines.calibration_pipeline.positional_6dof import Positional6DoF
 from skellycam import CameraId
 
 class SingleCameraCalibrationEstimate(BaseModel):
     camera_id: CameraId
 
-    camera_matrix: NDArray[Shape["3, 3"], np.float64]
-    distortion_coefficients: NDArray[Shape["5"], np.float64]
+    camera_matrix: CameraMatrix
+    distortion_coefficients: CameraDistortionCoefficients
 
     positional_6dof: Positional6DoF = Field(default_factory=Positional6DoF)
 

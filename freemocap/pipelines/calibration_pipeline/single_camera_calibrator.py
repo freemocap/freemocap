@@ -47,12 +47,14 @@ class SingleCameraCalibrator(BaseModel):
 
     charuco_observations: CharucoObservations = Field(default_factory=CharucoObservations)
     reprojection_error_by_view: list[float]
-    mean_reprojection_errors: list[float]
+    reprojection_error_per_point_by_view: list[NDArray[Shape["* n_points, 2 xy"], np.float32]]
+    mean_reprojection_error: float|None = None
+
     camera_calibration_residuals: list[float]
 
     @property
     def has_calibration(self):
-        return len(self.mean_reprojection_errors) > 0
+        return self.mean_reprojection_error is not None
 
     @property
     def current_estimate(self) -> SingleCameraCalibrationEstimate:
@@ -121,7 +123,8 @@ class SingleCameraCalibrator(BaseModel):
                    rotation_vectors=[],
                    translation_vectors=[],
                    reprojection_error_by_view=[],
-                   mean_reprojection_errors=[],
+                   mean_reprojection_error=0,
+                   reprojection_error_per_point_by_view=[],
                    camera_calibration_residuals=[],
                    )
 
@@ -167,8 +170,6 @@ class SingleCameraCalibrator(BaseModel):
         self.camera_calibration_residuals.append(residual)
         self._update_reprojection_error()
         self._drop_suboptimal_views()
-
-
 
     def get_board_pose(self, object_points: np.ndarray[..., 3], image_points: np.ndarray[..., 2]) -> tuple[
         np.ndarray[..., 3], np.ndarray[..., 3]]:
@@ -231,21 +232,23 @@ class SingleCameraCalibrator(BaseModel):
         if len(self.image_points_views) == 0:
             raise ValueError("No image points provided")
         error = None
-        jacobian = None #2Nx(10+) jacobian
+        jacobian = None
+        self.reprojection_error_per_point_by_view = []
         self.reprojection_error_by_view = []
         for view_index in range(len(self.image_points_views)):
-            projected_image_points, jacobian = cv2.projectPoints(objectPoints= self.object_points_views[view_index],
-                                                                 rvec= self.rotation_vectors[view_index],
-                                                                 tvec= self.translation_vectors[view_index],
-                                                                 cameraMatrix= self.camera_matrix,
-                                                                 distCoeffs= self.distortion_coefficients,
-                                                                 aspectRatio=self.image_size[0]/self.image_size[1]
+            projected_image_points, jacobian = cv2.projectPoints(objectPoints=self.object_points_views[view_index],
+                                                                 rvec=self.rotation_vectors[view_index],
+                                                                 tvec=self.translation_vectors[view_index],
+                                                                 cameraMatrix=self.camera_matrix,
+                                                                 distCoeffs=self.distortion_coefficients,
+                                                                 aspectRatio=self.image_size[0] / self.image_size[1]
                                                                  )
 
-            self.reprojection_error_by_view.append(
-                np.mean(np.abs(self.image_points_views[view_index] - np.squeeze(projected_image_points))))
+            self.reprojection_error_per_point_by_view.append(
+                np.abs(self.image_points_views[view_index] - np.squeeze(projected_image_points)))
 
-        self.mean_reprojection_errors.append(
-            np.mean(self.reprojection_error_by_view) if self.reprojection_error_by_view else -1)
+            self.reprojection_error_by_view.append(np.nanmean(self.reprojection_error_per_point_by_view[-1]))
 
-        print(f"Mean reprojection errors: {self.mean_reprojection_errors}")
+        self.mean_reprojection_error = float(np.nanmean(self.reprojection_error_by_view))
+
+        print(f"Mean reprojection error: {self.mean_reprojection_error:.3f} pixels, reprojection error by view: {self.reprojection_error_by_view}")

@@ -84,7 +84,8 @@ class SingleCameraCalibrator(BaseModel):
         )
 
     @classmethod
-    def from_camera_node_outputs(cls, camera_node_outputs: list[CalibrationCameraNodeOutputData],
+    def from_camera_node_outputs(cls,
+                                 camera_node_outputs: list[CalibrationCameraNodeOutputData],
                                  calibrate_camera: bool = True):
         output0 = camera_node_outputs[0]
         camera_id = output0.camera_id
@@ -100,7 +101,7 @@ class SingleCameraCalibrator(BaseModel):
         for camera_node_outputs in camera_node_outputs:
             if camera_node_outputs.camera_id != camera_id:
                 raise ValueError(f"Camera ID mismatch: {camera_node_outputs.camera_id} != {camera_id}")
-            instance.add_observation(camera_node_outputs.camera_node_output.charuco_observation)
+            instance.add_observation(camera_node_outputs.charuco_observation)
 
         if calibrate_camera:
             logger.info(f"Calibrating camera {output0.camera_id} with {len(instance.object_points_views)} views")

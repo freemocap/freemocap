@@ -3,12 +3,12 @@ from numpydantic import NDArray, Shape
 from pydantic import BaseModel
 
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
-    TransformationMatrix
+    TransformationMatrix, TranslationVector, RotationVector
 import cv2
 
 class Positional6DoF(BaseModel):
-    translation: NDArray[Shape["3 xyz"], float] = np.zeros((3))
-    rotation: NDArray[Shape["3 xyz"], float] = np.zeros((3))
+    translation: TranslationVector= np.zeros((3))
+    rotation: RotationVector = np.zeros((3))
 
     @property
     def transformation_matrix(self) -> TransformationMatrix:

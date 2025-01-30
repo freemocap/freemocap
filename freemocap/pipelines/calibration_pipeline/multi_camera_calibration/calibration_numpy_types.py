@@ -1,0 +1,24 @@
+import numpy as np
+from numpydantic import NDArray, Shape
+
+RotationVector = NDArray[Shape["3"], np.float64]
+TranslationVector = NDArray[Shape["3"], np.float64]
+PixelPoints2D = NDArray[Shape["* n_points, 2 pixelx_pixely"], np.float64]
+ReprojectionError = NDArray[Shape["* n_points"], np.float64]
+CameraMatrix = NDArray[Shape["3 rows, 3 columns"], np.float64]
+CameraDistortionCoefficients = NDArray[Shape["4-14 k1_k2_p1_p2_k3_k4_k5_k6"], np.float64] #Can be 4,5,8,12, or 14 elements
+
+RotationVectorsByCamera = NDArray[Shape["* n_cams, 3"], np.float64]
+TranslationVectorsByCamera = NDArray[Shape["* n_cams, 3"], np.float64]
+PixelPoints2DByCamera = NDArray[Shape["* n_cams, * n_points, 2 pixelx_pixely"], np.float64]
+CameraMatrixByCamera = NDArray[Shape["* n_cams, 3 rows, 3 columns"], np.float64]
+
+TransformationMatrix = NDArray[Shape["4 rows, 4 columns"], np.float64] # 4x4 matrix that transforms points from the camera coordinate system to the world coordinate system. 3x3 in the upper left is the rotation matrix, and the rightmost column is the translation vector. The bottom row is [0, 0, 0, 1] (where the 1 is the homogeneous coordinate, which makes the matrix invertible and provides the scale factor for the translation vector to put it in spatial coordinates
+ObjectPoints3D = NDArray[Shape["* n_points, 3 xyz"], np.float64]
+PointIds = NDArray[Shape["* n_points"], np.int64]
+
+ExtrinsicsParameters = NDArray[Shape["6 translation_rotation"], np.float64] # 3 for rotation, 3 for translation
+IntrinsicsParameters = NDArray[Shape["*, ..."], np.float64] # focal length, variable number of distortion coefficients (2, 4, 5, 8, 12, or 14)
+
+ExtrinsicsParametersByCamera = NDArray[Shape["* n_cams, 6 translation_rotation"], np.float64]
+IntrinsicsParametersByCamera = NDArray[Shape["* n_cams, * focal_length_distortion"], np.float64]

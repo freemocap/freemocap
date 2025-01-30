@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+import threading
 import time
 from dataclasses import dataclass
 from multiprocessing import Queue, Process
@@ -68,7 +69,8 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
 
         shared_view_accumulator: SharedViewAccumulator = SharedViewAccumulator.create(
             camera_ids=list(input_queues.keys()))
-        calibrated = False
+        multi_camera_calibrator: MultiCameraCalibrator | None = None
+
         try:
 
             while not shutdown_event.is_set():
@@ -84,30 +86,29 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                             f"Unexpected data type received from camera {camera_id}: {type(camera_node_output)}")
                     camera_node_incoming_data[camera_id] = camera_node_output
 
-                if any([camera_node_output is None for camera_node_output in camera_node_incoming_data.values()]):
-                    logger.exception(f"Received None from camera nodes! got {camera_node_incoming_data}")
-                    raise ValueError(f"Received None from camera nodes! got {camera_node_incoming_data}")
-
                 frame_numbers = set(
                     [camera_node_output.frame_metadata.frame_number for camera_node_output in
                      camera_node_incoming_data.values()])
                 if len(frame_numbers) > 1:
-                    logger.exception(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
                     raise ValueError(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
                 multi_frame_number = frame_numbers.pop()
-                if multi_frame_number % 10 == 0:
-                    # Accumulate shared views
-                    shared_view_accumulator.receive_camera_node_output(multi_frame_number=multi_frame_number,
-                                                                       camera_node_output=camera_node_incoming_data)
-                    logger.trace(f"Shared view accumulator: {shared_view_accumulator.shared_view_count_by_camera}")
-                    if shared_view_accumulator.all_cameras_have_min_shared_views(10) and not calibrated:
-                        calibrated = True
-                        multi_camera_calibrator = MultiCameraCalibrator.initialize(
-                            shared_charuco_views=shared_view_accumulator.shared_target_views,
-                            calibrate_cameras=True)
 
-                radius = 5
-                frequency = 0.01
+                if multi_camera_calibrator is None:
+                    if multi_frame_number % 10 == 0:
+                        # Accumulate shared views
+                        shared_view_accumulator.receive_camera_node_output(multi_frame_number=multi_frame_number,
+                                                                           camera_node_output=camera_node_incoming_data)
+                        logger.trace(f"Shared view accumulator: {shared_view_accumulator.shared_view_count_by_camera}")
+                        if shared_view_accumulator.all_cameras_have_min_shared_views(10) and multi_camera_calibrator is None:
+
+                            multi_camera_calibrator = MultiCameraCalibrator.initialize(
+                                shared_charuco_views=shared_view_accumulator.shared_target_views,
+                                calibrate_cameras=True)
+                            multi_camera_calibrator.calibrate()
+                else:
+                    logger.info("Do triangulation and stuff with the calibration data")
+                radius = 1
+                frequency = 0.1
 
                 output = CalibrationPipelineOutputData(
                     camera_node_output=camera_node_incoming_data,  # type: ignore
@@ -115,9 +116,9 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                         multi_frame_number=multi_frame_number,
                         points3d={
                             camera_id: (
+                                radius * np.cos(multi_frame_number * frequency) + camera_id,
                                 camera_id,
-                                radius * np.cos(multi_frame_number * frequency) + camera_id * 5,
-                                radius * np.sin(multi_frame_number * frequency) + camera_id * 5
+                                radius * np.sin(multi_frame_number * frequency) + camera_id
                             )
                             for camera_id in input_queues.keys()
                         },

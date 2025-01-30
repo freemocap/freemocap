@@ -7,7 +7,7 @@ import numpy as np
 import \
     freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.anipose_stuff.anipose_charuco_board
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
-    anipose_camera_group,
+    run_anipose_calibration_algorithm,
 )
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,

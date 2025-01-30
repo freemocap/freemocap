@@ -7,8 +7,8 @@ from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibrati
 import cv2
 
 class Positional6DoF(BaseModel):
-    translation: TranslationVector= np.zeros((3))
-    rotation: RotationVector = np.zeros((3))
+    translation: TranslationVector= np.zeros(3)
+    rotation: RotationVector = np.zeros(3)
 
     @property
     def transformation_matrix(self) -> TransformationMatrix:
@@ -20,7 +20,14 @@ class Positional6DoF(BaseModel):
 
         transformation_matrix = np.zeros((4, 4))
 
-        transformation_matrix[:3, :3] = cv2.Rodrigues(self.rotation_vector)
-        transformation_matrix[:3, 3] = self.translation_vector.flatten()
+        transformation_matrix[:3, :3], _ = cv2.Rodrigues(self.rotation)
+        transformation_matrix[:3, 3] = self.translation.flatten()
         transformation_matrix[3, 3] = 1
         return transformation_matrix
+
+
+if __name__ == "__main__":
+    positional_6dof = Positional6DoF()
+    print(positional_6dof.transformation_matrix)
+    print(positional_6dof.transformation_matrix.shape)
+    print(positional_6dof.model_dump_json(indent=2))

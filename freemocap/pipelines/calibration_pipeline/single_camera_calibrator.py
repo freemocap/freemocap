@@ -28,22 +28,13 @@ class SingleCameraCalibrator(BaseModel):
     SingleCameraCalibrator class for estimating camera calibration parameters.
 
     cv2.calibrateCamera docs: https://docs.opencv.org/4.10.0/d9/d0c/group__calib3d.html#ga687a1ab946686f0d85ae0363b5af1d7b
-
-    Attributes:
-        camera_matrix (np.ndarray[3, 3]): 3x3 matrix with rows: [focal_length_x, 0, center_point_x],
-                                           [0, focal_length_y, center_point_y], [0, 0, 1]
-        distortion_coefficients (np.ndarray[..., 1]): Distortion coefficients to include, e.g. [k1, k2, p1, p2, k3].
-                                                      Can be 4, 5, 8, 12, or 14 elements.
-        object_points_views (list[np.ndarray[..., 3]]): List of 3D points in the world (or object) coordinate space.
-        image_points_views (list[np.ndarray[..., 2]]): List of 2D points in the image coordinate space (i.e. pixel coordinates).
-        rotation_vectors (list[np.ndarray[..., 3]]): List of rotation vectors, containing the rotation of the camera
-                                                     relative to the world coordinate space for each view.
-        translation_vectors (list[np.ndarray[..., 3]]): List of translation vectors, containing the translation of the camera
-                                                        relative to the world coordinate space for each view.
-        error (SingleCameraCalibrationError | None): Calibration error details.
     """
     camera_id: CameraId
     image_size: tuple[int, ...]
+    object_points_views: list[NDArray[Shape["*, 3"], np.float32]]
+    image_points_views: list[NDArray[Shape["*, 2"], np.float32]]
+    rotation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
+    translation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
 
     charuco_corner_ids: list[int]
     charuco_corners_in_object_coordinates: NDArray[Shape["*, 3"], np.float32]
@@ -55,10 +46,6 @@ class SingleCameraCalibrator(BaseModel):
     camera_matrix: NDArray[Shape["3 rows, 3 columns"], np.float64]
 
     charuco_observations: CharucoObservations = Field(default_factory=CharucoObservations)
-    object_points_views: list[NDArray[Shape["*, 3"], np.float32]]
-    image_points_views: list[NDArray[Shape["*, 2"], np.float32]]
-    rotation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
-    translation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
     reprojection_error_by_view: list[float]
     mean_reprojection_errors: list[float]
     camera_calibration_residuals: list[float]
@@ -70,17 +57,9 @@ class SingleCameraCalibrator(BaseModel):
     @property
     def current_estimate(self) -> SingleCameraCalibrationEstimate:
         return SingleCameraCalibrationEstimate(
+            camera_id=self.camera_id,
             camera_matrix=self.camera_matrix,
             distortion_coefficients=self.distortion_coefficients,
-            mean_reprojection_errors=self.mean_reprojection_errors,
-            camera_calibration_residuals=self.camera_calibration_residuals,
-            reprojection_error_by_view=self.reprojection_error_by_view,
-            # charuco_observations=self.charuco_observations,
-            # object_points_views=self.object_points_views,
-            # image_points_views=self.image_points_views,
-            # rotation_vectors=self.rotation_vectors,
-            # translation_vectors=self.translation_vectors,
-            #
         )
 
     @classmethod
@@ -164,6 +143,7 @@ class SingleCameraCalibrator(BaseModel):
                              f"#Current views: {len(self.object_points_views)}, "
                              f"#Charuco corners: {len(self.charuco_corner_ids)}")
 
+        # https://docs.opencv.org/4.10.0/d9/d0c/group__calib3d.html#ga687a1ab946686f0d85ae0363b5af1d7b
         (residual,
          self.camera_matrix,
          self.distortion_coefficients,
@@ -182,9 +162,13 @@ class SingleCameraCalibrator(BaseModel):
                              f"camera_matrix: {self.camera_matrix}",
                              f"distortion_coefficients: {self.distortion_coefficients}",
                              )
+        self.rotation_vectors = [np.squeeze(rotation_vector) for rotation_vector in self.rotation_vectors]
+        self.translation_vectors = [np.squeeze(translation_vector) for translation_vector in self.translation_vectors]
         self.camera_calibration_residuals.append(residual)
         self._update_reprojection_error()
         self._drop_suboptimal_views()
+
+
 
     def get_board_pose(self, object_points: np.ndarray[..., 3], image_points: np.ndarray[..., 2]) -> tuple[
         np.ndarray[..., 3], np.ndarray[..., 3]]:
@@ -241,19 +225,22 @@ class SingleCameraCalibrator(BaseModel):
         self.charuco_observations = [self.charuco_observations[i] for i in sorted_indices[:number_of_views_to_keep]]
 
     def _update_reprojection_error(self):
+        # https://docs.opencv.org/4.10.0/d9/d0c/group__calib3d.html#ga1019495a2c8d1743ed5cc23fa0daff8c
         if len(self.image_points_views) != len(self.object_points_views):
             raise ValueError("The number of image and object points must be the same")
         if len(self.image_points_views) == 0:
             raise ValueError("No image points provided")
         error = None
-        jacobian = None
+        jacobian = None #2Nx(10+) jacobian
         self.reprojection_error_by_view = []
         for view_index in range(len(self.image_points_views)):
-            projected_image_points, jacobian = cv2.projectPoints(self.object_points_views[view_index],
-                                                                 self.rotation_vectors[view_index],
-                                                                 self.translation_vectors[view_index],
-                                                                 self.camera_matrix,
-                                                                 self.distortion_coefficients)
+            projected_image_points, jacobian = cv2.projectPoints(objectPoints= self.object_points_views[view_index],
+                                                                 rvec= self.rotation_vectors[view_index],
+                                                                 tvec= self.translation_vectors[view_index],
+                                                                 cameraMatrix= self.camera_matrix,
+                                                                 distCoeffs= self.distortion_coefficients,
+                                                                 aspectRatio=self.image_size[0]/self.image_size[1]
+                                                                 )
 
             self.reprojection_error_by_view.append(
                 np.mean(np.abs(self.image_points_views[view_index] - np.squeeze(projected_image_points))))

@@ -35,7 +35,7 @@ const sidebarItems = [
             //   route: "/skeleton_detection"
             // },
             {
-                id: "JS Detected Cameras",
+                id: "Config View",
                 route: "/config"
             }
         ],

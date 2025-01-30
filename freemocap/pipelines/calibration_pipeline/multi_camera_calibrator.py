@@ -1,15 +1,24 @@
 from pydantic import BaseModel
-
-from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
-from freemocap.pipelines.calibration_pipeline.multi_camera_calibration_estimate import MultiCameraCalibrationEstimate
-from freemocap.pipelines.calibration_pipeline.positional_6dof import Positional6DOF
-from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import SharedViewAccumulator, TargetViewByCamera
-from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator
-
 from skellycam import CameraId
+
+from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
+    PixelPoints2DByCamera, ObjectPoints3D, PointIds, RotationVectorsByCamera, TranslationVectorsByCamera
+from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import TargetViewByCamera
+from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator
+class MultiCameraCalibrationInputData(BaseModel):
+    pixel_points2d: PixelPoints2DByCamera
+    object_points3d: ObjectPoints3D
+    points_ids: PointIds
+    rotation_vectors: RotationVectorsByCamera
+    translation_vectors: TranslationVectorsByCamera
+
+import logging
+logger = logging.getLogger(__name__)
+
 class MultiCameraCalibrator(BaseModel):
-    calibration_estimate: MultiCameraCalibrationEstimate
-    charuco_views_by_cameras: dict[CameraId, list[CalibrationCameraNodeOutputData]]
+    principal_camera_id: CameraId
+    camera_id_to_index: dict[CameraId, int]
+    single_camera_calibrators: dict[CameraId, SingleCameraCalibrator]
 
     @classmethod
     def initialize(cls,
@@ -28,15 +37,21 @@ class MultiCameraCalibrator(BaseModel):
 
         # Find the principal camera (usually Camera0, but this finds the lowest indexed camera)
         principal_camera_id = min(key for key in charuco_view_by_camera.keys())
-        principal_camera_6dof = Positional6DOF(translation=[0., 0., 0.],
-                                               rotation=[0., 0., 0.])
 
-        camera_estimates = {}
+        single_camera_calibrators = {}
         for camera_id, camera_node_outputs in charuco_view_by_camera.items():
-            camera_estimates[camera_id] = SingleCameraCalibrator.from_camera_node_outputs(camera_node_outputs=camera_node_outputs,
-                                                                                          calibrate_camera=calibrate_cameras).current_estimate
+            single_camera_calibrators[camera_id] = SingleCameraCalibrator.from_camera_node_outputs(
+                camera_node_outputs=camera_node_outputs,
+                calibrate_camera=calibrate_cameras)
 
-        return cls(calibration_estimate=MultiCameraCalibrationEstimate(principal_camera_id=principal_camera_id,
-                                                                       principal_camera_6dof=principal_camera_6dof,
-                                                                       camera_estimates=camera_estimates),
-                     charuco_views_by_cameras=charuco_view_by_camera)
+
+        return cls(principal_camera_id=principal_camera_id,
+                   single_camera_calibrators=single_camera_calibrators,
+                     camera_id_to_index={camera_id: index for index, camera_id in enumerate(single_camera_calibrators.keys())}
+                     )
+
+    def calibrate(self):
+        for single_camera_calibrator in self.single_camera_calibrators.values():
+            single_camera_calibrator.update_calibration_estimate()
+            logger.trace(f"Calibrated camera {single_camera_calibrator.camera_id}:\n{single_camera_calibrator.current_estimate.model_dump_json(indent=2)}")
+        f=9

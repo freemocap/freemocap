@@ -31,7 +31,7 @@ class SingleCameraCalibrator(BaseModel):
     """
     camera_id: CameraId
     image_size: tuple[int, ...]
-    object_points_views: list[NDArray[Shape["*, 3"], np.float32]]
+    object_points_views: list[NDArray[Shape["* , 3"], np.float32]]
     image_points_views: list[NDArray[Shape["*, 2"], np.float32]]
     rotation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
     translation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
@@ -74,10 +74,10 @@ class SingleCameraCalibrator(BaseModel):
         instance = cls.create_initial(
             camera_id=camera_id,
             image_size=observation.image_size,
-            aruco_marker_ids=observation.all_aruco_ids,
-            aruco_corners_in_object_coordinates=observation.all_aruco_corners_in_object_coordinates,
-            charuco_corner_ids=observation.all_charuco_ids,
-            charuco_corners_in_object_coordinates=observation.all_charuco_corners_in_object_coordinates,
+            all_aruco_marker_ids=observation.all_aruco_ids,
+            all_aruco_corners_in_object_coordinates=observation.all_aruco_corners_in_object_coordinates,
+            all_charuco_corner_ids=observation.all_charuco_ids,
+            all_charuco_corners_in_object_coordinates=observation.all_charuco_corners_in_object_coordinates,
         )
         for camera_node_outputs in camera_node_outputs:
             if camera_node_outputs.camera_id != camera_id:
@@ -93,10 +93,10 @@ class SingleCameraCalibrator(BaseModel):
     def create_initial(cls,
                        camera_id: CameraId,
                        image_size: tuple[int, ...],
-                       aruco_marker_ids: list[int],
-                       aruco_corners_in_object_coordinates: list[np.ndarray[..., 3]],
-                       charuco_corner_ids: list[int],
-                       charuco_corners_in_object_coordinates: np.ndarray[..., 3],
+                       all_aruco_marker_ids: list[int],
+                       all_aruco_corners_in_object_coordinates: list[np.ndarray[..., 3]],
+                       all_charuco_corner_ids: list[int],
+                       all_charuco_corners_in_object_coordinates: np.ndarray[..., 3],
                        number_of_distortion_coefficients: int = DEFAULT_INTRINSICS_COEFFICIENTS_COUNT):
         camera_matrix = np.eye(3)
         camera_matrix[0, 2] = image_size[0] / 2  # x_center
@@ -105,17 +105,17 @@ class SingleCameraCalibrator(BaseModel):
         if not number_of_distortion_coefficients in [4, 5, 8, 12, 14]:
             raise ValueError("Invalid number of distortion coefficients. Must be 4, 5, 8, 12, or 14.")
 
-        if len(charuco_corner_ids) != charuco_corners_in_object_coordinates.shape[0]:
+        if len(all_charuco_corner_ids) != all_charuco_corners_in_object_coordinates.shape[0]:
             raise ValueError("Number of charuco corner IDs must match the number of charuco corners.")
-        if len(aruco_marker_ids) != len(aruco_corners_in_object_coordinates):
+        if len(all_aruco_marker_ids) != len(all_aruco_corners_in_object_coordinates):
             raise ValueError("Number of aruco marker IDs must match the number of aruco corners.")
 
         return cls(camera_id=camera_id,
                    image_size=image_size,
-                   charuco_corner_ids=charuco_corner_ids,
-                   charuco_corners_in_object_coordinates=charuco_corners_in_object_coordinates,
-                   aruco_marker_ids=aruco_marker_ids,
-                   aruco_corners_in_object_coordinates=aruco_corners_in_object_coordinates,
+                   charuco_corner_ids=all_charuco_corner_ids,
+                   charuco_corners_in_object_coordinates=all_charuco_corners_in_object_coordinates,
+                   aruco_marker_ids=all_aruco_marker_ids,
+                   aruco_corners_in_object_coordinates=all_aruco_corners_in_object_coordinates,
                    camera_matrix=camera_matrix,
                    distortion_coefficients=np.zeros(number_of_distortion_coefficients),
                    object_points_views=[],

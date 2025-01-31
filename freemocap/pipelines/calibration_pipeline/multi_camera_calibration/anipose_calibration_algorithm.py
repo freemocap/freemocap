@@ -1,5 +1,4 @@
 import logging
-from copy import deepcopy
 
 import cv2
 import numpy as np
@@ -8,19 +7,26 @@ from pydantic import BaseModel
 from scipy import optimize
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
+from skellycam import CameraId
 from tqdm import trange
 
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import PixelPoints2D, \
-    ObjectPoints3D, ExtrinsicsParameters, IntrinsicsParameters, ReprojectionError
+    ObjectPoints3D, ExtrinsicsParameters, IntrinsicsParameters, ReprojectionError, PixelPoints2DByCamera, PointIds, \
+    RotationVectorsByCamera, TranslationVectorsByCamera
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_utilities import \
     calculate_error_bounds, transform_points, construct_camera_extrinsics_matrix, \
     get_rotation_and_translation_vector_from_extrinsics_matrix, get_error_dict
-from freemocap.pipelines.calibration_pipeline.multi_camera_calibrator import MultiCameraCalibrationInputData
 from freemocap.pipelines.calibration_pipeline.single_camera_calibration_estimate import SingleCameraCalibrationEstimate
 
 logger = logging.getLogger(__name__)
 
 
+class MultiCameraCalibrationInputData(BaseModel):
+    pixel_points2d: PixelPoints2DByCamera
+    object_points3d: ObjectPoints3D
+    points_ids: PointIds
+    rotation_vectors: RotationVectorsByCamera
+    translation_vectors: TranslationVectorsByCamera
 
 
 
@@ -102,6 +108,8 @@ class AniposeSingleCameraCalibrationHelper(BaseModel):
 
 class AniposeMultiCameraCalibrator(BaseModel):
 
+    camera_helpers: dict[CameraId, AniposeSingleCameraCalibrationHelper]
+
     max_iterations: int = 10
     starting_error_threshold: float = 15.0
     ending_error_threshold: float = 1.0
@@ -111,24 +119,19 @@ class AniposeMultiCameraCalibrator(BaseModel):
     number_of_samples_full: int = 1000
     error_threshold: float = 0.3
 
-    def run_iterative_bundle_adjustment(
-            self,
-            calibration_input_data: MultiCameraCalibrationInputData,
+    @classmethod
+    def from_single_camera_calibrators(cls, single_camera_calibrators: dict[CameraId, SingleCameraCalibrationEstimate]):
+        camera_helpers = {camera_id: AniposeSingleCameraCalibrationHelper(calibration_estimate=calibration_estimate)
+                          for camera_id, calibration_estimate in single_camera_calibrators.items()}
+        return cls(camera_helpers=camera_helpers)
 
-    ) -> float:
+    def run_iterative_bundle_adjustment(self) -> float:
         """
         Performs iterative bundle adjustment to refine camera parameters.
         based on Anipose's iterative bundle adjustment method. (`bundle_adjust_iter`)
         """
-        original_calibration_input_data = deepcopy(calibration_input_data)
-        original_points2d = original_calibration_input_data.pixel_points2d
 
-        # Validate input shapes
-        if not original_points2d.shape[0] == len(self.camera_calibration_estimates):
-            raise ValueError(
-                f"Invalid points shape, expected first dimension to be equal to "
-                f"number of cameras ({len(self.camera_calibration_estimates)}), but got shape {original_points2d.shape}"
-            )
+        original_points2d = np.array([camera_helper.pixel_points2d for camera_helper in self.camera_helpers.values()])
 
         # Initialize
         error_list = []
@@ -142,13 +145,13 @@ class AniposeMultiCameraCalibrator(BaseModel):
             f"\n\tOriginal error: {original_error:.2f}")
 
         # Resample initial set of points to prioritize shared views
-        resampled_calibration_input_data = resample_points_based_on_shared_views(
-            original_calibration_input_data,
-            number_of_samples_to_return=self.number_of_samples_full
-        )
-        initial_error = self.get_mean_reprojection_error(resampled_calibration_input_data.pixel_points2d, median=True)
+        # resampled_calibration_input_data = resample_points_based_on_shared_views(
+        #     original_calibration_input_data,
+        #     number_of_samples_to_return=self.number_of_samples_full
+        # )
+        # initial_error = self.get_mean_reprojection_error(resampled_calibration_input_data.pixel_points2d, median=True)
 
-        logger.debug("Initial error after resampling: ", initial_error)
+        # logger.debug("Initial error after resampling: ", initial_error)
 
         # Calculate dynamic error thresholds for each iteration
         error_thresholds = np.exp(
@@ -218,11 +221,11 @@ class AniposeMultiCameraCalibrator(BaseModel):
 
         return float(final_error)
 
-    @jit(parallel=True, forceobj=True)
+    # @jit(parallel=True, forceobj=True)
     def calculate_reprojection_error(self,
                                      points_3d: np.ndarray,
                                      points_2d: np.ndarray,
-                                     mean=False):
+                                     mean:bool=False):
         """Given an Nx3 array of 3D points and an CxNx2 array of 2D points,
         where N is the number of points and C is the number of cameras,
         this returns an CxNx2 array of errors.

@@ -81,24 +81,12 @@ class CalibrationCameraNode(BaseCameraNode):
                     time_to_retrieve = time.perf_counter_ns() - tik
                     tik = time.perf_counter_ns()
                     observation, raw_results = charuco_tracker.process_image(frame.image, annotate_image=False)
-                    if camera_calibration_estimator is None:
-                        camera_calibration_estimator = SingleCameraCalibrator.create_initial(
-                            camera_id=camera_id,
-                            image_size=frame.image.shape[:2],
-                            aruco_marker_ids=list(charuco_tracker.detector.board.getIds()),
-                            aruco_corners_in_object_coordinates=charuco_tracker.aruco_corners_in_object_coordinates,
-                            charuco_corner_ids=charuco_tracker.charuco_corner_ids,
-                            charuco_corners_in_object_coordinates=charuco_tracker.charuco_corners_in_object_coordinates,
-                        )
-                    if not camera_calibration_estimator.has_calibration and not observation.charuco_empty and frame.frame_number % 10 == 0:
-                        camera_calibration_estimator.add_observation(observation)
-                        # if len(camera_calibration_estimator.charuco_observations) == 30:
-                        #     camera_calibration_estimator.update_calibration_estimate()
+
+
                     time_to_process = time.perf_counter_ns() - tik
                     output_queue.put(CalibrationCameraNodeOutputData(
                         frame_metadata=FrameMetadata.from_frame_metadata_array(frame.metadata),
                         charuco_observation=observation,
-                        calibration_estimate=camera_calibration_estimator.current_estimate,
                         time_to_retrieve_frame_ns=time_to_retrieve,
                         time_to_process_frame_ns=time_to_process
                     ),

@@ -1,13 +1,11 @@
-import numpy as np
-from numpydantic import NDArray, Shape
 from pydantic import BaseModel
-
 from pydantic import Field
+from skellycam import CameraId
 
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
     TransformationMatrix, CameraMatrix, CameraDistortionCoefficients
 from freemocap.pipelines.calibration_pipeline.positional_6dof import Positional6DoF
-from skellycam import CameraId
+
 
 class SingleCameraCalibrationEstimate(BaseModel):
     camera_id: CameraId

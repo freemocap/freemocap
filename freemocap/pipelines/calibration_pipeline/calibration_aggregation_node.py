@@ -1,6 +1,5 @@
 import logging
 import multiprocessing
-import threading
 import time
 from dataclasses import dataclass
 from multiprocessing import Queue, Process
@@ -11,7 +10,7 @@ from skellycam import CameraId
 
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibrator import MultiCameraCalibrator
-from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import SharedViewAccumulator
+from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator
 from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BaseAggregationNode, BasePipelineOutputData
 
@@ -67,10 +66,9 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                                                                                              camera_id in
                                                                                              input_queues.keys()}
 
-        shared_view_accumulator: SharedViewAccumulator = SharedViewAccumulator.create(
-            camera_ids=list(input_queues.keys()))
-        multi_camera_calibrator: MultiCameraCalibrator | None = None
 
+        multi_camera_calibrator = MultiCameraCalibrator.from_camera_ids(camera_ids=list(input_queues.keys()))
+        camera_calibration_estimators: dict[CameraId, SingleCameraCalibrator]|None = None
         try:
 
             while not shutdown_event.is_set():
@@ -93,17 +91,13 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                     raise ValueError(f"Frame numbers from camera nodes do not match! got {frame_numbers}")
                 multi_frame_number = frame_numbers.pop()
 
-                if multi_camera_calibrator is None:
+                if not multi_camera_calibrator.has_calibration:
+
                     if multi_frame_number % 10 == 0:
                         # Accumulate shared views
-                        shared_view_accumulator.receive_camera_node_output(multi_frame_number=multi_frame_number,
-                                                                           camera_node_output=camera_node_incoming_data)
-                        logger.trace(f"Shared view accumulator: {shared_view_accumulator.shared_view_count_by_camera}")
-                        if shared_view_accumulator.all_cameras_have_min_shared_views(10) and multi_camera_calibrator is None:
-
-                            multi_camera_calibrator = MultiCameraCalibrator.initialize(
-                                shared_charuco_views=shared_view_accumulator.shared_target_views,
-                                calibrate_cameras=True)
+                        multi_camera_calibrator.receive_camera_node_output(multi_frame_number=multi_frame_number,
+                                                                           camera_node_output_by_camera=camera_node_incoming_data)
+                        if multi_camera_calibrator.all_cameras_have_min_shared_views():
                             multi_camera_calibrator.calibrate()
                 else:
                     logger.info("Do triangulation and stuff with the calibration data")

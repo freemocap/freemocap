@@ -1,10 +1,11 @@
+import cv2
 import numpy as np
 from numpydantic import NDArray, Shape
 from pydantic import BaseModel
 
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
     TransformationMatrix, TranslationVector, RotationVector
-import cv2
+
 
 class Positional6DoF(BaseModel):
     translation: TranslationVector= np.zeros(3)

@@ -5,6 +5,7 @@ from abc import ABC
 from dataclasses import dataclass
 from enum import Enum
 from multiprocessing import Process, Queue
+from threading import Thread
 
 import numpy as np
 from numpydantic import NDArray, Shape
@@ -75,7 +76,7 @@ class BaseCameraNode(ABC):
     camera_id: CameraId
     incoming_frame_shm: SingleSlotCameraSharedMemory
 
-    process: Process
+    process: Process| Thread
     all_ready_events: dict[CameraId, multiprocessing.Event]
     shutdown_event: multiprocessing.Event
 
@@ -151,7 +152,7 @@ class BaseCameraNode(ABC):
 @dataclass
 class BaseAggregationNode(ABC):
     config: BasePipelineStageConfig
-    process: Process
+    process: Process| Thread
     input_queues: dict[CameraId, Queue]
     output_queue: Queue
     shutdown_event: multiprocessing.Event

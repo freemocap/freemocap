@@ -3,6 +3,7 @@ import multiprocessing
 import time
 from dataclasses import dataclass
 from multiprocessing import Queue, Process
+from threading import Thread
 from typing import Dict
 
 import numpy as np
@@ -39,7 +40,7 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                all_ready_events: dict[CameraId | str, multiprocessing.Event],
                shutdown_event: multiprocessing.Event):
         return cls(config=config,
-                   process=Process(target=cls._run,
+                   process=Thread(target=cls._run,
                                    kwargs=dict(config=config,
                                                input_queues=input_queues,
                                                output_queue=output_queue,

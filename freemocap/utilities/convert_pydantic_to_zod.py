@@ -1,5 +1,3 @@
-import logging
-
 import pydantic2zod
 from pydantic2zod.model import BuiltinType, ClassDecl
 

@@ -1,13 +1,13 @@
 import numpy as np
-from freemocap.pipelines.pipeline_abcs import BasePipelineOutputData
-from pydantic import BaseModel
-from skellycam.core.frames.payloads.frontend_image_payload import FrontendFramePayload
-
-from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node import CalibrationPipelineOutputData
-from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 from numpydantic import NDArray, Shape
-
+from pydantic import BaseModel
 from skellycam import CameraId
+from skellycam.core.frames.payloads.frontend_image_payload import FrontendFramePayload
+from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
+
+from freemocap.pipelines.pipeline_abcs import BasePipelineOutputData
+
+
 class CharucoBoardPayload(BaseModel):
     charuco_corners_in_object_coordinates: NDArray[Shape["* charuco_corners, 3 xyz"], np.float64]
     charuco_ids: NDArray[Shape["* ch0aruco_corners, ..."], np.int32]

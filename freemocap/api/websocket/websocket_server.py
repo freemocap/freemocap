@@ -3,6 +3,7 @@ import logging
 import multiprocessing
 from typing import Optional
 
+from skellycam.core.camera_group.camera.config.camera_config import CameraConfig
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 from skellycam.core.recorders.timestamps.framerate_tracker import CurrentFrameRate
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -10,9 +11,7 @@ from skellycam.skellycam_app.skellycam_app_state import SkellycamAppStateDTO
 from skellycam.utilities.wait_functions import async_wait_1ms
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
-from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState
-from freemocap.pipelines.calibration_pipeline import CalibrationPipeline
-from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node import CalibrationPipelineOutputData
+from freemocap.freemocap_app.freemocap_app_state import get_freemocap_app_state, FreemocapAppState, FreemocapAppStateDTO
 from freemocap.pipelines.freemocap_frontend_payload import FreemocapFrontendPayload
 from freemocap.pipelines.pipeline_abcs import ReadTypes, BaseProcessingPipeline, BasePipelineOutputData
 from freemocap.pipelines.pipeline_types import PipelineTypes
@@ -72,7 +71,11 @@ class FreemocapWebsocketServer:
         logger.info("Ending listener for client messages...")
 
     async def _handle_ipc_queue_message(self, message: Optional[object] = None):
-        if isinstance(message, FreemocapAppState) or isinstance(message, SkellycamAppStateDTO):
+        if isinstance(message, CameraConfig):
+            logger.trace(f"Updating device extracted camera config for camera {message.camera_id}")
+            self._freemocap_app_state.skellycam_app_state.set_device_extracted_camera_config(message)
+            message = self._freemocap_app_state.state_dto()
+        if isinstance(message, FreemocapAppStateDTO) or isinstance(message, SkellycamAppStateDTO):
             logger.trace(f"Relaying AppStateDTO to frontend")
 
         elif isinstance(message, RecordingInfo):

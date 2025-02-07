@@ -2,7 +2,6 @@ import logging
 import multiprocessing
 from typing import Optional
 
-
 from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data
 from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.anatomical_data_pipeline_functions import (
     calculate_anatomical_data,
@@ -10,7 +9,6 @@ from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_
 from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.data_saving_pipeline_functions import (
     save_data,
 )
-
 from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.image_tracking_pipeline_functions import (
     run_image_tracking_pipeline,
 )

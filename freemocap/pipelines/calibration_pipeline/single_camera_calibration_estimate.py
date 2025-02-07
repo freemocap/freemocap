@@ -31,3 +31,4 @@ class SingleCameraCalibrationEstimate(BaseModel):
 
     def extrinsic_matrix(self) -> TransformationMatrix:
         return self.positional_6dof.transformation_matrix
+

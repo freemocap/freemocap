@@ -1,13 +1,15 @@
 import logging
 import multiprocessing
 from dataclasses import dataclass
+from datetime import datetime
 
+from pydantic import BaseModel
 from skellycam.core.camera_group.shmorchestrator.shared_memory.multi_frame_escape_ring_buffer import \
     MultiFrameEscapeSharedMemoryRingBuffer
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
     SingleSlotCameraGroupSharedMemory, CameraSharedMemoryDTOs
 from skellycam.skellycam_app.skellycam_app_controller.skellycam_app_controller import create_skellycam_app_controller
-from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState, get_skellycam_app_state
+from skellycam.skellycam_app.skellycam_app_state import SkellycamAppState, get_skellycam_app_state, SkellycamAppStateDTO
 from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
 from skellytracker.trackers.mediapipe_tracker import MediapipeTrackerConfig
 
@@ -100,6 +102,26 @@ class FreemocapAppState:
 
         if self.processing_camera_shms:
             self.processing_camera_shms.close_and_unlink()
+
+    def state_dto(self) -> 'FreemocapAppStateDTO':
+        return FreemocapAppStateDTO.from_state(self)
+
+
+class FreemocapAppStateDTO(BaseModel):
+    """
+    Serializable Data Transfer Object for the FreemocapAppState
+    """
+    type: str
+    state_timestamp: str = datetime.now().isoformat()
+
+    skellycam_app_state: SkellycamAppStateDTO
+
+    @classmethod
+    def from_state(cls, state: FreemocapAppState):
+        return cls(
+            skellycam_app_state=SkellycamAppStateDTO.from_state(state.skellycam_app_state),
+            type=cls.__name__
+        )
 
 
 FREEMOCAP_APP_STATE: FreemocapAppState | None = None

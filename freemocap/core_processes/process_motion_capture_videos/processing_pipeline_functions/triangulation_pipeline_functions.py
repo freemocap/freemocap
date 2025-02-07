@@ -2,9 +2,12 @@ import logging
 import multiprocessing
 from pathlib import Path
 from typing import Optional
+
 import numpy as np
 
-
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
+    load_anipose_calibration_toml_from_path,
+)
 from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import (
     run_reprojection_error_filtering,
 )
@@ -12,9 +15,6 @@ from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy imp
     save_3d_data_to_npy,
 )
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
-    load_anipose_calibration_toml_from_path,
-)
 from freemocap.core_processes.post_process_skeleton_data.process_single_camera_skeleton_data import (
     process_single_camera_skeleton_data,
 )

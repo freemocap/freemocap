@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 import toml
 from skellycam import CameraId
-from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
 from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
 

@@ -1,23 +1,11 @@
 import queue
 from collections import defaultdict, Counter
-from typing import Any
 
 import cv2
 import numpy as np
-from scipy import signal
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
-
-
-
-
-
-
-
-
-
-
 
 
 def get_connections(xs, cam_names=None, both=True):

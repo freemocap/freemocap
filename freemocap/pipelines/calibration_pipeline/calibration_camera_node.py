@@ -3,6 +3,7 @@ import multiprocessing
 import time
 from dataclasses import dataclass
 from multiprocessing import Queue, Process
+from threading import Thread
 
 from skellycam import CameraId
 from skellycam.core.camera_group.camera.config.camera_config import CameraConfig
@@ -40,7 +41,7 @@ class CalibrationCameraNode(BaseCameraNode):
                    incoming_frame_shm=SingleSlotCameraSharedMemory.recreate(camera_config=config.camera_config,
                                                                             camera_shm_dto=camera_shm_dto,
                                                                             read_only=False),
-                   process=Process(target=cls._run,
+                   process=Thread(target=cls._run,
                                    kwargs=dict(camera_id=camera_id,
                                                config=config,
                                                camera_shm_dto=camera_shm_dto,

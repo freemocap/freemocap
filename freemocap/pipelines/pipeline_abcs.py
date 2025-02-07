@@ -8,7 +8,7 @@ from multiprocessing import Process, Queue
 
 import numpy as np
 from numpydantic import NDArray, Shape
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
 from skellycam.core import CameraId
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
     SingleSlotCameraSharedMemory

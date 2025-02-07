@@ -5,58 +5,123 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>FreeMoCap UI Tester</title>
     <style>
-        .image {
-            width: 1000px;
-            height: auto;
-        }
-
-        div {
-            background-color: #654a7b;
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #f4f4f9;
         }
 
         h1 {
             font-size: 24px;
+            background-color: #4a4e69;
+            color: white;
+            margin: 0;
+            padding: 10px;
+            text-align: center;
+        }
+
+        #controls {
+            display: flex;
+            align-items: center;
+            background-color: #4a4e69;
+            padding: 10px;
+            color: white;
+            justify-content: center;
+        }
+
+        #ws-status {
+            margin-right: 15px;
+            font-weight: bold;
         }
 
         button {
-            margin-right: 10px;
+            margin: 0 10px;
             padding: 10px;
             font-size: small;
+            background-color: #9a8c98;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
         }
 
-        #threejs-container {
-            width: 40%;
-            height: 400px;
+        button:hover {
+            background-color: #c9ada7;
         }
 
         #content-container {
             display: flex;
-            justify-content: space-between;
+            flex-grow: 1;
+            overflow: hidden;
+            position: relative;
         }
 
         #images-container {
-            width: 60%;
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            overflow-y: auto;
+            background-color: #22223b;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .image {
+            max-width: 100%;
+            height: auto;
+            margin: 5px;
+        }
+
+        #threejs-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 20%;
+            height: 20%;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: grab;
+        }
+
+        #log-container {
+            height: 100px;
+            overflow-y: auto;
+            background-color: #4a4e69;
+            color: white;
+            padding: 10px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<!--    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>-->
     <script>
-
         let ws;
         let isConnected = false;
-        const websocket_url = 'ws://localhost:8005/websocket/connect';
+        const websocket_url = '{{WEBSOCKET_URL}}/websocket/connect';
+        const http_url = '{{HTTP_URL}}';
         const imageElements = {};
         const spheres = {};
-        let scene; // Declare scene globally
+        let scene;
+        let isDragging = false;
+        let dragStartX, dragStartY;
+        let initialX, initialY;
 
         function updateStatus() {
-            document.getElementById('ws-status').innerText = isConnected ? 'Connected' : 'Disconnected';
+            document.getElementById('ws-status').innerText = isConnected ? 'Status: Connected ✔️' : 'Status: Disconnected ❌';
+            document.getElementById('ws-status').style.color = isConnected ? '#4caf50' : '#f44336';
         }
 
         function connectWebSocket() {
             ws = new WebSocket(websocket_url);
-
-            // websocket helpers
             const decoder = new TextDecoder('utf-8');
 
             ws.onopen = () => {
@@ -68,53 +133,37 @@
                 updateStatus();
             };
             ws.onmessage = async (event) => {
-                // Ensure the event.data is a Blob
                 if (event.data instanceof Blob) {
-                    // Convert the incoming data to an ArrayBuffer
                     const arrayBuffer = await event.data.arrayBuffer();
-
-                    // Convert ArrayBuffer to a string
                     const jsonString = decoder.decode(arrayBuffer);
-
-                    // Parse the JSON string to a JavaScript object
                     const data = JSON.parse(jsonString);
                     addLogEntry(`Received message with length: ${jsonString.length} from mf_payload# ${data.multi_frame_number}`);
-
-                    // Now you can use the data object to update your UI
                     updateImages(data.jpeg_images);
                     updateSpheres(data.latest_pipeline_output?.aggregation_layer_output?.points3d);
-                } else {
-                    console.log("Received data: ", event.data);
                 }
             };
         }
 
         function updateSpheres(points3d) {
-            if (!points3d) {
-                return; // Exit the function if points3d is undefined or null
-            }
+            if (!points3d) return;
 
-            // Mark all spheres as not updated
             for (const id in spheres) {
                 spheres[id].updated = false;
             }
 
             for (const [point_id, coords] of Object.entries(points3d)) {
                 if (!spheres[point_id]) {
-                    // Create a new sphere
                     const geometry = new THREE.SphereGeometry(1, 10, 10);
                     const material = new THREE.MeshBasicMaterial({color: 0xff0000});
                     const sphere = new THREE.Mesh(geometry, material);
                     scene.add(sphere);
                     spheres[point_id] = {mesh: sphere, updated: true};
                 } else {
-                    // Update existing sphere position
                     spheres[point_id].mesh.position.set(coords[0], coords[1], coords[2]);
                     spheres[point_id].updated = true;
                 }
             }
 
-            // Hide spheres not in the current payload
             for (const id in spheres) {
                 spheres[id].mesh.visible = spheres[id].updated;
             }
@@ -124,12 +173,9 @@
             const container = document.getElementById('images-container');
             for (const cameraId in images) {
                 if (!imageElements[cameraId]) {
-                    const imgBox = document.createElement('div');
-                    imgBox.className = 'image-box';
                     const img = document.createElement('img');
                     img.className = 'image';
-                    imgBox.appendChild(img);
-                    container.appendChild(imgBox);
+                    container.appendChild(img);
                     imageElements[cameraId] = img;
                 }
                 if (images[cameraId]) {
@@ -141,10 +187,10 @@
         function addLogEntry(entry) {
             const logContainer = document.getElementById('log-container');
             const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
             logEntry.innerText = entry;
             logContainer.prepend(logEntry);
 
-            // Limit the number of log entries to 30
             if (logContainer.children.length > 30) {
                 logContainer.removeChild(logContainer.lastChild);
             }
@@ -156,7 +202,6 @@
                 const data = await response.json();
                 document.getElementById('result').innerText = JSON.stringify(data, null, 2);
                 addLogEntry(`Success: ${endpoint} - ${JSON.stringify(data)}`);
-
             } catch (error) {
                 document.getElementById('result').innerText = `Error: ${error.message}`;
                 addLogEntry(`Error: ${endpoint} - ${error.message}`);
@@ -167,13 +212,9 @@
             const container = document.getElementById('threejs-container');
             scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-
             const renderer = new THREE.WebGLRenderer();
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
-
-            // Initialize OrbitControls
-            // const controls = new THREE.OrbitControls(camera, renderer.domElement);
 
             const axesHelper = new THREE.AxesHelper(5);
             scene.add(axesHelper);
@@ -184,62 +225,63 @@
             camera.position.y = 5;
             camera.position.z = 25;
 
-            // Add light
             const light = new THREE.DirectionalLight(0xffffff, 1);
             light.position.set(1, 1, 1).normalize();
             scene.add(light);
 
             function animate() {
                 requestAnimationFrame(animate);
-                // controls.update(); // Required for damping to work
                 renderer.render(scene, camera);
             }
 
             animate();
+
+            // Add event listeners for dragging
+            container.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+
+        function onMouseDown(event) {
+            isDragging = true;
+            dragStartX = event.clientX;
+            dragStartY = event.clientY;
+            const rect = event.target.getBoundingClientRect();
+            initialX = rect.left;
+            initialY = rect.top;
+            event.target.style.cursor = 'grabbing';
+        }
+
+        function onMouseMove(event) {
+            if (isDragging) {
+                const dx = event.clientX - dragStartX;
+                const dy = event.clientY - dragStartY;
+                const container = document.getElementById('threejs-container');
+                container.style.left = `${initialX + dx}px`;
+                container.style.top = `${initialY + dy}px`;
+            }
+        }
+
+        function onMouseUp(event) {
+            isDragging = false;
+            event.target.style.cursor = 'grab';
         }
 
         window.onload = initThreeJS;
     </script>
 </head>
 <body>
-<!-- Header Section -->
-<h1>FreeMoCap Test UI</h1>
-<p> WebSocket status: <span id="ws-status">Disconnected</span></p>
-
-<!-- WebSocket Section -->
-<button onclick="connectWebSocket()">Connect WebSocket</button>
-
-<!-- API Calls Section -->
-<!-- Camera Connection API Calls -->
-<button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/detect')">Connect to Cameras</button>
-
-<div>
-    <!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/connect/apply', 'POST')">Connect/Update Cameras-->
-    <!--    </button>-->
-    <!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/close')">Close Camera Connections</button>-->
-
-    <!--    &lt;!&ndash; Root and App API Calls &ndash;&gt;-->
-    <!--    <button onclick="sendMessage('Hello from the client')">Send WS Message</button>-->
-    <!--    <button onclick="callApi('http://localhost:8005/')">Read Root</button>-->
-    <!--    <button onclick="callApi('http://localhost:8005/skellycam/app/state')">App State</button>-->
-    <!--    <button onclick="callApi('http://localhost:8005/skellycam/app/healthcheck')">Hello👋</button>-->
-    <!--    <button onclick="callApi('http://localhost:8005/skellycam/app_state/shutdown')">goodbye👋</button>-->
-
-
-    <!--    &lt;!&ndash; Camera Operation API Calls &ndash;&gt;-->
-    <!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/detect')">Detect Cameras</button>-->
-    <!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/record/start')">Start Recording</button>-->
-    <!--    <button onclick="callApi('http://localhost:8005/skellycam/cameras/record/stop')">Stop Recording</button>-->
-</div>
-<!-- Content Container -->
-<div id="content-container">
-    <!-- Images Section -->
-    <div id="images-container"></div>
-    <!-- Three.js Viewer Section -->
-    <div id="threejs-container"></div>
-</div>
-
-<h3>Loggs</h3>
-<div id="log-container"></div>
+    <h1>FreeMoCap Test UI</h1>
+    <div id="controls">
+        <span id="ws-status">Status: Disconnected ❌</span>
+        <button onclick="connectWebSocket()">Connect WebSocket</button>
+        <button onclick="callApi(`${http_url}/skellycam/cameras/connect/detect`)">Connect to Cameras</button>
+    </div>
+    <div id="content-container">
+        <div id="images-container"></div>
+        <div id="threejs-container"></div>
+    </div>
+    <h3>Logs</h3>
+    <div id="log-container"></div>
 </body>
 </html>

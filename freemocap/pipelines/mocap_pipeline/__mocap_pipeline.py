@@ -4,10 +4,6 @@ from dataclasses import dataclass
 from multiprocessing import Queue
 from typing import Dict
 
-from freemocap.pipelines.mocap_pipeline.mocap_aggregation_node import MocapAggregationNodeConfig, \
-    MocapPipelineOutputData, MocapAggregationProcessNode
-from freemocap.pipelines.mocap_pipeline.mocap_camera_node import MocapPipelineCameraNodeConfig, MocapCameraNode
-from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, PipelineImageAnnotator, BaseProcessingPipeline
 from skellycam import CameraId
 from skellycam.core.camera_group.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
@@ -16,6 +12,11 @@ from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 from skellytracker.trackers.mediapipe_tracker import MediapipeTrackerConfig
 from skellytracker.trackers.mediapipe_tracker.mediapipe_annotator import MediapipeImageAnnotator, \
     MediapipeAnnotatorConfig
+
+from freemocap.pipelines.mocap_pipeline.mocap_aggregation_node import MocapAggregationNodeConfig, \
+    MocapPipelineOutputData, MocapAggregationProcessNode
+from freemocap.pipelines.mocap_pipeline.mocap_camera_node import MocapPipelineCameraNodeConfig, MocapCameraNode
+from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, PipelineImageAnnotator, BaseProcessingPipeline
 
 logger = logging.getLogger(__name__)
 

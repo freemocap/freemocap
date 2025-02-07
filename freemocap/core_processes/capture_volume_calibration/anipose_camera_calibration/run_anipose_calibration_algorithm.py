@@ -15,26 +15,30 @@ from scipy.sparse import dok_matrix
 from skellycam import CameraId
 from tqdm import trange
 
+from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
+    PixelPoints2DByCamera, CameraExtrinsicsMatrixByCamera
+
 logger = logging.getLogger(__name__)
 
 
 @jit(nopython=True, parallel=False)
-def anipose_triangulate_simple(points2d: np.ndarray, camera_matrices: np.ndarray) -> np.ndarray:
+def anipose_triangulate_simple(points2d_by_camera: PixelPoints2DByCamera,
+                               camera_matrices_by_camera: CameraExtrinsicsMatrixByCamera) -> np.ndarray:
     """
     Triangulate 3D point from 2D points and camera matrices using the Direct Linear Transform (DLT) method.
 
-    :param points2d: A 2D array of shape (N, 2), where N is the number of cameras. Each row represents the
+    :param points2d_by_camera: A 2D array of shape (N, 2), where N is the number of cameras. Each row represents the
                      2D coordinates (x, y) of the point in the image plane of each camera.
-    :param camera_matrices: A 3D array of shape (N, 3, 4), where each element is a 3x4 camera projection matrix.
+    :param camera_matrices_by_camera: A 3D array of shape (N, 3, 4), where each element is a 3x4 camera projection matrix.
     :return: A 1D array of shape (3,) representing the triangulated 3D point.
     """
 
-    num_cams = camera_matrices.shape[0]
+    num_cams = camera_matrices_by_camera.shape[0]
     A = np.zeros((num_cams * 2, 4))
 
     for i in range(num_cams):
-        x, y = points2d[i]
-        mat = camera_matrices[i]
+        x, y = points2d_by_camera[i]
+        mat = camera_matrices_by_camera[i]
         A[i * 2] = x * mat[2] - mat[0]
         A[i * 2 + 1] = y * mat[2] - mat[1]
 
@@ -44,7 +48,7 @@ def anipose_triangulate_simple(points2d: np.ndarray, camera_matrices: np.ndarray
     points3d_xyzh = vh[-1]
     points3d_xyzh /= points3d_xyzh[3]  # Normalize the last element to 1
 
-    return points3d_xyzh[:3]
+    return points3d_xyzh[:3] # Return only the first 3 elements (x, y, z)
 
 
 @dataclass

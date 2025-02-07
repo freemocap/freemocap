@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, Tuple
+
 import numpy as np
 
 from freemocap.data_layer.skeleton_models.segments import SegmentAnthropometry

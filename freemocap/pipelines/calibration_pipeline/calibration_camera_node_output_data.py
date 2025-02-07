@@ -1,5 +1,6 @@
 from skellycam.core.frames.payloads.metadata.frame_metadata import FrameMetadata
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation, \
+    DetectedCharucoCornersImageCoordinates
 
 from freemocap.pipelines.pipeline_abcs import BaseCameraNodeOutputData
 
@@ -23,3 +24,7 @@ class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
     @property
     def camera_id(self):
         return self.frame_metadata.camera_id
+
+    @property
+    def target_pixel_points(self) -> DetectedCharucoCornersImageCoordinates:
+        return self.charuco_observation.detected_charuco_corners_image_coordinates

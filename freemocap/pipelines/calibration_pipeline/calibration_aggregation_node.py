@@ -10,7 +10,6 @@ from skellycam import CameraId
 
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibrator import MultiCameraCalibrator
-from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator
 from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BaseAggregationNode, BasePipelineOutputData
 
@@ -68,12 +67,11 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
 
 
         multi_camera_calibrator = MultiCameraCalibrator.from_camera_ids(camera_ids=list(input_queues.keys()))
-        camera_calibration_estimators: dict[CameraId, SingleCameraCalibrator]|None = None
         try:
 
             while not shutdown_event.is_set():
 
-                while any([queue.empty() for queue in input_queues.values()]):
+                if any([queue.empty() for queue in input_queues.values()]):
                     time.sleep(0.001)
                     continue
 
@@ -93,7 +91,7 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
 
                 if not multi_camera_calibrator.has_calibration:
 
-                    if multi_frame_number % 10 == 0:
+                    if multi_frame_number % 5 == 0:
                         # Accumulate shared views
                         multi_camera_calibrator.receive_camera_node_output(multi_frame_number=multi_frame_number,
                                                                            camera_node_output_by_camera=camera_node_incoming_data)
@@ -116,7 +114,6 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                             )
                             for camera_id in input_queues.keys()
                         },
-                        # data=shared_view_accumulator.model_dump()
                     )
                 )
 

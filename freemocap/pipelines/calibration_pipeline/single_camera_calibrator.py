@@ -5,9 +5,13 @@ import numpy as np
 from numpydantic import NDArray, Shape
 from pydantic import BaseModel, Field
 from skellycam import CameraId
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservations, CharucoObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservations, CharucoObservation, \
+    AllCharucoCorners3DByIdInObjectCoordinates, AllArucoCorners3DByIdInObjectCoordinates
 
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
+from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import ObjectPoints3D, \
+    PixelPoints2D, RotationVector, TranslationVector, CameraDistortionCoefficients, CameraMatrix, \
+    ReprojectionError
 from freemocap.pipelines.calibration_pipeline.single_camera_calibration_estimate import SingleCameraCalibrationEstimate
 
 logger = logging.getLogger(__name__)
@@ -29,25 +33,26 @@ class SingleCameraCalibrator(BaseModel):
 
     cv2.calibrateCamera docs: https://docs.opencv.org/4.10.0/d9/d0c/group__calib3d.html#ga687a1ab946686f0d85ae0363b5af1d7b
     """
+
     camera_id: CameraId
     image_size: tuple[int, ...]
-    object_points_views: list[NDArray[Shape["* , 3"], np.float32]]
-    image_points_views: list[NDArray[Shape["*, 2"], np.float32]]
-    rotation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
-    translation_vectors: list[NDArray[Shape["*, 3"], np.float32]]
+    object_points_views: list[ObjectPoints3D]
+    image_points_views: list[PixelPoints2D]
+    rotation_vectors: list[RotationVector]
+    translation_vectors: list[TranslationVector]
 
     charuco_corner_ids: list[int]
-    charuco_corners_in_object_coordinates: NDArray[Shape["*, 3"], np.float32]
+    charuco_corners_in_object_coordinates: AllCharucoCorners3DByIdInObjectCoordinates
 
     aruco_marker_ids: list[int]
-    aruco_corners_in_object_coordinates: NDArray[Shape["* aruco_ids, 4 corners, 3 xyz"], np.float32]
+    aruco_corners_in_object_coordinates: AllArucoCorners3DByIdInObjectCoordinates
 
-    distortion_coefficients: NDArray[Shape["5"], np.float64]
-    camera_matrix: NDArray[Shape["3 rows, 3 columns"], np.float64]
+    distortion_coefficients: CameraDistortionCoefficients
+    camera_matrix: CameraMatrix
 
     charuco_observations: CharucoObservations = Field(default_factory=CharucoObservations)
     reprojection_error_by_view: list[float]
-    reprojection_error_per_point_by_view: list[NDArray[Shape["* n_points, 2 xy"], np.float32]]
+    reprojection_error_per_point_by_view: list[ReprojectionError]
     mean_reprojection_error: float|None = None
 
     camera_calibration_residuals: list[float]

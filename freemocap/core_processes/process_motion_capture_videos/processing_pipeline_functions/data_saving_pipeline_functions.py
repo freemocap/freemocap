@@ -2,8 +2,8 @@ import logging
 import multiprocessing
 from pathlib import Path
 from typing import Optional
-import numpy as np
 
+import numpy as np
 
 from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import save_numpy_array_to_disk
 from freemocap.core_processes.post_process_skeleton_data.split_and_save import split_and_save

@@ -238,6 +238,12 @@ DEFAULT_INTRINSICS_COEFFICIENTS_COUNT = 5
 MIN_CHARUCO_CORNERS = 6
 
 
+class CameraIntrinsicsEstimate(BaseModel):
+    camera_id: CameraId
+    camera_matrix: CameraMatrix
+    distortion_coefficients: CameraDistortionCoefficients
+
+
 class SingleCameraCalibrator(BaseModel):
     """
     SingleCameraCalibrator class for estimating camera calibration parameters.
@@ -268,6 +274,13 @@ class SingleCameraCalibrator(BaseModel):
     mean_reprojection_error: float | None = None
 
     camera_calibration_residual: float | None = None
+
+
+    @property
+    def camera_intrinsics_estimate(self) -> CameraIntrinsicsEstimate:
+        return CameraIntrinsicsEstimate(camera_id=self.camera_id,
+                                        camera_matrix=self.camera_matrix,
+                                        distortion_coefficients=self.distortion_coefficients)
 
     @property
     def has_calibration(self):

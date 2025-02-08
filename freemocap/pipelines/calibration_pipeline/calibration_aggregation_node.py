@@ -10,7 +10,8 @@ import numpy as np
 from skellycam import CameraId
 
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
-from freemocap.pipelines.calibration_pipeline.multi_camera_calibrator import MultiCameraCalibrator
+from freemocap.pipelines.calibration_pipeline.multi_camera_calibrator import MultiCameraCalibrator, \
+    MultiCameraCalibrationEstimate
 from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BaseAggregationNode, BasePipelineOutputData
 
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class CalibrationAggregationLayerOutputData(BaseAggregationLayerOutputData):
+    multi_camera_calibration_estimate:MultiCameraCalibrationEstimate|None = None
     data: object = None
 
 
@@ -108,25 +110,31 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                         # Accumulate shared views
                         multi_camera_calibrator.receive_camera_node_output(multi_frame_number=multi_frame_number,
                                                                            camera_node_output_by_camera=camera_node_incoming_data)
-                        if multi_camera_calibrator.all_cameras_have_min_shared_views():
+                        if multi_camera_calibrator.all_cameras_have_min_shared_views() and not multi_camera_calibrator.has_calibration:
                             multi_camera_calibrator.calibrate()
                 else:
                     logger.info("Do triangulation and stuff with the calibration data")
                 radius = 1
                 frequency = 0.1
 
+                points3d = {
+                    camera_id: (
+                        radius * np.cos(multi_frame_number * frequency) + camera_id,
+                        camera_id,
+                        radius * np.sin(multi_frame_number * frequency) + camera_id
+                    )
+                    for camera_id in input_queues.keys()
+                }
+                if multi_camera_calibrator.has_calibration:
+                    for camera_id, transform in multi_camera_calibrator.multi_camera_calibration_estimate.camera_extrinsic_transforms_by_camera_id.items():
+                        points3d[f"camera-{camera_id}"] = transform.translation_vector.vector
+
                 output = CalibrationPipelineOutputData(
                     camera_node_output=camera_node_incoming_data,  # type: ignore
                     aggregation_layer_output=CalibrationAggregationLayerOutputData(
                         multi_frame_number=multi_frame_number,
-                        points3d={
-                            camera_id: (
-                                radius * np.cos(multi_frame_number * frequency) + camera_id,
-                                camera_id,
-                                radius * np.sin(multi_frame_number * frequency) + camera_id
-                            )
-                            for camera_id in input_queues.keys()
-                        },
+                        multi_camera_calibration_estimate=multi_camera_calibrator.multi_camera_calibration_estimate,
+                        points3d=points3d,
                     )
                 )
 

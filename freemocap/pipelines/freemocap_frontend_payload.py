@@ -1,3 +1,5 @@
+from typing import Hashable
+
 import numpy as np
 from numpydantic import NDArray, Shape
 from pydantic import BaseModel
@@ -30,7 +32,7 @@ class CharucoBoardPayload(BaseModel):
 
 class FreemocapFrontendPayload(FrontendFramePayload):
     latest_pipeline_output: BasePipelineOutputData | None
-    points3d: dict[CameraId, NDArray[Shape["3 xyz"], np.float64]] | None
+    points3d: dict[Hashable, NDArray[Shape["3 xyz"], np.float64]] | None
 
 
     @classmethod

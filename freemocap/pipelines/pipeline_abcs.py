@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from multiprocessing import Process, Queue
 from threading import Thread
+from typing import Hashable
 
 import numpy as np
 from numpydantic import NDArray, Shape
@@ -34,7 +35,7 @@ class BasePipelineData(BaseModel,ABC):
 
 class BaseAggregationLayerOutputData(BasePipelineData):
     multi_frame_number: int
-    points3d: dict[CameraId, NDArray[Shape["3"], np.float64]]
+    points3d: dict[Hashable, NDArray[Shape["3"], np.float64]]
 
 
 

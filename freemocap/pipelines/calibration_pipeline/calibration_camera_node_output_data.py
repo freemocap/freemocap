@@ -27,4 +27,4 @@ class CalibrationCameraNodeOutputData(BaseCameraNodeOutputData):
 
     @property
     def target_pixel_points(self) -> DetectedCharucoCornersImageCoordinates:
-        return self.charuco_observation.detected_charuco_corners_image_coordinates
+        return self.charuco_observation.detected_charuco_corners_in_full_array

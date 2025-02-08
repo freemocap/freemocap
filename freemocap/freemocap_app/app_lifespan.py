@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
 
 
     logger.success(f"FreeMoCap API (version:{freemocap.__version__}) started successfully 💀📸✨")
-    logger.api(f"FreeMoCap API  running on: \n\t\t\tSwagger API docs - {APP_URL} \n\t\t\tTest UI: {APP_URL}/ui 👈[click to open backend UI in your browser]")
+    logger.api(f"FreeMoCap API  running on: \n\tSwagger API docs - {APP_URL} \n\tTest UI: {APP_URL}/ui 👈[click to open a simple UI in your browser]")
 
     # Let the app do its thing
     yield

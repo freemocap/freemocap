@@ -256,4 +256,4 @@ class SingleCameraCalibrator(BaseModel):
 
         self.mean_reprojection_error = float(np.nanmean(self.reprojection_error_by_view))
 
-        print(f"Mean reprojection error: {self.mean_reprojection_error:.3f} pixels, reprojection error by view: {self.reprojection_error_by_view}")
+        logger.debug(f"Camera {self.camera_id} -  Mean reprojection error: {self.mean_reprojection_error:.3f} pixels, reprojection error by view: {self.reprojection_error_by_view}")

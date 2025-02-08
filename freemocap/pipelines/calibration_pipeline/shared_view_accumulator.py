@@ -2,36 +2,37 @@ from pydantic import BaseModel, Field
 from skellycam import CameraId
 
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
-from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
-    PixelPoint2DByCamera
 
 MultiFrameNumber = int
+from pydantic import model_validator
+class CameraPair(BaseModel):
+    base_camera_id: CameraId
+    other_camera_id: CameraId
+
+    @classmethod
+    def from_ids(cls, base_camera_id: CameraId, other_camera_id: CameraId):
+        return cls(base_camera_id=min(base_camera_id, other_camera_id), other_camera_id=max(base_camera_id, other_camera_id))
+
+    @model_validator(mode='after')
+    def validate(self):
+        if self.base_camera_id == self.other_camera_id:
+            raise ValueError("base_camera_id and other_camera_id must be different")
+        if not (self.base_camera_id < self.other_camera_id):
+            raise ValueError("base_camera_id must be less than other_camera_id")
+        return self
 
 
-class MultiFrameTargetViews(BaseModel):
+class SharedTargetView(BaseModel):
     multi_frame_number: MultiFrameNumber
-    camera_node_output_by_camera: dict[CameraId, CalibrationCameraNodeOutputData] = Field(
-        description="Key: CameraId of all cameras, Value: CalibrationCameraNodeOutputData of the camera IFF "
-                    "the camera can see the target in the frame, else None")
+    camera_pair: CameraPair
+    camera_node_output_by_camera: dict[CameraId, CalibrationCameraNodeOutputData]
 
-    @property
-    def cameras_that_can_see_target(self) -> list[CameraId]:
-        return [camera_id for camera_id, camera_node_output in self.camera_node_output_by_camera.items() if
-                camera_node_output.can_see_target]
-
-    @property
-    def multiple_cameras_can_see_target(self) -> bool:
-        return len(self.cameras_that_can_see_target) > 1
-
-    @property
-    def number_of_cameras_that_can_see_target(self) -> int:
-        return len(self.cameras_that_can_see_target)
-
-    def to_image_points_by_camera(self) -> list[PixelPoint2DByCamera]:
-        return [camera_node_output.target_pixel_points
-                for camera_node_output in self.camera_node_output_by_camera.values()
-                if camera_node_output is not None]
-
+    @model_validator(mode='after')
+    def validate(self):
+        if not self.camera_pair.base_camera_id in self.camera_node_output_by_camera:
+            raise ValueError(f"base_camera_id {self.camera_pair.base_camera_id} not in camera_node_output_by_camera keys {self.camera_node_output_by_camera.keys()}")
+        if not self.camera_pair.other_camera_id in self.camera_node_output_by_camera:
+            raise ValueError(f"other_camera_id {self.camera_pair.other_camera_id} not in camera_node_output_by_camera keys {self.camera_node_output_by_camera.keys()}")
 
 class SharedViewAccumulator(BaseModel):
     """
@@ -39,51 +40,48 @@ class SharedViewAccumulator(BaseModel):
     and counts the number of shared views each camera has with each other camera (i.e. frames where both cameras can see the target)
     """
     camera_ids: list[CameraId]
-    target_views_by_frame: dict[MultiFrameNumber, MultiFrameTargetViews]
+    target_views_by_camera_pair: dict[CameraPair, list[SharedTargetView]] = Field(default_factory=dict)
 
     @classmethod
     def create(cls, camera_ids: list[CameraId]):
-        return cls(camera_ids=camera_ids, target_views_by_frame={})
+        camera_pairs = []
+        for i, camera_id in enumerate(camera_ids):
+            for other_camera_id in camera_ids[i+1:]:
+                camera_pairs.append(CameraPair.from_ids(camera_id, other_camera_id))
+        return cls(camera_ids=camera_ids, target_views_by_camera_pair={camera_pair: [] for camera_pair in camera_pairs})
 
-    @property
-    def shared_view_count_by_camera(self) -> dict[CameraId, int]:
-        shared_view_count_by_camera = {camera_id: 0 for camera_id in self.camera_ids}
-        for shared_view_by_frame in self.target_views_by_frame.values():
-            if shared_view_by_frame.multiple_cameras_can_see_target:
-                for camera_id in shared_view_by_frame.cameras_that_can_see_target:
-                    shared_view_count_by_camera[camera_id] += 1
-        return shared_view_count_by_camera
-
-    @property
-    def shared_target_views(self) -> list[MultiFrameTargetViews]:
-        return [shared_view_by_frame
-                for shared_view_by_frame in self.target_views_by_frame.values()
-                if shared_view_by_frame.multiple_cameras_can_see_target]
 
     def receive_camera_node_output(self, multi_frame_number: int,
                                    camera_node_output_by_camera: dict[CameraId, CalibrationCameraNodeOutputData]):
-        cameras_that_can_see_target = {}
-        target_view_count = 0
+
         for camera_id, camera_node_output in camera_node_output_by_camera.items():
             if camera_node_output.can_see_target:
-                cameras_that_can_see_target = {camera_id: camera_node_output}
-                target_view_count += 1
-            else:
-                cameras_that_can_see_target = {camera_id: None}
-        if target_view_count >= 2:
-            # only add to shared view accumulator if at least two cameras can see the target
-            self.target_views_by_frame[multi_frame_number] = MultiFrameTargetViews(
-                multi_frame_number=multi_frame_number,
-                camera_node_output_by_camera=cameras_that_can_see_target)
+                for other_camera_id in self.camera_ids:
+                    if other_camera_id == camera_id:
+                        continue
+                    if camera_node_output_by_camera[other_camera_id].can_see_target:
+                        camera_pair = CameraPair.from_ids(camera_id, other_camera_id)
+                        self.target_views_by_camera_pair[camera_pair].append(SharedTargetView(multi_frame_number=multi_frame_number,
+                                                                                              camera_pair=camera_pair,
+                                                                                              camera_node_output_by_camera={camera_id: camera_node_output,
+                                                                                                                            other_camera_id: camera_node_output_by_camera[other_camera_id]}))
+
+
+    def get_shared_views_per_camera(self) -> dict[CameraId, int]:
+        """
+        Get the number of shared views for each camera id, i.e. the number of frames where the camera can see the target and at least one other camera can also see the target
+        """
+        camera_shared_view_count = {camera_id: 0 for camera_id in self.camera_ids}
+        for camera_pair, shared_views in self.target_views_by_camera_pair.items():
+            camera_shared_view_count[camera_pair.base_camera_id] += len(shared_views)
+            camera_shared_view_count[camera_pair.other_camera_id] += len(shared_views)
+        return camera_shared_view_count
 
     def all_cameras_have_min_shared_views(self, min_shared_views: int = 10) -> bool:
-        return all(shared_views >= min_shared_views for shared_views in self.shared_view_count_by_camera.values())
+        """
+        find the total number of shared views for each camera id within the various camera pairs
+        we don't need all possible pairs to have min_shared_views, just that each camera has min_shared_views with at least one other camera
+        """
 
-    def to_image_points_by_camera(self) -> list[PixelPoint2DByCamera]:
-        # PixelPoints2DByCamera = NDArray[Shape["* n_cams, * n_points, 2 pixelx_pixely"], np.float64]
-        all_pixel_points_by_camera = []
-        for shared_view_by_frame in self.shared_target_views:
-            if shared_view_by_frame.multiple_cameras_can_see_target:
-                all_pixel_points_by_camera.extend(shared_view_by_frame.to_image_points_by_camera())
+        return all([count >= min_shared_views for count in self.get_shared_views_per_camera().values()])
 
-        return all_pixel_points_by_camera

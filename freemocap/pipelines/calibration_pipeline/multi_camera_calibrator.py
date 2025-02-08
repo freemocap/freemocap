@@ -5,17 +5,18 @@ from pydantic import BaseModel
 from skellycam import CameraId
 
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
-
-from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import SharedViewAccumulator, CameraPair
+from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import SharedViewAccumulator
 
 logger = logging.getLogger(__name__)
 
 from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator, \
-    TransformationMatrix
+    TransformationMatrix, CameraIntrinsicsEstimate
 
 
 class MultiCameraCalibrationEstimate(BaseModel):
-    pass
+    principal_camera_id: CameraId
+    camera_extrinsic_transforms_by_camera_id: dict[CameraId, TransformationMatrix]
+    camera_intrinsics_by_camera_id: dict[CameraId, CameraIntrinsicsEstimate]
 
 
 class MultiCameraCalibrator(BaseModel):
@@ -32,7 +33,7 @@ class MultiCameraCalibrator(BaseModel):
         if self.single_camera_calibrators is None or self.multi_camera_calibration_estimate is None:
             return False
         return all(single_camera_calibrator.has_calibration for single_camera_calibrator in
-                   self.single_camera_calibrators.values()) and self.multi_camera_calibration_estimate.has_calibration
+                   self.single_camera_calibrators.values()) and self.multi_camera_calibration_estimate is not None
 
     @classmethod
     def from_camera_ids(cls, camera_ids: list[CameraId], principal_camera_id: CameraId | None = None):
@@ -80,19 +81,19 @@ class MultiCameraCalibrator(BaseModel):
             for view in shared_views:
                 camera_id = view.camera_pair.base_camera_id
                 other_camera_id = view.camera_pair.other_camera_id
-                self.single_camera_calibrators[camera_id].add_observation(observation=view.camera_node_output_by_camera[camera_id].charuco_observation)
-                self.single_camera_calibrators[other_camera_id].add_observation(observation=view.camera_node_output_by_camera[other_camera_id].charuco_observation)
-
-
+                self.single_camera_calibrators[camera_id].add_observation(
+                    observation=view.camera_node_output_by_camera[camera_id].charuco_observation)
+                self.single_camera_calibrators[other_camera_id].add_observation(
+                    observation=view.camera_node_output_by_camera[other_camera_id].charuco_observation)
 
         [calibrator.update_calibration_estimate() for calibrator in self.single_camera_calibrators.values()]
 
-        self.run_multi_camera_optimization()
+        return self.run_multi_camera_optimization()
         # logger.success(
         #     f"Multi-camera calibration complete! \n {self.multi_camera_calibration_estimate.model_dump_json(indent=2)}")
         # return self.multi_camera_calibration_estimate
 
-    def run_multi_camera_optimization(self):
+    def run_multi_camera_optimization(self) -> MultiCameraCalibrationEstimate:
         # Step 1: Calculate secondary camera transforms for each camera pair
         camera_pair_secondary_camera_transform_estimates = {}
         for camera_pair in self.shared_view_accumulator.camera_pairs:
@@ -119,13 +120,15 @@ class MultiCameraCalibrator(BaseModel):
 
         # Step 2: Calculate each camera's transform relative to the principal camera
         transform_to_principal_camera_by_camera = {self.principal_camera_id: TransformationMatrix(matrix=np.eye(4),
-                                                                                     reference_frame=f"camera {self.principal_camera_id}")}
+                                                                                                  reference_frame=f"camera {self.principal_camera_id}")}
 
-        transform_to_principal_camera_by_camera.update({camera_id: None for camera_id in self.single_camera_calibrators.keys()
-                                                        if camera_id != self.principal_camera_id})
+        transform_to_principal_camera_by_camera.update(
+            {camera_id: None for camera_id in self.single_camera_calibrators.keys()
+             if camera_id != self.principal_camera_id})
         # Use the camera pairs to determine other camera transforms relative to the principal camera
         while any([transform is None for transform in transform_to_principal_camera_by_camera.values()]):
-            logger.debug(f"Calculating camera transforms for cameras: {[camera_id for camera_id, transform in transform_to_principal_camera_by_camera.items() if transform is None]}")
+            logger.debug(
+                f"Calculating camera transforms for cameras: {[camera_id for camera_id, transform in transform_to_principal_camera_by_camera.items() if transform is None]}")
             for camera_pair, transform in camera_pair_secondary_camera_transform_estimates.items():
                 if transform_to_principal_camera_by_camera[camera_pair.other_camera_id] is not None:
                     continue
@@ -149,15 +152,23 @@ class MultiCameraCalibrator(BaseModel):
         logger.debug(
             f"Camera ID to principal camera transform estimates: {transform_to_principal_camera_by_camera}")
 
-        return transform_to_principal_camera_by_camera
+        self.multi_camera_calibration_estimate= MultiCameraCalibrationEstimate(principal_camera_id=self.principal_camera_id,
+                                              camera_extrinsic_transforms_by_camera_id=transform_to_principal_camera_by_camera,
+                                              camera_intrinsics_by_camera_id={
+                                                  camera_id: calibrator.camera_intrinsics_estimate for
+                                                  camera_id, calibrator in self.single_camera_calibrators.items()})
 
+        return self.multi_camera_calibration_estimate
 if __name__ == "__main__":
     import pickle
+    from pathlib import Path
     pickle_path = r"C:\Users\jonma\github_repos\freemocap_organization\freemocap\freemocap\saved_mc_calib.pkl"
-    loaded:MultiCameraCalibrator = pickle.load(open(pickle_path, "rb"))
+    if not Path(pickle_path).exists():
+        raise FileNotFoundError(f"File not found: {pickle_path}")
+    loaded: MultiCameraCalibrator = pickle.load(open(pickle_path, "rb"))
     loaded.run_multi_camera_optimization()
     print(loaded)
 
     # save out
-    with open(pickle_path, "wb") as f:
-        pickle.dump(loaded, f)
+    # with open(pickle_path, "wb") as f:
+    #     pickle.dump(self, f)

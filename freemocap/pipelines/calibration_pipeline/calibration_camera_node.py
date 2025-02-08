@@ -2,7 +2,7 @@ import logging
 import multiprocessing
 import time
 from dataclasses import dataclass
-from multiprocessing import Queue, Process
+from multiprocessing import Queue
 from threading import Thread
 
 from skellycam import CameraId
@@ -35,21 +35,34 @@ class CalibrationCameraNode(BaseCameraNode):
                output_queue: Queue,
                all_ready_events: dict[CameraId, multiprocessing.Event],
                shutdown_event: multiprocessing.Event,
+               use_thread: bool=False
                ):
+        if use_thread:
+            worker = Thread(target=cls._run,
+                   kwargs=dict(camera_id=camera_id,
+                               config=config,
+                               camera_shm_dto=camera_shm_dto,
+                               output_queue=output_queue,
+                               all_ready_events=all_ready_events,
+                               shutdown_event=shutdown_event
+                               )
+                   )
+        else:
+            worker = multiprocessing.Process(target=cls._run,
+                                             kwargs=dict(camera_id=camera_id,
+                                                         config=config,
+                                                         camera_shm_dto=camera_shm_dto,
+                                                         output_queue=output_queue,
+                                                         all_ready_events=all_ready_events,
+                                                         shutdown_event=shutdown_event
+                                                         )
+                                             )
         return cls(camera_id=camera_id,
                    config=config,
                    incoming_frame_shm=SingleSlotCameraSharedMemory.recreate(camera_config=config.camera_config,
                                                                             camera_shm_dto=camera_shm_dto,
                                                                             read_only=False),
-                   process=Thread(target=cls._run,
-                                   kwargs=dict(camera_id=camera_id,
-                                               config=config,
-                                               camera_shm_dto=camera_shm_dto,
-                                               output_queue=output_queue,
-                                               all_ready_events=all_ready_events,
-                                               shutdown_event=shutdown_event
-                                               )
-                                   ),
+                   process=worker,
                    all_ready_events=all_ready_events,
                    shutdown_event=shutdown_event
                    )
@@ -81,8 +94,9 @@ class CalibrationCameraNode(BaseCameraNode):
                     frame = frame_intake_shm.retrieve_frame()
                     time_to_retrieve = time.perf_counter_ns() - tik
                     tik = time.perf_counter_ns()
-                    observation, raw_results = charuco_tracker.process_image(frame.image, annotate_image=False)
-
+                    observation, raw_results = charuco_tracker.process_image(frame_number=frame.frame_number,
+                                                                             image=frame.image,
+                                                                             annotate_image=False)
 
                     time_to_process = time.perf_counter_ns() - tik
                     output_queue.put(CalibrationCameraNodeOutputData(

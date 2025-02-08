@@ -51,6 +51,7 @@ class CalibrationPipelineImageAnnotator(PipelineImageAnnotator):
                 latest_observation=pipeline_output.camera_node_output[camera_id].charuco_observation)
         return multiframe_payload
 
+
 @dataclass
 class CalibrationPipeline(BaseProcessingPipeline):
     config: CalibrationPipelineConfig
@@ -62,7 +63,8 @@ class CalibrationPipeline(BaseProcessingPipeline):
     def create(cls,
                config: CalibrationPipelineConfig,
                camera_shm_dtos: CameraSharedMemoryDTOs,
-               shutdown_event: multiprocessing.Event):
+               shutdown_event: multiprocessing.Event,
+               use_thread: bool = True):
         if not all(camera_id in camera_shm_dtos.keys() for camera_id in config.camera_node_configs.keys()):
             raise ValueError("Camera IDs provided in config not in camera shared memory DTOS!")
         camera_output_queues = {camera_id: Queue() for camera_id in camera_shm_dtos.keys()}
@@ -77,7 +79,8 @@ class CalibrationPipeline(BaseProcessingPipeline):
                                                                 output_queue=camera_output_queues[
                                                                     camera_id],
                                                                 all_ready_events=all_ready_events,
-                                                                shutdown_event=shutdown_event)
+                                                                shutdown_event=shutdown_event,
+                                                                use_thread=use_thread)
                         for camera_id, config in config.camera_node_configs.items()}
         return cls(config=config,
                    camera_nodes=camera_nodes,
@@ -85,7 +88,8 @@ class CalibrationPipeline(BaseProcessingPipeline):
                                                                              input_queues=camera_output_queues,
                                                                              output_queue=aggregation_output_queue,
                                                                              all_ready_events=all_ready_events,
-                                                                             shutdown_event=shutdown_event),
+                                                                             shutdown_event=shutdown_event,
+                                                                             use_thread=use_thread),
                    # NOTE - this `annotator` is not the same annotator as the one that will be created in the tracker, but will be able to process its outputs
                    annotator=CalibrationPipelineImageAnnotator.create(
                        configs={camera_id: config.tracker_config.annotator_config for camera_id, config in

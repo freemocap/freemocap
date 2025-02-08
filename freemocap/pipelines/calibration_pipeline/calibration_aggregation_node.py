@@ -38,15 +38,27 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                input_queues: dict[CameraId, Queue],
                output_queue: Queue,
                all_ready_events: dict[CameraId | str, multiprocessing.Event],
-               shutdown_event: multiprocessing.Event):
+               shutdown_event: multiprocessing.Event,
+                use_thread: bool = False):
+
+        if use_thread:
+            worker = Thread(target=cls._run,
+                                       kwargs=dict(config=config,
+                                                   input_queues=input_queues,
+                                                   output_queue=output_queue,
+                                                   all_ready_events=all_ready_events,
+                                                   shutdown_event=shutdown_event)
+                                       )
+        else:
+            worker = Process(target=cls._run,
+                                       kwargs=dict(config=config,
+                                                   input_queues=input_queues,
+                                                   output_queue=output_queue,
+                                                   all_ready_events=all_ready_events,
+                                                   shutdown_event=shutdown_event)
+                                       )
         return cls(config=config,
-                   process=Thread(target=cls._run,
-                                   kwargs=dict(config=config,
-                                               input_queues=input_queues,
-                                               output_queue=output_queue,
-                                               all_ready_events=all_ready_events,
-                                               shutdown_event=shutdown_event)
-                                   ),
+                   process=worker,
                    input_queues=input_queues,
                    output_queue=output_queue,
                    shutdown_event=shutdown_event)

@@ -4,12 +4,12 @@ from numpydantic import NDArray, Shape
 from pydantic import BaseModel
 
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
-    TransformationMatrix, TranslationVector, RotationVector
+    TransformationMatrix, TranslationVectorArray, RotationVectorArray
 
 
 class Positional6DoF(BaseModel):
-    translation: TranslationVector= np.zeros(3)
-    rotation: RotationVector = np.zeros(3)
+    translation: TranslationVectorArray= np.zeros(3)
+    rotation: RotationVectorArray = np.zeros(3)
 
     @property
     def transformation_matrix(self) -> TransformationMatrix:

@@ -4,7 +4,6 @@ from numpydantic import NDArray, Shape
 
 PixelPoints2D = NDArray[Shape["* n_points, 2 pixelx_pixely"], np.float64]
 PixelPoint2DByCamera = NDArray[Shape["* n_cams, 2 pixelx_pixely"], np.float64] # e.g. Image coordinates of a point in 3d space projected onto each camera
-PixelPoints2DByCamera = NDArray[Shape["* n_cams, * n_points, 2 pixelx_pixely"], np.float64]
 
 ObjectPoints3D = NDArray[Shape["* n_points, 3 xyz"], np.float64]
 PointIds = NDArray[Shape["* n_points"], np.int64]

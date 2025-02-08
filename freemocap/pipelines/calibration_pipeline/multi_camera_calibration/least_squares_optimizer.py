@@ -7,7 +7,7 @@ from scipy.sparse import dok_matrix, csr_matrix
 from skellycam import CameraId
 
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
-    CameraDistortionCoefficients, CameraMatrixByCamera, PixelPoints2DByCamera, CameraMatrix, JacobianSparsityMatrix
+    CameraDistortionCoefficients, CameraMatrixByCamera, CameraMatrix, JacobianSparsityMatrix, PixelPoint2DByCamera
 
 DataPointName = str
 DataPointId = int
@@ -47,16 +47,7 @@ class RelevantDataABC(BaseModel, ABC):
 
 class OptimizerInputDataABC(BaseModel, ABC):
     relevant_data: RelevantDataABC
-    initial_guess: list[float]
-    jacobian_sparsity_matrix: JacobianSparsityMatrix | None = None
-
-    @abstractmethod
-    def calculate_jacobian_sparsity_matrix(self):
-        pass
-
-    @abstractmethod
-    def is_datapoint_relevant_to_this_part_of_the_initial_guess(self, data_point: Datum) -> bool:
-        pass
+    initial_guess: object
 
 
 class LeastSquaresOptimizerABC(BaseModel, ABC):
@@ -69,7 +60,7 @@ class LeastSquaresOptimizerABC(BaseModel, ABC):
 
     @classmethod
     @abstractmethod
-    def create(cls, input_data: OptimizerInputDataABC) -> "LeastSquaresOptimizerABC":
+    def create(cls, **kwargs) -> "LeastSquaresOptimizerABC":
         pass
 
     @abstractmethod
@@ -96,12 +87,29 @@ class LeastSquaresOptimizerABC(BaseModel, ABC):
             args=(),
         )
 
+class SparseBundleAdjustmentRelevantData(RelevantDataABC):
+
+    @classmethod
+    def from_pixel_points2d_by_camera(cls, pixel_points2d_by_camera:PixelPoints2DByCamera) -> "SparseBundleAdjustmentRelevantData":
+        data = {}
+        for point_index in range(len(pixel_points2d_by_camera)):
+            for camera_index in range(pixel_points2d_by_camera.shape[1]):
+                data[f"point_{point_index}_camera_{camera_index}"] = Datum(name=f"point_{point_index}_camera_{camera_index}",
+                                                                           id=point_index * pixel_points2d_by_camera.shape[1] + camera_index,
+                                                                           value=pixel_points2d_by_camera[point_index, camera_index])
+
+        return cls(data=data)
+
 
 class SparseBundleAdjustmentOptimizerInputData(OptimizerInputDataABC):
-    camera_matricies: CameraMatrixByCamera
-    image_points_2d_by_camera: PixelPoints2DByCamera
+    initial_guess: CameraMatrixByCamera
+    relevant_data: SparseBundleAdjustmentRelevantData
     camera_distortion_coefficients: CameraDistortionCoefficients | None = None
     jacobian_sparsity_matrix: JacobianSparsityMatrix | None = None
+
+    @property
+    def camera_matrices(self) -> CameraMatrixByCamera:
+        return self.initial_guess
 
     def calculate_jacobian_sparsity_matrix(self):
         pass
@@ -112,25 +120,31 @@ class SparseBundleAdjustmentOptimizerInputData(OptimizerInputDataABC):
     @classmethod
     def create(cls,
                camera_matricies: dict[CameraId, CameraMatrix],
-               input_2d_observations_in_image_coordinates_by_camera: list[PixelPoints2DByCamera],
-               camera_distortion_coefficients: CameraDistortionCoefficients | None = None,
+               input_2d_observations_by_camera: list[PixelPoint2DByCamera],
                ) -> "SparseBundleAdjustmentOptimizerInputData":
-        return cls(camera_matricies=np.hstack([camera_matrix for camera_matrix in camera_matricies.values()]),
-                   image_points_2d_by_camera=input_2d_observations_in_image_coordinates_by_camera,
-                   camera_distortion_coefficients=camera_distortion_coefficients)
+        camera_matricies = np.asarray([camera_matrix for camera_matrix in camera_matricies.values()])
+        return cls(initial_guess=camera_matricies,
+                   relevant_data=SparseBundleAdjustmentRelevantData.from_pixel_points2d_by_camera(input_2d_observations_by_camera),
+                   )
 
 
 class SparseBundleAdjustmentOptimizer(LeastSquaresOptimizerABC):
     input_data: SparseBundleAdjustmentOptimizerInputData
 
+
     @classmethod
-    def create(cls, input_data: SparseBundleAdjustmentOptimizerInputData) -> "SparseBundleAdjustmentOptimizer":
-        return cls(input_data=input_data,
-                   jacobian_sparsity_matrix=input_data.jacobian_sparsity_matrix)
+    def create(cls,
+               camera_matricies: dict[CameraId, CameraMatrix],
+               input_2d_observations_by_camera: list[PixelPoint2DByCamera],
+               ) -> "SparseBundleAdjustmentOptimizer":
+        return cls(input_data=SparseBundleAdjustmentOptimizerInputData.create(camera_matricies=camera_matricies,
+                                                                              input_2d_observations_by_camera=input_2d_observations_by_camera,
+                                                                              ))
 
     @property
     def starting_guess(self) -> list[float]:
         return self.input_data.camera_matrices.flatten().tolist()
+
 
     def error_function(self, current_guess: list[float], **kwargs) -> float:
         if not all(k in kwargs for k in ("camera_matrices", "camera_distortion_coefficients")):

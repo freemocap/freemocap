@@ -1412,7 +1412,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2023.9.1086"
-source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#6ae1a9f3148109c1d5a68afe0c2fc523d1dfde02" }
+source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#f0a9e923cbf645dfb4254244b517831226b0a2b9" }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
@@ -1457,7 +1457,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#73259871f2d2e84bc0e962a9a2cca66e58d5f062" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#0e23b0169aec3442120d55a1e0f16c4d5596b02a" }
 dependencies = [
     { name = "mediapipe" },
     { name = "numpy" },

@@ -7,7 +7,7 @@ from scipy.sparse import dok_matrix, csr_matrix
 from skellycam import CameraId
 
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
-    CameraDistortionCoefficients, CameraMatrixByCamera, CameraMatrix, JacobianSparsityMatrix, PixelPoint2DByCamera
+    CameraDistortionCoefficientsArray, CameraMatrixByCamera, CameraMatrixArray, JacobianMatrixArray, PixelPoint2DByCamera
 
 DataPointName = str
 DataPointId = int
@@ -56,7 +56,7 @@ class LeastSquaresOptimizerABC(BaseModel, ABC):
     maximum_number_function_evals: int = 1000
     threshold: float = 50.0
     function_tolerance: float = 1e-4
-    jacobian_sparsity_matrix: JacobianSparsityMatrix | None = None
+    jacobian_sparsity_matrix: JacobianMatrixArray | None = None
 
     @classmethod
     @abstractmethod
@@ -104,8 +104,8 @@ class SparseBundleAdjustmentRelevantData(RelevantDataABC):
 class SparseBundleAdjustmentOptimizerInputData(OptimizerInputDataABC):
     initial_guess: CameraMatrixByCamera
     relevant_data: SparseBundleAdjustmentRelevantData
-    camera_distortion_coefficients: CameraDistortionCoefficients | None = None
-    jacobian_sparsity_matrix: JacobianSparsityMatrix | None = None
+    camera_distortion_coefficients: CameraDistortionCoefficientsArray | None = None
+    jacobian_sparsity_matrix: JacobianMatrixArray | None = None
 
     @property
     def camera_matrices(self) -> CameraMatrixByCamera:
@@ -119,7 +119,7 @@ class SparseBundleAdjustmentOptimizerInputData(OptimizerInputDataABC):
 
     @classmethod
     def create(cls,
-               camera_matricies: dict[CameraId, CameraMatrix],
+               camera_matricies: dict[CameraId, CameraMatrixArray],
                input_2d_observations_by_camera: list[PixelPoint2DByCamera],
                ) -> "SparseBundleAdjustmentOptimizerInputData":
         camera_matricies = np.asarray([camera_matrix for camera_matrix in camera_matricies.values()])
@@ -134,7 +134,7 @@ class SparseBundleAdjustmentOptimizer(LeastSquaresOptimizerABC):
 
     @classmethod
     def create(cls,
-               camera_matricies: dict[CameraId, CameraMatrix],
+               camera_matricies: dict[CameraId, CameraMatrixArray],
                input_2d_observations_by_camera: list[PixelPoint2DByCamera],
                ) -> "SparseBundleAdjustmentOptimizer":
         return cls(input_data=SparseBundleAdjustmentOptimizerInputData.create(camera_matricies=camera_matricies,

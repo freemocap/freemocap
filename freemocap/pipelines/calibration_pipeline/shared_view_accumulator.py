@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field
 from skellycam import CameraId
-
+from pydantic import model_validator
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
 
+
 MultiFrameNumber = int
-from pydantic import model_validator
 class CameraPair(BaseModel):
     base_camera_id: CameraId
     other_camera_id: CameraId
@@ -22,6 +22,15 @@ class CameraPair(BaseModel):
         return self
 
 
+    def __eq__(self, other):
+        if isinstance(other, CameraPair):
+            return self.model_dump() == other.model_dump()
+        return False
+
+    def __hash__(self):
+        # Use a frozenset to ensure hashability and use this model as a key in a dictionary
+        return hash(frozenset(self.model_dump().items()))
+
 class SharedTargetView(BaseModel):
     multi_frame_number: MultiFrameNumber
     camera_pair: CameraPair
@@ -33,6 +42,7 @@ class SharedTargetView(BaseModel):
             raise ValueError(f"base_camera_id {self.camera_pair.base_camera_id} not in camera_node_output_by_camera keys {self.camera_node_output_by_camera.keys()}")
         if not self.camera_pair.other_camera_id in self.camera_node_output_by_camera:
             raise ValueError(f"other_camera_id {self.camera_pair.other_camera_id} not in camera_node_output_by_camera keys {self.camera_node_output_by_camera.keys()}")
+        return self
 
 class SharedViewAccumulator(BaseModel):
     """
@@ -41,6 +51,10 @@ class SharedViewAccumulator(BaseModel):
     """
     camera_ids: list[CameraId]
     target_views_by_camera_pair: dict[CameraPair, list[SharedTargetView]] = Field(default_factory=dict)
+
+    @property
+    def camera_pairs(self) -> list[CameraPair]:
+        return list(self.target_views_by_camera_pair.keys())
 
     @classmethod
     def create(cls, camera_ids: list[CameraId]):
@@ -61,13 +75,17 @@ class SharedViewAccumulator(BaseModel):
                         continue
                     if camera_node_output_by_camera[other_camera_id].can_see_target:
                         camera_pair = CameraPair.from_ids(camera_id, other_camera_id)
+                        if camera_pair not in self.target_views_by_camera_pair:
+                            raise ValueError(f"camera_pair {camera_pair} not in target_views_by_camera_pair keys {self.target_views_by_camera_pair.keys()}")
+                        if any([shared_view.multi_frame_number == multi_frame_number for shared_view in self.target_views_by_camera_pair[camera_pair]]):
+                            continue
                         self.target_views_by_camera_pair[camera_pair].append(SharedTargetView(multi_frame_number=multi_frame_number,
                                                                                               camera_pair=camera_pair,
                                                                                               camera_node_output_by_camera={camera_id: camera_node_output,
                                                                                                                             other_camera_id: camera_node_output_by_camera[other_camera_id]}))
 
 
-    def get_shared_views_per_camera(self) -> dict[CameraId, int]:
+    def get_shared_view_count_per_camera(self) -> dict[CameraId, int]:
         """
         Get the number of shared views for each camera id, i.e. the number of frames where the camera can see the target and at least one other camera can also see the target
         """
@@ -83,5 +101,5 @@ class SharedViewAccumulator(BaseModel):
         we don't need all possible pairs to have min_shared_views, just that each camera has min_shared_views with at least one other camera
         """
 
-        return all([count >= min_shared_views for count in self.get_shared_views_per_camera().values()])
+        return all([count >= min_shared_views for count in self.get_shared_view_count_per_camera().values()])
 

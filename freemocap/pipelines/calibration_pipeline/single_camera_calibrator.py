@@ -3,24 +3,235 @@ import logging
 import cv2
 import numpy as np
 from numpydantic import NDArray, Shape
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from skellycam import CameraId
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservations, CharucoObservation, \
     AllCharucoCorners3DByIdInObjectCoordinates, AllArucoCorners3DByIdInObjectCoordinates
 
-from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import ObjectPoints3D, \
-    PixelPoints2D, RotationVector, TranslationVector, CameraDistortionCoefficients, CameraMatrix, \
-    ReprojectionError
-from freemocap.pipelines.calibration_pipeline.single_camera_calibration_estimate import SingleCameraCalibrationEstimate
+    PixelPoints2D, RotationVectorArray, TranslationVectorArray, CameraDistortionCoefficientsArray, CameraMatrixArray, \
+    CameraExtrinsicsMatrix, RotationMatrixArray, QuaternionArray
 
 logger = logging.getLogger(__name__)
 
+from scipy.spatial.transform import Rotation as R
 
-class SingleCameraCalibrationError(BaseModel):
-    mean_reprojection_error: float
-    reprojection_error_by_view: list[float]
-    jacobian: list[NDArray[Shape["*, ..."], np.float32]]  # TODO - figure out this shape
+
+
+def karcher_mean_quaternions(quaternions: list[QuaternionArray], tol=1e-9, max_iterations=100):
+    # Normalize the quaternions to ensure they are unit quaternions
+
+    quaternions = np.array([q / np.linalg.norm(q) for q in quaternions])
+
+    # Start with an initial guess (the first quaternion)
+    mean_quat = quaternions[0]
+
+    for _ in range(max_iterations):
+        # Compute the tangent vectors (logarithm map)
+        errors = [R.from_quat(q).inv() * R.from_quat(mean_quat) for q in quaternions]
+        errors = [e.as_rotvec() for e in errors]
+
+        # Compute the average error vector
+        mean_error = np.mean(errors, axis=0)
+
+        # Check for convergence
+        if np.linalg.norm(mean_error) < tol:
+            break
+
+        # Update the mean (exponential map)
+        mean_rot = R.from_rotvec(mean_error) * R.from_quat(mean_quat)
+        mean_quat = mean_rot.as_quat(canonical=False)
+
+    return mean_quat
+
+class RotationVector(BaseModel):
+    vector: RotationVectorArray
+    reference_frame: str
+
+    @property
+    def as_rotation_matrix(self) -> RotationMatrixArray:
+        return cv2.Rodrigues(self.vector)[0]
+
+    @property
+    def as_quaternion(self) -> QuaternionArray:
+        return R.from_matrix(self.as_rotation_matrix).as_quat(canonical=False)
+
+    @classmethod
+    def mean_from_rotation_vectors(cls, rotation_vectors: list["RotationVector"]) -> "RotationVector":
+        if not all([rv.reference_frame == rotation_vectors[0].reference_frame for rv in rotation_vectors]):
+            raise ValueError("All rotation vectors must have the same reference frame!")
+        quaternions = [rv.as_quaternion for rv in rotation_vectors]
+
+        # Compute the Karcher mean of the quaternions
+        mean_quat = karcher_mean_quaternions(quaternions)
+
+        # Convert the mean quaternion back to a rotation vector
+        mean_rotation = R.from_quat(mean_quat)
+        mean_rotation_vector = mean_rotation.as_rotvec()
+
+        # Assuming all rotation vectors have the same reference frame
+        reference_frame = rotation_vectors[0].reference_frame
+
+        return cls(vector=mean_rotation_vector,
+                   reference_frame=reference_frame)
+
+
+
+class TranslationVector(BaseModel):
+    vector: TranslationVectorArray
+    reference_frame: str
+
+    @classmethod
+    def mean_from_translation_vectors(cls, translation_vectors: list["TranslationVector"]) -> "TranslationVector":
+        if not all([tv.reference_frame == translation_vectors[0].reference_frame for tv in translation_vectors]):
+            raise ValueError("All translation vectors must have the same reference frame!")
+        mean_translation_vector = np.mean([tv.vector for tv in translation_vectors], axis=0)
+
+        # Assuming all rotation vectors have the same reference frame
+        reference_frame = translation_vectors[0].reference_frame
+
+        return cls(vector=mean_translation_vector,
+                   reference_frame=reference_frame)
+
+
+class TransformationMatrix(BaseModel):
+    matrix: NDArray[Shape["4, 4"], np.float64]
+    reference_frame: str
+
+    @classmethod
+    def from_rotation_translation(cls,
+                                  rotation_vector: RotationVector,
+                                  translation_vector: TranslationVector):
+        if rotation_vector.reference_frame != translation_vector.reference_frame:
+            raise ValueError("Rotation and translation vectors must be in the same reference frame")
+        rotation_matrix = rotation_vector.as_rotation_matrix
+        transformation_matrix = np.eye(4)
+        transformation_matrix[:3, :3] = rotation_matrix
+        transformation_matrix[:3, 3] = translation_vector.vector
+        return cls(matrix=transformation_matrix, reference_frame=translation_vector.reference_frame)
+
+    @classmethod
+    def mean_from_transformation_matrices(cls, transformation_matrices: list[
+        "TransformationMatrix"]) -> "TransformationMatrix":
+        if not all(
+                [tm.reference_frame == transformation_matrices[0].reference_frame for tm in transformation_matrices]):
+            raise ValueError("All transformation matrices must have the same reference frame!")
+
+        rotation_vectors = [tm.rotation_vector for tm in transformation_matrices]
+        translation_vectors = [tm.translation_vector for tm in transformation_matrices]
+
+        mean_rotation_vector = RotationVector.mean_from_rotation_vectors(rotation_vectors)
+        mean_translation_vector = TranslationVector.mean_from_translation_vectors(translation_vectors)
+
+        return cls.from_rotation_translation(rotation_vector=mean_rotation_vector,
+                                             translation_vector=mean_translation_vector)
+
+    @property
+    def rotation_matrix(self) -> NDArray[Shape["3, 3"], np.float32]:
+        return self.matrix[:3, :3]
+
+    @property
+    def translation_vector(self) -> TranslationVector:
+        return TranslationVector(vector=self.matrix[:3, 3], reference_frame=self.reference_frame)
+
+    @property
+    def rotation_vector(self) -> RotationVector:
+        return RotationVector(vector=np.squeeze(cv2.Rodrigues(self.rotation_matrix)[0]), reference_frame=self.reference_frame)
+
+    @property
+    def as_extrinsics_matrix(self) -> CameraExtrinsicsMatrix:
+        return self.matrix[:3, :]
+
+
+    def get_inverse(self):
+        inverse_rotation_matrix = self.rotation_matrix.T
+        inverse_translation_vector = -inverse_rotation_matrix @ self.translation_vector.vector
+
+        inverse_matrix = np.eye(4)
+        inverse_matrix[:3, :3] = inverse_rotation_matrix
+        inverse_matrix[:3, 3] = inverse_translation_vector
+
+        return TransformationMatrix(matrix=inverse_matrix, reference_frame=self.reference_frame)
+
+    def __matmul__(self, other: "TransformationMatrix") -> "TransformationMatrix":
+        if not isinstance(other, TransformationMatrix):
+            raise TypeError(
+                "Unsupported operand type(s) for @: 'TransformationMatrix' and '{}'".format(type(other).__name__))
+        # Perform matrix multiplication and use self's reference frame
+        return TransformationMatrix(matrix=self.matrix @ other.matrix, reference_frame=self.reference_frame)
+
+
+    def __str__(self) -> str:
+        return (f"\treference_frame={self.reference_frame},\n"
+                f"\tmatrix=\n"
+                f"\t\t{self.matrix[0, :]:.3f},\n"
+                f"\t\t{self.matrix[1, :]:.3f},\n"
+                f"\t\t{self.matrix[2, :]:.3f},\n"
+                f"\t\t{self.matrix[3, :]:.3f},\n")
+
+
+class CameraDistortionCoefficients(BaseModel):
+    """
+    https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html
+    Distortion coefficients for the camera, must be either 4, 5, 8, 12, or 14 values.
+
+    0-3 are k1, k2, p1, p2
+    4 is k3
+    5-7 are k4, k5, k6
+    8-11 are s1, s2, s3, s4
+    12-13 are τ1, τ2 (τ like tau)
+
+    `k` values refer to radial distortion coefficients
+    `p` values refer to tangential distortion coefficients
+    `s` values refer to thin prism distortion coefficients
+    `τ` values refer to x/y values of the 'tilted sensor' model
+
+    NOTE - RECOMMEND USING 5 VALUES, things get weird with more than 5
+    """
+    coefficients: CameraDistortionCoefficientsArray
+
+    @model_validator(mode="after")
+    def validate(self):
+        if len(self.coefficients) not in [4, 5, 8, 12, 14]:
+            raise ValueError("Invalid number of distortion coefficients. Must be 4, 5, 8, 12, or 14.")
+        return self
+
+
+class CameraMatrix(BaseModel):
+    matrix: CameraMatrixArray
+
+    @classmethod
+    def from_image_size(cls, image_size: tuple[int, ...]):
+        camera_matrix = np.eye(3)
+        camera_matrix[0, 2] = image_size[0] / 2  # x_center
+        camera_matrix[1, 2] = image_size[1] / 2  # y_center
+        return cls(matrix=camera_matrix)
+
+    @model_validator(mode="after")
+    def validate(self):
+        if self.matrix.shape != (3, 3):
+            raise ValueError("Camera matrix must be 3x3")
+        return self
+
+    @property
+    def focal_length(self) -> float:
+        return self.matrix[0, 0]
+
+    @property
+    def focal_length_x(self) -> float:
+        return self.matrix[0, 0]
+
+    @property
+    def focal_length_y(self) -> float:
+        return self.matrix[1, 1]
+
+    @property
+    def focal_length_xy(self) -> float:
+        return (self.focal_length_x + self.focal_length_y) / 2
+
+    @property
+    def principal_point(self) -> tuple[float, float]:
+        return self.matrix[0, 2], self.matrix[1, 2]
 
 
 DEFAULT_INTRINSICS_COEFFICIENTS_COUNT = 5
@@ -36,63 +247,37 @@ class SingleCameraCalibrator(BaseModel):
 
     camera_id: CameraId
     image_size: tuple[int, ...]
-    object_points_views: list[ObjectPoints3D]
-    image_points_views: list[PixelPoints2D]
-    rotation_vectors: list[RotationVector]
-    translation_vectors: list[TranslationVector]
 
-    charuco_corner_ids: list[int]
-    charuco_corners_in_object_coordinates: AllCharucoCorners3DByIdInObjectCoordinates
+    all_charuco_corner_ids: list[int]
+    all_charuco_corners_in_object_coordinates: AllCharucoCorners3DByIdInObjectCoordinates
 
-    aruco_marker_ids: list[int]
-    aruco_corners_in_object_coordinates: AllArucoCorners3DByIdInObjectCoordinates
+    all_aruco_marker_ids: list[int]
+    all_aruco_corners_in_object_coordinates: AllArucoCorners3DByIdInObjectCoordinates
 
     distortion_coefficients: CameraDistortionCoefficients
     camera_matrix: CameraMatrix
 
     charuco_observations: CharucoObservations = Field(default_factory=CharucoObservations)
-    reprojection_error_by_view: list[float]
-    reprojection_error_per_point_by_view: list[ReprojectionError]
-    mean_reprojection_error: float|None = None
+    object_points_views: list[ObjectPoints3D] = []
+    image_points_views: list[PixelPoints2D] = []
+    rotation_vectors: list[RotationVector] = []
+    translation_vectors: list[TranslationVector] = []
 
-    camera_calibration_residuals: list[float]
+    reprojection_error_per_point_by_view: list[list[float]] = []
+    reprojection_error_by_view: list[float] = []
+    mean_reprojection_error: float | None = None
+
+    camera_calibration_residual: float | None = None
 
     @property
     def has_calibration(self):
         return self.mean_reprojection_error is not None
 
     @property
-    def current_estimate(self) -> SingleCameraCalibrationEstimate:
-        return SingleCameraCalibrationEstimate(
-            camera_id=self.camera_id,
-            camera_matrix=self.camera_matrix,
-            distortion_coefficients=self.distortion_coefficients,
-        )
-
-    @classmethod
-    def from_camera_node_outputs(cls,
-                                 camera_node_outputs: list[CalibrationCameraNodeOutputData],
-                                 calibrate_camera: bool = True):
-        output0 = camera_node_outputs[0]
-        camera_id = output0.camera_id
-        observation = output0.charuco_observation
-        instance = cls.create_initial(
-            camera_id=camera_id,
-            image_size=observation.image_size,
-            all_aruco_marker_ids=observation.all_aruco_ids,
-            all_aruco_corners_in_object_coordinates=observation.all_aruco_corners_in_object_coordinates,
-            all_charuco_corner_ids=observation.all_charuco_ids,
-            all_charuco_corners_in_object_coordinates=observation.all_charuco_corners_in_object_coordinates,
-        )
-        for camera_node_outputs in camera_node_outputs:
-            if camera_node_outputs.camera_id != camera_id:
-                raise ValueError(f"Camera ID mismatch: {camera_node_outputs.camera_id} != {camera_id}")
-            instance.add_observation(camera_node_outputs.charuco_observation)
-
-        if calibrate_camera:
-            logger.info(f"Calibrating camera {output0.camera_id} with {len(instance.object_points_views)} views")
-            instance.update_calibration_estimate()
-        return instance
+    def charuco_transformation_matrices(self) -> list[TransformationMatrix]:
+        return [TransformationMatrix.from_rotation_translation(rotation_vector=rotation_vector,
+                                                               translation_vector=translation_vector)
+                for rotation_vector, translation_vector in zip(self.rotation_vectors, self.translation_vectors)]
 
     @classmethod
     def create_initial(cls,
@@ -103,12 +288,6 @@ class SingleCameraCalibrator(BaseModel):
                        all_charuco_corner_ids: list[int],
                        all_charuco_corners_in_object_coordinates: np.ndarray[..., 3],
                        number_of_distortion_coefficients: int = DEFAULT_INTRINSICS_COEFFICIENTS_COUNT):
-        camera_matrix = np.eye(3)
-        camera_matrix[0, 2] = image_size[0] / 2  # x_center
-        camera_matrix[1, 2] = image_size[1] / 2  # y_center
-
-        if not number_of_distortion_coefficients in [4, 5, 8, 12, 14]:
-            raise ValueError("Invalid number of distortion coefficients. Must be 4, 5, 8, 12, or 14.")
 
         if len(all_charuco_corner_ids) != all_charuco_corners_in_object_coordinates.shape[0]:
             raise ValueError("Number of charuco corner IDs must match the number of charuco corners.")
@@ -117,25 +296,18 @@ class SingleCameraCalibrator(BaseModel):
 
         return cls(camera_id=camera_id,
                    image_size=image_size,
-                   charuco_corner_ids=all_charuco_corner_ids,
-                   charuco_corners_in_object_coordinates=all_charuco_corners_in_object_coordinates,
-                   aruco_marker_ids=all_aruco_marker_ids,
-                   aruco_corners_in_object_coordinates=all_aruco_corners_in_object_coordinates,
-                   camera_matrix=camera_matrix,
-                   distortion_coefficients=np.zeros(number_of_distortion_coefficients),
-                   object_points_views=[],
-                   image_points_views=[],
-                   rotation_vectors=[],
-                   translation_vectors=[],
-                   reprojection_error_by_view=[],
-                   mean_reprojection_error=0,
-                   reprojection_error_per_point_by_view=[],
-                   camera_calibration_residuals=[],
+                   all_charuco_corner_ids=all_charuco_corner_ids,
+                   all_charuco_corners_in_object_coordinates=all_charuco_corners_in_object_coordinates,
+                   all_aruco_marker_ids=all_aruco_marker_ids,
+                   all_aruco_corners_in_object_coordinates=all_aruco_corners_in_object_coordinates,
+                   camera_matrix=CameraMatrix.from_image_size(image_size=image_size),
+                   distortion_coefficients=CameraDistortionCoefficients(
+                       coefficients=np.zeros(number_of_distortion_coefficients))
                    )
 
     def add_observation(self, observation: CharucoObservation):
-        if observation.image_size != self.image_size:
-            raise ValueError(f"Image size mismatch: {observation.image_size} != {self.image_size}")
+        if observation.frame_number in [obs.frame_number for obs in self.charuco_observations]:
+            return
         if observation.charuco_empty or len(observation.detected_charuco_corner_ids) < MIN_CHARUCO_CORNERS:
             return
         self._validate_observation(observation)
@@ -143,38 +315,43 @@ class SingleCameraCalibrator(BaseModel):
         self.charuco_observations.append(observation)
         self.image_points_views.append(np.squeeze(observation.detected_charuco_corners_image_coordinates))
         self.object_points_views.append(
-            self.charuco_corners_in_object_coordinates[np.squeeze(observation.detected_charuco_corner_ids), :])
+            self.all_charuco_corners_in_object_coordinates[np.squeeze(observation.detected_charuco_corner_ids), :])
 
     def update_calibration_estimate(self):
-        if len(self.object_points_views) < len(self.charuco_corner_ids):
+
+        if len(self.object_points_views) < len(self.all_charuco_corner_ids):
             raise ValueError(f"You must have at least as many observations as charuco corners: "
                              f"#Current views: {len(self.object_points_views)}, "
-                             f"#Charuco corners: {len(self.charuco_corner_ids)}")
+                             f"#Charuco corners: {len(self.all_charuco_corner_ids)}")
 
         # https://docs.opencv.org/4.10.0/d9/d0c/group__calib3d.html#ga687a1ab946686f0d85ae0363b5af1d7b
-        (residual,
-         self.camera_matrix,
-         self.distortion_coefficients,
-         self.rotation_vectors,
-         self.translation_vectors) = cv2.calibrateCamera(objectPoints=self.object_points_views,
-                                                         imagePoints=self.image_points_views,
-                                                         imageSize=self.image_size,
-                                                         cameraMatrix=self.camera_matrix,
-                                                         distCoeffs=self.distortion_coefficients,
-                                                         )
+        (self.camera_calibration_residual,
+         camera_matrix_output,
+         distortion_coefficients_output,
+         rotation_vectors_output,
+         translation_vectors_output) = cv2.calibrateCamera(objectPoints=self.object_points_views,
+                                                           imagePoints=self.image_points_views,
+                                                           imageSize=self.image_size,
+                                                           cameraMatrix=self.camera_matrix.matrix,  # will edit in place
+                                                           distCoeffs=self.distortion_coefficients.coefficients,
+                                                           # will edit in place
+                                                           )
 
-        if not residual:
+        if not self.camera_calibration_residual:
             raise ValueError(f"Camera Calibration failed! Check your input data:",
                              f"object_points_views: {self.object_points_views}",
                              f"image_points_views: {self.image_points_views}",
                              f"camera_matrix: {self.camera_matrix}",
                              f"distortion_coefficients: {self.distortion_coefficients}",
                              )
-        self.rotation_vectors = [np.squeeze(rotation_vector) for rotation_vector in self.rotation_vectors]
-        self.translation_vectors = [np.squeeze(translation_vector) for translation_vector in self.translation_vectors]
-        self.camera_calibration_residuals.append(residual)
+        self.rotation_vectors = [RotationVector(vector=np.squeeze(rotation_vector),
+                                                reference_frame=f"camera-{self.camera_id}")
+                                 for rotation_vector in rotation_vectors_output]
+        self.translation_vectors = [TranslationVector(vector=np.squeeze(translation_vector),
+                                                      reference_frame=f"camera-{self.camera_id}")
+                                    for translation_vector in translation_vectors_output]
+
         self._update_reprojection_error()
-        self._drop_suboptimal_views()
 
     def get_board_pose(self, object_points: np.ndarray[..., 3], image_points: np.ndarray[..., 2]) -> tuple[
         np.ndarray[..., 3], np.ndarray[..., 3]]:
@@ -186,8 +363,8 @@ class SingleCameraCalibrator(BaseModel):
             raise ValueError("The number of object and image points must be the same")
         success, rotation_vector, translation_vector = cv2.solvePnP(objectPoints=object_points,
                                                                     imagePoints=image_points,
-                                                                    cameraMatrix=self.camera_matrix,
-                                                                    distCoeffs=self.distortion_coefficients)
+                                                                    cameraMatrix=self.camera_matrix.matrix,
+                                                                    distCoeffs=self.distortion_coefficients.coefficients, )
         if not success:
             raise ValueError(
                 f"Failed to estimate board pose for object points: {object_points} and image points: {image_points}")
@@ -204,8 +381,8 @@ class SingleCameraCalibrator(BaseModel):
         )
         axis_length = 5
         return cv2.drawFrameAxes(image,
-                                 self.camera_matrix,
-                                 self.distortion_coefficients,
+                                 self.camera_matrix.matrix,
+                                 self.distortion_coefficients.coefficients,
                                  rotation_vector,
                                  translation_vector,
                                  axis_length)
@@ -213,9 +390,9 @@ class SingleCameraCalibrator(BaseModel):
     def _validate_observation(self, observation: CharucoObservation):
         if observation.image_size != self.image_size:
             raise ValueError("Image size mismatch")
-        if any([corner_id not in self.charuco_corner_ids for corner_id in observation.detected_charuco_corner_ids]):
+        if any([corner_id not in self.all_charuco_corner_ids for corner_id in observation.detected_charuco_corner_ids]):
             raise ValueError(
-                f"Invalid charuco corner ID detected: {observation.detected_charuco_corner_ids} not all in {self.charuco_corner_ids}")
+                f"Invalid charuco corner ID detected: {observation.detected_charuco_corner_ids} not all in {self.all_charuco_corner_ids}")
 
     def _drop_suboptimal_views(self, ratio_to_keep: float = 0.5):
         if len(self.reprojection_error_by_view) < 2:
@@ -236,24 +413,23 @@ class SingleCameraCalibrator(BaseModel):
             raise ValueError("The number of image and object points must be the same")
         if len(self.image_points_views) == 0:
             raise ValueError("No image points provided")
-        error = None
-        jacobian = None
         self.reprojection_error_per_point_by_view = []
         self.reprojection_error_by_view = []
         for view_index in range(len(self.image_points_views)):
             projected_image_points, jacobian = cv2.projectPoints(objectPoints=self.object_points_views[view_index],
-                                                                 rvec=self.rotation_vectors[view_index],
-                                                                 tvec=self.translation_vectors[view_index],
-                                                                 cameraMatrix=self.camera_matrix,
-                                                                 distCoeffs=self.distortion_coefficients,
+                                                                 rvec=self.rotation_vectors[view_index].vector,
+                                                                 tvec=self.translation_vectors[view_index].vector,
+                                                                 cameraMatrix=self.camera_matrix.matrix,
+                                                                 distCoeffs=self.distortion_coefficients.coefficients,
                                                                  aspectRatio=self.image_size[0] / self.image_size[1]
                                                                  )
 
             self.reprojection_error_per_point_by_view.append(
                 np.abs(self.image_points_views[view_index] - np.squeeze(projected_image_points)))
 
-            self.reprojection_error_by_view.append(np.nanmean(self.reprojection_error_per_point_by_view[-1]))
+            self.reprojection_error_by_view.append(float(np.nanmean(self.reprojection_error_per_point_by_view[-1])))
 
         self.mean_reprojection_error = float(np.nanmean(self.reprojection_error_by_view))
 
-        logger.debug(f"Camera {self.camera_id} -  Mean reprojection error: {self.mean_reprojection_error:.3f} pixels, reprojection error by view: {self.reprojection_error_by_view}")
+        logger.debug(
+            f"Camera {self.camera_id} -  Mean reprojection error: {self.mean_reprojection_error:.3f} pixels, reprojection error by view: {self.reprojection_error_by_view}")

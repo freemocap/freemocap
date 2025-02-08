@@ -1,8 +1,8 @@
 import cv2
 import numpy as np
 
-from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import RotationVector, \
-    TranslationVector, ObjectPoints3D
+from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import RotationVectorArray, \
+    TranslationVectorArray, ObjectPoints3D
 
 
 def calculate_error_bounds(error_dict: dict[tuple[int, int], tuple[int, np.ndarray]]) -> tuple[float, float]:
@@ -25,8 +25,8 @@ def calculate_error_bounds(error_dict: dict[tuple[int, int], tuple[int, np.ndarr
 
 
 def transform_points(points: ObjectPoints3D,
-                     rotation_vector: RotationVector,
-                     translation_vector: TranslationVector):
+                     rotation_vector: RotationVectorArray,
+                     translation_vector: TranslationVectorArray):
     """Rotate points by given rotation vectors and translate.
     Rodrigues' rotation formula is used.
     """
@@ -43,8 +43,8 @@ def transform_points(points: ObjectPoints3D,
     return rotated + translation_vector
 
 
-def construct_camera_extrinsics_matrix(rotation_vector: RotationVector,
-                                       translation_vector: TranslationVector) -> np.ndarray:
+def construct_camera_extrinsics_matrix(rotation_vector: RotationVectorArray,
+                                       translation_vector: TranslationVectorArray) -> np.ndarray:
     if rotation_vector.shape != (3,) or translation_vector.shape != (3,):
         raise ValueError("Rotation vector and translation vector must have shape (3,)")
     extrinsics_matrix = np.zeros((4, 4))

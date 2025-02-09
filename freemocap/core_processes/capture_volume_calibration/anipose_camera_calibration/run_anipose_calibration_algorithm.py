@@ -16,13 +16,13 @@ from skellycam import CameraId
 from tqdm import trange
 
 from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import \
-    PixelPoints2DByCamera, CameraExtrinsicsMatrixByCamera
+    ImagePoints2DByCamera, CameraExtrinsicsMatrixByCamera
 
 logger = logging.getLogger(__name__)
 
 
 @jit(nopython=True, parallel=False)
-def anipose_triangulate_simple(points2d_by_camera: PixelPoints2DByCamera,
+def anipose_triangulate_simple(points2d_by_camera: ImagePoints2DByCamera,
                                camera_matrices_by_camera: CameraExtrinsicsMatrixByCamera) -> np.ndarray:
     """
     Triangulate 3D point from 2D points and camera matrices using the Direct Linear Transform (DLT) method.

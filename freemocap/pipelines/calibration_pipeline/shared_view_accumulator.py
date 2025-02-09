@@ -1,8 +1,9 @@
+import numpy as np
 from pydantic import BaseModel, Field
 from skellycam import CameraId
 from pydantic import model_validator
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
-
+from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import ImagePoint2D
 
 MultiFrameNumber = int
 class CameraPair(BaseModel):
@@ -44,9 +45,27 @@ class CameraPairTargetView(BaseModel):
             raise ValueError(f"other_camera_id {self.camera_pair.other_camera_id} not in camera_node_output_by_camera keys {self.camera_node_output_by_camera.keys()}")
         return self
 
+
+PointIndex = int
 class MultiCameraTargetView(BaseModel):
     multi_frame_number: MultiFrameNumber
     camera_node_output_by_camera: dict[CameraId, CalibrationCameraNodeOutputData]
+
+    @model_validator(mode='after')
+    def validate(self):
+        if len(self.camera_node_output_by_camera) < 2:
+            raise ValueError(f"camera_node_output_by_camera must have at least 2 cameras, got {len(self.camera_node_output_by_camera)}")
+        if not all([output.frame_number == self.multi_frame_number for output in self.camera_node_output_by_camera.values()]):
+            raise ValueError(f"multi_frame_number {self.multi_frame_number} does not match all camera_node_output_by_camera multi_frame_numbers")
+        return self
+
+    @property
+    def image_points_by_camera(self) -> dict[CameraId, list[ImagePoint2D]]:
+        image_points_by_camera = {camera_id: [] for camera_id in self.camera_node_output_by_camera.keys()}
+        for camera_id, camera_node_output in self.camera_node_output_by_camera.items():
+            image_points_by_camera[camera_id].extend(list(camera_node_output.charuco_observation.detected_charuco_corners_in_full_array))
+
+        return image_points_by_camera
 
 class SharedViewAccumulator(BaseModel):
     """

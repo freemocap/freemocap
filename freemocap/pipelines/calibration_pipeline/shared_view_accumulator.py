@@ -31,7 +31,7 @@ class CameraPair(BaseModel):
         # Use a frozenset to ensure hashability and use this model as a key in a dictionary
         return hash(frozenset(self.model_dump().items()))
 
-class SharedTargetView(BaseModel):
+class CameraPairTargetView(BaseModel):
     multi_frame_number: MultiFrameNumber
     camera_pair: CameraPair
     camera_node_output_by_camera: dict[CameraId, CalibrationCameraNodeOutputData]
@@ -44,17 +44,34 @@ class SharedTargetView(BaseModel):
             raise ValueError(f"other_camera_id {self.camera_pair.other_camera_id} not in camera_node_output_by_camera keys {self.camera_node_output_by_camera.keys()}")
         return self
 
+class MultiCameraTargetView(BaseModel):
+    multi_frame_number: MultiFrameNumber
+    camera_node_output_by_camera: dict[CameraId, CalibrationCameraNodeOutputData]
+
 class SharedViewAccumulator(BaseModel):
     """
     Keeps track of the data feeds from each camera, and keeps track of the frames where each can see the calibration target,
     and counts the number of shared views each camera has with each other camera (i.e. frames where both cameras can see the target)
     """
     camera_ids: list[CameraId]
-    target_views_by_camera_pair: dict[CameraPair, list[SharedTargetView]] = Field(default_factory=dict)
+    target_views_by_camera_pair: dict[CameraPair, list[CameraPairTargetView]] = Field(default_factory=dict)
 
     @property
     def camera_pairs(self) -> list[CameraPair]:
         return list(self.target_views_by_camera_pair.keys())
+
+    @property
+    def multi_camera_target_views(self) -> dict[MultiFrameNumber, MultiCameraTargetView]:
+        mc_views = {}
+        for camera_pair, shared_views in self.target_views_by_camera_pair.items():
+            for shared_view in shared_views:
+                if not shared_view.multi_frame_number in mc_views:
+                    mc_views[shared_view.multi_frame_number] = MultiCameraTargetView(multi_frame_number=shared_view.multi_frame_number,
+                                                                                    camera_node_output_by_camera=shared_view.camera_node_output_by_camera)
+
+                else:
+                    mc_views[shared_view.multi_frame_number].camera_node_output_by_camera.update(shared_view.camera_node_output_by_camera)
+        return mc_views
 
     @classmethod
     def create(cls, camera_ids: list[CameraId]):
@@ -79,9 +96,9 @@ class SharedViewAccumulator(BaseModel):
                             raise ValueError(f"camera_pair {camera_pair} not in target_views_by_camera_pair keys {self.target_views_by_camera_pair.keys()}")
                         if any([shared_view.multi_frame_number == multi_frame_number for shared_view in self.target_views_by_camera_pair[camera_pair]]):
                             continue
-                        self.target_views_by_camera_pair[camera_pair].append(SharedTargetView(multi_frame_number=multi_frame_number,
-                                                                                              camera_pair=camera_pair,
-                                                                                              camera_node_output_by_camera={camera_id: camera_node_output,
+                        self.target_views_by_camera_pair[camera_pair].append(CameraPairTargetView(multi_frame_number=multi_frame_number,
+                                                                                                  camera_pair=camera_pair,
+                                                                                                  camera_node_output_by_camera={camera_id: camera_node_output,
                                                                                                                             other_camera_id: camera_node_output_by_camera[other_camera_id]}))
 
 

@@ -8,7 +8,7 @@ from skellycam import CameraId
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservations, CharucoObservation, \
     AllCharucoCorners3DByIdInObjectCoordinates, AllArucoCorners3DByIdInObjectCoordinates
 
-from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import ObjectPoints3D, \
+from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import ObjectPoints3D, \
     PixelPoints2D, RotationVectorArray, TranslationVectorArray, CameraDistortionCoefficientsArray, CameraMatrixArray, \
     CameraExtrinsicsMatrix, RotationMatrixArray, QuaternionArray
 

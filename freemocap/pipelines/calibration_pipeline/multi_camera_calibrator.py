@@ -5,18 +5,22 @@ from pydantic import BaseModel
 from skellycam import CameraId
 
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
+from freemocap.pipelines.calibration_pipeline.least_squares_optimizer import SparseBundleOptimizer
 from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import SharedViewAccumulator
 
 logger = logging.getLogger(__name__)
 
 from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator, \
-    TransformationMatrix, CameraIntrinsicsEstimate
+    TransformationMatrix
 
 
 class MultiCameraCalibrationEstimate(BaseModel):
     principal_camera_id: CameraId
     camera_extrinsic_transforms_by_camera_id: dict[CameraId, TransformationMatrix]
-    camera_intrinsics_by_camera_id: dict[CameraId, CameraIntrinsicsEstimate]
+
+    def to_list(self):
+        return [transform.as_extrinsics_matrix.flatten() for transform in
+                self.camera_extrinsic_transforms_by_camera_id.values()]
 
 
 class MultiCameraCalibrator(BaseModel):
@@ -26,6 +30,7 @@ class MultiCameraCalibrator(BaseModel):
 
     single_camera_calibrators: dict[CameraId, SingleCameraCalibrator] | None = None
     multi_camera_calibration_estimate: MultiCameraCalibrationEstimate | None = None
+    spare_bundle_optimizer: SparseBundleOptimizer | None = None
     minimum_views_to_reconstruct: int | None = 20
 
     @property
@@ -95,33 +100,32 @@ class MultiCameraCalibrator(BaseModel):
 
     def run_multi_camera_optimization(self) -> MultiCameraCalibrationEstimate:
         # Step 1: Calculate secondary camera transforms for each camera pair
-        camera_pair_secondary_camera_transform_estimates = {}
-        for camera_pair in self.shared_view_accumulator.camera_pairs:
-            base_camera_id = camera_pair.base_camera_id
-            other_camera_id = camera_pair.other_camera_id
-
-            charuco_transforms_in_base_camera_coordinates = self.single_camera_calibrators[
-                base_camera_id].charuco_transformation_matrices
-            charuco_transforms_in_other_camera_coordinates = self.single_camera_calibrators[
-                other_camera_id].charuco_transformation_matrices
-
-            other_camera_to_base_camera_transforms = []
-            for base_camera_transform, other_camera_transform in zip(charuco_transforms_in_base_camera_coordinates,
-                                                                     charuco_transforms_in_other_camera_coordinates):
-                base_camera_to_board_transform = base_camera_transform.get_inverse()
-                other_camera_to_base_camera_transforms.append(base_camera_to_board_transform @ other_camera_transform)
-
-            mean_transform = TransformationMatrix.mean_from_transformation_matrices(
-                other_camera_to_base_camera_transforms)
-            camera_pair_secondary_camera_transform_estimates[camera_pair] = mean_transform
+        camera_pair_secondary_camera_transform_estimates = self._calculate_camera_pair_transforms()
 
         logger.debug(
             f"Camera pair secondary camera transform estimates: {camera_pair_secondary_camera_transform_estimates}")
 
         # Step 2: Calculate each camera's transform relative to the principal camera
+        transform_to_principal_camera_by_camera = self._calculate_camera_to_principal_camera_transforms(
+            camera_pair_secondary_camera_transform_estimates)
+
+        self.spare_bundle_optimizer = SparseBundleOptimizer.create(principal_camera_id=self.principal_camera_id,
+                                                                   camera_extrinsic_transforms_by_camera_id=transform_to_principal_camera_by_camera,
+                                                                   camera_intrinsics={
+                                                                       camera_id: calibrator.camera_intrinsics_estimate
+                                                                       for camera_id, calibrator in
+                                                                       self.single_camera_calibrators.items()},
+                                                                   multi_camera_target_views={
+                                                                       camera_id: calibrator.charuco_observations for
+                                                                       camera_id, calibrator in
+                                                                       self.single_camera_calibrators.items()},
+                                                                   )
+        optimization_result = self.spare_bundle_optimizer.optimize()
+        return self.multi_camera_calibration_estimate
+
+    def _calculate_camera_to_principal_camera_transforms(self, camera_pair_secondary_camera_transform_estimates) -> dict[CameraId, TransformationMatrix]:
         transform_to_principal_camera_by_camera = {self.principal_camera_id: TransformationMatrix(matrix=np.eye(4),
                                                                                                   reference_frame=f"camera {self.principal_camera_id}")}
-
         transform_to_principal_camera_by_camera.update(
             {camera_id: None for camera_id in self.single_camera_calibrators.keys()
              if camera_id != self.principal_camera_id})
@@ -148,20 +152,37 @@ class MultiCameraCalibrator(BaseModel):
                         other_to_principal = transform_to_principal_camera_by_camera[camera_pair.other_camera_id]
                         transform_to_principal_camera_by_camera[
                             camera_pair.base_camera_id] = other_to_principal @ transform.get_inverse()
-
         logger.debug(
             f"Camera ID to principal camera transform estimates: {transform_to_principal_camera_by_camera}")
+        return transform_to_principal_camera_by_camera
 
-        self.multi_camera_calibration_estimate= MultiCameraCalibrationEstimate(principal_camera_id=self.principal_camera_id,
-                                              camera_extrinsic_transforms_by_camera_id=transform_to_principal_camera_by_camera,
-                                              camera_intrinsics_by_camera_id={
-                                                  camera_id: calibrator.camera_intrinsics_estimate for
-                                                  camera_id, calibrator in self.single_camera_calibrators.items()})
+    def _calculate_camera_pair_transforms(self):
+        camera_pair_secondary_camera_transform_estimates = {}
+        for camera_pair in self.shared_view_accumulator.camera_pairs:
+            base_camera_id = camera_pair.base_camera_id
+            other_camera_id = camera_pair.other_camera_id
 
-        return self.multi_camera_calibration_estimate
+            charuco_transforms_in_base_camera_coordinates = self.single_camera_calibrators[
+                base_camera_id].charuco_transformation_matrices
+            charuco_transforms_in_other_camera_coordinates = self.single_camera_calibrators[
+                other_camera_id].charuco_transformation_matrices
+
+            other_camera_to_base_camera_transforms = []
+            for base_camera_transform, other_camera_transform in zip(charuco_transforms_in_base_camera_coordinates,
+                                                                     charuco_transforms_in_other_camera_coordinates):
+                base_camera_to_board_transform = base_camera_transform.get_inverse()
+                other_camera_to_base_camera_transforms.append(base_camera_to_board_transform @ other_camera_transform)
+
+            mean_transform = TransformationMatrix.mean_from_transformation_matrices(
+                other_camera_to_base_camera_transforms)
+            camera_pair_secondary_camera_transform_estimates[camera_pair] = mean_transform
+        return camera_pair_secondary_camera_transform_estimates
+
+
 if __name__ == "__main__":
     import pickle
     from pathlib import Path
+
     pickle_path = r"C:\Users\jonma\github_repos\freemocap_organization\freemocap\freemocap\saved_mc_calib.pkl"
     if not Path(pickle_path).exists():
         raise FileNotFoundError(f"File not found: {pickle_path}")

@@ -140,20 +140,20 @@ def _validate_input(points2d_by_camera: np.ndarray, camera_extrinsic_matricies: 
     if camera_extrinsic_matricies.shape[1:] != (3, 4):
         raise ValueError(f"Expected camera extrinsic matricies to be of shape (num_cams, 3, 4), got {camera_extrinsic_matricies.shape}")
 
-# @jit(nopython=True, parallel=False)
-def triangulate_simple(points2d_by_camera: np.ndarray, camera_extrinsic_matricies:  np.ndarray) -> tuple:
-    number_of_cameras, points_dimensions = points2d_by_camera.shape
-    _validate_input(points2d_by_camera, camera_extrinsic_matricies)
-    A = np.zeros((number_of_cameras * 2, 4))
-    for camera_number in range(number_of_cameras):
-        x, y = points2d_by_camera[camera_number]
-        camera_matrix = camera_extrinsic_matricies[camera_number]
-        A[(camera_number * 2) : (camera_number * 2 + 1)] = x * camera_matrix[2] - camera_matrix[0]
-        A[(camera_number * 2 + 1) : (camera_number * 2 + 2)] = y * camera_matrix[2] - camera_matrix[1]
-    u, s, vh = np.linalg.svd(A, full_matrices=True)
-    points_3d = vh[-1]
-    points_3d = points_3d[:3] / points_3d[3]
-    return tuple(points_3d)
+# # @jit(nopython=True, parallel=False)
+# def triangulate_simple(points2d_by_camera: np.ndarray, camera_extrinsic_matricies:  np.ndarray) -> tuple:
+#     number_of_cameras, points_dimensions = points2d_by_camera.shape
+#     _validate_input(points2d_by_camera, camera_extrinsic_matricies)
+#     A = np.zeros((number_of_cameras * 2, 4))
+#     for camera_number in range(number_of_cameras):
+#         x, y = points2d_by_camera[camera_number]
+#         camera_matrix = camera_extrinsic_matricies[camera_number]
+#         A[(camera_number * 2) : (camera_number * 2 + 1)] = x * camera_matrix[2] - camera_matrix[0]
+#         A[(camera_number * 2 + 1) : (camera_number * 2 + 2)] = y * camera_matrix[2] - camera_matrix[1]
+#     u, s, vh = np.linalg.svd(A, full_matrices=True)
+#     points_3d = vh[-1]
+#     points_3d = points_3d[:3] / points_3d[3]
+#     return tuple(points_3d)
 
 if __name__ == "__main__":
     _point_triangulator = PointTriangulator.create()

@@ -12,8 +12,8 @@ from tqdm import trange
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
     anipose_triangulate_simple, remap_ids
-from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import PixelPoints2D, \
-    ObjectPoints3D, ExtrinsicsParameters, IntrinsicsParameters, ReprojectionError, PixelPoints2DByCamera, PointIds, \
+from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import ImagePoints2D, \
+    ObjectPoints3D, ExtrinsicsParameters, IntrinsicsParameters, ReprojectionErrorByPoint, ImagePoints2DByCamera, PointIds, \
     RotationVectorsByCamera, TranslationVectorsByCamera
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_utilities import \
     calculate_error_bounds, transform_points, construct_camera_extrinsics_matrix, \
@@ -27,7 +27,7 @@ class SingleCameraCalibrationHelper(BaseModel):
     calibrator: SingleCameraCalibrator
 
     @property
-    def pixel_points2d(self) -> PixelPoints2D:
+    def pixel_points2d(self) -> ImagePoints2D:
         return self.calibrator.image_points_views
 
     def get_optimizable_parameters(self) -> tuple[ExtrinsicsParameters, IntrinsicsParameters]:
@@ -58,7 +58,7 @@ class SingleCameraCalibrationHelper(BaseModel):
         distortion_coefficients[1] = intrinsics_parameters[2]
         self.distortion_coefficients = distortion_coefficients
 
-    def undistort_points(self, points2d: PixelPoints2D) -> PixelPoints2D:
+    def undistort_points(self, points2d: ImagePoints2D) -> ImagePoints2D:
         """
         Undistorts 2D points using the camera's intrinsic parameters and distortion coefficients.
 
@@ -79,7 +79,7 @@ class SingleCameraCalibrationHelper(BaseModel):
                                                    self.distortion_coefficients.astype("float64"))
         return undistorted_points2d.reshape(shape)
 
-    def project_3d_to_2d(self, points3d: ObjectPoints3D) -> PixelPoints2D:
+    def project_3d_to_2d(self, points3d: ObjectPoints3D) -> ImagePoints2D:
         if not points3d.shape[-1] == 3:
             raise ValueError("points3d must have shape (N, 3)")
         points3d = points3d.reshape(-1, 1, 3)
@@ -95,14 +95,14 @@ class SingleCameraCalibrationHelper(BaseModel):
 
         return projected_2d_points
 
-    def single_camera_reprojection_error(self, points3d: ObjectPoints3D, points2d: PixelPoints2D) -> ReprojectionError:
+    def single_camera_reprojection_error(self, points3d: ObjectPoints3D, points2d: ImagePoints2D) -> ReprojectionErrorByPoint:
         projected_points3d = self.project_3d_to_2d(points3d)
         projecting_3d_points_onto_2d_image_plane = projected_points3d.reshape(points2d.shape)
         return points2d - projecting_3d_points_onto_2d_image_plane
 
 
 class MultiCameraCalibrationInputData(BaseModel):
-    pixel_points2d: PixelPoints2DByCamera
+    pixel_points2d: ImagePoints2DByCamera
     object_points3d: ObjectPoints3D
     points_ids: PointIds
     rotation_vectors: RotationVectorsByCamera

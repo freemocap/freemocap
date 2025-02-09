@@ -11,7 +11,8 @@ from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import Sha
 logger = logging.getLogger(__name__)
 
 from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator, \
-    TransformationMatrix
+    CameraIntrinsicsEstimate
+from freemocap.pipelines.calibration_pipeline.camera_math_models import TransformationMatrix
 
 
 class MultiCameraCalibrationEstimate(BaseModel):
@@ -19,7 +20,7 @@ class MultiCameraCalibrationEstimate(BaseModel):
     camera_extrinsic_transforms_by_camera_id: dict[CameraId, TransformationMatrix]
 
     def to_list(self):
-        return [transform.as_extrinsics_matrix.flatten() for transform in
+        return [transform.extrinsics_matrix.flatten() for transform in
                 self.camera_extrinsic_transforms_by_camera_id.values()]
 
 
@@ -40,8 +41,14 @@ class MultiCameraCalibrator(BaseModel):
         return all(single_camera_calibrator.has_calibration for single_camera_calibrator in
                    self.single_camera_calibrators.values()) and self.multi_camera_calibration_estimate is not None
 
+    @property
+    def camera_intrinsics(self) -> dict[CameraId, CameraIntrinsicsEstimate]:
+        return {camera_id: single_camera_calibrator.camera_intrinsics_estimate for camera_id, single_camera_calibrator
+                in
+                self.single_camera_calibrators.items()}
+
     @classmethod
-    def from_camera_ids(cls, camera_ids: list[CameraId], principal_camera_id: CameraId | None = None):
+    def from_camera_ids(cls, camera_ids: list[CameraId], principal_camera_id: CameraId):
         return cls(principal_camera_id=principal_camera_id if principal_camera_id is not None else min(camera_ids),
                    camera_id_to_index={camera_id: index for index, camera_id in enumerate(camera_ids)},
                    shared_view_accumulator=SharedViewAccumulator.create(camera_ids=camera_ids),
@@ -110,20 +117,20 @@ class MultiCameraCalibrator(BaseModel):
             camera_pair_secondary_camera_transform_estimates)
 
         self.spare_bundle_optimizer = SparseBundleOptimizer.create(principal_camera_id=self.principal_camera_id,
-                                                                   camera_extrinsic_transforms_by_camera_id=transform_to_principal_camera_by_camera,
-                                                                   camera_intrinsics={
-                                                                       camera_id: calibrator.camera_intrinsics_estimate
-                                                                       for camera_id, calibrator in
-                                                                       self.single_camera_calibrators.items()},
-                                                                   multi_camera_target_views={
-                                                                       camera_id: calibrator.charuco_observations for
-                                                                       camera_id, calibrator in
-                                                                       self.single_camera_calibrators.items()},
+                                                                   camera_extrinsics_by_camera_id={
+                                                                       camera_id: transform.extrinsics_matrix
+                                                                       for camera_id, transform in transform_to_principal_camera_by_camera.items()},
+                                                                   camera_intrinsics=self.camera_intrinsics,
+                                                                   multi_camera_target_views=self.shared_view_accumulator.multi_camera_target_views,
+                                                                   image_sizes={camera_id: calibrator.image_size for
+                                                                                camera_id, calibrator in
+                                                                                self.single_camera_calibrators.items()}
                                                                    )
         optimization_result = self.spare_bundle_optimizer.optimize()
         return self.multi_camera_calibration_estimate
 
-    def _calculate_camera_to_principal_camera_transforms(self, camera_pair_secondary_camera_transform_estimates) -> dict[CameraId, TransformationMatrix]:
+    def _calculate_camera_to_principal_camera_transforms(self, camera_pair_secondary_camera_transform_estimates) -> \
+            dict[CameraId, TransformationMatrix]:
         transform_to_principal_camera_by_camera = {self.principal_camera_id: TransformationMatrix(matrix=np.eye(4),
                                                                                                   reference_frame=f"camera {self.principal_camera_id}")}
         transform_to_principal_camera_by_camera.update(
@@ -188,7 +195,6 @@ if __name__ == "__main__":
         raise FileNotFoundError(f"File not found: {pickle_path}")
     loaded: MultiCameraCalibrator = pickle.load(open(pickle_path, "rb"))
     loaded.run_multi_camera_optimization()
-    print(loaded)
 
     # save out
     # with open(pickle_path, "wb") as f:

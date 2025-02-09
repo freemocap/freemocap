@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class CalibrationAggregationLayerOutputData(BaseAggregationLayerOutputData):
-    multi_camera_calibration_estimate:MultiCameraCalibrationEstimate|None = None
+    multi_camera_calibration_estimate: MultiCameraCalibrationEstimate | None = None
     data: object = None
 
 
@@ -41,24 +41,24 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                output_queue: Queue,
                all_ready_events: dict[CameraId | str, multiprocessing.Event],
                shutdown_event: multiprocessing.Event,
-                use_thread: bool = False):
+               use_thread: bool = False):
 
         if use_thread:
             worker = Thread(target=cls._run,
-                                       kwargs=dict(config=config,
-                                                   input_queues=input_queues,
-                                                   output_queue=output_queue,
-                                                   all_ready_events=all_ready_events,
-                                                   shutdown_event=shutdown_event)
-                                       )
+                            kwargs=dict(config=config,
+                                        input_queues=input_queues,
+                                        output_queue=output_queue,
+                                        all_ready_events=all_ready_events,
+                                        shutdown_event=shutdown_event)
+                            )
         else:
             worker = Process(target=cls._run,
-                                       kwargs=dict(config=config,
-                                                   input_queues=input_queues,
-                                                   output_queue=output_queue,
-                                                   all_ready_events=all_ready_events,
-                                                   shutdown_event=shutdown_event)
-                                       )
+                             kwargs=dict(config=config,
+                                         input_queues=input_queues,
+                                         output_queue=output_queue,
+                                         all_ready_events=all_ready_events,
+                                         shutdown_event=shutdown_event)
+                             )
         return cls(config=config,
                    process=worker,
                    input_queues=input_queues,
@@ -79,7 +79,6 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
         camera_node_incoming_data: dict[CameraId, CalibrationCameraNodeOutputData | None] = {camera_id: None for
                                                                                              camera_id in
                                                                                              input_queues.keys()}
-
 
         multi_camera_calibrator = MultiCameraCalibrator.from_camera_ids(camera_ids=list(input_queues.keys()))
         try:

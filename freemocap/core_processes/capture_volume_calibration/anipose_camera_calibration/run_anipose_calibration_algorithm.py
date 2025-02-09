@@ -15,7 +15,7 @@ from scipy.sparse import dok_matrix
 from skellycam import CameraId
 from tqdm import trange
 
-from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import \
+from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import \
     PixelPoints2DByCamera, CameraExtrinsicsMatrixByCamera
 
 logger = logging.getLogger(__name__)

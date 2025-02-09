@@ -12,7 +12,7 @@ from tqdm import trange
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
     anipose_triangulate_simple, remap_ids
-from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_numpy_types import PixelPoints2D, \
+from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import PixelPoints2D, \
     ObjectPoints3D, ExtrinsicsParameters, IntrinsicsParameters, ReprojectionError, PixelPoints2DByCamera, PointIds, \
     RotationVectorsByCamera, TranslationVectorsByCamera
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_utilities import \

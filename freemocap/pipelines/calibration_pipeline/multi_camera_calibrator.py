@@ -31,7 +31,7 @@ class MultiCameraCalibrator(BaseModel):
 
     single_camera_calibrators: dict[CameraId, SingleCameraCalibrator] | None = None
     multi_camera_calibration_estimate: MultiCameraCalibrationEstimate | None = None
-    spare_bundle_optimizer: SparseBundleOptimizer | None = None
+    sparse_bundle_optimizer: SparseBundleOptimizer | None = None
     minimum_views_to_reconstruct: int | None = 20
 
     @property
@@ -116,7 +116,7 @@ class MultiCameraCalibrator(BaseModel):
         transform_to_principal_camera_by_camera = self._calculate_camera_to_principal_camera_transforms(
             camera_pair_secondary_camera_transform_estimates)
 
-        self.spare_bundle_optimizer = SparseBundleOptimizer.create(principal_camera_id=self.principal_camera_id,
+        self.sparse_bundle_optimizer = SparseBundleOptimizer.create(principal_camera_id=self.principal_camera_id,
                                                                    camera_extrinsics_by_camera_id={
                                                                        camera_id: transform.extrinsics_matrix
                                                                        for camera_id, transform in transform_to_principal_camera_by_camera.items()},
@@ -126,8 +126,15 @@ class MultiCameraCalibrator(BaseModel):
                                                                                 camera_id, calibrator in
                                                                                 self.single_camera_calibrators.items()}
                                                                    )
-        optimization_result = self.spare_bundle_optimizer.optimize()
-        return self.multi_camera_calibration_estimate
+        optimization_result = self.sparse_bundle_optimizer.optimize()
+        camera_transforms = {}
+        for camera_index, camera_id in enumerate(self.single_camera_calibrators.keys()):
+            # split the 1d vector by camera based on `self.number_of_parameters_per_camera`
+            starting_index = camera_index * self.sparse_bundle_optimizer.number_of_parameters_per_camera
+            ending_index = (camera_index + 1) * self.number_of_parameters_per_camera
+            camera_transforms[camera_id] = TransformationMatrix.from_extrinsics(
+                extrinsics_matrix=np.array(optimization_result[starting_index:ending_index]).reshape(3, 4),
+                reference_frame=f"camera-{self.principal_camera_id}")
 
     def _calculate_camera_to_principal_camera_transforms(self, camera_pair_secondary_camera_transform_estimates) -> \
             dict[CameraId, TransformationMatrix]:

@@ -91,7 +91,7 @@ class SparseBundleOptimizer(BaseModel):
             jac="3-point",  # TODO- could prob use `callable` and calc the jacobian dynamically
             f_scale=50.0,  # TODO - Not sure where this number comes from
             x_scale="jac",
-            loss="soft_l1",#"linear",  # TODO - try `soft_l1` or `cauchy`
+            loss="cauchy",#"linear",  # TODO - try `soft_l1` or `cauchy`
             # ftol=1e-4,
             method="trf",
             verbose=2,

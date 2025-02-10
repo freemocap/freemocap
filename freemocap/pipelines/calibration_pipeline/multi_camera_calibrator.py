@@ -48,7 +48,7 @@ class MultiCameraCalibrator(BaseModel):
                 self.single_camera_calibrators.items()}
 
     @classmethod
-    def from_camera_ids(cls, camera_ids: list[CameraId], principal_camera_id: CameraId):
+    def from_camera_ids(cls, camera_ids: list[CameraId], principal_camera_id: CameraId|None = None):
         return cls(principal_camera_id=principal_camera_id if principal_camera_id is not None else min(camera_ids),
                    camera_id_to_index={camera_id: index for index, camera_id in enumerate(camera_ids)},
                    shared_view_accumulator=SharedViewAccumulator.create(camera_ids=camera_ids),

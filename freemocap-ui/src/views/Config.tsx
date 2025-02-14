@@ -8,6 +8,8 @@ export const ConfigView = () => {
     const [devices, setDevices] = React.useState<MediaDeviceInfo[]>([]);
     const { latestSkellyCamAppState } = useWebSocketContext();
 
+
+
     useAsync(async () => {
         const cam = new AvailableCameraDevices();
         const deviceInfos = await cam.findAllCameras(false);
@@ -16,14 +18,15 @@ export const ConfigView = () => {
 
     const devicesWithNames = devices.filter(x => x.label);
 
+
     return (
         <Box>
-            <Typography>JS Detected Cameras</Typography>
+            <h2>JS Detected Cameras</h2>
             {devicesWithNames.map(device => (
                 <Typography key={device.deviceId}>Webcam {device.label}</Typography>
             ))}
-
-            <Typography>Latest SkellyCamAppState</Typography>
+            <br/>
+            <h2>Latest SkellyCamAppState</h2>
             {latestSkellyCamAppState && (
                 <Typography component="pre">
                     {JSON.stringify(latestSkellyCamAppState, null, 2)}

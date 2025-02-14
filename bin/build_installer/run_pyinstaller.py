@@ -17,7 +17,7 @@ def run_pyinstaller():
     print(f"Running PyInstaller with spec file {SPEC_FILE_PATH}...")
 
     installer_parameters = [
-        SPEC_FILE_PATH,
+        # SPEC_FILE_PATH,
         '--log-level', 'INFO'
     ]
 

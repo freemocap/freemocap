@@ -125,7 +125,7 @@ class CalibrationAggregationProcessNode(BaseAggregationNode):
                     for camera_id in input_queues.keys()
                 }
                 if multi_camera_calibrator.has_calibration:
-                    for camera_id, transform in multi_camera_calibrator.multi_camera_calibration_estimate.camera_extrinsic_transforms_by_camera_id.items():
+                    for camera_id, transform in multi_camera_calibrator.multi_camera_calibration_estimate.camera_transforms_by_camera_id.items():
                         points3d[f"camera-{camera_id}"] = transform.translation_vector.vector
 
                 output = CalibrationPipelineOutputData(

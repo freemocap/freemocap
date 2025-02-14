@@ -31,8 +31,11 @@ export const ImageMesh: React.FC<ImageMeshProps> = ({imageUrl, position}) => {
             camera.far = Math.max(imageWidth, imageHeight);
             const helper = new THREE.CameraHelper(camera);
             scene.add(helper);
-            meshRef.current.material.map = texture;
-            meshRef.current.material.needsUpdate = true;
+
+            if (mesh.material instanceof THREE.MeshBasicMaterial) {
+                mesh.material.map = texture;
+                mesh.material.needsUpdate = true;
+            }
         }
     }, [texture]);
 

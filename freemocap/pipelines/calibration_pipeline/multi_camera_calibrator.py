@@ -17,11 +17,8 @@ from freemocap.pipelines.calibration_pipeline.camera_math_models import Transfor
 
 class MultiCameraCalibrationEstimate(BaseModel):
     principal_camera_id: CameraId
-    camera_extrinsic_transforms_by_camera_id: dict[CameraId, TransformationMatrix]
+    camera_transforms_by_camera_id: dict[CameraId, TransformationMatrix]
 
-    def to_list(self):
-        return [transform.extrinsics_matrix.flatten() for transform in
-                self.camera_extrinsic_transforms_by_camera_id.values()]
 
 
 class MultiCameraCalibrator(BaseModel):
@@ -135,6 +132,10 @@ class MultiCameraCalibrator(BaseModel):
             camera_transforms[camera_id] = TransformationMatrix.from_extrinsics(
                 extrinsics_matrix=np.array(optimization_result[starting_index:ending_index]).reshape(3, 4),
                 reference_frame=f"camera-{self.principal_camera_id}")
+        self.multi_camera_calibration_estimate = MultiCameraCalibrationEstimate(
+            principal_camera_id=self.principal_camera_id,
+            camera_transforms_by_camera_id=camera_transforms
+        )
 
     def _calculate_camera_to_principal_camera_transforms(self, camera_pair_secondary_camera_transform_estimates) -> \
             dict[CameraId, TransformationMatrix]:
@@ -203,6 +204,10 @@ if __name__ == "__main__":
     loaded: MultiCameraCalibrator = pickle.load(open(pickle_path, "rb"))
     loaded.run_multi_camera_optimization()
 
-    # save out
+    ## save out state in debug console to re-run w/o camera streams
+    # import pickle
+    # from pathlib import Path
+    #
+    # pickle_path = r"C:\Users\jonma\github_repos\freemocap_organization\freemocap\freemocap\saved_mc_calib.pkl"
     # with open(pickle_path, "wb") as f:
     #     pickle.dump(self, f)

@@ -2,6 +2,7 @@ from PySide6.QtCore import QUrl
 from PySide6.QtGui import QAction, QDesktopServices
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
+    DOCUMENTATION_WELCOME_URL,
     FIGSHARE_SAMPLE_ZIP_FILE_URL,
     FIGSHARE_TEST_ZIP_FILE_URL,
 )
@@ -83,7 +84,7 @@ class Actions:
         # Help
         self.open_docs_action = QAction(OPEN_DOCS_ACTION_NAME, parent=freemocap_main_window)
         self.open_docs_action.triggered.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://freemocap.github.io/documentation/index_md.html"))
+            lambda: QDesktopServices.openUrl(QUrl(DOCUMENTATION_WELCOME_URL))
         )
 
         self.freemocap_foundation_action = QAction(FREEMOCAP_FOUNDATION_ACTION_NAME, parent=freemocap_main_window)

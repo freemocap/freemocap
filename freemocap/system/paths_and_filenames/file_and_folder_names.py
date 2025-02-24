@@ -53,6 +53,13 @@ FIGSHARE_TEST_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/45797073"
 FREEMOCAP_TEST_DATA_RECORDING_NAME = "freemocap_test_data"
 FREEMOCAP_SAMPLE_DATA_RECORDING_NAME = "freemocap_sample_data"
 
+# documentation links
+DOCUMENTATION_HOME = "https://freemocap.github.io/documentation/"
+DOCUMENTATION_WELCOME_URL = "https://freemocap.github.io/documentation/getting_started/"
+DOCUMENTATION_SINGLE_CAMERA_URL = "https://freemocap.github.io/documentation/getting_started/single_camera_recording/"
+DOCUMENTATION_MULTI_CAMERA_URL = "https://freemocap.github.io/documentation/getting_started/multi_camera_calibration/"
+DOCUMENTATION_PRIVACY_POLICY_URL = "https://freemocap.github.io/documentation/community/privacy_policy/"
+
 # logo
 PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent / "assets/logo/freemocap-logo-black-border.svg")
 

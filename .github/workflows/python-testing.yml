@@ -39,7 +39,7 @@ jobs:
       - name: Install libegl1
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1-mesa
+          sudo apt-get install -y libgl1
       - name: Run Tests with Pytest
         run: |
           pip install pytest

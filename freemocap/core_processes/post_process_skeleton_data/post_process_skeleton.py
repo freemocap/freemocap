@@ -74,7 +74,7 @@ def run_post_processing_worker(
 ) -> np.ndarray:
     def handle_thread_finished(results, post_processed_data_handler: PostProcessedDataHandler):
         # TODO: skellyforge should handle getting the final task results regardless of what was run
-        if hasattr(results, TASK_FILTERING) and results[TASK_FILTERING] is not None:
+        if TASK_FILTERING in results and results[TASK_FILTERING] is not None:
             processed_skeleton = results[TASK_FILTERING]["result"]
         else:
             processed_skeleton = results[TASK_INTERPOLATION]["result"]

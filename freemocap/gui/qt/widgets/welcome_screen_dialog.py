@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QCheckBox, QPushButton, QLabel, QHBoxLayout, QFrame
 
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
-from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING
+from freemocap.system.paths_and_filenames.file_and_folder_names import DOCUMENTATION_MULTI_CAMERA_URL, DOCUMENTATION_SINGLE_CAMERA_URL, SPARKLES_EMOJI_STRING
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 
@@ -38,7 +38,7 @@ class WelcomeScreenDialog(QDialog):
         single_camera_docs_label.setWordWrap(True)
         self._layout.addWidget(single_camera_docs_label, 1)
 
-        single_camera_recording_doc_link_string = '&#10132; <a href="https://freemocap.github.io/documentation/single-camera-recording.html" style="color: #333333;"> Single camera recording tutorial</a>'
+        single_camera_recording_doc_link_string = f'&#10132; <a href="{DOCUMENTATION_SINGLE_CAMERA_URL}" style="color: #333333;"> Single camera recording tutorial</a>'
         single_camera_doc_link = QLabel(single_camera_recording_doc_link_string)
         single_camera_doc_link.setOpenExternalLinks(True)
         self._layout.addWidget(single_camera_doc_link)
@@ -48,7 +48,7 @@ class WelcomeScreenDialog(QDialog):
         multi_camera_docs_label.setWordWrap(True)
         self._layout.addWidget(multi_camera_docs_label, 1)
 
-        multi_camera_recording_doc_link_string = '&#10132; <a href="https://freemocap.github.io/documentation/multi-camera-calibration.html" style="color: #333333;"> Multi camera recording tutorial</a>'
+        multi_camera_recording_doc_link_string = f'&#10132; <a href="{DOCUMENTATION_MULTI_CAMERA_URL}" style="color: #333333;"> Multi camera recording tutorial</a>'
         multi_camera_doc_link = QLabel(multi_camera_recording_doc_link_string)
         multi_camera_doc_link.setOpenExternalLinks(True)
         self._layout.addWidget(multi_camera_doc_link)

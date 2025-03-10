@@ -28,7 +28,7 @@ class DataWarningDialog(QDialog):
         warning_text_label.setWordWrap(True)
         self._layout.addWidget(warning_text_label, 1)
 
-        diagnostic_pr_link_string = f'&#10132; <a href="https://github.com/freemocap/freemocap/pull/676" style="color: #333333;">Pull Request: Improved Data Diagnostics</a>'
+        diagnostic_pr_link_string = '&#10132; <a href="https://github.com/freemocap/freemocap/pull/676" style="color: #333333;">Pull Request: Improved Data Diagnostics</a>'
         diagnostic_pr_link = QLabel(diagnostic_pr_link_string)
         diagnostic_pr_link.setOpenExternalLinks(True)
         self._layout.addWidget(diagnostic_pr_link)

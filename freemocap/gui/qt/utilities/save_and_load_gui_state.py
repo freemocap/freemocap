@@ -18,6 +18,7 @@ class GuiState(BaseModel):
     annotate_charuco_images: bool = False
     freemocap_data_folder_path: str = str(Path(Path.home(), BASE_FREEMOCAP_DATA_FOLDER_NAME))
     blender_path: str = str(get_best_guess_of_blender_path())
+    show_data_quality_warning: bool = True
 
 
 def save_gui_state(gui_state: GuiState, file_pathstring: str) -> None:

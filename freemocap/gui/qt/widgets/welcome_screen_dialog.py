@@ -58,6 +58,24 @@ class WelcomeScreenDialog(QDialog):
         sample_data_label.setWordWrap(True)
         self._layout.addWidget(sample_data_label, 1)
 
+        self.warning_frame = QFrame()
+        self.warning_frame.setFrameShape(QFrame.Shape.HLine)
+        self.warning_frame.setFrameShadow(QFrame.Shadow.Sunken)
+        self._layout.addWidget(self.warning_frame)
+
+        warning_test = "Whoops! There was a data quality regression because of a bug that made us skip the butterworth step since version 1.4.7 \n" \
+                        "We recommend re-processing any imoprtant data you have collected in that period.\n" \
+                        "We are working on automated diagnostic steps to help us detect regressions in data quality as soon as possible."
+        warning_text_label = QLabel(warning_test)
+        warning_text_label.setWordWrap(True)
+        self._layout.addWidget(warning_text_label, 1)
+
+        diagnostic_pr_link_string = f'&#10132; <a href="https://github.com/freemocap/freemocap/pull/676" style="color: #333333;">Pull Request: Improved Data Diagnostics</a>'
+        diagnostic_pr_link = QLabel(diagnostic_pr_link_string)
+        diagnostic_pr_link.setOpenExternalLinks(True)
+        self._layout.addWidget(diagnostic_pr_link)  
+        
+
         button_box = QHBoxLayout()
 
         self._dont_show_again_checkbox = QCheckBox("Don't show this again")

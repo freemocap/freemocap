@@ -45,7 +45,7 @@ def qt_gui_main():
 
         if freemocap_main_window._gui_state.show_welcome_screen:
             freemocap_main_window.open_welcome_screen_dialog()
-        elif freemocap_main_window._gui_state.show_data_quality_warning:
+        if freemocap_main_window._gui_state.show_data_quality_warning:
             freemocap_main_window.open_data_quality_warning_dialog()
         installed_packages = {dist.metadata["Name"] for dist in distributions()}
         if "opencv-python" in installed_packages and "opencv-contrib-python" in installed_packages:

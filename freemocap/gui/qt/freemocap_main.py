@@ -45,6 +45,8 @@ def qt_gui_main():
 
         if freemocap_main_window._gui_state.show_welcome_screen:
             freemocap_main_window.open_welcome_screen_dialog()
+        if freemocap_main_window._gui_state.show_data_quality_warning:
+            freemocap_main_window.open_data_quality_warning_dialog()
         installed_packages = {dist.metadata["Name"] for dist in distributions()}
         if "opencv-python" in installed_packages and "opencv-contrib-python" in installed_packages:
             freemocap_main_window.open_opencv_conflict_dialog()
@@ -55,7 +57,7 @@ def qt_gui_main():
         freemocap_main_window.close()
 
         if not error_code == EXIT_CODE_REBOOT:
-            print("Thank you for using freemocap \U0001F480 \U00002764 \U00002728")
+            print("Thank you for using freemocap \U0001f480 \U00002764 \U00002728")
             break
 
         logger.info("`main` exited with the 'reboot' code, so let's reboot!")

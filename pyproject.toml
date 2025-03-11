@@ -132,3 +132,8 @@ setup = "pre-commit install"
 installer = "./bin/installer.sh"
 # This command ensures that your code is formatted appropriately
 format = "black freemocap"
+
+[dependency-groups]
+dev = [
+    "bumpver>=2024.1130",
+]

@@ -24,7 +24,6 @@ jobs:
           uv venv
           uv pip install -e.
 
-      - name: Print a message
-        run: echo "Success!"
-      
-
+      - name: Run diagnostics
+        run: |
+          python diagnostics/run_test_data.py

@@ -98,7 +98,7 @@ def run(path_to_recording:Path,
 if __name__ == "__main__":
 
     model_info = MediapipeModelInfo()
-    path_to_recording = Path(get_sample_session_path())
+    path_to_recording = Path("/home/runner/freemocap_data/recording_sessions/freemocap_test_data") #hardcoded for the github action location
     freemocap_version = 'current'
     run(path_to_recording=path_to_recording,
         model_info=model_info,

@@ -24,7 +24,12 @@ jobs:
           uv venv
           uv pip install -e.
 
-      - name: Run diagnostics
+      - name: Process test data
         run: |
           source .venv/bin/activate
           python freemocap/diagnostics/run_test_data.py
+
+      - name: Calculate diagnostics
+          source .venv/bin/activate
+          python freemocap/diagnostics/calculate_diagnostics.py
+

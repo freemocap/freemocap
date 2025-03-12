@@ -45,7 +45,7 @@ def download_sample_data(sample_data_zip_file_url: str = FIGSHARE_TEST_ZIP_FILE_
         elif sample_data_zip_file_url == FIGSHARE_SAMPLE_ZIP_FILE_URL:
             figshare_sample_data_path = recording_session_folder_path / FREEMOCAP_SAMPLE_DATA_RECORDING_NAME
         else:
-            figshare_sample_data_path = recording_session_folder_path / "unknown_sample_data"
+            figshare_sample_data_path = recording_session_folder_path / FREEMOCAP_TEST_DATA_RECORDING_NAME
         logger.info(f"Sample data extracted to {str(figshare_sample_data_path)}")
         return str(figshare_sample_data_path)
 
@@ -58,5 +58,5 @@ def download_sample_data(sample_data_zip_file_url: str = FIGSHARE_TEST_ZIP_FILE_
 
 
 if __name__ == "__main__":
-    sample_data_path = download_sample_data()
+    sample_data_path = download_sample_data('https://github.com/aaroncherian/freemocap_fork/releases/download/v0.0.1-alpha/freemocap_test_data.zip')
     print(f"Sample data downloaded successfully to path: {str(sample_data_path)}")

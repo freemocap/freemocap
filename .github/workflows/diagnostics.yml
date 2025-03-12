@@ -8,9 +8,10 @@ jobs:
   test-workflow:
     runs-on: ubuntu-latest
 
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    - name: Print a message
-      run: echo "Github actions workflow is running!"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Print a message
+        run: echo "Github actions workflow is running!"
       
+

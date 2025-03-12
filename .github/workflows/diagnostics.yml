@@ -38,7 +38,7 @@ jobs:
         run: |
           uv pip install jinja2
           source .venv/bin/activate
-          python freemocap/diagnostics/generate_diagnostic_report.
+          python freemocap/diagnostics/generate_diagnostic_report.py
           
       - name: Upload diagnostic report
         uses: actions/upload-artifact@v4

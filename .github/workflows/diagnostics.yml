@@ -41,7 +41,7 @@ jobs:
           python freemocap/diagnostics/generate_diagnostic_report.
           
       - name: Upload diagnostic report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: diagnostic_report
           path: freemocap/diagnostics/version_diagnostics/diagnostic_report.html

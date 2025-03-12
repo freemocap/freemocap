@@ -26,4 +26,5 @@ jobs:
 
       - name: Run diagnostics
         run: |
+          source .venv/bin/activate
           python freemocap/diagnostics/run_test_data.py

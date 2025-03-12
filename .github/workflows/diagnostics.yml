@@ -30,6 +30,7 @@ jobs:
           python freemocap/diagnostics/run_test_data.py
 
       - name: Calculate diagnostics
+        run: |
           source .venv/bin/activate
           python freemocap/diagnostics/calculate_diagnostics.py
 

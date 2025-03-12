@@ -24,7 +24,8 @@ def setup_session():
     Stores all important paths for easy access.
     """
     logger.info("Downloading sample data...")
-    SessionInfo.sample_session_folder_path = Path(r'/home/runner/work/freemocap_fork/freemocap_fork/freemocap/freemocap_test_data')
+    # SessionInfo.sample_session_folder_path = Path(r'/home/runner/work/freemocap_fork/freemocap_fork/freemocap/freemocap_test_data')
+    SessionInfo.sample_session_folder_path = download_sample_data(sample_data_zip_file_url="https://github.com/aaroncherian/freemocap_fork/releases/download/v0.0.1-alpha/freemocap_test_data._good_cal.zip")
 
     logger.info("Finding calibration file...")
     calibration_toml_path = find_calibration_toml_path(SessionInfo.sample_session_folder_path)

@@ -148,25 +148,25 @@ from jinja2 import Template
 from packaging import version
 
 def generate_html_report(total_df, output_path="diagnostic_report.html"):
-    # Extract versions and sort them semantically using packaging.version
-    version_list = total_df['version'].unique()
-    # Separate 'current' from version numbers
-    current_version = 'current' if 'current' in version_list else None
-    numeric_versions = [v for v in version_list if v != 'current']
+    # # Extract versions and sort them semantically using packaging.version
+    # version_list = total_df['version'].unique()
+    # # Separate 'current' from version numbers
+    # current_version = 'current' if 'current' in version_list else None
+    # numeric_versions = [v for v in version_list if v != 'current']
     
-    # Sort numeric versions semantically
-    sorted_versions = sorted(numeric_versions, key=lambda x: version.parse(x))
+    # # Sort numeric versions semantically
+    # sorted_versions = sorted(numeric_versions, key=lambda x: version.parse(x))
     
-    # Add 'current' at the end if it exists
-    if current_version:
-        sorted_versions.append(current_version)
+    # # Add 'current' at the end if it exists
+    # if current_version:
+    #     sorted_versions.append(current_version)
     
-    # Convert version column to categorical for proper ordering
-    total_df['version'] = pd.Categorical(
-        total_df['version'], 
-        categories=sorted_versions, 
-        ordered=True
-    )
+    # # Convert version column to categorical for proper ordering
+    # total_df['version'] = pd.Categorical(
+    #     total_df['version'], 
+    #     categories=sorted_versions, 
+    #     ordered=True
+    # )
 
     jerk_plot = plot_jerk_trends(total_df).to_html(full_html=False)
     html_table = format_jerk_table(total_df)

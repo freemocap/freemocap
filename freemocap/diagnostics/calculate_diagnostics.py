@@ -104,7 +104,7 @@ if __name__ == "__main__":
         path_to_recording = Path(r"C:\Users\runneradmin\freemocap_data\recording_sessions\freemocap_test_data")
     elif sys.platform.startswith('linux'):
         path_to_recording = Path("/home/runner/freemocap_data/recording_sessions/freemocap_test_data")
-    elif sys.platform.startswith('darwin'):  # macOS
+    elif sys.platform.startswith('darwin'): 
         path_to_recording = Path("/Users/runner/freemocap_data/recording_sessions/freemocap_test_data")
     else:
         raise RuntimeError(f"Unsupported OS: {sys.platform}")

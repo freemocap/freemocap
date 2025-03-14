@@ -98,11 +98,16 @@ def run(path_to_recording:Path,
 if __name__ == "__main__":
     model_info = MediapipeModelInfo()
     # Use environment detection to handle different runners
-    import os
-    if os.name == 'nt':  # Windows
+    import sys
+
+    if sys.platform.startswith('win'):
         path_to_recording = Path(r"C:\Users\runneradmin\freemocap_data\recording_sessions\freemocap_test_data")
-    elif os.name == 'posix':
+    elif sys.platform.startswith('linux'):
         path_to_recording = Path("/home/runner/freemocap_data/recording_sessions/freemocap_test_data")
+    elif sys.platform.startswith('darwin'):  # macOS
+        path_to_recording = Path("/Users/runner/freemocap_data/recording_sessions/freemocap_test_data")
+    else:
+        raise RuntimeError(f"Unsupported OS: {sys.platform}")
 
     freemocap_version = 'current'
     run(path_to_recording=path_to_recording,

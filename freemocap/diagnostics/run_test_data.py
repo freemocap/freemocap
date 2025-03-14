@@ -31,9 +31,7 @@ def setup_session():
     elif os.name == 'posix':
         SessionInfo.sample_session_folder_path = download_sample_data()
 
-    logger.info('Calibrating')
-    calibration_toml_path = headless_calibration(path_to_folder_of_calibration_videos=get_synchronized_video_folder_path(),
-                                                 charuco_square_size=58)
+
 
     # logger.info("Finding calibration file...")
     # calibration_toml_path = find_calibration_toml_path(SessionInfo.sample_session_folder_path)
@@ -43,6 +41,10 @@ def setup_session():
         recording_folder_path=SessionInfo.sample_session_folder_path,
         active_tracker="mediapipe",
     )
+
+    logger.info('Calibrating')
+    calibration_toml_path = headless_calibration(path_to_folder_of_calibration_videos=get_synchronized_video_folder_path(),
+                                                 charuco_square_size=58)
 
     logger.info("Processing motion capture data...")
     process_recording_headless(

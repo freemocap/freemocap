@@ -1,6 +1,7 @@
 from pathlib import Path
 import pandas as pd 
 
+import plotly.graph_objects as go
 
 import plotly.express as px
 
@@ -24,24 +25,53 @@ def plot_jerk_trends(total_df):
     if current_version:
         sorted_versions.append(current_version)
     
-    # Create the plot with explicitly ordered categories
-    fig = px.line(
-        plot_df, 
-        x="version", 
-        y="mean_jerk", 
-        color="data_stage",
-        title="Jerk Trends Across Versions", 
-        markers=True,
-        category_orders={"version": sorted_versions}
+    # Create a custom mapping for sorting
+    version_to_index = {v: i for i, v in enumerate(sorted_versions)}
+    
+    # Add a sort key to the dataframe
+    plot_df['sort_key'] = plot_df['version'].map(version_to_index)
+    
+    # Create a new dataframe with data sorted by data_stage and version
+    sorted_plot_data = []
+    
+    # Process each data_stage separately
+    for stage in plot_df['data_stage'].unique():
+        stage_data = plot_df[plot_df['data_stage'] == stage].copy()
+        # Sort by our custom sort key
+        stage_data = stage_data.sort_values('sort_key')
+        sorted_plot_data.append(stage_data)
+    
+    # Combine back to a single dataframe
+    sorted_plot_df = pd.concat(sorted_plot_data)
+    
+    # Create an empty figure
+    fig = go.Figure()
+    
+    # Add each data series manually to ensure proper order
+    for stage in sorted_plot_df['data_stage'].unique():
+        stage_data = sorted_plot_df[sorted_plot_df['data_stage'] == stage]
+        
+        fig.add_trace(go.Scatter(
+            x=stage_data['version'], 
+            y=stage_data['mean_jerk'],
+            mode='lines+markers',
+            name=stage,
+            connectgaps=True
+        ))
+    
+    # Update layout
+    fig.update_layout(
+        title="Jerk Trends Across Versions",
+        xaxis=dict(
+            title="version",
+            type='category',
+            categoryorder='array',
+            categoryarray=sorted_versions
+        ),
+        yaxis=dict(title="mean_jerk")
     )
     
-    # Ensure x-axis respects the category order
-    fig.update_xaxes(
-        type='category',
-        categoryorder='array',
-        categoryarray=sorted_versions
-    )
-    
+    return fig
     return fig
 
 def format_jerk_table(total_df):

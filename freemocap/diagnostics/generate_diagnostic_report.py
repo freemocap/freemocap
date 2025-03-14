@@ -4,15 +4,27 @@ import pandas as pd
 
 import plotly.express as px
 
+from packaging.version import Version, parse
+
 def plot_jerk_trends(total_df):
     # Reset index for easy handling in Plotly
     plot_df = total_df[total_df['name']=='total'].copy()
     
-    # Get the unique versions in the proper order from the categorical column
-    # This is crucial - we need to extract the ordered categories
-    version_order = total_df['version'].cat.categories.tolist()
+    # Get all versions
+    all_versions = plot_df['version'].unique().tolist()
     
-    # Create the plot with explicit category_orders parameter
+    # Separate 'current' from version numbers
+    current_version = 'current' if 'current' in all_versions else None
+    numeric_versions = [v for v in all_versions if v != 'current']
+    
+    # Sort using packaging.version.Version
+    sorted_versions = sorted(numeric_versions, key=parse)
+    
+    # Add 'current' at the end if it exists
+    if current_version:
+        sorted_versions.append(current_version)
+    
+    # Create the plot with explicitly ordered categories
     fig = px.line(
         plot_df, 
         x="version", 
@@ -20,18 +32,17 @@ def plot_jerk_trends(total_df):
         color="data_stage",
         title="Jerk Trends Across Versions", 
         markers=True,
-        category_orders={"version": version_order}  # Explicitly set the order
+        category_orders={"version": sorted_versions}
     )
     
-    # Set the x-axis type to be categorical with the specified order
+    # Ensure x-axis respects the category order
     fig.update_xaxes(
         type='category',
         categoryorder='array',
-        categoryarray=version_order
+        categoryarray=sorted_versions
     )
     
     return fig
-
 
 def format_jerk_table(total_df):
     """

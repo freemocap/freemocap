@@ -7,10 +7,10 @@ on:
 jobs:
   run-diagnostics:
     runs-on: windows-latest
-    env:
-      PYTHONIOENCODING: utf-8  # Force Python to use UTF-8 for input/output
-      PYTHONLEGACYWINDOWSSTDIO: 1  # Fix output encoding issues on Windows
-      PYTHONUTF8: 1  # Force UTF-8 as the default encoding
+    # env:
+    #   PYTHONIOENCODING: utf-8  # Force Python to use UTF-8 for input/output
+    #   PYTHONLEGACYWINDOWSSTDIO: 1  # Fix output encoding issues on Windows
+    #   PYTHONUTF8: 1  # Force UTF-8 as the default encoding
 
 
     steps:

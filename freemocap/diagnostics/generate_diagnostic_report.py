@@ -3,13 +3,33 @@ import pandas as pd
 
 
 import plotly.express as px
+
 def plot_jerk_trends(total_df):
     # Reset index for easy handling in Plotly
     plot_df = total_df[total_df['name']=='total'].copy()
-    # Line plot of jerk trends per joint across versions
-    fig = px.line(plot_df, x="version", y="mean_jerk", color="data_stage",
-                  title="Jerk Trends Across Versions", markers=True)
-
+    
+    # Get the unique versions in the proper order from the categorical column
+    # This is crucial - we need to extract the ordered categories
+    version_order = total_df['version'].cat.categories.tolist()
+    
+    # Create the plot with explicit category_orders parameter
+    fig = px.line(
+        plot_df, 
+        x="version", 
+        y="mean_jerk", 
+        color="data_stage",
+        title="Jerk Trends Across Versions", 
+        markers=True,
+        category_orders={"version": version_order}  # Explicitly set the order
+    )
+    
+    # Set the x-axis type to be categorical with the specified order
+    fig.update_xaxes(
+        type='category',
+        categoryorder='array',
+        categoryarray=version_order
+    )
+    
     return fig
 
 

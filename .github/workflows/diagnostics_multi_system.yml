@@ -1,77 +1,59 @@
 name: Run Diagnostics
 
 on:
-  push: 
+  push:
     branches: ["main"]
 
 jobs:
   run-diagnostics:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
-      fail-fast: false
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        python-version: ["3.11"]
 
-    runs-on: ${{ matrix.os }}
-    
     env:
-      # Windows-specific environment variables (will be ignored on other platforms)
       PYTHONIOENCODING: utf-8
-      PYTHONLEGACYWINDOWSSTDIO: ${{ runner.os == 'Windows' && '1' || '' }}
       PYTHONUTF8: 1
+      PYTHONLEGACYWINDOWSSTDIO: 1  # safe even if non-Windows
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
-      - name: Set up Python
+
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install uv and dependencies
         run: |
           python -m pip install --upgrade pip
           pip install uv
           uv venv
           uv pip install -e .
 
-      - name: Process test data (Windows)
-        if: runner.os == 'Windows'
+      - name: Process test data
+        shell: bash
         run: |
-          .\.venv\Scripts\python freemocap/diagnostics/run_test_data.py
-
-      - name: Process test data (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          source .venv/bin/activate
+          source .venv/bin/activate || source .venv/Scripts/activate
           python freemocap/diagnostics/run_test_data.py
 
-      - name: Calculate diagnostics (Windows)
-        if: runner.os == 'Windows'
+      - name: Calculate diagnostics
+        shell: bash
         run: |
-          .\.venv\Scripts\python freemocap/diagnostics/calculate_diagnostics.py
-
-      - name: Calculate diagnostics (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          source .venv/bin/activate
+          source .venv/bin/activate || source .venv/Scripts/activate
           python freemocap/diagnostics/calculate_diagnostics.py
 
-      - name: Generate diagnostic report (Windows)
-        if: runner.os == 'Windows'
+      - name: Generate diagnostic report
+        shell: bash
         run: |
+          source .venv/bin/activate || source .venv/Scripts/activate
           uv pip install jinja2
-          .\.venv\Scripts\python freemocap/diagnostics/generate_diagnostic_report.py
-          
-      - name: Generate diagnostic report (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          uv pip install jinja2
-          source .venv/bin/activate
           python freemocap/diagnostics/generate_diagnostic_report.py
-          
+
       - name: Upload diagnostic report
         uses: actions/upload-artifact@v4
         with:
-          name: diagnostic_report-${{ matrix.os }}
+          name: diagnostic_report_${{ matrix.os }}
           path: freemocap/diagnostics/version_diagnostics/diagnostic_report.html

@@ -7,6 +7,7 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_he
 )
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.utilities.download_sample_data import download_sample_data
+from freemocap.diagnostics.headless_calibration import headless_calibration
 import os
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -30,8 +31,12 @@ def setup_session():
     elif os.name == 'posix':
         SessionInfo.sample_session_folder_path = download_sample_data()
 
-    logger.info("Finding calibration file...")
-    calibration_toml_path = find_calibration_toml_path(SessionInfo.sample_session_folder_path)
+    logger.info('Calibrating')
+    calibration_toml_path = headless_calibration(path_to_folder_of_calibration_videos=get_synchronized_video_folder_path(),
+                                                 charuco_square_size=58)
+
+    # logger.info("Finding calibration file...")
+    # calibration_toml_path = find_calibration_toml_path(SessionInfo.sample_session_folder_path)
 
     logger.info("Initializing recording model...")
     SessionInfo.recording_info_model = RecordingInfoModel(

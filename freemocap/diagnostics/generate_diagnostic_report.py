@@ -245,6 +245,7 @@ def generate_html_report(total_df, output_path="diagnostic_report.html"):
 if __name__ == "__main__":
 
     path_to_diagnostics_folder =  Path(r'freemocap/diagnostics/version_diagnostics')
+    
 
     results_list = list(path_to_diagnostics_folder.glob('*.csv'))
     total_df = pd.DataFrame()

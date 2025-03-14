@@ -7,7 +7,7 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_he
 )
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.utilities.download_sample_data import download_sample_data
-
+import os
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,10 @@ def setup_session():
     """
     logger.info("Downloading sample data...")
     # SessionInfo.sample_session_folder_path = Path(r'/home/runner/work/freemocap_fork/freemocap_fork/freemocap/freemocap_test_data')
-    # SessionInfo.sample_session_folder_path = download_sample_data(sample_data_zip_file_url='https://github.com/aaroncherian/freemocap_fork/releases/download/v0.0.1-alpha/freemocap_test_data.zip')
-    SessionInfo.sample_session_folder_path = download_sample_data("https://github.com/aaroncherian/freemocap_fork/releases/download/v0.0.2-alpha/freemocap_test_data.zip")
+    if os.name == 'nt':
+        SessionInfo.sample_session_folder_path = download_sample_data(sample_data_zip_file_url='https://github.com/aaroncherian/freemocap_fork/releases/download/v0.0.1-alpha/freemocap_test_data.zip')
+    elif os.name == 'posix':
+        SessionInfo.sample_session_folder_path = download_sample_data()
 
     logger.info("Finding calibration file...")
     calibration_toml_path = find_calibration_toml_path(SessionInfo.sample_session_folder_path)

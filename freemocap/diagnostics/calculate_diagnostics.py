@@ -96,14 +96,14 @@ def run(path_to_recording:Path,
 
 
 if __name__ == "__main__":
-    from freemocap.diagnostics.run_test_data import get_sample_session_path
-
-
     model_info = MediapipeModelInfo()
-    path_to_recording = Path(get_sample_session_path())
-    # path_to_recording = Path("/home/runner/freemocap_data/recording_sessions/freemocap_test_data") #hardcoded for the github action location (ubuntu)
-    # path_to_recording = Path(r"C:\Users\runneradmin\freemocap_data\recording_sessions\freemocap_test_data") #windows github action path 
-    # path_to_recording = Path(r'/home/runner/work/freemocap_fork/freemocap_fork/freemocap/freemocap_test_data')
+    # Use environment detection to handle different runners
+    import os
+    if os.name == 'nt':  # Windows
+        path_to_recording = Path(r"C:\Users\runneradmin\freemocap_data\recording_sessions\freemocap_test_data")
+    elif os.name == 'posix':
+        path_to_recording = Path("/home/runner/freemocap_data/recording_sessions/freemocap_test_data")
+
     freemocap_version = 'current'
     run(path_to_recording=path_to_recording,
         model_info=model_info,

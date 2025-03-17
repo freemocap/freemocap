@@ -75,5 +75,5 @@ jobs:
         with:
           name: test_data_artifacts_${{ matrix.os }}
           path: |
-            ${{ env.RECORDING_PATH }}/*camera_calibration*.toml.toml
+            ${{ env.RECORDING_PATH }}/*camera_calibration*.toml
             ${{ env.RECORDING_PATH }}/output_data/mediapipe_skeleton_3d.npy

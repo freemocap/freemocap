@@ -26,6 +26,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+
+      - name: Define recording path based on OS
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "RECORDING_PATH=C:/Users/runneradmin/freemocap_data/recording_sessions/freemocap_test_data" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "Linux" ]]; then
+            echo "RECORDING_PATH=/home/runner/freemocap_data/recording_sessions/freemocap_test_data" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "RECORDING_PATH=/Users/runner/freemocap_data/recording_sessions/freemocap_test_data" >> $GITHUB_ENV
+          fi
+
       - name: Install uv and dependencies
         run: |
           python -m pip install --upgrade pip
@@ -57,3 +69,11 @@ jobs:
         with:
           name: diagnostic_report_${{ matrix.os }}
           path: freemocap/diagnostics/version_diagnostics/diagnostic_report.html
+
+      - name: Upload Calibration TOML and MediaPipe 3D Numpy data
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_data_artifacts_${{ matrix.os }}
+          path: |
+            ${{ env.RECORDING_PATH }}/calibration/*.toml
+            ${{ env.RECORDING_PATH }}/output_data/mediapipe_skeleton_3d.npy

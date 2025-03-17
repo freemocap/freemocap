@@ -3,6 +3,7 @@ name: Run Diagnostics
 on:
   push:
     branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   run-diagnostics:

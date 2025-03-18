@@ -68,14 +68,14 @@ class AniposeCameraCalibrator:
         )
 
     def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False) -> Path:
-        video_paths_list_of_list_of_strings = [[str(this_path)] for this_path in self._list_of_video_paths]
+        video_paths_list_of_list_of_strings = sorted([[str(this_path)] for this_path in self._list_of_video_paths])
 
         (
             error,
             charuco_frame_data,
             charuco_frame_numbers,
         ) = self._anipose_camera_group_object.calibrate_videos(
-            video_paths_list_of_list_of_strings, self._anipose_charuco_board
+            sorted(video_paths_list_of_list_of_strings), self._anipose_charuco_board
         )
         success_str = "Anipose Calibration Successful!"
         logger.info(success_str)

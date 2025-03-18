@@ -47,7 +47,7 @@ class AniposeCameraCalibrator:
         self._list_of_video_paths = get_video_paths(path_to_video_folder=Path(self._calibration_videos_folder_path))
 
     def _initialize_anipose_objects(self):
-        list_of_camera_names = [this_video_path.stem for this_video_path in self._list_of_video_paths]
+        list_of_camera_names = [this_video_path.stem for this_video_path in sorted(self._list_of_video_paths)]
         self._anipose_camera_group_object = freemocap_anipose.CameraGroup.from_names(list_of_camera_names)
 
         # add metadata

@@ -23,7 +23,7 @@ def headless_calibration(
         # the empty callable is needed, otherwise calibration will cause an error
     )
 
-    anipose_camera_calibrator.calibrate_camera_capture_volume(pin_camera_0_to_origin=pin_camera_0_to_origin)
+    return anipose_camera_calibrator.calibrate_camera_capture_volume(pin_camera_0_to_origin=pin_camera_0_to_origin)
 
 
 if __name__ == "__main__":

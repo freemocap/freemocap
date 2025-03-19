@@ -10,7 +10,7 @@ def get_video_paths(path_to_video_folder: Union[str, Path]) -> List[Path]:
     )
     unique_list_of_video_paths = get_unique_list(list_of_video_paths)
 
-    return sorted(unique_list_of_video_paths, key=numeric_sort_key)
+    return unique_list_of_video_paths
 
 def get_unique_list(lst: list) -> list:
     """Return a list of the unique elements from input list"""
@@ -18,7 +18,7 @@ def get_unique_list(lst: list) -> list:
     [unique_list.append(element) for element in lst if element not in unique_list]
     return unique_list
 
-def numeric_sort_key(path: Path):
-    """Extracts numbers from filename for natural sorting"""
-    numbers = re.findall(r'\d+', path.name)
-    return [int(num) for num in numbers] if numbers else [float('inf')]
+# def numeric_sort_key(path: Path):
+#     """Extracts numbers from filename for natural sorting"""
+#     numbers = re.findall(r'\d+', path.name)
+#     return [int(num) for num in numbers] if numbers else [float('inf')]

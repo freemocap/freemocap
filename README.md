@@ -121,7 +121,7 @@ ___
 
 ## Documentation 
 
-Our documenation is hosted at: https://freemocap.github.io/documentation/index_md.html
+Our documentation is hosted at: https://freemocap.github.io/documentation.html
 
 That site is built using `writerside` from this repository: https://github.com/freemocap/documentation
 

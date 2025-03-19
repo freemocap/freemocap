@@ -72,6 +72,6 @@ jobs:
           print("Sorted Video Paths (Alphabetical, Case-Insensitive):")
           print([str(v) for v in sorted(unordered_videos, key=lambda p: p.name.lower())])
 
-          print("Sorted Video Paths (By Modification Time):")
-          print([str(v) for v in sorted(unordered_videos, key=lambda p: p.stat().st_mtime)])
+          print("--- Numeric-Aware Sorting ---")
+          print([str(v) for v in sorted(unique_list_of_video_paths, key=numeric_sort_key)])
           EOF

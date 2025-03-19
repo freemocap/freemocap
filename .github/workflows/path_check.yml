@@ -68,6 +68,7 @@ jobs:
           unordered_videos = get_video_paths(video_folder)
           print("Unordered Video Paths:")
           print([str(v) for v in unordered_videos])
+          
 
           print("Sorted Video Paths (Alphabetical, Case-Insensitive):")
           print([str(v) for v in sorted(unordered_videos, key=lambda p: p.name.lower())])

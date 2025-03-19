@@ -56,20 +56,32 @@ jobs:
           from pathlib import Path
           from typing import List
           import os
+          import re
 
           def get_video_paths(path_to_video_folder: str) -> List[Path]:
+              """Search for .mp4 files (case insensitive) and return unique list."""
               path = Path(path_to_video_folder)
-              return list(path.glob("*.mp4")) + list(path.glob("*.MP4"))
+              video_paths = list(path.glob("*.mp4")) + list(path.glob("*.MP4"))
+              return list(dict.fromkeys(video_paths))  # Remove duplicates while maintaining order
+
+          def numeric_sort_key(path: Path):
+              """Extracts numbers from filename for natural sorting"""
+              numbers = re.findall(r'\d+', path.name)
+              return [int(num) for num in numbers] if numbers else [float('inf')]
 
           video_folder = os.getenv("VIDEO_FOLDER", "")
           if not video_folder:
               raise ValueError("VIDEO_FOLDER environment variable is not set.")
 
           unordered_videos = get_video_paths(video_folder)
-          print("Unordered Video Paths:")
+
+          print("\n--- Unordered Video Paths ---")
           print([str(v) for v in unordered_videos])
 
-          print("Sorted Video Paths (Alphabetical, Case-Insensitive):")
+          print("\n--- Sorted Video Paths (Alphabetical, Case-Insensitive) ---")
           print([str(v) for v in sorted(unordered_videos, key=lambda p: p.name.lower())])
+
+          print("\n--- Numeric-Aware Sorting ---")
+          print([str(v) for v in sorted(unordered_videos, key=numeric_sort_key)])
 
           EOF

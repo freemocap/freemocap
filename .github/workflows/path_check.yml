@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests, toml  # If needed for downloading data
+          pip install requests toml  # If needed for downloading data
 
       - name: Download and Extract Sample Data
         shell: bash

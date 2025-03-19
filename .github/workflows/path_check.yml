@@ -1,0 +1,59 @@
+name: Check Video Order Across OS
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  check-video-order:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        python-version: ["3.11"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests  # If needed for downloading data
+
+      - name: Download and Extract Sample Data
+        shell: bash
+        run: |
+          python - <<EOF
+          from pathlib import Path
+          from freemocap.utilities.download_sample_data import download_sample_data
+
+          sample_data_path = download_sample_data()
+          print(f"Sample data downloaded to: {sample_data_path}")
+          EOF
+
+      - name: Extract and Print Video Order
+        shell: bash
+        run: |
+          python - <<EOF
+          from pathlib import Path
+          from typing import List
+
+          def get_video_paths(path_to_video_folder: str) -> List[Path]:
+              return sorted(Path(path_to_video_folder).glob("*.mp4")) + sorted(Path(path_to_video_folder).glob("*.MP4"))
+
+          sample_video_folder = Path("freemocap/freemocap_test_data/synchronized_videos")  # Adjust path if necessary
+
+          unordered_videos = get_video_paths(sample_video_folder)
+          print("Unordered Video Paths:")
+          print(unordered_videos)
+
+          print("Sorted Video Paths:")
+          print(sorted(unordered_videos, key=lambda p: p.name.lower()))
+          EOF

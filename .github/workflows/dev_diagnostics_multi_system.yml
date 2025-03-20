@@ -1,4 +1,4 @@
-name: Run Diagnostics
+name: Dev Run Diagnostics
 
 on:
   push:
@@ -46,14 +46,17 @@ jobs:
           uv venv
           
           # Install specific branches from GitHub
-          uv pip install git+https://github.com/freemocap/skellytracker.git@philip/update_video_sorting
-          uv pip install git+https://github.com/freemocap/skelly_synchronize.git@philip/_sort_video_paths
-          uv pip install git+https://github.com/freemocap/skelly_viewer.git@pghilip/sort_video_paths
 
           # Install the main repository dependencies
           uv pip install -e .
 
+          uv pip install git+https://github.com/freemocap/skellytracker.git@philip/update_video_sorting
+          uv pip install git+https://github.com/freemocap/skelly_synchronize.git@philip/_sort_video_paths
+          uv pip install git+https://github.com/freemocap/skelly_viewer.git@pghilip/sort_video_paths
+
           uv pip show skellytracker
+          pip show skellytracker | grep Location
+          pip list | grep skellytracker
       - name: Process test data
         shell: bash
         run: |

@@ -55,8 +55,6 @@ jobs:
           uv pip install git+https://github.com/freemocap/skelly_viewer.git@pghilip/sort_video_paths
 
           uv pip show skellytracker
-          pip show skellytracker | grep Location
-          pip list | grep skellytracker
       - name: Process test data
         shell: bash
         run: |

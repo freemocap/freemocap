@@ -57,7 +57,7 @@ jobs:
           from typing import List
           import os
           import re
-
+  
           def get_video_paths(path_to_video_folder: str) -> List[Path]:
               """Search for .mp4 files (case insensitive) and return unique list."""
               path = Path(path_to_video_folder)

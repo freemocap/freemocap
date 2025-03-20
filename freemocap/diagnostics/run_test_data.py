@@ -27,7 +27,7 @@ def setup_session():
     logger.info("Downloading sample data...")
     # SessionInfo.sample_session_folder_path = Path(r'/home/runner/work/freemocap_fork/freemocap_fork/freemocap/freemocap_test_data')
     if os.name == 'nt':
-        SessionInfo.sample_session_folder_path = download_sample_data(sample_data_zip_file_url='https://github.com/aaroncherian/freemocap_fork/releases/download/v0.0.3-alpha/freemocap_test_data.zip')
+        SessionInfo.sample_session_folder_path = download_sample_data(sample_data_zip_file_url='https://github.com/aaroncherian/freemocap_fork/releases/download/v0.0.4-alpha/freemocap_test_data.zip')
     elif os.name == 'posix':
         SessionInfo.sample_session_folder_path = download_sample_data()
 
@@ -43,9 +43,9 @@ def setup_session():
     )
 
     logger.info('Calibrating')
-    calibration_toml_path = headless_calibration(path_to_folder_of_calibration_videos=get_synchronized_video_folder_path(),
-                                                 charuco_square_size=58)
-
+    # calibration_toml_path = headless_calibration(path_to_folder_of_calibration_videos=get_synchronized_video_folder_path(),
+    #                                              charuco_square_size=58)
+    calibration_toml_path = find_calibration_toml_path(SessionInfo.sample_session_folder_path)
     logger.info("Processing motion capture data...")
     process_recording_headless(
         recording_path=SessionInfo.sample_session_folder_path,

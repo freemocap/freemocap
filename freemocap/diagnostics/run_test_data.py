@@ -26,11 +26,12 @@ def setup_session():
     """
     logger.info("Downloading sample data...")
     # SessionInfo.sample_session_folder_path = Path(r'/home/runner/work/freemocap_fork/freemocap_fork/freemocap/freemocap_test_data')
-    if os.name == 'nt':
-        SessionInfo.sample_session_folder_path = download_sample_data(sample_data_zip_file_url='https://github.com/aaroncherian/freemocap_fork/releases/download/v0.0.4-alpha/freemocap_test_data.zip')
-    elif os.name == 'posix':
-        SessionInfo.sample_session_folder_path = download_sample_data()
+    # if os.name == 'nt':
+    #     SessionInfo.sample_session_folder_path = download_sample_data(sample_data_zip_file_url='https://github.com/aaroncherian/freemocap_fork/releases/download/v0.0.4-alpha/freemocap_test_data.zip')
+    # elif os.name == 'posix':
+    #     SessionInfo.sample_session_folder_path = download_sample_data()
 
+    SessionInfo.sample_session_folder_path = download_sample_data(sample_data_zip_file_url='https://github.com/aaroncherian/freemocap_fork/releases/download/v0.0.4-alpha/freemocap_test_data.zip')
 
 
     # logger.info("Finding calibration file...")

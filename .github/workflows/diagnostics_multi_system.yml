@@ -16,7 +16,7 @@ jobs:
     env:
       PYTHONIOENCODING: utf-8
       PYTHONUTF8: 1
-      PYTHONLEGACYWINDOWSSTDIO: 1  # safe even if non-Windows
+      PYTHONLEGACYWINDOWSSTDIO: 1
 
     steps:
       - name: Checkout repository
@@ -26,7 +26,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-
 
       - name: Define recording path based on OS
         shell: bash
@@ -65,16 +64,29 @@ jobs:
           uv pip install jinja2
           python freemocap/diagnostics/generate_diagnostic_report.py
 
-      - name: Upload diagnostic report
-        uses: actions/upload-artifact@v4
-        with:
-          name: diagnostic_report_${{ matrix.os }}
-          path: freemocap/diagnostics/version_diagnostics/diagnostic_report.html
+      - name: Move diagnostic report with OS-specific name
+        run: |
+          mkdir -p artifacts/diagnostic_reports
+          cp freemocap/diagnostics/version_diagnostics/diagnostic_report.html artifacts/diagnostic_reports/${{ matrix.os }}_diagnostic_report.html
 
-      - name: Upload Calibration TOML and MediaPipe 3D Numpy data
+      - name: Move calibration and 3D data to OS-named subfolder
+        run: |
+          mkdir -p artifacts/test_data/${{ matrix.os }}/output_data
+          cp ${{ env.RECORDING_PATH }}/*camera_calibration*.toml artifacts/test_data/${{ matrix.os }}/
+          cp ${{ env.RECORDING_PATH }}/output_data/mediapipe_skeleton_3d.npy artifacts/test_data/${{ matrix.os }}/output_data/
+
+      - name: Create run ID
+        shell: bash
+        run: echo "RUN_ID=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
+
+      - name: Upload all diagnostic reports
         uses: actions/upload-artifact@v4
         with:
-          name: test_data_artifacts_${{ matrix.os }}
-          path: |
-            ${{ env.RECORDING_PATH }}/*camera_calibration*.toml
-            ${{ env.RECORDING_PATH }}/output_data/mediapipe_skeleton_3d.npy
+          name: diagnostic_reports_${{ env.RUN_ID }}
+          path: artifacts/diagnostic_reports
+
+      - name: Upload all calibration + 3D data
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_data_artifacts_${{ env.RUN_ID }}
+          path: artifacts/test_data

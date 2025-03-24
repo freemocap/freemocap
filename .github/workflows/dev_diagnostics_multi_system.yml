@@ -87,3 +87,61 @@ jobs:
           path: |
             ${{ env.RECORDING_PATH }}/*camera_calibration*.toml
             ${{ env.RECORDING_PATH }}/output_data/mediapipe_skeleton_3d.npy
+            
+    aggregate-artifacts:
+      runs-on: ubuntu-latest
+      needs: run-diagnostics
+
+      steps:
+        - name: Set timestamp
+          id: set-timestamp
+          run: echo "RUN_ID=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
+
+        - name: Download all diagnostic reports
+          uses: actions/download-artifact@v4
+          with:
+            pattern: diagnostic_report_*
+            path: merged/diagnostic_reports
+
+        - name: Rename diagnostic reports for clarity
+          run: |
+            cd merged/diagnostic_reports
+            for dir in *; do
+              if [ -d "$dir" ]; then
+                mv "$dir"/diagnostic_report.html "../${dir}_diagnostic_report.html"
+                rm -r "$dir"
+              fi
+            done
+            cd ../
+
+        - name: Download all test data
+          uses: actions/download-artifact@v4
+          with:
+            pattern: test_data_*
+            path: merged/test_data
+
+        - name: Structure test data into per-OS folders
+          run: |
+            mkdir -p artifacts/test_data_artifacts
+            for dir in merged/test_data/*; do
+              OS_NAME=$(basename "$dir")
+              mkdir -p artifacts/test_data_artifacts/$OS_NAME
+              cp -r "$dir"/* artifacts/test_data_artifacts/$OS_NAME/
+            done
+
+        - name: Move renamed diagnostic reports into final folder
+          run: |
+            mkdir -p artifacts/diagnostic_reports
+            mv merged/*_diagnostic_report.html artifacts/diagnostic_reports/
+
+        - name: Upload combined diagnostic reports
+          uses: actions/upload-artifact@v4
+          with:
+            name: diagnostic_reports_${{ env.RUN_ID }}
+            path: artifacts/diagnostic_reports
+
+        - name: Upload combined test data
+          uses: actions/upload-artifact@v4
+          with:
+            name: test_data_artifacts_${{ env.RUN_ID }}
+            path: artifacts/test_data_artifacts

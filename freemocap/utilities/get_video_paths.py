@@ -9,7 +9,6 @@ def get_video_paths(path_to_video_folder: Union[str, Path]) -> List[Path]:
         Path(path_to_video_folder).glob("*.MP4")
     )
     unique_list_of_video_paths = get_unique_list(list_of_video_paths)
-    
     return sorted(unique_list_of_video_paths, key=lambda p: str(p).lower())
 
 

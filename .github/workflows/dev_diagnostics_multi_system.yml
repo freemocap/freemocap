@@ -1,0 +1,147 @@
+name: Dev Run Diagnostics
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  run-diagnostics:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        python-version: ["3.11"]
+
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: 1
+      PYTHONLEGACYWINDOWSSTDIO: 1  # safe even if non-Windows
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+
+      - name: Define recording path based on OS
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "RECORDING_PATH=C:/Users/runneradmin/freemocap_data/recording_sessions/freemocap_test_data" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "Linux" ]]; then
+            echo "RECORDING_PATH=/home/runner/freemocap_data/recording_sessions/freemocap_test_data" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "RECORDING_PATH=/Users/runner/freemocap_data/recording_sessions/freemocap_test_data" >> $GITHUB_ENV
+          fi
+
+      - name: Install uv and dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+          uv venv
+          
+          # Install specific branches from GitHub
+
+          # Install the main repository dependencies
+          uv pip install -e .
+
+          uv pip install git+https://github.com/freemocap/skellytracker.git@philip/update_video_sorting
+          uv pip install git+https://github.com/freemocap/skelly_synchronize.git@philip/_sort_video_paths
+          uv pip install git+https://github.com/freemocap/skelly_viewer.git@pghilip/sort_video_paths
+
+          uv pip show skellytracker
+      - name: Process test data
+        shell: bash
+        run: |
+          source .venv/bin/activate || source .venv/Scripts/activate
+          python freemocap/diagnostics/run_test_data.py
+
+      - name: Calculate diagnostics
+        shell: bash
+        run: |
+          source .venv/bin/activate || source .venv/Scripts/activate
+          python freemocap/diagnostics/calculate_diagnostics.py
+
+      - name: Generate diagnostic report
+        shell: bash
+        run: |
+          source .venv/bin/activate || source .venv/Scripts/activate
+          uv pip install jinja2
+          python freemocap/diagnostics/generate_diagnostic_report.py
+
+      - name: Upload diagnostic report
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic_report_${{ matrix.os }}
+          path: freemocap/diagnostics/version_diagnostics/diagnostic_report.html
+
+      - name: Upload Calibration TOML and MediaPipe 3D Numpy data
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_data_artifacts_${{ matrix.os }}
+          path: |
+            ${{ env.RECORDING_PATH }}/*camera_calibration*.toml
+            ${{ env.RECORDING_PATH }}/output_data/mediapipe_skeleton_3d.npy
+            
+    aggregate-artifacts:
+      runs-on: ubuntu-latest
+      needs: run-diagnostics
+
+      steps:
+        - name: Set timestamp
+          id: set-timestamp
+          run: echo "RUN_ID=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
+
+        - name: Download all diagnostic reports
+          uses: actions/download-artifact@v4
+          with:
+            pattern: diagnostic_report_*
+            path: merged/diagnostic_reports
+
+        - name: Rename diagnostic reports for clarity
+          run: |
+            cd merged/diagnostic_reports
+            for dir in *; do
+              if [ -d "$dir" ]; then
+                mv "$dir"/diagnostic_report.html "../${dir}_diagnostic_report.html"
+                rm -r "$dir"
+              fi
+            done
+            cd ../
+
+        - name: Download all test data
+          uses: actions/download-artifact@v4
+          with:
+            pattern: test_data_*
+            path: merged/test_data
+
+        - name: Structure test data into per-OS folders
+          run: |
+            mkdir -p artifacts/test_data_artifacts
+            for dir in merged/test_data/*; do
+              OS_NAME=$(basename "$dir")
+              mkdir -p artifacts/test_data_artifacts/$OS_NAME
+              cp -r "$dir"/* artifacts/test_data_artifacts/$OS_NAME/
+            done
+
+        - name: Move renamed diagnostic reports into final folder
+          run: |
+            mkdir -p artifacts/diagnostic_reports
+            mv merged/*_diagnostic_report.html artifacts/diagnostic_reports/
+
+        - name: Upload combined diagnostic reports
+          uses: actions/upload-artifact@v4
+          with:
+            name: diagnostic_reports_${{ env.RUN_ID }}
+            path: artifacts/diagnostic_reports
+
+        - name: Upload combined test data
+          uses: actions/upload-artifact@v4
+          with:
+            name: test_data_artifacts_${{ env.RUN_ID }}
+            path: artifacts/test_data_artifacts

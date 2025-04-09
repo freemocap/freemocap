@@ -1,0 +1,87 @@
+name: Check Video Order Across OS
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  check-video-order:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        python-version: ["3.11"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e.  # If needed for downloading data
+
+      - name: Define recording path based on OS
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "VIDEO_FOLDER=C:/Users/runneradmin/freemocap_data/recording_sessions/freemocap_test_data/synchronized_videos" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "Linux" ]]; then
+            echo "VIDEO_FOLDER=/home/runner/freemocap_data/recording_sessions/freemocap_test_data/synchronized_videos" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "VIDEO_FOLDER=/Users/runner/freemocap_data/recording_sessions/freemocap_test_data/synchronized_videos" >> $GITHUB_ENV
+          fi
+
+      - name: Download and Extract Sample Data
+        shell: bash
+        run: |
+          python - <<EOF
+          from pathlib import Path
+          from freemocap.utilities.download_sample_data import download_sample_data
+
+          sample_data_path = download_sample_data()
+          print(f"Sample data downloaded to: {sample_data_path}")
+          EOF
+
+      - name: Extract and Print Video Order
+        shell: bash
+        run: |
+          python - <<EOF
+          from pathlib import Path
+          from typing import List
+          import os
+          import re
+  
+          def get_video_paths(path_to_video_folder: str) -> List[Path]:
+              """Search for .mp4 files (case insensitive) and return unique list."""
+              path = Path(path_to_video_folder)
+              video_paths = list(path.glob("*.mp4")) + list(path.glob("*.MP4"))
+              return list(dict.fromkeys(video_paths))  # Remove duplicates while maintaining order
+
+          def numeric_sort_key(path: Path):
+              """Extracts numbers from filename for natural sorting"""
+              numbers = re.findall(r'\d+', path.name)
+              return [int(num) for num in numbers] if numbers else [float('inf')]
+
+          video_folder = os.getenv("VIDEO_FOLDER", "")
+          if not video_folder:
+              raise ValueError("VIDEO_FOLDER environment variable is not set.")
+
+          unordered_videos = get_video_paths(video_folder)
+
+          print("\n--- Unordered Video Paths ---")
+          print([str(v) for v in unordered_videos])
+
+          print("\n--- Sorted Video Paths (Alphabetical, Case-Insensitive) ---")
+          print([str(v) for v in sorted(unordered_videos, key=lambda p: p.name.lower())])
+
+          print("\n--- Numeric-Aware Sorting ---")
+          print([str(v) for v in sorted(unordered_videos, key=numeric_sort_key)])
+
+          EOF

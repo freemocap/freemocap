@@ -2,9 +2,16 @@ import threading
 
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-                               QCheckBox, QPushButton, QSpacerItem,
-                               QSizePolicy)
+from PySide6.QtWidgets import (
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QCheckBox,
+    QPushButton,
+    QSpacerItem,
+    QSizePolicy,
+)
 
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
@@ -21,7 +28,8 @@ class Version_1_5_4_DataWarningDialog(QDialog):
 
         self.setMinimumSize(700, 400)
         self.setWindowTitle("Data Quality Advisory")
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QDialog {
                 background-color: #f8f9fa;
             }
@@ -31,7 +39,8 @@ class Version_1_5_4_DataWarningDialog(QDialog):
             QCheckBox {
                 color: #495057;
             }
-        """)
+        """
+        )
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(30, 30, 30, 30)
@@ -60,7 +69,6 @@ class Version_1_5_4_DataWarningDialog(QDialog):
             </p>
 
             <p>We identified and fixed a bug in <b>v1.4.7-v1.5.3 (10 Oct 2024 - 10 Mar 2025)</b> that caused the pipeline to Butterworth filtering during processing (<a href="https://github.com/freemocap/freemocap/pull/675">Bugfix PR</a>).
-            
             Recordings from these versions may have increased noise/jitter/shakiness in the final keypoint trajectories.
             <br/><br/>
             Based on your application, the difference may or may not be noticeable. It is most likely to affect users who's applications focus on fine grained trajectories of the hands and limbs (especially for scientific analysis)
@@ -81,11 +89,13 @@ class Version_1_5_4_DataWarningDialog(QDialog):
         """
 
         content = QLabel(warning_text)
-        content.setStyleSheet("""
+        content.setStyleSheet(
+            """
             font-size: 14px; 
             line-height: 1.4;
             color: #2c3e50;
-        """)
+        """
+        )
         content.setWordWrap(True)
         content.setOpenExternalLinks(True)
 
@@ -100,11 +110,7 @@ class Version_1_5_4_DataWarningDialog(QDialog):
         pixmap = QPixmap(SKELLY_SWEAT_SVG)
         if not pixmap.isNull():
             # Scale the pixmap to fit within 150x150 while maintaining aspect ratio
-            scaled_pixmap = pixmap.scaled(
-                150, 150,
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            )
+            scaled_pixmap = pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
             logo_label.setPixmap(scaled_pixmap)
         else:
@@ -123,7 +129,8 @@ class Version_1_5_4_DataWarningDialog(QDialog):
         self._dont_show_again_checkbox.stateChanged.connect(self._dont_show_again_checkbox_changed)
 
         done_btn = QPushButton("Ok")
-        done_btn.setStyleSheet("""
+        done_btn.setStyleSheet(
+            """
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -136,7 +143,8 @@ class Version_1_5_4_DataWarningDialog(QDialog):
             QPushButton:hover {
                 background-color: #2980b9;
             }
-        """)
+        """
+        )
         done_btn.clicked.connect(self.accept)
 
         controls_layout.addWidget(self._dont_show_again_checkbox)

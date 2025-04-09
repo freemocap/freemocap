@@ -45,7 +45,7 @@ class AniposeCameraCalibrator:
         self,
     ):
         self._list_of_video_paths = get_video_paths(path_to_video_folder=Path(self._calibration_videos_folder_path))
-        
+
     def _initialize_anipose_objects(self):
         list_of_camera_names = [this_video_path.stem for this_video_path in self._list_of_video_paths]
         self._anipose_camera_group_object = freemocap_anipose.CameraGroup.from_names(list_of_camera_names)
@@ -83,7 +83,7 @@ class AniposeCameraCalibrator:
         if pin_camera_0_to_origin:
             # translate cameras so camera0 is on `0,0,0`
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
-            self._anipose_camera_group_object = self.rotate_cameras_so_camera_zero_aligns_with_XYZ(self._anipose_camera_group_object)
+            # self._anipose_camera_group_object = self.rotate_cameras_so_camera_zero_aligns_with_XYZ(self._anipose_camera_group_object)
 
         # save calibration info to files
         calibration_toml_filename = create_camera_calibration_file_name(

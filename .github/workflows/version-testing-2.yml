@@ -1,0 +1,33 @@
+name: Version Testing with Nox (3.11, 3.12)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main, development ]
+    paths:
+      - 'pyproject.toml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Free up disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          large-packages: false
+          docker-images: false
+          swap-storage: false
+      - name: Set up Python 3.x
+        uses: wntrblm/nox@2022.8.7
+        with:
+          python-versions: "3.11, 3.12"
+      - name: Install libegl1
+        run: |
+          sudo apt-get update
+          sudo apt-get install libgl1 
+      - name: Run noxfile
+        run: |
+          nox --session test_11_12

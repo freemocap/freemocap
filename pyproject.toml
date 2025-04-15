@@ -69,7 +69,7 @@ dependencies = [
     "skellycam==2024.09.1094",
     "skelly_viewer==2025.04.1028",
     "skellyforge==2024.12.1009",
-    "skelly_synchronize==2024.07.1032",
+    "skelly_synchronize==2025.04.1037",
     "skellytracker[all]==2025.04.1021",
     "ajc27_freemocap_blender_addon==v2025.1.1035",
     "opencv-contrib-python==4.8.*",

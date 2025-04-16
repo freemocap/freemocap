@@ -4,7 +4,11 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QCheckBox, QPushButton, QLabel, QHBoxLayout, QFrame
 
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
-from freemocap.system.paths_and_filenames.file_and_folder_names import DOCUMENTATION_MULTI_CAMERA_URL, DOCUMENTATION_SINGLE_CAMERA_URL, SPARKLES_EMOJI_STRING
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
+    DOCUMENTATION_MULTI_CAMERA_URL,
+    DOCUMENTATION_SINGLE_CAMERA_URL,
+    SPARKLES_EMOJI_STRING,
+)
 from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 

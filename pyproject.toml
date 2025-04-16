@@ -67,10 +67,11 @@ keywords = [
 
 dependencies = [
     "skellycam==2025.1.1096",
-    "skelly_viewer==2024.12.1026",
+    "skellycam==2024.09.1094",
+    "skelly_viewer==2025.04.1028",
     "skellyforge==2024.12.1009",
-    "skelly_synchronize==2025.1.1036",
-    "skellytracker[all]==2024.09.1019",
+    "skelly_synchronize==2025.04.1037",
+    "skellytracker[all]==2025.04.1021",
     "ajc27_freemocap_blender_addon==v2025.1.1035",
     "opencv-contrib-python==4.8.*",
     "toml==0.10.2",
@@ -102,7 +103,7 @@ Github = "https://github.com/freemocap/freemocap"
 override-dependencies = ["opencv-python; sys_platform == 'never'"]
 
 [tool.bumpver]
-current_version = "v1.5.3"
+current_version = "v1.5.4"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
@@ -132,3 +133,8 @@ setup = "pre-commit install"
 installer = "./bin/installer.sh"
 # This command ensures that your code is formatted appropriately
 format = "black freemocap"
+
+[dependency-groups]
+dev = [
+    "bumpver>=2024.1130",
+]

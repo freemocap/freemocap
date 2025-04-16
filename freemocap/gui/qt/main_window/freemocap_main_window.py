@@ -47,6 +47,7 @@ from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
 )
 from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingInfoWidget
+from freemocap.gui.qt.widgets.butterworth_warning_dialog import Version_1_5_4_DataWarningDialog
 from freemocap.gui.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
 from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
 from freemocap.gui.qt.widgets.control_panel.control_panel_dock_widget import (
@@ -102,7 +103,7 @@ class MainWindow(QMainWindow):
 
         self.setMinimumSize(1280, 720)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
-        self.setWindowTitle("freemocap \U0001F480 \U00002728")
+        self.setWindowTitle("freemocap \U0001f480 \U00002728")
 
         dummy_widget = QWidget()
         self._layout = QHBoxLayout()
@@ -469,6 +470,15 @@ class MainWindow(QMainWindow):
         )
 
         self._welcome_screen_dialog.exec()
+
+    def open_data_quality_warning_dialog(self):
+        logger.info("Opening `Data Quality Warning` dialog... ")
+
+        data_quality_warning_dialog = Version_1_5_4_DataWarningDialog(
+            gui_state=self._gui_state, kill_thread_event=self._kill_thread_event, parent=self
+        )
+
+        data_quality_warning_dialog.exec()
 
     def open_opencv_conflict_dialog(self):
         self._opencv_conflict_dialog = OpencvConflictDialog(

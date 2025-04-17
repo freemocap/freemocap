@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable, Union
 
 import numpy as np
+import cv2
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
@@ -115,21 +116,24 @@ class AniposeCameraCalibrator:
         return calibration_folder_toml_path
 
     def pin_camera_zero_to_origin(self, _anipose_camera_group_object):
-        import cv2
 
         original_translation_vectors = _anipose_camera_group_object.get_translations()
         original_rotation_vectors = _anipose_camera_group_object.get_rotations()
         camera_0_translation = original_translation_vectors[0, :]
         camera_0_rotation = original_rotation_vectors[0,:]
 
-        R0, _ = cv2.Rodrigues(camera_0_rotation)  #gets 3x3 rotation matrix for world -> cam 0
-        delta_to_origin_world = - R0.T @ camera_0_translation #the vector that moves camera 0 to the origin in the world reference frame (https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html)
+        #gets 3x3 rotation matrix for world -> cam 0
+        R0, _ = cv2.Rodrigues(camera_0_rotation)  
+        #the vector that moves camera 0 to the origin in the world reference frame (https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html)
+        delta_to_origin_world = - R0.T @ camera_0_translation 
         
 
         altered_translation_vectors = np.zeros(original_translation_vectors.shape)
         for cam_i in range(original_translation_vectors.shape[0]):
-            Ri, _ = cv2.Rodrigues(original_rotation_vectors[cam_i,:]) #gets 3x3 rotation matrix for world -> cam i
-            delta_to_origin_camera_i = Ri @ delta_to_origin_world #changes the delta origin vector from world reference into cam i reference
+            #gets 3x3 rotation matrix for world -> cam i
+            #changes the delta origin vector from world reference into cam i reference
+            Ri, _ = cv2.Rodrigues(original_rotation_vectors[cam_i,:]) 
+            delta_to_origin_camera_i = Ri @ delta_to_origin_world 
             altered_translation_vectors[cam_i, :] = original_translation_vectors[cam_i,:] + delta_to_origin_camera_i 
 
         _anipose_camera_group_object.set_translations(altered_translation_vectors)

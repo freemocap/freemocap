@@ -148,7 +148,6 @@ class AniposeCameraCalibrator:
             Ri,_ = cv2.Rodrigues(rvecs[i])
             Ri_new,_ = cv2.Rodrigues(Ri @ R0.T)
             rvecs_new[i] = Ri_new.flatten()
-
         return rvecs_new
     
     def shift_origin_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):

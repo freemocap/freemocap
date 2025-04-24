@@ -128,9 +128,10 @@ class AniposeCameraCalibrator:
             cam_group (freemocap_anipose.CameraGroup): A group of calibrated cameras whose extrinsics will be adjusted in place.
         """
 
-        self.align_rotations_to_cam0(cam_group=cam_group)
-        cam_group = self.shift_origin_to_cam0(cam_group=cam_group)
-
+        rvecs_new = self.align_rotations_to_cam0(cam_group=cam_group)
+        cam_group.set_rotations(rvecs_new)
+        tvecs_new = self.shift_origin_to_cam0(cam_group=cam_group)
+        cam_group.set_translations(tvecs_new)
         return cam_group
 
     def align_rotations_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):
@@ -148,8 +149,7 @@ class AniposeCameraCalibrator:
             Ri_new,_ = cv2.Rodrigues(Ri @ R0.T)
             rvecs_new[i] = Ri_new.flatten()
 
-        cam_group.set_rotations(rvecs_new)
-        return cam_group
+        return rvecs_new
     
     def shift_origin_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):
         # Get original translation and rotation vectors
@@ -176,7 +176,4 @@ class AniposeCameraCalibrator:
             delta_to_origin_camera_i = Ri @ delta_to_origin_world
             # Update the translation vector
             new_tvecs[cam_i, :] = tvecs[cam_i, :] + delta_to_origin_camera_i
-
-        # Update the camera group with the new translations
-        cam_group.set_translations(new_tvecs)
-        return cam_group
+        return new_tvecs

@@ -82,9 +82,7 @@ class AniposeCameraCalibrator:
         logger.info(success_str)
         self._progress_callback(success_str)
         if pin_camera_0_to_origin:
-            # translate cameras so camera0 is on `0,0,0`
-            self._anipose_camera_group_object = self.align_rotations_to_cam0(self._anipose_camera_group_object)
-            self._anipose_camera_group_object = self.shift_origin_to_cam0(self._anipose_camera_group_object)
+            self._anipose_camera_group_object = self.pin_camera_zero_to_origin(cam_group=self._anipose_camera_group_object)
         # save calibration info to files
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem
@@ -114,7 +112,28 @@ class AniposeCameraCalibrator:
 
         return calibration_folder_toml_path
 
-    def align_rotations_to_cam0(self, cam_group):
+    def pin_camera_zero_to_origin(self, cam_group: freemocap_anipose.CameraGroup):
+        """
+        Re-express all camera extrinsics relative to camera 0.
+
+        This function performs two operations:
+            1. Rotates all camera coordinate systems so that camera 0's orientation becomes the new world frame.
+            2. Shifts the world origin to camera 0's position, making it the new coordinate origin (0, 0, 0).
+
+        The result is that:
+            - Camera 0 ends up with an identity rotation and zero translation.
+            - All other cameras are expressed relative to camera 0's original position and orientation.
+
+        Args:
+            cam_group (freemocap_anipose.CameraGroup): A group of calibrated cameras whose extrinsics will be adjusted in place.
+        """
+
+        self.align_rotations_to_cam0(cam_group=cam_group)
+        cam_group = self.shift_origin_to_cam0(cam_group=cam_group)
+
+        return cam_group
+
+    def align_rotations_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):
         rvecs = cam_group.get_rotations()
         #get rotation of cam 0 to world
         R0,_  = cv2.Rodrigues(rvecs[0]) 
@@ -127,20 +146,19 @@ class AniposeCameraCalibrator:
         for i in range(rvecs.shape[0]):
             Ri,_ = cv2.Rodrigues(rvecs[i])
             Ri_new,_ = cv2.Rodrigues(Ri @ R0.T)
-            print(i, Ri @ R0.T)
             rvecs_new[i] = Ri_new.flatten()
 
         cam_group.set_rotations(rvecs_new)
         return cam_group
     
-    def shift_origin_to_cam0(self, cam_group):
+    def shift_origin_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):
         # Get original translation and rotation vectors
-        original_translation_vectors = cam_group.get_translations()
-        original_rotation_vectors = cam_group.get_rotations()
+        tvecs = cam_group.get_translations()
+        rvecs = cam_group.get_rotations()
 
         # Extract camera 0's rotation and translation
-        camera_0_translation = original_translation_vectors[0, :]
-        camera_0_rotation = original_rotation_vectors[0, :]
+        camera_0_translation = tvecs[0, :]
+        camera_0_rotation = rvecs[0, :]
 
         # Get 3x3 rotation matrix for world -> cam 0
         R0, _ = cv2.Rodrigues(camera_0_rotation)
@@ -149,16 +167,16 @@ class AniposeCameraCalibrator:
         delta_to_origin_world = - R0.T @ camera_0_translation
 
         # Create new translation vectors array
-        altered_translation_vectors = np.zeros_like(original_translation_vectors)
+        new_tvecs = np.zeros_like(tvecs)
 
         # Apply offset to each camera's translation vector
-        for cam_i in range(original_translation_vectors.shape[0]):
-            Ri, _ = cv2.Rodrigues(original_rotation_vectors[cam_i, :])
+        for cam_i in range(tvecs.shape[0]):
+            Ri, _ = cv2.Rodrigues(rvecs[cam_i, :])
             # Transform the world offset into this camera's coordinate frame
             delta_to_origin_camera_i = Ri @ delta_to_origin_world
             # Update the translation vector
-            altered_translation_vectors[cam_i, :] = original_translation_vectors[cam_i, :] + delta_to_origin_camera_i
+            new_tvecs[cam_i, :] = tvecs[cam_i, :] + delta_to_origin_camera_i
 
         # Update the camera group with the new translations
-        cam_group.set_translations(altered_translation_vectors)
+        cam_group.set_translations(new_tvecs)
         return cam_group

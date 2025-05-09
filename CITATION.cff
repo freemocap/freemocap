@@ -7,11 +7,11 @@ authors:
   - family-names: Cherian
     given-names: Aaron
     orcid: https://orcid.org/0000-0003-4944-2814
-  - family-names: Trent
-    given-names: Wirth
+  - family-names: Wirth
+    given-names: Trenton
     orcid: https://orcid.org/0000-0002-2510-8603
-  - family-names: Endurance
-    given-names: Idehen
+  - family-names: Idehen
+    given-names: Endurance
     orcid: https://orcid.org/0009-0007-8589-8436
   - family-names: Matthis
     given-names: Jonathan Samir
@@ -19,6 +19,6 @@ authors:
 
 title: "freemocap"
 version: 1.0.0
-doi: 10.5281/zenodo.1234
+doi: 10.5281/zenodo.7233713
 date-released: 2024-09-30
 url: "https://github.com/freemocap/freemocap"

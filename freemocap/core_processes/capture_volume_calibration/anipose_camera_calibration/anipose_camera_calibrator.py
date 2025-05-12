@@ -17,6 +17,12 @@ from freemocap.system.paths_and_filenames.path_getters import (
 )
 from freemocap.utilities.get_video_paths import get_video_paths
 
+from skellytracker.trackers.charuco_tracker.charuco_tracker import CharucoTracker
+from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoTrackingParams, CharucoModelInfo
+from skellytracker.process_folder_of_videos import process_folder_of_videos
+
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.charuco_groudplane import compute_basis
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,11 +87,32 @@ class AniposeCameraCalibrator:
         logger.info(success_str)
         self._progress_callback(success_str)
         if pin_camera_0_to_origin:
-            # translate cameras so camera0 is on `0,0,0`
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
-            # self._anipose_camera_group_object = self.rotate_cameras_so_camera_zero_aligns_with_XYZ(self._anipose_camera_group_object)
 
-        # save calibration info to files
+        logger.info("Getting 2d Charuco data")
+        charuco_2d_xy = process_folder_of_videos(
+            model_info=CharucoModelInfo(),
+            tracking_params=CharucoTrackingParams(),
+            synchronized_video_path=Path(self._calibration_videos_folder_path),
+            num_processes=3
+        )
+        logger.info("Charuco 2d data detected successfully with shape: "
+                    f"{charuco_2d_xy.shape}")
+        
+        num_cameras, num_frames, num_tracked_points,_ = charuco_2d_xy.shape
+        charuco_2d_xy = charuco_2d_xy.astype(np.float64)
+        charuco_2d_flat = charuco_2d_xy.reshape(num_cameras, -1, 2)
+
+        logger.info("Getting 3d Charuco data")
+        charuco_3d_flat = self._anipose_camera_group_object.triangulate(
+            charuco_2d_flat)
+        
+        charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
+        logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
+
+        charuco_3d_frame = [40,:,:]
+
+
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem
         )

@@ -27,8 +27,8 @@ def headless_calibration(
 
 
 if __name__ == "__main__":
-    path_to_folder_of_calibration_videos = Path("/PATH/TO/CALIBRATION/VIDEOS")
-    charuco_square_size = 110  # size of a black square on your charuco board in mm
+    path_to_folder_of_calibration_videos = Path(r"C:\Users\aaron\freemocap_data\recording_sessions\freemocap_test_data\synchronized_videos")
+    charuco_square_size = 58  # size of a black square on your charuco board in mm
 
     headless_calibration(
         path_to_folder_of_calibration_videos=path_to_folder_of_calibration_videos,

@@ -110,7 +110,10 @@ class AniposeCameraCalibrator:
         charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
         logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
 
-        charuco_3d_frame = [40,:,:]
+        charuco_frame = charuco_3d_xyz[40,:,:]
+        x_hat, y_hat, z_hat = compute_basis(charuco_frame)
+        origin = charuco_frame[0]
+        rotation_matrix = np.column_stack([x_hat, y_hat, z_hat])
 
 
         calibration_toml_filename = create_camera_calibration_file_name(

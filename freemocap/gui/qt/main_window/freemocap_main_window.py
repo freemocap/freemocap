@@ -47,7 +47,7 @@ from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
 )
 from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingInfoWidget
-from freemocap.gui.qt.widgets.butterworth_warning_dialog import Version_1_5_4_DataWarningDialog
+from freemocap.gui.qt.widgets.release_notes_dialogs.butterworth_warning_dialog import Version_1_5_4_DataWarningDialog
 from freemocap.gui.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
 from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
 from freemocap.gui.qt.widgets.control_panel.control_panel_dock_widget import (
@@ -471,7 +471,7 @@ class MainWindow(QMainWindow):
 
         self._welcome_screen_dialog.exec()
 
-    def open_data_quality_warning_dialog(self):
+    def open_release_notes_popup(self):
         logger.info("Opening `Data Quality Warning` dialog... ")
 
         data_quality_warning_dialog = Version_1_5_4_DataWarningDialog(

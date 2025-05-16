@@ -9,6 +9,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import BASE_FREE
 
 
 class GuiState(BaseModel):
+    first_run: bool = False
     send_user_pings: bool = True
     show_welcome_screen: bool = True
     auto_process_videos_on_save: bool = True
@@ -31,5 +32,5 @@ def load_gui_state(file_pathstring: str) -> GuiState:
         with open(file_pathstring, "r") as file:
             gui_state = GuiState(**json.load(file))
     except OSError:
-        gui_state = GuiState()
+        gui_state = GuiState(first_run=True)
     return gui_state

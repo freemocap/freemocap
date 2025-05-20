@@ -211,7 +211,9 @@ class AniposeCameraCalibrator:
         logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
 
         charuco_frame = get_charuco_frame(charuco_3d_xyz)
-        x_hat, y_hat, z_hat = compute_basis_vectors_of_new_reference(charuco_frame)
+        x_hat, y_hat, z_hat = compute_basis_vectors_of_new_reference(charuco_frame,
+                                                                     number_of_squares_width=self._charuco_board_object.number_of_squares_width,
+                                                                     number_of_squares_height=self._charuco_board_object.number_of_squares_height)
         charuco_origin_in_world = charuco_frame[0] 
         rmat_charuco_to_world = np.column_stack([x_hat, y_hat, z_hat]) #rotation matrix that transforms a point in the new world reference frame(defined by the charuco) into legacy world frame   
 

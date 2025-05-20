@@ -108,11 +108,11 @@ def process_recording_folder(
 
     try:
         # TODO: move the rotate by 90 function into skellyforge to skip duplication of responsibility
-        rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
+        # rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
         # TODO: find out if skellyforge does all the error handling we need - if not add it to post_process_data
         skel3d_frame_marker_xyz = post_process_data(
             recording_processing_parameter_model=recording_processing_parameter_model,
-            raw_skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
+            raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
             queue=logging_queue,
         )
     except (RuntimeError, ValueError, AttributeError) as e:

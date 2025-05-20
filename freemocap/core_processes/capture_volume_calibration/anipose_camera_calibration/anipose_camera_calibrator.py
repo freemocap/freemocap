@@ -25,9 +25,10 @@ from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibrat
     get_charuco_frame,
 )
 
+from collections import namedtuple
 logger = logging.getLogger(__name__)
 
-
+Extrinsics = namedtuple("Extrinsics", ["rvecs", "tvecs"])
 class AniposeCameraCalibrator:
     def __init__(
         self,
@@ -214,18 +215,18 @@ class AniposeCameraCalibrator:
         charuco_origin_in_world = charuco_frame[0] 
         rmat_charuco_to_world = np.column_stack([x_hat, y_hat, z_hat]) #rotation matrix that transforms a point in the new world reference frame(defined by the charuco) into legacy world frame   
 
-        rvecs_new, tvecs_new = self.adjust_world_reference_frame_to_charuco(cam_group=cam_group,
+        extrinsics = self.adjust_world_reference_frame_to_charuco(cam_group=cam_group,
                                                                                 charuco_origin_in_world=charuco_origin_in_world,
                                                                                 rmat_charuco_to_world=rmat_charuco_to_world)
-        cam_group.set_rotations(rvecs_new)
-        cam_group.set_translations(tvecs_new)
+        cam_group.set_rotations(extrinsics.rvecs)
+        cam_group.set_translations(extrinsics.tvecs)
         return cam_group      
 
     def adjust_world_reference_frame_to_charuco(self, 
                                                 cam_group:freemocap_anipose.CameraGroup,
                                                 charuco_origin_in_world:np.ndarray,
                                                 rmat_charuco_to_world:np.ndarray):
-        
+            
             tvecs = cam_group.get_translations()
             rvecs = cam_group.get_rotations()
             
@@ -241,4 +242,4 @@ class AniposeCameraCalibrator:
                 new_rmat = rmat_world_to_cam_i @ rmat_charuco_to_world #composes w' -> w (rotation matrix) with w -> c (rmat) to get w' -> c
                 new_rvec, _ = cv2.Rodrigues(new_rmat)
                 rvecs_new[i] = new_rvec.flatten()
-            return rvecs_new, tvecs_new
+            return Extrinsics(rvecs_new, tvecs_new)

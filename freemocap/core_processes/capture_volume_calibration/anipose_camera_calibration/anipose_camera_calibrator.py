@@ -19,7 +19,11 @@ from freemocap.system.paths_and_filenames.path_getters import (
 from freemocap.utilities.get_video_paths import get_video_paths
 
 
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import compute_basis, get_charuco_2d_data
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import (
+    compute_basis_vectors_of_new_reference, 
+    get_charuco_2d_data,
+    get_charuco_frame,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -88,49 +92,8 @@ class AniposeCameraCalibrator:
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
 
         if use_charuco_as_groundplane:
-            logger.info("Getting 2d Charuco data")
-            charuco_2d_xy = process_folder_of_videos(
-                model_info=CharucoModelInfo(),
-                tracking_params=CharucoTrackingParams(),
-                synchronized_video_path=Path(self._calibration_videos_folder_path),
-                num_processes=3
-            )
-            logger.info("Charuco 2d data detected successfully with shape: "
-                        f"{charuco_2d_xy.shape}")
-            
-            num_cameras, num_frames, num_tracked_points,_ = charuco_2d_xy.shape
-            charuco_2d_xy = charuco_2d_xy.astype(np.float64)
-            charuco_2d_flat = charuco_2d_xy.reshape(num_cameras, -1, 2)
-
-            logger.info("Getting 3d Charuco data")
-            charuco_3d_flat = self._anipose_camera_group_object.triangulate(
-                charuco_2d_flat)
-            
-            charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
-            logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
-
-            charuco_frame = charuco_3d_xyz[-1,:,:]
-            x_hat, y_hat, z_hat = compute_basis(charuco_frame)
-            charuco_origin_in_world = charuco_frame[0] 
-            rmat_charuco_to_world = np.column_stack([x_hat, y_hat, z_hat]) #rotation matrix that transforms a point in the new world reference frame(defined by the charuco) into legacy world frame
-            tvecs = self._anipose_camera_group_object.get_translations()
-            rvecs = self._anipose_camera_group_object.get_rotations()
-            
-            tvecs_new = np.zeros_like(tvecs)
-            rvecs_new = np.zeros_like(rvecs)
-
-            for i in range(tvecs.shape[0]):
-                rmat, _ = cv2.Rodrigues(rvecs[i])
-                #Xcam = Rc->w*Xworld + tvec (base formula for this transformation)
-                t_delta = rmat @ charuco_origin_in_world #Rc->w*Xworld (rmat is Rc->w)
-                tvecs_new[i] = t_delta + tvecs[i] #Rc->w*Xworld + tvec
-
-                new_rmat = rmat @ rmat_charuco_to_world #composes w' -> w (rotation matrix) with w -> c (rmat) to get w' -> c
-                new_rvec, _ = cv2.Rodrigues(new_rmat)
-                rvecs_new[i] = new_rvec.flatten()
-
-            self._anipose_camera_group_object.set_rotations(rvecs_new)
-            self._anipose_camera_group_object.set_translations(tvecs_new)
+            self._anipose_camera_group_object = self.set_charuco_board_as_groundplane(self._anipose_camera_group_object)
+            logger.info("Anipose camera calibration data adjusted to set charuco board as ground plane")
 
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem
@@ -227,22 +190,55 @@ class AniposeCameraCalibrator:
     
     def set_charuco_board_as_groundplane(self, cam_group:freemocap_anipose.CameraGroup):
         # Get the camera group object
-            logger.info("Getting 2d Charuco data")
-            charuco_2d_xy = get_charuco_2d_data(
-                calibration_videos_folder_path=self._calibration_videos_folder_path,
-                num_processes=3
-            )
-            logger.info("Charuco 2d data detected successfully with shape: "
-                        f"{charuco_2d_xy.shape}")
+        logger.info("Getting 2d Charuco data")
+        charuco_2d_xy = get_charuco_2d_data(
+            calibration_videos_folder_path=self._calibration_videos_folder_path,
+            num_processes=3
+        )
+        logger.info("Charuco 2d data detected successfully with shape: "
+                    f"{charuco_2d_xy.shape}")
 
-            num_cameras, num_frames, num_tracked_points,_ = charuco_2d_xy.shape
-            charuco_2d_xy = charuco_2d_xy.astype(np.float64)
-            charuco_2d_flat = charuco_2d_xy.reshape(num_cameras, -1, 2)
+        num_cameras, num_frames, num_tracked_points,_ = charuco_2d_xy.shape
+        charuco_2d_xy = charuco_2d_xy.astype(np.float64)
+        charuco_2d_flat = charuco_2d_xy.reshape(num_cameras, -1, 2)
 
-            logger.info("Getting 3d Charuco data")
-            charuco_3d_flat = self._anipose_camera_group_object.triangulate(
-                charuco_2d_flat)
+        logger.info("Getting 3d Charuco data")
+        charuco_3d_flat = self._anipose_camera_group_object.triangulate(
+            charuco_2d_flat)
+        
+        charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
+        logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
+
+        charuco_frame = get_charuco_frame(charuco_3d_xyz)
+        x_hat, y_hat, z_hat = compute_basis_vectors_of_new_reference(charuco_frame)
+        charuco_origin_in_world = charuco_frame[0] 
+        rmat_charuco_to_world = np.column_stack([x_hat, y_hat, z_hat]) #rotation matrix that transforms a point in the new world reference frame(defined by the charuco) into legacy world frame   
+
+        rvecs_new, tvecs_new = self.adjust_world_reference_frame_to_charuco(cam_group=cam_group,
+                                                                                charuco_origin_in_world=charuco_origin_in_world,
+                                                                                rmat_charuco_to_world=rmat_charuco_to_world)
+        cam_group.set_rotations(rvecs_new)
+        cam_group.set_translations(tvecs_new)
+        return cam_group      
+
+    def adjust_world_reference_frame_to_charuco(self, 
+                                                cam_group:freemocap_anipose.CameraGroup,
+                                                charuco_origin_in_world:np.ndarray,
+                                                rmat_charuco_to_world:np.ndarray):
+        
+            tvecs = cam_group.get_translations()
+            rvecs = cam_group.get_rotations()
             
-            charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
-            logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
-    
+            tvecs_new = np.zeros_like(tvecs)
+            rvecs_new = np.zeros_like(rvecs)
+
+            for i in range(tvecs.shape[0]):
+                rmat_world_to_cam_i, _ = cv2.Rodrigues(rvecs[i])
+                #Xcam = Rc->w*Xworld + tvec (base formula for this transformation)
+                t_delta = rmat_world_to_cam_i @ charuco_origin_in_world #Rc->w*Xworld (rmat is Rc->w)
+                tvecs_new[i] = t_delta + tvecs[i] #Rc->w*Xworld + tvec
+
+                new_rmat = rmat_world_to_cam_i @ rmat_charuco_to_world #composes w' -> w (rotation matrix) with w -> c (rmat) to get w' -> c
+                new_rvec, _ = cv2.Rodrigues(new_rmat)
+                rvecs_new[i] = new_rvec.flatten()
+            return rvecs_new, tvecs_new

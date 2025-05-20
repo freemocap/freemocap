@@ -1,0 +1,70 @@
+name: Run Diagnostics
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  run-diagnostics:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        python-version: ["3.11"]
+
+    env:
+      PYTHONIOENCODING: utf-8  #this env part is needed to get freemocap running on windows in the action. something about needing this specific encoding. 
+      PYTHONUTF8: 1
+      PYTHONLEGACYWINDOWSSTDIO: 1  
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+
+      - name: Define recording path based on OS
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "RECORDING_PATH=C:/Users/runneradmin/freemocap_data/recording_sessions/freemocap_test_data" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "Linux" ]]; then
+            echo "RECORDING_PATH=/home/runner/freemocap_data/recording_sessions/freemocap_test_data" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "RECORDING_PATH=/Users/runner/freemocap_data/recording_sessions/freemocap_test_data" >> $GITHUB_ENV
+          fi
+
+      - name: Install uv and dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+          uv venv
+          uv pip install -e .
+
+      - name: Process test data
+        shell: bash
+        run: |
+          source .venv/bin/activate || source .venv/Scripts/activate
+          python freemocap/diagnostics/run_test_data.py
+
+      - name: Calculate diagnostics
+        shell: bash
+        run: |
+          source .venv/bin/activate || source .venv/Scripts/activate
+          python freemocap/diagnostics/calculate_diagnostics.py
+
+      - name: Generate diagnostic report
+        shell: bash
+        run: |
+          source .venv/bin/activate || source .venv/Scripts/activate
+          uv pip install jinja2
+          python freemocap/diagnostics/generate_diagnostic_report.py
+
+      - name: Upload diagnostic report
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic_report_${{ matrix.os }}
+          path: freemocap/diagnostics/version_diagnostics/diagnostic_report.html

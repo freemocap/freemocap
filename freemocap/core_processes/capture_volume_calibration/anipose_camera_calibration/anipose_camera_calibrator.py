@@ -22,7 +22,7 @@ from skellytracker.trackers.charuco_tracker.charuco_tracker import CharucoTracke
 from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoTrackingParams, CharucoModelInfo
 from skellytracker.process_folder_of_videos import process_folder_of_videos
 
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.charuco_groudplane import compute_basis
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import compute_basis
 
 logger = logging.getLogger(__name__)
 

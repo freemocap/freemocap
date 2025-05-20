@@ -1,7 +1,9 @@
 import numpy as np
 
+
 def get_unit_vector(vector: np.ndarray) -> np.ndarray:
     return vector / np.linalg.norm(vector)
+
 
 def compute_basis(charuco_frame: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     x_vec = charuco_frame[18] - charuco_frame[0]

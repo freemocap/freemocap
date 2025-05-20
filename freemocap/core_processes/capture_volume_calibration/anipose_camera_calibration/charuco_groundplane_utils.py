@@ -10,11 +10,10 @@ def get_unit_vector(vector: np.ndarray) -> np.ndarray:
 
 
 def compute_basis_vectors_of_new_reference(charuco_frame: np.ndarray,
-                                           number_of_squares_width:int,
-                                           number_of_squares_height:int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    
+                                           number_of_squares_width: int,
+                                           number_of_squares_height: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     num_cols = number_of_squares_width - 1  # corner columns
-    num_rows = number_of_squares_height - 1 # corner rows
+    num_rows = number_of_squares_height - 1  # corner rows
 
     origin = charuco_frame[0]
     idx_x = num_cols * (num_rows - 1)

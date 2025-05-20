@@ -18,7 +18,6 @@ from freemocap.system.paths_and_filenames.path_getters import (
 )
 from freemocap.utilities.get_video_paths import get_video_paths
 
-from skellytracker.trackers.charuco_tracker.charuco_tracker import CharucoTracker
 from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoTrackingParams, CharucoModelInfo
 from skellytracker.process_folder_of_videos import process_folder_of_videos
 
@@ -74,7 +73,7 @@ class AniposeCameraCalibrator:
             dict_size=250,
         )
 
-    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False, align_groundplane_with_charuco: bool = False) -> Path:
+    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False, use_charuco_as_groundplane: bool = False) -> Path:
         video_paths_list_of_list_of_strings = [[str(this_path)] for this_path in self._list_of_video_paths]
 
         (
@@ -90,7 +89,7 @@ class AniposeCameraCalibrator:
         if pin_camera_0_to_origin:
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
 
-        if align_groundplane_with_charuco:
+        if use_charuco_as_groundplane:
             logger.info("Getting 2d Charuco data")
             charuco_2d_xy = process_folder_of_videos(
                 model_info=CharucoModelInfo(),

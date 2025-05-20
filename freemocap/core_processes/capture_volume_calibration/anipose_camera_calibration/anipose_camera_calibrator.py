@@ -74,7 +74,7 @@ class AniposeCameraCalibrator:
             dict_size=250,
         )
 
-    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False) -> Path:
+    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False, align_groundplane_with_charuco: bool = False) -> Path:
         video_paths_list_of_list_of_strings = [[str(this_path)] for this_path in self._list_of_video_paths]
 
         (
@@ -88,34 +88,52 @@ class AniposeCameraCalibrator:
         logger.info(success_str)
         self._progress_callback(success_str)
         if pin_camera_0_to_origin:
-
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
 
-        logger.info("Getting 2d Charuco data")
-        charuco_2d_xy = process_folder_of_videos(
-            model_info=CharucoModelInfo(),
-            tracking_params=CharucoTrackingParams(),
-            synchronized_video_path=Path(self._calibration_videos_folder_path),
-            num_processes=3
-        )
-        logger.info("Charuco 2d data detected successfully with shape: "
-                    f"{charuco_2d_xy.shape}")
-        
-        num_cameras, num_frames, num_tracked_points,_ = charuco_2d_xy.shape
-        charuco_2d_xy = charuco_2d_xy.astype(np.float64)
-        charuco_2d_flat = charuco_2d_xy.reshape(num_cameras, -1, 2)
+        if align_groundplane_with_charuco:
+            logger.info("Getting 2d Charuco data")
+            charuco_2d_xy = process_folder_of_videos(
+                model_info=CharucoModelInfo(),
+                tracking_params=CharucoTrackingParams(),
+                synchronized_video_path=Path(self._calibration_videos_folder_path),
+                num_processes=3
+            )
+            logger.info("Charuco 2d data detected successfully with shape: "
+                        f"{charuco_2d_xy.shape}")
+            
+            num_cameras, num_frames, num_tracked_points,_ = charuco_2d_xy.shape
+            charuco_2d_xy = charuco_2d_xy.astype(np.float64)
+            charuco_2d_flat = charuco_2d_xy.reshape(num_cameras, -1, 2)
 
-        logger.info("Getting 3d Charuco data")
-        charuco_3d_flat = self._anipose_camera_group_object.triangulate(
-            charuco_2d_flat)
-        
-        charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
-        logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
+            logger.info("Getting 3d Charuco data")
+            charuco_3d_flat = self._anipose_camera_group_object.triangulate(
+                charuco_2d_flat)
+            
+            charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
+            logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
 
-        charuco_frame = charuco_3d_xyz[40,:,:]
-        x_hat, y_hat, z_hat = compute_basis(charuco_frame)
-        origin = charuco_frame[0]
-        rotation_matrix = np.column_stack([x_hat, y_hat, z_hat])
+            charuco_frame = charuco_3d_xyz[-1,:,:]
+            x_hat, y_hat, z_hat = compute_basis(charuco_frame)
+            charuco_origin_in_world = charuco_frame[0] 
+            rmat_charuco_to_world = np.column_stack([x_hat, y_hat, z_hat]) #rotation matrix that transforms a point in the new world reference frame(defined by the charuco) into legacy world frame
+            tvecs = self._anipose_camera_group_object.get_translations()
+            rvecs = self._anipose_camera_group_object.get_rotations()
+            
+            tvecs_new = np.zeros_like(tvecs)
+            rvecs_new = np.zeros_like(rvecs)
+
+            for i in range(tvecs.shape[0]):
+                rmat, _ = cv2.Rodrigues(rvecs[i])
+                #Xcam = Rc->w*Xworld + tvec (base formula for this transformation)
+                t_delta = rmat @ charuco_origin_in_world #Rc->w*Xworld (rmat is Rc->w)
+                tvecs_new[i] = t_delta + tvecs[i] #Rc->w*Xworld + tvec
+
+                new_rmat = rmat @ rmat_charuco_to_world #composes w' -> w (rotation matrix) with w -> c (rmat) to get w' -> c
+                new_rvec, _ = cv2.Rodrigues(new_rmat)
+                rvecs_new[i] = new_rvec.flatten()
+
+            self._anipose_camera_group_object.set_rotations(rvecs_new)
+            self._anipose_camera_group_object.set_translations(tvecs_new)
 
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem

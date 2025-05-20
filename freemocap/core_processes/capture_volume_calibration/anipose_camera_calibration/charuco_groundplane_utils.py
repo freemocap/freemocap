@@ -23,12 +23,12 @@ def compute_basis_vectors_of_new_reference(charuco_frame: np.ndarray) -> tuple[n
 def get_charuco_2d_data(calibration_videos_folder_path: Union[str, Path],
                         num_processes: int = 1):
     return process_folder_of_videos(
-                model_info=CharucoModelInfo(),
-                tracking_params=CharucoTrackingParams(),
-                synchronized_video_path=Path(calibration_videos_folder_path),
-                num_processes=num_processes
-            )
+        model_info=CharucoModelInfo(),
+        tracking_params=CharucoTrackingParams(),
+        synchronized_video_path=Path(calibration_videos_folder_path),
+        num_processes=num_processes
+    )
 
 
-def get_charuco_frame(charuco_3d_data:np.ndarray):
-    return charuco_3d_data[-1,:,:]
+def get_charuco_frame(charuco_3d_data: np.ndarray):
+    return charuco_3d_data[-1, :, :]

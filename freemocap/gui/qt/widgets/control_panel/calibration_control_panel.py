@@ -175,7 +175,7 @@ class CalibrationControlPanel(QWidget):
         self._use_charuco_as_groundplane_checkbox.setToolTip("Set the Charuco board's coordinate system as the global origin")
         self._use_charuco_as_groundplane_checkbox.setChecked(False)
         self._use_charuco_as_groundplane_checkbox.setEnabled(False)
-        self._use_charuco_as_groundplane_checkbox.setVisible(False)
+        # self._use_charuco_as_groundplane_checkbox.setVisible(False)
 
         hbox2.addSpacing(10)
         hbox2.addWidget(self._use_charuco_as_groundplane_checkbox)
@@ -183,7 +183,7 @@ class CalibrationControlPanel(QWidget):
         vbox.addLayout(hbox2)
 
         self._set_charuco_square_size_form_layout_visibility(False)
-        self._use_charuco_as_groundplane_checkbox.setVisible(False)
+        # self._use_charuco_as_groundplane_checkbox.setVisible(False)
 
         return vbox
 
@@ -234,12 +234,12 @@ class CalibrationControlPanel(QWidget):
         if checked and active_recording_info is not None and active_recording_info.synchronized_videos_status_check:
             self._calibrate_from_active_recording_button.setEnabled(True)
             self._set_charuco_square_size_form_layout_visibility(True)
-            self._use_charuco_as_groundplane_checkbox.setVisible(True)
+            # self._use_charuco_as_groundplane_checkbox.setVisible(True)
             self._use_charuco_as_groundplane_checkbox.setEnabled(True)
         else:
             self._calibrate_from_active_recording_button.setEnabled(False)
             self._set_charuco_square_size_form_layout_visibility(False)
-            self._use_charuco_as_groundplane_checkbox.setVisible(False)
+            # self._use_charuco_as_groundplane_checkbox.setVisible(False)
             self._use_charuco_as_groundplane_checkbox.setEnabled(False)
 
     def _set_charuco_square_size_form_layout_visibility(self, visible):

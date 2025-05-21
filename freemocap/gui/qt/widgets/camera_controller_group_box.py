@@ -85,6 +85,10 @@ class CameraControllerGroupBox(QGroupBox):
     def charuco_square_size(self) -> float:
         return float(self._charuco_square_size_line_edit.text())
 
+    @property
+    def use_charuco_as_groundplane(self) -> bool:
+        return self._use_charuco_as_groundplane_checkbox.isChecked()
+    
     def check_recording_type(self):
         if self._mocap_videos_radio_button.isChecked():
             return "mocap"
@@ -137,6 +141,10 @@ class CameraControllerGroupBox(QGroupBox):
         self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_charuco_images)
         self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
         hbox.addWidget(self._annotate_charuco_checkbox)
+
+        self._use_charuco_as_groundplane_checkbox = QCheckBox("Use Charuco as groundplane")
+        self._use_charuco_as_groundplane_checkbox.setChecked(self.gui_state.use_charuco_as_groundplane)
+        hbox.addWidget(self._use_charuco_as_groundplane_checkbox)
         hbox.addStretch()
         return hbox
 
@@ -240,6 +248,10 @@ class CameraControllerGroupBox(QGroupBox):
     def _on_annotate_charuco_checkbox_changed(self):
         self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
         self.gui_state.annotate_charuco_images = self._annotate_charuco_checkbox.isChecked()
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+
+    def _on_use_charuco_groundplane_checkbox_changed(self):
+        self.gui_state.use_charuco_as_groundplane = self._use_charuco_as_groundplane_checkbox.isChecked()
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
     def _on_auto_process_videos_checkbox_changed(self):

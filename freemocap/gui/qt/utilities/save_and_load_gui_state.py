@@ -15,6 +15,7 @@ class GuiState(BaseModel):
     generate_jupyter_notebook: bool = True
     auto_open_in_blender: bool = True
     charuco_square_size: float = 39
+    use_charuco_as_groundplane: bool = False
     annotate_charuco_images: bool = False
     freemocap_data_folder_path: str = str(Path(Path.home(), BASE_FREEMOCAP_DATA_FOLDER_NAME))
     blender_path: str = str(get_best_guess_of_blender_path())

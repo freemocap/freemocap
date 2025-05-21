@@ -41,4 +41,4 @@ def get_charuco_2d_data(calibration_videos_folder_path: Union[str, Path],
 
 
 def get_charuco_frame(charuco_3d_data: np.ndarray):
-    return charuco_3d_data[-1, :, :]
+    return charuco_3d_data[10, :, :]

@@ -225,11 +225,79 @@ class NewFeatureReleaseNotesDialog(ReleaseNotesDialog):
         return "Let's Go!"  # Custom button text
 
 
+# Path to the skelly sweat image
+SKELLY_SWEAT_SVG = PATH_TO_FREEMOCAP_LOGO_SVG.replace("freemocap-logo-black-border.svg", "skelly-sweat.png")
+
+
+class ButterworthWarningDialog(ReleaseNotesDialog):
+    """
+    Dialog to warn users about the data quality regression in versions 1.4.7-1.5.3
+    due to a bug in the Butterworth filtering.
+    """
+    
+    def __init__(self, gui_state: GuiState, kill_thread_event: threading.Event, parent=None) -> None:
+        super().__init__(
+            gui_state=gui_state,
+            kill_thread_event=kill_thread_event,
+            parent=parent,
+            min_width=700,
+            min_height=400,
+        )
+
+    def get_window_title(self) -> str:
+        return "Data Quality Advisory"
+
+    def get_content_html(self) -> str:
+        return """
+            <html>
+            <style>
+            a { color: #2980b9; text-decoration: none; font-weight: 500; }
+            .emphasis { color: #c0392b; font-weight: bold; }
+            </style>
+            <body>
+            <p style="font-size: 18px; font-weight: bold; color: #2c3e50; margin-bottom: 15px;">
+                Whoops!!
+            </p>
+            <p style="font-size: 16px; font-weight: semibold; color: #2c3e50;   margin-bottom: 15px;">
+                Possible data Quality Regression in versions 1.4.7-1.5.3
+            </p>
+
+            <p>We identified and fixed a bug in <b>v1.4.7-v1.5.3 (10 Oct 2024 - 10 Mar 2025)</b> that caused the pipeline to Butterworth filtering during processing (<a href="https://github.com/freemocap/freemocap/pull/675">Bugfix PR</a>).
+            Recordings from these versions may have increased noise/jitter/shakiness in the final keypoint trajectories.
+            <br/><br/>
+            Based on your application, the difference may or may not be noticeable. It is most likely to affect users who's applications focus on fine grained trajectories of the hands and limbs (especially for scientific analysis)
+            <br/><br/>
+            <b>We recommend reprocessing any critical data collected during this period with the latest version of FreeMoCap to ensure the highest quality results.</b>
+            <br/><br/>
+             You may also filter the data in Blender (see <a href="https://www.youtube.com/watch?v=33OhM5xFUlg">this tutorial Flux Renders</a>)
+            <br/>
+            --
+            <br>
+            In preparation for the release of FreeMoCap v2.0 (optimistically Summer 2025), we are implementing a <a href="https://github.com/freemocap/freemocap/pull/676"> set of comprehensive quality assurance diagnostics </a>to ensure that the quality of our output is strictly monotonic across future versions.
+
+            <p style="font-size: 13px; margin-top: 20px; color: #7f8c8d;">
+            Thanks to  (<a href="https://discord.com/channels/760487252379041812/760489602917466133/1346487740568440983">@larap for reporting</a>), and to the rest of the freemocap community for their help in developing this project.
+            </p>
+            </body>
+            </html>
+        """
+
+    def get_logo_path(self) -> Optional[str]:
+        return SKELLY_SWEAT_SVG
+
+    def get_show_again_flag_name(self) -> Optional[str]:
+        return "show_data_quality_warning"
+
+    def get_button_text(self) -> str:
+        return "Ok"
+
+
+
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    dialog = NewFeatureReleaseNotesDialog(gui_state=GuiState(), kill_thread_event=threading.Event())
+    dialog = ButterworthWarningDialog(gui_state=GuiState(), kill_thread_event=threading.Event())
     dialog.show()
     sys.exit(app.exec())

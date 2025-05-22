@@ -132,12 +132,12 @@ class TabbedReleaseNotesDialog(QDialog):
         # Logo
         if logo_path:
             logo_label = QLabel()
-            logo_label.setFixedSize(QSize(150, 150))
+            logo_label.setFixedSize(QSize(200, 200))
             logo_label.setAlignment(Qt.AlignCenter)
             
             pixmap = QPixmap(logo_path)
             if not pixmap.isNull():
-                scaled_pixmap = pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                scaled_pixmap = pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 logo_label.setPixmap(scaled_pixmap)
             else:
                 print(f"Failed to load image: {logo_path}")

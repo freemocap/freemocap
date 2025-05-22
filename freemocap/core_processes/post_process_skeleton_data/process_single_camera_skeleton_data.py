@@ -8,6 +8,8 @@ from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy imp
     save_3d_data_to_npy,
 )
 from freemocap.utilities.geometry.project_3d_data_to_z_plane import project_3d_data_to_z_plane
+from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ def process_single_camera_skeleton_data(
         )
     else:
         raw_skel3d_frame_marker_xyz = input_image_data_frame_marker_xyz
-
+    
     save_3d_data_to_npy(
         data3d_numFrames_numTrackedPoints_XYZ=raw_skel3d_frame_marker_xyz,
         data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
@@ -39,5 +41,6 @@ def process_single_camera_skeleton_data(
         processing_level="raw",
         file_prefix=file_prefix,
     )
+    rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
 
-    return raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar
+    return rotated_raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar

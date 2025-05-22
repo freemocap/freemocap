@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLayout,
     QCheckBox,
-    QComboBox
+    QComboBox,
 )
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 
@@ -168,7 +168,7 @@ class CalibrationControlPanel(QWidget):
 
         # Create existing form layout
         self._charuco_square_size_form_layout = self._create_charuco_square_size_form_layout()
-        
+
         # Create a horizontal layout to hold both form and checkbox
         hbox2 = QHBoxLayout()
         hbox2.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -176,7 +176,9 @@ class CalibrationControlPanel(QWidget):
 
         # Create checkbox
         self._use_charuco_as_groundplane_checkbox = QCheckBox("Use Charuco board as groundplane")
-        self._use_charuco_as_groundplane_checkbox.setToolTip("Set the Charuco board's coordinate system as the global origin")
+        self._use_charuco_as_groundplane_checkbox.setToolTip(
+            "Set the Charuco board's coordinate system as the global origin"
+        )
         self._use_charuco_as_groundplane_checkbox.setChecked(False)
         self._use_charuco_as_groundplane_checkbox.setEnabled(False)
 
@@ -329,9 +331,12 @@ class CalibrationControlPanel(QWidget):
     def _log_calibration_progress_callbacks(self, message: str):
         logger.info(message)
 
-    def calibrate_from_active_recording(self, charuco_square_size_mm: float = None,
-                                        use_charuco_as_groundplane: bool = None,
-                                        charuco_board_name: str = None):
+    def calibrate_from_active_recording(
+        self,
+        charuco_square_size_mm: float = None,
+        use_charuco_as_groundplane: bool = None,
+        charuco_board_name: str = None,
+    ):
         if not charuco_square_size_mm:
             charuco_square_size_mm = float(self._charuco_square_size_line_edit.text())
 
@@ -340,7 +345,7 @@ class CalibrationControlPanel(QWidget):
 
         if not charuco_board_name:
             charuco_board_name = self._board_dropdown.currentText()
-        
+
         charuco_board_definition = CHARUCO_BOARDS[charuco_board_name]()
 
         active_recording_info = self._get_active_recording_info()

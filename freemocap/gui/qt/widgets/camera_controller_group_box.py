@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QRadioButton,
     QCheckBox,
-    QComboBox
+    QComboBox,
 )
 from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
@@ -24,7 +24,7 @@ from freemocap.system.paths_and_filenames.path_getters import (
 )
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import CHARUCO_BOARDS
 
-CALIBRATION_RECORDING_BUTTON_TEXT = "\U0001F534 \U0001F4D0 Start Calibration Recording"
+CALIBRATION_RECORDING_BUTTON_TEXT = "\U0001f534 \U0001f4d0 Start Calibration Recording"
 MOCAP_RECORDING_BUTTON_TEXT = f"{SKULL_EMOJI_STRING} {SPARKLES_EMOJI_STRING} Start Motion Capture Recording"
 
 logger = logging.getLogger(__name__)
@@ -92,7 +92,7 @@ class CameraControllerGroupBox(QGroupBox):
     @property
     def use_charuco_as_groundplane(self) -> bool:
         return self._use_charuco_as_groundplane_checkbox.isChecked()
-    
+
     @property
     def charuco_board_name(self) -> str:
         return self._board_dropdown.currentText()
@@ -232,7 +232,7 @@ class CameraControllerGroupBox(QGroupBox):
         full_path_hbox.addWidget(self._full_path_label)
 
         return vbox
-    
+
     def _create_board_dropdown(self) -> QComboBox:
         board_dropdown = QComboBox()
         board_dropdown.setToolTip("Select the Charuco board to use for calibration")

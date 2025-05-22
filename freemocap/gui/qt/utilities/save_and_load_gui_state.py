@@ -23,6 +23,7 @@ class GuiState(BaseModel):
     show_data_quality_warning: bool = True
     charuco_board_name: str = next(iter(CHARUCO_BOARDS))
 
+
 def save_gui_state(gui_state: GuiState, file_pathstring: str) -> None:
     with open(file_pathstring, "w") as file:
         json.dump(gui_state.model_dump(mode="json"), file, indent=4)

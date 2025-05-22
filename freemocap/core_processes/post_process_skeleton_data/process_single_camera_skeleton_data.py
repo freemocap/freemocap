@@ -32,7 +32,7 @@ def process_single_camera_skeleton_data(
         )
     else:
         raw_skel3d_frame_marker_xyz = input_image_data_frame_marker_xyz
-    
+
     save_3d_data_to_npy(
         data3d_numFrames_numTrackedPoints_XYZ=raw_skel3d_frame_marker_xyz,
         data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,

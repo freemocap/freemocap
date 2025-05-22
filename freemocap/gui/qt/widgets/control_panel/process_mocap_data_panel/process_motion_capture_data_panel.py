@@ -93,7 +93,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def process_motion_capture_data_button(self):
         return self._process_motion_capture_data_button
 
-    def calibrate_from_active_recording(self, charuco_square_size_mm: float, use_charuco_as_groundplane:bool):
+    def calibrate_from_active_recording(self, charuco_square_size_mm: float, use_charuco_as_groundplane: bool):
         self._calibration_control_panel.calibrate_from_active_recording(charuco_square_size_mm=charuco_square_size_mm,
                                                                         use_charuco_as_groundplane=use_charuco_as_groundplane)
 

@@ -88,7 +88,7 @@ class CameraControllerGroupBox(QGroupBox):
     @property
     def use_charuco_as_groundplane(self) -> bool:
         return self._use_charuco_as_groundplane_checkbox.isChecked()
-    
+
     def check_recording_type(self):
         if self._mocap_videos_radio_button.isChecked():
             return "mocap"

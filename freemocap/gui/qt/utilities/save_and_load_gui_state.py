@@ -6,6 +6,7 @@ from freemocap.core_processes.export_data.blender_stuff.get_best_guess_of_blende
     get_best_guess_of_blender_path,
 )
 from freemocap.system.paths_and_filenames.file_and_folder_names import BASE_FREEMOCAP_DATA_FOLDER_NAME
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import CHARUCO_BOARDS
 
 
 class GuiState(BaseModel):
@@ -20,7 +21,7 @@ class GuiState(BaseModel):
     freemocap_data_folder_path: str = str(Path(Path.home(), BASE_FREEMOCAP_DATA_FOLDER_NAME))
     blender_path: str = str(get_best_guess_of_blender_path())
     show_data_quality_warning: bool = True
-
+    charuco_board_name: str = next(iter(CHARUCO_BOARDS))
 
 def save_gui_state(gui_state: GuiState, file_pathstring: str) -> None:
     with open(file_pathstring, "w") as file:

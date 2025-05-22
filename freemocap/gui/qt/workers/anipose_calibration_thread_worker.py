@@ -24,15 +24,15 @@ class AniposeCalibrationThreadWorker(QThread):
         calibration_videos_folder_path: Union[str, Path],
         charuco_square_size: Union[int, float],
         kill_thread_event: threading.Event,
-        charuco_board_definition: CharucoBoardDefinition = None,
+        charuco_board_definition: CharucoBoardDefinition,
         use_charuco_as_groundplane: bool = False,
     ):
         super().__init__()
         logger.info(
             f"Initializing Anipose Calibration Thread Worker for videos in path {calibration_videos_folder_path}"
         )
-        if charuco_board_definition is None:
-            charuco_board_definition = CharucoBoardDefinition()
+        # if charuco_board_definition is None: #removing because with the new dropdown, we should always have a charuco board definition
+        #     charuco_board_definition = CharucoBoardDefinition()
 
         self._kill_thread_event = kill_thread_event
         self._charuco_board_definition = charuco_board_definition

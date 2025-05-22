@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QRadioButton,
     QCheckBox,
+    QComboBox
 )
 from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
@@ -21,6 +22,7 @@ from freemocap.system.paths_and_filenames.path_getters import (
     create_new_default_recording_name,
     get_gui_state_json_path,
 )
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import CHARUCO_BOARDS
 
 CALIBRATION_RECORDING_BUTTON_TEXT = "\U0001F534 \U0001F4D0 Start Calibration Recording"
 MOCAP_RECORDING_BUTTON_TEXT = f"{SKULL_EMOJI_STRING} {SPARKLES_EMOJI_STRING} Start Motion Capture Recording"
@@ -60,6 +62,8 @@ class CameraControllerGroupBox(QGroupBox):
         self._generate_jupyter_notebook_checkbox.toggled.connect(self._on_generate_jupyter_notebook_checkbox_changed)
         self._auto_open_in_blender_checkbox.toggled.connect(self._on_auto_open_in_blender_checkbox_changed)
         self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
+        self._use_charuco_as_groundplane_checkbox.toggled.connect(self._on_use_charuco_groundplane_checkbox_changed)
+        self._board_dropdown.currentTextChanged.connect(self._on_charuco_board_dropdown_changed)
 
     @property
     def mocap_videos_radio_button_checked(self) -> bool:
@@ -88,6 +92,10 @@ class CameraControllerGroupBox(QGroupBox):
     @property
     def use_charuco_as_groundplane(self) -> bool:
         return self._use_charuco_as_groundplane_checkbox.isChecked()
+    
+    @property
+    def charuco_board_name(self) -> str:
+        return self._board_dropdown.currentText()
 
     def check_recording_type(self):
         if self._mocap_videos_radio_button.isChecked():
@@ -121,32 +129,49 @@ class CameraControllerGroupBox(QGroupBox):
         return hbox
 
     def _create_calibration_recording_option_layout(self):
-        hbox = QHBoxLayout()
-        hbox.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        vbox = QVBoxLayout()
+
+        # -------- First Row (Calibration Radio, Board Dropdown, Square Size) --------
+        hbox_top = QHBoxLayout()
+        hbox_top.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         self._calibration_videos_radio_button = QRadioButton("Record Calibration Videos")
-        hbox.addWidget(self._calibration_videos_radio_button)
-        hbox.addWidget(QLabel(" - "))
+        hbox_top.addWidget(self._calibration_videos_radio_button)
+        hbox_top.addWidget(QLabel(" - "))
 
-        hbox.addWidget(QLabel("Charuco square size (mm)", parent=self))
+        hbox_top.addWidget(QLabel("Charuco Board:"))
+        self._board_dropdown = self._create_board_dropdown()
+        self._board_dropdown.setCurrentText(self.gui_state.charuco_board_name)
+        hbox_top.addWidget(self._board_dropdown)
+
+        hbox_top.addWidget(QLabel("Charuco square size (mm)", parent=self))
         self._charuco_square_size_line_edit = QLineEdit(parent=self)
         self._charuco_square_size_line_edit.setFixedWidth(100)
         self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
-        hbox.addWidget(self._charuco_square_size_line_edit)
+        hbox_top.addWidget(self._charuco_square_size_line_edit)
+        hbox_top.addStretch()
+
+        hbox_bottom = QHBoxLayout()
+        hbox_bottom.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         self._annotate_charuco_checkbox = QCheckBox("Display Charuco Overlay")
         self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_charuco_images)
         self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
-        hbox.addWidget(self._annotate_charuco_checkbox)
+        hbox_bottom.addWidget(self._annotate_charuco_checkbox)
 
         self._use_charuco_as_groundplane_checkbox = QCheckBox("Use Charuco as groundplane")
         self._use_charuco_as_groundplane_checkbox.setChecked(self.gui_state.use_charuco_as_groundplane)
-        hbox.addWidget(self._use_charuco_as_groundplane_checkbox)
-        hbox.addStretch()
-        return hbox
+        hbox_bottom.addWidget(self._use_charuco_as_groundplane_checkbox)
+
+        hbox_bottom.addStretch()
+
+        vbox.addLayout(hbox_top)
+        vbox.addLayout(hbox_bottom)
+
+        return vbox
 
     def _make_options_layout(self):
         options_vbox = QVBoxLayout()
@@ -207,6 +232,16 @@ class CameraControllerGroupBox(QGroupBox):
         full_path_hbox.addWidget(self._full_path_label)
 
         return vbox
+    
+    def _create_board_dropdown(self) -> QComboBox:
+        board_dropdown = QComboBox()
+        board_dropdown.setToolTip("Select the Charuco board to use for calibration")
+        board_dropdown.setFixedWidth(175)
+        board_dropdown.setStyleSheet("QComboBox { font-size: 12px; }")
+        board_dropdown.setEnabled(True)
+        board_dropdown.setEditable(False)
+        board_dropdown.addItems(list(CHARUCO_BOARDS.keys()))
+        return board_dropdown
 
     def get_new_recording_path(self):
         return create_new_recording_folder_path(recording_name=self._get_recording_name())
@@ -268,4 +303,9 @@ class CameraControllerGroupBox(QGroupBox):
 
     def _on_charuco_square_size_line_edit_changed(self):
         self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+
+    def _on_charuco_board_dropdown_changed(self):
+        selected_board_name = self._board_dropdown.currentText()
+        self.gui_state.charuco_board_name = selected_board_name
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())

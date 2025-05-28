@@ -139,20 +139,29 @@ class CameraControllerGroupBox(QGroupBox):
         hbox_top.addWidget(self._calibration_videos_radio_button)
         hbox_top.addWidget(QLabel(" - "))
 
-        hbox_top.addWidget(QLabel("Charuco Board:"))
-        self._board_dropdown = self._create_board_dropdown()
-        self._board_dropdown.setCurrentText(self.gui_state.charuco_board_name)
-        hbox_top.addWidget(self._board_dropdown)
+        hbox_top = QHBoxLayout()
+        hbox_top.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         hbox_top.addWidget(QLabel("Charuco square size (mm)", parent=self))
         self._charuco_square_size_line_edit = QLineEdit(parent=self)
-        self._charuco_square_size_line_edit.setFixedWidth(100)
+        self._charuco_square_size_line_edit.setFixedWidth(60)
         self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
         hbox_top.addWidget(self._charuco_square_size_line_edit)
+
+
         hbox_top.addStretch()
+
+        hbox_middle = QHBoxLayout()
+        hbox_middle.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        hbox_middle.addWidget(QLabel("Charuco Board:"))
+        self._board_dropdown = self._create_board_dropdown()
+        self._board_dropdown.setCurrentText(self.gui_state.charuco_board_name)
+        hbox_middle.addWidget(self._board_dropdown)
+        hbox_middle.addStretch()    
 
         hbox_bottom = QHBoxLayout()
         hbox_bottom.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -169,6 +178,7 @@ class CameraControllerGroupBox(QGroupBox):
         hbox_bottom.addStretch()
 
         vbox.addLayout(hbox_top)
+        vbox.addLayout(hbox_middle)
         vbox.addLayout(hbox_bottom)
 
         return vbox
@@ -236,7 +246,7 @@ class CameraControllerGroupBox(QGroupBox):
     def _create_board_dropdown(self) -> QComboBox:
         board_dropdown = QComboBox()
         board_dropdown.setToolTip("Select the Charuco board to use for calibration")
-        board_dropdown.setFixedWidth(175)
+        board_dropdown.setFixedWidth(150)
         board_dropdown.setStyleSheet("QComboBox { font-size: 12px; }")
         board_dropdown.setEnabled(True)
         board_dropdown.setEditable(False)

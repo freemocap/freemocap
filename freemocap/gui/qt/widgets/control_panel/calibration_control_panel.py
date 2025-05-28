@@ -171,7 +171,7 @@ class CalibrationControlPanel(QWidget):
 
         # Create a horizontal layout to hold both form and checkbox
         hbox2 = QHBoxLayout()
-        hbox2.setAlignment(Qt.AlignmentFlag.AlignRight)
+        hbox2.setAlignment(Qt.AlignmentFlag.AlignLeft)
         hbox2.addLayout(self._charuco_square_size_form_layout)
 
         # Create checkbox
@@ -299,7 +299,7 @@ class CalibrationControlPanel(QWidget):
 
         self._charuco_square_size_line_edit = QLineEdit()
         self._charuco_square_size_line_edit.setValidator(QDoubleValidator())
-        self._charuco_square_size_line_edit.setFixedWidth(100)
+        self._charuco_square_size_line_edit.setFixedWidth(80)
 
         self._charuco_square_size_label = QLabel("Charuco square size (mm)")
         self._charuco_square_size_label.setStyleSheet("QLabel { font-size: 12px;  }")
@@ -316,7 +316,7 @@ class CalibrationControlPanel(QWidget):
     def _create_board_dropdown(self) -> QComboBox:
         board_dropdown = QComboBox()
         board_dropdown.setToolTip("Select the Charuco board to use for calibration")
-        board_dropdown.setFixedWidth(200)
+        board_dropdown.setFixedWidth(150)
         board_dropdown.setStyleSheet("QComboBox { font-size: 12px; }")
         board_dropdown.setEnabled(False)
         board_dropdown.setEditable(False)

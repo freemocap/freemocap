@@ -45,6 +45,6 @@ def mini_charuco_board() -> CharucoBoardDefinition:
 
 
 CHARUCO_BOARDS = {
-    "Full Charuco Board (7x5)": full_charuco_board,
-    "Mini Charuco Board (5x3)": mini_charuco_board,
+    "Full Charuco (7x5)": full_charuco_board,
+    "Mini Charuco (5x3)": mini_charuco_board,
 }

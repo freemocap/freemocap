@@ -18,6 +18,7 @@ def run_anipose_capture_volume_calibration(
     charuco_square_size: float,
     calibration_videos_folder_path: Union[str, Path],
     pin_camera_0_to_origin: bool = True,
+    use_charuco_as_groundplane: bool = False,
     progress_callback: Callable[[str], None] = None,
 ) -> Path:
     anipose_camera_calibrator = AniposeCameraCalibrator(
@@ -26,6 +27,7 @@ def run_anipose_capture_volume_calibration(
         calibration_videos_folder_path=calibration_videos_folder_path,
         progress_callback=progress_callback,
     )
-    toml_path = anipose_camera_calibrator.calibrate_camera_capture_volume(pin_camera_0_to_origin=pin_camera_0_to_origin)
+    toml_path = anipose_camera_calibrator.calibrate_camera_capture_volume(pin_camera_0_to_origin=pin_camera_0_to_origin,
+                                                                          use_charuco_as_groundplane=use_charuco_as_groundplane)
 
     return toml_path

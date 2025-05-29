@@ -24,20 +24,21 @@ class AniposeCalibrationThreadWorker(QThread):
         calibration_videos_folder_path: Union[str, Path],
         charuco_square_size: Union[int, float],
         kill_thread_event: threading.Event,
-        charuco_board_definition: CharucoBoardDefinition = None,
+        charuco_board_definition: CharucoBoardDefinition,
+        use_charuco_as_groundplane: bool = False,
     ):
         super().__init__()
         logger.info(
             f"Initializing Anipose Calibration Thread Worker for videos in path {calibration_videos_folder_path}"
         )
-        if charuco_board_definition is None:
-            charuco_board_definition = CharucoBoardDefinition()
+        # if charuco_board_definition is None: #removing because with the new dropdown, we should always have a charuco board definition
+        #     charuco_board_definition = CharucoBoardDefinition()
 
         self._kill_thread_event = kill_thread_event
         self._charuco_board_definition = charuco_board_definition
         self._charuco_square_size = charuco_square_size
         self._calibration_videos_folder_path = calibration_videos_folder_path
-
+        self._use_charuco_as_groundplane = use_charuco_as_groundplane
         self._work_done = False
 
     @property
@@ -56,6 +57,7 @@ class AniposeCalibrationThreadWorker(QThread):
                 charuco_square_size=self._charuco_square_size,
                 calibration_videos_folder_path=self._calibration_videos_folder_path,
                 pin_camera_0_to_origin=True,
+                use_charuco_as_groundplane=self._use_charuco_as_groundplane,
                 progress_callback=self._emit_in_progress_data,
             )
             self.finished.emit(str(toml_path))

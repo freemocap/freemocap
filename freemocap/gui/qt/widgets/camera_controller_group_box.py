@@ -139,9 +139,6 @@ class CameraControllerGroupBox(QGroupBox):
         hbox_top.addWidget(self._calibration_videos_radio_button)
         hbox_top.addWidget(QLabel(" - "))
 
-        hbox_top = QHBoxLayout()
-        hbox_top.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
         hbox_top.addWidget(QLabel("Charuco square size (mm)", parent=self))
         self._charuco_square_size_line_edit = QLineEdit(parent=self)
         self._charuco_square_size_line_edit.setFixedWidth(60)

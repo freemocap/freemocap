@@ -47,7 +47,7 @@ class MenuBar(QMenuBar):
         #
         # help menu
         help_menu = self.addMenu("&Help")
-
+        help_menu.addAction(actions.show_release_notes_action)  
         help_menu.addAction(actions.open_docs_action)
         help_menu.addAction(actions.freemocap_foundation_action)
         #

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable, Union
 
 import numpy as np
+import cv2
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
@@ -81,10 +82,7 @@ class AniposeCameraCalibrator:
         logger.info(success_str)
         self._progress_callback(success_str)
         if pin_camera_0_to_origin:
-            # translate cameras so camera0 is on `0,0,0`
-            self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
-            # self._anipose_camera_group_object = self.rotate_cameras_so_camera_zero_aligns_with_XYZ(self._anipose_camera_group_object)
-
+            self._anipose_camera_group_object = self.pin_camera_zero_to_origin(cam_group=self._anipose_camera_group_object)
         # save calibration info to files
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem
@@ -114,30 +112,67 @@ class AniposeCameraCalibrator:
 
         return calibration_folder_toml_path
 
-    def pin_camera_zero_to_origin(self, _anipose_camera_group_object):
-        original_translation_vectors = _anipose_camera_group_object.get_translations()
-        camera_0_translation = original_translation_vectors[0, :]
-        altered_translation_vectors = np.zeros(original_translation_vectors.shape)
-        for this_camera_number in range(original_translation_vectors.shape[0]):
-            altered_translation_vectors[this_camera_number, :] = (
-                original_translation_vectors[this_camera_number, :] - camera_0_translation
-            )
+    def pin_camera_zero_to_origin(self, cam_group: freemocap_anipose.CameraGroup):
+        """
+        Re-express all camera extrinsics relative to camera 0.
 
-        _anipose_camera_group_object.set_translations(altered_translation_vectors)
-        logger.debug(f"original translation vectors:\n {original_translation_vectors}")
-        logger.debug(f"altered translation vectors:\n {_anipose_camera_group_object.get_translations()}")
-        return _anipose_camera_group_object
+        This function performs two operations:
+            1. Rotates all camera coordinate systems so that camera 0's orientation becomes the new world frame.
+            2. Shifts the world origin to camera 0's position, making it the new coordinate origin (0, 0, 0).
 
-    def rotate_cameras_so_camera_zero_aligns_with_XYZ(self, _anipose_camera_group_object):
-        logger.warning("this function does not work, dont use it lol ")
-        pass
-        # original_rotations_euler = _anipose_camera_group_object.get_rotations()
-        # original_translation_vectors = _anipose_camera_group_object.get_translations()
-        # camera_rotation_matrix_list = [
-        #     Rotation.from_euler('xyz', original_rotations_euler[this_cam_num, :]).as_matrix() for
-        #     this_cam_num in range(original_rotations_euler.shape[0])]
-        #
-        # rotated_translation_vectors = [camera_rotation_matrix_list[0] @ this_tx for this_tx in
-        #                                original_translation_vectors]
-        # _anipose_camera_group_object.set_rotations(rotated_translation_vectors)
-        # return _anipose_camera_group_object
+        The result is that:
+            - Camera 0 ends up with an identity rotation and zero translation.
+            - All other cameras are expressed relative to camera 0's original position and orientation.
+
+        Args:
+            cam_group (freemocap_anipose.CameraGroup): A group of calibrated cameras whose extrinsics will be adjusted in place.
+        """
+
+        rvecs_new = self.align_rotations_to_cam0(cam_group=cam_group)
+        cam_group.set_rotations(rvecs_new)
+        tvecs_new = self.shift_origin_to_cam0(cam_group=cam_group)
+        cam_group.set_translations(tvecs_new)
+        return cam_group
+
+    def align_rotations_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):
+        rvecs = cam_group.get_rotations()
+        #get rotation of cam 0 to world
+        R0,_  = cv2.Rodrigues(rvecs[0]) 
+
+        rvecs_new = np.empty_like(rvecs)
+        #rotates each cameras coordinate system into the new world space
+        #R0 maps world -> cam0, so R0.T (which is also the inverse) maps cam0 -> world
+        #R0 * R0^-1 = identity matrix, so this makes R0 the origin
+        # then we map every other camera into the new world space
+        for i in range(rvecs.shape[0]):
+            Ri,_ = cv2.Rodrigues(rvecs[i])
+            Ri_new,_ = cv2.Rodrigues(Ri @ R0.T)
+            rvecs_new[i] = Ri_new.flatten()
+        return rvecs_new
+    
+    def shift_origin_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):
+        # Get original translation and rotation vectors
+        tvecs = cam_group.get_translations()
+        rvecs = cam_group.get_rotations()
+
+        # Extract camera 0's rotation and translation
+        camera_0_translation = tvecs[0, :]
+        camera_0_rotation = rvecs[0, :]
+
+        # Get 3x3 rotation matrix for world -> cam 0
+        R0, _ = cv2.Rodrigues(camera_0_rotation)
+
+        # Get the vector that moves the world origin to cam 0 in the world frame
+        delta_to_origin_world = - R0.T @ camera_0_translation
+
+        # Create new translation vectors array
+        new_tvecs = np.zeros_like(tvecs)
+
+        # Apply offset to each camera's translation vector
+        for cam_i in range(tvecs.shape[0]):
+            Ri, _ = cv2.Rodrigues(rvecs[cam_i, :])
+            # Transform the world offset into this camera's coordinate frame
+            delta_to_origin_camera_i = Ri @ delta_to_origin_world
+            # Update the translation vector
+            new_tvecs[cam_i, :] = tvecs[cam_i, :] + delta_to_origin_camera_i
+        return new_tvecs

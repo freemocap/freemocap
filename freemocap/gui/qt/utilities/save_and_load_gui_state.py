@@ -20,11 +20,15 @@ class GuiState(BaseModel):
     annotate_charuco_images: bool = False
     freemocap_data_folder_path: str = str(Path(Path.home(), BASE_FREEMOCAP_DATA_FOLDER_NAME))
     blender_path: str = str(get_best_guess_of_blender_path())
-    show_data_quality_warning: bool = True
-    release_notes_display_option: str = ReleaseNotesDisplayOption
+    show_data_quality_warning: bool = False
+    release_notes_display_option: str = ReleaseNotesDisplayOption.SHOW_ON_NEW_RELEASE.value
+    shown_latest_release_notes: bool = False
 
 
-def save_gui_state(gui_state: GuiState, file_pathstring: str) -> None:
+def save_gui_state(gui_state: GuiState, file_pathstring: str|None=None) -> None:
+    from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
+    if file_pathstring is None:
+        file_pathstring = get_gui_state_json_path()
     with open(file_pathstring, "w") as file:
         json.dump(gui_state.model_dump(mode="json"), file, indent=4)
 

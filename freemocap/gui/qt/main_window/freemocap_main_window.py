@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 import shutil
+import threading
 from pathlib import Path
 from typing import Union, List, Callable
 
@@ -47,7 +48,6 @@ from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
 )
 from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingInfoWidget
-from freemocap.gui.qt.widgets.release_notes_dialogs.butterworth_warning_dialog import Version_1_5_4_DataWarningDialog
 from freemocap.gui.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
 from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
 from freemocap.gui.qt.widgets.control_panel.control_panel_dock_widget import (
@@ -64,6 +64,7 @@ from freemocap.gui.qt.widgets.home_widget import (
 from freemocap.gui.qt.widgets.import_videos_wizard import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.opencv_conflict_dialog import OpencvConflictDialog
+from freemocap.gui.qt.widgets.release_notes_dialogs.tabbed_release_notes_dialog import TabbedReleaseNotesDialog
 from freemocap.gui.qt.widgets.set_data_folder_dialog import SetDataFolderDialog
 from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
@@ -436,7 +437,7 @@ class MainWindow(QMainWindow):
         self._visualization_control_panel._blender_executable_label.setText(str(self._gui_state.blender_path))
         self._visualization_control_panel._blender_executable_path = str(self._gui_state.blender_path)
 
-        save_gui_state(self._gui_state, get_gui_state_json_path())
+        save_gui_state(self._gui_state)
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())
 
@@ -472,13 +473,14 @@ class MainWindow(QMainWindow):
         self._welcome_screen_dialog.exec()
 
     def open_release_notes_popup(self):
-        logger.info("Opening `Data Quality Warning` dialog... ")
+        logger.info("Opening `Release Notes` dialog... ")
 
-        data_quality_warning_dialog = Version_1_5_4_DataWarningDialog(
-            gui_state=self._gui_state, kill_thread_event=self._kill_thread_event, parent=self
+        dialog = TabbedReleaseNotesDialog(
+            kill_thread_event=threading.Event(),
+            gui_state=self._gui_state,
+            dark_mode=True  # Set to True for dark mode, False for light mode
         )
-
-        data_quality_warning_dialog.exec()
+        dialog.exec()
 
     def open_opencv_conflict_dialog(self):
         self._opencv_conflict_dialog = OpencvConflictDialog(

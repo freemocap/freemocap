@@ -36,12 +36,12 @@ def get_v160_release_notes() -> ReleaseNoteContent:
 
             Well, we did that and immediately discovered a bug in our calibration/reconstruction pipeline that has apparently been causing a ~10-15% scaling offset to our data (i.e. so measured limb segment lengths would be ~85-115% of their real-world lengths)
             <br/><br/>
-            Bad news is that that has been around for a while. Good news is that we fixed it, so our data should be more accurately scaled to real-world units! We call that progress 😌
+           Good news is that we fixed it, so our data should be more accurately scaled to real-world units! We call that progress 😌
             <br/><br/>
             If your application requires empirical accuracy, we recommend reprocessing any critical data with the latest version of FreeMoCap to ensure the highest quality results.
             <br/>
             <br>
-            See  <a href="https://github.com/freemocap/freemocap/pull/681">Issue #681</a>, for a full run down on the code sleuthing and thread pulling that led to this fix.
+            See  <a href="https://github.com/freemocap/freemocap/pull/681">Issue #681</a> for a full run down on the code sleuthing and thread pulling that led to this fix.
             <br>
             --
             <br>

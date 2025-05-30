@@ -132,7 +132,7 @@ class Actions:
             "Release Notes", parent=freemocap_main_window
         )
         self.show_release_notes_action.triggered.connect(
-            freemocap_main_window.show_release_notes
+            freemocap_main_window.open_release_notes_popup
         )
 
         # # Navigation

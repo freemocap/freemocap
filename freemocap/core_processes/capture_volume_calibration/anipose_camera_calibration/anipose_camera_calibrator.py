@@ -192,11 +192,15 @@ class AniposeCameraCalibrator:
         return new_tvecs
     
     def set_charuco_board_as_groundplane(self, cam_group:freemocap_anipose.CameraGroup):
+        import multiprocessing
         # Get the camera group object
         logger.info("Getting 2d Charuco data")
+        
+        num_videos = len(self._list_of_video_paths)
+        num_processes = min(num_videos, multiprocessing.cpu_count() - 1)
         charuco_2d_xy = get_charuco_2d_data(
             calibration_videos_folder_path=self._calibration_videos_folder_path,
-            num_processes=3
+            num_processes=num_processes
         )
         logger.info("Charuco 2d data detected successfully with shape: "
                     f"{charuco_2d_xy.shape}")

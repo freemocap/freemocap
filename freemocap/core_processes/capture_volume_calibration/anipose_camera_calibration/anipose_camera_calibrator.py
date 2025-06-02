@@ -211,6 +211,10 @@ class AniposeCameraCalibrator:
         
         charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
         logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
+
+        charuco_save_path = self._recording_folder_path / "output_data" / "charuco_3d_xyz.npy"
+        np.save(charuco_save_path, charuco_3d_xyz) #NOTE - there may be a more robust way to get this path but this is the simplest for now
+        logger.info(f"Charuco 3d data saved to {charuco_save_path}")
         
         try:
             charuco_still_frame_idx = find_good_frame(charuco_data=charuco_3d_xyz,

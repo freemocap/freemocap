@@ -22,7 +22,9 @@ from freemocap.utilities.get_video_paths import get_video_paths
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import (
     compute_basis_vectors_of_new_reference, 
     get_charuco_2d_data,
-    get_charuco_frame,
+    find_good_frame,
+    CharucoVisibilityError,
+    CharucoVelocityError
 )
 
 from collections import namedtuple
@@ -209,8 +211,28 @@ class AniposeCameraCalibrator:
         
         charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
         logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
+        
+        try:
+            charuco_still_frame_idx = find_good_frame(charuco_data=charuco_3d_xyz,
+                                                       number_of_squares_width=self._charuco_board_object.number_of_squares_width,
+                                                       number_of_squares_height=self._charuco_board_object.number_of_squares_height,
+                                                       frame_to_use=-1)
+        except CharucoVisibilityError as e:
+            logger.warning(
+                "Ground-plane alignment skipped – reverting to original calibration: %s",
+                e,
+                exc_info=True, )
+            return cam_group
+        except CharucoVelocityError as e:
+            logger.warning(
+                "Ground-plane alignment skipped – reverting to original calibration: %s",
+                e,
+                exc_info=True, )
+            return cam_group
+    
+   
+        charuco_frame = charuco_3d_xyz[charuco_still_frame_idx]
 
-        charuco_frame = get_charuco_frame(charuco_3d_xyz)
         x_hat, y_hat, z_hat = compute_basis_vectors_of_new_reference(charuco_frame,
                                                                      number_of_squares_width=self._charuco_board_object.number_of_squares_width,
                                                                      number_of_squares_height=self._charuco_board_object.number_of_squares_height)

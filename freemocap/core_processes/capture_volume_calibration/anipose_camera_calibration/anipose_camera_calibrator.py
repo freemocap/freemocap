@@ -215,8 +215,7 @@ class AniposeCameraCalibrator:
         try:
             charuco_still_frame_idx = find_good_frame(charuco_data=charuco_3d_xyz,
                                                        number_of_squares_width=self._charuco_board_object.number_of_squares_width,
-                                                       number_of_squares_height=self._charuco_board_object.number_of_squares_height,
-                                                       frame_to_use=-1)
+                                                       number_of_squares_height=self._charuco_board_object.number_of_squares_height,)
         except CharucoVisibilityError as e:
             logger.warning(
                 "Ground-plane alignment skipped – reverting to original calibration: %s",

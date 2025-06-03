@@ -15,6 +15,7 @@ import toml
 from aniposelib.boards import extract_points, extract_rtvecs, get_video_params, merge_rows, CharucoBoard
 from aniposelib.utils import get_rtvec, make_M
 from numba import jit
+from pathlib import Path
 from scipy import optimize
 from scipy import signal
 from scipy.cluster.hierarchy import linkage, fcluster
@@ -22,6 +23,10 @@ from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
 from tqdm import trange
+from typing import List
+
+from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
+from skellytracker.process_folder_of_videos import process_list_of_videos
 
 numba_logger = logging.getLogger("numba")
 numba_logger.setLevel(logging.WARNING)
@@ -649,6 +654,7 @@ class CameraGroup:
     def __init__(self, cameras, metadata={}):
         self.cameras = cameras
         self.metadata = metadata
+        self.charuco_2d_data = None
 
     def subset_cameras(self, indices):
         cams = [self.cameras[ix].copy() for ix in indices]
@@ -1836,21 +1842,54 @@ class CameraGroup:
 
         return error, merged, charuco_frames
 
-    def get_rows_videos(self, videos, board, verbose=True):
+    def get_rows_videos(self, videos: List[List[str]], board: "AniposeCharucoBoard", verbose=True):
+        num_corners = board.total_size
+        if board.total_size != 24: 
+            raise ValueError("AniposeCharucoBoard only supports 24 corners, got {}".format(board.total_size))
+        self._get_charuco_2d_data(videos)
         all_rows = []
 
-        for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):
-            rows_cam = []
-            for vnum, vidname in enumerate(cam_videos):
-                if verbose:
-                    print(vidname)
-                rows = board.detect_video(vidname, prefix=vnum, progress=verbose)
-                if verbose:
-                    print("{} boards detected".format(len(rows)))
-                rows_cam.extend(rows)
-            all_rows.append(rows_cam)
+        num_cameras, num_frames, _, _ = self.charuco_2d_data.shape
+        for camera_number in range(num_cameras):
+            camera_rows = []
+            for frame in range(num_frames):
+                # TODO: check each frame based on anipose's conditions
+                filled = self.charuco_2d_data[camera_number, frame, :, :]
+                filled = filled.astype(np.float32)
+                filled = np.reshape(filled, (num_corners, 1, 2))  # Add empty column anipose expects
+                mask = (~np.isnan(filled[:, :, 0])) & (~np.isnan(filled[:, :, 1]))
+                non_empty_ids = np.where(mask)[0]
+                corners = filled[non_empty_ids, :, :]
+                non_empty_ids = non_empty_ids.reshape(-1, 1) # Add empty column anipose expects
+                if corners.shape[0] != 0:
+                    row = {
+                        "framenum": (0, frame),
+                        "corners": corners,
+                        "ids": non_empty_ids,
+                        "filled": filled,
+                    }
+                    camera_rows.append(row)
+            if verbose:
+                print(f"Camera {camera_number} has {len(camera_rows)} frames with detected corners.")
+            all_rows.append(camera_rows)
 
         return all_rows
+
+    def _get_charuco_2d_data(self, videos: List[List[str]]):
+        """
+        Processes a list of a list of videos to extract Charuco 2D data.
+        
+        Should be called once during the initial calibration, and then referenced with self.charuco_2d_data
+        """
+        video_paths = [Path(video[0]) for video in videos]
+        charuco_2d_data = process_list_of_videos(
+            model_info=CharucoModelInfo(),
+            tracking_params=CharucoTrackingParams(),
+            video_paths=video_paths,
+            num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
+        )
+        
+        self.charuco_2d_data = charuco_2d_data
 
     def set_camera_sizes_videos(self, videos):
         for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):

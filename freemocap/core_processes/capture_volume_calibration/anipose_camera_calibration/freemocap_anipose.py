@@ -1847,6 +1847,10 @@ class CameraGroup:
         if board.total_size != 24: 
             raise ValueError("AniposeCharucoBoard only supports 24 corners, got {}".format(board.total_size))
         self._get_charuco_2d_data(videos)
+
+        if self.charuco_2d_data is None:
+            raise ValueError("Charuco 2D data has not been initialized. Call _get_charuco_2d_data() first, or check for errors in the video processing.")
+        
         all_rows = []
 
         num_cameras, num_frames, _, _ = self.charuco_2d_data.shape

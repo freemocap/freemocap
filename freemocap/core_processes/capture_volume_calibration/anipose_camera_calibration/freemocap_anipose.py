@@ -4,6 +4,7 @@
 import itertools
 import logging
 import multiprocessing
+from pathlib import Path
 import queue
 import time
 from collections import defaultdict, Counter
@@ -22,6 +23,10 @@ from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
 from tqdm import trange
+from typing import List
+
+from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
+from skellytracker.process_folder_of_videos import process_list_of_videos
 
 numba_logger = logging.getLogger("numba")
 numba_logger.setLevel(logging.WARNING)
@@ -1836,21 +1841,59 @@ class CameraGroup:
 
         return error, merged, charuco_frames
 
-    def get_rows_videos(self, videos, board, verbose=True):
+    def get_rows_videos(self, videos: List[List[str]], board, verbose=True):
+        num_corners = 24 # TODO: get from board
+        video_paths = [Path(video[0]) for video in videos]
+        charuco_2d_data = process_list_of_videos(
+            model_info=CharucoModelInfo(),
+            tracking_params=CharucoTrackingParams(),
+            video_paths=video_paths,
+            num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
+        )
         all_rows = []
 
-        for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):
-            rows_cam = []
-            for vnum, vidname in enumerate(cam_videos):
-                if verbose:
-                    print(vidname)
-                rows = board.detect_video(vidname, prefix=vnum, progress=verbose)
-                if verbose:
-                    print("{} boards detected".format(len(rows)))
-                rows_cam.extend(rows)
-            all_rows.append(rows_cam)
+        num_cameras, num_frames, _, _ = charuco_2d_data.shape
+        for camera_number in range(num_cameras):
+            camera_rows = []
+            for frame in range(num_frames):
+                # TODO: check each frame based on anipose's conditions
+                filled = charuco_2d_data[camera_number, frame, :, :]
+                filled = filled.astype(np.float64)
+                filled = np.reshape(filled, (num_corners, 1, 2))  # Add empty column anipose expects
+                mask = (~np.isnan(filled[:, :, 0])) & (~np.isnan(filled[:, :, 1]))
+                non_empty_ids = np.where(mask)[0]
+                corners = filled[non_empty_ids, :, :]
+                non_empty_ids = non_empty_ids.reshape(-1, 1) # Add empty column anipose expects
+                row = {
+                    "framenum": (camera_number, frame),
+                    "corners": corners,
+                    "ids": non_empty_ids,
+                    "filled": filled,
+                }
+                camera_rows.append(row)
+            all_rows.append(camera_rows)
 
         return all_rows
+            
+        # for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):
+        #     rows_cam = []
+        #     for vnum, vidname in enumerate(cam_videos):
+        #         if verbose:
+        #             print(vidname)
+        #         rows = board.detect_video(vidname, prefix=vnum, progress=verbose)
+        #         for i, row in enumerate(rows):
+        #             if (i % 10) == 0:
+        #                 print(f"framenum: {row['framenum']}, ")
+        #                 # print(f"corners: {row['corners'].shape}, ")
+        #                 # print(f"ids: {row['ids'].shape}, ")
+        #                 # print(f"filled: {row['filled'].shape}, ")
+        #                 print(f"corners: {row['corners']}, ")
+        #                 print(f"filled: {row['filled']}, ")
+        #         if verbose:
+        #             print("{} boards detected".format(len(rows)))
+        #         rows_cam.extend(rows)
+        #     all_rows.append(rows_cam)
+
 
     def set_camera_sizes_videos(self, videos):
         for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):
@@ -1862,8 +1905,8 @@ class CameraGroup:
 
     def calibrate_videos(
         self,
-        videos,
-        board,
+        videos: List[List[str]],
+        board: "AniposeCharucoBoard",
         init_intrinsics=True,
         init_extrinsics=True,
         verbose=True,

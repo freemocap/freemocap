@@ -198,7 +198,7 @@ class AniposeCameraCalibrator:
             raise ValueError(error_message)
         logger.info("Charuco 2d data retrieved successfully with shape: "
                     f"{charuco_2d_xy.shape}")
-
+        charuco_2d_xy = charuco_2d_xy.astype(np.float64)
         num_cameras, num_frames, num_tracked_points,_ = charuco_2d_xy.shape
         charuco_2d_flat = charuco_2d_xy.reshape(num_cameras, -1, 2)
 

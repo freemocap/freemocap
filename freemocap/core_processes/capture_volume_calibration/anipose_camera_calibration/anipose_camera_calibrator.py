@@ -27,7 +27,7 @@ class AniposeCameraCalibrator:
         charuco_board_object: CharucoBoardDefinition,
         charuco_square_size: Union[int, float],
         calibration_videos_folder_path: Union[str, Path],
-        progress_callback: Callable[[str], None] = None,
+        progress_callback: Callable[[str], None] = lambda _: None
     ):
         self._charuco_board_object = charuco_board_object
         self._progress_callback = progress_callback

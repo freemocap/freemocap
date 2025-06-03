@@ -21,7 +21,9 @@ from freemocap.utilities.get_video_paths import get_video_paths
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import (
     compute_basis_vectors_of_new_reference, 
-    get_charuco_frame,
+    find_good_frame,
+    CharucoVisibilityError,
+    CharucoVelocityError
 )
 
 from collections import namedtuple
@@ -189,8 +191,11 @@ class AniposeCameraCalibrator:
         return new_tvecs
     
     def set_charuco_board_as_groundplane(self, cam_group:freemocap_anipose.CameraGroup):
+        import multiprocessing
         # Get the camera group object
         logger.info("Getting 2d Charuco data")
+        num_videos = len(self._list_of_video_paths)
+
         charuco_2d_xy = cam_group.charuco_2d_data
         if charuco_2d_xy is None:
             error_message = "Charuco 2d data was not retrieved successfully. Check for an error during calibration."
@@ -209,7 +214,30 @@ class AniposeCameraCalibrator:
         charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
         logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
 
-        charuco_frame = get_charuco_frame(charuco_3d_xyz)
+        charuco_save_path = self._recording_folder_path / "output_data" / "charuco_3d_xyz.npy"
+        np.save(charuco_save_path, charuco_3d_xyz) #NOTE - there may be a more robust way to get this path but this is the simplest for now
+        logger.info(f"Charuco 3d data saved to {charuco_save_path}")
+        
+        try:
+            charuco_still_frame_idx = find_good_frame(charuco_data=charuco_3d_xyz,
+                                                       number_of_squares_width=self._charuco_board_object.number_of_squares_width,
+                                                       number_of_squares_height=self._charuco_board_object.number_of_squares_height,)
+        except CharucoVisibilityError as e:
+            logger.warning(
+                "Ground-plane alignment skipped – reverting to original calibration: %s",
+                e,
+                exc_info=True, )
+            return cam_group
+        except CharucoVelocityError as e:
+            logger.warning(
+                "Ground-plane alignment skipped – reverting to original calibration: %s",
+                e,
+                exc_info=True, )
+            return cam_group
+    
+   
+        charuco_frame = charuco_3d_xyz[charuco_still_frame_idx]
+
         x_hat, y_hat, z_hat = compute_basis_vectors_of_new_reference(charuco_frame,
                                                                      number_of_squares_width=self._charuco_board_object.number_of_squares_width,
                                                                      number_of_squares_height=self._charuco_board_object.number_of_squares_height)

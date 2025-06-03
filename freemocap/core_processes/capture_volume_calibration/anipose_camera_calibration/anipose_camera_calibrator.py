@@ -35,20 +35,12 @@ class AniposeCameraCalibrator:
         if charuco_square_size == 1:
             warning_string = "Charuco square size is not set, so units of 3d reconstructed data will be in units of `however_long_the_black_edge_of_the_charuco_square_was`. Please input `charuco_square_size` in millimeters (or your preferred unity of length)"
             logger.warning(warning_string)
-            self._report(warning_string)
+            self._progress_callback(warning_string)
         self._charuco_square_size = charuco_square_size
         self._calibration_videos_folder_path = Path(calibration_videos_folder_path)
         self._recording_folder_path = Path(self._calibration_videos_folder_path).parent
         self._get_video_paths()
         self._initialize_anipose_objects()
-    
-    def _report(self, message: str):
-        """
-        Report progress or status updates.
-        """
-        if self._progress_callback is not None:
-            self._progress_callback(message)
-        logger.info(message)
 
     def _get_video_paths(
         self,
@@ -88,7 +80,7 @@ class AniposeCameraCalibrator:
         )
         success_str = "Anipose Calibration Successful!"
         logger.info(success_str)
-        self._report(success_str)
+        self._progress_callback(success_str)
         if pin_camera_0_to_origin:
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(cam_group=self._anipose_camera_group_object)
         # save calibration info to files
@@ -114,7 +106,9 @@ class AniposeCameraCalibrator:
         logger.debug(
             f"anipose camera calibration data also saved to 'Last Successful Calibration' - {last_successful_calibration_toml_path}"
         )
-        self._report("Anipose camera calibration data saved to calibrations folder, recording folder, and `Last Successful Calibration` file")
+        self._progress_callback(
+            "Anipose camera calibration data saved to calibrations folder, recording folder, and `Last Successful Calibration` file"
+        )
 
         return calibration_folder_toml_path
 

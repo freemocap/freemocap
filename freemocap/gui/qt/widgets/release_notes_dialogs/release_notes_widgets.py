@@ -22,14 +22,14 @@ from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json
 class ReleaseNotesDialog(QDialog):
     """
     Base class for displaying release notes, warnings, or other informational dialogs.
-    
+
     Subclasses should override the methods to customize the content and behavior.
     """
-    
+
     def __init__(
-        self, 
-        gui_state: GuiState, 
-        kill_thread_event: threading.Event, 
+        self,
+        gui_state: GuiState,
+        kill_thread_event: threading.Event,
         parent=None,
         min_width: int = 700,
         min_height: int = 400,
@@ -98,9 +98,9 @@ class ReleaseNotesDialog(QDialog):
             self._dont_show_again_checkbox.setStyleSheet("font-size: 13px;")
             self._dont_show_again_checkbox.stateChanged.connect(self._dont_show_again_checkbox_changed)
             controls_layout.addWidget(self._dont_show_again_checkbox)
-        
+
         controls_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
-        
+
         done_btn = QPushButton(self.get_button_text())
         done_btn.setStyleSheet(self.get_button_style())
         done_btn.clicked.connect(self.accept)
@@ -130,7 +130,7 @@ class ReleaseNotesDialog(QDialog):
     def get_show_again_flag_name(self) -> Optional[str]:
         """
         Return the name of the attribute in gui_state to control showing this dialog again.
-        
+
         Return None if the dialog should always be shown.
         """
         return None
@@ -174,8 +174,8 @@ class ReleaseNotesDialog(QDialog):
 class NewFeatureReleaseNotesDialog(ReleaseNotesDialog):
     def __init__(self, gui_state: GuiState, kill_thread_event: threading.Event, parent=None) -> None:
         super().__init__(
-            gui_state=gui_state, 
-            kill_thread_event=kill_thread_event, 
+            gui_state=gui_state,
+            kill_thread_event=kill_thread_event,
             parent=parent,
             min_width=800,  # Custom width
             min_height=500,  # Custom height
@@ -220,7 +220,7 @@ class NewFeatureReleaseNotesDialog(ReleaseNotesDialog):
 
     def get_show_again_flag_name(self) -> Optional[str]:
         return "show_v2_release_notes"
-        
+
     def get_button_text(self) -> str:
         return "Let's Go!"  # Custom button text
 
@@ -234,7 +234,7 @@ class ButterworthWarningDialog(ReleaseNotesDialog):
     Dialog to warn users about the data quality regression in versions 1.4.7-1.5.3
     due to a bug in the Butterworth filtering.
     """
-    
+
     def __init__(self, gui_state: GuiState, kill_thread_event: threading.Event, parent=None) -> None:
         super().__init__(
             gui_state=gui_state,
@@ -290,7 +290,6 @@ class ButterworthWarningDialog(ReleaseNotesDialog):
 
     def get_button_text(self) -> str:
         return "Ok"
-
 
 
 if __name__ == "__main__":

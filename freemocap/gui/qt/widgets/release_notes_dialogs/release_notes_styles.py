@@ -3,11 +3,12 @@ Stylesheet definitions for the release notes dialogs.
 Provides both light and dark mode styles.
 """
 
+
 class ReleaseNotesStyles:
     """
     Provides stylesheets for the release notes dialogs in both light and dark modes.
     """
-    
+
     @staticmethod
     def get_dialog_style(dark_mode: bool = True) -> str:
         """Return the CSS style for the dialog."""
@@ -47,7 +48,7 @@ class ReleaseNotesStyles:
                     height: 16px;
                 }
             """
-        
+
     @staticmethod
     def get_tab_widget_style(dark_mode: bool = True) -> str:
         """Return the CSS style for the tab widget."""
@@ -122,6 +123,7 @@ class ReleaseNotesStyles:
                     margin-right: 2px;
                 }
             """
+
     @staticmethod
     def get_group_box_style(dark_mode: bool = True) -> str:
         """Return the CSS style for group boxes."""
@@ -156,7 +158,7 @@ class ReleaseNotesStyles:
                     padding: 0 5px;
                 }
             """
-    
+
     @staticmethod
     def get_button_style(dark_mode: bool = True) -> str:
         """Return the CSS style for buttons."""
@@ -190,7 +192,7 @@ class ReleaseNotesStyles:
                     background-color: #2980b9;
                 }
             """
-    
+
     @staticmethod
     def get_html_content_style(dark_mode: bool = True) -> str:
         """Return the CSS style for HTML content."""

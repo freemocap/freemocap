@@ -27,13 +27,13 @@ class TabbedReleaseNotesDialog(QDialog):
     """
 
     def __init__(
-            self,
-            kill_thread_event: threading.Event,
-            gui_state: GuiState,
-            parent=None,
-            min_width: int = 900,
-            min_height: int = 550,
-            dark_mode: bool = True,
+        self,
+        kill_thread_event: threading.Event,
+        gui_state: GuiState,
+        parent=None,
+        min_width: int = 900,
+        min_height: int = 550,
+        dark_mode: bool = True,
     ) -> None:
         super().__init__(parent=parent)
         self.kill_thread_event = kill_thread_event
@@ -79,9 +79,7 @@ class TabbedReleaseNotesDialog(QDialog):
 
             # Create content widget
             content_widget = self._create_release_notes_content(
-                title=release_note.content_title,
-                content=release_note.content_html,
-                logo_path=release_note.logo_path
+                title=release_note.content_title, content=release_note.content_html, logo_path=release_note.logo_path
             )
             layout.addWidget(content_widget)
 
@@ -99,15 +97,19 @@ class TabbedReleaseNotesDialog(QDialog):
         text_widget = QLabel()
         text_widget.setWordWrap(True)
         text_widget.setOpenExternalLinks(True)
-        text_widget.setStyleSheet("""
+        text_widget.setStyleSheet(
+            """
             font-size: 14px;
             line-height: 1.4;
             color: #e0e0e0;
-        """ if self.dark_mode else """
+        """
+            if self.dark_mode
+            else """
             font-size: 14px;
             line-height: 1.4;
             color: #2c3e50;
-        """)
+        """
+        )
 
         # Set HTML content
         html_content = f"""
@@ -176,9 +178,7 @@ class TabbedReleaseNotesDialog(QDialog):
         group_layout.addWidget(self.radio_never)
 
         # Help text
-        help_text = QLabel(
-            "You can always access release notes from the <b>Help</b> menu."
-        )
+        help_text = QLabel("You can always access release notes from the <b>Help</b> menu.")
         help_text.setStyleSheet(f"font-size: 12px; color: {'#a0a0a0' if self.dark_mode else '#666666'};")
         group_layout.addWidget(help_text)
 
@@ -206,8 +206,7 @@ if __name__ == "__main__":
 
     # Show the new tabbed dialog with dark mode enabled
     dialog = TabbedReleaseNotesDialog(
-        kill_thread_event=threading.Event(),
-        dark_mode=True  # Set to True for dark mode, False for light mode
+        kill_thread_event=threading.Event(), dark_mode=True  # Set to True for dark mode, False for light mode
     )
     dialog.show()
 

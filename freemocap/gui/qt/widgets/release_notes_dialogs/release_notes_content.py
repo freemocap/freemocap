@@ -1,18 +1,19 @@
 from dataclasses import dataclass
-from typing import Optional
-from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
+
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 
 SKELLY_SWEAT_PNG = PATH_TO_FREEMOCAP_LOGO_SVG.replace("freemocap-logo-black-border.svg", "skelly-sweat.png")
 SKELLY_HEART_EYES_PNG = PATH_TO_FREEMOCAP_LOGO_SVG.replace("freemocap-logo-black-border.svg", "skelly-heart-eyes.png")
 
+
 @dataclass
 class ReleaseNoteContent:
     """Data class to hold content for a release note tab."""
+
     tab_title: str
     content_title: str
     content_html: str
-    logo_path: str|None = None
+    logo_path: str | None = None
     tab_order: int = 0  # Lower numbers appear first
     latest: bool = False
 
@@ -53,7 +54,7 @@ def get_v160_release_notes() -> ReleaseNoteContent:
             </html>
         """,
         logo_path=SKELLY_HEART_EYES_PNG,
-        tab_order=0
+        tab_order=0,
     )
 
 
@@ -97,7 +98,7 @@ def get_v154_release_notes() -> ReleaseNoteContent:
             </html>
         """,
         logo_path=SKELLY_SWEAT_PNG,
-        tab_order=1
+        tab_order=1,
     )
 
 
@@ -111,7 +112,7 @@ def get_older_versions_content() -> ReleaseNoteContent:
         <a href='https://github.com/freemocap/freemocap/releases'>GitHub releases page</a>.</p>
         """,
         logo_path=None,
-        tab_order=2
+        tab_order=2,
     )
 
 
@@ -122,6 +123,6 @@ def get_all_release_notes() -> list[ReleaseNoteContent]:
         get_v154_release_notes(),
         get_older_versions_content(),
     ]
-    
+
     # Sort by tab_order
     return sorted(release_notes, key=lambda x: x.tab_order)

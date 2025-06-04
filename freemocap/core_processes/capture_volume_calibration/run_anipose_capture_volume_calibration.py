@@ -14,11 +14,11 @@ async def async_run_anipose_capture_volume_calibration(**kwargs):
 
 
 def run_anipose_capture_volume_calibration(
-    charuco_board_definition: CharucoBoardDefinition,
-    charuco_square_size: float,
-    calibration_videos_folder_path: Union[str, Path],
-    pin_camera_0_to_origin: bool = True,
-    progress_callback: Callable[[str], None] = None,
+        charuco_board_definition: CharucoBoardDefinition,
+        charuco_square_size: float,
+        calibration_videos_folder_path: Union[str, Path],
+        pin_camera_0_to_origin: bool = True,
+        progress_callback: Callable[[str], None] = None,
 ) -> Path:
     anipose_camera_calibrator = AniposeCameraCalibrator(
         charuco_board_definition,

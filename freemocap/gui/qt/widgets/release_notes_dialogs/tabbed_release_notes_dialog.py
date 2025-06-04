@@ -15,11 +15,9 @@ from PySide6.QtWidgets import (
     QGroupBox,
 )
 
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state, load_gui_state, \
-    ReleaseNotesDisplayOption
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, ReleaseNotesDisplayOption
 from freemocap.gui.qt.widgets.release_notes_dialogs.release_notes_content import get_all_release_notes
 from freemocap.gui.qt.widgets.release_notes_dialogs.release_notes_styles import ReleaseNotesStyles
-from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 
 
 class TabbedReleaseNotesDialog(QDialog):
@@ -67,8 +65,6 @@ class TabbedReleaseNotesDialog(QDialog):
         # Right side panel for options
         # options_panel = self._create_options_panel()
         # main_layout.addWidget(options_panel, 0)  # Fixed width for options panel
-
-
 
     def _add_release_notes_tabs(self) -> None:
         """Add tabs for different release notes."""
@@ -169,8 +165,6 @@ class TabbedReleaseNotesDialog(QDialog):
         self.radio_startup = QRadioButton(ReleaseNotesDisplayOption.SHOW_ON_STARTUP.value)
         self.radio_new_release = QRadioButton(ReleaseNotesDisplayOption.SHOW_ON_NEW_RELEASE.value)
         self.radio_never = QRadioButton(ReleaseNotesDisplayOption.NEVER_SHOW.value)
-
-
 
         # Add radio buttons to group and layout
         self.display_option_group.addButton(self.radio_startup)

@@ -1,7 +1,7 @@
 import logging
 import os
-from pathlib import Path
 import threading
+from pathlib import Path
 from typing import Callable, Optional, Union
 
 from PySide6.QtCore import Qt, Slot, QObject
@@ -18,8 +18,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLayout,
 )
-from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 
+from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
@@ -34,11 +34,11 @@ logger = logging.getLogger(__name__)
 
 class CalibrationControlPanel(QWidget):
     def __init__(
-        self,
-        get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
-        kill_thread_event: threading.Event,
-        gui_state: GuiState,
-        parent: Optional[QObject] = None,
+            self,
+            get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
+            kill_thread_event: threading.Event,
+            gui_state: GuiState,
+            parent: Optional[QObject] = None,
     ):
         super().__init__(parent=parent)
         self.gui_state = gui_state

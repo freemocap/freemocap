@@ -1,8 +1,8 @@
 import logging
 import multiprocessing
 from typing import Dict, Union
-import numpy as np
 
+import numpy as np
 
 from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import (
     calculate_center_of_mass_from_skeleton,
@@ -10,16 +10,16 @@ from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mas
 from freemocap.core_processes.post_process_skeleton_data.create_skeleton import create_skeleton_model
 from freemocap.core_processes.post_process_skeleton_data.enforce_rigid_bones import enforce_rigid_bones_from_skeleton
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
-from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
+from freemocap.system.logging.queue_logger import DirectQueueHandler
 
 logger = logging.getLogger(__name__)
 
 
 def calculate_anatomical_data(
-    processing_parameters: ProcessingParameterModel,
-    skel3d_frame_marker_xyz: np.ndarray,
-    queue: multiprocessing.Queue,
+        processing_parameters: ProcessingParameterModel,
+        skel3d_frame_marker_xyz: np.ndarray,
+        queue: multiprocessing.Queue,
 ) -> Dict[str, Union[np.ndarray, None]]:
     if queue:
         handler = DirectQueueHandler(queue)

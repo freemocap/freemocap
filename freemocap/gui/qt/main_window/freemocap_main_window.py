@@ -116,7 +116,7 @@ class MainWindow(QMainWindow):
         self._freemocap_data_folder_path = freemocap_data_folder_path
         self._pipedream_pings = pipedream_pings
 
-        self._gui_state = load_gui_state(get_gui_state_json_path())
+        self._gui_state:GuiState = load_gui_state(get_gui_state_json_path())
 
         self._kill_thread_event = multiprocessing.Event()
 
@@ -475,12 +475,17 @@ class MainWindow(QMainWindow):
     def open_release_notes_popup(self):
         logger.info("Opening `Release Notes` dialog... ")
 
+        self._gui_state.shown_latest_release_notes = True
+
+        save_gui_state(gui_state=self._gui_state, file_pathstring=get_gui_state_json_path())
+
         dialog = TabbedReleaseNotesDialog(
             kill_thread_event=threading.Event(),
             gui_state=self._gui_state,
             dark_mode=True  # Set to True for dark mode, False for light mode
         )
         dialog.exec()
+
 
     def open_opencv_conflict_dialog(self):
         self._opencv_conflict_dialog = OpencvConflictDialog(

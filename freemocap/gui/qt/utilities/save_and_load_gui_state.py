@@ -21,7 +21,6 @@ class GuiState(BaseModel):
     freemocap_data_folder_path: str = str(Path(Path.home(), BASE_FREEMOCAP_DATA_FOLDER_NAME))
     blender_path: str = str(get_best_guess_of_blender_path())
     show_data_quality_warning: bool = False
-    release_notes_display_option: str = ReleaseNotesDisplayOption.SHOW_ON_NEW_RELEASE.value
     shown_latest_release_notes: bool = False
 
 

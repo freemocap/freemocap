@@ -65,8 +65,8 @@ class TabbedReleaseNotesDialog(QDialog):
         main_layout.addWidget(self.tab_widget, 1)
 
         # Right side panel for options
-        options_panel = self._create_options_panel()
-        main_layout.addWidget(options_panel, 0)  # Fixed width for options panel
+        # options_panel = self._create_options_panel()
+        # main_layout.addWidget(options_panel, 0)  # Fixed width for options panel
 
 
 
@@ -170,19 +170,7 @@ class TabbedReleaseNotesDialog(QDialog):
         self.radio_new_release = QRadioButton(ReleaseNotesDisplayOption.SHOW_ON_NEW_RELEASE.value)
         self.radio_never = QRadioButton(ReleaseNotesDisplayOption.NEVER_SHOW.value)
 
-        # Set initial state based on gui_state
-        if hasattr(self.gui_state, "release_notes_display_option"):
-            option = self.gui_state.release_notes_display_option
-            if option == ReleaseNotesDisplayOption.SHOW_ON_STARTUP.value:
-                self.radio_startup.setChecked(True)
-            elif option == ReleaseNotesDisplayOption.SHOW_ON_NEW_RELEASE.value:
-                self.radio_new_release.setChecked(True)
-            elif option == ReleaseNotesDisplayOption.NEVER_SHOW.value:
-                self.radio_never.setChecked(True)
-            else:
-                self.radio_new_release.setChecked(True)  # Default
-        else:
-            self.radio_new_release.setChecked(True)  # Default
+
 
         # Add radio buttons to group and layout
         self.display_option_group.addButton(self.radio_startup)
@@ -208,23 +196,11 @@ class TabbedReleaseNotesDialog(QDialog):
         close_btn.setStyleSheet(ReleaseNotesStyles.get_button_style(dark_mode=self.dark_mode))
         close_btn.clicked.connect(self._on_close)
         options_layout.addWidget(close_btn)
-
         return options_panel
 
     def _on_close(self) -> None:
         """Handle the close button click."""
-        # Save the selected display option
-        if self.radio_startup.isChecked():
-            option = ReleaseNotesDisplayOption.SHOW_ON_STARTUP.value
-        elif self.radio_new_release.isChecked():
-            option = ReleaseNotesDisplayOption.SHOW_ON_NEW_RELEASE.value
-        else:
-            option = ReleaseNotesDisplayOption.NEVER_SHOW.value
-
         # Update gui_state and save
-        self.gui_state.release_notes_display_option = option
-        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
-
         self.accept()
 
 

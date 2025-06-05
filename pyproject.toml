@@ -102,7 +102,7 @@ Github = "https://github.com/freemocap/freemocap"
 override-dependencies = ["opencv-python; sys_platform == 'never'"]
 
 [tool.bumpver]
-current_version = "v1.5.4"
+current_version = "v1.6.0"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

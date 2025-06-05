@@ -51,7 +51,7 @@ jobs:
           WORKSPACE=$(cygpath -u "${{ github.workspace}}")
           cd $WORKSPACE/pyapp-v0.22.0
           export PYAPP_PROJECT_NAME=freemocap
-          export PYAPP_PROJECT_VERSION=v1.6.0
+          export PYAPP_PROJECT_VERSION=v1.6.1
           export PYAPP_PYTHON_VERSION=3.11
           export PYAPP_PROJECT_DEPENDENCY_FILE=$WORKSPACE/requirements.txt
           export PYAPP_EXEC_SCRIPT=$WORKSPACE/freemocap/__main__.py

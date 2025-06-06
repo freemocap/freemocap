@@ -20,7 +20,7 @@ def run_anipose_capture_volume_calibration(
     calibration_videos_folder_path: Union[str, Path],
     pin_camera_0_to_origin: bool = True,
     use_charuco_as_groundplane: bool = False,
-    progress_callback: Callable[[str], None] = None,
+    progress_callback: Callable[[str], None] = lambda _: None,
 ) -> tuple[Path, GroundPlaneSuccess]:
     anipose_camera_calibrator = AniposeCameraCalibrator(
         charuco_board_definition,

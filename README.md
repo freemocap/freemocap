@@ -51,7 +51,11 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 --
 ## QUICKSTART
 
-#### 0. Create a a Python 3.10 through 3.12 environment (python3.11 recommended)¶
+> [!NOTE] 
+> For  detailed installation instructions, see our [official documentation's Installation page](https://freemocap.github.io/documentation/installation.html#detailed-pip-installation-instructions)
+
+
+#### 0. Create a a Python 3.10 through 3.12 environment (python3.12 recommended)
 #### 1. Install software via [pip](https://pypi.org/project/freemocap/#description):
 
 ```
@@ -68,7 +72,7 @@ freemocap
 
    <img width="1457" alt="image" src="https://github.com/freemocap/freemocap/assets/15314521/90ef7e7b-48f3-4f46-8d4a-5b5bcc3254b3">
 
-#### 4. Have fun! It might break!  Work in Progress lol
+#### 4. Have fun! See the [Beginner Tutorials](https://freemocap.github.io/documentation/your-first-recording.html) on our official docs for detailed instructions.
 
 #### 5. [Join the Discord and let us know how it went!](https://discord.gg/nxv5dNTfKT)
 

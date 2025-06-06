@@ -15,9 +15,10 @@ from PySide6.QtWidgets import (
     QGroupBox,
 )
 
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, ReleaseNotesDisplayOption
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, load_gui_state
 from freemocap.gui.qt.widgets.release_notes_dialogs.release_notes_content import get_all_release_notes
 from freemocap.gui.qt.widgets.release_notes_dialogs.release_notes_styles import ReleaseNotesStyles
+from freemocap.gui.qt.widgets.release_notes_dialogs.tabbed_release_notes_types import ReleaseNotesDisplayOption
 
 
 class TabbedReleaseNotesDialog(QDialog):
@@ -144,58 +145,7 @@ class TabbedReleaseNotesDialog(QDialog):
 
         return content_widget
 
-    def _create_options_panel(self) -> QWidget:
-        """Create the options panel for the dialog."""
-        options_panel = QWidget()
-        options_layout = QVBoxLayout(options_panel)
-        options_layout.setContentsMargins(15, 15, 15, 15)
-        options_layout.setSpacing(15)
 
-        # Display options section
-        options_group = QGroupBox("Display Options")
-        options_group.setStyleSheet(ReleaseNotesStyles.get_group_box_style(dark_mode=self.dark_mode))
-
-        group_layout = QVBoxLayout()
-        group_layout.setContentsMargins(15, 15, 15, 15)
-        group_layout.setSpacing(10)
-        options_group.setLayout(group_layout)
-
-        # Radio buttons for display options
-        self.display_option_group = QButtonGroup(self)
-
-        # Create radio buttons
-        self.radio_startup = QRadioButton(ReleaseNotesDisplayOption.SHOW_ON_STARTUP.value)
-        self.radio_new_release = QRadioButton(ReleaseNotesDisplayOption.SHOW_ON_NEW_RELEASE.value)
-        self.radio_never = QRadioButton(ReleaseNotesDisplayOption.NEVER_SHOW.value)
-
-        # Add radio buttons to group and layout
-        self.display_option_group.addButton(self.radio_startup)
-        self.display_option_group.addButton(self.radio_new_release)
-        self.display_option_group.addButton(self.radio_never)
-
-        group_layout.addWidget(self.radio_startup)
-        group_layout.addWidget(self.radio_new_release)
-        group_layout.addWidget(self.radio_never)
-
-        # Help text
-        help_text = QLabel("You can always access release notes from the <b>Help</b> menu.")
-        help_text.setStyleSheet(f"font-size: 12px; color: {'#a0a0a0' if self.dark_mode else '#666666'};")
-        group_layout.addWidget(help_text)
-
-        options_layout.addWidget(options_group)
-        options_layout.addStretch(1)  # Push everything up
-
-        # Close button
-        close_btn = QPushButton("Close")
-        close_btn.setStyleSheet(ReleaseNotesStyles.get_button_style(dark_mode=self.dark_mode))
-        close_btn.clicked.connect(self._on_close)
-        options_layout.addWidget(close_btn)
-        return options_panel
-
-    def _on_close(self) -> None:
-        """Handle the close button click."""
-        # Update gui_state and save
-        self.accept()
 
 
 if __name__ == "__main__":
@@ -206,6 +156,7 @@ if __name__ == "__main__":
 
     # Show the new tabbed dialog with dark mode enabled
     dialog = TabbedReleaseNotesDialog(
+        gui_state=load_gui_state(),
         kill_thread_event=threading.Event(), dark_mode=True  # Set to True for dark mode, False for light mode
     )
     dialog.show()

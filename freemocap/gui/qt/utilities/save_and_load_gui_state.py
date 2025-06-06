@@ -32,7 +32,10 @@ def save_gui_state(gui_state: GuiState, file_pathstring: str | None = None) -> N
         json.dump(gui_state.model_dump(mode="json"), file, indent=4)
 
 
-def load_gui_state(file_pathstring: str) -> GuiState:
+def load_gui_state(file_pathstring: str|None=None) -> GuiState:
+    if file_pathstring is None:
+        from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
+        file_pathstring = get_gui_state_json_path()
     try:
         with open(file_pathstring, "r") as file:
             gui_state = GuiState(**json.load(file))

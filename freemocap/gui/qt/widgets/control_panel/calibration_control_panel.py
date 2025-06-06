@@ -31,11 +31,10 @@ from freemocap.system.paths_and_filenames.path_getters import (
     get_last_successful_calibration_toml_path,
 )
 
-
+from freemocap.gui.qt.widgets.groundplane_failure_dialog import GroundPlaneCalibrationFailedDialog
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import CHARUCO_BOARDS
 
 logger = logging.getLogger(__name__)
-
 
 class CalibrationControlPanel(QWidget):
     def __init__(
@@ -147,6 +146,11 @@ class CalibrationControlPanel(QWidget):
             self._show_selected_calibration_toml_path("-Single Video Recording, No Calibration Needed-")
         else:
             self._show_selected_calibration_toml_path("-Calibration File Not Found-")
+
+    def _bring_up_groundplane_calibration_failed_dialog(self, message: str):
+        failure_dialog = GroundPlaneCalibrationFailedDialog(
+            message = message)
+        failure_dialog.exec()
 
     def _add_calibrate_from_active_recording_radio_button(self):
         vbox = QVBoxLayout()
@@ -377,6 +381,8 @@ class CalibrationControlPanel(QWidget):
         self._anipose_calibration_frame_worker.in_progress.connect(self._log_calibration_progress_callbacks)
 
         self._anipose_calibration_frame_worker.finished.connect(self.update_calibration_toml_path)
+
+        self._anipose_calibration_frame_worker.groundplane_failed.connect(self._bring_up_groundplane_calibration_failed_dialog)
 
     def _check_active_recording_for_calibration_toml(self):
         active_rec = self._get_active_recording_info()

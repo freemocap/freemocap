@@ -27,10 +27,18 @@ from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibrat
     CharucoVelocityError
 )
 
+from dataclasses import dataclass
+
 from collections import namedtuple
 logger = logging.getLogger(__name__)
 
 Extrinsics = namedtuple("Extrinsics", ["rvecs", "tvecs"])
+
+@dataclass
+class GroundPlaneSuccess:
+    success: bool
+    error: str = None
+
 class AniposeCameraCalibrator:
     def __init__(
         self,
@@ -78,7 +86,7 @@ class AniposeCameraCalibrator:
             dict_size=250,
         )
 
-    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False, use_charuco_as_groundplane: bool = False) -> Path:
+    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False, use_charuco_as_groundplane: bool = False) -> tuple[Path, GroundPlaneSuccess]:
         video_paths_list_of_list_of_strings = [[str(this_path)] for this_path in self._list_of_video_paths]
 
         (
@@ -93,10 +101,10 @@ class AniposeCameraCalibrator:
         self._progress_callback(success_str)
         if pin_camera_0_to_origin:
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
+            groundplane_success = None
 
         if use_charuco_as_groundplane:
-            self._anipose_camera_group_object = self.set_charuco_board_as_groundplane(self._anipose_camera_group_object)
-            logger.info("Anipose camera calibration data adjusted to set charuco board as ground plane")
+            self._anipose_camera_group_object, groundplane_success = self.set_charuco_board_as_groundplane(self._anipose_camera_group_object)
 
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem
@@ -124,7 +132,7 @@ class AniposeCameraCalibrator:
             "Anipose camera calibration data saved to calibrations folder, recording folder, and `Last Successful Calibration` file"
         )
 
-        return calibration_folder_toml_path
+        return calibration_folder_toml_path, groundplane_success
 
     def pin_camera_zero_to_origin(self, cam_group: freemocap_anipose.CameraGroup):
         """
@@ -229,15 +237,16 @@ class AniposeCameraCalibrator:
                 "Ground-plane alignment skipped – reverting to original calibration: %s",
                 e,
                 exc_info=True, )
-            return cam_group
+            success = GroundPlaneSuccess(success=False, error=str(e))
+            return cam_group, success
         except CharucoVelocityError as e:
             logger.warning(
                 "Ground-plane alignment skipped – reverting to original calibration: %s",
                 e,
                 exc_info=True, )
-            return cam_group
-    
-   
+            success = GroundPlaneSuccess(success=False, error=str(e))
+            return cam_group,success
+
         charuco_frame = charuco_3d_xyz[charuco_still_frame_idx]
 
         x_hat, y_hat, z_hat = compute_basis_vectors_of_new_reference(charuco_frame,
@@ -251,7 +260,9 @@ class AniposeCameraCalibrator:
                                                                                 rmat_charuco_to_world=rmat_charuco_to_world)
         cam_group.set_rotations(extrinsics.rvecs)
         cam_group.set_translations(extrinsics.tvecs)
-        return cam_group      
+        success = GroundPlaneSuccess(success=True)
+        logger.info("Anipose camera calibration data adjusted to set charuco board as ground plane")
+        return cam_group, success
 
     def adjust_world_reference_frame_to_charuco(self, 
                                                 cam_group:freemocap_anipose.CameraGroup,

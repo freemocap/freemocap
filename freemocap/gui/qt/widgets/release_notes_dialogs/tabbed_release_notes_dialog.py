@@ -7,18 +7,13 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QTabWidget,
     QWidget,
-    QRadioButton,
-    QButtonGroup,
-    QGroupBox,
 )
 
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, load_gui_state
 from freemocap.gui.qt.widgets.release_notes_dialogs.release_notes_content import get_all_release_notes
 from freemocap.gui.qt.widgets.release_notes_dialogs.release_notes_styles import ReleaseNotesStyles
-from freemocap.gui.qt.widgets.release_notes_dialogs.tabbed_release_notes_types import ReleaseNotesDisplayOption
 
 
 class TabbedReleaseNotesDialog(QDialog):

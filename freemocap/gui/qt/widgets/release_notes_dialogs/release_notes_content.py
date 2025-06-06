@@ -46,7 +46,7 @@ def get_v160_release_notes() -> ReleaseNoteContent:
             <br>
             --
             <br>
-            For additional details about what's new in v1.6.0 - See <a href="https://github.com/freemocap/freemocap/tree/v1.6.0">the official release page </a>
+            For additional details about what's new in v1.6.3 - See <a href="https://github.com/freemocap/freemocap/releases/tag/v1.6.3">the official release page </a>
             <br/><br/>
             (You can always access these release notes from the <b>Help</b> menu.)
 

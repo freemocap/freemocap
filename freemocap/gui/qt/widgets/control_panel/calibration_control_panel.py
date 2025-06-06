@@ -1,7 +1,7 @@
 import logging
 import os
-from pathlib import Path
 import threading
+from pathlib import Path
 from typing import Callable, Optional, Union
 
 from PySide6.QtCore import Qt, Slot, QObject
@@ -20,8 +20,8 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
 )
-from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 
+from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
@@ -31,19 +31,18 @@ from freemocap.system.paths_and_filenames.path_getters import (
     get_last_successful_calibration_toml_path,
 )
 
-
+from freemocap.gui.qt.widgets.groundplane_failure_dialog import GroundPlaneCalibrationFailedDialog
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import CHARUCO_BOARDS
 
 logger = logging.getLogger(__name__)
 
-
 class CalibrationControlPanel(QWidget):
     def __init__(
-        self,
-        get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
-        kill_thread_event: threading.Event,
-        gui_state: GuiState,
-        parent: Optional[QObject] = None,
+            self,
+            get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
+            kill_thread_event: threading.Event,
+            gui_state: GuiState,
+            parent: Optional[QObject] = None,
     ):
         super().__init__(parent=parent)
         self.gui_state = gui_state
@@ -147,6 +146,11 @@ class CalibrationControlPanel(QWidget):
             self._show_selected_calibration_toml_path("-Single Video Recording, No Calibration Needed-")
         else:
             self._show_selected_calibration_toml_path("-Calibration File Not Found-")
+
+    def _bring_up_groundplane_calibration_failed_dialog(self, message: str):
+        failure_dialog = GroundPlaneCalibrationFailedDialog(
+            message = message)
+        failure_dialog.exec()
 
     def _add_calibrate_from_active_recording_radio_button(self):
         vbox = QVBoxLayout()
@@ -377,6 +381,8 @@ class CalibrationControlPanel(QWidget):
         self._anipose_calibration_frame_worker.in_progress.connect(self._log_calibration_progress_callbacks)
 
         self._anipose_calibration_frame_worker.finished.connect(self.update_calibration_toml_path)
+
+        self._anipose_calibration_frame_worker.groundplane_failed.connect(self._bring_up_groundplane_calibration_failed_dialog)
 
     def _check_active_recording_for_calibration_toml(self):
         active_rec = self._get_active_recording_info()

@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class AniposeCalibrationThreadWorker(QThread):
     finished = Signal(str)
     in_progress = Signal(str)
+    groundplane_failed = Signal(str)
 
     def __init__(
         self,
@@ -52,7 +53,7 @@ class AniposeCalibrationThreadWorker(QThread):
         logger.info("Beginning Anipose calibration with Charuco Square Size (mm): {}".format(self._charuco_square_size))
 
         try:
-            toml_path = run_anipose_capture_volume_calibration(
+            toml_path, groundplane_success = run_anipose_capture_volume_calibration(
                 charuco_board_definition=self._charuco_board_definition,
                 charuco_square_size=self._charuco_square_size,
                 calibration_videos_folder_path=self._calibration_videos_folder_path,
@@ -61,6 +62,11 @@ class AniposeCalibrationThreadWorker(QThread):
                 progress_callback=self._emit_in_progress_data,
             )
             self.finished.emit(str(toml_path))
+            if groundplane_success:
+                if groundplane_success.success is False:
+                    self.groundplane_failed.emit(
+                        f"Groundplane calibration failed: {groundplane_success.error} \n\n Using original camera calibration instead."
+                    )
 
         except Exception as e:
             logger.exception("something went wrong in the anipose calibration")

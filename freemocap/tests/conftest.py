@@ -9,9 +9,11 @@ from freemocap.utilities.download_sample_data import (
     download_sample_data,
 )
 
+
 class SessionInfo:
     sample_session_folder_path: str
     recording_info_model: RecordingInfoModel
+
 
 def pytest_sessionstart():
     SessionInfo.sample_session_folder_path = download_sample_data()

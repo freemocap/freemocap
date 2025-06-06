@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 import shutil
+import threading
 from pathlib import Path
 from typing import Union, List, Callable
 
@@ -20,7 +21,6 @@ from skellycam import (
     SkellyCamWidget,
 )
 from tqdm import tqdm
-
 
 from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import (
     generate_jupyter_notebook,
@@ -47,7 +47,6 @@ from freemocap.gui.qt.utilities.update_most_recent_recording_toml import (
     update_most_recent_recording_toml,
 )
 from freemocap.gui.qt.widgets.active_recording_widget import ActiveRecordingInfoWidget
-from freemocap.gui.qt.widgets.butterworth_warning_dialog import Version_1_5_4_DataWarningDialog
 from freemocap.gui.qt.widgets.camera_controller_group_box import CameraControllerGroupBox
 from freemocap.gui.qt.widgets.central_tab_widget import CentralTabWidget
 from freemocap.gui.qt.widgets.control_panel.control_panel_dock_widget import (
@@ -64,11 +63,11 @@ from freemocap.gui.qt.widgets.home_widget import (
 from freemocap.gui.qt.widgets.import_videos_wizard import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.opencv_conflict_dialog import OpencvConflictDialog
+from freemocap.gui.qt.widgets.release_notes_dialogs.tabbed_release_notes_dialog import TabbedReleaseNotesDialog
 from freemocap.gui.qt.widgets.set_data_folder_dialog import SetDataFolderDialog
 from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
 from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
-
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -92,10 +91,10 @@ logger = logging.getLogger(__name__)
 
 class MainWindow(QMainWindow):
     def __init__(
-        self,
-        freemocap_data_folder_path: Union[str, Path],
-        pipedream_pings: PipedreamPings,
-        parent=None,
+            self,
+            freemocap_data_folder_path: Union[str, Path],
+            pipedream_pings: PipedreamPings,
+            parent=None,
     ):
         super().__init__(parent=parent)
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
@@ -115,7 +114,7 @@ class MainWindow(QMainWindow):
         self._freemocap_data_folder_path = freemocap_data_folder_path
         self._pipedream_pings = pipedream_pings
 
-        self._gui_state = load_gui_state(get_gui_state_json_path())
+        self._gui_state: GuiState = load_gui_state(get_gui_state_json_path())
 
         self._kill_thread_event = multiprocessing.Event()
 
@@ -169,8 +168,8 @@ class MainWindow(QMainWindow):
         self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
         if (
-            self._controller_group_box.auto_process_videos_checked
-            and self._controller_group_box.mocap_videos_radio_button_checked
+                self._controller_group_box.auto_process_videos_checked
+                and self._controller_group_box.mocap_videos_radio_button_checked
         ):
             logger.info("'Auto process videos' checkbox is checked - triggering 'Process Motion Capture Data' button")
             self._process_motion_capture_data_panel.process_motion_capture_data_button.click()
@@ -358,7 +357,7 @@ class MainWindow(QMainWindow):
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
         except (
-            AttributeError
+                AttributeError
         ):  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
             logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
@@ -438,7 +437,7 @@ class MainWindow(QMainWindow):
         self._visualization_control_panel._blender_executable_label.setText(str(self._gui_state.blender_path))
         self._visualization_control_panel._blender_executable_path = str(self._gui_state.blender_path)
 
-        save_gui_state(self._gui_state, get_gui_state_json_path())
+        save_gui_state(self._gui_state)
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())
 
@@ -473,14 +472,19 @@ class MainWindow(QMainWindow):
 
         self._welcome_screen_dialog.exec()
 
-    def open_data_quality_warning_dialog(self):
-        logger.info("Opening `Data Quality Warning` dialog... ")
+    def open_release_notes_popup(self):
+        logger.info("Opening `Release Notes` dialog... ")
 
-        data_quality_warning_dialog = Version_1_5_4_DataWarningDialog(
-            gui_state=self._gui_state, kill_thread_event=self._kill_thread_event, parent=self
+        self._gui_state.shown_latest_release_notes = True
+
+        save_gui_state(gui_state=self._gui_state, file_pathstring=get_gui_state_json_path())
+
+        dialog = TabbedReleaseNotesDialog(
+            kill_thread_event=threading.Event(),
+            gui_state=self._gui_state,
+            dark_mode=True  # Set to True for dark mode, False for light mode
         )
-
-        data_quality_warning_dialog.exec()
+        dialog.exec()
 
     def open_opencv_conflict_dialog(self):
         self._opencv_conflict_dialog = OpencvConflictDialog(
@@ -521,12 +525,12 @@ class MainWindow(QMainWindow):
 
         if not synchronization_bool:
             for video_path in tqdm(
-                video_paths,
-                desc="Importing videos...",
-                colour=[255, 128, 0],
-                unit="video",
-                unit_scale=True,
-                leave=False,
+                    video_paths,
+                    desc="Importing videos...",
+                    colour=[255, 128, 0],
+                    unit="video",
+                    unit_scale=True,
+                    leave=False,
             ):
                 if not Path(video_path).exists():
                     logger.error(f"{video_path} does not exist!")

@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import Callable, Union
 
-import numpy as np
 import cv2
+import numpy as np
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
@@ -26,17 +26,26 @@ from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibrat
     CharucoVelocityError
 )
 
+from dataclasses import dataclass
+
 from collections import namedtuple
 logger = logging.getLogger(__name__)
 
 Extrinsics = namedtuple("Extrinsics", ["rvecs", "tvecs"])
+
+@dataclass
+class GroundPlaneSuccess:
+    success: bool
+    error: str = None
+
 class AniposeCameraCalibrator:
     def __init__(
         self,
         charuco_board_object: CharucoBoardDefinition,
         charuco_square_size: Union[int, float],
         calibration_videos_folder_path: Union[str, Path],
-        progress_callback: Callable[[str], None] = None,
+        progress_callback: Callable[[str], None] = lambda _: None
+
     ):
         self._charuco_board_object = charuco_board_object
         self._progress_callback = progress_callback
@@ -52,7 +61,7 @@ class AniposeCameraCalibrator:
         self._initialize_anipose_objects()
 
     def _get_video_paths(
-        self,
+            self,
     ):
         self._list_of_video_paths = get_video_paths(path_to_video_folder=Path(self._calibration_videos_folder_path))
 
@@ -77,7 +86,7 @@ class AniposeCameraCalibrator:
             dict_size=250,
         )
 
-    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False, use_charuco_as_groundplane: bool = False) -> Path:
+    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False, use_charuco_as_groundplane: bool = False) -> tuple[Path, GroundPlaneSuccess]:
         video_paths_list_of_list_of_strings = [[str(this_path)] for this_path in self._list_of_video_paths]
 
         (
@@ -92,10 +101,10 @@ class AniposeCameraCalibrator:
         self._progress_callback(success_str)
         if pin_camera_0_to_origin:
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
+            groundplane_success = None
 
         if use_charuco_as_groundplane:
-            self._anipose_camera_group_object = self.set_charuco_board_as_groundplane(self._anipose_camera_group_object)
-            logger.info("Anipose camera calibration data adjusted to set charuco board as ground plane")
+            self._anipose_camera_group_object, groundplane_success = self.set_charuco_board_as_groundplane(self._anipose_camera_group_object)
 
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem
@@ -123,7 +132,7 @@ class AniposeCameraCalibrator:
             "Anipose camera calibration data saved to calibrations folder, recording folder, and `Last Successful Calibration` file"
         )
 
-        return calibration_folder_toml_path
+        return calibration_folder_toml_path, groundplane_success
 
     def pin_camera_zero_to_origin(self, cam_group: freemocap_anipose.CameraGroup):
         """
@@ -147,23 +156,23 @@ class AniposeCameraCalibrator:
         cam_group.set_translations(tvecs_new)
         return cam_group
 
-    def align_rotations_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):
+    def align_rotations_to_cam0(self, cam_group: freemocap_anipose.CameraGroup):
         rvecs = cam_group.get_rotations()
-        #get rotation of cam 0 to world
-        R0,_  = cv2.Rodrigues(rvecs[0]) 
+        # get rotation of cam 0 to world
+        R0, _ = cv2.Rodrigues(rvecs[0])
 
         rvecs_new = np.empty_like(rvecs)
-        #rotates each cameras coordinate system into the new world space
-        #R0 maps world -> cam0, so R0.T (which is also the inverse) maps cam0 -> world
-        #R0 * R0^-1 = identity matrix, so this makes R0 the origin
+        # rotates each cameras coordinate system into the new world space
+        # R0 maps world -> cam0, so R0.T (which is also the inverse) maps cam0 -> world
+        # R0 * R0^-1 = identity matrix, so this makes R0 the origin
         # then we map every other camera into the new world space
         for i in range(rvecs.shape[0]):
-            Ri,_ = cv2.Rodrigues(rvecs[i])
-            Ri_new,_ = cv2.Rodrigues(Ri @ R0.T)
+            Ri, _ = cv2.Rodrigues(rvecs[i])
+            Ri_new, _ = cv2.Rodrigues(Ri @ R0.T)
             rvecs_new[i] = Ri_new.flatten()
         return rvecs_new
-    
-    def shift_origin_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):
+
+    def shift_origin_to_cam0(self, cam_group: freemocap_anipose.CameraGroup):
         # Get original translation and rotation vectors
         tvecs = cam_group.get_translations()
         rvecs = cam_group.get_rotations()
@@ -227,15 +236,16 @@ class AniposeCameraCalibrator:
                 "Ground-plane alignment skipped – reverting to original calibration: %s",
                 e,
                 exc_info=True, )
-            return cam_group
+            success = GroundPlaneSuccess(success=False, error=str(e))
+            return cam_group, success
         except CharucoVelocityError as e:
             logger.warning(
                 "Ground-plane alignment skipped – reverting to original calibration: %s",
                 e,
                 exc_info=True, )
-            return cam_group
-    
-   
+            success = GroundPlaneSuccess(success=False, error=str(e))
+            return cam_group,success
+
         charuco_frame = charuco_3d_xyz[charuco_still_frame_idx]
 
         x_hat, y_hat, z_hat = compute_basis_vectors_of_new_reference(charuco_frame,
@@ -249,7 +259,9 @@ class AniposeCameraCalibrator:
                                                                                 rmat_charuco_to_world=rmat_charuco_to_world)
         cam_group.set_rotations(extrinsics.rvecs)
         cam_group.set_translations(extrinsics.tvecs)
-        return cam_group      
+        success = GroundPlaneSuccess(success=True)
+        logger.info("Anipose camera calibration data adjusted to set charuco board as ground plane")
+        return cam_group, success
 
     def adjust_world_reference_frame_to_charuco(self, 
                                                 cam_group:freemocap_anipose.CameraGroup,

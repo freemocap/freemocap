@@ -67,10 +67,10 @@ def adjust_default_settings(filter_sampling_rate, filter_cutoff_frequency, filte
 
 
 def run_post_processing_worker(
-    raw_skel3d_frame_marker_xyz: np.ndarray,
-    settings_dictionary: dict,
-    landmark_names: list,
-    run_butterworth_filter: bool,
+        raw_skel3d_frame_marker_xyz: np.ndarray,
+        settings_dictionary: dict,
+        landmark_names: list,
+        run_butterworth_filter: bool,
 ) -> np.ndarray:
     def handle_thread_finished(results, post_processed_data_handler: PostProcessedDataHandler):
         # TODO: skellyforge should handle getting the final task results regardless of what was run
@@ -105,9 +105,9 @@ def run_post_processing_worker(
 
 
 def post_process_data(
-    recording_processing_parameter_model: ProcessingParameterModel,
-    raw_skel3d_frame_marker_xyz: np.ndarray,
-    queue: multiprocessing.Queue,
+        recording_processing_parameter_model: ProcessingParameterModel,
+        raw_skel3d_frame_marker_xyz: np.ndarray,
+        queue: multiprocessing.Queue,
 ) -> np.ndarray:
     if queue:
         handler = DirectQueueHandler(queue)

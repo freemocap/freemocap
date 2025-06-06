@@ -1,13 +1,12 @@
 from typing import List, Dict, Optional
 
-
 from freemocap.data_layer.skeleton_models.marker_info import MarkerInfo
 from freemocap.data_layer.skeleton_models.segments import Segment, SegmentAnthropometry
 from freemocap.data_layer.skeleton_models.skeleton import Skeleton
 
 
 def create_marker_info(
-    marker_list: List[str], virtual_markers: Optional[Dict[str, Dict[str, List]]] = None
+        marker_list: List[str], virtual_markers: Optional[Dict[str, Dict[str, List]]] = None
 ) -> MarkerInfo:
     """
     Creates a MarkerInfo instance from a list of actual marker names and optional virtual markers.
@@ -28,12 +27,12 @@ def create_marker_info(
 
 
 def create_skeleton_model(
-    actual_markers: List[str],
-    num_tracked_points: int,
-    segment_connections: Optional[Dict[str, Segment]] = None,
-    virtual_markers: Optional[Dict[str, Dict[str, List]]] = None,
-    joint_hierarchy: Optional[Dict[str, List[str]]] = None,
-    center_of_mass_info: Optional[Dict[str, SegmentAnthropometry]] = None,
+        actual_markers: List[str],
+        num_tracked_points: int,
+        segment_connections: Optional[Dict[str, Segment]] = None,
+        virtual_markers: Optional[Dict[str, Dict[str, List]]] = None,
+        joint_hierarchy: Optional[Dict[str, List[str]]] = None,
+        center_of_mass_info: Optional[Dict[str, SegmentAnthropometry]] = None,
 ) -> Skeleton:
     """
     Creates a Skeleton model that includes both actual and optionally virtual markers

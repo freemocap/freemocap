@@ -20,11 +20,11 @@ class AniposeCalibrationThreadWorker(QThread):
     in_progress = Signal(str)
 
     def __init__(
-        self,
-        calibration_videos_folder_path: Union[str, Path],
-        charuco_square_size: Union[int, float],
-        kill_thread_event: threading.Event,
-        charuco_board_definition: CharucoBoardDefinition = None,
+            self,
+            calibration_videos_folder_path: Union[str, Path],
+            charuco_square_size: Union[int, float],
+            kill_thread_event: threading.Event,
+            charuco_board_definition: CharucoBoardDefinition = None,
     ):
         super().__init__()
         logger.info(

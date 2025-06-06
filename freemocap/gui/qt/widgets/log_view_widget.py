@@ -170,7 +170,7 @@ class LogViewWidget(QPlainTextEdit):
         self._progress_counter += 1
 
     def _replace_last_line(
-        self, text: str
+            self, text: str
     ) -> None:  # from https://stackoverflow.com/questions/53381975/display-terminal-output-with-tqdm-in-qplaintextedit
         cursor = self.textCursor()
         cursor.movePosition(QtGui.QTextCursor.End)

@@ -1873,9 +1873,12 @@ class CameraGroup:
                         "filled": filled,
                     }
                     camera_rows.append(row)
-            if verbose:
-                print(f"Camera {camera_number} has {len(camera_rows)} frames with detected corners.")
             all_rows.append(camera_rows)
+        if verbose:
+            print(f"Charuco detection results:")
+            for i, rows in enumerate(all_rows):
+                print(f"\tCamera {i} has {len(rows)} frames with detected corners.")
+
 
         return all_rows
 

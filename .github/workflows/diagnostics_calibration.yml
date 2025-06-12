@@ -59,7 +59,7 @@ jobs:
         shell: bash
         run: |
           source .venv/bin/activate || source .venv/Scripts/activate
-          python freemocap/diagnostics/calculate_calibration_diagnostics.py
+          python freemocap/diagnostics/calibration/calculate_calibration_diagnostics.py
       
       - uses: actions/upload-artifact@v4
         with:

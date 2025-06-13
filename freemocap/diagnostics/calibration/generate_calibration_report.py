@@ -1,11 +1,12 @@
 from pathlib import Path
+
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import plotly.io as pio
 from jinja2 import Template
-from packaging.version import parse as vparse, Version
-import sys
+from packaging.version import Version
+from packaging.version import parse as vparse
+from plotly.subplots import make_subplots
 
 CURRENT_SENTINEL = Version("9999.0.0")
 EXPECTED = 58.0

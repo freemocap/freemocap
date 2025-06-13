@@ -1,24 +1,22 @@
+import json
 import logging
 from pathlib import Path
 
-from freemocap.core_processes.capture_volume_calibration.run_anipose_capture_volume_calibration import (
-    run_anipose_capture_volume_calibration,
-)
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
-    freemocap_anipose,
-)
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
-    CharucoBoardDefinition,
-)
-from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
-from pathlib import Path
-from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
-from freemocap.diagnostics.download_data import download_test
-from freemocap.diagnostics.calibration.calibration_utils import (
-    get_charuco_2d_data,
-)
 import numpy as np
-import json
+
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import \
+    freemocap_anipose
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import \
+    CharucoBoardDefinition
+from freemocap.core_processes.capture_volume_calibration.run_anipose_capture_volume_calibration import \
+    run_anipose_capture_volume_calibration
+from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import \
+    triangulate_3d_data
+from freemocap.data_layer.recording_models.recording_info_model import \
+    RecordingInfoModel
+from freemocap.diagnostics.calibration.calibration_utils import \
+    get_charuco_2d_data
+from freemocap.diagnostics.download_data import download_test
 
 # Configure logging
 logger = logging.getLogger(__name__)

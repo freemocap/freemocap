@@ -1,7 +1,8 @@
-from pathlib import Path
-import pandas as pd
 import subprocess
 import sys
+from pathlib import Path
+
+import pandas as pd
 
 # repo root = three levels up from this script
 repo_root = Path(__file__).resolve().parents[3]
@@ -35,7 +36,7 @@ for f in csv_files:
         print(f"    Shape: {df.shape}")
         print(f"    Columns: {list(df.columns)}")
         if len(df) > 0:
-            print(f"    First row:")
+            print("    First row:")
             print(f"      OS: '{df.iloc[0]['os']}'")
             print(f"      Version: '{df.iloc[0]['version']}'")
             print(f"      Mean distance: {df.iloc[0]['mean_distance']}")
@@ -43,19 +44,17 @@ for f in csv_files:
     except Exception as e:
         print(f"  Error reading {f}: {e}")
         # Try to read raw content
-        try:
-            with open(f, "r") as fh:
-                print(f"  Raw content of {f.name}:")
-                print(fh.read())
-        except:
-            pass
+        with open(f, "r") as fh:
+            print(f"  Raw content of {f.name}:")
+            print(fh.read())
+
 
 if not rows:
     sys.exit("❌ No valid CSV data found")
 
 new_df = pd.concat(rows, ignore_index=True)
 print(f"\nCombined into {len(new_df)} new rows")
-print(f"New data preview:")
+print("New data preview:")
 print(new_df.to_string())
 
 # Standardize OS names

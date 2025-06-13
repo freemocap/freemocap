@@ -1,11 +1,13 @@
 import io
 import logging
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
 
 import requests
-from dataclasses import dataclass
-from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path
+
+from freemocap.system.paths_and_filenames.path_getters import \
+    get_recording_session_folder_path
 
 logger = logging.getLogger(__name__)
 

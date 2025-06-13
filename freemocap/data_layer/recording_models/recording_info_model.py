@@ -41,11 +41,11 @@ logger = logging.getLogger(__name__)
 class RecordingInfoModel:
     def __init__(self, recording_folder_path: Union[Path, str], active_tracker: str = "mediapipe"):
         if any(
-                [
-                    Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME,
-                    Path(recording_folder_path).name == ANNOTATED_VIDEOS_FOLDER_NAME,
-                    Path(recording_folder_path).name == OUTPUT_DATA_FOLDER_NAME,
-                ]
+            [
+                Path(recording_folder_path).name == SYNCHRONIZED_VIDEOS_FOLDER_NAME,
+                Path(recording_folder_path).name == ANNOTATED_VIDEOS_FOLDER_NAME,
+                Path(recording_folder_path).name == OUTPUT_DATA_FOLDER_NAME,
+            ]
         ):
             recording_folder_path = Path(recording_folder_path).parent
 
@@ -133,10 +133,10 @@ class RecordingInfoModel:
     @property
     def raw_data_3d_npy_file_path(self):
         raw_data_path = (
-                Path(self._path)
-                / OUTPUT_DATA_FOLDER_NAME
-                / RAW_DATA_FOLDER_NAME
-                / (self.file_prefix + RAW_3D_NPY_FILE_NAME)
+            Path(self._path)
+            / OUTPUT_DATA_FOLDER_NAME
+            / RAW_DATA_FOLDER_NAME
+            / (self.file_prefix + RAW_3D_NPY_FILE_NAME)
         )
         old_raw_data_path = Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / OLD_RAW_3D_NPY_FILE_NAME
         if self.active_tracker == "mediapipe" and old_raw_data_path.exists() and not raw_data_path.exists():
@@ -147,18 +147,18 @@ class RecordingInfoModel:
     @property
     def reprojection_error_data_npy_file_path(self):
         reprojection_error_path = (
-                Path(self._path)
-                / OUTPUT_DATA_FOLDER_NAME
-                / RAW_DATA_FOLDER_NAME
-                / (self.file_prefix + REPROJECTION_ERROR_NPY_FILE_NAME)
+            Path(self._path)
+            / OUTPUT_DATA_FOLDER_NAME
+            / RAW_DATA_FOLDER_NAME
+            / (self.file_prefix + REPROJECTION_ERROR_NPY_FILE_NAME)
         )
         raw_reprojection_error_path = (
-                Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / OLD_REPROJECTION_ERROR_NPY_FILE_NAME
+            Path(self._path) / OUTPUT_DATA_FOLDER_NAME / RAW_DATA_FOLDER_NAME / OLD_REPROJECTION_ERROR_NPY_FILE_NAME
         )
         if (
-                self.active_tracker == "mediapipe"
-                and raw_reprojection_error_path.exists()
-                and not reprojection_error_path.exists()
+            self.active_tracker == "mediapipe"
+            and raw_reprojection_error_path.exists()
+            and not reprojection_error_path.exists()
         ):
             return str(raw_reprojection_error_path)
         else:
@@ -167,16 +167,16 @@ class RecordingInfoModel:
     @property
     def total_body_center_of_mass_npy_file_path(self):
         total_body_com_path = (
-                Path(self._path)
-                / OUTPUT_DATA_FOLDER_NAME
-                / CENTER_OF_MASS_FOLDER_NAME
-                / (self.file_prefix + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
+            Path(self._path)
+            / OUTPUT_DATA_FOLDER_NAME
+            / CENTER_OF_MASS_FOLDER_NAME
+            / (self.file_prefix + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
         )
         raw_total_body_com_path = (
-                Path(self._path)
-                / OUTPUT_DATA_FOLDER_NAME
-                / CENTER_OF_MASS_FOLDER_NAME
-                / OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME
+            Path(self._path)
+            / OUTPUT_DATA_FOLDER_NAME
+            / CENTER_OF_MASS_FOLDER_NAME
+            / OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME
         )
         if self.active_tracker == "mediapipe" and raw_total_body_com_path.exists() and not total_body_com_path.exists():
             return str(raw_total_body_com_path)

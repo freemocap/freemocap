@@ -38,7 +38,9 @@ class TabbedReleaseNotesDialog(QDialog):
 
         self.setMinimumSize(min_width, min_height)
         self.setWindowTitle("FreeMoCap Release Notes")
-        self.setStyleSheet(ReleaseNotesStyles.get_dialog_style(dark_mode=self.dark_mode))
+        self.setStyleSheet(
+            ReleaseNotesStyles.get_dialog_style(
+                dark_mode=self.dark_mode))
 
         # Main layout - horizontal to support side tabs
         main_layout = QHBoxLayout()
@@ -49,7 +51,9 @@ class TabbedReleaseNotesDialog(QDialog):
         # Create tab widget with tabs on the left side
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabPosition(QTabWidget.South)  # Set tabs to the left side
-        self.tab_widget.setStyleSheet(ReleaseNotesStyles.get_tab_widget_style(dark_mode=self.dark_mode))
+        self.tab_widget.setStyleSheet(
+            ReleaseNotesStyles.get_tab_widget_style(
+                dark_mode=self.dark_mode))
 
         self.tab_widget.tabBar().setElideMode(Qt.ElideNone)
 
@@ -82,7 +86,8 @@ class TabbedReleaseNotesDialog(QDialog):
             # Add tab
             self.tab_widget.addTab(tab, release_note.tab_title)
 
-    def _create_release_notes_content(self, title: str, content: str, logo_path: str = None) -> QWidget:
+    def _create_release_notes_content(
+            self, title: str, content: str, logo_path: str = None) -> QWidget:
         """Create a widget with release notes content."""
         content_widget = QWidget()
         content_layout = QHBoxLayout(content_widget)
@@ -131,7 +136,8 @@ class TabbedReleaseNotesDialog(QDialog):
 
             pixmap = QPixmap(logo_path)
             if not pixmap.isNull():
-                scaled_pixmap = pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                scaled_pixmap = pixmap.scaled(
+                    200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 logo_label.setPixmap(scaled_pixmap)
             else:
                 print(f"Failed to load image: {logo_path}")
@@ -139,8 +145,6 @@ class TabbedReleaseNotesDialog(QDialog):
             content_layout.addWidget(logo_label, 0, Qt.AlignTop)
 
         return content_widget
-
-
 
 
 if __name__ == "__main__":
@@ -152,7 +156,8 @@ if __name__ == "__main__":
     # Show the new tabbed dialog with dark mode enabled
     dialog = TabbedReleaseNotesDialog(
         gui_state=load_gui_state(),
-        kill_thread_event=threading.Event(), dark_mode=True  # Set to True for dark mode, False for light mode
+        kill_thread_event=threading.Event(),
+        dark_mode=True,  # Set to True for dark mode, False for light mode
     )
     dialog.show()
 

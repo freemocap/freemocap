@@ -2,8 +2,10 @@ from dataclasses import dataclass
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
 
-SKELLY_SWEAT_PNG = PATH_TO_FREEMOCAP_LOGO_SVG.replace("freemocap-logo-black-border.svg", "skelly-sweat.png")
-SKELLY_HEART_EYES_PNG = PATH_TO_FREEMOCAP_LOGO_SVG.replace("freemocap-logo-black-border.svg", "skelly-heart-eyes.png")
+SKELLY_SWEAT_PNG = PATH_TO_FREEMOCAP_LOGO_SVG.replace(
+    "freemocap-logo-black-border.svg", "skelly-sweat.png")
+SKELLY_HEART_EYES_PNG = PATH_TO_FREEMOCAP_LOGO_SVG.replace(
+    "freemocap-logo-black-border.svg", "skelly-heart-eyes.png")
 
 
 @dataclass
@@ -108,7 +110,7 @@ def get_older_versions_content() -> ReleaseNoteContent:
         tab_title="Older Versions",
         content_title="Previous Versions",
         content_html="""
-        <p>For information about older versions, please visit our 
+        <p>For information about older versions, please visit our
         <a href='https://github.com/freemocap/freemocap/releases'>GitHub releases page</a>.</p>
         """,
         logo_path=None,

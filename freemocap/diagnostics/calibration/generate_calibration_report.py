@@ -18,24 +18,7 @@ def safe_parse(ver: str) -> Version:
 
 
 def load_summary_data():
-    # Try to find the CSV in multiple locations
-    possible_paths = [
-        Path("freemocap/diagnostics/diagnostic_data/calibration_diagnostics_summary.csv"),
-        Path("calibration_diagnostics_summary.csv"),
-        Path.cwd() / "freemocap/diagnostics/diagnostic_data/calibration_diagnostics_summary.csv",
-    ]
-
-    summary_csv = None
-    for path in possible_paths:
-        if path.exists():
-            summary_csv = path
-            break
-
-    if summary_csv is None:
-        print(f"Could not find calibration_diagnostics_summary.csv in any of these locations:")
-        for path in possible_paths:
-            print(f"  - {path.absolute()}")
-        sys.exit(1)
+    summary_csv = Path("freemocap/diagnostics/diagnostic_data/calibration_diagnostics_summary.csv")
 
     print(f"Loading data from: {summary_csv}")
     df = pd.read_csv(summary_csv)

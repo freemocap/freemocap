@@ -3,11 +3,8 @@ from skellytracker.process_folder_of_videos import process_folder_of_videos
 from pathlib import Path
 from typing import Union
 import numpy as np
-from dataclasses import dataclass
-
-
-@dataclass
-class CharucoNeighborStats:
+from pydantic import BaseModel
+class CharucoNeighborStats(BaseModel):
     mean_distance: float
     median_distance: float
     std_distance: float

@@ -12,17 +12,26 @@ logger = logging.getLogger(__name__)
 DOWNLOAD_SAMPLE_DATA_ACTION_NAME = "Download Sample Data (3 cameras, ~1000 frames)"
 DOWNLOAD_TEST_DATA_ACTION_NAME = "Download Test Data (3 cameras, ~200 frames)"
 
+
 class Dataset(BaseModel):
     url: str
     menu_label: str
-    tooltip: str = "Download this dataset to use in Freemocap. The sample data contains 3 cameras and ~1000 frames. The test data contains 3 cameras and ~200 frames."
+    tooltip: str = (
+        "Download this dataset to use in Freemocap. The sample data contains 3 cameras and ~1000 frames. The test data contains 3 cameras and ~200 frames."
+    )
+
 
 DATASETS = {
-    "sample": Dataset(url = "https://github.com/freemocap/skellysamples/releases/download/sample_data_v06_12_25/freemocap_sample_data.zip",
-                     menu_label=DOWNLOAD_SAMPLE_DATA_ACTION_NAME),
-    "test": Dataset(url = "https://github.com/freemocap/skellysamples/releases/download/test_data_v06_09_25/freemocap_test_data.zip",
-                     menu_label=DOWNLOAD_TEST_DATA_ACTION_NAME),
+    "sample": Dataset(
+        url="https://github.com/freemocap/skellysamples/releases/download/sample_data_v06_12_25/freemocap_sample_data.zip",
+        menu_label=DOWNLOAD_SAMPLE_DATA_ACTION_NAME,
+    ),
+    "test": Dataset(
+        url="https://github.com/freemocap/skellysamples/releases/download/test_data_v06_09_25/freemocap_test_data.zip",
+        menu_label=DOWNLOAD_TEST_DATA_ACTION_NAME,
+    ),
 }
+
 
 def download_and_extract_zip(zip_file_url) -> str:
     try:
@@ -35,21 +44,24 @@ def download_and_extract_zip(zip_file_url) -> str:
         z = zipfile.ZipFile(io.BytesIO(r.content))
         z.extractall(recording_session_folder_path)
 
-        recording_name = {Path(p).parts[0] for p in z.namelist() if not p.endswith("/")} #gets name of recording (top-level folder in zip file)
+        recording_name = {
+            Path(p).parts[0] for p in z.namelist() if not p.endswith("/")
+        }  # gets name of recording (top-level folder in zip file)
         if len(recording_name) != 1:
             raise ValueError(f"{zip_file_url!r} contained {len(recording_name)} top-level entries: {recording_name}")
 
         data_path = recording_session_folder_path / recording_name.pop()
-        logger.info(f"Data extracted successfully")
+        logger.info("Data extracted successfully")
         return str(data_path)
-    
+
     except requests.exceptions.RequestException as e:
         logger.error(f"Request failed: {e}")
         raise e
     except zipfile.BadZipFile as e:
         logger.error(f"Failed to unzip the file: {e}")
         raise e
-        
+
+
 def download_dataset(key: str) -> str:
     """
     Downloads the specified dataset zip file and extracts it to the recording session folder.
@@ -57,8 +69,9 @@ def download_dataset(key: str) -> str:
     """
     if key not in DATASETS:
         raise ValueError(f"Unknown dataset '{key}'. Options: {list(DATASETS)}")
-    
+
     return download_and_extract_zip(DATASETS[key].url)
+
 
 def download_test_data() -> str:
     """
@@ -67,12 +80,14 @@ def download_test_data() -> str:
     """
     return download_dataset("test")
 
+
 def download_sample_data() -> str:
     """
     Downloads the sample data zip file and extracts it to the recording session folder.
     Returns the path to the extracted data.
     """
     return download_dataset("sample")
+
 
 def get_sample_data_path() -> Path:
     """
@@ -83,8 +98,9 @@ def get_sample_data_path() -> Path:
     if not sample_data_path.exists():
         logger.info(f"Sample data not found at {sample_data_path}. Downloading...")
         download_sample_data()
-    
+
     return sample_data_path
+
 
 if __name__ == "__main__":
     sample_data_path = download_sample_data()

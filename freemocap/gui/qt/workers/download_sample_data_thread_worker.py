@@ -7,6 +7,7 @@ from freemocap.utilities.download_sample_data import download_dataset
 
 logger = logging.getLogger(__name__)
 
+
 class DownloadDataThreadWorker(QThread):
     finished = Signal(str)
     in_progress = Signal(str)
@@ -30,5 +31,5 @@ class DownloadDataThreadWorker(QThread):
 
         except Exception as e:  # noqa
             logger.exception(e)
-            logger.error(f"Error downloading sample data")
+            logger.error("Error downloading sample data")
             raise e

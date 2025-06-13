@@ -24,16 +24,13 @@ FREEMOCAP_FOUNDATION_ACTION_NAME = "Freemocap Foundation"
 
 DONATE_ACTION_NAME = "Donate to Freemocap"
 
+
 class Actions:
     def __init__(self, freemocap_main_window):
         # File
-        self.create_new_recording_action = QAction(
-            CREATE_NEW_RECORDING_ACTION_NAME, parent=freemocap_main_window
-        )
+        self.create_new_recording_action = QAction(CREATE_NEW_RECORDING_ACTION_NAME, parent=freemocap_main_window)
         self.create_new_recording_action.setShortcut("Ctrl+N")
-        self.create_new_recording_action.triggered.connect(
-            freemocap_main_window.handle_start_new_session_action
-        )
+        self.create_new_recording_action.triggered.connect(freemocap_main_window.handle_start_new_session_action)
 
         self.load_most_recent_recording_action = QAction(
             LOAD_MOST_RECENT_RECORDING_ACTION_NAME, parent=freemocap_main_window
@@ -43,46 +40,29 @@ class Actions:
             freemocap_main_window.handle_load_most_recent_recording
         )
 
-        self.load_existing_recording_action = QAction(
-            LOAD_RECORDING_ACTION_NAME, parent=freemocap_main_window
-        )
+        self.load_existing_recording_action = QAction(LOAD_RECORDING_ACTION_NAME, parent=freemocap_main_window)
         self.load_existing_recording_action.setShortcut("Ctrl+O")
-        self.load_existing_recording_action.triggered.connect(
-            freemocap_main_window.open_load_existing_recording_dialog
-        )
+        self.load_existing_recording_action.triggered.connect(freemocap_main_window.open_load_existing_recording_dialog)
 
-        self.import_videos_action = QAction(
-            IMPORT_VIDEOS_ACTION_NAME, parent=freemocap_main_window
-        )
+        self.import_videos_action = QAction(IMPORT_VIDEOS_ACTION_NAME, parent=freemocap_main_window)
         self.import_videos_action.setShortcut("Ctrl+I")
-        self.import_videos_action.triggered.connect(
-            freemocap_main_window.open_import_videos_dialog
-        )
+        self.import_videos_action.triggered.connect(freemocap_main_window.open_import_videos_dialog)
 
         for key in DATASETS:
-            setattr(self, f"download_{key}_data_action", make_download_data_action(
-                dataset_key=key,
-                freemocap_main_window=freemocap_main_window
-            ))
+            setattr(
+                self,
+                f"download_{key}_data_action",
+                make_download_data_action(dataset_key=key, freemocap_main_window=freemocap_main_window),
+            )
 
-        self.set_data_folder_action = QAction(
-            SET_DATA_FOLDER_ACTION_NAME, parent=freemocap_main_window
-        )
+        self.set_data_folder_action = QAction(SET_DATA_FOLDER_ACTION_NAME, parent=freemocap_main_window)
         self.set_data_folder_action.setShortcut("Ctrl+S")
-        self.set_data_folder_action.triggered.connect(
-            freemocap_main_window.open_settings_dialog
-        )
+        self.set_data_folder_action.triggered.connect(freemocap_main_window.open_settings_dialog)
 
-        self.reset_to_defaults_action = QAction(
-            RESET_TO_DEFAULTS_ACTION_NAME, parent=freemocap_main_window
-        )
-        self.reset_to_defaults_action.triggered.connect(
-            freemocap_main_window.reset_to_default_gui_settings
-        )
+        self.reset_to_defaults_action = QAction(RESET_TO_DEFAULTS_ACTION_NAME, parent=freemocap_main_window)
+        self.reset_to_defaults_action.triggered.connect(freemocap_main_window.reset_to_default_gui_settings)
 
-        self.reboot_gui_action = QAction(
-            REBOOT_GUI_ACTION_NAME, parent=freemocap_main_window
-        )
+        self.reboot_gui_action = QAction(REBOOT_GUI_ACTION_NAME, parent=freemocap_main_window)
         self.reboot_gui_action.setShortcut("Ctrl+R")
         self.reboot_gui_action.triggered.connect(freemocap_main_window.reboot_gui)
 
@@ -99,28 +79,16 @@ class Actions:
         self.exit_action.triggered.connect(freemocap_main_window.close)
 
         # Help
-        self.open_docs_action = QAction(
-            OPEN_DOCS_ACTION_NAME, parent=freemocap_main_window
-        )
-        self.open_docs_action.triggered.connect(
-            lambda: QDesktopServices.openUrl(QUrl(DOCUMENTATION_WELCOME_URL))
-        )
+        self.open_docs_action = QAction(OPEN_DOCS_ACTION_NAME, parent=freemocap_main_window)
+        self.open_docs_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(DOCUMENTATION_WELCOME_URL)))
 
-        self.freemocap_foundation_action = QAction(
-            FREEMOCAP_FOUNDATION_ACTION_NAME, parent=freemocap_main_window
-        )
+        self.freemocap_foundation_action = QAction(FREEMOCAP_FOUNDATION_ACTION_NAME, parent=freemocap_main_window)
         self.freemocap_foundation_action.triggered.connect(
-            lambda: QDesktopServices.openUrl(
-                QUrl("https://freemocap.org/about-us.html")
-            )
+            lambda: QDesktopServices.openUrl(QUrl("https://freemocap.org/about-us.html"))
         )
 
-        self.show_release_notes_action = QAction(
-            "Release Notes", parent=freemocap_main_window
-        )
-        self.show_release_notes_action.triggered.connect(
-            freemocap_main_window.open_release_notes_popup
-        )
+        self.show_release_notes_action = QAction("Release Notes", parent=freemocap_main_window)
+        self.show_release_notes_action.triggered.connect(freemocap_main_window.open_release_notes_popup)
 
         # # Navigation
         # show_camera_control_panel_action = QAction("&1 - Show Camera Control Panel", parent=main_window)
@@ -137,9 +105,7 @@ class Actions:
         # Support
         self.donate_action = QAction(DONATE_ACTION_NAME, parent=freemocap_main_window)
         self.donate_action.triggered.connect(
-            lambda: QDesktopServices.openUrl(
-                QUrl("https://freemocap.org/about-us.html#donate")
-            )
+            lambda: QDesktopServices.openUrl(QUrl("https://freemocap.org/about-us.html#donate"))
         )
         # self.send_usage_statistics_action = QAction("Send &User Statistics", parent=freemocap_main_window)
         # self.user_survey_action = QAction("&User Survey", parent=freemocap_main_window)

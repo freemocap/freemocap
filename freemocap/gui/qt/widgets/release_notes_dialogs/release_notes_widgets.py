@@ -78,7 +78,8 @@ class ReleaseNotesDialog(QDialog):
 
             pixmap = QPixmap(logo_path)
             if not pixmap.isNull():
-                scaled_pixmap = pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                scaled_pixmap = pixmap.scaled(
+                    150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 logo_label.setPixmap(scaled_pixmap)
             else:
                 print(f"Failed to load image: {logo_path}")
@@ -96,10 +97,16 @@ class ReleaseNotesDialog(QDialog):
         if show_again_flag_name:
             self._dont_show_again_checkbox = QCheckBox("Don't show this message again")
             self._dont_show_again_checkbox.setStyleSheet("font-size: 13px;")
-            self._dont_show_again_checkbox.stateChanged.connect(self._dont_show_again_checkbox_changed)
+            self._dont_show_again_checkbox.stateChanged.connect(
+                self._dont_show_again_checkbox_changed)
             controls_layout.addWidget(self._dont_show_again_checkbox)
 
-        controls_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        controls_layout.addItem(
+            QSpacerItem(
+                40,
+                20,
+                QSizePolicy.Expanding,
+                QSizePolicy.Minimum))
 
         done_btn = QPushButton(self.get_button_text())
         done_btn.setStyleSheet(self.get_button_style())
@@ -112,8 +119,13 @@ class ReleaseNotesDialog(QDialog):
         """Handle the 'don't show again' checkbox state change."""
         flag_name = self.get_show_again_flag_name()
         if flag_name and hasattr(self.gui_state, flag_name):
-            setattr(self.gui_state, flag_name, not self._dont_show_again_checkbox.isChecked())
-            save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+            setattr(
+                self.gui_state,
+                flag_name,
+                not self._dont_show_again_checkbox.isChecked())
+            save_gui_state(
+                gui_state=self.gui_state,
+                file_pathstring=get_gui_state_json_path())
 
     def get_window_title(self) -> str:
         """Return the window title for the dialog."""
@@ -172,7 +184,8 @@ class ReleaseNotesDialog(QDialog):
 
 
 class NewFeatureReleaseNotesDialog(ReleaseNotesDialog):
-    def __init__(self, gui_state: GuiState, kill_thread_event: threading.Event, parent=None) -> None:
+    def __init__(self, gui_state: GuiState,
+                 kill_thread_event: threading.Event, parent=None) -> None:
         super().__init__(
             gui_state=gui_state,
             kill_thread_event=kill_thread_event,
@@ -195,19 +208,19 @@ class NewFeatureReleaseNotesDialog(ReleaseNotesDialog):
             <p style="font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 15px;">
                 FreeMoCap v2.0 is Here!
             </p>
-            
+
             <p>We're excited to announce the release of FreeMoCap v2.0 with several major improvements:</p>
-            
+
             <ul>
                 <li><span class="feature">Enhanced Tracking Accuracy:</span> Improved algorithms for more precise motion capture</li>
                 <li><span class="feature">Real-time Feedback:</span> Get immediate visual feedback during recording sessions</li>
                 <li><span class="feature">Extended Export Options:</span> New formats including FBX and BVH for better compatibility</li>
                 <li><span class="feature">Streamlined UI:</span> Redesigned interface for improved workflow</li>
             </ul>
-            
-            <p>Check out our <a href="https://github.com/freemocap/freemocap/releases">release notes</a> for full details and our 
+
+            <p>Check out our <a href="https://github.com/freemocap/freemocap/releases">release notes</a> for full details and our
             <a href="https://freemocap.org/tutorial">tutorials</a> to get started with the new features.</p>
-            
+
             <p style="font-size: 13px; margin-top: 20px; color: #7f8c8d;">
             Thank you to all our contributors and users for your continued support!
             </p>
@@ -226,7 +239,8 @@ class NewFeatureReleaseNotesDialog(ReleaseNotesDialog):
 
 
 # Path to the skelly sweat image
-SKELLY_SWEAT_SVG = PATH_TO_FREEMOCAP_LOGO_SVG.replace("freemocap-logo-black-border.svg", "skelly-sweat.png")
+SKELLY_SWEAT_SVG = PATH_TO_FREEMOCAP_LOGO_SVG.replace(
+    "freemocap-logo-black-border.svg", "skelly-sweat.png")
 
 
 class ButterworthWarningDialog(ReleaseNotesDialog):
@@ -235,7 +249,8 @@ class ButterworthWarningDialog(ReleaseNotesDialog):
     due to a bug in the Butterworth filtering.
     """
 
-    def __init__(self, gui_state: GuiState, kill_thread_event: threading.Event, parent=None) -> None:
+    def __init__(self, gui_state: GuiState,
+                 kill_thread_event: threading.Event, parent=None) -> None:
         super().__init__(
             gui_state=gui_state,
             kill_thread_event=kill_thread_event,
@@ -297,6 +312,8 @@ if __name__ == "__main__":
     from PySide6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    dialog = ButterworthWarningDialog(gui_state=GuiState(), kill_thread_event=threading.Event())
+    dialog = ButterworthWarningDialog(
+        gui_state=GuiState(),
+        kill_thread_event=threading.Event())
     dialog.show()
     sys.exit(app.exec())

@@ -6,10 +6,8 @@ from importlib.metadata import distributions
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
-from freemocap.gui.qt.utilities.save_and_load_gui_state import save_gui_state
 
 from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
-from freemocap.gui.qt.widgets.release_notes_dialogs.tabbed_release_notes_types import ReleaseNotesDisplayOption
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
@@ -67,10 +65,6 @@ def handle_pop_ups(freemocap_main_window):
         freemocap_main_window.open_welcome_screen_dialog()
     if not freemocap_main_window._gui_state.shown_latest_release_notes:
         freemocap_main_window.open_release_notes_popup()
-
-
-        f = 2
-
 
     installed_packages = {dist.metadata["Name"] for dist in distributions()}
     if "opencv-python" in installed_packages and "opencv-contrib-python" in installed_packages:

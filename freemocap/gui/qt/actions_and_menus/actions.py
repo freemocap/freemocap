@@ -3,16 +3,16 @@ from PySide6.QtGui import QAction, QDesktopServices
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     DOCUMENTATION_WELCOME_URL,
-    FIGSHARE_SAMPLE_ZIP_FILE_URL,
-    FIGSHARE_TEST_ZIP_FILE_URL,
 )
+
+from freemocap.utilities.download_sample_data import DATASETS
+from freemocap.gui.qt.actions_and_menus.sample_data_actions import make_download_data_action
+
 
 CREATE_NEW_RECORDING_ACTION_NAME = "New Recording"
 LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording"
 LOAD_RECORDING_ACTION_NAME = "Load Recording"
 IMPORT_VIDEOS_ACTION_NAME = "Import Videos"
-DOWNLOAD_SAMPLE_DATA_ACTION_NAME = "Download Sample Data (3 cameras, ~1000 frames)"
-DOWNLOAD_TEST_DATA_ACTION_NAME = "Download Test Data (3 cameras, ~200 frames)"
 SET_DATA_FOLDER_ACTION_NAME = "Set Freemocap Data Folder Location"
 RESET_TO_DEFAULTS_ACTION_NAME = "Reset to Default GUI Settings"
 KILL_THREADS_AND_PROCESSES_ACTION_NAME = "Kill Threads and Processes"
@@ -23,7 +23,6 @@ OPEN_DOCS_ACTION_NAME = "Open Documentation"
 FREEMOCAP_FOUNDATION_ACTION_NAME = "Freemocap Foundation"
 
 DONATE_ACTION_NAME = "Donate to Freemocap"
-
 
 class Actions:
     def __init__(self, freemocap_main_window):
@@ -60,23 +59,11 @@ class Actions:
             freemocap_main_window.open_import_videos_dialog
         )
 
-        self.download_sample_data_action = QAction(
-            DOWNLOAD_SAMPLE_DATA_ACTION_NAME, parent=freemocap_main_window
-        )
-        self.download_sample_data_action.triggered.connect(
-            lambda: freemocap_main_window.download_data(
-                download_url=FIGSHARE_SAMPLE_ZIP_FILE_URL
-            )
-        )
-
-        self.download_test_data_action = QAction(
-            DOWNLOAD_TEST_DATA_ACTION_NAME, parent=freemocap_main_window
-        )
-        self.download_test_data_action.triggered.connect(
-            lambda: freemocap_main_window.download_data(
-                download_url=FIGSHARE_TEST_ZIP_FILE_URL
-            )
-        )
+        for key in DATASETS:
+            setattr(self, f"download_{key}_data_action", make_download_data_action(
+                dataset_key=key,
+                freemocap_main_window=freemocap_main_window
+            ))
 
         self.set_data_folder_action = QAction(
             SET_DATA_FOLDER_ACTION_NAME, parent=freemocap_main_window

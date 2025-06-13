@@ -4,42 +4,27 @@ import zipfile
 from pathlib import Path
 
 import requests
-from dataclasses import dataclass
 from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+DOWNLOAD_SAMPLE_DATA_ACTION_NAME = "Download Sample Data (3 cameras, ~1000 frames)"
+DOWNLOAD_TEST_DATA_ACTION_NAME = "Download Test Data (3 cameras, ~200 frames)"
 
-# def get_sample_data_path(download_if_needed: bool = True) -> str: #NOTE - this function is mainly used in headlesses processes - do we need want to replicate/update/deprecate it?
-#     sample_data_path = str(Path(get_recording_session_folder_path()) / FREEMOCAP_TEST_DATA_RECORDING_NAME)
-#     if not Path(sample_data_path).exists():
-#         if download_if_needed:
-#             download_sample_data()
-#         else:
-#             raise Exception(f"Could not find sample data at {sample_data_path} (and `download_if_needed` is False)")
-
-#     return sample_data_path
-
-
-
-@dataclass 
-class Sample:
+class Dataset(BaseModel):
     url: str
+    menu_label: str
+    tooltip: str = "Download this dataset to use in Freemocap. The sample data contains 3 cameras and ~1000 frames. The test data contains 3 cameras and ~200 frames."
 
 DATASETS = {
-    "sample": Sample(url = "https://github.com/freemocap/skellysamples/releases/download/sample_data_v06_12_25/freemocap_sample_data.zip"),
-    "test": Sample(url = "https://github.com/freemocap/skellysamples/releases/download/test_data_v06_09_25/freemocap_test_data.zip")
+    "sample": Dataset(url = "https://github.com/freemocap/skellysamples/releases/download/sample_data_v06_12_25/freemocap_sample_data.zip",
+                     menu_label=DOWNLOAD_SAMPLE_DATA_ACTION_NAME),
+    "test": Dataset(url = "https://github.com/freemocap/skellysamples/releases/download/test_data_v06_09_25/freemocap_test_data.zip",
+                     menu_label=DOWNLOAD_TEST_DATA_ACTION_NAME),
 }
 
-def get_dataset(key: str) -> Path:
-    try:
-        spec = DATASETS[key]
-    except KeyError:
-        raise ValueError(f"Unknown dataset '{key}'. Options: {list(DATASETS)}")
-
-    return Path(download_data(spec.url))
-
-def download_data(zip_file_url) -> str:
+def download_and_extract_zip(zip_file_url) -> str:
     try:
         logger.info(f"Downloading data from {zip_file_url}...")
         recording_session_folder_path = Path(get_recording_session_folder_path())
@@ -55,8 +40,9 @@ def download_data(zip_file_url) -> str:
             raise ValueError(f"{zip_file_url!r} contained {len(recording_name)} top-level entries: {recording_name}")
 
         data_path = recording_session_folder_path / recording_name.pop()
-        logger.info(f"Data extracted to {str(data_path)}")
+        logger.info(f"Data extracted successfully")
         return str(data_path)
+    
     except requests.exceptions.RequestException as e:
         logger.error(f"Request failed: {e}")
         raise e
@@ -64,19 +50,41 @@ def download_data(zip_file_url) -> str:
         logger.error(f"Failed to unzip the file: {e}")
         raise e
         
+def download_dataset(key: str) -> str:
+    """
+    Downloads the specified dataset zip file and extracts it to the recording session folder.
+    Returns the path to the extracted data.
+    """
+    if key not in DATASETS:
+        raise ValueError(f"Unknown dataset '{key}'. Options: {list(DATASETS)}")
+    
+    return download_and_extract_zip(DATASETS[key].url)
+
 def download_test_data() -> str:
     """
     Downloads the test data zip file and extracts it to the recording session folder.
     Returns the path to the extracted data.
     """
-    return download_data(DATASETS["test"].url)
+    return download_dataset("test")
 
 def download_sample_data() -> str:
     """
     Downloads the sample data zip file and extracts it to the recording session folder.
     Returns the path to the extracted data.
     """
-    return download_data(DATASETS["sample"].url)
+    return download_dataset("sample")
+
+def get_sample_data_path() -> Path:
+    """
+    Returns the path to the sample data folder.
+    If the folder does not exist, it downloads the sample data.
+    """
+    sample_data_path = Path(get_recording_session_folder_path()) / "freemocap_sample_data"
+    if not sample_data_path.exists():
+        logger.info(f"Sample data not found at {sample_data_path}. Downloading...")
+        download_sample_data()
+    
+    return sample_data_path
 
 if __name__ == "__main__":
     sample_data_path = download_sample_data()

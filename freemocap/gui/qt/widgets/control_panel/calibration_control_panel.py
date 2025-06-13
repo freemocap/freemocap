@@ -36,13 +36,14 @@ from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_b
 
 logger = logging.getLogger(__name__)
 
+
 class CalibrationControlPanel(QWidget):
     def __init__(
-            self,
-            get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
-            kill_thread_event: threading.Event,
-            gui_state: GuiState,
-            parent: Optional[QObject] = None,
+        self,
+        get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
+        kill_thread_event: threading.Event,
+        gui_state: GuiState,
+        parent: Optional[QObject] = None,
     ):
         super().__init__(parent=parent)
         self.gui_state = gui_state
@@ -148,8 +149,7 @@ class CalibrationControlPanel(QWidget):
             self._show_selected_calibration_toml_path("-Calibration File Not Found-")
 
     def _bring_up_groundplane_calibration_failed_dialog(self, message: str):
-        failure_dialog = GroundPlaneCalibrationFailedDialog(
-            message = message)
+        failure_dialog = GroundPlaneCalibrationFailedDialog(message=message)
         failure_dialog.exec()
 
     def _add_calibrate_from_active_recording_radio_button(self):
@@ -382,7 +382,9 @@ class CalibrationControlPanel(QWidget):
 
         self._anipose_calibration_frame_worker.finished.connect(self.update_calibration_toml_path)
 
-        self._anipose_calibration_frame_worker.groundplane_failed.connect(self._bring_up_groundplane_calibration_failed_dialog)
+        self._anipose_calibration_frame_worker.groundplane_failed.connect(
+            self._bring_up_groundplane_calibration_failed_dialog
+        )
 
     def _check_active_recording_for_calibration_toml(self):
         active_rec = self._get_active_recording_info()

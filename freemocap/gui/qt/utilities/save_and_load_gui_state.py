@@ -27,7 +27,6 @@ class GuiState(BaseModel):
     shown_latest_release_notes: bool = False
 
 
-
 def save_gui_state(gui_state: GuiState, file_pathstring: str | None = None) -> None:
     from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
 

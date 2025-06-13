@@ -2,6 +2,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QDialog, QLabel, QPushButton, QVBoxLayout, QSizePolicy
 from PySide6.QtCore import Qt
 
+
 class GroundPlaneCalibrationFailedDialog(QDialog):
     def __init__(self, message: str):
         super().__init__()
@@ -11,9 +12,10 @@ class GroundPlaneCalibrationFailedDialog(QDialog):
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
 
         # Entire dialog styling (includes title bar area)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QDialog {
-                background-color: #ffe0dc; 
+                background-color: #ffe0dc;
             }
             QLabel#titleLabel {
                 font-weight: bold;
@@ -24,7 +26,8 @@ class GroundPlaneCalibrationFailedDialog(QDialog):
                 font-size: 10.5pt;
                 color: black;
             }
-        """)
+        """
+        )
 
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)

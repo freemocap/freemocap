@@ -11,7 +11,8 @@ class CharucoNeighborStats(BaseModel):
     mean_error: float
 
 
-def get_charuco_2d_data(calibration_videos_folder_path: Union[str, Path], num_processes: int = 1):
+def get_charuco_2d_data(calibration_videos_folder_path: str|Path, num_processes: int = 1):
+    calibration_videos_folder_path = Path(calibration_videos_folder_path)
     return process_folder_of_videos(
         model_info=CharucoModelInfo(),
         tracking_params=CharucoTrackingParams(),

@@ -21,7 +21,6 @@ from freemocap.utilities.get_video_paths import get_video_paths
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import (
     compute_basis_vectors_of_new_reference, 
-    get_charuco_2d_data,
     find_good_frame,
     CharucoVisibilityError,
     CharucoVelocityError
@@ -204,18 +203,17 @@ class AniposeCameraCalibrator:
         import multiprocessing
         # Get the camera group object
         logger.info("Getting 2d Charuco data")
-        
         num_videos = len(self._list_of_video_paths)
-        num_processes = min(num_videos, multiprocessing.cpu_count() - 1)
-        charuco_2d_xy = get_charuco_2d_data(
-            calibration_videos_folder_path=self._calibration_videos_folder_path,
-            num_processes=num_processes
-        )
-        logger.info("Charuco 2d data detected successfully with shape: "
-                    f"{charuco_2d_xy.shape}")
 
-        num_cameras, num_frames, num_tracked_points,_ = charuco_2d_xy.shape
+        charuco_2d_xy = cam_group.charuco_2d_data
+        if charuco_2d_xy is None:
+            error_message = "Charuco 2d data was not retrieved successfully. Check for an error during calibration."
+            logger.error(error_message)
+            raise ValueError(error_message)
+        logger.info("Charuco 2d data retrieved successfully with shape: "
+                    f"{charuco_2d_xy.shape}")
         charuco_2d_xy = charuco_2d_xy.astype(np.float64)
+        num_cameras, num_frames, num_tracked_points,_ = charuco_2d_xy.shape
         charuco_2d_flat = charuco_2d_xy.reshape(num_cameras, -1, 2)
 
         logger.info("Getting 3d Charuco data")

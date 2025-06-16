@@ -9,7 +9,10 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+TEST_DATA_NAME = "test"
 DOWNLOAD_SAMPLE_DATA_ACTION_NAME = "Download Sample Data (3 cameras, ~1000 frames)"
+
+SAMPLE_DATA_NAME = "sample"
 DOWNLOAD_TEST_DATA_ACTION_NAME = "Download Test Data (3 cameras, ~200 frames)"
 
 
@@ -22,11 +25,11 @@ class Dataset(BaseModel):
 
 
 DATASETS = {
-    "sample": Dataset(
+    SAMPLE_DATA_NAME: Dataset(
         url="https://github.com/freemocap/skellysamples/releases/download/sample_data_v06_12_25/freemocap_sample_data.zip",
         menu_label=DOWNLOAD_SAMPLE_DATA_ACTION_NAME,
     ),
-    "test": Dataset(
+    TEST_DATA_NAME: Dataset(
         url="https://github.com/freemocap/skellysamples/releases/download/test_data_v06_09_25/freemocap_test_data.zip",
         menu_label=DOWNLOAD_TEST_DATA_ACTION_NAME,
     ),
@@ -78,7 +81,7 @@ def download_test_data() -> str:
     Downloads the test data zip file and extracts it to the recording session folder.
     Returns the path to the extracted data.
     """
-    return download_dataset("test")
+    return download_dataset(TEST_DATA_NAME)
 
 
 def download_sample_data() -> str:
@@ -86,7 +89,7 @@ def download_sample_data() -> str:
     Downloads the sample data zip file and extracts it to the recording session folder.
     Returns the path to the extracted data.
     """
-    return download_dataset("sample")
+    return download_dataset(SAMPLE_DATA_NAME)
 
 
 def get_sample_data_path() -> Path:

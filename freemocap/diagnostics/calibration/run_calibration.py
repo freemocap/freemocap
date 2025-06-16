@@ -55,7 +55,7 @@ def setup_session():
         board_info = json.load(fh)
 
     charuco_square_size = board_info["square_size_mm"]
-    calibration_toml_path,_ = run_anipose_capture_volume_calibration(
+    calibration_toml_path, _ = run_anipose_capture_volume_calibration(
         charuco_board_definition=charuco_7x5(),
         calibration_videos_folder_path=get_synchronized_video_folder_path(),
         charuco_square_size=charuco_square_size,

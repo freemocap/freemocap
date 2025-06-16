@@ -27,18 +27,19 @@ class GuiState(BaseModel):
     shown_latest_release_notes: bool = False
 
 
-
 def save_gui_state(gui_state: GuiState, file_pathstring: str | None = None) -> None:
     from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
+
     if file_pathstring is None:
         file_pathstring = get_gui_state_json_path()
     with open(file_pathstring, "w") as file:
         json.dump(gui_state.model_dump(mode="json"), file, indent=4)
 
 
-def load_gui_state(file_pathstring: str|None=None) -> GuiState:
+def load_gui_state(file_pathstring: str | None = None) -> GuiState:
     if file_pathstring is None:
         from freemocap.system.paths_and_filenames.path_getters import get_gui_state_json_path
+
         file_pathstring = get_gui_state_json_path()
     try:
         with open(file_pathstring, "r") as file:

@@ -24,7 +24,7 @@ class CharucoBoardDefinition:
         self.number_of_charuco_corners = (self.number_of_squares_width - 1) * (self.number_of_squares_height - 1)
 
 
-def full_charuco_board() -> CharucoBoardDefinition:
+def charuco_7x5() -> CharucoBoardDefinition:
     return CharucoBoardDefinition(
         name="full_board_7x5",
         number_of_squares_width=7,
@@ -34,7 +34,7 @@ def full_charuco_board() -> CharucoBoardDefinition:
     )
 
 
-def mini_charuco_board() -> CharucoBoardDefinition:
+def charuco_5x3() -> CharucoBoardDefinition:
     return CharucoBoardDefinition(
         name="mini_board_5x3",
         number_of_squares_width=5,
@@ -45,6 +45,6 @@ def mini_charuco_board() -> CharucoBoardDefinition:
 
 
 CHARUCO_BOARDS = {
-    "Full Charuco (7x5)": full_charuco_board,
-    "Mini Charuco (5x3)": mini_charuco_board,
+    "Full Charuco (7x5)": charuco_7x5,
+    "Mini Charuco (5x3)": charuco_5x3,
 }

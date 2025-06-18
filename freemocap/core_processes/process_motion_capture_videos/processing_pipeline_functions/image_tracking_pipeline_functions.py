@@ -14,7 +14,10 @@ from freemocap.data_layer.recording_models.post_processing_parameter_models impo
 )
 from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.logging.queue_logger import DirectQueueHandler
-from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING, RAW_DATA_FOLDER_NAME
+from freemocap.system.paths_and_filenames.file_and_folder_names import (
+    LOG_VIEW_PROGRESS_BAR_STRING,
+    RAW_DATA_FOLDER_NAME,
+)
 from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
 
 logger = logging.getLogger(__name__)

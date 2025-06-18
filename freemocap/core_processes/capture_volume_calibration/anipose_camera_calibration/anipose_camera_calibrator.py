@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import Callable, Union
 
-import numpy as np
 import cv2
+import numpy as np
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
@@ -27,7 +27,8 @@ class AniposeCameraCalibrator:
         charuco_board_object: CharucoBoardDefinition,
         charuco_square_size: Union[int, float],
         calibration_videos_folder_path: Union[str, Path],
-        progress_callback: Callable[[str], None] = None,
+        progress_callback: Callable[[str], None] = lambda _: None
+
     ):
         self._charuco_board_object = charuco_board_object
         self._progress_callback = progress_callback
@@ -43,7 +44,7 @@ class AniposeCameraCalibrator:
         self._initialize_anipose_objects()
 
     def _get_video_paths(
-        self,
+            self,
     ):
         self._list_of_video_paths = get_video_paths(path_to_video_folder=Path(self._calibration_videos_folder_path))
 
@@ -82,7 +83,8 @@ class AniposeCameraCalibrator:
         logger.info(success_str)
         self._progress_callback(success_str)
         if pin_camera_0_to_origin:
-            self._anipose_camera_group_object = self.pin_camera_zero_to_origin(cam_group=self._anipose_camera_group_object)
+            self._anipose_camera_group_object = self.pin_camera_zero_to_origin(
+                cam_group=self._anipose_camera_group_object)
         # save calibration info to files
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem
@@ -134,23 +136,23 @@ class AniposeCameraCalibrator:
         cam_group.set_translations(tvecs_new)
         return cam_group
 
-    def align_rotations_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):
+    def align_rotations_to_cam0(self, cam_group: freemocap_anipose.CameraGroup):
         rvecs = cam_group.get_rotations()
-        #get rotation of cam 0 to world
-        R0,_  = cv2.Rodrigues(rvecs[0]) 
+        # get rotation of cam 0 to world
+        R0, _ = cv2.Rodrigues(rvecs[0])
 
         rvecs_new = np.empty_like(rvecs)
-        #rotates each cameras coordinate system into the new world space
-        #R0 maps world -> cam0, so R0.T (which is also the inverse) maps cam0 -> world
-        #R0 * R0^-1 = identity matrix, so this makes R0 the origin
+        # rotates each cameras coordinate system into the new world space
+        # R0 maps world -> cam0, so R0.T (which is also the inverse) maps cam0 -> world
+        # R0 * R0^-1 = identity matrix, so this makes R0 the origin
         # then we map every other camera into the new world space
         for i in range(rvecs.shape[0]):
-            Ri,_ = cv2.Rodrigues(rvecs[i])
-            Ri_new,_ = cv2.Rodrigues(Ri @ R0.T)
+            Ri, _ = cv2.Rodrigues(rvecs[i])
+            Ri_new, _ = cv2.Rodrigues(Ri @ R0.T)
             rvecs_new[i] = Ri_new.flatten()
         return rvecs_new
-    
-    def shift_origin_to_cam0(self, cam_group:freemocap_anipose.CameraGroup):
+
+    def shift_origin_to_cam0(self, cam_group: freemocap_anipose.CameraGroup):
         # Get original translation and rotation vectors
         tvecs = cam_group.get_translations()
         rvecs = cam_group.get_rotations()

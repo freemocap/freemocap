@@ -14,11 +14,11 @@ class ExportToBlenderThreadWorker(QThread):
     in_progress = Signal(str)
 
     def __init__(
-        self,
-        recording_path: Path,
-        blender_file_path: Path,
-        blender_executable_path: Path,
-        kill_thread_event: threading.Event,
+            self,
+            recording_path: Path,
+            blender_file_path: Path,
+            blender_executable_path: Path,
+            kill_thread_event: threading.Event,
     ):
         super().__init__()
         logger.debug("Initializing Export to Blender Thread Worker")

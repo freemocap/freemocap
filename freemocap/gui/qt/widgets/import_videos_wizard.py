@@ -143,7 +143,7 @@ class ImportVideosWizard(QDialog):
         )
         synchronization_message.setWordWrap(True)
         ffmpeg_warning = QLabel(
-            " - FFmpeg is required for audio cross correlation synchronization, please make sure ffmpeg is installed and added to your path."
+            " - FFmpeg is required for synchronization, please make sure ffmpeg is installed and added to your path.\n"
         )
         ffmpeg_warning.setWordWrap(True)
 

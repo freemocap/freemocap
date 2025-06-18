@@ -1876,7 +1876,6 @@ class CameraGroup:
         for camera_number in range(num_cameras):
             camera_rows = []
             for frame in range(num_frames):
-                # TODO: check each frame based on anipose's conditions
                 filled = self.charuco_2d_data[camera_number, frame, :, :]
                 filled = filled.astype(np.float32)
                 filled = np.reshape(filled, (num_corners, 1, 2))  # Add empty column anipose expects

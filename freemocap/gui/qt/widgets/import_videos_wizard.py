@@ -1,4 +1,5 @@
 import logging
+import shutil
 import threading
 from pathlib import Path
 from typing import Union
@@ -141,6 +142,10 @@ class ImportVideosWizard(QDialog):
             " - Videos must have exactly the same video frame rates to be synchronized.\n\n - For audio cross correlation, audio tracks must have the same sample rate.\n"
         )
         synchronization_message.setWordWrap(True)
+        ffmpeg_warning = QLabel(
+            " - FFmpeg is required for audio cross correlation synchronization, please make sure ffmpeg is installed and added to your path."
+        )
+        ffmpeg_warning.setWordWrap(True)
 
         line_edit_layout = QHBoxLayout()
         self.brightness_contrast_threshold_line_edit = QLineEdit("Brightness Contrast Threshold:")
@@ -156,6 +161,9 @@ class ImportVideosWizard(QDialog):
         line_edit_layout.addWidget(QLabel("   Only applies to brightness contrast detection"))
 
         extension_layout.addLayout(synch_button_layout)
+        if shutil.which("ffmpeg") is None:
+            extension_layout.addWidget(ffmpeg_warning)
+            logger.warning("FFmpeg not found, synchronization will not run")
         extension_layout.addWidget(synchronization_message)
         extension_layout.addLayout(line_edit_layout)
 
@@ -170,7 +178,8 @@ class ImportVideosWizard(QDialog):
         self._folder_where_videos_will_be_saved_to_label.setText(self._get_folder_videos_will_be_saved_to())
 
     def _handle_continue_button_clicked(self, event):
-        if self._synchronize_videos_checkbox.isChecked():
+        ffmpeg_found = shutil.which("ffmpeg") is not None
+        if self._synchronize_videos_checkbox.isChecked() and ffmpeg_found:
             self.synchronize_videos_thread_worker = SynchronizeVideosThreadWorker(
                 raw_video_folder_path=Path(self.import_videos_path),
                 synchronized_video_folder_path=Path(self._get_folder_videos_will_be_saved_to()),
@@ -180,6 +189,10 @@ class ImportVideosWizard(QDialog):
             )
             self.synchronize_videos_thread_worker.start()
             self.synchronize_videos_thread_worker.finished.connect(self._handle_video_synchronization_finished)
+        elif self._synchronize_videos_checkbox.isChecked() and not ffmpeg_found:
+            logger.error(
+                "FFmpeg not found, cannot run synchronization or import videos - please install ffmpeg and add it to your path"
+            )
         else:
             self.folder_to_save_videos_to_selected.emit(
                 self._video_file_paths, self._get_folder_videos_will_be_saved_to(), False

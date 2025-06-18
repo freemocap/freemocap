@@ -1865,8 +1865,6 @@ class CameraGroup:
 
     def get_rows_videos(self, videos: List[List[str]], board: "AniposeCharucoBoard", verbose: bool = True):
         num_corners = board.total_size
-        if board.total_size != 24: 
-            raise ValueError("AniposeCharucoBoard only supports 24 corners, got {}".format(board.total_size))
         self._get_charuco_2d_data(videos=videos, board=board)
 
         if self.charuco_2d_data is None:

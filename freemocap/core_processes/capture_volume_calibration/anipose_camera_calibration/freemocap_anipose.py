@@ -654,6 +654,7 @@ class CameraGroup:
     def __init__(self, cameras, metadata={}):
         self.cameras = cameras
         self.metadata = metadata
+        self.charuco_2d_data = None
 
     def subset_cameras(self, indices):
         cams = [self.cameras[ix].copy() for ix in indices]
@@ -1841,25 +1842,23 @@ class CameraGroup:
 
         return error, merged, charuco_frames
 
-    def get_rows_videos(self, videos: List[List[str]], board, verbose=True):
+    def get_rows_videos(self, videos: List[List[str]], board: "AniposeCharucoBoard", verbose=True):
         num_corners = board.total_size
         if board.total_size != 24: 
             raise ValueError("AniposeCharucoBoard only supports 24 corners, got {}".format(board.total_size))
-        video_paths = [Path(video[0]) for video in videos]
-        charuco_2d_data = process_list_of_videos(
-            model_info=CharucoModelInfo(),
-            tracking_params=CharucoTrackingParams(),
-            video_paths=video_paths,
-            num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
-        )
+        self._get_charuco_2d_data(videos)
+
+        if self.charuco_2d_data is None:
+            raise ValueError("Charuco 2D data has not been initialized. Call _get_charuco_2d_data() first, or check for errors in the video processing.")
+
         all_rows = []
 
-        num_cameras, num_frames, _, _ = charuco_2d_data.shape
+        num_cameras, num_frames, _, _ = self.charuco_2d_data.shape
         for camera_number in range(num_cameras):
             camera_rows = []
             for frame in range(num_frames):
                 # TODO: check each frame based on anipose's conditions
-                filled = charuco_2d_data[camera_number, frame, :, :]
+                filled = self.charuco_2d_data[camera_number, frame, :, :]
                 filled = filled.astype(np.float32)
                 filled = np.reshape(filled, (num_corners, 1, 2))  # Add empty column anipose expects
                 mask = (~np.isnan(filled[:, :, 0])) & (~np.isnan(filled[:, :, 1]))
@@ -1874,11 +1873,30 @@ class CameraGroup:
                         "filled": filled,
                     }
                     camera_rows.append(row)
-            if verbose:
-                print(f"Camera {camera_number} has {len(camera_rows)} frames with detected corners.")
             all_rows.append(camera_rows)
+        if verbose:
+            print(f"Charuco detection results:")
+            for i, rows in enumerate(all_rows):
+                print(f"\tCamera {i} has {len(rows)} frames with detected corners.")
+
 
         return all_rows
+
+    def _get_charuco_2d_data(self, videos: List[List[str]]):
+        """
+        Processes a list of a list of videos to extract Charuco 2D data.
+        
+        Should be called once during the initial calibration, and then referenced with self.charuco_2d_data
+        """
+        video_paths = [Path(video[0]) for video in videos]
+        charuco_2d_data = process_list_of_videos(
+            model_info=CharucoModelInfo(),
+            tracking_params=CharucoTrackingParams(),
+            video_paths=video_paths,
+            num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
+        )
+
+        self.charuco_2d_data = charuco_2d_data
 
 
     def set_camera_sizes_videos(self, videos):

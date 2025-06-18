@@ -34,6 +34,27 @@ numba_logger.setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
+
+ARUCO_DICTS = {
+    (4, 50): cv2.aruco.DICT_4X4_50,
+    (5, 50): cv2.aruco.DICT_5X5_50,
+    (6, 50): cv2.aruco.DICT_6X6_50,
+    (7, 50): cv2.aruco.DICT_7X7_50,
+    (4, 100): cv2.aruco.DICT_4X4_100,
+    (5, 100): cv2.aruco.DICT_5X5_100,
+    (6, 100): cv2.aruco.DICT_6X6_100,
+    (7, 100): cv2.aruco.DICT_7X7_100,
+    (4, 250): cv2.aruco.DICT_4X4_250,
+    (5, 250): cv2.aruco.DICT_5X5_250,
+    (6, 250): cv2.aruco.DICT_6X6_250,
+    (7, 250): cv2.aruco.DICT_7X7_250,
+    (4, 1000): cv2.aruco.DICT_4X4_1000,
+    (5, 1000): cv2.aruco.DICT_5X5_1000,
+    (6, 1000): cv2.aruco.DICT_6X6_1000,
+    (7, 1000): cv2.aruco.DICT_7X7_1000,
+}
+
+
 @jit(nopython=True, parallel=False)
 def triangulate_simple(points, camera_mats):
     num_cams = len(camera_mats)
@@ -1842,11 +1863,11 @@ class CameraGroup:
 
         return error, merged, charuco_frames
 
-    def get_rows_videos(self, videos: List[List[str]], board: "AniposeCharucoBoard", verbose=True):
+    def get_rows_videos(self, videos: List[List[str]], board: "AniposeCharucoBoard", verbose: bool = True):
         num_corners = board.total_size
         if board.total_size != 24: 
             raise ValueError("AniposeCharucoBoard only supports 24 corners, got {}".format(board.total_size))
-        self._get_charuco_2d_data(videos)
+        self._get_charuco_2d_data(videos=videos, board=board)
 
         if self.charuco_2d_data is None:
             raise ValueError("Charuco 2D data has not been initialized. Call _get_charuco_2d_data() first, or check for errors in the video processing.")
@@ -1882,7 +1903,7 @@ class CameraGroup:
 
         return all_rows
 
-    def _get_charuco_2d_data(self, videos: List[List[str]]):
+    def _get_charuco_2d_data(self, videos: List[List[str]], board: "AniposeCharucoBoard"):
         """
         Processes a list of a list of videos to extract Charuco 2D data.
         
@@ -1891,7 +1912,11 @@ class CameraGroup:
         video_paths = [Path(video[0]) for video in videos]
         charuco_2d_data = process_list_of_videos(
             model_info=CharucoModelInfo(),
-            tracking_params=CharucoTrackingParams(),
+            tracking_params=CharucoTrackingParams(
+                charuco_squares_x_in=board.squaresX, 
+                charuco_squares_y_in=board.squaresY,
+                charuco_dict_id=ARUCO_DICTS[(board.marker_bits, board.dict_size)]
+            ),
             video_paths=video_paths,
             num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
         )
@@ -1909,7 +1934,7 @@ class CameraGroup:
     def calibrate_videos(
             self,
             videos,
-            board,
+            board: "AniposeCharucoBoard",
             init_intrinsics=True,
             init_extrinsics=True,
             verbose=True,
@@ -2003,25 +2028,9 @@ class AniposeCharucoBoard(CharucoBoard):
         self.square_length = square_length
         self.marker_length = marker_length
         self.manually_verify = manually_verify
+        self.marker_bits = marker_bits
+        self.dict_size = dict_size
 
-        ARUCO_DICTS = {
-            (4, 50): cv2.aruco.DICT_4X4_50,
-            (5, 50): cv2.aruco.DICT_5X5_50,
-            (6, 50): cv2.aruco.DICT_6X6_50,
-            (7, 50): cv2.aruco.DICT_7X7_50,
-            (4, 100): cv2.aruco.DICT_4X4_100,
-            (5, 100): cv2.aruco.DICT_5X5_100,
-            (6, 100): cv2.aruco.DICT_6X6_100,
-            (7, 100): cv2.aruco.DICT_7X7_100,
-            (4, 250): cv2.aruco.DICT_4X4_250,
-            (5, 250): cv2.aruco.DICT_5X5_250,
-            (6, 250): cv2.aruco.DICT_6X6_250,
-            (7, 250): cv2.aruco.DICT_7X7_250,
-            (4, 1000): cv2.aruco.DICT_4X4_1000,
-            (5, 1000): cv2.aruco.DICT_5X5_1000,
-            (6, 1000): cv2.aruco.DICT_6X6_1000,
-            (7, 1000): cv2.aruco.DICT_7X7_1000,
-        }
 
         dkey = (marker_bits, dict_size)
         self.dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICTS[dkey])

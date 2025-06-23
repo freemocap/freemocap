@@ -148,18 +148,4 @@ def process_recording_folder(
             logging_queue.put(exception)
         raise exception
     
-    # # TODO: deprecate save_data function in favor of DataSaver
-    # save_data(
-    #     skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
-    #     segment_COM_frame_imgPoint_XYZ=anatomical_data_dict["segment_COM"],
-    #     totalBodyCOM_frame_XYZ=anatomical_data_dict["total_body_COM"],
-    #     rigid_bones_data=anatomical_data_dict["rigid_bones_data"],
-    #     processing_parameters=recording_processing_parameter_model,
-    #     queue=logging_queue,
-    # )
-    # DataSaver(
-    #     recording_folder_path=recording_processing_parameter_model.recording_info_model.path,
-    #     model_info=recording_processing_parameter_model.tracking_model_info,
-    # ).save_all()
-
     logger.info(f"Done processing {recording_processing_parameter_model.recording_info_model.path}")

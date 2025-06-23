@@ -25,10 +25,10 @@ logger = logging.getLogger(__name__)
 
 
 def process_recording_folder(
-        recording_processing_parameter_model: ProcessingParameterModel,
-        kill_event: multiprocessing.Event = None,
-        logging_queue: Optional[multiprocessing.Queue] = None,
-        use_tqdm: bool = True,
+    recording_processing_parameter_model: ProcessingParameterModel,
+    kill_event: multiprocessing.Event = None,
+    logging_queue: Optional[multiprocessing.Queue] = None,
+    use_tqdm: bool = True,
 ) -> None:
     """
 
@@ -55,9 +55,7 @@ def process_recording_folder(
     try:
         processing_pipeline_check(processing_parameters=recording_processing_parameter_model)
     except FileNotFoundError as e:
-        logger.error(
-            "processing parameters are not valid for recording status"
-            f" ::: {e}")
+        logger.error("processing parameters are not valid for recording status" f" ::: {e}")
         if logging_queue:
             logging_queue.put(e)
         raise e
@@ -120,14 +118,14 @@ def process_recording_folder(
         if logging_queue:
             logging_queue.put(exception)
         raise exception
-    
+
     human = Human.from_tracked_points_numpy_array(
-        name = "human", #maybe there's a more useful name/identifier here?
-        model_info = MediapipeModelInfo(),
+        name="human",  # maybe there's a more useful name/identifier here?
+        model_info=MediapipeModelInfo(),
         tracked_points_numpy_array=skel3d_frame_marker_xyz,
     )
 
-    try: 
+    try:
         human.calculate()
     except (RuntimeError, ValueError, TypeError, KeyError, AttributeError) as e:
         logger.error("Anatomical data calculation failed, cannot continue processing")
@@ -144,5 +142,5 @@ def process_recording_folder(
         if logging_queue:
             logging_queue.put(exception)
         raise exception
-    
+
     logger.info(f"Done processing {recording_processing_parameter_model.recording_info_model.path}")

@@ -24,6 +24,8 @@ from freemocap.system.logging.configure_logging import log_view_logging_format_s
 from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 from freemocap.utilities.kill_event_exception import KillEventException
+from skellyforge.skellymodels.managers.human import Human
+from skellyforge.skellymodels.tracker_info.model_info import MediapipeModelInfo
 
 logger = logging.getLogger(__name__)
 
@@ -124,37 +126,51 @@ def process_recording_folder(
         if logging_queue:
             logging_queue.put(exception)
         raise exception
-
-    try:
-        anatomical_data_dict = calculate_anatomical_data(
-            processing_parameters=recording_processing_parameter_model,
-            skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
-            queue=logging_queue,
-        )
-    except (RuntimeError, ValueError, TypeError, KeyError, AttributeError) as e:
-        logger.error("Anatomical data calculation failed, cannot continue processing")
-        if logging_queue:
-            logging_queue.put(e)
-        raise e
-
-    if kill_event is not None and kill_event.is_set():
-        exception = KillEventException("Process was killed")
-        if logging_queue:
-            logging_queue.put(exception)
-        raise exception
-
-    # TODO: deprecate save_data function in favor of DataSaver
-    save_data(
-        skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
-        segment_COM_frame_imgPoint_XYZ=anatomical_data_dict["segment_COM"],
-        totalBodyCOM_frame_XYZ=anatomical_data_dict["total_body_COM"],
-        rigid_bones_data=anatomical_data_dict["rigid_bones_data"],
-        processing_parameters=recording_processing_parameter_model,
-        queue=logging_queue,
+    
+    human = Human.from_tracked_points_numpy_array(
+        name = "human", #maybe there's a more useful name/identifier here?
+        model_info = MediapipeModelInfo(),
+        tracked_points_numpy_array=skel3d_frame_marker_xyz,
     )
-    DataSaver(
-        recording_folder_path=recording_processing_parameter_model.recording_info_model.path,
-        model_info=recording_processing_parameter_model.tracking_model_info,
-    ).save_all()
+
+    human.calculate()
+    human.save_out_numpy_data(recording_processing_parameter_model.recording_info_model.output_data_folder_path)
+    human.save_out_csv_data(recording_processing_parameter_model.recording_info_model.output_data_folder_path)
+    human.save_out_all_data_csv(recording_processing_parameter_model.recording_info_model.output_data_folder_path)
+    human.save_out_all_data_parquet(recording_processing_parameter_model.recording_info_model.output_data_folder_path)
+
+    
+    # try:
+    #     anatomical_data_dict = calculate_anatomical_data(
+    #         processing_parameters=recording_processing_parameter_model,
+    #         skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+    #         queue=logging_queue,
+    #     )
+    # except (RuntimeError, ValueError, TypeError, KeyError, AttributeError) as e:
+    #     logger.error("Anatomical data calculation failed, cannot continue processing")
+    #     if logging_queue:
+    #         logging_queue.put(e)
+    #     raise e
+
+    # if kill_event is not None and kill_event.is_set():
+    #     exception = KillEventException("Process was killed")
+    #     if logging_queue:
+    #         logging_queue.put(exception)
+    #     raise exception
+
+    
+    # # TODO: deprecate save_data function in favor of DataSaver
+    # save_data(
+    #     skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
+    #     segment_COM_frame_imgPoint_XYZ=anatomical_data_dict["segment_COM"],
+    #     totalBodyCOM_frame_XYZ=anatomical_data_dict["total_body_COM"],
+    #     rigid_bones_data=anatomical_data_dict["rigid_bones_data"],
+    #     processing_parameters=recording_processing_parameter_model,
+    #     queue=logging_queue,
+    # )
+    # DataSaver(
+    #     recording_folder_path=recording_processing_parameter_model.recording_info_model.path,
+    #     model_info=recording_processing_parameter_model.tracking_model_info,
+    # ).save_all()
 
     logger.info(f"Done processing {recording_processing_parameter_model.recording_info_model.path}")

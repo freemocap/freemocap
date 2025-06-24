@@ -18,6 +18,12 @@ class Point(BaseModel):
     y: Optional[float] = Field(None, description="The Y-coordinate of the point")
     z: Optional[float] = Field(None, description="The Z-coordinate of the point")
 
+class ReprojectionError(BaseModel):
+    """
+    Reprojection error of a 3D point at a particular time
+    """
+    value: Optional[float] = Field(None, description="Reprojection error of the point")
+
 
 class VirtualMarkerDefinition(BaseModel):
     """
@@ -92,6 +98,7 @@ class FrameData(BaseModel):
 
     timestamps: Timestamps = Field(default_factory=Timestamps, description="Timestamp data")
     tracked_points: Dict[str, Point] = Field(default_factory=dict, description="The points being tracked")
+    reprojection_error: Dict[str, ReprojectionError] = Field(default_factory=dict, description="Reprojection error of the point being tracked")
 
     @property
     def tracked_point_names(self):
@@ -102,10 +109,12 @@ class FrameData(BaseModel):
         return self.timestamps.mean
 
     def to_dict(self):
-        d = {}
-        d["timestamps"] = self.timestamps.dict()
-        d["tracked_points"] = {name: point.dict() for name, point in self.tracked_points.items()}
-        return d
+        return {
+            "timestamps": self.timestamps.dict(),
+            "tracked_points": {name: point.dict() for name, point in self.tracked_points.items()},
+            "reprojection_error": {name: error.dict() for name, error in self.reprojection_error.items()}
+        }
+
 
 
 class InfoDict(BaseModel):

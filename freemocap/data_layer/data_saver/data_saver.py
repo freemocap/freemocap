@@ -115,6 +115,9 @@ class DataSaver:
 
     def save_to_tidy_csv(self, save_path: Union[str, Path, None] = None):
         tidy_data = []
+        print(len(self.recording_data_by_frame[0]["reprojection_error"].keys()))
+        print(self.recording_data_by_frame[0]["reprojection_error"].keys())
+        print(self.recording_data_by_frame[1]["reprojection_error"])
 
         # Iterate over frames and tracked points
         for frame_number, frame_data in self.recording_data_by_frame.items():
@@ -133,6 +136,7 @@ class DataSaver:
                         "x": coordinates.get("x", None),
                         "y": coordinates.get("y", None),
                         "z": coordinates.get("z", None),
+                        "reprojection_error": frame_data["reprojection_error"].get(keypoint, {}).get("value", None)
                     }
                 )
 

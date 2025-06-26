@@ -16,7 +16,7 @@ from freemocap.data_layer.recording_models.recording_info_model import \
     RecordingInfoModel
 from freemocap.diagnostics.calibration.calibration_utils import \
     get_charuco_2d_data
-from freemocap.diagnostics.download_data import download_test
+from freemocap.utilities.download_sample_data import download_test_data
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ def setup_session():
     """
     logger.info("Downloading sample data...")
 
-    SessionInfo.sample_session_folder_path = download_test()
+    SessionInfo.sample_session_folder_path = download_test_data()
 
     logger.info("Initializing recording model...")
     SessionInfo.recording_info_model = RecordingInfoModel(

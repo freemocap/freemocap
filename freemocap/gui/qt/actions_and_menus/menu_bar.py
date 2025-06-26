@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QMainWindow, QMenuBar
 
 from freemocap.gui.qt.actions_and_menus.actions import Actions
+from freemocap.utilities.download_sample_data import DATASETS
 
 
 class MenuBar(QMenuBar):
@@ -33,8 +34,11 @@ class MenuBar(QMenuBar):
         # Data Menu
         data_menu = self.addMenu("&Data")
 
-        data_menu.addAction(actions.download_sample_data_action)
-        data_menu.addAction(actions.download_test_data_action)
+        for key in DATASETS:
+            action_attr = f"download_{key}_data_action"
+            if hasattr(actions, action_attr):
+                action = getattr(actions, action_attr)
+                data_menu.addAction(action)
 
         #
         # # navigation menu

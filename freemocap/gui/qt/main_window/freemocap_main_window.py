@@ -503,9 +503,9 @@ class MainWindow(QMainWindow):
         if self._settings_dialog.result():
             self.reboot_gui()
 
-    def download_data(self, download_url: str):
+    def download_data(self, dataset_name: str):
         logger.info("Downloading sample data")
-        self.download_data_thread_worker = DownloadDataThreadWorker(dowload_url=download_url)
+        self.download_data_thread_worker = DownloadDataThreadWorker(dataset_name=dataset_name)
         self.download_data_thread_worker.start()
         self.download_data_thread_worker.finished.connect(self._handle_download_data_finished)
 

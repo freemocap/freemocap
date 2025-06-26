@@ -1,5 +1,5 @@
 import numpy as np
-from skellyforge.freemocap_utils.postprocessing_widgets.postprocessing_functions import interpolate_data, filter_data
+from skellyforge.freemocap_utils.postprocessing_widgets.postprocessing_functions import interpolate_data
 
 
 class CharucoVisibilityError(RuntimeError):
@@ -100,7 +100,7 @@ def find_good_frame(
     return best_position_frame
 
 
-def skellyforge_data(raw_charuco_data:np.ndarray):
+def skellyforge_data(raw_charuco_data: np.ndarray):
     interpolated_data = interpolate_data.interpolate_skeleton_data(
         skeleton_data=raw_charuco_data
     )

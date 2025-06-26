@@ -19,8 +19,7 @@ from freemocap.system.logging.queue_logger import DirectQueueHandler
 from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 from freemocap.utilities.kill_event_exception import KillEventException
 from skellyforge.skellymodels.managers.human import Human
-from skellyforge.skellymodels.tracker_info.model_info import MediapipeModelInfo
-
+from skellyforge.skellymodels.models.tracking_model_info import MediapipeModelInfo
 logger = logging.getLogger(__name__)
 
 
@@ -132,10 +131,12 @@ def process_recording_folder(
         if logging_queue:
             logging_queue.put(e)
         raise e
+    
     human.save_out_numpy_data(recording_processing_parameter_model.recording_info_model.output_data_folder_path)
     human.save_out_csv_data(recording_processing_parameter_model.recording_info_model.output_data_folder_path)
     human.save_out_all_data_csv(recording_processing_parameter_model.recording_info_model.output_data_folder_path)
     human.save_out_all_data_parquet(recording_processing_parameter_model.recording_info_model.output_data_folder_path)
+    human.save_out_all_xyz_numpy_data(recording_processing_parameter_model.recording_info_model.output_data_folder_path)
 
     if kill_event is not None and kill_event.is_set():
         exception = KillEventException("Process was killed")

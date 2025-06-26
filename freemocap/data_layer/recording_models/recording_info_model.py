@@ -169,7 +169,6 @@ class RecordingInfoModel:
         total_body_com_path = (
             Path(self._path)
             / OUTPUT_DATA_FOLDER_NAME
-            / CENTER_OF_MASS_FOLDER_NAME
             / (self.file_prefix + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
         )
         raw_total_body_com_path = (

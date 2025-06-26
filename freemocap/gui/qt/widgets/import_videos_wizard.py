@@ -1,9 +1,10 @@
 import logging
+import shutil
 import threading
 from pathlib import Path
 from typing import Union
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
     QVBoxLayout,
@@ -141,21 +142,31 @@ class ImportVideosWizard(QDialog):
             " - Videos must have exactly the same video frame rates to be synchronized.\n\n - For audio cross correlation, audio tracks must have the same sample rate.\n"
         )
         synchronization_message.setWordWrap(True)
+        ffmpeg_warning = QLabel(
+            "<b>Warning: FFmpeg is required for synchronization, but was not found. <br><br> Please make sure</b> <a href='https://www.clipcat.com/blog/how-to-install-ffmpeg-on-ubuntu-windows-and-macos-a-complete-setup-guide/'>ffmpeg is installed and added to your path.</a><br>"
+        )
+        ffmpeg_warning.setWordWrap(True)
+        ffmpeg_warning.setOpenExternalLinks(True)
 
         line_edit_layout = QHBoxLayout()
         self.brightness_contrast_threshold_line_edit = QLineEdit("Brightness Contrast Threshold:")
         self.brightness_contrast_threshold_line_edit.setText("1000")
         self.brightness_contrast_threshold_line_edit.setEnabled(False)
+        self.brightness_contrast_threshold_line_edit.setFixedWidth(80)
 
         brightness_validator = QDoubleValidator()
         brightness_validator.setBottom(1)
         self.brightness_contrast_threshold_line_edit.setValidator(brightness_validator)
 
-        line_edit_layout.addWidget(QLabel("Brightness Contrast Threshold:"))
-        line_edit_layout.addWidget(self.brightness_contrast_threshold_line_edit)
-        line_edit_layout.addWidget(QLabel("   Only applies to brightness contrast detection"))
+        line_edit_layout.addWidget(QLabel("Brightness Contrast Threshold:"), alignment=Qt.AlignmentFlag.AlignLeft)
+        line_edit_layout.addWidget(self.brightness_contrast_threshold_line_edit, alignment=Qt.AlignmentFlag.AlignLeft)
+        line_edit_layout.addWidget(QLabel("   Only applies to brightness contrast detection"), alignment=Qt.AlignmentFlag.AlignLeft)
+        line_edit_layout.addStretch()
 
         extension_layout.addLayout(synch_button_layout)
+        if shutil.which("ffmpeg") is None:
+            extension_layout.addWidget(ffmpeg_warning)
+            logger.warning("FFmpeg not found, synchronization will not run")
         extension_layout.addWidget(synchronization_message)
         extension_layout.addLayout(line_edit_layout)
 
@@ -170,7 +181,8 @@ class ImportVideosWizard(QDialog):
         self._folder_where_videos_will_be_saved_to_label.setText(self._get_folder_videos_will_be_saved_to())
 
     def _handle_continue_button_clicked(self, event):
-        if self._synchronize_videos_checkbox.isChecked():
+        ffmpeg_found = shutil.which("ffmpeg") is not None
+        if self._synchronize_videos_checkbox.isChecked() and ffmpeg_found:
             self.synchronize_videos_thread_worker = SynchronizeVideosThreadWorker(
                 raw_video_folder_path=Path(self.import_videos_path),
                 synchronized_video_folder_path=Path(self._get_folder_videos_will_be_saved_to()),
@@ -180,6 +192,10 @@ class ImportVideosWizard(QDialog):
             )
             self.synchronize_videos_thread_worker.start()
             self.synchronize_videos_thread_worker.finished.connect(self._handle_video_synchronization_finished)
+        elif self._synchronize_videos_checkbox.isChecked() and not ffmpeg_found:
+            logger.error(
+                "FFmpeg not found, cannot run synchronization or import videos - please install ffmpeg and add it to your path"
+            )
         else:
             self.folder_to_save_videos_to_selected.emit(
                 self._video_file_paths, self._get_folder_videos_will_be_saved_to(), False

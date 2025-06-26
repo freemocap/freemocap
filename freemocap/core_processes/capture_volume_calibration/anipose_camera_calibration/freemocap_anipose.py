@@ -15,6 +15,7 @@ import toml
 from aniposelib.boards import extract_points, extract_rtvecs, get_video_params, merge_rows, CharucoBoard
 from aniposelib.utils import get_rtvec, make_M
 from numba import jit
+from pathlib import Path
 from scipy import optimize
 from scipy import signal
 from scipy.cluster.hierarchy import linkage, fcluster
@@ -22,11 +23,36 @@ from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
 from tqdm import trange
+from typing import List
+
+from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
+from skellytracker.process_folder_of_videos import process_list_of_videos
 
 numba_logger = logging.getLogger("numba")
 numba_logger.setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
+
+
+
+ARUCO_DICTS = {
+    (4, 50): cv2.aruco.DICT_4X4_50,
+    (5, 50): cv2.aruco.DICT_5X5_50,
+    (6, 50): cv2.aruco.DICT_6X6_50,
+    (7, 50): cv2.aruco.DICT_7X7_50,
+    (4, 100): cv2.aruco.DICT_4X4_100,
+    (5, 100): cv2.aruco.DICT_5X5_100,
+    (6, 100): cv2.aruco.DICT_6X6_100,
+    (7, 100): cv2.aruco.DICT_7X7_100,
+    (4, 250): cv2.aruco.DICT_4X4_250,
+    (5, 250): cv2.aruco.DICT_5X5_250,
+    (6, 250): cv2.aruco.DICT_6X6_250,
+    (7, 250): cv2.aruco.DICT_7X7_250,
+    (4, 1000): cv2.aruco.DICT_4X4_1000,
+    (5, 1000): cv2.aruco.DICT_5X5_1000,
+    (6, 1000): cv2.aruco.DICT_6X6_1000,
+    (7, 1000): cv2.aruco.DICT_7X7_1000,
+}
 
 
 @jit(nopython=True, parallel=False)
@@ -649,6 +675,7 @@ class CameraGroup:
     def __init__(self, cameras, metadata={}):
         self.cameras = cameras
         self.metadata = metadata
+        self.charuco_2d_data = None
 
     def subset_cameras(self, indices):
         cams = [self.cameras[ix].copy() for ix in indices]
@@ -1836,21 +1863,62 @@ class CameraGroup:
 
         return error, merged, charuco_frames
 
-    def get_rows_videos(self, videos, board, verbose=True):
+    def get_rows_videos(self, videos: List[List[str]], board: "AniposeCharucoBoard", verbose: bool = True):
+        num_corners = board.total_size
+        self._get_charuco_2d_data(videos=videos, board=board)
+
+        if self.charuco_2d_data is None:
+            raise ValueError("Charuco 2D data has not been initialized. Call _get_charuco_2d_data() first, or check for errors in the video processing.")
+        
         all_rows = []
 
-        for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):
-            rows_cam = []
-            for vnum, vidname in enumerate(cam_videos):
-                if verbose:
-                    print(vidname)
-                rows = board.detect_video(vidname, prefix=vnum, progress=verbose)
-                if verbose:
-                    print("{} boards detected".format(len(rows)))
-                rows_cam.extend(rows)
-            all_rows.append(rows_cam)
+        num_cameras, num_frames, _, _ = self.charuco_2d_data.shape
+        for camera_number in range(num_cameras):
+            camera_rows = []
+            for frame in range(num_frames):
+                filled = self.charuco_2d_data[camera_number, frame, :, :]
+                filled = filled.astype(np.float32)
+                filled = np.reshape(filled, (num_corners, 1, 2))  # Add empty column anipose expects
+                mask = (~np.isnan(filled[:, :, 0])) & (~np.isnan(filled[:, :, 1]))
+                non_empty_ids = np.where(mask)[0]
+                corners = filled[non_empty_ids, :, :]
+                non_empty_ids = non_empty_ids.reshape(-1, 1) # Add empty column anipose expects
+                if corners.shape[0] != 0:
+                    row = {
+                        "framenum": (0, frame),
+                        "corners": corners,
+                        "ids": non_empty_ids,
+                        "filled": filled,
+                    }
+                    camera_rows.append(row)
+            all_rows.append(camera_rows)
+        if verbose:
+            print(f"Charuco detection results:")
+            for i, rows in enumerate(all_rows):
+                print(f"\tCamera {i} has {len(rows)} frames with detected corners.")
+
 
         return all_rows
+
+    def _get_charuco_2d_data(self, videos: List[List[str]], board: "AniposeCharucoBoard"):
+        """
+        Processes a list of a list of videos to extract Charuco 2D data.
+        
+        Should be called once during the initial calibration, and then referenced with self.charuco_2d_data
+        """
+        video_paths = [Path(video[0]) for video in videos]
+        charuco_2d_data = process_list_of_videos(
+            model_info=CharucoModelInfo(),
+            tracking_params=CharucoTrackingParams(
+                charuco_squares_x_in=board.squaresX, 
+                charuco_squares_y_in=board.squaresY,
+                charuco_dict_id=ARUCO_DICTS[(board.marker_bits, board.dict_size)]
+            ),
+            video_paths=video_paths,
+            num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
+        )
+        
+        self.charuco_2d_data = charuco_2d_data
 
     def set_camera_sizes_videos(self, videos):
         for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):
@@ -1863,7 +1931,7 @@ class CameraGroup:
     def calibrate_videos(
             self,
             videos,
-            board,
+            board: "AniposeCharucoBoard",
             init_intrinsics=True,
             init_extrinsics=True,
             verbose=True,
@@ -1957,25 +2025,9 @@ class AniposeCharucoBoard(CharucoBoard):
         self.square_length = square_length
         self.marker_length = marker_length
         self.manually_verify = manually_verify
+        self.marker_bits = marker_bits
+        self.dict_size = dict_size
 
-        ARUCO_DICTS = {
-            (4, 50): cv2.aruco.DICT_4X4_50,
-            (5, 50): cv2.aruco.DICT_5X5_50,
-            (6, 50): cv2.aruco.DICT_6X6_50,
-            (7, 50): cv2.aruco.DICT_7X7_50,
-            (4, 100): cv2.aruco.DICT_4X4_100,
-            (5, 100): cv2.aruco.DICT_5X5_100,
-            (6, 100): cv2.aruco.DICT_6X6_100,
-            (7, 100): cv2.aruco.DICT_7X7_100,
-            (4, 250): cv2.aruco.DICT_4X4_250,
-            (5, 250): cv2.aruco.DICT_5X5_250,
-            (6, 250): cv2.aruco.DICT_6X6_250,
-            (7, 250): cv2.aruco.DICT_7X7_250,
-            (4, 1000): cv2.aruco.DICT_4X4_1000,
-            (5, 1000): cv2.aruco.DICT_5X5_1000,
-            (6, 1000): cv2.aruco.DICT_6X6_1000,
-            (7, 1000): cv2.aruco.DICT_7X7_1000,
-        }
 
         dkey = (marker_bits, dict_size)
         self.dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICTS[dkey])

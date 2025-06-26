@@ -7,7 +7,7 @@ import numpy as np
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import \
     freemocap_anipose
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import \
-    CharucoBoardDefinition
+    charuco_7x5
 from freemocap.core_processes.capture_volume_calibration.run_anipose_capture_volume_calibration import \
     run_anipose_capture_volume_calibration
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import \
@@ -55,8 +55,8 @@ def setup_session():
         board_info = json.load(fh)
 
     charuco_square_size = board_info["square_size_mm"]
-    calibration_toml_path = run_anipose_capture_volume_calibration(
-        charuco_board_definition=CharucoBoardDefinition(),
+    calibration_toml_path, _ = run_anipose_capture_volume_calibration(
+        charuco_board_definition=charuco_7x5(),
         calibration_videos_folder_path=get_synchronized_video_folder_path(),
         charuco_square_size=charuco_square_size,
         progress_callback=lambda _: None,

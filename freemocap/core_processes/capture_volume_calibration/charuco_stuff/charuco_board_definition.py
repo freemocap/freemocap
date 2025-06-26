@@ -6,12 +6,12 @@ import cv2
 
 @dataclass
 class CharucoBoardDefinition:
+    name: str
+    number_of_squares_width: int
+    number_of_squares_height: int
+    black_square_side_length: int
+    aruco_marker_length_proportional: float
     aruco_marker_dict: Dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
-
-    number_of_squares_width: int = 7
-    number_of_squares_height: int = 5
-    black_square_side_length: int = 1
-    aruco_marker_length_proportional: float = 0.8
 
     def __post_init__(self):
         self.charuco_board = cv2.aruco.CharucoBoard(
@@ -22,3 +22,29 @@ class CharucoBoardDefinition:
         )
 
         self.number_of_charuco_corners = (self.number_of_squares_width - 1) * (self.number_of_squares_height - 1)
+
+
+def charuco_7x5() -> CharucoBoardDefinition:
+    return CharucoBoardDefinition(
+        name="full_board_7x5",
+        number_of_squares_width=7,
+        number_of_squares_height=5,
+        black_square_side_length=1,
+        aruco_marker_length_proportional=0.8,
+    )
+
+
+def charuco_5x3() -> CharucoBoardDefinition:
+    return CharucoBoardDefinition(
+        name="mini_board_5x3",
+        number_of_squares_width=5,
+        number_of_squares_height=3,
+        black_square_side_length=1,
+        aruco_marker_length_proportional=0.8,
+    )
+
+
+CHARUCO_BOARDS = {
+    "Full Charuco (7x5)": charuco_7x5,
+    "Mini Charuco (5x3)": charuco_5x3,
+}

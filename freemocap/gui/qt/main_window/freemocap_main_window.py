@@ -176,7 +176,9 @@ class MainWindow(QMainWindow):
         elif self._controller_group_box.calibration_videos_radio_button_checked:
             logger.info("Processing calibration videos")
             self._process_motion_capture_data_panel.calibrate_from_active_recording(
-                charuco_square_size_mm=float(self._controller_group_box.charuco_square_size)
+                charuco_square_size_mm=float(self._controller_group_box.charuco_square_size),
+                use_charuco_as_groundplane=self._controller_group_box.use_charuco_as_groundplane,
+                charuco_board_name=self._controller_group_box.charuco_board_name,
             )
 
     def _handle_processing_finished_signal(self):

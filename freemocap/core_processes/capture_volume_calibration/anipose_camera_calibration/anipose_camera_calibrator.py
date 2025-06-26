@@ -99,13 +99,16 @@ class AniposeCameraCalibrator:
         success_str = "Anipose Calibration Successful!"
         logger.info(success_str)
         self._progress_callback(success_str)
+        self._anipose_camera_group_object.metadata["groundplane_calibration"] = False
+ 
         if pin_camera_0_to_origin:
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
             groundplane_success = None
 
         if use_charuco_as_groundplane:
             self._anipose_camera_group_object, groundplane_success = self.set_charuco_board_as_groundplane(self._anipose_camera_group_object)
-
+            if groundplane_success.success:
+                self._anipose_camera_group_object.metadata["groundplane_calibration"] = True
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem
         )
@@ -203,9 +206,9 @@ class AniposeCameraCalibrator:
         import multiprocessing
         # Get the camera group object
         logger.info("Getting 2d Charuco data")
-        num_videos = len(self._list_of_video_paths)
 
-        charuco_2d_xy = cam_group.charuco_2d_data
+        charuco_2d_xy:np.ndarray = cam_group.charuco_2d_data
+
         if charuco_2d_xy is None:
             error_message = "Charuco 2d data was not retrieved successfully. Check for an error during calibration."
             logger.error(error_message)

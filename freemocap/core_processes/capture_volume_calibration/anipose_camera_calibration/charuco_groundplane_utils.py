@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class CharucoVisibilityError(RuntimeError):
     """Raised when no frame satisfies the ‘all-corners-visible & stationary’ criteria."""
 

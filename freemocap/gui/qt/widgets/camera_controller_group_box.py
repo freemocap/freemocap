@@ -313,5 +313,5 @@ class CameraControllerGroupBox(QGroupBox):
     def _on_charuco_board_dropdown_changed(self):
         selected_board_name = self._board_dropdown.currentText()
         self.gui_state.charuco_board_name = selected_board_name
-        self._skellycam_widget.set_charuco_board(charuco_name =selected_board_name)
+        self._skellycam_widget.set_charuco_board(charuco_name=selected_board_name)
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())

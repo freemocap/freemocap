@@ -6,7 +6,7 @@ from freemocap.core_processes.process_motion_capture_videos.process_recording_he
 )
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.utilities.download_sample_data import (
-    download_sample_data,
+    download_test_data,
 )
 
 
@@ -16,7 +16,7 @@ class SessionInfo:
 
 
 def pytest_sessionstart():
-    SessionInfo.sample_session_folder_path = download_sample_data()
+    SessionInfo.sample_session_folder_path = download_test_data()
     calibration_toml_path = find_calibration_toml_path(SessionInfo.sample_session_folder_path)
     SessionInfo.recording_info_model = RecordingInfoModel(
         recording_folder_path=SessionInfo.sample_session_folder_path, active_tracker="mediapipe"

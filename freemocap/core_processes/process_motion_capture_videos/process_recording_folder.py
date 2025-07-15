@@ -118,12 +118,15 @@ def process_recording_folder(
             logging_queue.put(exception)
         raise exception
 
-    human = Human.from_tracked_points_numpy_array(
+    human: Human = Human.from_tracked_points_numpy_array(
         name="human",  # maybe there's a more useful name/identifier here?
         model_info=MediapipeModelInfo(),
         tracked_points_numpy_array=skel3d_frame_marker_xyz,
     )
 
+    human.put_skeleton_on_ground()
+    human.fix_hands_to_wrist()
+    
     try:
         human.calculate()
     except (RuntimeError, ValueError, TypeError, KeyError, AttributeError) as e:

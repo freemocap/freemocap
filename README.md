@@ -56,6 +56,8 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 
 
 #### 0. Create a a Python 3.10 through 3.12 environment (python3.12 recommended)
+> If you're using macOS with M1/M2 chips, we strongly recommend using **Python 3.11** (instead of 3.12) due to compatibility issues with `TensorFlow`, `MediaPipe`, and other dependencies.
+> Many users on Apple Silicon have experienced native library loading errors and version mismatches with Python 3.12. Python 3.11 works reliably with the FreeMoCap stack.
 #### 1. Install software via [pip](https://pypi.org/project/freemocap/#description):
 
 ```

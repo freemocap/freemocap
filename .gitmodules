@@ -1,0 +1,3 @@
+[submodule "freemocap-test-tools"]
+	path = freemocap-test-tools
+	url = https://github.com/ajc27-git/freemocap_tools.git

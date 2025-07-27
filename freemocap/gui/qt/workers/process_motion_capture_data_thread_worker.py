@@ -33,11 +33,11 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
 
     def run(self):
         logger.info(
-            f"Beginning processing of motion capture data with parameters: {self._processing_parameters.dict(exclude={'tracking_model_info'})}"
+            f"Beginning processing of motion capture data with parameters: {self._processing_parameters.model_dump(exclude={'tracking_model_info'})}"
         )
         self._kill_event.clear()
 
-        recording_info_dict = self._processing_parameters.dict(exclude={"recording_info_model"})
+        recording_info_dict = self._processing_parameters.model_dump(exclude={"recording_info_model"})
         Path(self._processing_parameters.recording_info_model.output_data_folder_path).mkdir(
             parents=True, exist_ok=True
         )

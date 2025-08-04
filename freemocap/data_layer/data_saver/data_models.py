@@ -71,9 +71,9 @@ class SkeletonSchema(BaseModel):
 
     def dict(self):
         d = {}
-        d["body"] = self.body.dict()
-        d["hands"] = {hand: hand_schema.dict() for hand, hand_schema in self.hands.items()}
-        d["face"] = self.face.dict()
+        d["body"] = self.body.model_dump()
+        d["hands"] = {hand: hand_schema.model_dump() for hand, hand_schema in self.hands.items()}
+        d["face"] = self.face.model_dump()
         return d
 
 
@@ -103,8 +103,8 @@ class FrameData(BaseModel):
 
     def to_dict(self):
         d = {}
-        d["timestamps"] = self.timestamps.dict()
-        d["tracked_points"] = {name: point.dict() for name, point in self.tracked_points.items()}
+        d["timestamps"] = self.timestamps.model_dump()
+        d["tracked_points"] = {name: point.model_dump() for name, point in self.tracked_points.items()}
         return d
 
 

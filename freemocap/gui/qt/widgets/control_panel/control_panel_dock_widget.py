@@ -39,6 +39,8 @@ class ControlPanelWidget(QWidget):
     ):
         super().__init__(parent=parent)
 
+        self.setMinimumWidth(500)
+
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
 

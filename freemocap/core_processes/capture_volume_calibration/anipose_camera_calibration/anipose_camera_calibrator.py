@@ -298,16 +298,17 @@ class AniposeCameraCalibrator:
         rvecs = cam_group.get_rotations()
         tvecs = cam_group.get_translations()
 
-        tvecs_world = {}
-        rmat_world_to_cam = {}
+        positions = []
+        orientations = []
         for i in range(tvecs.shape[0]):
             rmat_world_to_cam_i, _ = cv2.Rodrigues(rvecs[i])
 
             rmat_cam_to_world = rmat_world_to_cam_i.T
             t_world = -rmat_cam_to_world @ tvecs[i]
-            tvecs_world[str(i)] = t_world.astype(float).tolist()
-            rmat_world_to_cam[str(i)] = rmat_cam_to_world.astype(float).tolist()
+            positions.append(t_world.astype(float).tolist())
+            orientations.append(rmat_cam_to_world.astype(float).tolist())
 
-        cam_group.metadata["camera_positions"] = tvecs_world
-        cam_group.metadata["camera_orientations"] = rmat_world_to_cam
-        return tvecs_world, rmat_world_to_cam
+        cam_group.set_world_positions(positions)
+        cam_group.set_world_orientations(orientations)
+
+        return positions, orientations

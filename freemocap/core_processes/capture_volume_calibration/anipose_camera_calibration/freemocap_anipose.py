@@ -402,6 +402,8 @@ class Camera:
             size=None,
             rvec=np.zeros(3),
             tvec=np.zeros(3),
+            world_orientation = np.eye(3),
+            world_position = np.zeros(3),
             name=None,
             extra_dist=False,
     ):
@@ -410,6 +412,8 @@ class Camera:
         self.set_size(size)
         self.set_rotation(rvec)
         self.set_translation(tvec)
+        self.set_world_orientation(world_orientation)
+        self.set_world_position(world_position)
         self.set_name(name)
         self.extra_dist = extra_dist
 
@@ -421,6 +425,8 @@ class Camera:
             "distortions": self.get_distortions().tolist(),
             "rotation": self.get_rotation().tolist(),
             "translation": self.get_translation().tolist(),
+            "world_orientation": self.get_world_orientation().tolist(),
+            "world_position": self.get_world_position().tolist()
         }
 
     def load_dict(self, d):
@@ -430,6 +436,9 @@ class Camera:
         self.set_distortions(d["distortions"])
         self.set_name(d["name"])
         self.set_size(d["size"])
+
+        self.set_world_orientation(d.get("world_orientation", np.eye(3)))
+        self.set_world_position(d.get("world_position",   np.zeros(3)))
 
     def from_dict(d):
         cam = Camera()
@@ -473,7 +482,19 @@ class Camera:
 
     def get_translation(self):
         return self.tvec
+    
+    def set_world_orientation(self, world_orientation):
+        self.world_orientation = np.asarray(world_orientation, dtype="float64").reshape(3, 3)
 
+    def get_world_orientation(self):
+        return self.world_orientation
+    
+    def set_world_position(self, world_position):
+        self.world_position = np.array(world_position, dtype="float64").ravel()
+
+    def get_world_position(self):
+        return self.world_position
+    
     def get_extrinsics_mat(self):
         return make_M(self.rvec, self.tvec)
 
@@ -567,6 +588,8 @@ class Camera:
             tvec=self.get_translation().copy(),
             name=self.get_name(),
             extra_dist=self.extra_dist,
+            world_orientation=self.get_world_orientation().copy(),
+            world_position=self.get_world_position().copy()
         )
 
 
@@ -1782,7 +1805,7 @@ class CameraGroup:
         cameras = [cam.copy() for cam in self.cameras]
         metadata = copy(self.metadata)
         return CameraGroup(cameras, metadata)
-
+        
     def set_rotations(self, rvecs):
         for cam, rvec in zip(self.cameras, rvecs):
             cam.set_rotation(rvec)
@@ -1790,6 +1813,20 @@ class CameraGroup:
     def set_translations(self, tvecs):
         for cam, tvec in zip(self.cameras, tvecs):
             cam.set_translation(tvec)
+
+    def set_world_positions(self, positions):
+        for cam, position, in zip(self.cameras, positions):
+            cam.set_world_position(position)
+
+    def set_world_orientations(self, orientations):
+        for cam, orientation in zip(self.cameras, orientations):
+            cam.set_world_orientation(orientation)
+
+    def get_world_positions(self):
+        return np.stack([cam.get_world_position() for cam in self.cameras])
+    
+    def get_world_orientations(self):
+        return np.stack([cam.get_world_orientation() for cam in self.cameras])
 
     def get_rotations(self):
         rvecs = []

@@ -93,8 +93,14 @@ class ProcessMotionCaptureDataPanel(QWidget):
     def process_motion_capture_data_button(self):
         return self._process_motion_capture_data_button
 
-    def calibrate_from_active_recording(self, charuco_square_size_mm: float):
-        self._calibration_control_panel.calibrate_from_active_recording(charuco_square_size_mm=charuco_square_size_mm)
+    def calibrate_from_active_recording(
+        self, charuco_square_size_mm: float, use_charuco_as_groundplane: bool, charuco_board_name: str
+    ):
+        self._calibration_control_panel.calibrate_from_active_recording(
+            charuco_square_size_mm=charuco_square_size_mm,
+            use_charuco_as_groundplane=use_charuco_as_groundplane,
+            charuco_board_name=charuco_board_name,
+        )
 
     def update_calibration_path(self) -> None:
         self._calibration_control_panel.update_calibrate_from_active_recording_button_text()
@@ -250,9 +256,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
                 shutil.copyfile(selected_camera_calibration_toml_path, copied_toml_path)
 
         # set active tracker in recording model to the currently selected tracker
-        session_parameter_model.recording_info_model.active_tracker = (
-            session_parameter_model.tracking_model_info.name
-        )
+        session_parameter_model.recording_info_model.active_tracker = session_parameter_model.tracking_model_info.name
 
         self._process_motion_capture_data_thread_worker = ProcessMotionCaptureDataThreadWorker(
             session_parameter_model, kill_event=self._kill_thread_event

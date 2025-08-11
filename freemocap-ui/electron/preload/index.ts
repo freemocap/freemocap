@@ -1,5 +1,14 @@
+// /electron/preload/index.ts
 import {contextBridge, ipcRenderer} from 'electron'
+// Expose a limited API to the renderer process
+contextBridge.exposeInMainWorld('electronAPI', {
+  // Specific functionality
+  selectDirectory: () => ipcRenderer.invoke('select-directory'),
+  openFolder: (folderPath: string) => ipcRenderer.invoke('open-folder', folderPath),
+  getHomeDirectory: () => ipcRenderer.invoke('get-home-directory'),
+  getFolderContents: (folderPath: string) => ipcRenderer.invoke('get-folder-contents', folderPath),
 
+})
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
   on(...args: Parameters<typeof ipcRenderer.on>) {
@@ -25,6 +34,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 
 // --------- Preload scripts loading ---------
 function domReady(condition: DocumentReadyState[] = ['complete', 'interactive']) {
+  console.log('Document Object Model (DOM) is ready.')
   return new Promise(resolve => {
     if (condition.includes(document.readyState)) {
       resolve(true)

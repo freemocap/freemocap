@@ -1,3 +1,4 @@
+// electron/main/update.ts
 import {app, ipcMain} from 'electron'
 import {createRequire} from 'node:module'
 import type {ProgressInfo, UpdateDownloadedEvent, UpdateInfo,} from 'electron-updater'
@@ -12,13 +13,17 @@ export function update(win: Electron.BrowserWindow) {
   autoUpdater.allowDowngrade = false
 
   // start check
-  autoUpdater.on('checking-for-update', function () { })
+  autoUpdater.on('checking-for-update', function () {
+    console.log('Checking for App update...')
+  })
   // update available
   autoUpdater.on('update-available', (arg: UpdateInfo) => {
+    console.log('App update available:', arg)
     win.webContents.send('update-can-available', { update: true, version: app.getVersion(), newVersion: arg?.version })
   })
   // update not available
   autoUpdater.on('update-not-available', (arg: UpdateInfo) => {
+    console.log('App update not available:', arg)
     win.webContents.send('update-can-available', { update: false, version: app.getVersion(), newVersion: arg?.version })
   })
 
@@ -38,6 +43,7 @@ export function update(win: Electron.BrowserWindow) {
 
   // Start downloading and feedback on progress
   ipcMain.handle('start-download', (event: Electron.IpcMainInvokeEvent) => {
+    console.log('Start downloading...')
     startDownload(
       (error, progressInfo) => {
         if (error) {

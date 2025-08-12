@@ -13,16 +13,29 @@ export function ThreeJsScene() {
     const cameraRefs = useRef<PerspectiveCamera[]>([]);
     const latestPoints3d = {} // dummy for now
     const numPoints = Object.keys(latestPoints3d).length;
-
+    const numberOfCameras = Object.keys(latestCameraData).length;
     const sphereGeometry = useMemo(() => new SphereGeometry(0.1, 16, 16), []);
     const sphereMaterial = useMemo(() => new MeshStandardMaterial({color: 'red'}), []);
+    const maxRowsColumns = Math.ceil(Math.sqrt(numberOfCameras));
 
-    const cameraPositions = [
-        [3, 1, 3],
-        [-3, 1, 3],
-        [3, 1, -3],
-        [-3, 1, -3],
-    ]
+    const cameraPositionsMap = Object.fromEntries(
+        Object.entries(latestCameraData).map(([cameraId, cameraImageData]) => {
+            // Calculate position in a grid with max columns based on sqrt of camera count
+            const columnIndex = cameraImageData?.cameraIndex % maxRowsColumns;
+            const rowIndex = Math.floor(cameraImageData?.cameraIndex / maxRowsColumns);
+
+            // Set spacing between cameras
+            const verticalSpacing = 1.5;
+            const horizontalSpacing = 2.2;
+            const verticalOffset = 1;
+
+            const xPosition = columnIndex * horizontalSpacing - horizontalSpacing; // Center the grid
+            const yPosition = rowIndex * verticalSpacing + verticalOffset;
+            const zPosition = 0;
+
+            return [cameraId, [xPosition, yPosition, zPosition]];
+        })
+    );
     useFrame(() => {
 
         // Make the camera look at the origin (0, 0, 0)
@@ -36,16 +49,16 @@ export function ThreeJsScene() {
     return (
         <>
             <CameraControls makeDefault/>
-            {cameraPositions.map((position, index) => (
-                <perspectiveCamera
-                    key={index}
-                    ref={el => cameraRefs.current[index] = el!}
-                    // @ts-ignore
-                    position={position}
-                    near={0.1}
-                    far={1}
-                />
-            ))}
+            {/*{cameraPositions.map((position, index) => (*/}
+            {/*    <perspectiveCamera*/}
+            {/*        key={index}*/}
+            {/*        ref={el => cameraRefs.current[index] = el!}*/}
+            {/*        // @ts-ignore*/}
+            {/*        position={position}*/}
+            {/*        near={0.1}*/}
+            {/*        far={1}*/}
+            {/*    />*/}
+            {/*))}*/}
             {cameraRefs.current.map((camera, index) => camera && (
                 <cameraHelper key={index} args={[camera]} />
             ))}
@@ -75,7 +88,7 @@ export function ThreeJsScene() {
                         <ImageMesh
                             key={cameraId}
                             cameraImageData={cameraImageData}
-                            position={[index * 2.5, 1, 0]}
+                            position={cameraPositionsMap[cameraId] as [number, number, number] }
                         />
                     ) : null
                 )}

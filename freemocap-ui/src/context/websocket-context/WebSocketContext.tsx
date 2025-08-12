@@ -8,7 +8,7 @@ interface WebSocketContextProps {
     isConnected: boolean;
     connect: () => void;
     disconnect: () => void;
-    latestImageData: Record<string, CameraImageData>;
+    latestCameraData: Record<string, CameraImageData>;
     acknowledgeFrameRendered: (cameraId: string, frameNumber: number) => void;
 }
 
@@ -21,10 +21,11 @@ interface WebSocketProviderProps {
 const WebSocketContext = createContext<WebSocketContextProps | undefined>(undefined);
 
 export const WebSocketContextProvider: React.FC<WebSocketProviderProps> = ({url, children}) => {
-    const { isConnected, connect, disconnect, latestImageData,acknowledgeFrameRendered } = useWebSocket(url);
+    const { isConnected, connect, disconnect, latestCameraData,acknowledgeFrameRendered } = useWebSocket(url);
 
     return (
-        <WebSocketContext.Provider value={{isConnected, connect, disconnect,latestImageData,acknowledgeFrameRendered}}>
+        <WebSocketContext.Provider value={{isConnected, connect, disconnect,
+            latestCameraData,acknowledgeFrameRendered}}>
             {children}
         </WebSocketContext.Provider>
     )

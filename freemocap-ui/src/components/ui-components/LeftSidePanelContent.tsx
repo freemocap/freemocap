@@ -10,6 +10,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import {useLocation, useNavigate} from "react-router-dom";
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import {VideoFolderPanel} from "@/components/video-folder-panel/VideoFolderPanel";
 // Extract reusable scrollbar styles
 const scrollbarStyles = {
@@ -91,6 +92,12 @@ export const LeftSidePanelContent = () => {
                             onClick={() => navigate('/')}
                         >
                             <HomeIcon/>
+                        </IconButton>
+                        <IconButton
+                            color="inherit"
+                            onClick={() => navigate('/viewport3d')}
+                        >
+                            <DirectionsRunIcon/>
                         </IconButton>
 
                         <IconButton

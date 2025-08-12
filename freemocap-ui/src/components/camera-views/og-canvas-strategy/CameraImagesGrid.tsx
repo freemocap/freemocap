@@ -15,7 +15,7 @@ const debounce = (fn: Function, ms = 50) => {
 };
 
 export const CameraImagesGrid = () => {
-    const {latestImageData} = useWebSocketContext();
+    const {latestCameraData} = useWebSocketContext();
 
     return (
         <Box sx={{ height: '100%',
@@ -25,7 +25,7 @@ export const CameraImagesGrid = () => {
             flexWrap: 'wrap',
         }}>
 
-            {Object.entries(latestImageData).map(([cameraId, cameraImageData]) =>
+            {Object.entries(latestCameraData).map(([cameraId, cameraImageData]) =>
                 cameraImageData ? (
                     <CameraImage
                         key={cameraId}

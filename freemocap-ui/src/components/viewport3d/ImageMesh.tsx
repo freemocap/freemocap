@@ -76,13 +76,19 @@ export const ImageMesh: React.FC<ImageMeshProps> = ({ cameraImageData, position 
     }, [cameraId, imageBitmap, imageWidth, imageHeight, frameNumber, aspectRatio, acknowledgeFrameRendered]);
 
     // Calculate dimensions for the plane geometry
-    const width = 2;
-    const height = width / aspectRatio;
+    let meshWidth, meshHeight;
+    if (imageWidth >= imageHeight) {
+        const meshWidth = 2;
+        const meshHeight = meshWidth / aspectRatio;
+    } else {
+        const meshHeight = 2;
+        const meshWidth = meshHeight * aspectRatio;
+    }
 
     return (
         <mesh ref={meshRef} position={position}>
-            <planeGeometry args={[width, height]} />
-            <meshBasicMaterial transparent={true} />
+            <planeGeometry args={[imageWidth/300, imageHeight/300]} />
+            <meshBasicMaterial transparent={false} />
         </mesh>
     );
 };

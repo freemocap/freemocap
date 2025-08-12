@@ -31,3 +31,7 @@ yarn.lock
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+*.exe
+pyapp-*
+*.zip

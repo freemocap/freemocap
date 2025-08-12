@@ -29,10 +29,10 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
 }
 
 h1 {
@@ -70,11 +70,10 @@ code {
   padding: 2em;
 }
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+#root {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
 }
 
 @media (prefers-color-scheme: light) {

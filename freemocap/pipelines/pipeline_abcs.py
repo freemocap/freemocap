@@ -3,7 +3,7 @@ import logging
 import multiprocessing
 from abc import ABC
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 from multiprocessing import Process, Queue
 from threading import Thread
 from typing import Hashable
@@ -222,9 +222,13 @@ class PipelineImageAnnotator(BaseModel, ABC):
         raise NotImplementedError(
             "You need to re-implement this method with your pipeline's version of the PipelineImageAnnotator ")
 
+from skellycam.core.camera_group.camera_group import CameraGroup
+
+
 @dataclass
 class BaseProcessingPipeline( ABC):
     config: BasePipelineStageConfig
+    data_source: CameraGroup #TODO Add: e.g. | VideoGroup | RerunRecording
     camera_nodes: dict[CameraId, BaseCameraNode]
     aggregation_node: BaseAggregationNode
     annotator: PipelineImageAnnotator

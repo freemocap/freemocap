@@ -163,7 +163,7 @@ export const useWebSocket = (wsUrl: string) => {
         isConnected,
         connect,
         disconnect,
-        latestImageData,
+        latestCameraData: latestImageData,
         acknowledgeFrameRendered,
     };
 };

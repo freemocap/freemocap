@@ -21,7 +21,7 @@ export const startRecording = createAsyncThunk<void, StartRecordingParams>(
     async ({recordingName, recordingDirectory}, {dispatch,}) => {
         console.log(`Starting recording with name: ${recordingName} in directory: ${recordingDirectory}`);
         try {
-            const recStartUrl = urlService.getCameraUrls().startRecording;
+            const recStartUrl = urlService.getSkellycamUrls().startRecording;
 
             const requestPayload = RecordStartRequestSchema.parse({
                 recording_name: recordingName,
@@ -59,7 +59,7 @@ export const stopRecording = createAsyncThunk<void, void>(
     async (_, {dispatch}) => {
         console.log('Stopping recording...');
         try {
-            const recStopUrl = urlService.getCameraUrls().stopRecording;
+            const recStopUrl = urlService.getSkellycamUrls().stopRecording;
             const response = await fetch(recStopUrl, {
                 method: 'GET',
             });

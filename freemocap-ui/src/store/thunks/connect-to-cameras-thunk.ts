@@ -21,7 +21,7 @@ export const connectToCameras = createAsyncThunk(
         }
 
         dispatch(setLoading(true));
-        const connectUrl = urlService.getCameraUrls().createGroup;
+        const connectUrl = urlService.getSkellycamUrls().createCameraGroup;
 
         const payload = {
             camera_configs: cameraConfigs

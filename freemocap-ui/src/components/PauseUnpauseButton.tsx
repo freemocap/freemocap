@@ -67,7 +67,7 @@ export const PauseUnpauseButton: React.FC<PauseUnpauseButtonProps> = ({
     };
 
     const handlePause = () => {
-        const pauseUrl = urlService.getCameraUrls().pauseCameras;
+        const pauseUrl = urlService.getSkellycamUrls().pauseCameras;
         handleApiCall(pauseUrl, () => {
             console.log('Paused successfully');
             setIsPaused(true);
@@ -75,7 +75,7 @@ export const PauseUnpauseButton: React.FC<PauseUnpauseButtonProps> = ({
     };
 
     const handleUnpause = () => {
-        const unpauseUrl = urlService.getCameraUrls().unpauseCameras;
+        const unpauseUrl = urlService.getSkellycamUrls().unpauseCameras;
         handleApiCall(unpauseUrl, () => {
             console.log('Unpaused successfully');
             setIsPaused(false);

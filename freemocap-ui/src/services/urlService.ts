@@ -39,12 +39,12 @@ class UrlService {
   }
 
   // Camera API endpoints
-  getCameraUrls() {
+  getSkellycamUrls() {
     return {
       detectCameras: this.getApiUrl('/skellycam/camera/detect'),
-      createGroup: this.getApiUrl('/skellycam/camera/group/create'),
-      closeAll: this.getApiUrl('/skellycam/camera/group/close/all'),
-      updateConfig: this.getApiUrl('/skellycam/camera/update'),
+      createCameraGroup: this.getApiUrl('/skellycam/camera/group/create'),
+      closeAllCameras: this.getApiUrl('/skellycam/camera/group/close/all'),
+      updateCameraConfigs: this.getApiUrl('/skellycam/camera/update'),
       startRecording: this.getApiUrl('/skellycam/camera/group/all/record/start'),
       stopRecording: this.getApiUrl('/skellycam/camera/group/all/record/stop'),
       pauseCameras: this.getApiUrl('/skellycam/camera/group/all/pause'),

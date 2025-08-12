@@ -21,7 +21,7 @@ export const detectCameraDevices = createAsyncThunk<
         dispatch(setLoading(true));
 
         try {
-            const connectUrl = urlService.getCameraUrls().detectCameras;
+            const connectUrl = urlService.getSkellycamUrls().detectCameras;
 
             console.log(`Detecting cameras at ${connectUrl}`);
             const response = await fetch(connectUrl, {

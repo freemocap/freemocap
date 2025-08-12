@@ -1,17 +1,22 @@
 // skellycam-ui/src/layout/BaseContent.tsx
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import WelcomePage from "@/layout/pages/WelcomePage";
+import {Navigate, Route, Routes} from 'react-router-dom';
 import {CamerasPage} from "@/layout/pages/CamerasPage";
-import VideosPage from "@/layout/pages/VideosPage";
+import {Viewport3dPage} from "@/layout/pages/Viewport3dPage";
+import VideosPage from "@/layout/pages/VideosPage"
+import ErrorBoundary from "@/components/ErrorBoundary";
+
 
 export const BaseContentRouter: React.FC = () => {
     return (
-        <Routes>
-            {/*<Route path="/" element={<WelcomePage />} />*/}
-            <Route path="/" element={<CamerasPage />} />
-            <Route path="/videos" element={<VideosPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <ErrorBoundary>
+            <Routes>
+                {/*<Route path="/" element={<WelcomePage />} />*/}
+                <Route path="/" element={<CamerasPage/>}/>
+                <Route path="/viewport3d" element={<Viewport3dPage/>}/>
+                <Route path="/videos" element={<VideosPage/>}/>
+                <Route path="*" element={<Navigate to="/" replace/>}/>
+            </Routes>
+        </ErrorBoundary>
     );
 };

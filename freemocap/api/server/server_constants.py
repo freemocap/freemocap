@@ -1,4 +1,4 @@
 PROTOCOL = "http"
 HOSTNAME = "localhost"
-PORT = 8005
+PORT = 8007
 APP_URL = f"{PROTOCOL}://{HOSTNAME}:{PORT}"

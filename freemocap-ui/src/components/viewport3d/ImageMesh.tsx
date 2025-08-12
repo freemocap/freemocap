@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { CameraImageData } from "@/context/websocket-context/useWebsocketBinaryMessageProcessor";
 import { useWebSocketContext } from "@/context/websocket-context/WebSocketContext";
+import {Vector3} from "three";
 
 interface ImageMeshProps {
     cameraImageData: CameraImageData;
-    position: [number, number, number];
+    position:  [number, number, number];
 }
 
 export const ImageMesh: React.FC<ImageMeshProps> = ({ cameraImageData, position }) => {
@@ -20,8 +21,16 @@ export const ImageMesh: React.FC<ImageMeshProps> = ({ cameraImageData, position 
         // Create texture only once and reuse it
         if (!textureRef.current) {
             const newTexture = new THREE.Texture();
+            // Set Color Management
             newTexture.minFilter = THREE.LinearFilter;
             newTexture.magFilter = THREE.LinearFilter;
+
+            // Do a buncha weird nonsense to get the image to show up correctly in the scene
+            newTexture.wrapS = THREE.RepeatWrapping;
+            newTexture.repeat.x = -1; // Flip texture horizontally
+            newTexture.center = new THREE.Vector2(0.5, 0.5);
+            newTexture.rotation = Math.PI;
+            newTexture.flipY = false;
             textureRef.current = newTexture;
         }
 
@@ -47,6 +56,8 @@ export const ImageMesh: React.FC<ImageMeshProps> = ({ cameraImageData, position 
 
             // Update texture with new image data without creating a new texture
             textureRef.current.image = imageBitmap;
+            textureRef.current.flipY = true;
+
             textureRef.current.needsUpdate = true;
 
             // Apply texture to material if not already applied

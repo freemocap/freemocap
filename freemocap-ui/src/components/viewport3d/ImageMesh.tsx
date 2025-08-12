@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import {CameraImageData} from "@/context/websocket-context/useWebsocketBinaryMessageProcessor";
+import { CameraImageData } from "@/context/websocket-context/useWebsocketBinaryMessageProcessor";
+import { useWebSocketContext } from "@/context/websocket-context/WebSocketContext";
 
 interface ImageMeshProps {
     cameraImageData: CameraImageData;
@@ -8,59 +9,60 @@ interface ImageMeshProps {
 }
 
 export const ImageMesh: React.FC<ImageMeshProps> = ({ cameraImageData, position }) => {
+    const { cameraId, imageBitmap, imageWidth, imageHeight, frameNumber } = cameraImageData;
+    const { acknowledgeFrameRendered } = useWebSocketContext();
     const meshRef = useRef<THREE.Mesh>(null);
     const textureRef = useRef<THREE.Texture | null>(null);
     const [aspectRatio, setAspectRatio] = useState(2);
 
-    // Create and update texture from ImageBitmap
+    // Initialize texture once
     useEffect(() => {
-        const { imageBitmap } = cameraImageData;
-        if (!imageBitmap || !meshRef.current) return;
-
-        let isMounted = true;
-
-        const updateTexture = async () => {
-            if (!imageBitmap) return;
-            try {
-
-                if (!isMounted) {
-                    imageBitmap.close();
-                    return;
-                }
-
-                // Update aspect ratio
-                const newAspectRatio = imageBitmap.width / imageBitmap.height;
-                setAspectRatio(newAspectRatio);
-
-                // Create texture from ImageBitmap
-                if (textureRef.current) {
-                    textureRef.current.dispose(); // Clean up previous texture
-                }
-
-                const newTexture = new THREE.CanvasTexture(imageBitmap);
-                textureRef.current = newTexture;
-
-                // Update material
-                if (meshRef.current?.material instanceof THREE.MeshBasicMaterial) {
-                    meshRef.current.material.map = newTexture;
-                    meshRef.current.material.needsUpdate = true;
-                }
-            } catch (error) {
-                console.error('Error processing image:', error);
-            }
-        };
-
-        updateTexture();
+        // Create texture only once and reuse it
+        if (!textureRef.current) {
+            const newTexture = new THREE.Texture();
+            newTexture.minFilter = THREE.LinearFilter;
+            newTexture.magFilter = THREE.LinearFilter;
+            textureRef.current = newTexture;
+        }
 
         return () => {
-            isMounted = false;
             // Clean up texture on unmount
             if (textureRef.current) {
                 textureRef.current.dispose();
                 textureRef.current = null;
             }
         };
-    }, [cameraImageData]);
+    }, []);
+
+    // Update texture with new image data
+    useEffect(() => {
+        if (!imageBitmap || !meshRef.current || !textureRef.current) return;
+
+        try {
+            // Update aspect ratio only when dimensions change
+            const newAspectRatio = imageWidth / imageHeight;
+            if (aspectRatio !== newAspectRatio) {
+                setAspectRatio(newAspectRatio);
+            }
+
+            // Update texture with new image data without creating a new texture
+            textureRef.current.image = imageBitmap;
+            textureRef.current.needsUpdate = true;
+
+            // Apply texture to material if not already applied
+            if (meshRef.current.material instanceof THREE.MeshBasicMaterial) {
+                if (meshRef.current.material.map !== textureRef.current) {
+                    meshRef.current.material.map = textureRef.current;
+                }
+                meshRef.current.material.needsUpdate = true;
+            }
+
+            // Acknowledge that the frame was rendered
+            acknowledgeFrameRendered(cameraId, frameNumber);
+        } catch (error) {
+            console.error('Error processing image:', error);
+        }
+    }, [cameraId, imageBitmap, imageWidth, imageHeight, frameNumber, aspectRatio, acknowledgeFrameRendered]);
 
     // Calculate dimensions for the plane geometry
     const width = 2;

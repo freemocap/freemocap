@@ -20,6 +20,7 @@ dependencies = [
     "pydantic>=2.10.4",
     "numpydantic>=1.6.7",
     #    "ltrt"
+    "mediapipe>=0.10.21",
 ]
 
 [tool.uv.sources]
@@ -33,7 +34,8 @@ skellyforge = { git = "https://github.com/freemocap/skellyforge" }
 
 [project.scripts]
 freemocap = "freemocap.__main__:main"
-
+[tool.setuptools]
+py-modules = ["freemocap"]
 [tool.uv]
 package = true
 dev-dependencies = [

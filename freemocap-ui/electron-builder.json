@@ -1,0 +1,46 @@
+{
+  "appId": "freemocap.app",
+  "directories": {
+    "output": "release/${version}"
+  },
+  "files": [
+    "dist-electron",
+    "dist",
+    "freemocap_server.exe",
+    "../shared/logo/freemocap_skelly_logo.ico"
+  ],
+  "icon": "../shared/logo/freemocap_skelly_logo.ico",
+  "asar": true,
+  "asarUnpack": [
+    "**/freemocap_server.exe"
+  ],
+  "mac": {
+    "artifactName": "${productName}_${version}_installer.${ext}",
+    "target": [
+      "dmg",
+      "zip"
+    ]
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "artifactName": "${productName}_${version}_installer.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "deleteAppDataOnUninstall": false
+  },
+  "publish": {
+    "provider": "generic",
+    "channel": "latest",
+    "url": "https://github.com/freemocap/freemocap"
+  }
+}

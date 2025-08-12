@@ -1,18 +1,20 @@
 import React from 'react';
-import {Paperbase} from "@/layout/paperbase_theme/Paperbase";
-import {WebSocketProvider} from "@/context/WebSocketContext";
-
+import { PaperbaseContent } from "@/layout/paperbase_theme/PaperbaseContent";
+import { Provider } from "react-redux";
+import { AppStateStore } from "@/store/AppStateStore";
+import { WebSocketContextProvider } from "@/context/websocket-context/WebSocketContext";
+import { urlService } from '@/services/urlService';
 
 function App() {
-    const _port = 8005;
-    const wsUrl = `ws://localhost:${_port}/websocket/connect`;
+    const wsUrl = urlService.getWebSocketUrl();
     return (
-        <WebSocketProvider url={wsUrl}>
-            <React.Fragment>
-                <Paperbase/>
-            </React.Fragment>
-        </WebSocketProvider>
+        <Provider store={AppStateStore}>
+                <WebSocketContextProvider url={wsUrl}>
+                    <PaperbaseContent/>
+                </WebSocketContextProvider>
+        </Provider>
     );
 }
 
 export default App;
+

@@ -10,7 +10,6 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     LOG_FILE_FOLDER_NAME,
     BASE_FREEMOCAP_DATA_FOLDER_NAME,
     CALIBRATIONS_FOLDER_NAME,
-    logger,
     RECORDING_SESSIONS_FOLDER_NAME,
     MOST_RECENT_RECORDING_TOML_FILENAME,
     LAST_SUCCESSFUL_CALIBRATION_TOML_FILENAME,
@@ -26,6 +25,9 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     GUI_STATE_JSON_FILENAME,
 )
 
+
+import logging
+logger = logging.getLogger(__name__)
 
 def os_independent_home_dir():
     return str(Path.home())

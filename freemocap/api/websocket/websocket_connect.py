@@ -2,22 +2,17 @@ import logging
 
 from fastapi import APIRouter, WebSocket
 
-from freemocap.api.websocket.websocket_server import FreemocapWebsocketServer
+from skellycam.api.websocket.websocket_server import WebsocketServer
 
 logger = logging.getLogger(__name__)
 
-freemocap_websocket_router = APIRouter()
+websocket_router = APIRouter(tags=["Websocket"], prefix="/websocket")
 
 
-@freemocap_websocket_router.websocket("/connect")
-async def freemocap_websocket_server_connect(websocket: WebSocket):
-    """
-    Websocket endpoint for client connection to the server - handles image data streaming to frontend.
-    """
-
+@websocket_router.websocket("/connect")
+async def websocket_server_connect(websocket: WebSocket):
     await websocket.accept()
-    logger.success(f"FreeMoCap Websocket connection established!")
-
-    async with FreemocapWebsocketServer(websocket=websocket) as runner:
-        await runner.run()
+    logger.success(f"Websocket connection established!")
+    async with WebsocketServer(websocket=websocket) as websocket_server:
+        await websocket_server.run()
     logger.info("Websocket closed")

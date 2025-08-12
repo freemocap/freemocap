@@ -16,21 +16,24 @@ export function ThreeJsScene() {
     const numberOfCameras = Object.keys(latestCameraData).length;
     const sphereGeometry = useMemo(() => new SphereGeometry(0.1, 16, 16), []);
     const sphereMaterial = useMemo(() => new MeshStandardMaterial({color: 'red'}), []);
-    const maxRowsColumns = Math.ceil(Math.sqrt(numberOfCameras));
+    const maxRowsColumns = Math.ceil(Math.sqrt(numberOfCameras))+1;
 
     const cameraPositionsMap = Object.fromEntries(
         Object.entries(latestCameraData).map(([cameraId, cameraImageData]) => {
             // Calculate position in a grid with max columns based on sqrt of camera count
+            const cameraIndex = cameraImageData?.cameraIndex ;
             const columnIndex = cameraImageData?.cameraIndex % maxRowsColumns;
             const rowIndex = Math.floor(cameraImageData?.cameraIndex / maxRowsColumns);
 
             // Set spacing between cameras
-            const verticalSpacing = 1.5;
+            const verticalSpacing = 2.5;
             const horizontalSpacing = 2.2;
             const verticalOffset = 1;
 
             const xPosition = columnIndex * horizontalSpacing - horizontalSpacing; // Center the grid
             const yPosition = rowIndex * verticalSpacing + verticalOffset;
+            // const xPosition = cameraIndex * horizontalSpacing - numberOfCameras/2; // Center the grid
+            // const yPosition = 2;//rowIndex * verticalSpacing + verticalOffset;
             const zPosition = 0;
 
             return [cameraId, [xPosition, yPosition, zPosition]];

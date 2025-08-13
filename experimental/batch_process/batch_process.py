@@ -1,6 +1,9 @@
 import logging
 from pathlib import Path
 from typing import Optional, Union
+from multiprocessing import cpu_count
+
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import MediapipeTrackingParams
 
 from freemocap.core_processes.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender
 from freemocap.core_processes.process_motion_capture_videos.process_recording_folder import process_recording_folder
@@ -12,9 +15,10 @@ from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json
 
 
 def process_folder_of_session_folders(
-        path_to_folder_of_session_folders: Union[str, Path],
-        path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
-        path_to_blender_executable: Optional[Union[str, Path]] = None,
+    path_to_folder_of_session_folders: Union[str, Path],
+    path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
+    path_to_blender_executable: Optional[Union[str, Path]] = None,
+    max_num_processes: int = cpu_count() - 1,
 ):
     # list_of_session_folders = list(path_to_folder_of_session_folders.glob("ses*"))
     list_of_session_folders = [f for f in path_to_folder_of_session_folders.iterdir() if f.is_dir()]
@@ -47,17 +51,21 @@ def process_folder_of_session_folders(
                 recording_path=recording_folder_path,
                 path_to_blender_executable=path_to_blender_executable,
                 path_to_camera_calibration_toml=this_recording_calibration_toml_path,
+                max_num_processes=max_num_processes,
             )
 
     logging.info("Done!")
 
 
 def process_recording_without_gui(
-        recording_path: Union[str, Path],
-        path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
-        path_to_blender_executable: Optional[Union[str, Path]] = None,
+    recording_path: Union[str, Path],
+    path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
+    path_to_blender_executable: Optional[Union[str, Path]] = None,
+    max_num_processes: int = cpu_count() - 1,
 ):
-    rec = ProcessingParameterModel()
+    rec = ProcessingParameterModel(
+        tracking_parameters_model=MediapipeTrackingParams(num_processes=max_num_processes),
+    )
 
     rec.recording_info_model = RecordingInfoModel(recording_folder_path=Path(recording_path))
 

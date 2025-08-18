@@ -12,6 +12,7 @@ import VideocamIcon from '@mui/icons-material/Videocam';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import {VideoFolderPanel} from "@/components/video-folder-panel/VideoFolderPanel";
+import {ProcessingPipelinePanel} from "@/components/processing-pipeline-panel/ProcessingPipelinePanel";
 // Extract reusable scrollbar styles
 const scrollbarStyles = {
     '&::-webkit-scrollbar': {
@@ -127,10 +128,11 @@ export const LeftSidePanelContent = () => {
                     overflowX: 'hidden',
                     ...scrollbarStyles
                 }}>
-                    <RecordingInfoPanel/>
                     <AvailableCamerasPanel/>
-                </Box>
+                    <RecordingInfoPanel/>
+                    <ProcessingPipelinePanel/>
 
+                </Box>
 
             {location.pathname === '/videos' && (
                 <Box sx={{
@@ -140,8 +142,11 @@ export const LeftSidePanelContent = () => {
                     ...scrollbarStyles
                 }}>
                     <VideoFolderPanel/>
+                    <ProcessingPipelinePanel/>
+
                 </Box>
             )}
+
         </Box>
     );
 }

@@ -13,7 +13,6 @@ import {
   useTheme
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
-import VideocamIcon from '@mui/icons-material/Videocam';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {useAppDispatch, useAppSelector} from "@/store/AppStateStore";
 import {
@@ -34,6 +33,7 @@ import {
 import {RecordingNamePreview} from "@/components/recording-info-panel/recording-subcomponents/RecordingNamePreview";
 import {startRecording, stopRecording} from "@/store/thunks/start-stop-recording-thunks";
 import {setRecordingInfo} from "@/store/slices/recordingInfoSlice";
+import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 
 export const RecordingInfoPanel: React.FC = () => {
   const theme = useTheme();
@@ -81,7 +81,7 @@ useEffect(() => {
 
   const getTimestampString = (): string => {
     const now = new Date();
-    
+
     // Format date in local time with timezone info
     const dateOptions: Intl.DateTimeFormatOptions = {
       year: 'numeric',
@@ -93,20 +93,20 @@ useEffect(() => {
       hour12: false,
       timeZoneName: 'shortOffset'
     };
-    
+
     // Get formatted parts
     const formatter = new Intl.DateTimeFormat('en-US', dateOptions);
     const parts = formatter.formatToParts(now);
-    
+
     // Create a map of the parts for easy access
     const partMap: Record<string, string> = {};
     parts.forEach(part => {
       partMap[part.type] = part.value;
     });
-    
+
     // Build the timestamp string in a filename-friendly format
     const timestamp = `${partMap.year}-${partMap.month}-${partMap.day}_${partMap.hour}-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(':', '')}`;
-    
+
     return timestamp;
   };
 
@@ -192,7 +192,7 @@ useEffect(() => {
           }}
         >
           <Stack direction="row" alignItems="center" spacing={1}>
-            <VideocamIcon />
+            <VideoLibraryIcon />
             <Typography variant="subtitle1" fontWeight="medium">
               {recordingInfo.isRecording ? 'Recording in Progress...' : 'Record Videos'}
             </Typography>

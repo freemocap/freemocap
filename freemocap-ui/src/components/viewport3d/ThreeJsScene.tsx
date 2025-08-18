@@ -8,18 +8,18 @@ import {useWebSocketContext} from "@/context/websocket-context/WebSocketContext"
 extend({CameraHelper});
 
 export function ThreeJsScene() {
-    const {latestCameraData} = useWebSocketContext();
+    const {latestImageData} = useWebSocketContext();
     const sphereRef = useRef<InstancedMesh>(null);
     const cameraRefs = useRef<PerspectiveCamera[]>([]);
     const latestPoints3d = {} // dummy for now
-    const numPoints = Object.keys(latestPoints3d).length;
-    const numberOfCameras = Object.keys(latestCameraData).length;
+    const numPoints = latestPoints3d?Object.keys(latestPoints3d).length : 0;
+    const numberOfCameras = latestImageData ? Object.keys(latestImageData).length : 0;
     const sphereGeometry = useMemo(() => new SphereGeometry(0.1, 16, 16), []);
     const sphereMaterial = useMemo(() => new MeshStandardMaterial({color: 'red'}), []);
     const maxRowsColumns = Math.ceil(Math.sqrt(numberOfCameras))+1;
 
     const cameraPositionsMap = Object.fromEntries(
-        Object.entries(latestCameraData).map(([cameraId, cameraImageData]) => {
+        Object.entries(latestImageData).map(([cameraId, cameraImageData]) => {
             // Calculate position in a grid with max columns based on sqrt of camera count
             const cameraIndex = cameraImageData?.cameraIndex ;
             const columnIndex = cameraImageData?.cameraIndex % maxRowsColumns;
@@ -85,8 +85,8 @@ export function ThreeJsScene() {
                 fadeDistance={100}
             />
             <axesHelper/>
-            {latestCameraData &&
-                Object.entries(latestCameraData).map(([cameraId, cameraImageData], index) =>
+            {latestImageData &&
+                Object.entries(latestImageData).map(([cameraId, cameraImageData], index) =>
                     cameraImageData?.imageBitmap ? (
                         <ImageMesh
                             key={cameraId}

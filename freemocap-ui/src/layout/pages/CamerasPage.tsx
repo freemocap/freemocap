@@ -1,10 +1,11 @@
 // skellycam-ui/src/layout/BaseContent.tsx
 import React from 'react';
 import Box from "@mui/material/Box";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import ErrorBoundary from "@/components/common/ErrorBoundary";
 import {Copyright} from "@/components/ui-components/Copyright";
 import {useTheme} from "@mui/material/styles";
 import {CameraImagesGrid} from "@/components/camera-views/og-canvas-strategy/CameraImagesGrid";
+import {CamerasViewSettingsOverlay} from "@/components/camera-view-settings-overlay/CamerasViewSettingsOverlay";
 
 export const CamerasPage = () => {
     const theme = useTheme();
@@ -25,13 +26,15 @@ export const CamerasPage = () => {
                 overflow: "scroll"
 
             }}>
-                <Box >
+                {/*<CamerasViewSettingsOverlay/>*/}
+
+                <Box>
                     <ErrorBoundary>
                         <CameraImagesGrid/>
                     </ErrorBoundary>
                 </Box>
                 <Box component="footer" sx={{p: 1}}>
-                    <Copyright />
+                    <Copyright/>
                 </Box>
             </Box>
         </React.Fragment>

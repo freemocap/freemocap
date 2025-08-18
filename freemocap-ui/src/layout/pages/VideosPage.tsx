@@ -1,9 +1,8 @@
 import React from 'react';
 import Box from "@mui/material/Box";
-import ErrorBoundary from "@/components/ErrorBoundary";
 import {Copyright} from "@/components/ui-components/Copyright";
 import {useTheme} from "@mui/material/styles";
-import { Typography } from '@mui/material';
+import {Typography} from '@mui/material';
 
 const VideosPage: React.FC = () => {
     const theme = useTheme();
@@ -32,18 +31,16 @@ const VideosPage: React.FC = () => {
                     alignItems: 'center',
                     overflow: 'hidden',
                 }}>
-                    <ErrorBoundary>
-                        <Typography variant="h4" gutterBottom>
-                            Load Synchronized Videos
-                        </Typography>
-                        <Typography variant="body1">
-                            This page will allow you to load and synchronize pre-recorded videos.
-                        </Typography>
-                        {/* Add your video loading components here */}
-                    </ErrorBoundary>
+                    <Typography variant="h4" gutterBottom>
+                        Load Synchronized Videos
+                    </Typography>
+                    <Typography variant="body1">
+                        This page will allow you to load and synchronize pre-recorded videos.
+                    </Typography>
+                    {/* Add your video loading components here */}
                 </Box>
                 <Box component="footer" sx={{p: 1}}>
-                    <Copyright />
+                    <Copyright/>
                 </Box>
             </Box>
         </React.Fragment>

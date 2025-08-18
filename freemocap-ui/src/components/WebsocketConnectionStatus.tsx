@@ -1,73 +1,75 @@
-import React from 'react';
-import { Box, Typography, IconButton, Tooltip } from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import { useWebSocketContext } from "@/context/websocket-context/WebSocketContext";
-import { urlService } from '@/services/urlService';
+import {Box, Tooltip, Typography} from "@mui/material";
+import {useWebSocketContext} from "@/context/websocket-context/WebSocketContext";
+import {urlService} from "@/services/urlService";
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 
 const WebsocketConnectionStatus = () => {
-    const { isConnected, disconnect, connect } = useWebSocketContext();
-
+    const {isConnected, disconnect, connect} = useWebSocketContext();
     const wsUrl = urlService.getWebSocketUrl();
-    const handleResetConnection = () => {
-        disconnect();
-        setTimeout(() => {
+
+    const handleToggleConnection = () => {
+        if (isConnected) {
+            disconnect(false);
+        } else {
             connect();
-        }, 500);
+        }
     };
 
     return (
-        <Box sx={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            padding: '10px',
-            flexDirection: 'column',
-            pl: 4,
-            color: '#dadada',
-            cursor: 'pointer',
-        }}
-        onClick={handleResetConnection}
-        >
-            <Tooltip
-                title={`WebSocket URL: ${wsUrl}`}
-                placement="bottom-start"
-                arrow
+        <Tooltip title={`WebSocket URL: ${wsUrl}`} placement="bottom-start" arrow>
+            <Box
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    padding: '10px',
+                    flexDirection: 'column',
+                    pl: 4,
+                    color: '#dadada',
+                    cursor: 'pointer',
+                }}
+                onClick={handleToggleConnection}
             >
                 <Typography
                     variant="body1"
-                    sx={{ 
+                    component="div" // Override the default <p> to <div>
+                    sx={{
                         display: 'flex',
                         alignItems: 'center',
+                        gap: 1,
                     }}
                 >
-                    Websocket: {isConnected ? 'connected ✔️' : 'disconnected❌'}
-                    <Tooltip
-                        title="Reset WebSocket connection"
-                        placement="top"
-                        arrow
-                    >
-                        <IconButton
-                            size="small"
-                            sx={{
-                                ml: 1,
-                                color: 'inherit',
-                                padding: '4px',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                                }
-                            }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleResetConnection();
-                            }}
-                            aria-label="Reset connection"
-                        >
-                            <RefreshIcon fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
+                    <Box sx={{
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        backgroundColor: isConnected ? 'rgba(0, 255, 0, 0.1)' : 'rgba(255, 0, 0, 0.1)',
+                        width: '24px',
+                        height: '24px',
+                        marginRight: '8px',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        transition: 'background-color 0.3s, border-color 0.3s',
+                        borderColor: isConnected ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 0, 0, 0.5)',
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '4px',
+                        justifyContent: 'center',
+                        '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            borderColor: 'rgba(255, 255, 255, 0.2)',
+                        },
+                    }}>
+                        {isConnected ? (
+                            <CheckIcon sx={{ color: 'green' }} />
+                        ) : (
+                            <CloseIcon fontSize="small" sx={{ color: 'red' }} />
+                        )}
+                    </Box>
+                    Websocket: {isConnected ? 'connected' : 'disconnected'}
                 </Typography>
-            </Tooltip>
-        </Box>
-    );
+            </Box>
+        </Tooltip>
+    )
+        ;
 };
-
 export default WebsocketConnectionStatus;

@@ -4,7 +4,7 @@ import {Navigate, Route, Routes} from 'react-router-dom';
 import {CamerasPage} from "@/layout/pages/CamerasPage";
 import {Viewport3dPage} from "@/layout/pages/Viewport3dPage";
 import VideosPage from "@/layout/pages/VideosPage"
-import ErrorBoundary from "@/components/ErrorBoundary";
+import ErrorBoundary from "@/components/common/ErrorBoundary";
 
 
 export const BaseContentRouter: React.FC = () => {

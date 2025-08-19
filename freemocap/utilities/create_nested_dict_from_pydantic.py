@@ -30,7 +30,7 @@ if __name__ == "__main__":
     from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
         MediapipeModelInfo,
     )
-    from freemocap.data_layer.data_saver import SkeletonSchema
+    from freemocap.old.data_layer import SkeletonSchema
 
     skeleton_schema = SkeletonSchema(schema_dict=MediapipeModelInfo.skeleton_schema)
     print(create_nested_dict(skeleton_schema))

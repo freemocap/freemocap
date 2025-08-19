@@ -11,23 +11,17 @@ from typing import Hashable
 import numpy as np
 from numpydantic import NDArray, Shape
 from pydantic import BaseModel
-from skellycam.core import CameraId
-from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
-    SingleSlotCameraSharedMemory
-from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_shared_memory import \
-    CameraSharedMemoryDTO
-from skellycam.core.frames.payloads.frame_payload import FramePayload
-from skellycam.core.frames.payloads.metadata.frame_metadata import FrameMetadata
-from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
-from skellytracker.trackers.base_tracker.base_tracker import BaseTrackerConfig, BaseImageAnnotator, \
-    BaseImageAnnotatorConfig
-
+from skellycam.core.types.type_overloads import CameraIdString
+from skellycam.core.camera.config.camera_config import CameraConfig, CameraConfigs
+from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
+from skellycam.core.ipc.shared_memory.frame_payload_shared_memory_ring_buffer import FramePayloadSharedMemoryRingBuffer
+from skellycam.core.types.numpy_record_dtypes import FRAME_METADATA_DTYPE
 logger = logging.getLogger(__name__)
 
 
 class ReadTypes(str, Enum):
-    LATEST = "latest"
-    NEXT = "next"
+    LATEST = auto()
+    NEXT = auto()
 
 class BasePipelineData(BaseModel,ABC):
     pass
@@ -40,13 +34,13 @@ class BaseAggregationLayerOutputData(BasePipelineData):
 
 
 class BaseCameraNodeOutputData(BasePipelineData):
-    frame_metadata: FrameMetadata
+    frame_metadata: np.recarray#dtype: FRAME_METADATA_DTYPE
     time_to_retrieve_frame_ns: int
     time_to_process_frame_ns: int
 
 
 class BasePipelineOutputData(BasePipelineData):
-    camera_node_output: dict[CameraId, BaseCameraNodeOutputData]
+    camera_node_output: dict[CameraIdString, BaseCameraNodeOutputData]
     aggregation_layer_output: BaseAggregationLayerOutputData
 
     @property
@@ -62,51 +56,44 @@ class BasePipelineStageConfig(BaseModel, ABC):
 
 
 class BasePipelineConfig(BaseModel, ABC):
-    camera_node_configs: dict[CameraId, BasePipelineStageConfig]
+    camera_node_configs: dict[CameraIdString, BasePipelineStageConfig]
     aggregation_node_config: BasePipelineStageConfig
 
     @classmethod
-    def create(cls, camera_ids: list[CameraId], tracker_config: BaseTrackerConfig):
+    def create(cls, camera_ids: list[CameraIdString], tracker_config: BaseTrackerConfig):
         return cls(camera_node_configs={camera_id: BasePipelineStageConfig() for camera_id in camera_ids},
                    aggregation_node_config=BasePipelineStageConfig())
 
 
 @dataclass
-class BaseCameraNode(ABC):
-    config: BasePipelineStageConfig
-    camera_id: CameraId
-    incoming_frame_shm: SingleSlotCameraSharedMemory
-
-    process: Process| Thread
-    all_ready_events: dict[CameraId, multiprocessing.Event]
-    shutdown_event: multiprocessing.Event
+class PipelineIPC:
+    should_continue: multiprocessing.Value
+    pubsub: PubSubTopicManager
+@dataclass
+class CameraNode:
+    camera_id: CameraIdString
+    camera_ring_shm: SharedMemoryRingBufferDTO
+    ipc: PipelineIPC
+    worker: Process | Thread
+    global_kill_flag: multiprocessing.Value
 
     @classmethod
     def create(cls,
-               config: BasePipelineStageConfig,
-               camera_id: CameraId,
-               incoming_frame_shm_dto: CameraSharedMemoryDTO,
-               output_queue: Queue,
-               all_ready_events: dict[CameraId, multiprocessing.Event],
-               shutdown_event: multiprocessing.Event):
-        raise NotImplementedError(
-            "You need to re-implement this method with your pipeline's version of the CameraProcessingNode "
-            "abstract base class! See example in the `freemocap/.../dummy_pipeline.py` file.")
-        # return cls(config=config,
-        #            camera_id=camera_id,
-        #            camera_ring_shm=RingBufferCameraSharedMemory.recreate(dto=camera_ring_shm_dto,
-        #                                                                  read_only=False),
-        #            process=Process(target=cls._run,
-        #                            kwargs=dict(config=config,
-        #                                        camera_ring_shm_dto=camera_ring_shm_dto,
-        #                                        output_queue=output_queue,
-        #                                        read_type=read_type,
-        #                                        shutdown_event=shutdown_event
-        #                                        )
-        #                            ),
-        #            read_type=read_type,
-        #            shutdown_event=shutdown_event
-        #          )
+                camera_id: CameraIdString,
+                camera_shm_dto: SharedMemoryRingBufferDTO,
+                output_queue: Queue,
+                global_kill_flag: multiprocessing.Value):
+        return cls(camera_id=camera_id,
+                   worker=Process(target=cls._run,
+                                  kwargs=dict(camera_id=camera_id,
+                                               config=config,
+                                               camera_shm_dto=camera_shm_dto,
+                                               output_queue=output_queue,
+                                               global_kill_flag=global_kill_flag
+                                               )
+                                  ),
+                   global_kill_flag=global_kill_flag
+                   )
 
     def intake_data(self, frame_payload: FramePayload):
         self.incoming_frame_shm.put_frame(frame_payload.image, frame_payload.metadata)
@@ -117,13 +104,13 @@ class BaseCameraNode(ABC):
              incoming_frame_shm_dto: CameraSharedMemoryDTO,
              output_queue: Queue,
              all_ready_events: dict[CameraId, multiprocessing.Event],
-             shutdown_event: multiprocessing.Event):
+             global_kill_flag: multiprocessing.Event):
         raise NotImplementedError(
             "Add your camera process logic here! See example in the `freemocap/.../dummy_pipeline.py` file.")
         # logger.trace(f"Starting camera processing node for camera {camera_ring_shm_dto.camera_id}")
         # camera_ring_shm = RingBufferCameraSharedMemory.recreate(dto=camera_ring_shm_dto,
         #                                                         read_only=False)
-        # while not shutdown_event.is_set():
+        # while not global_kill_flag.is_set():
         #     time.sleep(0.001)
         #     if camera_ring_shm.ready_to_read:
         #
@@ -142,12 +129,12 @@ class BaseCameraNode(ABC):
 
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__} for camera {self.camera_id}")
-        self.process.start()
+        self.worker.start()
 
     def stop(self):
         logger.debug(f"Stopping {self.__class__.__name__} for camera {self.camera_id}")
-        self.shutdown_event.set()
-        self.process.join()
+        self.global_kill_flag.set()
+        self.worker.join()
 
 
 @dataclass
@@ -156,7 +143,7 @@ class BaseAggregationNode(ABC):
     process: Process| Thread
     input_queues: dict[CameraId, Queue]
     output_queue: Queue
-    shutdown_event: multiprocessing.Event
+    global_kill_flag: multiprocessing.Event
 
     @classmethod
     def create(cls,
@@ -164,7 +151,7 @@ class BaseAggregationNode(ABC):
                input_queues: dict[CameraId, Queue],
                output_queue: Queue,
                all_ready_events: dict[CameraId|str, multiprocessing.Event],
-               shutdown_event: multiprocessing.Event):
+               global_kill_flag: multiprocessing.Event):
         raise NotImplementedError(
             "You need to re-implement this method with your pipeline's version of the AggregationProcessNode "
             "abstract base class! See example in the `freemocap/.../dummy_pipeline.py` file.")
@@ -173,21 +160,21 @@ class BaseAggregationNode(ABC):
         #                            kwargs=dict(config=config,
         #                                        input_queues=input_queues,
         #                                        output_queue=output_queue,
-        #                                        shutdown_event=shutdown_event)
+        #                                        global_kill_flag=global_kill_flag)
         #                            ),
         #            input_queues=input_queues,
         #            output_queue=output_queue,
-        #            shutdown_event=shutdown_event)
+        #            global_kill_flag=global_kill_flag)
 
     @staticmethod
     def _run(config: BasePipelineStageConfig,
              input_queues: dict[CameraId, Queue],
              output_queue: Queue,
              all_ready_events: dict[CameraId | str, multiprocessing.Event],
-        shutdown_event: multiprocessing.Event):
+        global_kill_flag: multiprocessing.Event):
         raise NotImplementedError(
             "Add your aggregation process logic here! See example in the `freemocap/.../dummy_pipeline.py` file.")
-        # while not shutdown_event.is_set():
+        # while not global_kill_flag.is_set():
         #     data_by_camera_id = {camera_id: None for camera_id in input_queues.keys()}
         #     while any([input_queues[camera_id].empty() for camera_id in input_queues.keys()]):
         #         time.sleep(0.001)
@@ -206,7 +193,7 @@ class BaseAggregationNode(ABC):
 
     def stop(self):
         logger.debug(f"Stopping {self.__class__.__name__}")
-        self.shutdown_event.set()
+        self.global_kill_flag.set()
         self.process.join()
 
 
@@ -232,7 +219,7 @@ class BaseProcessingPipeline( ABC):
     camera_nodes: dict[CameraId, BaseCameraNode]
     aggregation_node: BaseAggregationNode
     annotator: PipelineImageAnnotator
-    shutdown_event: multiprocessing.Event
+    global_kill_flag: multiprocessing.Event
     all_ready_events: dict[CameraId|str, multiprocessing.Event]
 
     latest_pipeline_data: BasePipelineData | None = None
@@ -240,7 +227,7 @@ class BaseProcessingPipeline( ABC):
 
     @property
     def alive(self  ) -> bool:
-        return all([camera_node.process.is_alive() for camera_node in self.camera_nodes.values()]) and self.aggregation_node.process.is_alive()
+        return all([camera_node.worker.is_alive() for camera_node in self.camera_nodes.values()]) and self.aggregation_node.process.is_alive()
 
     @property
     def nodes_ready(self) -> bool:
@@ -248,13 +235,13 @@ class BaseProcessingPipeline( ABC):
 
     @property
     def ready_to_intake(self) -> bool:
-        return self.alive and self.nodes_ready and not self.shutdown_event.is_set() and self.started
+        return self.alive and self.nodes_ready and not self.global_kill_flag.is_set() and self.started
 
     @classmethod
     def create(cls,
                config: BasePipelineStageConfig,
                camera_shm_dtos: dict[CameraId, CameraSharedMemoryDTO],
-               shutdown_event: multiprocessing.Event,
+               global_kill_flag: multiprocessing.Event,
                ):
         raise NotImplementedError(
             "You need to re-implement this method with your pipeline's version of the CameraGroupProcessingPipeline "
@@ -269,17 +256,17 @@ class BaseProcessingPipeline( ABC):
         #                                                        camera_ring_shm_dto=camera_shm_dtos[camera_id],
         #                                                        output_queue=camera_output_queues[camera_id],
         #                                                        read_type=read_type,
-        #                                                        shutdown_event=shutdown_event)
+        #                                                        global_kill_flag=global_kill_flag)
         #                 for camera_id, config in config.camera_node_configs.items()}
         # aggregation_process = AggregationProcessNode.create(config=config.aggregation_node_config,
         #                                                     input_queues=camera_output_queues,
         #                                                     output_queue=aggregation_output_queue,
-        #                                                     shutdown_event=shutdown_event)
+        #                                                     global_kill_flag=global_kill_flag)
         #
         # return cls(config=config,
         #            camera_nodes=camera_nodes,
         #            aggregation_node=aggregation_process,
-        #            shutdown_event=shutdown_event,
+        #            global_kill_flag=global_kill_flag,
         #            )
 
     async def process_multiframe_payload(self, multiframe_payload: MultiFramePayload, annotate_images: bool = True) -> tuple[MultiFramePayload, BasePipelineOutputData]:
@@ -346,7 +333,7 @@ class BaseProcessingPipeline( ABC):
     def shutdown(self):
         logger.debug(f"Shutting down {self.__class__.__name__}...")
         self.started = False
-        self.shutdown_event.set()
+        self.global_kill_flag.value = True
         self.aggregation_node.stop()
         for camera_id, camera_process in self.camera_nodes.items():
             camera_process.stop()

@@ -10,7 +10,7 @@ from scipy.sparse import dok_matrix
 from skellycam import CameraId
 from tqdm import trange
 
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
+from freemocap.old.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
     anipose_triangulate_simple, remap_ids
 from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import ImagePoints2D, \
     ObjectPoints3D, ExtrinsicsParameters, IntrinsicsParameters, ReprojectionErrorByPoint, ImagePoints2DByCamera, PointIds, \

@@ -17,42 +17,32 @@ pipeline_router = APIRouter(prefix=f"/pipeline",
 
 
 class PipelineCreateRequest(BaseModel):
-    camera_configs: CameraConfigs
+    camera_group_id: CameraGroupIdString|None = Field(default=None, description="ID of the camera group to attach to the pipeline. If None, we will attach to first available camera group.")
 
-    @classmethod
-    def example(cls):
-        return cls(
-            camera_configs={CameraIdString(0): CameraConfig(
-                camera_id=CameraIdString(0),)}
-        )
 
 class PipelineCreateResponse(BaseModel):
-    camera_group_id: CameraGroupIdString = Field(..., description="ID of the created camera group")
-    camera_configs: CameraConfigs = Field(..., description="Camera configurations extracted from the created camera group")
+    camera_group_id: CameraGroupIdString = Field(..., description="ID of the camera group attached to the pipeline")
     pipeline_id: str = Field(..., description="ID of the processing pipeline to which the camera group is attached")
 
 @pipeline_router.post("/create",
-                    summary="Create camera group with provided configuration settings and attach to a Dummy Processing Pipeline",
+                    summary="Create a processing pipeline and attach it to a camera group"
                     )
 def pipeline_create_post_endpoint(
         request: PipelineCreateRequest = Body(...,
                                                  description="Request body containing desired camera configuration",
                                                  examples=[
-                                                     PipelineCreateRequest.example()]), ) -> PipelineCreateResponse:
+                                                     PipelineCreateRequest()]), ) -> PipelineCreateResponse:
     logger.api(f"Received `pipeline/create` POST request - \n {request.model_dump_json(indent=2)}")
     try:
-        configs = request.camera_configs
-        get_freemocap_app().create_pipeline(camera_configs=configs)
-        response = CreateCameraGroupResponse(group_id=camera_group.id,
-                                             camera_configs=camera_group.configs)
+        camera_group_id = request.camera_group_id
+        camera_group_id, pipeline_id = get_freemocap_app().create_pipeline(camera_group_id=camera_group_id)
+        response = PipelineCreateResponse(camera_group_id=camera_group_id,
+                                           pipeline_id=pipeline_id)
         logger.api(
-            f"`skellycam/cameras/group/create` POST request handled successfully - \n {response.model_dump_json(indent=2)}")
+            f"`pipeline/create` POST request handled successfully - \n {response.model_dump_json(indent=2)}")
         return response
     except Exception as e:
-        logger.error(f"Error when processing `skellycam/cameras/group/create` request: {type(e).__name__} - {e}")
+        logger.error(f"Error when processing `pipeline/create` request: {type(e).__name__} - {e}")
         logger.exception(e)
         raise HTTPException(status_code=500,
-                            detail=f"Error when processing `skellycam/cameras/group/create` request: {type(e).__name__} - {e}")
-
-
-@camera_router.post("/group/all/record/sta
+                            detail=f"Error when processing `pipeline/create` request: {type(e).__name__} - {e}")

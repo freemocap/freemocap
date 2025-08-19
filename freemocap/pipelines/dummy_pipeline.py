@@ -4,14 +4,10 @@ import time
 from multiprocessing import Queue, Process
 from typing import Dict
 
-from skellycam import CameraId
-from skellycam.core.camera_group.camera.config.camera_config import CameraConfig, CameraConfigs
-from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
-    CameraSharedMemoryDTOs
-from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_shared_memory import \
-    CameraSharedMemoryDTO, SingleSlotCameraSharedMemory
-from skellycam.core.frames.payloads.metadata.frame_metadata_enum import FRAME_METADATA_MODEL
-
+from skellycam.core.types.type_overloads import CameraIdString
+from skellycam.core.camera.config.camera_config import CameraConfig, CameraConfigs
+from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
+from skellycam.core.ipc.shared_memory.frame_payload_shared_memory_ring_buffer import FramePayloadSharedMemoryRingBuffer
 from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig, BasePipelineData, \
     BaseAggregationNode, BasePipelineConfig, BaseProcessingPipeline
 
@@ -35,11 +31,11 @@ class DummyPipelineAggregationNodeConfig(BasePipelineStageConfig):
 
 
 class DummyPipelineConfig(BasePipelineConfig):
-    camera_node_configs: dict[CameraId, DummyPipelineCameraNodeConfig]
+    camera_node_configs: dict[CameraIdString, DummyPipelineCameraNodeConfig]
     aggregation_node_config: DummyPipelineAggregationNodeConfig
 
     @classmethod
-    def create(cls, camera_configs: CameraConfigs):
+    def create(cls, **kwargs):
         return cls(camera_node_configs={camera_id: DummyPipelineCameraNodeConfig(camera_config = camera_config) for camera_id, camera_config in camera_configs.items()},
                    aggregation_node_config=DummyPipelineAggregationNodeConfig())
 
@@ -47,17 +43,14 @@ class DummyPipelineConfig(BasePipelineConfig):
 class DummyCameraProcessingNode(BaseCameraNode):
     @classmethod
     def create(cls,
-               camera_id: CameraId,
-               config: DummyPipelineCameraNodeConfig,
-               camera_shm_dto: CameraSharedMemoryDTO,
-               output_queue: Queue,
-               shutdown_event: multiprocessing.Event,
-               ):
+                pipeline_config: DummyPipelineCameraNodeConfig,
+                camera_id: CameraIdString,
+                camera_shm_dto: SharedMemoryRingBufferDTO,
+                output_queue: Queue,
+                shutdown_event: multiprocessing.Event):
         return cls(camera_id=camera_id,
                    config=config,
-                   incoming_frame_shm=SingleSlotCameraSharedMemory.recreate(camera_config=config.camera_config,
-                                                                            camera_shm_dto=camera_shm_dto,
-                                                                            read_only=False),
+
                    process=Process(target=cls._run,
                                    kwargs=dict(camera_id=camera_id,
                                                config=config,
@@ -70,17 +63,15 @@ class DummyCameraProcessingNode(BaseCameraNode):
                    )
 
     @staticmethod
-    def _run(camera_id: CameraId,
+    def _run(camera_id: CameraIdString,
              config: DummyPipelineCameraNodeConfig,
-             camera_shm_dto: CameraSharedMemoryDTO,
+             camera_shm_dto: SharedMemoryRingBufferDTO,
              output_queue: Queue,
              shutdown_event: multiprocessing.Event,
              ):
         logger.trace(f"Starting camera processing node for camera {camera_id}")
-        camera_ring_shm = SingleSlotCameraSharedMemory.recreate(
-            camera_config=config.camera_config,
-            camera_shm_dto=camera_shm_dto,
-            read_only=False)
+        camera_ring_shm = FramePayloadSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
+                                                                         read_only=True),
         try:
             while not shutdown_event.is_set():
                 time.sleep(0.001)
@@ -102,7 +93,7 @@ class DummyAggregationProcessNode(BaseAggregationNode):
     @classmethod
     def create(cls,
                config: DummyPipelineAggregationNodeConfig,
-               input_queues: dict[CameraId, Queue],
+               input_queues: dict[CameraIdString, Queue],
                output_queue: Queue,
                shutdown_event: multiprocessing.Event):
         return cls(config=config,
@@ -155,7 +146,7 @@ class DummyPipeline(BaseProcessingPipeline):
     @classmethod
     def create(cls,
                config: DummyPipelineConfig,
-               camera_shm_dtos: CameraSharedMemoryDTOs,
+               camera_shm_dtos: CameraGroupSharedMemoryDTO,
                shutdown_event: multiprocessing.Event):
         if not all(camera_id in camera_shm_dtos.keys() for camera_id in config.camera_node_configs.keys()):
             raise ValueError("Camera IDs provided in config not in camera shared memory DTOS!")

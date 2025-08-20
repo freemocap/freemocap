@@ -3,33 +3,30 @@ from enum import Enum, auto
 from multiprocessing.process import parent_process
 
 from pydantic import BaseModel, ConfigDict, Field
-
 from skellycam.core.ipc.pubsub.pubsub_abcs import PubSubTopicABC
-from skellycam.core.ipc.pubsub.pubsub_topics import LogsTopic, UpdateCamerasSettingsTopic, DeviceExtractedConfigTopic, \
-    SetShmTopic, RecordingInfoTopic, RecordingFinishedTopic, FramerateTopic
-from skellycam.core.types.type_overloads import CameraGroupIdString, TopicSubscriptionQueue
+from skellycam.core.types.type_overloads import TopicSubscriptionQueue
+
+from freemocap.core.pubsub.pubsub_topics import LogsTopic, ProcessFrameNumberTopic, SkellyTrackerConfigsTopic, \
+    CameraNodeOutputTopic
+from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)
 
 
 class TopicTypes(Enum):
-    UPDATE_CAMERA_SETTINGS = auto() #User requested updates to camera configs (i.e. the desired camera settings)
-    EXTRACTED_CONFIG = auto() #Camera Configs extracted from the camera (i.e. the actual camera settings)
-    SHM_UPDATES = auto()
-    RECORDING_INFO = auto()
-    RECORDING_FINISHED = auto()
-    FRAMERATE = auto() #Framerate updates for cameras
+    PROCESS_FRAME_NUMBER = auto()  # Imperative to process a particular frame number
+    SKELLY_TRACKER_CONFIGS = auto()  # Skelly Tracker configuration updates
+    CAMERA_NODE_OUTPUT = auto()  # Output from camera nodes
+    AGGREGATION_NODE_OUTPUT = auto()  # Output from aggregation node
     LOGS = auto()
 
 
 class PubSubTopicManager(BaseModel):
     topics: dict[TopicTypes, PubSubTopicABC] = Field(default_factory=lambda: {
-        TopicTypes.UPDATE_CAMERA_SETTINGS: UpdateCamerasSettingsTopic(),
-        TopicTypes.EXTRACTED_CONFIG: DeviceExtractedConfigTopic(),
-        TopicTypes.SHM_UPDATES: SetShmTopic(),
-        TopicTypes.RECORDING_INFO: RecordingInfoTopic(),
-        TopicTypes.RECORDING_FINISHED: RecordingFinishedTopic(),
-        TopicTypes.FRAMERATE: FramerateTopic(),
+        TopicTypes.PROCESS_FRAME_NUMBER: ProcessFrameNumberTopic(),
+        TopicTypes.SKELLY_TRACKER_CONFIGS: SkellyTrackerConfigsTopic(),
+        TopicTypes.CAMERA_NODE_OUTPUT: CameraNodeOutputTopic(),
+        TopicTypes.AGGREGATION_NODE_OUTPUT: AggregationNodeOutputTopic(),
         TopicTypes.LOGS: LogsTopic(),
     })
     model_config = ConfigDict(
@@ -64,20 +61,20 @@ class PubSubTopicManager(BaseModel):
 
 
 
-PUB_SUB_MANAGERS: dict[CameraGroupIdString, PubSubTopicManager] = {}
+PIPELINE_PUB_SUB_MANAGERS: dict[PipelineIdString, PubSubTopicManager] = {}
 
 
-def create_pubsub_manager(group_id: CameraGroupIdString) -> PubSubTopicManager:
+def create_pipeline_pubsub_manager(pipeline_id: PipelineIdString) -> PubSubTopicManager:
     """
     Create a global PubSubManager instance, raises an error if called in a non-main process.
     """
-    global PUB_SUB_MANAGERS
+    global PIPELINE_PUB_SUB_MANAGERS
     if parent_process() is not None:
         raise RuntimeError("PubSubManager can only be created in the main process.")
-    if PUB_SUB_MANAGERS.get(group_id) is not None:
-        logger.debug(f"Creating PubSubManager for group {group_id}")
-        PUB_SUB_MANAGERS.get(group_id).close()
-    PUB_SUB_MANAGERS[group_id] = PubSubTopicManager()
-    return PUB_SUB_MANAGERS[group_id]
+    if PIPELINE_PUB_SUB_MANAGERS.get(pipeline_id) is not None:
+        logger.debug(f"Creating PubSubManager for group {pipeline_id}")
+        PIPELINE_PUB_SUB_MANAGERS.get(pipeline_id).close()
+    PIPELINE_PUB_SUB_MANAGERS[pipeline_id] = PubSubTopicManager()
+    return PIPELINE_PUB_SUB_MANAGERS[pipeline_id]
 
 

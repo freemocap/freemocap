@@ -8,8 +8,8 @@ from skellycam.core.types.type_overloads import CameraIdString
 from skellycam.core.camera.config.camera_config import CameraConfig, CameraConfigs
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.ipc.shared_memory.frame_payload_shared_memory_ring_buffer import FramePayloadSharedMemoryRingBuffer
-from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig, BasePipelineData, \
-    BaseAggregationNode, BasePipelineConfig, BaseProcessingPipeline
+from freemocap.pipelines.processing_pipeline import BaseCameraNode, BasePipelineStageConfig, BasePipelineData, \
+    AggregationNode, BasePipelineConfig, BaseProcessingPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ class DummyCameraProcessingNode(BaseCameraNode):
             camera_ring_shm.close()
 
 
-class DummyAggregationProcessNode(BaseAggregationNode):
+class DummyAggregationProcessNode(AggregationNode):
     @classmethod
     def create(cls,
                config: DummyPipelineAggregationNodeConfig,

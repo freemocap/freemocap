@@ -12,8 +12,8 @@ from skellycam import CameraId
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
 from freemocap.pipelines.calibration_pipeline.multi_camera_calibrator import MultiCameraCalibrator, \
     MultiCameraCalibrationEstimate
-from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
-    BaseAggregationNode, BasePipelineOutputData
+from freemocap.pipelines.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
+    AggregationNode, BasePipelineOutputData
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class CalibrationAggregationNodeConfig(BasePipelineStageConfig):
 
 
 @dataclass
-class CalibrationAggregationProcessNode(BaseAggregationNode):
+class CalibrationAggregationProcessNode(AggregationNode):
     @classmethod
     def create(cls,
                config: CalibrationAggregationNodeConfig,

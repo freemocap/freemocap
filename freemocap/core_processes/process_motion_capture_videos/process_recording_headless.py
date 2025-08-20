@@ -60,7 +60,7 @@ def process_recording_headless(
                 f"There are {number_of_videos} videos. Must provide a calibration toml file for multicamera recordings."
             )
 
-    recording_info_dict = rec.dict(exclude={"recording_info_model"})
+    recording_info_dict = rec.model_dump(exclude={"recording_info_model"})
 
     Path(rec.recording_info_model.output_data_folder_path).mkdir(parents=True, exist_ok=True)
 

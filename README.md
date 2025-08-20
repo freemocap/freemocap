@@ -81,7 +81,7 @@ freemocap
 ___
 ## Install/run from source code (i.e. the code in this repo)
 
-Open an [Anaconda-enabled command prompt](https://www.anaconda.org) (or your preferred method of environmnet management) and enter the following commands:
+Open an [Anaconda-enabled command prompt](https://www.anaconda.org) (or your preferred method of environment management) and enter the following commands:
 
 1) Create a `Python` environment (Recommended version  is `python3.11`)
 

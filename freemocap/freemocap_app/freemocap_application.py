@@ -2,13 +2,12 @@ import logging
 import multiprocessing
 from dataclasses import dataclass, field
 
+from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraGroupIdString
 from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_skellycam_app
-from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemoryDTO
+
 from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.pipelines.dummy_pipeline import DummyPipeline
-from freemocap.pipelines.pipeline_abcs import BaseProcessingPipeline
-from freemocap.pipelines.pipeline_types import PipelineTypes
+from freemocap.pipelines.processing_pipeline import ProcessingPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +16,19 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PipelineManager:
     global_kill_flag: multiprocessing.Value
-    pipelines: dict[PipelineIdString, PipelineTypes] = field(default_factory=dict)
+    pipelines: dict[PipelineIdString, ProcessingPipeline] = field(default_factory=dict)
 
-    def create_pipeline(self, camera_group_shm_dto: CameraGroupSharedMemoryDTO ) -> BaseProcessingPipeline:
-        return DummyPipeline.create(camera_group_shm_dto=camera_group_shm_dto,
-                                    shutdown_event=self.global_kill_flag
-                                    )
+    def create_pipeline(self, camera_group:CameraGroup ) -> ProcessingPipeline:
+        pipeline =  ProcessingPipeline.from_camera_group(camera_group=camera_group)
+        self.pipelines[pipeline.id] = pipeline
+        logger.info(f"Created pipeline with ID: {pipeline.id} for camera group ID: {camera_group.id}")
+        return pipeline
+
+    def close_all_pipelines(self):
+        for pipeline in self.pipelines.values():
+            pipeline.close()
+        self.pipelines.clear()
+        logger.info("All pipelines closed successfully")
 
 
 @dataclass
@@ -51,45 +57,15 @@ class FreemocapApplication:
             if camera_group_id not in self.skellycam_app.camera_group_manager.camera_groups:
                 raise ValueError(f"Camera group ID {camera_group_id} does not exist!")
 
-    def old_create_processing_pipeline(self, pipeline_type: PipelineTypes):
-        from freemocap.pipelines.calibration_pipeline import CalibrationPipelineConfig, CalibrationPipeline
-        from freemocap.pipelines.dummy_pipeline import DummyPipeline, DummyPipelineConfig
-        from freemocap.pipelines.mocap_pipeline import MocapPipeline, MocapPipelineConfig
-        from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
-        from skellytracker.trackers.mediapipe_tracker import MediapipeTrackerConfig
-        if not self.frame_escape_shm:
-            raise ValueError("Cannot create image processing server without frame escape shared memory!")
+        camera_group = self.skellycam_app.camera_group_manager.camera_groups[camera_group_id]
 
-        self.pipeline_shutdown_event.clear()
-
-        if pipeline_type == PipelineTypes.CALIBRATION:
-            return CalibrationPipeline.create(
-                config=CalibrationPipelineConfig.create(camera_configs=self.camera_configs,
-                                                        tracker_config=CharucoTrackerConfig()
-                                                        ),
-                camera_shm_dtos=self.get_processor_camera_shms_dtos(),
-                shutdown_event=self.pipeline_shutdown_event,
-            )
-        elif pipeline_type == PipelineTypes.MOCAP:
-            return MocapPipeline.create(
-                config=MocapPipelineConfig.create(camera_configs=self.camera_configs,
-                                                  tracker_config=MediapipeTrackerConfig()
-                                                  ),
-                camera_shm_dtos=self.get_processor_camera_shms_dtos(),
-                shutdown_event=self.pipeline_shutdown_event,
-            )
-        elif pipeline_type == PipelineTypes.DUMMY:
-            return DummyPipeline.create(
-                config=DummyPipelineConfig.create(camera_configs=self.camera_configs),
-                camera_shm_dtos=self.get_processor_camera_shms_dtos(),
-                shutdown_event=self.pipeline_shutdown_event,
-            )
-        else:
-            raise ValueError(f"Unknown pipeline type: {pipeline_type}")
+        pipeline = self.pipeline_manager.create_pipeline(camera_group=camera_group)
+        return camera_group.id, pipeline.id
 
     def close(self):
         self.global_kill_flag.value = True
         self.pipeline_shutdown_event.set()
+        self.pipeline_manager.close_all_pipelines()
         self.skellycam_app.shutdown_skellycam() if self.skellycam_app else None
 
 

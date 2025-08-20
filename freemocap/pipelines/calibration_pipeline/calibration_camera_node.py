@@ -14,7 +14,7 @@ from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig, Charuco
 
 from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
 from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator
-from freemocap.pipelines.pipeline_abcs import BaseCameraNode, BasePipelineStageConfig
+from freemocap.pipelines.processing_pipeline import BaseCameraNode, BasePipelineStageConfig
 
 logger = logging.getLogger(__name__)
 

@@ -9,8 +9,8 @@ from skellycam import CameraId
 
 from freemocap.pipelines.mocap_pipeline.mocap_camera_node import MocapCameraNodeOutputData
 from freemocap.pipelines.mocap_pipeline.point_trangulator import PointTriangulator
-from freemocap.pipelines.pipeline_abcs import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
-    BaseAggregationNode, BasePipelineOutputData
+from freemocap.pipelines.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
+    AggregationNode, BasePipelineOutputData
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class MocapPipelineOutputData(BasePipelineOutputData):
     aggregation_layer_output: MocapAggregationLayerOutputData
 
 
-class MocapAggregationProcessNode(BaseAggregationNode):
+class MocapAggregationProcessNode(AggregationNode):
     @classmethod
     def create(cls,
                config: MocapAggregationNodeConfig,

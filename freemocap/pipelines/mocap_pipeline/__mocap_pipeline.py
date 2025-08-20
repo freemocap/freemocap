@@ -16,7 +16,7 @@ from skellytracker.trackers.mediapipe_tracker.mediapipe_annotator import Mediapi
 from freemocap.pipelines.mocap_pipeline.mocap_aggregation_node import MocapAggregationNodeConfig, \
     MocapPipelineOutputData, MocapAggregationProcessNode
 from freemocap.pipelines.mocap_pipeline.mocap_camera_node import MocapPipelineCameraNodeConfig, MocapCameraNode
-from freemocap.pipelines.pipeline_abcs import BasePipelineConfig, PipelineImageAnnotator, BaseProcessingPipeline
+from freemocap.pipelines.processing_pipeline import BasePipelineConfig, PipelineImageAnnotator, BaseProcessingPipeline
 
 logger = logging.getLogger(__name__)
 

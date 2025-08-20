@@ -7,7 +7,7 @@ from skellycam import CameraId
 from skellycam.core.frames.payloads.frontend_image_payload import FrontendFramePayload
 from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 
-from freemocap.pipelines.pipeline_abcs import BasePipelineOutputData
+from freemocap.pipelines.processing_pipeline import BasePipelineOutputData
 
 
 class CharucoBoardPayload(BaseModel):

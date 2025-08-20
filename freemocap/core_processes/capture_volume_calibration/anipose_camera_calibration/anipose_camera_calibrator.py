@@ -110,6 +110,9 @@ class AniposeCameraCalibrator:
             self._anipose_camera_group_object, groundplane_success = self.set_charuco_board_as_groundplane(self._anipose_camera_group_object)
             if groundplane_success.success:
                 self._anipose_camera_group_object.metadata["groundplane_calibration"] = True
+        
+        self.get_real_world_matrices(self._anipose_camera_group_object)
+        
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem
         )
@@ -223,15 +226,10 @@ class AniposeCameraCalibrator:
         logger.info("Getting 3d Charuco data")
         charuco_3d_flat = self._anipose_camera_group_object.triangulate(
             charuco_2d_flat)
-        
         charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
         logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
 
         charuco_3d_xyz_interpolated = skellyforge_data(raw_charuco_data=charuco_3d_xyz)
-
-        charuco_save_path = self._recording_folder_path / "output_data" / "charuco_3d_xyz.npy"
-        np.save(charuco_save_path, charuco_3d_xyz_interpolated) #NOTE - there may be a more robust way to get this path but this is the simplest for now
-        logger.info(f"Charuco 3d data saved to {charuco_save_path}")
         
         try:
             charuco_still_frame_idx = find_good_frame(charuco_data=charuco_3d_xyz_interpolated,
@@ -267,6 +265,18 @@ class AniposeCameraCalibrator:
         cam_group.set_translations(extrinsics.tvecs)
         success = GroundPlaneSuccess(success=True)
         logger.info("Anipose camera calibration data adjusted to set charuco board as ground plane")
+
+        charuco_3d_flat = self._anipose_camera_group_object.triangulate(
+            charuco_2d_flat)
+        charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
+        logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
+
+        charuco_3d_xyz_interpolated = skellyforge_data(raw_charuco_data=charuco_3d_xyz)
+
+        charuco_save_path = self._recording_folder_path / "output_data" / "charuco_3d_xyz.npy"
+        np.save(charuco_save_path, charuco_3d_xyz_interpolated) #NOTE - there may be a more robust way to get this path but this is the simplest for now
+        logger.info(f"Charuco 3d data saved to {charuco_save_path}")
+
         return cam_group, success
 
     def adjust_world_reference_frame_to_charuco(self, 
@@ -290,3 +300,23 @@ class AniposeCameraCalibrator:
                 new_rvec, _ = cv2.Rodrigues(new_rmat)
                 rvecs_new[i] = new_rvec.flatten()
             return Extrinsics(rvecs_new, tvecs_new)
+    
+    def get_real_world_matrices(self,
+                                cam_group:freemocap_anipose.CameraGroup):
+        rvecs = cam_group.get_rotations()
+        tvecs = cam_group.get_translations()
+
+        positions = []
+        orientations = []
+        for i in range(tvecs.shape[0]):
+            rmat_world_to_cam_i, _ = cv2.Rodrigues(rvecs[i])
+
+            rmat_cam_to_world = rmat_world_to_cam_i.T
+            t_world = -rmat_cam_to_world @ tvecs[i]
+            positions.append(t_world.astype(float).tolist())
+            orientations.append(rmat_cam_to_world.astype(float).tolist())
+
+        cam_group.set_world_positions(positions)
+        cam_group.set_world_orientations(orientations)
+
+        return positions, orientations

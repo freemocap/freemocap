@@ -74,7 +74,7 @@ def process_recording_without_gui(
     else:
         logging.warning("No camera calibration toml file provided. May cause an error with multicamera recordings.")
 
-    recording_info_dict = rec.dict(exclude={"recording_info_model"})
+    recording_info_dict = rec.model_dump(exclude={"recording_info_model"})
 
     Path(rec.recording_info_model.output_data_folder_path).mkdir(parents=True, exist_ok=True)
 

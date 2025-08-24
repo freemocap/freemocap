@@ -6,12 +6,12 @@ from scipy.sparse import dok_matrix
 from skellycam import CameraId
 from typing_extensions import Self
 
-from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import \
+from freemocap.core.pipelines.calibration_pipeline.calibration_numpy_types import \
     ImagePoints2D, ImagePoint2D, CameraExtrinsicsMatrix
-from freemocap.pipelines.calibration_pipeline.camera_math_models import TransformationMatrix
-from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import MultiCameraTargetView, MultiFrameNumber
-from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import CameraIntrinsicsEstimate
-from freemocap.pipelines.calibration_pipeline.triangulate_points import undistort_points, \
+from freemocap.core.pipelines.calibration_pipeline.camera_math_models import TransformationMatrix
+from freemocap.core.pipelines.calibration_pipeline.shared_view_accumulator import MultiCameraTargetView, MultiFrameNumber
+from freemocap.core.pipelines.calibration_pipeline.single_camera_calibrator import CameraIntrinsicsEstimate
+from freemocap.core.pipelines.calibration_pipeline.triangulate_points import undistort_points, \
     calculate_reprojection_error, triangulate_point
 
 

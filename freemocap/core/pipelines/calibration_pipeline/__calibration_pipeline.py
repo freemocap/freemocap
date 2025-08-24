@@ -12,11 +12,11 @@ from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
 from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
 from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoImageAnnotator, CharucoAnnotatorConfig
 
-from freemocap.pipelines.calibration_pipeline.calibration_aggregation_node import CalibrationAggregationNodeConfig, \
+from freemocap.core.pipelines.calibration_pipeline.calibration_aggregation_node import CalibrationAggregationNodeConfig, \
     CalibrationAggregationProcessNode, CalibrationPipelineOutputData
-from freemocap.pipelines.calibration_pipeline.calibration_camera_node import CalibrationPipelineCameraNodeConfig, \
+from freemocap.core.pipelines.calibration_pipeline.calibration_camera_node import CalibrationPipelineCameraNodeConfig, \
     CalibrationCameraNode
-from freemocap.pipelines.processing_pipeline import BasePipelineConfig, BaseProcessingPipeline, PipelineImageAnnotator
+from freemocap.core.pipelines.processing_pipeline import BasePipelineConfig, BaseProcessingPipeline, PipelineImageAnnotator
 
 logger = logging.getLogger(__name__)
 

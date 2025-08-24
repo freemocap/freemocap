@@ -27,7 +27,7 @@ from freemocap.core.pubsub.pubsub_manager import TopicTypes
 from freemocap.core.pubsub.pubsub_topics import SkellyTrackerConfigsMessage, ProcessFrameNumberMessage, \
     CameraNodeOutputMessage, AggregationNodeOutputMessage
 from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.pipelines.pipeline_ipc import PipelineIPC
+from freemocap.core.pipelines.pipeline_ipc import PipelineIPC
 
 logger = logging.getLogger(__name__)
 

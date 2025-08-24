@@ -12,13 +12,13 @@ from tqdm import trange
 
 from freemocap.old.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
     anipose_triangulate_simple, remap_ids
-from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import ImagePoints2D, \
+from freemocap.core.pipelines.calibration_pipeline.calibration_numpy_types import ImagePoints2D, \
     ObjectPoints3D, ExtrinsicsParameters, IntrinsicsParameters, ReprojectionErrorByPoint, ImagePoints2DByCamera, PointIds, \
     RotationVectorsByCamera, TranslationVectorsByCamera
-from freemocap.pipelines.calibration_pipeline.multi_camera_calibration.calibration_utilities import \
+from freemocap.core.pipelines.calibration_pipeline.multi_camera_calibration.calibration_utilities import \
     calculate_error_bounds, transform_points, construct_camera_extrinsics_matrix, \
     get_rotation_and_translation_vector_from_extrinsics_matrix, get_error_dict
-from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator
+from freemocap.core.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator
 
 logger = logging.getLogger(__name__)
 

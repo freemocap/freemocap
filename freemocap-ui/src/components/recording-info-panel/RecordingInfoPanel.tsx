@@ -1,285 +1,239 @@
-// skellycam-ui/src/components/recording-info-panel/RecordingInfoPanel.tsx
-import React, {useEffect, useState} from 'react';
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  alpha,
-  Box,
-  IconButton,
-  Paper,
-  Stack,
-  Typography,
-  useTheme
-} from '@mui/material';
-import SettingsIcon from '@mui/icons-material/Settings';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import React, {useEffect, useState} from "react";
+import {Box, Typography, useTheme} from "@mui/material";
+import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
+import {TreeItem} from "@mui/x-tree-view/TreeItem";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import VideocamIcon from "@mui/icons-material/Videocam";
 import {useAppDispatch, useAppSelector} from "@/store/AppStateStore";
 import {
-  RecordingSettingsSection
-} from "@/components/recording-info-panel/recording-subcomponents/RecordingSettingsSection";
-import {
-  StartStopRecordingButton
+    StartStopRecordingButton
 } from "@/components/recording-info-panel/recording-subcomponents/StartStopRecordingButton";
-import {
-  DelayRecordingStartControl
-} from "@/components/recording-info-panel/recording-subcomponents/DelayRecordingStartControl";
-import {
-  FullRecordingPathPreview
-} from "@/components/recording-info-panel/recording-subcomponents/FullRecordingPathPreview";
-import {
-  BaseRecordingDirectoryInput
-} from "@/components/recording-info-panel/recording-subcomponents/BaseRecordingDirectoryInput";
-import {RecordingNamePreview} from "@/components/recording-info-panel/recording-subcomponents/RecordingNamePreview";
-import {startRecording, stopRecording} from "@/store/thunks/start-stop-recording-thunks";
+import {startRecording, stopRecording,} from "@/store/thunks/start-stop-recording-thunks";
 import {setRecordingInfo} from "@/store/slices/recordingInfoSlice";
-import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import {RecordingPathTreeItem} from "@/components/recording-info-panel/RecordingPathTreeItem";
+import {FullRecordingPathPreview} from "./recording-subcomponents/FullRecordingPathPreview";
 
 export const RecordingInfoPanel: React.FC = () => {
-  const theme = useTheme();
-  const dispatch = useAppDispatch();
-  const recordingInfo = useAppSelector(state => state.recordingStatus.currentRecordingInfo);
-
-  // Local UI state
-  const [showSettings, setShowSettings] = useState(false);
-  const [createSubfolder, setCreateSubfolder] = useState(false);
-  const [useDelayStart, setUseDelayStart] = useState(false);
-  const [delaySeconds, setDelaySeconds] = useState(3);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [recordingTag, setRecordingTag] = useState('');
-
-  // Local recording naming preferences
-  const [useTimestamp, setUseTimestamp] = useState(true);
-  const [useIncrement, setUseIncrement] = useState(false);
-  const [currentIncrement, setCurrentIncrement] = useState(1);
-  const [baseName, setBaseName] = useState('recording');
-  const [customSubfolderName, setCustomSubfolderName] = useState('');
-
-  // replace ~ with user's home directory
-// replace ~ with user's home directory
-useEffect(() => {
-  if (recordingInfo?.recordingDirectory?.startsWith('~')) {
-    window.electronAPI.getHomeDirectory().then(
-      (homePath: string) => {
-        const updatedDirectory = recordingInfo.recordingDirectory.replace('~', homePath);
-        dispatch(setRecordingInfo({ recordingDirectory: updatedDirectory }));
-      }
+    const theme = useTheme();
+    const dispatch = useAppDispatch();
+    const recordingInfo = useAppSelector(
+        (state) => state.recordingStatus.currentRecordingInfo
     );
-  }
-}, [recordingInfo, dispatch]);
 
-  // Handle countdown timer
-  useEffect(() => {
-    if (countdown !== null && countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0) {
-      handleStartRecording();
-      setCountdown(null);
-    }
-  }, [countdown]);
+    // Local UI state
+    const [createSubfolder, setCreateSubfolder] = useState(false);
+    const [useDelayStart, setUseDelayStart] = useState(false);
+    const [delaySeconds, setDelaySeconds] = useState(3);
+    const [countdown, setCountdown] = useState<number | null>(null);
 
-  const getTimestampString = (): string => {
-    const now = new Date();
+    // Local recording naming
+    const [useTimestamp, setUseTimestamp] = useState(true);
+    const [useIncrement, setUseIncrement] = useState(false);
+    const [currentIncrement, setCurrentIncrement] = useState(1);
+    const [baseName, setBaseName] = useState("recording");
+    const [customSubfolderName, setCustomSubfolderName] = useState("");
+    const [recordingTag, setRecordingTag] = useState("");
 
-    // Format date in local time with timezone info
-    const dateOptions: Intl.DateTimeFormatOptions = {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-      timeZoneName: 'shortOffset'
+    // replace ~ with user's home directory
+    useEffect(() => {
+        if (recordingInfo?.recordingDirectory?.startsWith("~")) {
+            window.electronAPI.getHomeDirectory().then((homePath: string) => {
+                const updatedDirectory = recordingInfo.recordingDirectory.replace(
+                    "~",
+                    homePath
+                );
+                dispatch(setRecordingInfo({recordingDirectory: updatedDirectory}));
+            });
+        }
+    }, [recordingInfo, dispatch]);
+
+    // Handle countdown timer
+    useEffect(() => {
+        if (countdown !== null && countdown > 0) {
+            const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+            return () => clearTimeout(timer);
+        } else if (countdown === 0) {
+            handleStartRecording();
+            setCountdown(null);
+        }
+    }, [countdown]);
+
+    const getTimestampString = (): string => {
+        const now = new Date();
+
+        // Format date in local time with timezone info
+        const dateOptions: Intl.DateTimeFormatOptions = {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+            timeZoneName: "shortOffset",
+        };
+
+        // Get formatted parts
+        const formatter = new Intl.DateTimeFormat("en-US", dateOptions);
+        const parts = formatter.formatToParts(now);
+
+        // Create a map of the parts for easy access
+        const partMap: Record<string, string> = {};
+        parts.forEach((part) => {
+            partMap[part.type] = part.value;
+        });
+
+        // Build the timestamp string in a filename-friendly format
+        const timestamp = `${partMap.year}-${partMap.month}-${partMap.day}_${
+            partMap.hour
+        }-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(
+            ":",
+            ""
+        )}`;
+
+        return timestamp;
+    };
+    const handleRecordingTagChange = (tag: string) => {
+        setRecordingTag(tag);
+    };
+    const buildRecordingName = (): string => {
+        const parts: string[] = [];
+
+        // Base name component
+        if (useTimestamp) {
+            parts.push(getTimestampString());
+        } else {
+            parts.push(baseName);
+        }
+
+        // Add tag if present
+        if (recordingTag) {
+            parts.push(recordingTag);
+        }
+
+        return parts.join("_");
     };
 
-    // Get formatted parts
-    const formatter = new Intl.DateTimeFormat('en-US', dateOptions);
-    const parts = formatter.formatToParts(now);
+    const handleStartRecording = () => {
+        console.log("Starting recording...");
 
-    // Create a map of the parts for easy access
-    const partMap: Record<string, string> = {};
-    parts.forEach(part => {
-      partMap[part.type] = part.value;
-    });
+        const recordingName = buildRecordingName();
+        const subfolderName = createSubfolder
+            ? customSubfolderName || getTimestampString()
+            : "";
+        const recordingPath = createSubfolder
+            ? `${recordingInfo.recordingDirectory}/${subfolderName}`
+            : recordingInfo.recordingDirectory;
 
-    // Build the timestamp string in a filename-friendly format
-    const timestamp = `${partMap.year}-${partMap.month}-${partMap.day}_${partMap.hour}-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(':', '')}`;
+        console.log("Recording path:", recordingPath);
+        console.log("Recording name:", recordingName);
 
-    return timestamp;
-  };
+        if (useIncrement) {
+            setCurrentIncrement((prev) => prev + 1);
+        }
 
-  const buildRecordingName = (): string => {
-    const parts: string[] = [];
+        dispatch(
+            startRecording({
+                recordingName,
+                recordingDirectory: recordingPath,
+            })
+        );
+    };
 
-    // Base name component
-    if (useTimestamp) {
-      parts.push(getTimestampString());
-    } else {
-      parts.push(baseName);
-    }
-
-    // Add tag if present
-    if (recordingTag) {
-      parts.push(recordingTag);
-    }
-
-    return parts.join('_');
-  };
-
-  const handleStartRecording = () => {
-    console.log('Starting recording...');
+    const handleRecordButtonClick = () => {
+        if (recordingInfo.isRecording) {
+            console.log("Stopping recording...");
+            dispatch(stopRecording());
+        } else if (useDelayStart) {
+            console.log(`Starting countdown from ${delaySeconds} seconds`);
+            setCountdown(delaySeconds);
+        } else {
+            handleStartRecording();
+        }
+    };
 
     const recordingName = buildRecordingName();
-    const subfolderName = createSubfolder ? (customSubfolderName || getTimestampString()) : '';
-    const recordingPath = createSubfolder
-      ? `${recordingInfo.recordingDirectory}/${subfolderName}`
-      : recordingInfo.recordingDirectory;
+    const subfolderName = createSubfolder
+        ? customSubfolderName || getTimestampString()
+        : undefined;
 
-    console.log('Recording path:', recordingPath);
-    console.log('Recording name:', recordingName);
-
-    if (useIncrement) {
-      setCurrentIncrement(prev => prev + 1);
-    }
-
-    dispatch(startRecording({
-      recordingName,
-      recordingDirectory: recordingPath
-    }));
-  };
-
-  const handleButtonClick = () => {
-    if (recordingInfo.isRecording) {
-      console.log('Stopping recording...');
-      dispatch(stopRecording());
-    } else if (useDelayStart) {
-      console.log(`Starting countdown from ${delaySeconds} seconds`);
-      setCountdown(delaySeconds);
-    } else {
-      handleStartRecording();
-    }
-  };
-
-  const [expanded, setExpanded] = useState(true);
-
-  return (
-    <Accordion
-      expanded={expanded}
-      onChange={(_, isExpanded) => setExpanded(isExpanded)}
-      sx={{
-        borderRadius: 2,
-        '&:before': { display: 'none' },
-        boxShadow: theme.shadows[3]
-      }}
-    >
-      <Box sx={{
-        display: 'flex',
-        alignItems: 'center',
-        backgroundColor: recordingInfo.isRecording ? theme.palette.error.main : theme.palette.primary.main,
-        borderTopLeftRadius: 8,
-        borderBottomLeftRadius: 8,
-      }}>
-        <AccordionSummary
-          expandIcon={<ExpandMoreIcon sx={{ color: theme.palette.primary.contrastText }} />}
-          sx={{
-            flex: 1,
-            color: theme.palette.primary.contrastText,
-            '&:hover': {
-              backgroundColor: recordingInfo.isRecording ? theme.palette.error.light : theme.palette.primary.light,
-            }
-          }}
-        >
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <VideoLibraryIcon />
-            <Typography variant="subtitle1" fontWeight="medium">
-              {recordingInfo.isRecording ? 'Recording in Progress...' : 'Record Videos'}
-            </Typography>
-          </Stack>
-        </AccordionSummary>
-
-        <Box sx={{ pr: 2 }}>
-          <StartStopRecordingButton
-            isRecording={recordingInfo.isRecording}
-            countdown={countdown}
-            onClick={handleButtonClick}
-          />
-        </Box>
-
-        <Box sx={{ pr: 2 }}>
-          <IconButton
-            onClick={() => {
-                setShowSettings(!showSettings);
-                setExpanded(true);
-            }}
+    return (
+        <Box
             sx={{
-              color: showSettings
-                ? theme.palette.primary.contrastText
-                : alpha(theme.palette.primary.contrastText, 0.7)
+                color: "text.primary",
+                backgroundColor: theme.palette.primary.main,
+                borderRadius: 1,
+                mb: 2,
             }}
-          >
-            <SettingsIcon />
-          </IconButton>
-        </Box>
-      </Box>
-
-      <AccordionDetails sx={{ p: 2, bgcolor: 'background.default' }}>
-        <Paper
-          elevation={0}
-          sx={{
-            bgcolor: 'background.paper',
-            borderRadius: 2,
-            overflow: 'hidden',
-            p: 2
-          }}
         >
-          <Stack spacing={2}>
-            <FullRecordingPathPreview
-              directory={recordingInfo.recordingDirectory}
-              filename={buildRecordingName()}
-              subfolder={createSubfolder ? (customSubfolderName || getTimestampString()) : undefined}
-            />
+            <SimpleTreeView
+                defaultExpandedItems={["recording-main"]}
+                slots={{
+                    collapseIcon: ExpandMoreIcon,
+                    expandIcon: ChevronRightIcon,
+                }}
+                sx={{flexGrow: 1}}
+            >
+                <TreeItem
+                    itemId="recording-main"
+                    label={
+                        <Box
+                            sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                // justifyContent: "space-between",
+                                width: "100%",
+                                r: 2,
+                            }}
+                        >
+                            <VideocamIcon/>
+                            <Typography sx={{pl: 1, flexGrow: 1}} variant="h6" component="div">
+                                Record Videos
+                            </Typography>
 
-            {showSettings && (
-              <>
-                <DelayRecordingStartControl
-                  useDelay={useDelayStart}
-                  delaySeconds={delaySeconds}
-                  onDelayToggle={setUseDelayStart}
-                  onDelayChange={setDelaySeconds}
-                />
 
-                <BaseRecordingDirectoryInput
-                  value={recordingInfo.recordingDirectory}
-                />
+                            <Box sx={{display: "flex", flexGrow:1, pl: 2, alignItems: "left"}}>
+                                <StartStopRecordingButton
+                                    isRecording={recordingInfo.isRecording}
+                                    countdown={countdown}
+                                    onClick={handleRecordButtonClick}
+                                />
+                            </Box>
 
-                <RecordingNamePreview
-                  name={buildRecordingName()}
-                  tag={recordingTag}
-                  isRecording={recordingInfo.isRecording}
-                  onTagChange={setRecordingTag}
-                />
 
-                <RecordingSettingsSection
-                  useTimestamp={useTimestamp}
-                  baseName={baseName}
-                  useIncrement={useIncrement}
-                  currentIncrement={currentIncrement}
-                  createSubfolder={createSubfolder}
-                  customSubfolderName={customSubfolderName}
-                  onUseTimestampChange={setUseTimestamp}
-                  onBaseNameChange={setBaseName}
-                  onUseIncrementChange={setUseIncrement}
-                  onIncrementChange={setCurrentIncrement}
-                  onCreateSubfolderChange={setCreateSubfolder}
-                  onCustomSubfolderNameChange={setCustomSubfolderName}
-                />
-              </>
-            )}
-          </Stack>
-        </Paper>
-      </AccordionDetails>
-    </Accordion>
-  );
+                        </Box>
+                    }
+
+                >
+                    <RecordingPathTreeItem
+                        recordingDirectory={recordingInfo.recordingDirectory}
+                        recordingName={recordingName}
+                        subfolder={subfolderName}
+                        countdown={countdown}
+                        // Pass down all the control props
+                        recordingTag={recordingTag}
+                        useDelayStart={useDelayStart}
+                        delaySeconds={delaySeconds}
+                        useTimestamp={useTimestamp}
+                        baseName={baseName}
+                        useIncrement={useIncrement}
+                        currentIncrement={currentIncrement}
+                        createSubfolder={createSubfolder}
+                        customSubfolderName={customSubfolderName}
+                        isRecording={recordingInfo.isRecording}
+                        onDelayToggle={setUseDelayStart}
+                        onDelayChange={setDelaySeconds}
+                        onTagChange={handleRecordingTagChange}
+                        onUseTimestampChange={setUseTimestamp}
+                        onBaseNameChange={setBaseName}
+                        onUseIncrementChange={setUseIncrement}
+                        onIncrementChange={setCurrentIncrement}
+                        onCreateSubfolderChange={setCreateSubfolder}
+                        onCustomSubfolderNameChange={setCustomSubfolderName}
+                    />
+                </TreeItem>
+            </SimpleTreeView>
+        </Box>
+    );
 };

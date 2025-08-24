@@ -2,10 +2,10 @@ import cv2
 import numpy as np
 from skellycam import CameraId
 
-from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import ObjectPoint3D, \
+from freemocap.core.pipelines.calibration_pipeline.calibration_numpy_types import ObjectPoint3D, \
     ImagePoints2D, ObjectPoints3D, ReprojectionError, CameraExtrinsicsMatrix, ImagePoint2D
-from freemocap.pipelines.calibration_pipeline.camera_math_models import TransformationMatrix
-from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import CameraIntrinsicsEstimate
+from freemocap.core.pipelines.calibration_pipeline.camera_math_models import TransformationMatrix
+from freemocap.core.pipelines.calibration_pipeline.single_camera_calibrator import CameraIntrinsicsEstimate
 
 
 def undistort_points(points2d: ImagePoints2D,

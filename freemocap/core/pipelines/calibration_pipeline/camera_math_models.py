@@ -4,7 +4,7 @@ from numpydantic import NDArray, Shape
 from pydantic import BaseModel, model_validator
 from scipy.spatial.transform import Rotation as R
 
-from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import QuaternionArray, RotationVectorArray, \
+from freemocap.core.pipelines.calibration_pipeline.calibration_numpy_types import QuaternionArray, RotationVectorArray, \
     RotationMatrixArray, TranslationVectorArray, CameraExtrinsicsMatrix, CameraDistortionCoefficientsArray, \
     CameraMatrixArray
 

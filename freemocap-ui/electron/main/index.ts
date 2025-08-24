@@ -5,8 +5,7 @@ import {WindowManager} from "./helpers/window-manager";
 import {PythonServer} from "./helpers/python-server";
 import {LifecycleLogger} from "./helpers/logger";
 import os from "node:os";
-import {APP_ENVIRONMENT} from "./helpers/app-environment";
-import {installExtension, REDUX_DEVTOOLS} from 'electron-devtools-installer';
+
 
 
 // Environment variables that `python` server will use for its lifecycle management
@@ -25,25 +24,12 @@ function startApplication() {
     app.whenReady()
         .then(() => {
             console.log('App is ready')
-            const options = {
-                loadExtensionOptions: { allowFileAccess: true },
-            };
-            installExtension(REDUX_DEVTOOLS, options)
-                .then((ext) => console.log(`Added Extension:  ${ext.name}`))
-                .catch((err) => console.log('An error occurred: ', err));
 
-            console.log('SHOULD_LAUNCH_PYTHON:', APP_ENVIRONMENT.SHOULD_LAUNCH_PYTHON);
-            if (APP_ENVIRONMENT.SHOULD_LAUNCH_PYTHON) {
-                console.log('Launching Python Server');
-                PythonServer.start();
-            }
+
+
 
             const mainWindow = WindowManager.createMainWindow();
 
-            // TODO: Add Redux and React DevTools Extensions to Electron App BrowserWindow - the code below didn't work
-            // installExtension([REDUX_DEVTOOLS, REACT_DEVELOPER_TOOLS])
-            //     .then(([redux, react]) => console.log(`Added Extensions:  ${redux.name}, ${react.name}`))
-            //     .catch((err) => console.log('An error occurred: ', err));
             update(mainWindow);
         });
 }

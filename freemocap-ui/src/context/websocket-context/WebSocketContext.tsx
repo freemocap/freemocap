@@ -14,14 +14,13 @@ interface WebSocketContextProps {
 
 
 interface WebSocketProviderProps {
-    url: string;
     children: ReactNode;
 }
 
 const WebSocketContext = createContext<WebSocketContextProps | undefined>(undefined);
 
-export const WebSocketContextProvider: React.FC<WebSocketProviderProps> = ({url, children}) => {
-    const { isConnected, connect, disconnect, latestImageData,acknowledgeFrameRendered } = useWebSocket(url);
+export const WebSocketContextProvider: React.FC<WebSocketProviderProps> = ({ children}) => {
+    const { isConnected, connect, disconnect, latestImageData,acknowledgeFrameRendered } = useWebSocket();
 
     return (
         <WebSocketContext.Provider value={{isConnected, connect, disconnect,latestImageData,acknowledgeFrameRendered}}>

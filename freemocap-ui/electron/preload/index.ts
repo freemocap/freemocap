@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFolder: (folderPath: string) => ipcRenderer.invoke('open-folder', folderPath),
   getHomeDirectory: () => ipcRenderer.invoke('get-home-directory'),
   getFolderContents: (folderPath: string) => ipcRenderer.invoke('get-folder-contents', folderPath),
+    startPythonServer: (exePath: string | null) => ipcRenderer.invoke('python-server:start', exePath),
+    stopPythonServer: () => ipcRenderer.invoke('python-server:stop'),
 
 })
 // --------- Expose some API to the Renderer process ---------

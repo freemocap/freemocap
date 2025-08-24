@@ -3,7 +3,7 @@ import numpy as np
 from numpydantic import NDArray, Shape
 from pydantic import BaseModel
 
-from freemocap.pipelines.calibration_pipeline.calibration_numpy_types import \
+from freemocap.core.pipelines.calibration_pipeline.calibration_numpy_types import \
     TransformationMatrixArray, TranslationVectorArray, RotationVectorArray
 
 

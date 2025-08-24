@@ -7,7 +7,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString
 from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_skellycam_app
 
 from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.pipelines.processing_pipeline import ProcessingPipeline
+from freemocap.core.pipelines.processing_pipeline import ProcessingPipeline
 
 logger = logging.getLogger(__name__)
 

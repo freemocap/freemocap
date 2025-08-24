@@ -11,7 +11,7 @@ class UrlService {
   /**
    * Builds the base URL for HTTP requests
    */
-  private getBaseUrl(): string {
+   getBaseHttpUrl(): string {
     const { protocol, host, port } = config.server;
     return `${protocol}://${host}:${port}${config.server.basePath}`;
   }
@@ -19,7 +19,7 @@ class UrlService {
   /**
    * Builds the base WebSocket URL
    */
-  private getBaseWsUrl(): string {
+   getBaseWsUrl(): string {
     const { wsProtocol, host, port } = config.server;
     return `${wsProtocol}://${host}:${port}${config.server.basePath}`;
   }
@@ -28,7 +28,7 @@ class UrlService {
    * Generates a complete API URL from a path
    */
   getApiUrl(path: string): string {
-    return `${this.getBaseUrl()}${path}`;
+    return `${this.getBaseHttpUrl()}${path}`;
   }
 
   /**

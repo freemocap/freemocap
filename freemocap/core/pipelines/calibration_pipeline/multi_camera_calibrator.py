@@ -2,31 +2,31 @@ import logging
 
 import numpy as np
 from pydantic import BaseModel
-from skellycam import CameraId
+from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
-from freemocap.pipelines.calibration_pipeline.least_squares_optimizer import SparseBundleOptimizer
-from freemocap.pipelines.calibration_pipeline.shared_view_accumulator import SharedViewAccumulator
+from freemocap.core.pipelines.calibration_pipeline.calibration_camera_node_output_data import \
+    CalibrationCameraNodeOutputData
+from freemocap.core.pipelines.calibration_pipeline.camera_math_models import TransformationMatrix
+from freemocap.core.pipelines.calibration_pipeline.least_squares_optimizer import SparseBundleOptimizer
+from freemocap.core.pipelines.calibration_pipeline.shared_view_accumulator import SharedViewAccumulator
+from freemocap.core.pipelines.calibration_pipeline.single_camera_calibrator import CameraIntrinsicsEstimate, \
+    SingleCameraCalibrator
 
 logger = logging.getLogger(__name__)
 
-from freemocap.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator, \
-    CameraIntrinsicsEstimate
-from freemocap.pipelines.calibration_pipeline.camera_math_models import TransformationMatrix
-
 
 class MultiCameraCalibrationEstimate(BaseModel):
-    principal_camera_id: CameraId
-    camera_transforms_by_camera_id: dict[CameraId, TransformationMatrix]
+    principal_camera_id: CameraIdString
+    camera_transforms_by_camera_id: dict[CameraIdString, TransformationMatrix]
 
 
 
 class MultiCameraCalibrator(BaseModel):
-    principal_camera_id: CameraId
-    camera_id_to_index: dict[CameraId, int]
+    principal_camera_id: CameraIdString
+    camera_id_to_index: dict[CameraIdString, int]
     shared_view_accumulator: SharedViewAccumulator
 
-    single_camera_calibrators: dict[CameraId, SingleCameraCalibrator] | None = None
+    single_camera_calibrators: dict[CameraIdString, SingleCameraCalibrator] | None = None
     multi_camera_calibration_estimate: MultiCameraCalibrationEstimate | None = None
     sparse_bundle_optimizer: SparseBundleOptimizer | None = None
     minimum_views_to_reconstruct: int | None = 20
@@ -39,20 +39,20 @@ class MultiCameraCalibrator(BaseModel):
                    self.single_camera_calibrators.values()) and self.multi_camera_calibration_estimate is not None
 
     @property
-    def camera_intrinsics(self) -> dict[CameraId, CameraIntrinsicsEstimate]:
+    def camera_intrinsics(self) -> dict[CameraIdString, CameraIntrinsicsEstimate]:
         return {camera_id: single_camera_calibrator.camera_intrinsics_estimate for camera_id, single_camera_calibrator
                 in
                 self.single_camera_calibrators.items()}
 
     @classmethod
-    def from_camera_ids(cls, camera_ids: list[CameraId], principal_camera_id: CameraId|None = None):
+    def from_camera_ids(cls, camera_ids: list[CameraIdString], principal_camera_id: CameraIdString|None = None):
         return cls(principal_camera_id=principal_camera_id if principal_camera_id is not None else min(camera_ids),
                    camera_id_to_index={camera_id: index for index, camera_id in enumerate(camera_ids)},
                    shared_view_accumulator=SharedViewAccumulator.create(camera_ids=camera_ids),
                    )
 
     def receive_camera_node_output(self, multi_frame_number: int,
-                                   camera_node_output_by_camera: dict[CameraId, CalibrationCameraNodeOutputData]):
+                                   camera_node_output_by_camera: dict[CameraIdString, CalibrationCameraNodeOutputData]):
 
         if self.single_camera_calibrators is None:
             self.initialize_single_camera_calibrators(camera_node_output_by_camera)
@@ -62,9 +62,9 @@ class MultiCameraCalibrator(BaseModel):
         logger.trace(f"Shared view accumulator: {self.shared_view_accumulator.get_shared_view_count_per_camera()}")
 
     def initialize_single_camera_calibrators(self, camera_node_output_by_camera: dict[
-        CameraId, CalibrationCameraNodeOutputData]):
+        CameraIdString, CalibrationCameraNodeOutputData]):
 
-        self.single_camera_calibrators: dict[CameraId, SingleCameraCalibrator] = {}
+        self.single_camera_calibrators: dict[CameraIdString, SingleCameraCalibrator] = {}
         for camera_id, node_output in camera_node_output_by_camera.items():
             self.single_camera_calibrators[camera_id] = SingleCameraCalibrator.create_initial(
                 camera_id=camera_id,
@@ -138,7 +138,7 @@ class MultiCameraCalibrator(BaseModel):
         )
 
     def _calculate_camera_to_principal_camera_transforms(self, camera_pair_secondary_camera_transform_estimates) -> \
-            dict[CameraId, TransformationMatrix]:
+            dict[CameraIdString, TransformationMatrix]:
         transform_to_principal_camera_by_camera = {self.principal_camera_id: TransformationMatrix(matrix=np.eye(4),
                                                                                                   reference_frame=f"camera {self.principal_camera_id}")}
         transform_to_principal_camera_by_camera.update(

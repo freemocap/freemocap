@@ -7,9 +7,10 @@ import {
 import {setBackendFramerate, setFrontendFramerate} from "@/store/slices/framerateTrackerSlice";
 import {FramerateUpdateWebSocketMessage, WebSocketMessageSchema} from "@/context/websocket-context/websocket-types";
 import {addLog} from "@/store/slices/logRecordsSlice";
+import {urlService} from "@/services/urlService";
 
 
-export const useWebSocket = (wsUrl: string) => {
+export const useWebSocket = () => {
     const [isConnected, setIsConnected] = useState(false);
     const [shouldReconnect, setShouldReconnect] = useState(true);
     const [websocket, setWebSocket] = useState<WebSocket | null>(null);
@@ -114,7 +115,7 @@ export const useWebSocket = (wsUrl: string) => {
             return;
         }
 
-        const ws = new WebSocket(wsUrl);
+        const ws = new WebSocket(urlService.getWebSocketUrl());
         ws.binaryType = "arraybuffer";
 
         ws.onopen = () => {
@@ -122,7 +123,7 @@ export const useWebSocket = (wsUrl: string) => {
             setConnectAttempt(0);
             setShouldReconnect(true);
             ws.send("Hello from the Skellycam Frontend💀📸👋");
-            console.log(`Websocket is connected to url: ${wsUrl}`);
+            console.log(`Websocket is connected to url: ${urlService.getWebSocketUrl()}`);
         };
 
         ws.onclose = () => {
@@ -144,7 +145,7 @@ export const useWebSocket = (wsUrl: string) => {
             console.error("Websocket error:", error);
         };
         setWebSocket(ws);
-    }, [wsUrl, websocket, connectAttempt]);
+    }, [websocket, connectAttempt]);
 
     const disconnect = useCallback((shouldReconnect:boolean=true) => {
         if (websocket) {
@@ -160,7 +161,7 @@ export const useWebSocket = (wsUrl: string) => {
         }
         const timeout = setTimeout(() => {
             console.log(
-                `Connecting  to websocket at url: ${wsUrl} (attempt #${connectAttempt + 1})`
+                `Connecting  to websocket at url: ${urlService.getWebSocketUrl()} (attempt #${connectAttempt + 1})`
             );
             connect();
         }, Math.min(1000 * Math.pow(2, connectAttempt), 10000)); // exponential backoff
@@ -168,7 +169,7 @@ export const useWebSocket = (wsUrl: string) => {
         return () => {
             clearTimeout(timeout);
         };
-    }, [connect, connectAttempt, wsUrl]);
+    }, [connect, connectAttempt]);
 
     return {
         isConnected,

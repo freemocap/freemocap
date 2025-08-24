@@ -4,29 +4,41 @@ import {LifecycleLogger} from "./logger";
 import {APP_PATHS} from "./app-paths";
 import {promisify} from 'util';
 import treeKill from "tree-kill";
+import {app} from "electron";
 
 const treeKillAsync = promisify(treeKill);
 let pythonProcess: ReturnType<typeof exec> | null = null;
 
 export class PythonServer {
-    static async start() {
+    static async start(exePath: string | null) {
         console.log('Starting python server subprocess');
-        this.validateExecutable();
+        let executablePath = APP_PATHS.PYTHON_SERVER_EXECUTABLE_PATH;
+        try {
+            await this.shutdown();
 
-        pythonProcess = exec(`"${APP_PATHS.PYTHON_SERVER_EXECUTABLE_PATH}"`, {
+            if (exePath) {
+                if (!fs.existsSync(exePath)) {
+                    throw new Error(`Provided executable path does not exist: ${exePath}`);
+                }
+                executablePath = exePath;
+            }
+            this.validateExecutable(executablePath);
+        } catch (error) {
+            try {
+                executablePath = APP_PATHS.PYTHON_SERVER_EXECUTABLE_PATH_WINDOWS_INSTALL
+                executablePath = executablePath.replace('~',app.getPath('home'));
+                this.validateExecutable(executablePath);
+            } catch (error) {
+                console.error('Error validating python server executable:', error);
+                throw error;
+            }
+        }
+        pythonProcess = exec(`"${executablePath}"`, {
             env: {
                 ...process.env,
-                PYTHONIOENCODING: 'utf-8',
-                PYTHONUTF8: '1'
             },
-            maxBuffer: 1024 * 1024
+            maxBuffer: 1024 * 1024 * 100 // 100MB buffer
         });
-
-        pythonProcess.stdout?.on('data', (data) =>
-            console.log(`[Python] ${data}`));
-
-        pythonProcess.stderr?.on('data', (data) =>
-            console.error(`[Python Error] ${data}`));
 
         pythonProcess.on('exit', (code) => {
             console.log(`Python exited (code: ${code})`);
@@ -57,7 +69,7 @@ export class PythonServer {
         pythonProcess = null;
     }
 
-    private static validateExecutable() {
+    private static validateExecutable(exePath: string) {
         console.log('Validating python server executable...');
         const checkPath = (path: string) => {
             if (!fs.existsSync(path)) throw new Error(`Missing Python server at ${path}`);
@@ -70,12 +82,8 @@ export class PythonServer {
             }
         };
 
-        try {
-            checkPath(APP_PATHS.PYTHON_SERVER_EXECUTABLE_PATH);
-        } catch {
-            checkPath(APP_PATHS.PYTHON_SERVER_EXECUTABLE_DEV);
-            APP_PATHS.PYTHON_SERVER_EXECUTABLE_PATH = APP_PATHS.PYTHON_SERVER_EXECUTABLE_DEV;
-        }
+        checkPath(exePath);
+
         console.log(`Using python server executable at ${APP_PATHS.PYTHON_SERVER_EXECUTABLE_PATH}`);
 
     }

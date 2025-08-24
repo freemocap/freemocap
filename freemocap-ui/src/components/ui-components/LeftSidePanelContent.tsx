@@ -2,7 +2,6 @@
 import * as React from 'react';
 import Box from "@mui/material/Box";
 import {IconButton, List, ListItem, useTheme} from "@mui/material";
-import WebsocketConnectionStatus from "@/components/WebsocketConnectionStatus";
 import {AvailableCamerasPanel} from "@/components/available-cameras-panel/AvailableCamerasPanel";
 import {RecordingInfoPanel} from "@/components/recording-info-panel/RecordingInfoPanel";
 import ThemeToggle from "@/components/ui-components/ThemeToggle";
@@ -13,6 +12,7 @@ import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import {VideoFolderPanel} from "@/components/video-folder-panel/VideoFolderPanel";
 import {ProcessingPipelinePanel} from "@/components/processing-pipeline-panel/ProcessingPipelinePanel";
+import {ServerSettingsPanel} from "@/components/server-settings-panel/ServerSettingsPanel";
 // Extract reusable scrollbar styles
 const scrollbarStyles = {
     '&::-webkit-scrollbar': {
@@ -120,19 +120,19 @@ export const LeftSidePanelContent = () => {
                 </ListItem>
             </List>
 
-            <WebsocketConnectionStatus/>
+            <ServerSettingsPanel/>
 
-                <Box sx={{
-                    flex: 1,
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    ...scrollbarStyles
-                }}>
-                    <AvailableCamerasPanel/>
-                    <RecordingInfoPanel/>
-                    <ProcessingPipelinePanel/>
+            <Box sx={{
+                flex: 1,
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                ...scrollbarStyles
+            }}>
+                <AvailableCamerasPanel/>
+                <RecordingInfoPanel/>
+                <ProcessingPipelinePanel/>
 
-                </Box>
+            </Box>
 
             {location.pathname === '/videos' && (
                 <Box sx={{

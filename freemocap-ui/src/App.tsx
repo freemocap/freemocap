@@ -4,14 +4,16 @@ import { Provider } from "react-redux";
 import { AppStateStore } from "@/store/AppStateStore";
 import { WebSocketContextProvider } from "@/context/websocket-context/WebSocketContext";
 import { urlService } from '@/services/urlService';
+import {PythonServerContextProvider} from "@/context/python-server-context/PythonServerContext";
 
 function App() {
-    const wsUrl = urlService.getWebSocketUrl();
     return (
         <Provider store={AppStateStore}>
-                <WebSocketContextProvider url={wsUrl}>
+            <PythonServerContextProvider>
+                <WebSocketContextProvider>
                     <PaperbaseContent/>
                 </WebSocketContextProvider>
+            </PythonServerContextProvider>
         </Provider>
     );
 }

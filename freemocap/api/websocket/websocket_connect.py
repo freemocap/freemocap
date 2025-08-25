@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket
 
-from skellycam.api.websocket.websocket_server import WebsocketServer
+from freemocap.api.websocket.websocket_server import WebsocketServer
 
 logger = logging.getLogger(__name__)
 

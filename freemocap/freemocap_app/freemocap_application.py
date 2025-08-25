@@ -47,18 +47,13 @@ class FreemocapApplication:
                    pipeline_manager=PipelineManager(global_kill_flag=global_kill_flag)
                    )
 
-    def create_pipeline(self, camera_group_id: CameraGroupIdString) -> tuple[CameraGroupIdString, PipelineIdString]:
+    @property
+    def should_continue(self) -> bool:
+        return not self.global_kill_flag.value
+
+    def create_pipeline(self, camera_group: CameraGroup) -> tuple[CameraGroupIdString, PipelineIdString]:
         if len(self.skellycam_app.camera_group_manager.camera_groups) == 0:
             raise ValueError("No camera groups available to create a processing pipeline! Start a camera group first.")
-
-        if camera_group_id is None:
-            camera_group_id = list(self.skellycam_app.camera_group_manager.camera_groups.keys())[0]
-        else:
-            if camera_group_id not in self.skellycam_app.camera_group_manager.camera_groups:
-                raise ValueError(f"Camera group ID {camera_group_id} does not exist!")
-
-        camera_group = self.skellycam_app.camera_group_manager.camera_groups[camera_group_id]
-
         pipeline = self.pipeline_manager.create_pipeline(camera_group=camera_group)
         return camera_group.id, pipeline.id
 

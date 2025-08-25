@@ -7,7 +7,7 @@ from skellycam.core.ipc.pubsub.pubsub_abcs import PubSubTopicABC
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
 from freemocap.core.pubsub.pubsub_topics import LogsTopic, ProcessFrameNumberTopic, SkellyTrackerConfigsTopic, \
-    CameraNodeOutputTopic
+    CameraNodeOutputTopic, AggregationNodeOutputTopic
 from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)

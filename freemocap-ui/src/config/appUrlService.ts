@@ -1,5 +1,3 @@
-
-
 export interface DefaultUrlConfig {
     host: string;
     port: number;
@@ -7,44 +5,46 @@ export interface DefaultUrlConfig {
 
 // Default URL configuration
 const defaultUrlConfig: DefaultUrlConfig = {
-  host: 'localhost',
-  port: 8007,
+    host: 'localhost',
+    port: 8007,
 };
 
 
 // Get the base HTTP URL
 const getBaseHttpUrl = () => {
-  const { host, port } = defaultUrlConfig;
-  return `http://${host}:${port}`;
+    const {host, port} = defaultUrlConfig;
+    return `http://${host}:${port}`;
 };
 
 // Get a specific API URL
 const getApiUrl = (path: string) => {
-  return `${getBaseHttpUrl()}${path}`;
+    return `${getBaseHttpUrl()}${path}`;
 };
 
 // Get WebSocket URL
 const getWebSocketUrl = () => {
-  const { host, port } = defaultUrlConfig;
-  return `ws://${host}:${port}/websocket/connect`;
+    const {host, port} = defaultUrlConfig;
+    return `ws://${host}:${port}/freemocap/websocket/connect`;
 };
 
 // Get all HTTP endpoint URLs
 const getHttpEndpointUrls = () => {
-  return {
-    detectCameras: getApiUrl('/skellycam/camera/detect'),
-    createGroup: getApiUrl('/skellycam/camera/group/create'),
-    closeAll: getApiUrl('/skellycam/camera/group/close/all'),
-    updateConfigs: getApiUrl('/skellycam/camera/update'),
-    startRecording: getApiUrl('/skellycam/camera/group/all/record/start'),
-    stopRecording: getApiUrl('/skellycam/camera/group/all/record/stop'),
-    pauseUnpauseCameras: getApiUrl('/skellycam/camera/group/all/pause_unpause'),
-  };
+    return {
+        detectCameras: getApiUrl('/skellycam/camera/detect'),
+        createGroup: getApiUrl('/skellycam/camera/group/create'),
+        closeAll: getApiUrl('/skellycam/camera/group/close/all'),
+        updateConfigs: getApiUrl('/skellycam/camera/update'),
+        startRecording: getApiUrl('/skellycam/camera/group/all/record/start'),
+        stopRecording: getApiUrl('/skellycam/camera/group/all/record/stop'),
+        pauseUnpauseCameras: getApiUrl('/skellycam/camera/group/all/pause_unpause'),
+        connectPipeline: getApiUrl('/freemocap/pipeline/connect'),
+        disconnectPipeline: getApiUrl('/freemocap/pipeline/disconnect'),
+    };
 };
 
 export const urlService = {
-  getBaseHttpUrl,
-  getApiUrl,
-  getWebSocketUrl,
-  getHttpEndpointUrls,
+    getBaseHttpUrl,
+    getApiUrl,
+    getWebSocketUrl,
+    getHttpEndpointUrls,
 };

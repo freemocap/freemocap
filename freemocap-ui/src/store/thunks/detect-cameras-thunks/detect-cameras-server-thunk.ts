@@ -10,8 +10,8 @@ import {
     CameraDevice,
     createDefaultCameraConfig
 } from "@/store/slices/cameras-slices/camera-types";
-import { urlService } from "@/services/urlService";
 import {RootState} from "@/store/AppStateStore";
+import {urlService} from "@/config/appUrlService";
 
 export const detectCameraDevices = createAsyncThunk<
     CameraDevice[]
@@ -21,7 +21,7 @@ export const detectCameraDevices = createAsyncThunk<
         dispatch(setLoading(true));
 
         try {
-            const connectUrl = urlService.getSkellycamUrls().detectCameras;
+            const connectUrl = urlService.getHttpEndpointUrls().detectCameras;
 
             console.log(`Detecting cameras at ${connectUrl}`);
             const response = await fetch(connectUrl, {

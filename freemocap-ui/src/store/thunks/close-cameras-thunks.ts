@@ -1,5 +1,5 @@
 import {createAsyncThunk} from '@reduxjs/toolkit';
-import {urlService} from "@/services/urlService";
+import {urlService} from "@/config/appUrlService";
 
 
 
@@ -8,7 +8,7 @@ export const closeCameras = createAsyncThunk(
     async () => {
         console.log(`Closing cameras...`);
         try {
-            const closeCamerasURL = urlService.getSkellycamUrls().closeAllCameras
+            const closeCamerasURL = urlService.getHttpEndpointUrls().closeAll;
 
 
             console.log(`Sending close request to ${closeCamerasURL}`);

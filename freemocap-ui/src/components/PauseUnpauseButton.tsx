@@ -4,7 +4,7 @@ import {Button, CircularProgress, keyframes} from '@mui/material';
 import {styled} from '@mui/system';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
-import {urlService} from "@/services/urlService";
+import {pauseUnpauseThunk} from "@/store/thunks/pause-unpause-thunk";
 
 interface PauseUnpauseButtonProps {
     disabled?: boolean;
@@ -39,60 +39,25 @@ export const PauseUnpauseButton: React.FC<PauseUnpauseButtonProps> = ({
                                                                       }) => {
     const [isPaused, setIsPaused] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    // Add a timeout to prevent indefinite loading state
-    const handleApiCall = async (url: string, successAction: () => void) => {
+
+
+    const handleClick = async () => {
         setIsLoading(true);
 
-        // Create an AbortController to handle timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
         try {
-            const response = await fetch(url, {
-                method: 'GET',
-                signal: controller.signal
-            });
-
-            if (response.ok) {
-                successAction();
-            } else {
-                console.error(`API call failed: ${response.statusText}`);
-            }
+            await pauseUnpauseThunk();
+            // Toggle the paused state after successful API call
+            setIsPaused(prev => !prev);
         } catch (error) {
-            console.error('An error occured:', error);
+            console.error('Failed to pause/unpause cameras:', error);
         } finally {
-            clearTimeout(timeoutId);
             setIsLoading(false);
-        }
-    };
-
-    const handlePause = () => {
-        const pauseUrl = urlService.getSkellycamUrls().pauseCameras;
-        handleApiCall(pauseUrl, () => {
-            console.log('Paused successfully');
-            setIsPaused(true);
-        });
-    };
-
-    const handleUnpause = () => {
-        const unpauseUrl = urlService.getSkellycamUrls().unpauseCameras;
-        handleApiCall(unpauseUrl, () => {
-            console.log('Unpaused successfully');
-            setIsPaused(false);
-        });
-    };
-
-    const handleClick = () => {
-        if (isPaused) {
-            handleUnpause();
-        } else {
-            handlePause();
         }
     };
 
     return (
         <PulsingButton
-            onClick={handleClick}
+            onClick={ handleClick}
             variant="contained"
             pulsing={isPaused ? true : undefined}
             fullWidth

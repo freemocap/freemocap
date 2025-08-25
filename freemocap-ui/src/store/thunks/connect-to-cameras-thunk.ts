@@ -5,8 +5,8 @@ import {
     setLoading,
     updateCameraConfigs
 } from "@/store/slices/cameras-slices/camerasSlice";
-import { urlService } from "@/services/urlService";
 import {CameraConfig} from "@/store/slices/cameras-slices/camera-types";
+import {urlService} from "@/config/appUrlService";
 
 export const connectToCameras = createAsyncThunk(
     'cameras/connect',
@@ -21,7 +21,7 @@ export const connectToCameras = createAsyncThunk(
         }
 
         dispatch(setLoading(true));
-        const connectUrl = urlService.getSkellycamUrls().createCameraGroup;
+        const connectUrl = urlService.getHttpEndpointUrls().createGroup;
 
         const payload = {
             camera_configs: cameraConfigs

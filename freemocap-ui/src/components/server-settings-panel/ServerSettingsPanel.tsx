@@ -34,7 +34,6 @@ export const ServerSettingsPanel = () => {
     return (
         <Box sx={{padding: 2, color: 'text.primary'}}>
             <SimpleTreeView
-                defaultExpandedItems={['server-status']}
                 slots={{
                     collapseIcon: ExpandMoreIcon,
                     expandIcon: ChevronRightIcon
@@ -64,7 +63,7 @@ export const ServerSettingsPanel = () => {
                     <Box sx={{pl: 2, pt: 1, borderTop: '2px solid', borderColor: 'darkcyan'}}>
                         <ServerConnectionStatus/>
                         <WebsocketConnectionStatus/>
-                        <TreeItem itemId="server-settings" label="Server Settings">
+                        <TreeItem itemId="server-settings" label="Server Settings"  disabled={true}>
                             <Box sx={{pl: 2, pt: 1, display: 'flex', flexDirection: 'column', gap: 2}}>
                                 <FormControlLabel
                                     control={
@@ -108,7 +107,7 @@ export const ServerSettingsPanel = () => {
                             </Box>
                         </TreeItem>
 
-                        <TreeItem itemId="display-settings" label="Display Settings">
+                        <TreeItem itemId="display-settings" label="Display Settings"  disabled={true}>
                             <Box sx={{pl: 2, pt: 1, display: 'flex', flexDirection: 'column', gap: 2}}>
                                 <FormControlLabel
                                     control={

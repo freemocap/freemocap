@@ -1,12 +1,10 @@
 import {Box, Tooltip, Typography} from "@mui/material";
 import {useWebSocketContext} from "@/context/websocket-context/WebSocketContext";
-import {urlService} from "@/services/urlService";
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 
 const WebsocketConnectionStatus = () => {
     const {isConnected, disconnect, connect} = useWebSocketContext();
-    const wsUrl = urlService.getWebSocketUrl();
 
     const handleToggleConnection = () => {
         if (isConnected) {

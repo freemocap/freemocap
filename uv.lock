@@ -1758,7 +1758,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#af80f5aa2d86fcf2a11c4cd4a0a2d655e01f2454" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#ae3bd730c12e8dcd79fa4ea00e9b8f21e4505f3f" }
 dependencies = [
     { name = "numpy" },
     { name = "numpydantic" },

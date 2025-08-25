@@ -2,8 +2,7 @@
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import {z} from 'zod';
 import {setRecordingInfo} from "@/store/slices/recordingInfoSlice";
-import {selectConfigsForSelectedCameras} from "@/store/slices/cameras-slices/camerasSlice";
-import {urlService} from "@/services/urlService";
+import {urlService} from "@/config/appUrlService";
 
 const RecordStartRequestSchema = z.object({
     recording_name: z.string(),
@@ -21,7 +20,7 @@ export const startRecording = createAsyncThunk<void, StartRecordingParams>(
     async ({recordingName, recordingDirectory}, {dispatch,}) => {
         console.log(`Starting recording with name: ${recordingName} in directory: ${recordingDirectory}`);
         try {
-            const recStartUrl = urlService.getSkellycamUrls().startRecording;
+            const recStartUrl = urlService.getHttpEndpointUrls().startRecording;
 
             const requestPayload = RecordStartRequestSchema.parse({
                 recording_name: recordingName,
@@ -59,7 +58,7 @@ export const stopRecording = createAsyncThunk<void, void>(
     async (_, {dispatch}) => {
         console.log('Stopping recording...');
         try {
-            const recStopUrl = urlService.getSkellycamUrls().stopRecording;
+            const recStopUrl = urlService.getHttpEndpointUrls().stopRecording;
             const response = await fetch(recStopUrl, {
                 method: 'GET',
             });

@@ -128,8 +128,8 @@ export const LeftSidePanelContent = () => {
                 overflowX: 'hidden',
                 ...scrollbarStyles
             }}>
-                <AvailableCamerasPanel/>
                 <RecordingInfoPanel/>
+                <AvailableCamerasPanel/>
                 <ProcessingPipelinePanel/>
 
             </Box>

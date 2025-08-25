@@ -6,14 +6,13 @@ import {
     setLoading, updateCameraConfig, updateCameraConfigs
 } from "@/store/slices/cameras-slices/camerasSlice";
 import { CameraConfig } from "../slices/cameras-slices/camera-types";
-import {urlService} from "@/services/urlService";
-
+import {urlService} from "@/config/appUrlService";
 export const updateCameraConfigsThunk = createAsyncThunk(
     'camera/update',
     async (_, { dispatch, getState }) => {
         const state = getState() as any;
         dispatch(setLoading(true));
-        const connectUrl = urlService.getSkellycamUrls().updateCameraConfigs
+        const connectUrl = urlService.getHttpEndpointUrls().updateConfigs;
 
         const payload = {
             camera_configs: selectConfigsForSelectedCameras(state)

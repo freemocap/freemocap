@@ -25,7 +25,7 @@ const PulsingButton = styled(Button)(({isRecording}: { isRecording: boolean | un
     backgroundColor: isRecording ? '#8d0a02' : '#005d94',
     borderStyle: 'solid',
     borderWidth: '3px',
-    borderColor: '#00ccff',
+    borderColor: '#ff55ff',
     padding: 10,
     '&:hover': {
         borderColor: '#fb1402',

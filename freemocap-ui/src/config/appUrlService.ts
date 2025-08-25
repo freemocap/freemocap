@@ -26,7 +26,7 @@ const getApiUrl = (path: string) => {
 // Get WebSocket URL
 const getWebSocketUrl = () => {
   const { host, port } = defaultUrlConfig;
-  return `ws://${host}:${port}/skellycam/websocket/connect`;
+  return `ws://${host}:${port}/websocket/connect`;
 };
 
 // Get all HTTP endpoint URLs

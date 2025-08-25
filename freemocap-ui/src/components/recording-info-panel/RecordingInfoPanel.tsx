@@ -12,7 +12,6 @@ import {
 import {startRecording, stopRecording,} from "@/store/thunks/start-stop-recording-thunks";
 import {setRecordingInfo} from "@/store/slices/recordingInfoSlice";
 import {RecordingPathTreeItem} from "@/components/recording-info-panel/RecordingPathTreeItem";
-import {FullRecordingPathPreview} from "./recording-subcomponents/FullRecordingPathPreview";
 
 export const RecordingInfoPanel: React.FC = () => {
     const theme = useTheme();

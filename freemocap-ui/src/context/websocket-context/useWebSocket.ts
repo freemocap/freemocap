@@ -7,7 +7,7 @@ import {
 import {setBackendFramerate, setFrontendFramerate} from "@/store/slices/framerateTrackerSlice";
 import {FramerateUpdateWebSocketMessage, WebSocketMessageSchema} from "@/context/websocket-context/websocket-types";
 import {addLog} from "@/store/slices/logRecordsSlice";
-import {urlService} from "@/services/urlService";
+import {urlService} from "@/config/appUrlService";
 
 
 export const useWebSocket = () => {

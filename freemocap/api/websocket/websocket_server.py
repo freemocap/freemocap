@@ -8,6 +8,8 @@ from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt, MultiframeTimestampFloat
 from skellycam.skellycam_app.skellycam_app import SkellycamApplication, get_skellycam_app
+
+from freemocap.freemocap_app.freemocap_application import FreemocapApplication, get_freemocap_app
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import LogRecordModel, \
     get_websocket_log_queue
 from freemocap.system.logging_configuration.log_levels import LogLevels
@@ -22,7 +24,7 @@ class WebsocketServer:
     def __init__(self, websocket: WebSocket):
 
         self.websocket = websocket
-        self._app: SkellycamApplication = get_skellycam_app()
+        self._app: FreemocapApplication = get_freemocap_app()
 
         self._websocket_should_continue = True
         self.ws_tasks: list[asyncio.Task] = []
@@ -96,7 +98,7 @@ class WebsocketServer:
                     else:
                         new_frontend_payloads: dict[
                             CameraGroupIdString, tuple[
-                                FrameNumberInt, MultiframeTimestampFloat, bytes]] = self._app.get_new_frontend_payloads(
+                                FrameNumberInt, MultiframeTimestampFloat, bytes]] = self._app.skellycam_app.get_new_frontend_payloads(
                             if_newer_than=self.last_sent_frame_number,
                             display_image_sizes=self._display_image_sizes)
 
@@ -116,7 +118,7 @@ class WebsocketServer:
                         logger.trace(
                             f"Backpressure detected: {backpressure} frames not acknowledged by frontend! Last sent frame: {self.last_sent_frame_number}, last received confirmation: {self.last_received_frontend_confirmation}")
 
-                backend_framerate_updates:dict[CameraGroupIdString,CurrentFramerate] = self._app.camera_group_manager.get_backend_framerate_updates()
+                backend_framerate_updates:dict[CameraGroupIdString,CurrentFramerate] = self._app.skellycam_app.camera_group_manager.get_backend_framerate_updates()
                 if backend_framerate_updates:
                     for camera_group_id, backend_framerate in backend_framerate_updates.items():
                         if camera_group_id not in self._frontend_framerate_trackers:

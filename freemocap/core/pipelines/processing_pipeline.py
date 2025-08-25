@@ -14,20 +14,19 @@ from pydantic import BaseModel, ConfigDict
 from skellycam.core.ipc.shared_memory.frame_payload_shared_memory_ring_buffer import FramePayloadSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.ipc.shared_memory.shared_memory_number import SharedMemoryNumber
+from skellycam.core.ipc.shared_memory.shared_memory_element import SharedMemoryElementDTO
 from skellycam.core.types.type_overloads import CameraIdString, WorkerType, WorkerStrategy, TopicSubscriptionQueue, \
     CameraGroupIdString
 from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseTracker, BaseImageAnnotator, \
     BaseImageAnnotatorConfig
 from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackerTypeString
-from skellytracker.trackers.charuco_tracker import CharucoTracker, CharucoTrackerConfig
-from skellytracker.trackers.mediapipe_tracker import MediapipeTracker, MediapipeTrackerConfig
 
+from freemocap.core.pipelines.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_manager import TopicTypes
 from freemocap.core.pubsub.pubsub_topics import SkellyTrackerConfigsMessage, ProcessFrameNumberMessage, \
     CameraNodeOutputMessage, AggregationNodeOutputMessage
 from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.core.pipelines.pipeline_ipc import PipelineIPC
 
 logger = logging.getLogger(__name__)
 
@@ -84,15 +83,15 @@ class CameraNode:
         return cls(camera_id=camera_id,
                    shutdown_self_flag=shutdown_self_flag,
                    worker=worker_strategy.value(target=cls._run,
-                                                name =f"CameraProcessingNode-{camera_id}",
+                                                name=f"CameraProcessingNode-{camera_id}",
                                                 kwargs=dict(camera_id=camera_id,
                                                             camera_shm_dto=camera_shm_dto,
                                                             ipc=ipc,
                                                             shutdown_self_flag=shutdown_self_flag,
-                                                            process_frame_number_subscription=ipc.pubsub.topics[
-                                                                TopicTypes.PROCESS_FRAME_NUMBER].subscription,
-                                                            skelly_tracker_configs_subscription=ipc.pubsub.topics[
-                                                                TopicTypes.SKELLY_TRACKER_CONFIGS].subscription,
+                                                            process_frame_number_subscription=ipc.pubsub.get_subscription(
+                                                                TopicTypes.PROCESS_FRAME_NUMBER),
+                                                            skelly_tracker_configs_subscription=ipc.pubsub.get_subscription(
+                                                                TopicTypes.SKELLY_TRACKER_CONFIGS)
                                                             ),
                                                 daemon=True
                                                 ),
@@ -140,6 +139,9 @@ class CameraNode:
                     del tracker_configs[index]
 
                 for tracker_config in tracker_configs:
+                    from skellytracker.trackers.charuco_tracker import CharucoTracker, CharucoTrackerConfig
+                    from skellytracker.trackers.mediapipe_tracker import MediapipeTracker, MediapipeTrackerConfig
+
                     if isinstance(tracker_config, CharucoTrackerConfig):
                         trackers.append(CharucoTracker.create(config=tracker_config))
                     elif isinstance(tracker_config, MediapipeTrackerConfig):
@@ -208,8 +210,9 @@ class AggregationNode(ABC):
                                                             camera_node_subscription=ipc.pubsub.get_subscription(
                                                                 TopicTypes.CAMERA_NODE_OUTPUT),
                                                             skellytracker_configs_subscription=ipc.pubsub.get_subscription(
-                                                                TopicTypes.SKELLY_TRACKER_CONFIGS)),
-                                                latest_multiframe_number_shm=latest_multiframe_number_shm,
+                                                                TopicTypes.SKELLY_TRACKER_CONFIGS),
+                                                            latest_multiframe_number_shm_dto=latest_multiframe_number_shm.to_dto(),
+                                                            ),
                                                 daemon=True
                                                 ),
                    )
@@ -221,7 +224,7 @@ class AggregationNode(ABC):
              shutdown_self_flag: multiprocessing.Value,
              camera_node_subscription: TopicSubscriptionQueue,
              skellytracker_configs_subscription: TopicSubscriptionQueue,
-             latest_multiframe_number_shm: SharedMemoryNumber,
+             latest_multiframe_number_shm_dto: SharedMemoryElementDTO
              ):
         if multiprocessing.parent_process():
             # Configure logging if multiprocessing (i.e. if there is a parent process)
@@ -230,6 +233,8 @@ class AggregationNode(ABC):
             configure_logging(LOG_LEVEL, ws_queue=ipc.pubsub.topics[TopicTypes.LOGS].publication)
         logger.debug(f"Starting aggregation process for camera group {camera_group_id}")
         camera_node_outputs: dict[TrackerTypeString, dict[CameraIdString, CameraNodeOutputMessage | None] | None] = {}
+        latest_multiframe_number_shm = SharedMemoryNumber.recreate(dto=latest_multiframe_number_shm_dto,
+                                                                   read_only=True)
         latest_requested_frame: int = -1
         while ipc.should_continue and not shutdown_self_flag.value:
             wait_1ms()
@@ -340,7 +345,7 @@ class ProcessingPipeline:
                                                      camera_shm_dto=camera_group_shm_dto.camera_shm_dtos[camera_id],
                                                      worker_strategy=camera_node_strategy,
                                                      ipc=ipc)
-                        for camera_id, config in camera_group.configs}
+                        for camera_id, config in camera_group.configs.items()}
         aggregation_process = AggregationNode.create(camera_group_id=camera_group.id,
                                                      camera_ids=list(camera_nodes.keys()),
                                                      latest_multiframe_number_shm=camera_group.shm.latest_multiframe_number,

@@ -36,7 +36,7 @@ def register_routes(app: FastAPI):
         return FileResponse(SKELLYCAM_FAVICON_ICO_PATH)
 
     for router in FREEMOCAP_ROUTERS:
-        app.include_router(router)
+        app.include_router(router,prefix=f"/{freemocap.__package_name__}")
     for router in SKELLYCAM_ROUTERS:
         app.include_router(router, prefix=f"/{skellycam.__package_name__}")
 

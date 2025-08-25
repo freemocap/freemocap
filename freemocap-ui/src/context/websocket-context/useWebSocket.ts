@@ -122,7 +122,7 @@ export const useWebSocket = () => {
             setIsConnected(true);
             setConnectAttempt(0);
             setShouldReconnect(true);
-            ws.send("Hello from the Skellycam Frontend💀📸👋");
+            ws.send("Hello from the FreeMoCap Frontend💀✨👋");
             console.log(`Websocket is connected to url: ${urlService.getWebSocketUrl()}`);
         };
 

@@ -421,12 +421,12 @@ class ProcessingPipeline:
         self.aggregation_node.start()
         for camera_id, camera_node in self.camera_nodes.items():
             camera_node.start()
-        self.started = True
+
 
     def shutdown(self):
         logger.debug(f"Shutting down {self.__class__.__name__}...")
-        self.started = False
-        self.global_kill_flag.value = True
+
+        self.ipc.global_kill_flag.value = True
         self.aggregation_node.stop()
         for camera_id, camera_process in self.camera_nodes.items():
             camera_process.stop()

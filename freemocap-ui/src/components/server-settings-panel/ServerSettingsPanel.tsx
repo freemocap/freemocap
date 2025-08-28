@@ -63,7 +63,7 @@ export const ServerSettingsPanel = () => {
                     <Box sx={{pl: 2, pt: 1, borderTop: '2px solid', borderColor: 'darkcyan'}}>
                         <ServerConnectionStatus/>
                         <WebsocketConnectionStatus/>
-                        <TreeItem itemId="server-settings" label="Server Settings"  disabled={true}>
+                        <TreeItem itemId="server-settings" label="Server Settings">
                             <Box sx={{pl: 2, pt: 1, display: 'flex', flexDirection: 'column', gap: 2}}>
                                 <FormControlLabel
                                     control={
@@ -81,6 +81,7 @@ export const ServerSettingsPanel = () => {
                                     onChange={(e) => setServerExecutablePath(e.target.value)}
                                     fullWidth
                                     size="small"
+                                    disabled={true}
                                 />
 
                                 <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
@@ -90,6 +91,8 @@ export const ServerSettingsPanel = () => {
                                         onChange={(e) => setHost(e.target.value)}
                                         size="small"
                                         sx={{flex: 1}}
+                                        disabled={true}
+
                                     />
                                     <TextField
                                         label="HTTP Port"
@@ -98,6 +101,8 @@ export const ServerSettingsPanel = () => {
                                         onChange={(e) => setHttpPort(Number(e.target.value))}
                                         size="small"
                                         sx={{width: 100}}
+                                        disabled={true}
+
                                     />
                                 </Box>
 
@@ -107,13 +112,15 @@ export const ServerSettingsPanel = () => {
                             </Box>
                         </TreeItem>
 
-                        <TreeItem itemId="display-settings" label="Display Settings"  disabled={true}>
+                        <TreeItem itemId="display-settings" label="Display Settings">
                             <Box sx={{pl: 2, pt: 1, display: 'flex', flexDirection: 'column', gap: 2}}>
                                 <FormControlLabel
                                     control={
                                         <Checkbox
                                             checked={limitFramerate}
                                             onChange={(e) => setLimitFramerate(e.target.checked)}
+                                    disabled={true}
+
                                         />
                                     }
                                     label="Limit display framerate"
@@ -131,6 +138,8 @@ export const ServerSettingsPanel = () => {
                                             max={maxFramerate}
                                             valueLabelDisplay="auto"
                                             size="small"
+                                            disabled={true}
+
                                         />
                                     </Box>
                                 )}
@@ -140,6 +149,8 @@ export const ServerSettingsPanel = () => {
                                         <Checkbox
                                             checked={preShrink}
                                             onChange={(e) => setPreShrink(e.target.checked)}
+                                            disabled={true}
+
                                         />
                                     }
                                     label="Pre-shrink images"
@@ -158,6 +169,8 @@ export const ServerSettingsPanel = () => {
                                             step={0.01}
                                             valueLabelDisplay="auto"
                                             size="small"
+                                            disabled={true}
+
                                         />
                                     </Box>
                                 )}

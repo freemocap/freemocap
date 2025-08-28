@@ -26,7 +26,7 @@ class PipelineManager:
 
     def close_all_pipelines(self):
         for pipeline in self.pipelines.values():
-            pipeline.close()
+            pipeline.shutdown()
         self.pipelines.clear()
         logger.info("All pipelines closed successfully")
 
@@ -51,11 +51,14 @@ class FreemocapApplication:
     def should_continue(self) -> bool:
         return not self.global_kill_flag.value
 
-    def create_pipeline(self, camera_group: CameraGroup) -> tuple[CameraGroupIdString, PipelineIdString]:
+    def connect_pipeline(self, camera_group: CameraGroup) -> tuple[CameraGroupIdString, PipelineIdString]:
         if len(self.skellycam_app.camera_group_manager.camera_groups) == 0:
             raise ValueError("No camera groups available to create a processing pipeline! Start a camera group first.")
         pipeline = self.pipeline_manager.create_pipeline(camera_group=camera_group)
         return camera_group.id, pipeline.id
+
+    def disconnect_pipeline(self):
+        self.pipeline_manager.close_all_pipelines()
 
     def close(self):
         self.global_kill_flag.value = True

@@ -27,23 +27,39 @@ class PipelineCreateResponse(BaseModel):
 @pipeline_router.post("/connect",
                     summary="Create a processing pipeline and attach it to a camera group"
                     )
-def pipeline_create_post_endpoint(
+def pipeline_connect_post_endpoint(
         request: PipelineConnectRequest = Body(...,
                                                description="Request body containing desired camera configuration",
                                                examples=[
                                                      PipelineConnectRequest(camera_ids=['0'])]), ) -> PipelineCreateResponse:
-    logger.api(f"Received `pipeline/create` POST request - \n {request.model_dump_json(indent=2)}")
+    logger.api(f"Received `pipeline/connect` POST request - \n {request.model_dump_json(indent=2)}")
     try:
 
         camera_group = get_freemocap_app().skellycam_app.camera_group_manager.camera_group_from_camera_ids(camera_ids=request.camera_ids)
-        camera_group_id, pipeline_id = get_freemocap_app().create_pipeline(camera_group=camera_group)
+        camera_group_id, pipeline_id = get_freemocap_app().connect_pipeline(camera_group=camera_group)
         response = PipelineCreateResponse(camera_group_id=camera_group_id,
                                            pipeline_id=pipeline_id)
         logger.api(
-            f"`pipeline/create` POST request handled successfully - \n {response.model_dump_json(indent=2)}")
+            f"`pipeline/connect` POST request handled successfully - \n {response.model_dump_json(indent=2)}")
         return response
     except Exception as e:
-        logger.error(f"Error when processing `pipeline/create` request: {type(e).__name__} - {e}")
+        logger.error(f"Error when processing `pipeline/connect` request: {type(e).__name__} - {e}")
         logger.exception(e)
         raise HTTPException(status_code=500,
-                            detail=f"Error when processing `pipeline/create` request: {type(e).__name__} - {e}")
+                            detail=f"Error when processing `pipeline/connect` request: {type(e).__name__} - {e}")
+
+@pipeline_router.get("/disconnect/all",
+                    summary="Disconnect/shutdown all processing pipelines"
+                    )
+def pipeline_disconnect_post_endpoint( ):
+    logger.api(f"Received `pipeline/disconnect` GET request")
+    try:
+
+        get_freemocap_app().disconnect_pipeline()
+        logger.api(
+            f"`pipeline/disconnect` GET request handled successfully ")
+    except Exception as e:
+        logger.error(f"Error when processing `pipeline/disconnect` request: {type(e).__name__} - {e}")
+        logger.exception(e)
+        raise HTTPException(status_code=500,
+                            detail=f"Error when processing `pipeline/disconnect` request: {type(e).__name__} - {e}")

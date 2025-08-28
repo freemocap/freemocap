@@ -38,7 +38,7 @@ const getHttpEndpointUrls = () => {
         stopRecording: getApiUrl('/skellycam/camera/group/all/record/stop'),
         pauseUnpauseCameras: getApiUrl('/skellycam/camera/group/all/pause_unpause'),
         connectPipeline: getApiUrl('/freemocap/pipeline/connect'),
-        disconnectPipeline: getApiUrl('/freemocap/pipeline/disconnect'),
+        disconnectPipeline: getApiUrl('/freemocap/pipeline/disconnect/all'),
     };
 };
 

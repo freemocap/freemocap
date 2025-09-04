@@ -179,7 +179,7 @@ class CalibrationControlPanel(QWidget):
         hbox2.addLayout(self._charuco_square_size_form_layout)
 
         # Create checkbox
-        self._use_charuco_as_groundplane_checkbox = QCheckBox("Use Charuco board as groundplane")
+        self._use_charuco_as_groundplane_checkbox = QCheckBox("Use initial Charuco board position as groundplane origin")
         self._use_charuco_as_groundplane_checkbox.setToolTip(
             "Set the Charuco board's coordinate system as the global origin"
         )

@@ -157,12 +157,12 @@ class CameraControllerGroupBox(QGroupBox):
         hbox_bottom = QHBoxLayout()
         hbox_bottom.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        self._annotate_charuco_checkbox = QCheckBox("Display Charuco Overlay")
+        self._annotate_charuco_checkbox = QCheckBox("Display Charuco Overlay (requires camera restart)")
         self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_charuco_images)
         self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
         hbox_bottom.addWidget(self._annotate_charuco_checkbox)
 
-        self._use_charuco_as_groundplane_checkbox = QCheckBox("Use Charuco as groundplane")
+        self._use_charuco_as_groundplane_checkbox = QCheckBox("Use initial Charuco board position as groundplane origin")
         self._use_charuco_as_groundplane_checkbox.setChecked(self.gui_state.use_charuco_as_groundplane)
         hbox_bottom.addWidget(self._use_charuco_as_groundplane_checkbox)
 

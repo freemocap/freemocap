@@ -4,7 +4,7 @@ import threading
 from pathlib import Path
 from typing import Callable, Optional, Union
 
-from PySide6.QtCore import Qt, Slot, QObject
+from PySide6.QtCore import Qt, Slot, Signal, QObject
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, load_gui_state, save_gui_state
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 class CalibrationControlPanel(QWidget):
+    control_panel_calibration_updated = Signal()
     def __init__(
         self,
         get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
@@ -197,6 +198,7 @@ class CalibrationControlPanel(QWidget):
         self._board_dropdown_label.setStyleSheet("QLabel { font-size: 12px;  }")
         self._board_dropdown_label.setEnabled(False)
         self._board_dropdown = self._create_board_dropdown()
+        self._board_dropdown.currentTextChanged.connect(self._on_charuco_board_dropdown_changed)
         hbox3.addWidget(self._board_dropdown_label)
         hbox3.addWidget(self._board_dropdown)
         vbox.addLayout(hbox3)
@@ -328,8 +330,24 @@ class CalibrationControlPanel(QWidget):
         return board_dropdown
 
     def _on_charuco_square_size_line_edit_changed(self):
-        self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        try:
+            self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        except ValueError:
+            return
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self.control_panel_calibration_updated.emit()
+
+    def _on_charuco_board_dropdown_changed(self):
+        selected_board_name = self._board_dropdown.currentText()
+        self.gui_state.charuco_board_name = selected_board_name
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self.control_panel_calibration_updated.emit()
+
+    @Slot()
+    def charuco_option_updated(self):
+        self.gui_state = load_gui_state(file_pathstring=get_gui_state_json_path())
+        self._board_dropdown.setCurrentText(self.gui_state.charuco_board_name)
+        self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
 
     @Slot(str)
     def _log_calibration_progress_callbacks(self, message: str):

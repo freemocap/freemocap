@@ -146,6 +146,8 @@ class MainWindow(QMainWindow):
         self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
         self._tools_dock_widget.setWidget(self._control_panel_widget)
 
+        self._connect_calibration_updates()
+
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
         log_view_dock_widget.setWidget(self._log_view_widget)
@@ -235,6 +237,8 @@ class MainWindow(QMainWindow):
             skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
         )
 
+        # TODO: connect calibration update signal here
+
         self._skelly_viewer_widget = SkellyViewer()
 
         center_tab_widget = CentralTabWidget(
@@ -272,6 +276,8 @@ class MainWindow(QMainWindow):
         self._process_motion_capture_data_panel.processing_finished_signal.connect(
             self._handle_processing_finished_signal
         )
+
+        # TODO: Connect calibration signal here, from calibration control panel
 
         self._visualization_control_panel = VisualizationControlPanel(parent=self, gui_state=self._gui_state)
         self._visualization_control_panel.export_to_blender_button.clicked.connect(
@@ -553,6 +559,10 @@ class MainWindow(QMainWindow):
         self._active_recording_info_widget.set_active_recording(
             recording_folder_path=Path(folder_to_save_videos).parent
         )
+
+    def _connect_calibration_updates(self):
+        self._process_motion_capture_data_panel._calibration_control_panel.control_panel_calibration_updated.connect(self._controller_group_box.charuco_option_updated)
+        self._controller_group_box.controller_group_box_calibration_updated.connect(self._process_motion_capture_data_panel._calibration_control_panel.charuco_option_updated)
 
     def reboot_gui(self):
         logger.info("Rebooting GUI... ")

@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, load_gui_state, save_gui_state
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
 from freemocap.system.paths_and_filenames.path_getters import (
     create_new_recording_folder_path,
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class CameraControllerGroupBox(QGroupBox):
+    controller_group_box_calibration_updated = Signal()
     def __init__(self, skellycam_widget: SkellyCamWidget, gui_state: GuiState, parent=None):
         super().__init__(parent=parent)
         self.setStyleSheet("font-size: 12px;")
@@ -302,10 +303,21 @@ class CameraControllerGroupBox(QGroupBox):
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
 
     def _on_charuco_square_size_line_edit_changed(self):
-        self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        try:
+            self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        except ValueError:
+            return
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self.controller_group_box_calibration_updated.emit()
 
     def _on_charuco_board_dropdown_changed(self):
         selected_board_name = self._board_dropdown.currentText()
         self.gui_state.charuco_board_name = selected_board_name
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self.controller_group_box_calibration_updated.emit()
+
+    @Slot()
+    def charuco_option_updated(self):
+        self.gui_state = load_gui_state(file_pathstring=get_gui_state_json_path())
+        self._board_dropdown.setCurrentText(self.gui_state.charuco_board_name)
+        self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))

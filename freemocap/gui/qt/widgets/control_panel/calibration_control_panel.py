@@ -314,7 +314,7 @@ class CalibrationControlPanel(QWidget):
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
-        self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
+        self._charuco_square_size_line_edit.textEdited.connect(self._on_charuco_square_size_line_edit_changed)
         charuco_square_size_form_layout.addRow(self._charuco_square_size_label, self._charuco_square_size_line_edit)
         charuco_square_size_form_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
         return charuco_square_size_form_layout

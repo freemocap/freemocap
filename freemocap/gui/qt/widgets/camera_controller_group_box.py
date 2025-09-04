@@ -62,7 +62,7 @@ class CameraControllerGroupBox(QGroupBox):
         self._auto_process_videos_checkbox.toggled.connect(self._on_auto_process_videos_checkbox_changed)
         self._generate_jupyter_notebook_checkbox.toggled.connect(self._on_generate_jupyter_notebook_checkbox_changed)
         self._auto_open_in_blender_checkbox.toggled.connect(self._on_auto_open_in_blender_checkbox_changed)
-        self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
+        self._charuco_square_size_line_edit.textEdited.connect(self._on_charuco_square_size_line_edit_changed)
         self._use_charuco_as_groundplane_checkbox.toggled.connect(self._on_use_charuco_groundplane_checkbox_changed)
         self._board_dropdown.currentTextChanged.connect(self._on_charuco_board_dropdown_changed)
 

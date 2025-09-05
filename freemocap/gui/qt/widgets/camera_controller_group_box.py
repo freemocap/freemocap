@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class CameraControllerGroupBox(QGroupBox):
     controller_group_box_calibration_updated = Signal()
+
     def __init__(self, skellycam_widget: SkellyCamWidget, gui_state: GuiState, parent=None):
         super().__init__(parent=parent)
         self.setStyleSheet("font-size: 12px;")
@@ -163,7 +164,9 @@ class CameraControllerGroupBox(QGroupBox):
         self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
         hbox_bottom.addWidget(self._annotate_charuco_checkbox)
 
-        self._use_charuco_as_groundplane_checkbox = QCheckBox("Use initial Charuco board position as groundplane origin")
+        self._use_charuco_as_groundplane_checkbox = QCheckBox(
+            "Use initial Charuco board position as groundplane origin"
+        )
         self._use_charuco_as_groundplane_checkbox.setChecked(self.gui_state.use_charuco_as_groundplane)
         hbox_bottom.addWidget(self._use_charuco_as_groundplane_checkbox)
 

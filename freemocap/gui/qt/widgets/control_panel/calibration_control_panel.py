@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 class CalibrationControlPanel(QWidget):
     control_panel_calibration_updated = Signal()
+
     def __init__(
         self,
         get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
@@ -180,7 +181,9 @@ class CalibrationControlPanel(QWidget):
         hbox2.addLayout(self._charuco_square_size_form_layout)
 
         # Create checkbox
-        self._use_charuco_as_groundplane_checkbox = QCheckBox("Use initial Charuco board position as groundplane origin")
+        self._use_charuco_as_groundplane_checkbox = QCheckBox(
+            "Use initial Charuco board position as groundplane origin"
+        )
         self._use_charuco_as_groundplane_checkbox.setToolTip(
             "Set the Charuco board's coordinate system as the global origin"
         )

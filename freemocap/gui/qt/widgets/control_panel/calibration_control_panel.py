@@ -180,11 +180,11 @@ class CalibrationControlPanel(QWidget):
         hbox1 = QHBoxLayout()
         hbox1.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        # Square size form layout 
+        # Square size form layout
         self._charuco_square_size_form_layout = self._create_charuco_square_size_form_layout()
         hbox1.addLayout(self._charuco_square_size_form_layout)
-        
-        hbox1.addSpacing(8) 
+
+        hbox1.addSpacing(8)
 
         # Board dropdown + label
         self._board_dropdown_label = QLabel("Charuco Board:")
@@ -197,7 +197,7 @@ class CalibrationControlPanel(QWidget):
 
         vbox.addLayout(hbox1)
 
-        # Groundplane checkbox row 
+        # Groundplane checkbox row
         hbox2 = QHBoxLayout()
         hbox2.setAlignment(Qt.AlignmentFlag.AlignLeft)
 

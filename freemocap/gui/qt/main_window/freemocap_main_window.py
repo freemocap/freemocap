@@ -238,8 +238,6 @@ class MainWindow(QMainWindow):
             skellycam_widget=self._skellycam_widget, gui_state=self._gui_state, parent=self
         )
 
-        # TODO: connect calibration update signal here
-
         self._skelly_viewer_widget = SkellyViewer()
 
         center_tab_widget = CentralTabWidget(
@@ -277,8 +275,6 @@ class MainWindow(QMainWindow):
         self._process_motion_capture_data_panel.processing_finished_signal.connect(
             self._handle_processing_finished_signal
         )
-
-        # TODO: Connect calibration signal here, from calibration control panel
 
         self._visualization_control_panel = VisualizationControlPanel(parent=self, gui_state=self._gui_state)
         self._visualization_control_panel.export_to_blender_button.clicked.connect(

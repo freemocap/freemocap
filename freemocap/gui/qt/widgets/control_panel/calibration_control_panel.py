@@ -176,19 +176,35 @@ class CalibrationControlPanel(QWidget):
 
     def _create_charuco_options_layout(self):
         vbox = QVBoxLayout()
-        # Create square size form layout
+
+        hbox1 = QHBoxLayout()
+        hbox1.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        # Square size form layout 
         self._charuco_square_size_form_layout = self._create_charuco_square_size_form_layout()
-        vbox.addLayout(self._charuco_square_size_form_layout)
+        hbox1.addLayout(self._charuco_square_size_form_layout)
+        
+        hbox1.addSpacing(8) 
 
-        # Create a horizontal layout to hold both form and checkbox
+        # Board dropdown + label
+        self._board_dropdown_label = QLabel("Charuco Board:")
+        self._board_dropdown_label.setStyleSheet("QLabel { font-size: 12px; }")
+        self._board_dropdown_label.setEnabled(False)
+        self._board_dropdown = self._create_board_dropdown()
+        self._board_dropdown.currentTextChanged.connect(self._on_charuco_board_dropdown_changed)
+        hbox1.addWidget(self._board_dropdown_label)
+        hbox1.addWidget(self._board_dropdown)
+
+        vbox.addLayout(hbox1)
+
+        # Groundplane checkbox row 
         hbox2 = QHBoxLayout()
-        hbox2.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hbox2.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        # Create checkbox
         self._use_charuco_as_groundplane_checkbox = QCheckBox(
             "Use initial Charuco board position as groundplane origin"
         )
-        self._use_charuco_as_groundplane_checkbox.setStyleSheet("QCheckBox { font-size: 12px;  }")
+        self._use_charuco_as_groundplane_checkbox.setStyleSheet("QCheckBox { font-size: 12px; }")
         self._use_charuco_as_groundplane_checkbox.setToolTip(
             "Set the Charuco board's coordinate system as the global origin"
         )
@@ -196,22 +212,10 @@ class CalibrationControlPanel(QWidget):
         self._use_charuco_as_groundplane_checkbox.setEnabled(False)
         self._use_charuco_as_groundplane_checkbox.setVisible(False)
 
-        hbox2.addSpacing(10)
         hbox2.addWidget(self._use_charuco_as_groundplane_checkbox)
         vbox.addLayout(hbox2)
 
-        hbox3 = QHBoxLayout()
-        hbox3.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-        self._board_dropdown_label = QLabel("Charuco Board:")
-        self._board_dropdown_label.setStyleSheet("QLabel { font-size: 12px;  }")
-        self._board_dropdown_label.setEnabled(False)
-        self._board_dropdown = self._create_board_dropdown()
-        self._board_dropdown.currentTextChanged.connect(self._on_charuco_board_dropdown_changed)
-        hbox3.addWidget(self._board_dropdown_label)
-        hbox3.addWidget(self._board_dropdown)
-        vbox.addLayout(hbox3)
-
+        # Hide by default
         self._set_charuco_square_size_form_layout_visibility(False)
         self._set_charuco_board_dropdown_visibility(False)
 
@@ -318,7 +322,7 @@ class CalibrationControlPanel(QWidget):
 
         self._charuco_square_size_line_edit = QLineEdit()
         self._charuco_square_size_line_edit.setValidator(QDoubleValidator())
-        self._charuco_square_size_line_edit.setFixedWidth(80)
+        self._charuco_square_size_line_edit.setFixedWidth(65)
 
         self._charuco_square_size_label = QLabel("Charuco square size (mm)")
         self._charuco_square_size_label.setStyleSheet("QLabel { font-size: 12px;  }")
@@ -335,7 +339,7 @@ class CalibrationControlPanel(QWidget):
     def _create_board_dropdown(self) -> QComboBox:
         board_dropdown = QComboBox()
         board_dropdown.setToolTip("Select the Charuco board to use for calibration")
-        board_dropdown.setFixedWidth(150)
+        board_dropdown.setFixedWidth(130)
         board_dropdown.setStyleSheet("QComboBox { font-size: 12px; }")
         board_dropdown.setEnabled(False)
         board_dropdown.setEditable(False)

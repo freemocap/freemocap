@@ -4,7 +4,7 @@ import threading
 from pathlib import Path
 from typing import Callable, Optional, Union
 
-from PySide6.QtCore import Qt, Slot, QObject
+from PySide6.QtCore import Qt, Slot, Signal, QObject
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
-from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, save_gui_state
+from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, load_gui_state, save_gui_state
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 
 
 class CalibrationControlPanel(QWidget):
+    control_panel_calibration_updated = Signal()
+
     def __init__(
         self,
         get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
@@ -71,7 +73,7 @@ class CalibrationControlPanel(QWidget):
         self._radio_button_layout = self._create_radio_button_layout()
         self._radio_button_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self._layout.addLayout(self._radio_button_layout)
-        self._layout.addStretch()
+        # self._layout.addStretch()
 
     @property
     def calibration_toml_path(self) -> str:
@@ -89,6 +91,8 @@ class CalibrationControlPanel(QWidget):
         radio_button_form_layout.addRow(self._create_load_calibration_from_file_radio_button())
 
         radio_button_form_layout.addRow(self._add_calibrate_from_active_recording_radio_button())
+
+        radio_button_form_layout.addRow(self._create_charuco_options_layout())
 
         self.update_calibration_toml_path()
         return radio_button_form_layout
@@ -153,9 +157,7 @@ class CalibrationControlPanel(QWidget):
         failure_dialog.exec()
 
     def _add_calibrate_from_active_recording_radio_button(self):
-        vbox = QVBoxLayout()
         hbox = QHBoxLayout()
-        vbox.addLayout(hbox)
 
         self._calibrate_from_active_recording_radio_button = QRadioButton("Calibrate from Active Recording")
         hbox.addWidget(self._calibrate_from_active_recording_radio_button)
@@ -170,38 +172,52 @@ class CalibrationControlPanel(QWidget):
         self._calibrate_from_active_recording_button.setEnabled(False)
         self._calibrate_from_active_recording_button.clicked.connect(self.calibrate_from_active_recording)
 
-        # Create existing form layout
-        self._charuco_square_size_form_layout = self._create_charuco_square_size_form_layout()
+        return hbox
 
-        # Create a horizontal layout to hold both form and checkbox
+    def _create_charuco_options_layout(self):
+        vbox = QVBoxLayout()
+
+        hbox1 = QHBoxLayout()
+        hbox1.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        # Square size form layout
+        self._charuco_square_size_form_layout = self._create_charuco_square_size_form_layout()
+        hbox1.addLayout(self._charuco_square_size_form_layout)
+
+        hbox1.addSpacing(8)
+
+        # Board dropdown + label
+        self._board_dropdown_label = QLabel("Charuco Board:")
+        self._board_dropdown_label.setStyleSheet("QLabel { font-size: 12px; }")
+        self._board_dropdown_label.setEnabled(False)
+        self._board_dropdown = self._create_board_dropdown()
+        self._board_dropdown.currentTextChanged.connect(self._on_charuco_board_dropdown_changed)
+        hbox1.addWidget(self._board_dropdown_label)
+        hbox1.addWidget(self._board_dropdown)
+
+        vbox.addLayout(hbox1)
+
+        # Groundplane checkbox row
         hbox2 = QHBoxLayout()
         hbox2.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        hbox2.addLayout(self._charuco_square_size_form_layout)
 
-        # Create checkbox
-        self._use_charuco_as_groundplane_checkbox = QCheckBox("Use Charuco board as groundplane")
+        self._use_charuco_as_groundplane_checkbox = QCheckBox(
+            "Use initial Charuco board position as groundplane origin"
+        )
+        self._use_charuco_as_groundplane_checkbox.setStyleSheet("QCheckBox { font-size: 12px; }")
         self._use_charuco_as_groundplane_checkbox.setToolTip(
             "Set the Charuco board's coordinate system as the global origin"
         )
         self._use_charuco_as_groundplane_checkbox.setChecked(False)
         self._use_charuco_as_groundplane_checkbox.setEnabled(False)
+        self._use_charuco_as_groundplane_checkbox.setVisible(False)
 
-        hbox2.addSpacing(10)
         hbox2.addWidget(self._use_charuco_as_groundplane_checkbox)
         vbox.addLayout(hbox2)
 
-        hbox3 = QHBoxLayout()
-        hbox3.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-        self._board_dropdown_label = QLabel("Charuco Board:")
-        self._board_dropdown_label.setStyleSheet("QLabel { font-size: 12px;  }")
-        self._board_dropdown_label.setEnabled(False)
-        self._board_dropdown = self._create_board_dropdown()
-        hbox3.addWidget(self._board_dropdown_label)
-        hbox3.addWidget(self._board_dropdown)
-        vbox.addLayout(hbox3)
-
+        # Hide by default
         self._set_charuco_square_size_form_layout_visibility(False)
+        self._set_charuco_board_dropdown_visibility(False)
 
         return vbox
 
@@ -229,11 +245,6 @@ class CalibrationControlPanel(QWidget):
         self._calibrate_from_active_recording_button.setToolTip(active_path_str)
 
     def _handle_use_most_recent_calibration_toggled(self, checked):
-        pass
-        # if checked:
-        #     self._most_recent_calibration_path_label.show()
-        # else:
-        #     self._most_recent_calibration_path_label.hide()
         self.update_calibration_toml_path()
 
     def _handle_load_calibration_from_file_toggled(self, checked):
@@ -253,11 +264,13 @@ class CalibrationControlPanel(QWidget):
             self._calibrate_from_active_recording_button.setEnabled(True)
             self._set_charuco_square_size_form_layout_visibility(True)
             self._use_charuco_as_groundplane_checkbox.setEnabled(True)
+            self._use_charuco_as_groundplane_checkbox.setVisible(True)
             self._set_charuco_board_dropdown_visibility(True)
         else:
             self._calibrate_from_active_recording_button.setEnabled(False)
             self._set_charuco_square_size_form_layout_visibility(False)
             self._use_charuco_as_groundplane_checkbox.setEnabled(False)
+            self._use_charuco_as_groundplane_checkbox.setVisible(False)
             self._set_charuco_board_dropdown_visibility(False)
 
     def _set_charuco_square_size_form_layout_visibility(self, visible):
@@ -266,13 +279,19 @@ class CalibrationControlPanel(QWidget):
         if visible:
             self._charuco_square_size_form_layout.itemAt(label_index).widget().setEnabled(True)
             self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setEnabled(True)
+            self._charuco_square_size_form_layout.itemAt(label_index).widget().setVisible(True)
+            self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setVisible(True)
         else:
             self._charuco_square_size_form_layout.itemAt(label_index).widget().setEnabled(False)
             self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setEnabled(False)
+            self._charuco_square_size_form_layout.itemAt(label_index).widget().setVisible(False)
+            self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setVisible(False)
 
     def _set_charuco_board_dropdown_visibility(self, visible: bool):
         self._board_dropdown.setEnabled(visible)
         self._board_dropdown_label.setEnabled(visible)
+        self._board_dropdown.setVisible(visible)
+        self._board_dropdown_label.setVisible(visible)
 
     def open_load_camera_calibration_toml_dialog(self) -> str:
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
@@ -303,7 +322,7 @@ class CalibrationControlPanel(QWidget):
 
         self._charuco_square_size_line_edit = QLineEdit()
         self._charuco_square_size_line_edit.setValidator(QDoubleValidator())
-        self._charuco_square_size_line_edit.setFixedWidth(80)
+        self._charuco_square_size_line_edit.setFixedWidth(65)
 
         self._charuco_square_size_label = QLabel("Charuco square size (mm)")
         self._charuco_square_size_label.setStyleSheet("QLabel { font-size: 12px;  }")
@@ -312,7 +331,7 @@ class CalibrationControlPanel(QWidget):
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
-        self._charuco_square_size_line_edit.textChanged.connect(self._on_charuco_square_size_line_edit_changed)
+        self._charuco_square_size_line_edit.textEdited.connect(self._on_charuco_square_size_line_edit_changed)
         charuco_square_size_form_layout.addRow(self._charuco_square_size_label, self._charuco_square_size_line_edit)
         charuco_square_size_form_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
         return charuco_square_size_form_layout
@@ -320,7 +339,7 @@ class CalibrationControlPanel(QWidget):
     def _create_board_dropdown(self) -> QComboBox:
         board_dropdown = QComboBox()
         board_dropdown.setToolTip("Select the Charuco board to use for calibration")
-        board_dropdown.setFixedWidth(150)
+        board_dropdown.setFixedWidth(130)
         board_dropdown.setStyleSheet("QComboBox { font-size: 12px; }")
         board_dropdown.setEnabled(False)
         board_dropdown.setEditable(False)
@@ -328,8 +347,24 @@ class CalibrationControlPanel(QWidget):
         return board_dropdown
 
     def _on_charuco_square_size_line_edit_changed(self):
-        self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        try:
+            self.gui_state.charuco_square_size = float(self._charuco_square_size_line_edit.text())
+        except ValueError:
+            return
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self.control_panel_calibration_updated.emit()
+
+    def _on_charuco_board_dropdown_changed(self):
+        selected_board_name = self._board_dropdown.currentText()
+        self.gui_state.charuco_board_name = selected_board_name
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self.control_panel_calibration_updated.emit()
+
+    @Slot()
+    def charuco_option_updated(self):
+        self.gui_state = load_gui_state(file_pathstring=get_gui_state_json_path())
+        self._board_dropdown.setCurrentText(self.gui_state.charuco_board_name)
+        self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
 
     @Slot(str)
     def _log_calibration_progress_callbacks(self, message: str):

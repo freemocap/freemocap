@@ -59,7 +59,7 @@ def qt_gui_main():
     sys.exit()
 
 
-def handle_pop_ups(freemocap_main_window):
+def handle_pop_ups(freemocap_main_window: MainWindow):
 
     if freemocap_main_window._gui_state.show_welcome_screen:
         freemocap_main_window.open_welcome_screen_dialog()

@@ -1,42 +1,194 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* Reset CSS */
+/* Reset CSS for all browsers */
+
+/* Import Inter font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+/* Global reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Remove default list styles */
+ul,
+ol {
+  list-style: none;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* Remove default link styles */
+a {
+  text-decoration: none;
+  color: inherit;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+/* Reset media elements */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
 }
 
-.card {
-  padding: 2em;
+/* Reset forms */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  border: none;
+  background: none;
+  outline: none;
 }
 
-.read-the-docs {
-  color: #888;
+/* Reset button */
+button {
+  cursor: pointer;
+}
+
+/* Reset headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* Reset strong and bold */
+strong,
+b {
+  font-weight: bold;
+}
+
+/* Base typography + font */
+html {
+  font-size: 12px;
+  line-height: 20px;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Body reset */
+body {
+  font-size: 1rem; /* 12px */
+  line-height: 1.67; /* ~20px */
+  background: #fff;
+  color: #000;
+  font-family: inherit;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Remove quotes */
+blockquote,
+q {
+  quotes: none;
+}
+
+blockquote::before,
+blockquote::after,
+q::before,
+q::after {
+  content: '';
+}
+
+
+/* END OF RESET CSS */
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border: 2px solid black;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Top red bar */
+.top-bar {
+  background-color: #c8102e; /* red */
+  height: 40px;
+}
+
+/* Blue header bar */
+.header-bar {
+  background-color: #0056b3; /* blue */
+  height: 30px;
+  margin: 4px;
+  border-radius: 6px;
+}
+
+/* Main content area */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Body layout */
+.content-body {
+  flex: 1;
+  display: flex;
+  padding: 4px;
+  gap: 6px;
+}
+
+/* Left black panel */
+.left-panel {
+  flex: 2;
+  background-color: #000;
+  border-radius: 6px;
+}
+
+/* Middle section (stacked) */
+.middle-section {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.top-box,
+.bottom-box {
+  flex: 1;
+  background-color: #000;
+  border-radius: 6px;
+}
+
+/* Right side stacked panels */
+.right-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.right-top,
+.right-bottom {
+  flex: 1;
+  background-color: #d81b60; /* pinkish red */
+  border-radius: 6px;
+}
+
+/* Bottom section */
+.bottom-section {
+  height: 70px;
+  margin: 4px;
+  border: 2px solid black;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.bottom-inner {
+  flex: 1;
+  border: 2px solid black;
+  margin: 4px;
+  border-radius: 6px;
 }

@@ -15,16 +15,16 @@ function App() {
         <div className="header-bar"></div>
 
         <div className="content-body">
-          {/* Left Large Black Panel */}
-          <div className="left-panel"></div>
-
-          {/* Middle Section with 2 Black Panels */}
-          <div className="middle-section">
-            <div className="top-box"></div>
-            <div className="bottom-box"></div>
+          {/* Left + Middle grouped */}
+          <div className="main-left">
+            <div className="left-panel"></div>
+            <div className="middle-section">
+              <div className="middle-top"></div>
+              <div className="middle-bottom"></div>
+            </div>
           </div>
 
-          {/* Right Side Two Red Panels */}
+          {/* Right Section */}
           <div className="right-section">
             <div className="right-top"></div>
             <div className="right-bottom"></div>
@@ -34,6 +34,7 @@ function App() {
 
       {/* Bottom Section */}
       <div className="bottom-section">
+        <div className="bottom-top-bar"></div>
         <div className="bottom-inner"></div>
       </div>
     </div>

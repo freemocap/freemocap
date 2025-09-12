@@ -1,29 +1,44 @@
-/* Reset CSS */
-/* Reset CSS for all browsers */
+/* --------------------------------------------------
+   RESET + GLOBAL
+-------------------------------------------------- */
 
-/* Import Inter font from Google Fonts */
+/* Import Inter font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-/* Global reset */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 20px;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background: #fff;
+  color: #000;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reset defaults */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Remove default list styles */
 ul,
 ol {
   list-style: none;
 }
 
-/* Remove default link styles */
 a {
   text-decoration: none;
   color: inherit;
 }
 
-/* Reset media elements */
 img,
 picture,
 video,
@@ -33,7 +48,6 @@ svg {
   max-width: 100%;
 }
 
-/* Reset forms */
 button,
 input,
 select,
@@ -44,12 +58,10 @@ textarea {
   outline: none;
 }
 
-/* Reset button */
 button {
   cursor: pointer;
 }
 
-/* Reset headings */
 h1,
 h2,
 h3,
@@ -60,32 +72,11 @@ h6 {
   font-weight: inherit;
 }
 
-/* Reset strong and bold */
 strong,
 b {
   font-weight: bold;
 }
 
-/* Base typography + font */
-html {
-  font-size: 12px;
-  line-height: 20px;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-}
-
-/* Body reset */
-body {
-  font-size: 1rem; /* 12px */
-  line-height: 1.67; /* ~20px */
-  background: #fff;
-  color: #000;
-  font-family: inherit;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Remove quotes */
 blockquote,
 q {
   quotes: none;
@@ -98,13 +89,14 @@ q::after {
   content: '';
 }
 
-
-/* END OF RESET CSS */
+/* --------------------------------------------------
+   APP LAYOUT
+-------------------------------------------------- */
 
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   border: 2px solid black;
   border-radius: 10px;
   overflow: hidden;
@@ -112,26 +104,26 @@ q::after {
 
 /* Top red bar */
 .top-bar {
-  background-color: #c8102e; /* red */
+  background-color: #c8102e;
   height: 40px;
 }
 
-/* Blue header bar */
+/* Blue header */
 .header-bar {
-  background-color: #0056b3; /* blue */
+  background-color: #0056b3;
   height: 30px;
   margin: 4px;
   border-radius: 6px;
 }
 
-/* Main content area */
+/* Main content */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
-/* Body layout */
+/* Body content */
 .content-body {
   flex: 1;
   display: flex;
@@ -139,29 +131,36 @@ q::after {
   gap: 6px;
 }
 
+/* Left + Middle container */
+.main-left {
+  flex: 3;
+  display: flex;
+  gap: 6px;
+}
+
 /* Left black panel */
 .left-panel {
-  flex: 2;
+  flex: 1.5;
   background-color: #000;
   border-radius: 6px;
 }
 
-/* Middle section (stacked) */
+/* Middle section */
 .middle-section {
-  flex: 2;
+  flex: 1.5;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.top-box,
-.bottom-box {
+.middle-top,
+.middle-bottom {
   flex: 1;
   background-color: #000;
   border-radius: 6px;
 }
 
-/* Right side stacked panels */
+/* Right side */
 .right-section {
   flex: 1;
   display: flex;
@@ -172,13 +171,13 @@ q::after {
 .right-top,
 .right-bottom {
   flex: 1;
-  background-color: #d81b60; /* pinkish red */
+  background-color: #d81b60;
   border-radius: 6px;
 }
 
 /* Bottom section */
 .bottom-section {
-  height: 70px;
+  height: 100px;
   margin: 4px;
   border: 2px solid black;
   border-radius: 6px;
@@ -186,9 +185,13 @@ q::after {
   flex-direction: column;
 }
 
+.bottom-top-bar {
+  height: 25px;
+  border-bottom: 2px solid black;
+}
+
 .bottom-inner {
   flex: 1;
-  border: 2px solid black;
-  margin: 4px;
-  border-radius: 6px;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
 }

@@ -95,34 +95,84 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
 .h-70 { height: 70px; }
 .h-100 { height: 100px; }
 
-/* borders */
-.border-2 { border: 2px solid var(--black); }
-.border-b-2 { border-bottom: 2px solid var(--black); }
+/* =========================
+   BORDER RADII
+   ========================= */
+.br-1 { border-radius: 4px; }
+.br-2 { border-radius: 6px; }
+.br-3 { border-radius: 10px; }
+.br-4 { border-radius: 12px; }
+.br-5 { border-radius: 16px; }
 
-/* radii */
-.rounded-sm { border-radius: 4px; }
-.rounded-md { border-radius: 6px; }
-.rounded-lg { border-radius: 10px; }
+/* =========================
+   BORDER SIZES
+   ========================= */
+.border-1 { border-width: 1px; border-style: solid; }
+.border-2 { border-width: 2px; border-style: solid; }
+.border-3 { border-width: 3px; border-style: solid; }
+.border-4 { border-width: 4px; border-style: solid; }
+.border-5 { border-width: 5px; border-style: solid; }
 
-/* overflow */
+/* =========================
+   BORDER COLORS
+   ========================= */
+.border-black { border-color: var(--black); }
+.border-red   { border-color: var(--red); }
+.border-blue  { border-color: var(--blue); }
+.border-pink  { border-color: var(--pink); }
+.border-white { border-color: var(--white); }
+
+/* individual borders */
+/* .border-t-1 { border-top-width: 1px; border-style: solid; }
+.border-t-2 { border-top-width: 2px; border-style: solid; }
+.border-t-3 { border-top-width: 3px; border-style: solid; }
+.border-t-black { border-top-color: var(--black); }
+.border-t-red   { border-top-color: var(--red); }
+
+.border-b-1 { border-bottom-width: 1px; border-style: solid; }
+.border-b-2 { border-bottom-width: 2px; border-style: solid; }
+.border-b-3 { border-bottom-width: 3px; border-style: solid; }
+.border-b-black { border-bottom-color: var(--black); }
+.border-b-red   { border-bottom-color: var(--red); }
+
+.border-l-1 { border-left-width: 1px; border-style: solid; }
+.border-l-2 { border-left-width: 2px; border-style: solid; }
+.border-l-3 { border-left-width: 3px; border-style: solid; }
+.border-l-black { border-left-color: var(--black); }
+.border-l-red   { border-left-color: var(--red); }
+
+.border-r-1 { border-right-width: 1px; border-style: solid; }
+.border-r-2 { border-right-width: 2px; border-style: solid; }
+.border-r-3 { border-right-width: 3px; border-style: solid; }
+.border-r-black { border-right-color: var(--black); }
+.border-r-red   { border-right-color: var(--red); } */
+
+/* =========================
+   OVERFLOW
+   ========================= */
 .overflow-hidden { overflow: hidden; }
 
-/* background colors */
+/* =========================
+   BACKGROUND COLORS
+   ========================= */
 .bg-red { background-color: var(--red); }
 .bg-blue { background-color: var(--blue); }
 .bg-black { background-color: var(--black); }
 .bg-pink { background-color: var(--pink); }
 .bg-white { background-color: var(--white); }
 
-/* text */
+/* =========================
+   TEXT
+   ========================= */
 .text-center { text-align: center; }
+.text-left   { text-align: left; }
 
-/* helpers */
+/* =========================
+   HELPERS
+   ========================= */
 .hidden { display: none; }
 
 /* =========================
-   OPTIONAL: small layout helpers (not required)
+   OPTIONAL: small layout helpers
    ========================= */
-/* If you prefer to add one semantic class instead of long lists on DOM, these are optional.
-   Keep in mind the goal was to add small utilities directly on the DOM. */
-.app-root { display: flex; flex-direction: column; height: 100%; } /* optional */
+.app-root { display: flex; flex-direction: column; height: 100%; }

@@ -7,8 +7,8 @@ import "./App.css";
 function App() {
   return (
     <div className="flex flex-col h-full border-2 border-black br-5 overflow-hidden">
-      {/* Top Red Bar */}
-      <div className="bg-red h-40" />
+      {/* Top bar header Red Bar */}
+      <div className="top-header bg-red h-" />
 
       {/* Main Content */}
       <div className="overflow-hidden flex flex-col flex-1">

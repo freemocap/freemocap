@@ -8,15 +8,15 @@ function App() {
   return (
     <div className="flex flex-col h-full border-2 border-black br-5 overflow-hidden">
       {/* Top bar header Red Bar */}
-      <div className="top-header bg-red h-" />
+      <div className="top-header bg-red h-25" />
 
       {/* Main Content */}
       <div className="overflow-hidden flex flex-col flex-1">
-        {/* Blue header */}
-        <div className="bg-blue h-40 m-1 br-2" />
+        {/* Container for Blue header + Left+Middle group */}
+        <div className="flex flex-col flex-1 gap-2 m-1">
+          {/* Blue header */}
+          <div className="bg-blue h-40 br-2" />
 
-        {/* Body */}
-        <div className="overflow-hidden flex flex-1 p-1 gap-2">
           {/* Left + Middle group */}
           <div className="flex gap-2 flex-3">
             {/* Left panel */}
@@ -28,12 +28,12 @@ function App() {
               <div className="flex-1 bg-black br-2" />
             </div>
           </div>
+        </div>
 
-          {/* action container -- right right */}
-          <div className="action-container overflow-y min-w-200 max-w-300 flex flex-col gap-2 flex-1">
-            <div className="flex-1 bg-pink br-2" />
-            <div className="flex-1 bg-pink br-2" />
-          </div>
+        {/* action container -- right right */}
+        <div className="action-container overflow-y min-w-200 max-w-300 flex flex-col gap-2 flex-1 p-1">
+          <div className="flex-1 bg-pink br-2" />
+          <div className="flex-1 bg-pink br-2" />
         </div>
       </div>
 

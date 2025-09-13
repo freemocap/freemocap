@@ -189,8 +189,8 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
    BORDER COLORS
    ========================= */
 .border-black { border-color: var(--gray-500); }
-.border-mid-black { border-color: var(--gray-700); }
-.border-red   { border-color: var(--red-500); }
+.border-mid-black { border-color: var(--gray-600); }
+.border-red   { border-color: var(--red-500); } 
 .border-blue  { border-color: var(--red-500-500); }
 .border-pink  { border-color: var(--green-100); }
 .border-white { border-color: var(--gray-100); }

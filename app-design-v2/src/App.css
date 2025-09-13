@@ -171,10 +171,10 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
    BORDER RADII
    ========================= */
 .br-1 { border-radius: 4px; }
-.br-2 { border-radius: 6px; }
-.br-3 { border-radius: 10px; }
-.br-4 { border-radius: 12px; }
-.br-5 { border-radius: 16px; }
+.br-2 { border-radius: 8px; }
+.br-3 { border-radius: 12px; }
+.br-4 { border-radius: 16px; }
+.br-5 { border-radius: 18px; }
 
 /* =========================
    BORDER SIZES
@@ -188,7 +188,8 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
 /* =========================
    BORDER COLORS
    ========================= */
-.border-black { border-color: var(--gray-900); }
+.border-black { border-color: var(--gray-500); }
+.border-mid-black { border-color: var(--gray-600); }
 .border-red   { border-color: var(--red-500); }
 .border-blue  { border-color: var(--red-500-500); }
 .border-pink  { border-color: var(--green-100); }
@@ -228,8 +229,9 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
    BACKGROUND COLORS
    ========================= */
 .bg-red { background-color: var(--red-500); }
-.bg-blue { background-color: var(--red-500-500); }
-.bg-black { background-color: var(--gray-900); }
+.bg-blue { background-color: var(--red-500); }
+html, body, .bg-black { background-color: var(--gray-800); }
+.bg-mid-black { background-color: var(--gray-700); }
 .bg-pink { background-color: var(--green-100); }
 .bg-white { background-color: var(--gray-100); }
 

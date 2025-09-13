@@ -11,9 +11,9 @@ function App() {
       <div className="top-header br-2 h-25" />
 
       {/* main-container */}
-      <div className="main-container overflow-hidden flex flex-row flex-1">
+      <div className="main-container gap-1 overflow-hidden flex flex-row flex-1">
         {/* mode-container */}
-        <div className="mode-container border-mid-black border-1 .bg-mid-black overflow-hidden flex flex-col flex-1 gap-1 p-1">
+        <div className="mode-container br-2 bg-mid-black border-mid-black border-2 .bg-mid-black overflow-hidden flex flex-col flex-1 gap-1 p-1">
           {/* header-tool-bar */}
           <div className="header-tool-bar h-40 br-2 h-30" />
 
@@ -31,7 +31,7 @@ function App() {
         </div>
 
         {/* action container -- right right */}
-        <div className="action-container border-mid-black border-1 .bg-mid-black overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
+        <div className="action-container bg-mid-black br-2 border-mid-black border-2 .bg-mid-black overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
           <div className="flex-1 bg-pink br-2" />
           <div className="flex-1 bg-pink br-2" />
         </div>

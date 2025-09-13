@@ -18,7 +18,7 @@ function App() {
           <div className="header-tool-bar h-40 br-2 h-30" />
 
           {/* visualize-container */}
-          <div className="visualize-container flex gap-2 flex-3">
+          <div className="visualize-container overflow-hidden flex gap-2 flex-3">
             {/* 3d-container  */}
             <div className="3d-container flex-15 bg-black br-2" />
 
@@ -31,7 +31,7 @@ function App() {
         </div>
 
         {/* action container -- right right */}
-        <div className="action-container bg-mid-black br-2 border-mid-black border-2 .bg-mid-black overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
+        <div className="action-container overflow-y bg-mid-black br-2 border-mid-black border-2 .bg-mid-black overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
           <div className="subaction-container calibrate-container flex-1 br-1 p-1 gap-1 bg-black" />
           <div className="subaction-container record-container flex-1 br-1 p-1 gap-1 bg-black" />
           <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-black" />

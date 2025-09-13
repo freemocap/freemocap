@@ -7,23 +7,23 @@ import "./App.css";
 function App() {
   return (
     <div className="flex flex-col h-full border-2 border-black br-5 overflow-hidden">
-      {/* Top bar header Red Bar */}
+      {/* top-header */}
       <div className="top-header bg-red h-25" />
 
-      {/* Main Content */}
-      <div className="overflow-hidden flex flex-col flex-1">
-        {/* Container for Blue header + Left+Middle group */}
-        <div className="flex flex-col flex-1 gap-2 m-1">
-          {/* Blue header */}
-          <div className="bg-blue h-40 br-2" />
+      {/* main-container */}
+      <div className="main-container overflow-hidden flex flex-row flex-1">
+        {/* mode-container */}
+        <div className="mode-container overflow-hidden flex flex-col flex-1 gap-2 m-1">
+          {/* header-tool-bar */}
+          <div className="header-tool-bar bg-blue h-40 br-2 h-30" />
 
-          {/* Left + Middle group */}
-          <div className="flex gap-2 flex-3">
-            {/* Left panel */}
-            <div className="flex-15 bg-black br-2" />
+          {/* visualize-container */}
+          <div className="visualize-container flex gap-2 flex-3">
+            {/* 3d-container  */}
+            <div className="3d-container flex-15 bg-black br-2" />
 
-            {/* Middle stacked */}
-            <div className="overflow-y flex flex-col gap-2 flex-15">
+            {/* video-container */}
+            <div className="video-container overflow-y flex flex-col gap-2 flex-15">
               <div className="flex-1 bg-black br-2" />
               <div className="flex-1 bg-black br-2" />
             </div>
@@ -37,10 +37,10 @@ function App() {
         </div>
       </div>
 
-      {/* Bottom section */}
-      <div className="h-100 m-1 border-2 border-black br-2 flex flex-col">
-        <div className="h-25 border-2 border-black br-2" />
-        <div className="flex-1 br-2" />
+      {/* bottom info-container */}
+      <div className="bottom-info-container h-100 m-1 border-2 border-black br-2 flex flex-col">
+        <div className="info-header-control h-25 border-2 border-black br-2" />
+        <div className="info-container flex-1 br-2" />
       </div>
     </div>
   );

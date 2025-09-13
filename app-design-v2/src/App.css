@@ -162,8 +162,8 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
 .h-40 { height: 40px; }
 .h-70 { height: 70px; }
 .h-100 { height: 100px; }
-.min-h-200 { min-height: 200px;}
-.max-h-300 { max-height: 300px;}
+.min-w-200 { min-width: 200px;}
+.max-w-300 { max-width: 300px;}
 
 /* =========================
    BORDER RADII

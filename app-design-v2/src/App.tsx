@@ -30,7 +30,7 @@ function App() {
           </div>
 
           {/* action container -- right right */}
-          <div className="action-container overflow-y min-h-200 max-h-300 flex flex-col gap-2 flex-1">
+          <div className="action-container overflow-y min-w-200 max-w-300 flex flex-col gap-2 flex-1">
             <div className="flex-1 bg-pink br-2" />
             <div className="flex-1 bg-pink br-2" />
           </div>

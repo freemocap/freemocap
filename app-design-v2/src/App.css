@@ -91,7 +91,7 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
 
 /* Scrollbar: the actual scrollbar container */
 ::-webkit-scrollbar {
-    width: 12px; /* Width of the vertical scrollbar */
+    width: calc(12px - 4px); /* Width of the vertical scrollbar */
     height: 12px; /* Height of the horizontal scrollbar */
     background-color: transparent; /* Background color behind the thumb */
 }
@@ -99,19 +99,19 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
 /* Thumb: the draggable part of the scrollbar */
 ::-webkit-scrollbar-thumb {
     border-radius: 99px; /* Fully rounded thumb */
-    background-color: #888888; /* Default thumb color */
+    background-color: var(--gray-600); /* Default thumb color */
     cursor: grab; /* Cursor when hovering over thumb */
-    border: 3px solid #e4e4e4; /* Padding/border around thumb, match scrollbar background */
+    border: 2px solid var(--gray-700); /* Padding/border around thumb, match scrollbar background */
 }
 
 /* Thumb hover state: when mouse is over the thumb */
 ::-webkit-scrollbar-thumb:hover {
-    background-color: #555555; /* Change thumb color on hover */
+    background-color: var(--gray-700); /* Change thumb color on hover */
 }
 
 /* Thumb active state: when mouse is clicking/dragging the thumb */
 ::-webkit-scrollbar-thumb:active {
-    background-color: #333333; /* Change thumb color when active */
+    background-color:var(--gray-800); /* Change thumb color when active */
     cursor: grabbing; /* Cursor changes when dragging */
 }
 

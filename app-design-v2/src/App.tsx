@@ -23,14 +23,14 @@ function App() {
             <div className="flex-15 bg-black br-2" />
 
             {/* Middle stacked */}
-            <div className="flex flex-col gap-2 flex-15">
+            <div className="overflow-y flex flex-col gap-2 flex-15">
               <div className="flex-1 bg-black br-2" />
               <div className="flex-1 bg-black br-2" />
             </div>
           </div>
 
-          {/* Right column */}
-          <div className="flex flex-col gap-2 flex-1">
+          {/* action container -- right right */}
+          <div className="action-container overflow-y min-h-200 max-h-300 flex flex-col gap-2 flex-1">
             <div className="flex-1 bg-pink br-2" />
             <div className="flex-1 bg-pink br-2" />
           </div>

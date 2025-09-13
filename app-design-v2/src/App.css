@@ -69,6 +69,15 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
 /* =========================
    UTILITIES (Tailwind-like)
    ========================= */
+.overflow-hidden {
+    overflow: hidden;
+}
+.overflow-y {
+    overflow-y: auto;
+}
+.overflow-x {
+    overflow-x: auto;
+}
 
 /* z-index */
 .z-1 { z-index: 1; } .z-2 { z-index: 2; } .z-3 { z-index: 3; } .z-4 { z-index: 4; }

@@ -11,12 +11,12 @@ function App() {
       <div className="bg-red h-40" />
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1">
+      <div className="overflow-hidden flex flex-col flex-1">
         {/* Blue header */}
-        <div className="bg-blue h-30 m-1 br-2" />
+        <div className="bg-blue h-40 m-1 br-2" />
 
         {/* Body */}
-        <div className="flex flex-1 p-1 gap-2">
+        <div className="overflow-hidden flex flex-1 p-1 gap-2">
           {/* Left + Middle group */}
           <div className="flex gap-2 flex-3">
             {/* Left panel */}

@@ -32,15 +32,16 @@ function App() {
 
         {/* action container -- right right */}
         <div className="action-container bg-mid-black br-2 border-mid-black border-2 .bg-mid-black overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
-          <div className="flex-1 bg-pink br-2" />
-          <div className="flex-1 bg-pink br-2" />
+          <div className="subaction-container calibrate-container flex-1 br-1 p-1 gap-1 bg-black" />
+          <div className="subaction-container record-container flex-1 br-1 p-1 gap-1 bg-black" />
+          <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-black" />
         </div>
       </div>
 
       {/* bottom info-container */}
-      <div className="bottom-info-container h-100 m-1 border-2 border-black br-2 flex flex-col">
-        <div className="info-header-control h-25 border-2 border-black br-2" />
-        <div className="info-container flex-1 br-2" />  
+      <div className="bottom-info-container bg-black border-mid-black h-100 p-1 border-2 border-black br-2 flex flex-col">
+        <div className="info-header-control h-25 bg-black" />
+        <div className="info-container flex flex-col flex-1 br-2 p-1 gap-1" />  
       </div>
     </div>
   );

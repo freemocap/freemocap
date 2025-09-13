@@ -78,6 +78,42 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
 .overflow-x {
     overflow-x: auto;
 }
+/* ==========================
+   Global Scrollbar Styling
+   Applies to all scrollbars
+   ========================== */
+
+/* Track: the background of the scrollbar */
+::-webkit-scrollbar-track {
+    border-radius: 10px; /* Rounded corners for the track */
+    background-color: transparent; /* Change to any color you want */
+}
+
+/* Scrollbar: the actual scrollbar container */
+::-webkit-scrollbar {
+    width: 12px; /* Width of the vertical scrollbar */
+    height: 12px; /* Height of the horizontal scrollbar */
+    background-color: transparent; /* Background color behind the thumb */
+}
+
+/* Thumb: the draggable part of the scrollbar */
+::-webkit-scrollbar-thumb {
+    border-radius: 99px; /* Fully rounded thumb */
+    background-color: #888888; /* Default thumb color */
+    cursor: grab; /* Cursor when hovering over thumb */
+    border: 3px solid #e4e4e4; /* Padding/border around thumb, match scrollbar background */
+}
+
+/* Thumb hover state: when mouse is over the thumb */
+::-webkit-scrollbar-thumb:hover {
+    background-color: #555555; /* Change thumb color on hover */
+}
+
+/* Thumb active state: when mouse is clicking/dragging the thumb */
+::-webkit-scrollbar-thumb:active {
+    background-color: #333333; /* Change thumb color when active */
+    cursor: grabbing; /* Cursor changes when dragging */
+}
 
 /* z-index */
 .z-1 { z-index: 1; } .z-2 { z-index: 2; } .z-3 { z-index: 3; } .z-4 { z-index: 4; }

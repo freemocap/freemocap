@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable, Optional, Union
 
 from PySide6.QtCore import Qt, Slot, Signal, QObject
-from PySide6.QtGui import QDoubleValidator
+from PySide6.QtGui import QDoubleValidator, QCursor, QDesktopServices
 from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, load_gui_state, save_gui_state
+from freemocap.gui.qt.widgets.calibration_guide_link_qlabel import CalibrationGuideLinkQLabel
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
@@ -184,7 +185,7 @@ class CalibrationControlPanel(QWidget):
         self._charuco_square_size_form_layout = self._create_charuco_square_size_form_layout()
         hbox1.addLayout(self._charuco_square_size_form_layout)
 
-        hbox1.addSpacing(8)
+        hbox1.addSpacing(16)
 
         # Board dropdown + label
         self._board_dropdown_label = QLabel("Charuco Board:")
@@ -194,7 +195,6 @@ class CalibrationControlPanel(QWidget):
         self._board_dropdown.currentTextChanged.connect(self._on_charuco_board_dropdown_changed)
         hbox1.addWidget(self._board_dropdown_label)
         hbox1.addWidget(self._board_dropdown)
-
         vbox.addLayout(hbox1)
 
         # Groundplane checkbox row
@@ -204,6 +204,8 @@ class CalibrationControlPanel(QWidget):
         self._use_charuco_as_groundplane_checkbox = QCheckBox(
             "Use initial Charuco board position as groundplane origin"
         )
+        self._calibration_guide_link = CalibrationGuideLinkQLabel(parent=self)
+
         self._use_charuco_as_groundplane_checkbox.setStyleSheet("QCheckBox { font-size: 12px; }")
         self._use_charuco_as_groundplane_checkbox.setToolTip(
             "Set the Charuco board's coordinate system as the global origin"
@@ -213,6 +215,8 @@ class CalibrationControlPanel(QWidget):
         self._use_charuco_as_groundplane_checkbox.setVisible(False)
 
         hbox2.addWidget(self._use_charuco_as_groundplane_checkbox)
+
+        hbox2.addWidget(self._calibration_guide_link)
         vbox.addLayout(hbox2)
 
         # Hide by default
@@ -221,6 +225,16 @@ class CalibrationControlPanel(QWidget):
 
         return vbox
 
+
+
+    def _set_charuco_board_dropdown_visibility(self, visible: bool) -> None:
+        self._board_dropdown.setEnabled(visible)
+        self._board_dropdown_label.setEnabled(visible)
+        self._board_dropdown.setVisible(visible)
+        self._board_dropdown_label.setVisible(visible)
+        # Also control the pattern link visibility
+        if hasattr(self, '_board_pattern_link'):
+            self._board_pattern_link.setVisible(visible)
     def _create_use_most_recent_calibration_radio_button(self):
         self._use_most_recent_calibration_radio_button = QRadioButton("Use most recent calibration")
 
@@ -287,11 +301,7 @@ class CalibrationControlPanel(QWidget):
             self._charuco_square_size_form_layout.itemAt(label_index).widget().setVisible(False)
             self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setVisible(False)
 
-    def _set_charuco_board_dropdown_visibility(self, visible: bool):
-        self._board_dropdown.setEnabled(visible)
-        self._board_dropdown_label.setEnabled(visible)
-        self._board_dropdown.setVisible(visible)
-        self._board_dropdown_label.setVisible(visible)
+
 
     def open_load_camera_calibration_toml_dialog(self) -> str:
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
@@ -359,6 +369,7 @@ class CalibrationControlPanel(QWidget):
         self.gui_state.charuco_board_name = selected_board_name
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
         self.control_panel_calibration_updated.emit()
+        self._update_board_pattern_link()
 
     @Slot()
     def charuco_option_updated(self):

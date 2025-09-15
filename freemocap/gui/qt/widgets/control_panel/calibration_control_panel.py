@@ -232,9 +232,7 @@ class CalibrationControlPanel(QWidget):
         self._board_dropdown_label.setEnabled(visible)
         self._board_dropdown.setVisible(visible)
         self._board_dropdown_label.setVisible(visible)
-        # Also control the pattern link visibility
-        if hasattr(self, '_board_pattern_link'):
-            self._board_pattern_link.setVisible(visible)
+
     def _create_use_most_recent_calibration_radio_button(self):
         self._use_most_recent_calibration_radio_button = QRadioButton("Use most recent calibration")
 
@@ -280,12 +278,14 @@ class CalibrationControlPanel(QWidget):
             self._use_charuco_as_groundplane_checkbox.setEnabled(True)
             self._use_charuco_as_groundplane_checkbox.setVisible(True)
             self._set_charuco_board_dropdown_visibility(True)
+            self._calibration_guide_link.setVisible(True)
         else:
             self._calibrate_from_active_recording_button.setEnabled(False)
             self._set_charuco_square_size_form_layout_visibility(False)
             self._use_charuco_as_groundplane_checkbox.setEnabled(False)
             self._use_charuco_as_groundplane_checkbox.setVisible(False)
             self._set_charuco_board_dropdown_visibility(False)
+            self._calibration_guide_link.setVisible(False)
 
     def _set_charuco_square_size_form_layout_visibility(self, visible):
         label_index = self._charuco_square_size_form_layout.indexOf(self._charuco_square_size_label)
@@ -369,7 +369,6 @@ class CalibrationControlPanel(QWidget):
         self.gui_state.charuco_board_name = selected_board_name
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
         self.control_panel_calibration_updated.emit()
-        self._update_board_pattern_link()
 
     @Slot()
     def charuco_option_updated(self):

@@ -14,6 +14,8 @@
   --gray-400: #727272;
   --gray-100: #E4E4E4;
 
+   --overlay: rgba(6,6,6,0.6);
+
   /* Green Shades */
   --green-100: #16DD12;
   --green-900: #022701;
@@ -31,6 +33,9 @@
   --blue-800: #0898FF;
   --blue-900: #083F66;
 
+   /* icons vars */
+
+   --close-icon: url('./assets/icons/close_icon.svg');
 
 }
 
@@ -120,6 +125,18 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
 .z-5 { z-index: 5; } .z-6 { z-index: 6; } .z-7 { z-index: 7; } .z-8 { z-index: 8; }
 .z-9 { z-index: 9; } .z-10 { z-index: 10; }
 
+/* positions */
+.pos-abs { position: absolute; }
+.pos-rel { position: relative; }
+
+/* positions */
+.top-0 {top: 0; }
+.left-0 { left: 0;}
+.right-0 { right: 0; }
+.bottom-0 { bottom: 0;}
+.inset-0 { inset: 0 }
+
+
 /* display / flex */
 .flex { display: flex; }
 .flex-row { flex-direction: row; }
@@ -134,6 +151,7 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
 /* fractional helper used in layout */
 .flex-15 { flex: 1.5; }   /* left / middle proportions in example */
 .flex-grow { flex-grow: 1; }
+
 
 /* gaps */
 .gap-1 { gap: 4px; }
@@ -195,6 +213,39 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
 .border-pink  { border-color: var(--green-100); }
 .border-white { border-color: var(--gray-100); }
 
+/* =========================
+   icons buttons
+   ========================= */
+
+   .icon-size-16 {
+      width:16px;
+      height:16px;
+   }
+   .icon-button {
+      width: 25px;
+      height: 25px;
+      align-items: center;
+      display:flex;
+      justify-content: center;
+   }
+   .icon-button:hover > .icon {
+      filter: brightness(2);
+      /* filter animation out */
+      transition: filter 220ms ease-in-out;
+   }
+   .icon {
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      /* filter animation in */
+      transition: filter 220ms ease-in-out;
+   }
+   
+   /* icon type */
+   .close-icon {
+      background-image: var(--close-icon);
+   }
+   
 /* individual borders */
 /* .border-t-1 { border-top-width: 1px; border-style: solid; }
 .border-t-2 { border-top-width: 2px; border-style: solid; }
@@ -230,8 +281,9 @@ blockquote::before, blockquote::after, q::before, q::after { content: ''; }
    ========================= */
 .bg-red { background-color: var(--red-500); }
 .bg-blue { background-color: var(--red-500); }
-html, body, .bg-black { background-color: var(--gray-800); }
-.bg-mid-black { background-color: var(--gray-700); }
+html, body, .bg-middark { background-color: var(--gray-800); }
+.bg-dark { background-color: var(--gray-900); }
+.bg-darkgray { background-color: var(--gray-700); }
 .bg-pink { background-color: var(--green-100); }
 .bg-white { background-color: var(--gray-100); }
 
@@ -250,3 +302,69 @@ html, body, .bg-black { background-color: var(--gray-800); }
    OPTIONAL: small layout helpers
    ========================= */
 .app-root { display: flex; flex-direction: column; height: 100%; }
+
+
+
+/* ---- Splash Modal Styles ---- */
+.splash-overlay {
+  position: fixed;
+  /* inset: 0; */
+  background-color: var(--overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.splash-modal {
+  width: 481px;
+  height: 320px;
+  animation: scaleIn 0.3s ease forwards;
+}
+
+/* .close-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+} */
+
+.splash-left-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.splash-image {
+  width: 100%;
+  flex: 1;
+  background-color: #555; /* placeholder gray */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-icon {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-right-col > div {
+  margin-bottom: 4px;
+}
+
+/* ---- Fade Animations ---- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}

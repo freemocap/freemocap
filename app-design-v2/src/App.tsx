@@ -3,7 +3,7 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import React from "react";
 import "./App.css";
-import SplashModal from "./SplashModal"; // imported modal
+import SplashModal from "./components/SplashModal"; // imported modal
 
 function App() {
   const [showSplash, setShowSplash] = useState(true); // modal state

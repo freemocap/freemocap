@@ -1,8 +1,7 @@
 /* =========================
    RESET + GLOBAL
    ========================= */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,600;1,14..32,500,600,700&display=swap');
 :root {
 
     /* Gray Shades */
@@ -11,7 +10,7 @@
   --gray-700: #272727;
   --gray-600: #323232;
   --gray-500: #4F4F4F;
-  --gray-400: #727272;
+  --gray-400: #838383;
   --gray-100: #E4E4E4;
 
    --overlay: rgba(6,6,6,0.6);
@@ -45,13 +44,16 @@ html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-size: 12px;       /* base font size */
-  line-height: 20px;     /* base line height */
+  font-size: 11px;       /* base font size */
+  line-height: 14px;     /* base line height */
+  letter-spacing: -0.43px;     /* letter spacing base*/
+  font-weight: 700;     
+  color: var(--gray-500);
   font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--gray-100);
-  color: var(--gray-900);
+ 
 }
 
 * {
@@ -70,6 +72,39 @@ h1,h2,h3,h4,h5,h6 { font-size: inherit; font-weight: inherit; }
 strong, b { font-weight: bold; }
 blockquote, q { quotes: none; }
 blockquote::before, blockquote::after, q::before, q::after { content: ''; }
+/* typepography */
+
+.title, h1 {
+   font-size: 13px;
+   font-weight: 600;
+   line-height: 14px;
+   letter-spacing: -0.43px;
+}
+.button.text.small {
+   font-size: 11px;
+   font-weight: 600;
+   line-height: 14px;
+   letter-spacing: -0.43px;
+}
+.button.text {
+   font-size: 12px;
+   font-weight: 600;
+   line-height: 17px;
+   letter-spacing: -0.43px;
+}
+.caption.text {
+   font-size: 12px;
+   font-weight: 500;
+   line-height: 14px;
+   letter-spacing: -0.43px;
+}
+/* text colors */
+.color-gray-400 {
+   color: var(--gray-400);
+}
+.color-gray-100 {
+   color: var(--gray-100);
+}
 
 /* =========================
    UTILITIES (Tailwind-like)
@@ -330,23 +365,24 @@ html, body, .bg-middark { background-color: var(--gray-800); }
   padding: 4px;
 } */
 
-.splash-left-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
+.splash-screen-logo {
+   opacity: 0.5;
 
-.splash-image {
-  width: 100%;
-  flex: 1;
-  background-color: #555; /* placeholder gray */
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
+.splash-image-container {
+   background-image: url(./images/splashmodal_art.webp);
+    background-repeat: no-repeat;
+    background-size: contain;
 
+}
+.splash-image-logo-container {
+   background-image: url(./images/logo_name.svg);
+    background-repeat: no-repeat;
+    background-size: contain;
+    width: 88px;
+    height: 28px;
+    opacity: 0.5;
+}
 .splash-icon {
   flex: 1;
   display: flex;

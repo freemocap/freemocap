@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<html>
+<style>
+    a {
+    {
+        color: #ccc;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    }
+
+    .emphasis {
+    {
+        color: #aaa;
+        font-weight: bold;
+    }
+    }
+
+
+</style>
+<body>
+<p style="font-size: 18px; font-weight: bold; color: #4fc3f7; margin-bottom: 15px;">
+    ✨ New Feature: Ground Plane Calibration
+</p>
+
+<p>
+    <b>How to use it:</b><br/>
+    1. Check the <span class="emphasis">"Use board position as origin"</span> option before calibration<br/>
+    2. Start your calibration recording with the board flat on the ground (visible to as many cameras as possible) for a few
+    seconds<br/>
+    3. Continue calibration as normal - that's it!
+    <br/><br/>
+    This new feature automatically aligns your 3D Capture Volume to the detected baord position, ensuring:
+<ul style="margin-left: 20px;">
+    <li>The origin is at the charco corner #0</li>
+    <li>The X+ axis points along the board's SHORT axis</li>
+    <li>The Y+ axis points along the board's LONG axis</li>
+    <li>The Z+ axis points UPWARDS normal to the board (XxY)</li>
+</ul>
+
+<p>
+    <br/>
+    Previously, the reference frame resulting from our customized [anipose](https://github.com/lambdaloop/aniposelib)
+    based calibration method was defined based on the 6DoF position of the first camera,
+    and we defined the floor post-hoc in each recording based on detected foot location.
+    <br/><br/>
+    This process could fail if the feet weren't detected well, resulting the data returning a random-ish orientation.
+    (NOTE:
+    You can correct this kind of error by adjusting the position of the recording parent Empty in the generated
+    `[recording_name].blend` Blender scene).
+    <br/>
+    <br/>
+    The new calibration method sets the capture volume orientation at the level of <em>CALIBRATION</em> file, which keeps the reference frame
+consistent across recordings.
+</p>
+<b>Note:</b> If ground plane calibration fails (board not visible or moving), the system automatically falls back
+to the standard calibration method.
+<br/><br/>
+
+For detailed instructions and troubleshooting, check out the  <a
+        href="https://github.com/freemocap/freemocap/wiki/ground-plane-calibration">ground plane calibration guide</a>.
+<br/>
+--
+<br/>
+For additional details about what's new in v1.7.0 - See <a
+        href="https://github.com/freemocap/freemocap/releases/tag/v1.7.0">the official release page</a>
+<br/><br/>
+(You can always access these release notes from the <b>Help</b> menu.)
+</p>
+</body>
+</html>

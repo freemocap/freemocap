@@ -611,12 +611,12 @@ body,
   opacity: 0.5;
 }
 .splash-image-container {
-  background-image: url(./images/splashmodal_art.webp);
+  background-image: url(/images/splashmodal_art.webp);
   background-repeat: no-repeat;
   background-size: contain;
 }
 .splash-image-logo-container {
-  background-image: url(./images/logo_name.svg);
+  background-image: url(/images/logo_name.svg);
   background-repeat: no-repeat;
   background-size: contain;
   width: 88px;

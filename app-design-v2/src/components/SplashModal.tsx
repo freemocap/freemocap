@@ -30,8 +30,7 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
           {/* left column */}
           {/* <div className="image-container flex-1 br-2 flex flex-col items-center justify-center gap-2 splash-left-col"> */}
           <div className="splash-image-container flex flex-1">
-              <div className="splash-image-logo-container m-1">
-              </div>
+            <div className="splash-image-logo-container m-1"></div>
             {/* <img.splash-logo-container
               src="./images/logo_name.svg"
               className="splash-screen-logo pos-abs left-0 top-0 m-2"
@@ -47,35 +46,43 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
           {/* </div> */}
 
           {/* right column */}
-          <div className="video-container flex-1 flex flex-col gap-2 p-1 splash-right-col">
+          <div className="splash-right-col flex-1 flex flex-col gap-2 p-1 justify-content-space-between">
             {/* row 1 */}
-            <div>
-              <h1 className="title"><span className="color-gray-100">
-                Free Motion Capture for</span><br/><span className="color-gray-400">Everyone –—</span> 
+            <div className="actions-top flex felx-1 flex-col p-1 gap-3">
+              <h1 className="title">
+                <span className="color-gray-100">Free Motion Capture for</span>
+                <br />
+                <span className="color-gray-400">Everyone –—</span>
               </h1>
-            </div>
 
-            {/* row 2 */}
-            <div className="flex gap-2">
-              <div className="flex-1 br-1 bg-darkgray flex items-center justify-center text-white text-xs">
-                div A
+              {/* row 2 */}
+              <div className="button-card-container flex gap-4">
+                <div className="items-center flex-col justify-content-space-between p-2 text-aligh-center color-gray-100 button card bg-dark flex-1 br-1 flex items-center justify-center text-white text-xs">
+                  <span className="icon live-icon icon-size-42"></span>
+                  <p>Capture Live</p>
+                </div>
+                <div className="items-center flex-col justify-content-space-between p-2 text-aligh-center color-gray-100 button card bg-dark flex-1 br-1 flex items-center justify-center text-white text-xs">
+                  <span className="icon import-icon icon-size-42"></span>
+                  <p>Import videos</p>
+                </div>
               </div>
-              <div className="flex-1 br-1 bg-darkgray flex items-center justify-center text-white text-xs">
-                div B
-              </div>
-            </div>
 
-            {/* row 3 */}
-            <div>
-              <p className="text-white text-sm">
-                Placeholder paragraph for row 3
-              </p>
+              {/* row 3 */}
+              <div>
+                <p className="text-white text-sm text-align-left">
+                  Send anonymous info, privacy policy
+                </p>
+              </div>
             </div>
 
             {/* row 4 */}
             <div>
-              <p className="text-white text-sm">Paragraph 1 of row 4</p>
-              <p className="text-white text-sm">Paragraph 2 of row 4</p>
+              <p className="text-white text-sm text-align-left">
+                Learn how to use FreeMocap
+              </p>
+              <p className="text-white text-sm text-align-left">
+                Join community
+              </p>
             </div>
           </div>
           {/* </div> */}

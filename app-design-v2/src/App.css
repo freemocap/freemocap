@@ -48,9 +48,9 @@ body,
   padding: 0;
   font-size: 11px; /* base font size */
   line-height: 14px; /* base line height */
-  letter-spacing: -0.43px; /* letter spacing base*/
-  font-weight: 600;
-  color: var(--gray-500);
+  letter-spacing: -0px; /* letter spacing base*/
+  font-weight: 500;
+  color: var(--gray-400);
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -124,25 +124,25 @@ h1 {
   font-size: 13px;
   font-weight: 600;
   line-height: 14px;
-  letter-spacing: -0.43px;
+  /* letter-spacing: -0.43px; */
 }
 .button.text.small {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 14px;
-  letter-spacing: -0.43px;
+  /* letter-spacing: -0.43px; */
 }
 .button.text {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 17px;
-  letter-spacing: -0.43px;
+  /* letter-spacing: -0.43px; */
 }
 .caption.text {
   font-size: 12px;
   font-weight: 500;
   line-height: 14px;
-  letter-spacing: -0.43px;
+  /* letter-spacing: -0.43px; */
 }
 /* text colors */
 .color-gray-400 {

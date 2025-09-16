@@ -91,7 +91,7 @@ textarea {
   border: none;
   outline: none;
 }
-button {
+button, .button {
   cursor: pointer;
 }
 h1,
@@ -466,6 +466,10 @@ h1 {
   /* filter animation out */
   transition: filter 220ms ease-in-out;
 }
+.button.card:hover {
+   background-color: var(--gray-700);
+   transition: background-color 220ms ease-in-out;
+}
 .icon {
   background-repeat: no-repeat;
   background-position: center;
@@ -490,6 +494,7 @@ h1 {
 .button.card {
   width: 100px;
   height: 116px;
+  transition: background-color 220ms ease-in-out;
 }
 /* individual borders */
 /* .border-t-1 { border-top-width: 1px; border-style: solid; }
@@ -532,6 +537,7 @@ h1 {
 .bg-blue {
   background-color: var(--red-500);
 }
+
 html,
 body,
 .bg-middark {

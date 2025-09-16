@@ -57,12 +57,12 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
 
               {/* row 2 */}
               <div className="button-card-container flex gap-4">
-                <div className="items-center flex-col justify-content-space-between p-2 text-aligh-center color-gray-100 button card bg-dark flex-1 br-1 flex items-center justify-center text-white text-xs">
-                  <span className="icon live-icon icon-size-42"></span>
+                <div className="button items-center flex-col justify-content-space-between p-2 text-aligh-center color-gray-100 button card bg-dark flex-1 br-1 flex items-center justify-center text-white text-xs">
+                  <span className="icon m-3 live-icon icon-size-42"></span>
                   <p>Capture Live</p>
                 </div>
-                <div className="items-center flex-col justify-content-space-between p-2 text-aligh-center color-gray-100 button card bg-dark flex-1 br-1 flex items-center justify-center text-white text-xs">
-                  <span className="icon import-icon icon-size-42"></span>
+                <div className="button items-center flex-col justify-content-space-between p-2 text-aligh-center color-gray-100 button card bg-dark flex-1 br-1 flex items-center justify-center text-white text-xs">
+                  <span className="icon m-3 import-icon icon-size-42"></span>
                   <p>Import videos</p>
                 </div>
               </div>

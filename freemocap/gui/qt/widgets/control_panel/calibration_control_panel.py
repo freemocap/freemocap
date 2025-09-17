@@ -205,6 +205,7 @@ class CalibrationControlPanel(QWidget):
             "Use initial Charuco board position as groundplane origin"
         )
         self._calibration_guide_link = CalibrationGuideLinkQLabel(parent=self)
+        self._calibration_guide_link.setVisible(False)
 
         self._use_charuco_as_groundplane_checkbox.setStyleSheet("QCheckBox { font-size: 12px; }")
         self._use_charuco_as_groundplane_checkbox.setToolTip(

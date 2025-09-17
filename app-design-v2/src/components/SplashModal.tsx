@@ -98,7 +98,7 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
                   text="Import videos"
                   iconClass="import-icon icon-size-42"
                   onClick={() => {
-                    console.log("Inline Capture Live clicked");
+                    console.log("Inline import videos clicked");
                     // 👉 Quick actions like logging, simple UI feedback, or toggles.
                   }}
                 />

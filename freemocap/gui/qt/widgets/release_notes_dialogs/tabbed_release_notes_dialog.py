@@ -20,6 +20,7 @@ from freemocap.gui.qt.widgets.release_notes_dialogs.release_notes_styles import 
 
 logger = logging.getLogger(__name__)
 
+
 class TabbedReleaseNotesDialog(QDialog):
     """
     A tabbed dialog that displays release notes from current and previous versions,
@@ -32,7 +33,7 @@ class TabbedReleaseNotesDialog(QDialog):
             gui_state: GuiState,
             parent=None,
             min_width: int = 1000,
-            min_height: int =800,
+            min_height: int = 800,
             dark_mode: bool = True,
     ) -> None:
         super().__init__(parent=parent)
@@ -109,7 +110,6 @@ class TabbedReleaseNotesDialog(QDialog):
         scroll_layout = QVBoxLayout(scroll_content)
         scroll_layout.setContentsMargins(0, 0, 0, 0)
 
-
         scroll_layout.setSpacing(15)
 
         title_widget = QLabel()
@@ -166,7 +166,7 @@ class TabbedReleaseNotesDialog(QDialog):
 
                 if not image_pixmap.isNull():
                     # Scale image to fit within scroll area while maintaining aspect ratio
-                    max_width =540
+                    max_width = 540
                     if image_pixmap.width() > max_width:
                         scaled_pixmap = image_pixmap.scaledToWidth(
                             max_width,
@@ -215,7 +215,6 @@ class TabbedReleaseNotesDialog(QDialog):
         """
         text_widget.setText(html_content)
         scroll_layout.addWidget(text_widget)
-
 
         # Add stretch to push content to top
         scroll_layout.addStretch()

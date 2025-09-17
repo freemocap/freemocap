@@ -1,10 +1,9 @@
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
-
 from freemocap.system.paths_and_filenames.file_and_folder_names import PATH_TO_FREEMOCAP_LOGO_SVG
-import logging
+
 logger = logging.getLogger(__name__)
 
 SKELLY_LOGO_BASE_SVG_FILENAME = "freemocap-logo-black-border.svg"
@@ -26,6 +25,7 @@ if not Path(SKELLY_THIS_WAY_UP_PNG).exists():
 if not Path(CHARUCO_AS_GROUND_PLANE_PNG).exists():
     logger.warning(f"Could not find {CHARUCO_AS_GROUND_PLANE_PNG}")
 
+
 @dataclass
 class ReleaseNoteContent:
     """Data class to hold content for a release note tab."""
@@ -38,7 +38,6 @@ class ReleaseNoteContent:
     logo_path: str | None = None
     tab_order: int = 0  # Lower numbers appear first
     latest: bool = False
-
 
 
 def get_v170_release_notes() -> ReleaseNoteContent:
@@ -147,7 +146,6 @@ For additional details about what's new in v1.7.0 - See <a
 </p>
         """,
     )
-
 
 
 def get_v160_release_notes() -> ReleaseNoteContent:

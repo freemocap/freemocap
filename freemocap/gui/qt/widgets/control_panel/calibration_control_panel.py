@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable, Optional, Union
 
 from PySide6.QtCore import Qt, Slot, Signal, QObject
-from PySide6.QtGui import QDoubleValidator, QCursor, QDesktopServices
+from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
@@ -21,9 +21,11 @@ from PySide6.QtWidgets import (
     QComboBox,
 )
 
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import CHARUCO_BOARDS
 from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, load_gui_state, save_gui_state
 from freemocap.gui.qt.widgets.calibration_guide_link_qlabel import CalibrationGuideLinkQLabel
+from freemocap.gui.qt.widgets.groundplane_failure_dialog import GroundPlaneCalibrationFailedDialog
 from freemocap.gui.qt.workers.anipose_calibration_thread_worker import (
     AniposeCalibrationThreadWorker,
 )
@@ -32,9 +34,6 @@ from freemocap.system.paths_and_filenames.path_getters import (
     get_last_successful_calibration_toml_path,
 )
 
-from freemocap.gui.qt.widgets.groundplane_failure_dialog import GroundPlaneCalibrationFailedDialog
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import CHARUCO_BOARDS
-
 logger = logging.getLogger(__name__)
 
 
@@ -42,11 +41,11 @@ class CalibrationControlPanel(QWidget):
     control_panel_calibration_updated = Signal()
 
     def __init__(
-        self,
-        get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
-        kill_thread_event: threading.Event,
-        gui_state: GuiState,
-        parent: Optional[QObject] = None,
+            self,
+            get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
+            kill_thread_event: threading.Event,
+            gui_state: GuiState,
+            parent: Optional[QObject] = None,
     ):
         super().__init__(parent=parent)
         self.gui_state = gui_state
@@ -226,8 +225,6 @@ class CalibrationControlPanel(QWidget):
 
         return vbox
 
-
-
     def _set_charuco_board_dropdown_visibility(self, visible: bool) -> None:
         self._board_dropdown.setEnabled(visible)
         self._board_dropdown_label.setEnabled(visible)
@@ -301,8 +298,6 @@ class CalibrationControlPanel(QWidget):
             self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setEnabled(False)
             self._charuco_square_size_form_layout.itemAt(label_index).widget().setVisible(False)
             self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setVisible(False)
-
-
 
     def open_load_camera_calibration_toml_dialog(self) -> str:
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
@@ -382,10 +377,10 @@ class CalibrationControlPanel(QWidget):
         logger.info(message)
 
     def calibrate_from_active_recording(
-        self,
-        charuco_square_size_mm: float = None,
-        use_charuco_as_groundplane: bool = None,
-        charuco_board_name: str = None,
+            self,
+            charuco_square_size_mm: float = None,
+            use_charuco_as_groundplane: bool = None,
+            charuco_board_name: str = None,
     ):
         if not charuco_square_size_mm:
             charuco_square_size_mm = float(self._charuco_square_size_line_edit.text())

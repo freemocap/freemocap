@@ -1,8 +1,8 @@
 import logging
 from typing import Dict, List, Optional
-from pydantic import BaseModel, ConfigDict
-import numpy as np
 
+import numpy as np
+from pydantic import BaseModel, ConfigDict
 
 from freemocap.data_layer.skeleton_models.marker_info import MarkerInfo
 from freemocap.data_layer.skeleton_models.segments import Segment, Segments, SegmentAnthropometry

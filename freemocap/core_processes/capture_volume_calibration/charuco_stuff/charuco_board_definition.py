@@ -43,7 +43,8 @@ def charuco_5x3() -> CharucoBoardDefinition:
         aruco_marker_length_proportional=0.8,
     )
 
-CHARUCO_BOARD_IMAGES_URL ="https://github.com/freemocap/freemocap/blob/main/freemocap/assets/charuco/"
+
+CHARUCO_BOARD_IMAGES_URL = "https://github.com/freemocap/freemocap/blob/main/freemocap/assets/charuco/"
 CHARUCO_BOARDS = {
     "7x5 Charuco": charuco_7x5,
     "5x3 Charuco": charuco_5x3,

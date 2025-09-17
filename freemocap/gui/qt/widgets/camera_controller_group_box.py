@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QDesktopServices, QCursor
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import CHARUCO_BOARDS
 from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState, load_gui_state, save_gui_state
 from freemocap.gui.qt.widgets.calibration_guide_link_qlabel import CalibrationGuideLinkQLabel
 from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
@@ -24,7 +25,6 @@ from freemocap.system.paths_and_filenames.path_getters import (
     create_new_default_recording_name,
     get_gui_state_json_path,
 )
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import CHARUCO_BOARDS
 
 CALIBRATION_RECORDING_BUTTON_TEXT = "\U0001f534 \U0001f4d0 Start Calibration Recording"
 MOCAP_RECORDING_BUTTON_TEXT = f"{SKULL_EMOJI_STRING} {SPARKLES_EMOJI_STRING} Start Motion Capture Recording"
@@ -157,8 +157,6 @@ class CameraControllerGroupBox(QGroupBox):
         self._board_dropdown.setCurrentText(self.gui_state.charuco_board_name)
         hbox_top.addWidget(self._board_dropdown)
 
-
-
         hbox_top.addStretch()
 
         hbox_bottom = QHBoxLayout()
@@ -193,7 +191,6 @@ class CameraControllerGroupBox(QGroupBox):
     def _make_options_layout(self) -> QVBoxLayout:
         options_vbox = QVBoxLayout()
         options_vbox.addLayout(self._create_mocap_recording_option_layout())
-
 
         options_vbox.addLayout(self._create_calibration_recording_option_layout())
         # Add horizontal separator line

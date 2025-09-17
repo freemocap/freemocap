@@ -49,7 +49,7 @@ def setup_session():
     logger.info("Calibrating")
 
     board_info_path = (
-        Path(SessionInfo.sample_session_folder_path) / "charuco_board_info.json"
+            Path(SessionInfo.sample_session_folder_path) / "charuco_board_info.json"
     )  # NOTE - I added this JSON to the sample data zip file to make it easier to get square size/height/width
     with open(board_info_path, "r", encoding="utf-8") as fh:
         board_info = json.load(fh)

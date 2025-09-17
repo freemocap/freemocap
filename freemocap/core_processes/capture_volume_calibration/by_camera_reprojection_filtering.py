@@ -1,9 +1,9 @@
 import logging
 from pathlib import Path
 from typing import Tuple, Union
-from matplotlib import pyplot as plt
-import numpy as np
 
+import numpy as np
+from matplotlib import pyplot as plt
 
 from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
     save_3d_data_to_npy,
@@ -15,12 +15,12 @@ logger = logging.getLogger(__name__)
 
 
 def run_reprojection_error_filtering(
-    image_data_numCams_numFrames_numTrackedPts_XYZ: np.ndarray,
-    raw_skel3d_frame_marker_xyz: np.ndarray,
-    skeleton_reprojection_error_cam_fr_mar: np.ndarray,
-    skeleton_reprojection_error_fr_mar: np.ndarray,
-    anipose_calibration_object,
-    processing_parameters: ProcessingParameterModel,
+        image_data_numCams_numFrames_numTrackedPts_XYZ: np.ndarray,
+        raw_skel3d_frame_marker_xyz: np.ndarray,
+        skeleton_reprojection_error_cam_fr_mar: np.ndarray,
+        skeleton_reprojection_error_fr_mar: np.ndarray,
+        anipose_calibration_object,
+        processing_parameters: ProcessingParameterModel,
 ) -> np.ndarray:
     """
     Runs reprojection error filtering on 3d data, saves the filtered 3d data and reprojection error data, and creates and saves a debug plot.
@@ -35,7 +35,7 @@ def run_reprojection_error_filtering(
     :return: filtered 3d data
     """
     if hasattr(
-        processing_parameters.tracking_model_info, "num_tracked_points_body"
+            processing_parameters.tracking_model_info, "num_tracked_points_body"
     ):  # we don't want to reproject hand and face data
         num_tracked_points = processing_parameters.tracking_model_info.num_tracked_points_body
     else:
@@ -77,15 +77,15 @@ def run_reprojection_error_filtering(
 
 
 def filter_by_reprojection_error(
-    reprojection_error_camera_frame_marker: np.ndarray,
-    reprojection_error_frame_marker: np.ndarray,
-    reprojection_error_confidence_threshold: float,
-    image_2d_data: np.ndarray,
-    raw_skel3d_frame_marker_xyz: np.ndarray,
-    anipose_calibration_object,
-    num_tracked_points: int,
-    use_triangulate_ransac: bool = False,
-    minimum_cameras_to_reproject: int = 3,
+        reprojection_error_camera_frame_marker: np.ndarray,
+        reprojection_error_frame_marker: np.ndarray,
+        reprojection_error_confidence_threshold: float,
+        image_2d_data: np.ndarray,
+        raw_skel3d_frame_marker_xyz: np.ndarray,
+        anipose_calibration_object,
+        num_tracked_points: int,
+        use_triangulate_ransac: bool = False,
+        minimum_cameras_to_reproject: int = 3,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     total_cameras = image_2d_data.shape[0]
     num_cameras_to_remove = 1
@@ -168,16 +168,16 @@ def _nan_data_above_threshold(unique_frame_marker_list: list, retriangulated_dat
 
 
 def _get_data_to_reproject(
-    num_cameras_to_remove: int,
-    reprojection_error_threshold: float,
-    reprojError_cam_frame_marker: np.ndarray,
-    input_2d_data_camera_frame_marker_xy: np.ndarray,
+        num_cameras_to_remove: int,
+        reprojection_error_threshold: float,
+        reprojError_cam_frame_marker: np.ndarray,
+        input_2d_data_camera_frame_marker_xy: np.ndarray,
 ) -> tuple[np.ndarray, list]:
     indices_above_threshold = np.nonzero(reprojError_cam_frame_marker > reprojection_error_threshold)
     logger.debug(f"SHAPE OF INDICES ABOVE THRESHOLD: {indices_above_threshold[0].shape}")
 
     total_frame_marker_combos = (
-        input_2d_data_camera_frame_marker_xy.shape[1] * input_2d_data_camera_frame_marker_xy.shape[2]
+            input_2d_data_camera_frame_marker_xy.shape[1] * input_2d_data_camera_frame_marker_xy.shape[2]
     )
     unique_frame_marker_list = _get_unique_frame_marker_list(indices_above_threshold=indices_above_threshold)
     logger.info(
@@ -201,15 +201,15 @@ def _get_data_to_reproject(
 
 
 def _get_unique_frame_marker_list(
-    indices_above_threshold: np.ndarray,
+        indices_above_threshold: np.ndarray,
 ) -> list:
     return list(set(zip(indices_above_threshold[1], indices_above_threshold[2])))
 
 
 def _get_camera_frame_marker_lists_to_reproject(
-    reprojError_cam_frame_marker: np.ndarray,
-    frame_marker_list: list,
-    num_cameras_to_remove: int,
+        reprojError_cam_frame_marker: np.ndarray,
+        frame_marker_list: list,
+        num_cameras_to_remove: int,
 ) -> Tuple[list, list, list]:
     """
     Generate the lists of cameras, frames, and markers to reproject based on the given input.
@@ -233,14 +233,14 @@ def _get_camera_frame_marker_lists_to_reproject(
 
 
 def _set_unincluded_data_to_nans(
-    input_2d_data: np.ndarray,
-    frames_with_reprojection_error: list,
-    markers_with_reprojection_error: list,
-    cameras_to_remove: list[list[int]],
+        input_2d_data: np.ndarray,
+        frames_with_reprojection_error: list,
+        markers_with_reprojection_error: list,
+        cameras_to_remove: list[list[int]],
 ) -> np.ndarray:
     data_to_reproject = input_2d_data.copy()
     for list_of_cameras, frame, marker in zip(
-        cameras_to_remove, frames_with_reprojection_error, markers_with_reprojection_error
+            cameras_to_remove, frames_with_reprojection_error, markers_with_reprojection_error
     ):
         for camera in list_of_cameras:
             data_to_reproject[camera, frame, marker, :] = np.nan
@@ -248,10 +248,10 @@ def _set_unincluded_data_to_nans(
 
 
 def plot_reprojection_error(
-    raw_reprojection_error_frame_marker: np.ndarray,
-    filtered_reprojection_error_frame_marker: np.ndarray,
-    reprojection_error_threshold: float,
-    output_folder_path: Union[str, Path],
+        raw_reprojection_error_frame_marker: np.ndarray,
+        filtered_reprojection_error_frame_marker: np.ndarray,
+        reprojection_error_threshold: float,
+        output_folder_path: Union[str, Path],
 ) -> None:
     title = "Mean Reprojection Error Per Frame"
     file_name = "debug_reprojection_error_filtering.png"

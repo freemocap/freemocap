@@ -10,7 +10,6 @@ from freemocap.diagnostics.calibration.calibration_utils import (
 
 
 def run(path_to_recording: Path):
-
     path_to_3d_data = path_to_recording / "output_data" / "charuco_3d_xyz.npy"
     charuco_3d_data = np.load(path_to_3d_data)
     csv_save_path = Path("data_current_calibration.csv")

@@ -4,8 +4,9 @@ import zipfile
 from pathlib import Path
 
 import requests
-from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path
 from pydantic import BaseModel
+
+from freemocap.system.paths_and_filenames.path_getters import get_recording_session_folder_path
 
 logger = logging.getLogger(__name__)
 

@@ -68,7 +68,6 @@ from freemocap.gui.qt.widgets.set_data_folder_dialog import SetDataFolderDialog
 from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
 from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
-
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -92,10 +91,10 @@ logger = logging.getLogger(__name__)
 
 class MainWindow(QMainWindow):
     def __init__(
-        self,
-        freemocap_data_folder_path: Union[str, Path],
-        pipedream_pings: PipedreamPings,
-        parent=None,
+            self,
+            freemocap_data_folder_path: Union[str, Path],
+            pipedream_pings: PipedreamPings,
+            parent=None,
     ):
         super().__init__(parent=parent)
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
@@ -171,8 +170,8 @@ class MainWindow(QMainWindow):
         self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
         if (
-            self._controller_group_box.auto_process_videos_checked
-            and self._controller_group_box.mocap_videos_radio_button_checked
+                self._controller_group_box.auto_process_videos_checked
+                and self._controller_group_box.mocap_videos_radio_button_checked
         ):
             logger.info("'Auto process videos' checkbox is checked - triggering 'Process Motion Capture Data' button")
             self._process_motion_capture_data_panel.process_motion_capture_data_button.click()
@@ -360,7 +359,7 @@ class MainWindow(QMainWindow):
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
         except (
-            AttributeError
+                AttributeError
         ):  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
             logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
@@ -528,12 +527,12 @@ class MainWindow(QMainWindow):
 
         if not synchronization_bool:
             for video_path in tqdm(
-                video_paths,
-                desc="Importing videos...",
-                colour=[255, 128, 0],
-                unit="video",
-                unit_scale=True,
-                leave=False,
+                    video_paths,
+                    desc="Importing videos...",
+                    colour=[255, 128, 0],
+                    unit="video",
+                    unit_scale=True,
+                    leave=False,
             ):
                 if not Path(video_path).exists():
                     logger.error(f"{video_path} does not exist!")

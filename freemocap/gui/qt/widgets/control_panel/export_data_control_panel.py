@@ -89,7 +89,7 @@ class VisualizationControlPanel(QWidget):
         self._blender_executable_label.setText(self._blender_executable_path)
 
         if (
-            self._blender_executable_path != BLENDER_EXECUTABLE_PATH_MISSING_STRING
+                self._blender_executable_path != BLENDER_EXECUTABLE_PATH_MISSING_STRING
         ):  # don't persist missing paths across sessions
             self._gui_state.blender_path = self._blender_executable_path
             save_gui_state(gui_state=self._gui_state, file_pathstring=get_gui_state_json_path())

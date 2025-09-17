@@ -8,6 +8,8 @@ import queue
 import time
 from collections import defaultdict, Counter
 from copy import copy
+from pathlib import Path
+from typing import List
 
 import cv2
 import numpy as np
@@ -15,25 +17,20 @@ import toml
 from aniposelib.boards import extract_points, extract_rtvecs, get_video_params, merge_rows, CharucoBoard
 from aniposelib.utils import get_rtvec, make_M
 from numba import jit
-from pathlib import Path
 from scipy import optimize
 from scipy import signal
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
-from tqdm import trange
-from typing import List
-
-from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
 from skellytracker.process_folder_of_videos import process_list_of_videos
+from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
+from tqdm import trange
 
 numba_logger = logging.getLogger("numba")
 numba_logger.setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
-
-
 
 ARUCO_DICTS = {
     (4, 50): cv2.aruco.DICT_4X4_50,
@@ -402,8 +399,8 @@ class Camera:
             size=None,
             rvec=np.zeros(3),
             tvec=np.zeros(3),
-            world_orientation = np.eye(3),
-            world_position = np.zeros(3),
+            world_orientation=np.eye(3),
+            world_position=np.zeros(3),
             name=None,
             extra_dist=False,
     ):
@@ -438,7 +435,7 @@ class Camera:
         self.set_size(d["size"])
 
         self.set_world_orientation(d.get("world_orientation", np.eye(3)))
-        self.set_world_position(d.get("world_position",   np.zeros(3)))
+        self.set_world_position(d.get("world_position", np.zeros(3)))
 
     def from_dict(d):
         cam = Camera()
@@ -482,19 +479,19 @@ class Camera:
 
     def get_translation(self):
         return self.tvec
-    
+
     def set_world_orientation(self, world_orientation):
         self.world_orientation = np.asarray(world_orientation, dtype="float64").reshape(3, 3)
 
     def get_world_orientation(self):
         return self.world_orientation
-    
+
     def set_world_position(self, world_position):
         self.world_position = np.array(world_position, dtype="float64").ravel()
 
     def get_world_position(self):
         return self.world_position
-    
+
     def get_extrinsics_mat(self):
         return make_M(self.rvec, self.tvec)
 
@@ -1805,7 +1802,7 @@ class CameraGroup:
         cameras = [cam.copy() for cam in self.cameras]
         metadata = copy(self.metadata)
         return CameraGroup(cameras, metadata)
-        
+
     def set_rotations(self, rvecs):
         for cam, rvec in zip(self.cameras, rvecs):
             cam.set_rotation(rvec)
@@ -1824,7 +1821,7 @@ class CameraGroup:
 
     def get_world_positions(self):
         return np.stack([cam.get_world_position() for cam in self.cameras])
-    
+
     def get_world_orientations(self):
         return np.stack([cam.get_world_orientation() for cam in self.cameras])
 
@@ -1905,8 +1902,9 @@ class CameraGroup:
         self._get_charuco_2d_data(videos=videos, board=board)
 
         if self.charuco_2d_data is None:
-            raise ValueError("Charuco 2D data has not been initialized. Call _get_charuco_2d_data() first, or check for errors in the video processing.")
-        
+            raise ValueError(
+                "Charuco 2D data has not been initialized. Call _get_charuco_2d_data() first, or check for errors in the video processing.")
+
         all_rows = []
 
         num_cameras, num_frames, _, _ = self.charuco_2d_data.shape
@@ -1919,7 +1917,7 @@ class CameraGroup:
                 mask = (~np.isnan(filled[:, :, 0])) & (~np.isnan(filled[:, :, 1]))
                 non_empty_ids = np.where(mask)[0]
                 corners = filled[non_empty_ids, :, :]
-                non_empty_ids = non_empty_ids.reshape(-1, 1) # Add empty column anipose expects
+                non_empty_ids = non_empty_ids.reshape(-1, 1)  # Add empty column anipose expects
                 if corners.shape[0] != 0:
                     row = {
                         "framenum": (0, frame),
@@ -1934,7 +1932,6 @@ class CameraGroup:
             for i, rows in enumerate(all_rows):
                 print(f"\tCamera {i} has {len(rows)} frames with detected corners.")
 
-
         return all_rows
 
     def _get_charuco_2d_data(self, videos: List[List[str]], board: "AniposeCharucoBoard"):
@@ -1947,14 +1944,14 @@ class CameraGroup:
         charuco_2d_data = process_list_of_videos(
             model_info=CharucoModelInfo(),
             tracking_params=CharucoTrackingParams(
-                charuco_squares_x_in=board.squaresX, 
+                charuco_squares_x_in=board.squaresX,
                 charuco_squares_y_in=board.squaresY,
                 charuco_dict_id=ARUCO_DICTS[(board.marker_bits, board.dict_size)]
             ),
             video_paths=video_paths,
             num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
         )
-        
+
         self.charuco_2d_data = charuco_2d_data
 
     def set_camera_sizes_videos(self, videos):
@@ -2064,7 +2061,6 @@ class AniposeCharucoBoard(CharucoBoard):
         self.manually_verify = manually_verify
         self.marker_bits = marker_bits
         self.dict_size = dict_size
-
 
         dkey = (marker_bits, dict_size)
         self.dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICTS[dkey])

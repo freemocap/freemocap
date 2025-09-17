@@ -210,7 +210,7 @@ class CalibrationControlPanel(QWidget):
         self._use_charuco_as_groundplane_checkbox.setToolTip(
             "Set the Charuco board's coordinate system as the global origin"
         )
-        self._use_charuco_as_groundplane_checkbox.setChecked(False)
+        self._use_charuco_as_groundplane_checkbox.setChecked(True)
         self._use_charuco_as_groundplane_checkbox.setEnabled(False)
         self._use_charuco_as_groundplane_checkbox.setVisible(False)
 
@@ -285,19 +285,12 @@ class CalibrationControlPanel(QWidget):
             self._set_charuco_board_dropdown_visibility(False)
             self._calibration_guide_link.setVisible(False)
 
-    def _set_charuco_square_size_form_layout_visibility(self, visible):
-        label_index = self._charuco_square_size_form_layout.indexOf(self._charuco_square_size_label)
-        line_edit_index = self._charuco_square_size_form_layout.indexOf(self._charuco_square_size_line_edit)
-        if visible:
-            self._charuco_square_size_form_layout.itemAt(label_index).widget().setEnabled(True)
-            self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setEnabled(True)
-            self._charuco_square_size_form_layout.itemAt(label_index).widget().setVisible(True)
-            self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setVisible(True)
-        else:
-            self._charuco_square_size_form_layout.itemAt(label_index).widget().setEnabled(False)
-            self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setEnabled(False)
-            self._charuco_square_size_form_layout.itemAt(label_index).widget().setVisible(False)
-            self._charuco_square_size_form_layout.itemAt(line_edit_index).widget().setVisible(False)
+    def _set_charuco_square_size_form_layout_visibility(self, visible: bool) -> None:
+        # Directly control the widgets using the stored references
+        self._charuco_square_size_label.setEnabled(visible)
+        self._charuco_square_size_label.setVisible(visible)
+        self._charuco_square_size_line_edit.setEnabled(visible)
+        self._charuco_square_size_line_edit.setVisible(visible)
 
     def open_load_camera_calibration_toml_dialog(self) -> str:
         # from this tutorial - https://www.youtube.com/watch?v=gg5TepTc2Jg&t=649s
@@ -323,24 +316,33 @@ class CalibrationControlPanel(QWidget):
         self._selected_calibration_toml_label.setText(path)
         self._selected_calibration_toml_label.show()
 
-    def _create_charuco_square_size_form_layout(self):
-        charuco_square_size_form_layout = QFormLayout()
+    def _create_charuco_square_size_form_layout(self) -> QHBoxLayout:
+        charuco_square_size_layout = QHBoxLayout()
+
+        self._charuco_square_size_label = QLabel("Charuco square size (mm)")
+        self._charuco_square_size_label.setStyleSheet("QLabel { font-size: 12px; }")
+
+        # Ensure the label has enough width to show all text
+        self._charuco_square_size_label.setMinimumWidth(200)  # Adjust this value as needed
+        # OR use this to automatically size based on content:
+        # self._charuco_square_size_label.adjustSize()
 
         self._charuco_square_size_line_edit = QLineEdit()
         self._charuco_square_size_line_edit.setValidator(QDoubleValidator())
         self._charuco_square_size_line_edit.setFixedWidth(65)
-
-        self._charuco_square_size_label = QLabel("Charuco square size (mm)")
-        self._charuco_square_size_label.setStyleSheet("QLabel { font-size: 12px;  }")
-
         self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
         self._charuco_square_size_line_edit.setToolTip(
             "The length of one of the edges of the black squares in the calibration board in mm"
         )
         self._charuco_square_size_line_edit.textEdited.connect(self._on_charuco_square_size_line_edit_changed)
-        charuco_square_size_form_layout.addRow(self._charuco_square_size_label, self._charuco_square_size_line_edit)
-        charuco_square_size_form_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
-        return charuco_square_size_form_layout
+
+        # Add widgets to horizontal layout
+        charuco_square_size_layout.addWidget(self._charuco_square_size_label)
+        charuco_square_size_layout.addStretch()
+        charuco_square_size_layout.addWidget(self._charuco_square_size_line_edit)
+        charuco_square_size_layout.addStretch()
+        return charuco_square_size_layout
+
 
     def _create_board_dropdown(self) -> QComboBox:
         board_dropdown = QComboBox()

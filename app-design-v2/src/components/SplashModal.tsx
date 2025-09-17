@@ -68,7 +68,7 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
                     // handleSendAnonymousInfoChange(e.target.checked);
                   }}
                 />
-                {"\u00A0"} {/* single between text and the hyperlink space */}
+                ,{"\u00A0"} {/* single between text and the hyperlink space */}
                 <a className="text sm" href="#" target="_blank">
                     privacy policy
                   </a>

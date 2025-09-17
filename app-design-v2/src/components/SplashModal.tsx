@@ -1,10 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
+import Checkbox from "./uicomponents"; // import reusable checkbox
 
 interface SplashModalProps {
   onClose: () => void;
 }
 
 const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
+  // Local state for checkbox - developers can hook logic here in future
+  const [sendAnonymousInfo, setSendAnonymousInfo] = useState(false);
+
   return (
     <div
       className="splash-overlay inset-0"
@@ -17,7 +21,6 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
       >
         <div className="visualize-container overflow-hidden flex-1 bg-middark splash-modal-inner-container br-1 gap-3 flex flex-row p-2">
           {/* close button top-right */}
-
           <button
             onClick={onClose}
             className="button icon-button close-button pos-abs top-0 right-0 m-1"
@@ -25,25 +28,10 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
             <span className="icon close-icon icon-size-16"></span>
           </button>
 
-          {/* inner content wrapper */}
-          {/* <div className="visualize-container flex flex-1 gap-2 overflow-hidden"> */}
           {/* left column */}
-          {/* <div className="image-container flex-1 br-2 flex flex-col items-center justify-center gap-2 splash-left-col"> */}
           <div className="splash-image-container flex flex-1">
             <div className="splash-image-logo-container m-2"></div>
-            {/* <img.splash-logo-container
-              src="./images/logo_name.svg"
-              className="splash-screen-logo pos-abs left-0 top-0 m-2"
-              width="88px"
-              height="100%"
-            ></img> */}
-            {/* <img
-              src="./images/splashmodal_art.webp"
-              width="100%"
-              height="100%"
-            ></img> */}
           </div>
-          {/* </div> */}
 
           {/* right column */}
           <div className="splash-right-col flex-1 flex flex-col gap-2 p-1 justify-content-space-between">
@@ -68,15 +56,24 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
               </div>
 
               {/* row 3 */}
-              <div>
+              {/* Developers: adjust the `label` text freely here */}
+              <div className="flex">
+                <Checkbox
+                  label="Send anonymous info,"
+                  checked={sendAnonymousInfo}
+                  onChange={(e) => setSendAnonymousInfo(e.target.checked)}
+                />
+                {"\u00A0"} {/* single between text and the hyperlink space */}
                 <p className="text-white text-sm text-align-left">
-                  Send anonymous info, privacy policy
+                  <a href="#" target="_blank">
+                    privacy policy
+                  </a>
                 </p>
               </div>
             </div>
 
             {/* row 4 */}
-            <div>
+            <div className="actions-bottom flex felx-1 flex-col p-1 gap-2">
               <p className="text-white text-sm text-align-left">
                 Learn how to use FreeMocap
               </p>
@@ -85,7 +82,6 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
               </p>
             </div>
           </div>
-          {/* </div> */}
         </div>
       </div>
     </div>

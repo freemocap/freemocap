@@ -200,7 +200,11 @@ h1 {
   background-color: var(--gray-800); /* Change thumb color when active */
   cursor: grabbing; /* Cursor changes when dragging */
 }
-
+a, a.link {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: inherit;
+}
 /* z-index */
 .z-1 {
   z-index: 1;
@@ -600,12 +604,8 @@ body,
   animation: scaleIn 0.3s ease forwards;
 }
 
-/* .close-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-} */
+
+
 
 .splash-screen-logo {
   opacity: 0.5;
@@ -624,7 +624,110 @@ body,
   opacity: 0.5;
 }
 
+/* --------- ui components styles -------- */
+/* --------- ui components styles -------- */
+
+
+/* --------- checkbox -------- */
+
+
+/* =========================================
+   Custom CSS Checkboxes (Reusable)
+   Based on ModernCSS.dev
+   ========================================= */
+
+/* Root variables */
+:root {
+  --form-control-color: currentColor;
+  --form-control-disabled: #959495;
+}
+
+/* Label container */
+.form-control {
+  font-family: system-ui, sans-serif;
+  font-size: 2rem; /* scales checkbox size */
+  font-weight: bold;
+  line-height: 1.1;
+
+  display: grid;
+  grid-template-columns: 1em auto;
+  gap: 0.5em;
+}
+
+.form-control + .form-control {
+  margin-top: 1em;
+}
+
+/* Disabled label style (must add .form-control--disabled) */
+.form-control--disabled {
+  color: var(--form-control-disabled);
+  cursor: not-allowed;
+}
+
+/* Base checkbox reset */
+input[type="checkbox"] {
+  -webkit-appearance: none; /* Safari/old iOS */
+  appearance: none;
+  background-color: #fff; /* ensure clean background */
+  margin: 0;
+
+  /* Inherit sizing + color */
+  font: inherit;
+  color: var(--form-control-color);
+
+  width: 1.15em;
+  height: 1.15em;
+  border: 0.15em solid currentColor;
+  border-radius: 0.15em;
+
+  transform: translateY(-0.075em);
+
+  /* For custom indicator */
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+}
+
+/* Pseudo-element for checkmark indicator */
+input[type="checkbox"]::before {
+  content: "";
+  width: 0.65em;
+  height: 0.65em;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em var(--form-control-color);
+  /* Checkmark shape */
+  /* clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  box-shadow: inset 1em 1em var(--form-control-color); */
+
+  /* Forced-colors (High Contrast mode) */
+  background-color: CanvasText;
+}
+
+/* Checked state */
+input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+/* Focus state */
+input[type="checkbox"]:focus {
+  /* outline: max(2px, 0.15em) solid currentColor;
+  outline-offset: max(2px, 0.15em); */
+}
+
+/* Disabled checkbox */
+input[type="checkbox"]:disabled {
+  --form-control-color: var(--form-control-disabled);
+  color: var(--form-control-disabled);
+  cursor: not-allowed;
+}
+
+
+
+
 /* ---- Fade Animations ---- */
+
+
 @keyframes fadeIn {
   from {
     opacity: 0;

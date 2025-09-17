@@ -24,7 +24,7 @@ const ButtonSm = ({ iconClass, text, onClick = () => {}, externalLink = false })
 
       {/* TEXT SECTION */}
       {/* text prop sets the button label. */}
-      <p className="text-gray text-sm text-align-left">{text}</p>
+      <p className="text-gray text md text-align-left">{text}</p>
     </button>
   );
 };
@@ -58,7 +58,7 @@ const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange }) => {
         onChange={onChange}
         className="button"
       />
-      <p className="button text-gray text-sm text-align-left">{label}</p>
+      <p className="text-gray text sm text-align-left">{label}</p>
     </div>
   );
 };

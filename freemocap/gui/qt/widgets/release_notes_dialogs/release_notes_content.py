@@ -51,7 +51,7 @@ def get_v170_release_notes() -> ReleaseNoteContent:
         tab_title="v1.7.0 Release Notes",
         content_title="FreeMoCap v1.7.0 - Ground Plane Calibration!",
         content_subtitle="✨ New Feature: Ground Plane Calibration (and new board definitions)",
-        content_html=f"""
+        content_html="""
 <style>
     p {{ margin: 5px 0; }}
     ul, ol {{ margin: 10px 0 10px 20px; }}

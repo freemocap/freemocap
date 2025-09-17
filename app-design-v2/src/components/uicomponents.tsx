@@ -83,7 +83,7 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
           onClick={() => handleClick(option.value)}
         >
     
-          <p className="text text-center p-1">{option.label}</p>
+          <p className="text bg text-center p-1">{option.label}</p>
         </button>
       ))}
     </div>

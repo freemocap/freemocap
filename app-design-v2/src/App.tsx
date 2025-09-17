@@ -13,6 +13,7 @@ function App() {
     const [mode, setMode] = useState("live"); 
 
     const handleSegmentChange = (selected) => {
+      setMode(selected);
     console.log("User selected:", selected);
     // Add your logic here
   };
@@ -38,7 +39,7 @@ function App() {
               { label: "Post-process", value: "post", iconClass: "post-icon" },
             ]}
             defaultValue="live"
-            onChange={setMode}
+            onChange={handleSegmentChange}
           />
           </div>
 

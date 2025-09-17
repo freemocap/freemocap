@@ -10,12 +10,21 @@ function App() {
   
   const [showSplash, setShowSplash] = useState(true); // modal state
 
-    const [mode, setMode] = useState("live"); 
+  const [mode, setMode] = useState("Capture Live");
+  const [infoMode, setInfoMode] = useState("Logs"); // <-- added state
 
-    const handleSegmentChange = (selected) => {
-      setMode(selected);
-    console.log("User selected:", selected);
-    // Add your logic here
+  // Handler for the first segmented control
+  const handleMode = (selected) => {
+    setMode(selected);
+    console.log("User selected mode:", selected);
+    // Add your logic for the first segmented control here
+  };
+
+  // Handler for the second segmented control
+  const handleInfoMode = (selected) => {
+    setInfoMode(selected);
+    console.log("User selected info mode:", selected);
+    // Add your logic for the second segmented control here
   };
 
   return (
@@ -34,13 +43,15 @@ function App() {
           <div className="header-tool-bar br-2">
             
             <SegmentedControl
-            options={[
-              { label: "Live Capture", value: "live", iconClass: "live-icon" },
-              { label: "Post-process", value: "post", iconClass: "post-icon" },
-            ]}
-            defaultValue="live"
-            onChange={handleSegmentChange}
-          />
+              options={[
+                { label: "Capture Live", value: "Capture Live" },
+                { label: "Post-process", value: "Post-process" },
+              ]}
+              size="md"
+              value={mode}
+              onChange={handleMode}
+            />
+
           </div>
 
           {/* visualize-container */}
@@ -66,7 +77,19 @@ function App() {
 
       {/* bottom info-container */}
       <div className="bottom-info-container bg-middark border-mid-black h-100 p-1 border-2 border-black br-2 flex flex-col">
-        <div className="info-header-control h-25 bg-middark" />
+        <div className="info-header-control h-25 bg-middark">
+            <SegmentedControl
+            options={[
+              { label: "Logs", value: "Logs" },
+              { label: "Recording info", value: "Recording info" },
+              { label: "File directory", value: "File directory" },
+            ]}
+            size="sm"
+            value={infoMode}
+            onChange={handleInfoMode}
+            />
+        </div>
+              
         <div className="info-container flex flex-col flex-1 br-2 p-1 gap-1" />
       </div>
     </div>

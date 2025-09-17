@@ -1,16 +1,30 @@
-import React, { useState } from "react";
-
-interface SegmentedControlOption {
-  label: string; // Text to display on the button
-  value: string; // Unique value for the option
-  iconClass?: string; // Optional icon class
-}
+import React, { useState, useEffect } from "react";
 
 interface SegmentedControlProps {
-  options: SegmentedControlOption[]; // Array of options to display
-  defaultValue?: string; // Default selected value
-  onChange?: (value: string) => void; // Callback when selection changes
-  className?: string; // Optional additional class for the container
+  /**
+   * Array of options to display.
+   */
+  options: SegmentedControlOption[];
+  /**
+   * Default selected value (uncontrolled mode).
+   */
+  defaultValue?: string;
+  /**
+   * Callback when selection changes.
+   */
+  onChange?: (value: string) => void;
+  /**
+   * Additional class for the container.
+   */
+  className?: string;
+  /**
+   * Size of the text: "sm" for small, "md" for medium (default).
+   */
+  size?: "sm" | "md";
+  /**
+   * Optional value for controlled mode.
+   */
+  value?: string;
 }
 
 /**
@@ -21,7 +35,8 @@ interface SegmentedControlProps {
  * - Toggle between options with active/idle states.
  * - Customizable labels, values, and icons.
  * - Callback for selection changes.
- * - Fully controlled or uncontrolled usage.
+ * - Supports controlled and uncontrolled usage.
+ * - Supports small and medium text sizes.
  *
  * Props:
  * ------
@@ -29,6 +44,8 @@ interface SegmentedControlProps {
  * @param {string} [defaultValue] - Default selected value (uncontrolled mode).
  * @param {(value: string) => void} [onChange] - Callback when selection changes.
  * @param {string} [className] - Additional class for the container.
+ * @param {"sm" | "md"} [size] - Size of the text.
+ * @param {string} [value] - Value for controlled mode.
  *
  * Usage Example:
  * --------------
@@ -39,10 +56,11 @@ interface SegmentedControlProps {
  *   return (
  *     <SegmentedControl
  *       options={[
- *         { label: "Live Capture", value: "live", iconClass: "live-icon" },
- *         { label: "Post-process", value: "post", iconClass: "post-icon" },
+ *         { label: "Live", value: "live" },
+ *         { label: "Post", value: "post" },
  *       ]}
- *       defaultValue="live"
+ *       size="sm"
+ *       value={mode}
  *       onChange={setMode}
  *     />
  *   );
@@ -50,8 +68,7 @@ interface SegmentedControlProps {
  *
  * Notes for Developers:
  * ---------------------
- * - To attach a function on click, use the `onChange` prop.
- * - The component is fully controlled if you use `value` and `onChange`.
+ * - For controlled usage, use `value` and `onChange`.
  * - For uncontrolled usage, use `defaultValue`.
  * - Customize the active/idle styling via CSS classes.
  */
@@ -60,15 +77,28 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
   defaultValue,
   onChange,
   className = "",
+  size = "md",
+  value: controlledValue,
 }) => {
+  const isControlled = controlledValue !== undefined;
   const [activeValue, setActiveValue] = useState(
-    defaultValue || options[0]?.value
+    isControlled ? controlledValue : defaultValue || options[0]?.value
   );
 
+  useEffect(() => {
+    if (isControlled && controlledValue !== activeValue) {
+      setActiveValue(controlledValue);
+    }
+  }, [controlledValue, isControlled, activeValue]);
+
   const handleClick = (value: string) => {
-    setActiveValue(value);
+    if (!isControlled) {
+      setActiveValue(value);
+    }
     if (onChange) onChange(value);
   };
+
+  const textSizeClass = size === "sm" ? "sm" : "md";
 
   return (
     <div className={`segmented-control-container br-1-1 gap-1 p-1 bg-middark flex ${className}`}>
@@ -82,8 +112,10 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
           }`}
           onClick={() => handleClick(option.value)}
         >
-    
-          <p className="text bg text-center p-1">{option.label}</p>
+          {option.iconClass && <i className={option.iconClass} />}
+          <p className={`${textSizeClass} text text-center p-1`}>
+            {option.label}
+          </p>
         </button>
       ))}
     </div>

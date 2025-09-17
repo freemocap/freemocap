@@ -163,8 +163,14 @@ q::after {
 }
 .segmented-control-button { /* global size */
   min-width: 104px;
-  min-height: 22px;
+  /* min-height: 22px; */
   transition: color var(--speed-1) ease-in-out;
+}
+.segmented-control-button > p.text.md { /* medium size */
+    min-height: 25px;
+}
+.segmented-control-button > p.text.sm { /* small size */
+    min-height: 22px;
 }
 .segmented-control-button:hover > p {
   color: var(--gray-100);

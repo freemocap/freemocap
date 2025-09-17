@@ -1,4 +1,4 @@
-import React, { useState } from "react"; 
+import React, { useState } from "react";
 import { ButtonSm, Checkbox } from "./uicomponents";
 
 interface SplashModalProps {
@@ -59,9 +59,14 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
               {/* Developers: adjust the `label` text freely here */}
               <div className="flex">
                 <Checkbox
-                  label="Send anonymous info,"
-                  checked={sendAnonymousInfo}
-                  onChange={(e) => setSendAnonymousInfo(e.target.checked)}
+                  label="Send anonymous info"
+                  checked={sendAnonymousInfo} // Controlled state
+                  onChange={(e) => {
+                    setSendAnonymousInfo(e.target.checked); // Update state
+
+                    // Future use: call any function with new value
+                    // handleSendAnonymousInfoChange(e.target.checked);
+                  }}
                 />
                 {"\u00A0"} {/* single between text and the hyperlink space */}
                 <p className="text-gray text-sm text-align-left">

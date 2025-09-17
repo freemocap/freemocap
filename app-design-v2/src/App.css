@@ -36,6 +36,7 @@
   --close-icon: url("./assets/icons/close_icon.svg");
   --live-icon: url("./assets/icons/live_icon.svg");
   --import-icon: url("./assets/icons/import_icon.svg");
+  --externallink-icon: url("./assets/icons/externallink_icon.svg");
 }
 
 /* base / reset */
@@ -204,6 +205,17 @@ a, a.link {
   text-decoration: underline;
   text-underline-offset: 3px;
   color: inherit;
+  transition: filter 220ms ease-in-out;
+}
+a:hover, a.link:hover {
+ filter: brightness(0.8);
+ transition: filter 220ms ease-in-out;
+}
+a:after {
+    content: var(--externallink-icon);
+    display: inline-block;
+    position: absolute;
+    margin-left: 2px;
 }
 /* z-index */
 .z-1 {
@@ -668,17 +680,17 @@ body,
 input[type="checkbox"] {
   -webkit-appearance: none; /* Safari/old iOS */
   appearance: none;
-  background-color: #fff; /* ensure clean background */
+  background-color: var(--gray-100); /* ensure clean background */
   margin: 0;
 
   /* Inherit sizing + color */
   font: inherit;
-  color: var(--form-control-color);
+  color: var(--gray-600);
 
-  width: 1.15em;
-  height: 1.15em;
-  border: 0.15em solid currentColor;
-  border-radius: 0.15em;
+  width: 0.9em;
+    height: 0.9em;
+    border: 0.19em solid var(--gray-600);
+    border-radius: 2px;
 
   transform: translateY(-0.075em);
 
@@ -686,6 +698,7 @@ input[type="checkbox"] {
   display: grid;
   place-content: center;
   cursor: pointer;
+  
 }
 
 /* Pseudo-element for checkmark indicator */

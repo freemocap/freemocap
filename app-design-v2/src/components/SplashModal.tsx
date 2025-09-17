@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ButtonSm, Checkbox } from "./uicomponents";
+import { ButtonSm, Checkbox, ButtonCard } from "./uicomponents";
 
 interface SplashModalProps {
   onClose: () => void;
@@ -8,6 +8,21 @@ interface SplashModalProps {
 const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
   // Local state for checkbox - developers can hook logic here in future
   const [sendAnonymousInfo, setSendAnonymousInfo] = useState(false);
+
+  /* Closing popup and Escape key pressed */
+    React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
 
   return (
     <div
@@ -44,15 +59,49 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
               </h1>
 
               {/* row 2 */}
+              
               <div className="button-card-container flex gap-4">
-                <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs">
-                  <span className="icon m-3 live-icon icon-size-42"></span>
-                  <p className="text bg">Capture Live</p>
-                </div>
-                <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs">
-                  <span className="icon m-3 import-icon icon-size-42"></span>
-                  <p className="text bg">Import videos</p>
-                </div>
+              {/* /**
+              * Example of a separate handler function
+              * --------------------------------------
+              * - Use this approach if:
+              *   1. The logic is complex (API calls, state updates, navigation).
+              *   2. You need to reuse the same click action in multiple places.
+              *   3. You want to keep the JSX cleaner and easier to read.
+              *   4. You plan to test this function in isolation.
+              */ }
+              {/* const handleLiveClick = () => {
+                console.log("Capture Live button clicked!"); */}
+                {/* // 👉 Here you can:
+                // - Trigger camera capture
+                // - Call an API endpoint
+                // - Dispatch a Redux action
+                // - Navigate to another route (React Router)
+              }; */}
+              
+              {/* /*
+                Example 1: Using inline onClick function
+                ----------------------------------------
+                - Good for short, one-off logic.
+                - Keeps everything self-contained in one place.
+                - ⚠️ Avoid for long or repeated logic (becomes messy). */}
+              
+                          <ButtonCard
+                  text="Capture Live"
+                  iconClass="live-icon icon-size-42"
+                  onClick={() => {
+                    console.log("Inline Capture Live clicked");
+                    // 👉 Quick actions like logging, simple UI feedback, or toggles.
+                  }}
+                />
+                                   <ButtonCard
+                  text="Import videos"
+                  iconClass="import-icon icon-size-42"
+                  onClick={() => {
+                    console.log("Inline Capture Live clicked");
+                    // 👉 Quick actions like logging, simple UI feedback, or toggles.
+                  }}
+                />
               </div>
 
               {/* row 3 */}
@@ -63,12 +112,12 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
                   checked={sendAnonymousInfo} // Controlled state
                   onChange={(e) => {
                     setSendAnonymousInfo(e.target.checked); // Update state
-
+                    console.log("send anynymous info clicked");
                     // Future use: call any function with new value
                     // handleSendAnonymousInfoChange(e.target.checked);
                   }}
                 />
-                {"\u00A0"} {/* single between text and the hyperlink space */}
+                ,{"\u00A0"} {/* single between text and the hyperlink space */}
                 <a className="text sm" href="#" target="_blank">
                     privacy policy
                   </a>

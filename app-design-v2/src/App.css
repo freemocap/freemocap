@@ -101,6 +101,7 @@ textarea {
 }
 button, .button {
   cursor: pointer;
+  transform-origin: center center;
 }
 h1,
 h2,
@@ -153,11 +154,8 @@ q::after {
   transition: background-color var(--speed-1) ease-in-out;
 }
 
-.button:active:not(.button.checkbox,button.text-sm) {
+.button:not(p,.button.checkbox,button.text-sm,input):active {
   transform: scale(96%);
-}
-.button {
-    transform-origin: center center;
 }
 
 

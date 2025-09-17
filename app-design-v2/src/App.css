@@ -127,7 +127,13 @@ q::after {
 }
 
 
-/* BUttons styles and shapes */
+/* BUTTON STYLES AND SHAPES */
+/* card button */
+.button.card {
+  width: 100px;
+  height: 116px;
+  transition: background-color var(--speed-1) ease-in-out;
+}
 
 .button.sm.externallink:after {
   content: var(--externallink-icon);
@@ -147,9 +153,13 @@ q::after {
   transition: background-color var(--speed-1) ease-in-out;
 }
 
-.nowrap {
-  text-wrap: nowrap;
+.button:active:not(.button.checkbox,button.text-sm) {
+  transform: scale(96%);
 }
+.button {
+    transform-origin: center center;
+}
+
 
 /* typepography */
 
@@ -548,12 +558,7 @@ a:after {
   background-image: var(--learn-icon);
 }
 
-/* card button */
-.button.card {
-  width: 100px;
-  height: 116px;
-  transition: background-color var(--speed-1) ease-in-out;
-}
+
 /* individual borders */
 /* .border-t-1 { border-top-width: 1px; border-style: solid; }
 .border-t-2 { border-top-width: 2px; border-style: solid; }

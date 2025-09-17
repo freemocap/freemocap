@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import Checkbox from "./uicomponents"; // import reusable checkbox
+import React, { useState } from "react"; 
+import { ButtonSm, Checkbox } from "./uicomponents";
 
 interface SplashModalProps {
   onClose: () => void;
@@ -45,11 +45,11 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
 
               {/* row 2 */}
               <div className="button-card-container flex gap-4">
-                <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center color-gray-100 button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs">
+                <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center color-gray-100 button card bg-dark flex-1 br-2 flex items-center justify-center text-gray text-xs">
                   <span className="icon m-3 live-icon icon-size-42"></span>
                   <p>Capture Live</p>
                 </div>
-                <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center color-gray-100 button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs">
+                <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center color-gray-100 button card bg-dark flex-1 br-2 flex items-center justify-center text-gray text-xs">
                   <span className="icon m-3 import-icon icon-size-42"></span>
                   <p>Import videos</p>
                 </div>
@@ -64,7 +64,7 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
                   onChange={(e) => setSendAnonymousInfo(e.target.checked)}
                 />
                 {"\u00A0"} {/* single between text and the hyperlink space */}
-                <p className="text-white text-sm text-align-left">
+                <p className="text-gray text-sm text-align-left">
                   <a href="#" target="_blank">
                     privacy policy
                   </a>
@@ -73,13 +73,27 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
             </div>
 
             {/* row 4 */}
-            <div className="actions-bottom flex felx-1 flex-col p-1 gap-2">
-              <p className="text-white text-sm text-align-left">
-                Learn how to use FreeMocap
-              </p>
-              <p className="text-white text-sm text-align-left">
-                Join community
-              </p>
+            <div className="actions-bottom flex felx-1 flex-col 1gap-1">
+              {/* Replaced raw buttons with reusable ButtonSm component */}
+              <ButtonSm
+                iconClass="learn-icon"
+                text="Learn how to use FreeMocap"
+                externalLink={true}
+                onClick={() => {
+                  // Developers: Replace this with navigation or tutorial logic
+                  console.log("Learn how to use FreeMocap clicked");
+                }}
+              />
+
+              <ButtonSm
+                iconClass="discord-icon"
+                text="Join community"
+                externalLink={true}
+                onClick={() => {
+                  // Developers: Replace this with navigation to community page
+                  console.log("Join community clicked");
+                }}
+              />
             </div>
           </div>
         </div>

@@ -6,6 +6,30 @@ interface CheckboxProps {
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void; // handler for state changes
 }
 
+// PROPS for ButtonSm:
+// - iconClass (string): class name for the icon (e.g., "live-icon").
+// - text (string): the button label text.
+// - onClick (function): the action to run when button is clicked.
+//   If none is provided, it defaults to a no-op function.
+const ButtonSm = ({ iconClass, text, onClick = () => {}, externalLink = false }) => {
+  return (
+    <button
+      className={`gap-1 br-1 button sm flex-inline text-left items-center ${externalLink ? "externallink" : ""}`}
+      onClick={onClick} // <-- Attach your custom function here
+    >
+      {/* ICON SECTION */}
+      {/* "icon-size-16" ensures a consistent icon size. */}
+      {/* iconClass is dynamic, so pass in something like "live-icon" */}
+      <span className={`icon ${iconClass} icon-size-16`}></span>
+
+      {/* TEXT SECTION */}
+      {/* text prop sets the button label. */}
+      <p className="text-gray text-sm text-align-left">{text}</p>
+    </button>
+  );
+};
+
+
 /**
  * Reusable Checkbox Component
  * ----------------------------
@@ -34,9 +58,13 @@ const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange }) => {
         onChange={onChange}
         className="button"
       />
-      <p className="button text-white text-sm text-align-left">{label}</p>
+      <p className="button text-gray text-sm text-align-left">{label}</p>
     </div>
   );
 };
 
-export default Checkbox;
+// ✅ Correct export pattern
+// - Use named exports for multiple components in one file.
+// - Developers can import like:
+//   import { ButtonSm, Checkbox } from "./uicomponents";
+export { ButtonSm, Checkbox };

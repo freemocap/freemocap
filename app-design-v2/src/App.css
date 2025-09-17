@@ -37,6 +37,13 @@
   --live-icon: url("./assets/icons/live_icon.svg");
   --import-icon: url("./assets/icons/import_icon.svg");
   --externallink-icon: url("./assets/icons/externallink_icon.svg");
+  --learn-icon: url("./assets/icons/learn_icon.svg");
+  --discord-icon: url("./assets/icons/discord_icon.svg");
+
+  /* ANIMATION SPEED AND OTHER ANIMATION RELATED PROPS */
+  --speed-1 : 120ms;
+  --speed-2 : 220ms;
+
 }
 
 /* base / reset */
@@ -118,6 +125,32 @@ q::before,
 q::after {
   content: "";
 }
+
+
+/* BUttons styles and shapes */
+
+.button.sm.externallink:after {
+  content: var(--externallink-icon);
+  width: 16px;
+  height: 16px;
+}
+.button.sm {
+  padding: 4px 6px;
+  min-height: 25px;
+  width: auto; /* to fit its content */
+  max-width: max-content; /* to fit its content */
+  transition: background-color var(--speed-1) ease-in-out;
+
+}
+.button.sm:hover {
+  background-color: var(--gray-700);
+  transition: background-color var(--speed-1) ease-in-out;
+}
+
+.nowrap {
+  text-wrap: nowrap;
+}
+
 /* typepography */
 
 .title,
@@ -205,11 +238,11 @@ a, a.link {
   text-decoration: underline;
   text-underline-offset: 3px;
   color: inherit;
-  transition: filter 220ms ease-in-out;
+  transition: filter var(--speed-1) ease-in-out;
 }
 a:hover, a.link:hover {
  filter: brightness(0.8);
- transition: filter 220ms ease-in-out;
+ transition: filter var(--speed-1) ease-in-out;
 }
 a:after {
     content: var(--externallink-icon);
@@ -277,6 +310,9 @@ a:after {
 /* display / flex */
 .flex {
   display: flex;
+}
+.flex-inline {
+  display: inline-flex;
 }
 .flex-row {
   flex-direction: row;
@@ -394,7 +430,7 @@ a:after {
 }
 
 /* =========================
-   BORDER RADII
+   BORDER RADIUS
    ========================= */
 .br-1 {
   border-radius: 4px;
@@ -480,37 +516,43 @@ a:after {
 .icon-button:hover > .icon {
   filter: brightness(2);
   /* filter animation out */
-  transition: filter 220ms ease-in-out;
+  transition: filter var(--speed-1) ease-in-out;
 }
 .button.card:hover {
    background-color: var(--gray-700);
-   transition: background-color 220ms ease-in-out;
+   transition: background-color var(--speed-1) ease-in-out;
 }
 .icon {
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
   /* filter animation in */
-  transition: filter 220ms ease-in-out;
+  transition: filter var(--speed-1) ease-in-out;
 }
 
 /* icon type */
 .close-icon {
   background-image: var(--close-icon);
 }
-/* icon type */
+/* icon types */
 .live-icon {
   background-image: var(--live-icon);
 }
 .import-icon {
   background-image: var(--import-icon);
 }
+.discord-icon {
+  background-image: var(--discord-icon);
+}
+.learn-icon {
+  background-image: var(--learn-icon);
+}
 
 /* card button */
 .button.card {
   width: 100px;
   height: 116px;
-  transition: background-color 220ms ease-in-out;
+  transition: background-color var(--speed-1) ease-in-out;
 }
 /* individual borders */
 /* .border-t-1 { border-top-width: 1px; border-style: solid; }
@@ -583,6 +625,17 @@ body,
 }
 
 /* =========================
+   TEXT COLOR
+   ========================= */
+
+.text-white {
+  color: var(--gray-100);
+}
+.text-gray {
+  color: var(--gray-400);
+}
+
+/* =========================
    HELPERS
    ========================= */
 .hidden {
@@ -650,7 +703,7 @@ body,
 
 /* Root variables */
 :root {
-  --form-control-color: currentColor;
+  /* --form-control-color: currentColor; */
   --form-control-disabled: #959495;
 }
 

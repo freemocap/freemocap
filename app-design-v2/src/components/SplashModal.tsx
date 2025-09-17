@@ -47,11 +47,11 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
               <div className="button-card-container flex gap-4">
                 <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs">
                   <span className="icon m-3 live-icon icon-size-42"></span>
-                  <p>Capture Live</p>
+                  <p className="text bg">Capture Live</p>
                 </div>
                 <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs">
                   <span className="icon m-3 import-icon icon-size-42"></span>
-                  <p>Import videos</p>
+                  <p className="text bg">Import videos</p>
                 </div>
               </div>
 
@@ -69,16 +69,15 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
                   }}
                 />
                 {"\u00A0"} {/* single between text and the hyperlink space */}
-                <p className="text-gray text-sm text-align-left">
-                  <a href="#" target="_blank">
+                <a className="text sm" href="#" target="_blank">
                     privacy policy
                   </a>
-                </p>
+                
               </div>
             </div>
 
             {/* row 4 */}
-            <div className="actions-bottom flex felx-1 flex-col 1gap-1">
+            <div className="actions-bottom flex felx-1 flex-col gap-1">
               {/* Replaced raw buttons with reusable ButtonSm component */}
               <ButtonSm
                 iconClass="learn-icon"

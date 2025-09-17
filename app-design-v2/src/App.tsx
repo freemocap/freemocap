@@ -1,12 +1,21 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useState } from "react";
+import reactLogo from "./assets/react.svg";
+import viteLogo from "/vite.svg";
 import React from "react";
 import "./App.css";
 import SplashModal from "./components/SplashModal"; // imported modal
+import { SegmentedControl } from "./components/uicomponents";
 
 function App() {
+  
   const [showSplash, setShowSplash] = useState(true); // modal state
+
+    const [mode, setMode] = useState("live"); 
+
+    const handleSegmentChange = (selected) => {
+    console.log("User selected:", selected);
+    // Add your logic here
+  };
 
   return (
     <div className="app-content bg-middark flex flex-col p-1 gap-1 h-full overflow-hidden">
@@ -21,7 +30,17 @@ function App() {
         {/* mode-container */}
         <div className="mode-container br-2 bg-darkgray border-mid-black border-2 .bg-darkgray overflow-hidden flex flex-col flex-1 gap-1 p-1">
           {/* header-tool-bar */}
-          <div className="header-tool-bar h-40 br-2 h-30" />
+          <div className="header-tool-bar br-2">
+            
+            <SegmentedControl
+            options={[
+              { label: "Live Capture", value: "live", iconClass: "live-icon" },
+              { label: "Post-process", value: "post", iconClass: "post-icon" },
+            ]}
+            defaultValue="live"
+            onChange={setMode}
+          />
+          </div>
 
           {/* visualize-container */}
           <div className="visualize-container overflow-hidden flex gap-2 flex-3">
@@ -47,7 +66,7 @@ function App() {
       {/* bottom info-container */}
       <div className="bottom-info-container bg-middark border-mid-black h-100 p-1 border-2 border-black br-2 flex flex-col">
         <div className="info-header-control h-25 bg-middark" />
-        <div className="info-container flex flex-col flex-1 br-2 p-1 gap-1" />  
+        <div className="info-container flex flex-col flex-1 br-2 p-1 gap-1" />
       </div>
     </div>
   );

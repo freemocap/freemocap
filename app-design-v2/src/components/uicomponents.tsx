@@ -1,16 +1,124 @@
-import React from "react";
+import React, { useState } from "react";
 
+interface SegmentedControlOption {
+  label: string; // Text to display on the button
+  value: string; // Unique value for the option
+  iconClass?: string; // Optional icon class
+}
+
+interface SegmentedControlProps {
+  options: SegmentedControlOption[]; // Array of options to display
+  defaultValue?: string; // Default selected value
+  onChange?: (value: string) => void; // Callback when selection changes
+  className?: string; // Optional additional class for the container
+}
+
+/**
+ * SegmentedControl Component
+ * --------------------------
+ * A reusable segmented control (toggle button group) component.
+ * Features:
+ * - Toggle between options with active/idle states.
+ * - Customizable labels, values, and icons.
+ * - Callback for selection changes.
+ * - Fully controlled or uncontrolled usage.
+ *
+ * Props:
+ * ------
+ * @param {SegmentedControlOption[]} options - Array of options to display.
+ * @param {string} [defaultValue] - Default selected value (uncontrolled mode).
+ * @param {(value: string) => void} [onChange] - Callback when selection changes.
+ * @param {string} [className] - Additional class for the container.
+ *
+ * Usage Example:
+ * --------------
+ * import { SegmentedControl } from "./YourComponentFile";
+ *
+ * function App() {
+ *   const [mode, setMode] = useState("live");
+ *   return (
+ *     <SegmentedControl
+ *       options={[
+ *         { label: "Live Capture", value: "live", iconClass: "live-icon" },
+ *         { label: "Post-process", value: "post", iconClass: "post-icon" },
+ *       ]}
+ *       defaultValue="live"
+ *       onChange={setMode}
+ *     />
+ *   );
+ * }
+ *
+ * Notes for Developers:
+ * ---------------------
+ * - To attach a function on click, use the `onChange` prop.
+ * - The component is fully controlled if you use `value` and `onChange`.
+ * - For uncontrolled usage, use `defaultValue`.
+ * - Customize the active/idle styling via CSS classes.
+ */
+const SegmentedControl: React.FC<SegmentedControlProps> = ({
+  options,
+  defaultValue,
+  onChange,
+  className = "",
+}) => {
+  const [activeValue, setActiveValue] = useState(
+    defaultValue || options[0]?.value
+  );
+
+  const handleClick = (value: string) => {
+    setActiveValue(value);
+    if (onChange) onChange(value);
+  };
+
+  return (
+    <div className={`segmented-control-container br-1-1 gap-1 p-1 bg-middark flex ${className}`}>
+      {options.map((option) => (
+        <button
+          key={option.value}
+          className={`segmented-control-button justify-center button gap-1 br-1 flex-inline items-center ${
+            activeValue === option.value
+              ? "active text-white bg-dark"
+              : "idle text-gray"
+          }`}
+          onClick={() => handleClick(option.value)}
+        >
+    
+          <p className="text text-center p-1">{option.label}</p>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// Example usage:
+// --------------
+// const [mode, setMode] = useState("live");
+// <SegmentedControl
+//   options={[
+//     { label: "Live Capture", value: "live", iconClass: "live-icon" },
+//     { label: "Post-process", value: "post", iconClass: "post-icon" },
+//   ]}
+//   defaultValue="live"
+//   onChange={setMode}
+// />
 
 // PROPS for ButtonSm:
 // - iconClass (string): class name for the icon (e.g., "live-icon").
 // - text (string): the button label text.
 // - onClick (function): the action to run when button is clicked.
 //   If none is provided, it defaults to a no-op function.
-const ButtonSm = ({ iconClass, text, onClick = () => {}, externalLink = false }) => {
+const ButtonSm = ({
+  iconClass,
+  text,
+  onClick = () => {},
+  externalLink = false,
+}) => {
   return (
     <button
-    className={`gap-1 br-1 button sm flex-inline text-left items-center ${externalLink ? "externallink" : ""}`}
-    onClick={onClick} // <-- Attach your custom function here
+      className={`gap-1 br-1 button sm flex-inline text-left items-center ${
+        externalLink ? "externallink" : ""
+      }`}
+      onClick={onClick} // <-- Attach your custom function here
     >
       {/* ICON SECTION */}
       {/* "icon-size-16" ensures a consistent icon size. */}
@@ -24,7 +132,6 @@ const ButtonSm = ({ iconClass, text, onClick = () => {}, externalLink = false })
   );
 };
 
-
 /**
  * Reusable Checkbox Component
  * ----------------------------
@@ -32,7 +139,7 @@ const ButtonSm = ({ iconClass, text, onClick = () => {}, externalLink = false })
  * - Use the `label` prop to change the string next to the checkbox.
  * - `checked` + `onChange` make this component controllable from parent state.
  * - The entire container is clickable to toggle the checkbox.
-*/
+ */
 
 interface CheckboxProps {
   label: string; // text shown next to the checkbox (developers can change this freely)
@@ -43,8 +150,8 @@ interface CheckboxProps {
 const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange }) => {
   return (
     <div
-    className="button checkbox gap-1 flex flex-row items-center"
-    onClick={(e) => {
+      className="button checkbox gap-1 flex flex-row items-center"
+      onClick={(e) => {
         // Allow clicking anywhere on the container to toggle checkbox
         if (onChange) {
           onChange({
@@ -65,75 +172,72 @@ const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange }) => {
   );
 };
 
-
 /**
-* ButtonCard Component
-* --------------------
-* A reusable UI component that displays a card-like button with:
-* - An icon (customizable via CSS class)
-* - A text label (string passed as a prop)
-* - A click handler (function passed as a prop)
-*
-* Props:
-* ------
-* @param {string} text - The text displayed under the icon.
-* @param {string} iconClass - The class(es) applied to the <span> element for styling the icon.
-* Example: "live-icon icon-size-42".
-* @param {function} onClick - The function triggered when the button is clicked.
-* @param {string} [className] - (Optional) Additional classes to extend/override the default wrapper styles.
-*
-* Usage Example:
-* --------------
-* import ButtonCard from "./ButtonCard";
-*
-* function App() {
-* const handleLiveClick = () => {
-* console.log("Capture Live button clicked!");
-* };
-*
-* return (
-* <div className="flex gap-4">
-* <ButtonCard
-* text="Capture Live"
-* iconClass="live-icon icon-size-42"
-* onClick={handleLiveClick}
-* />
-*
-* <ButtonCard
-* text="Upload File"
-* iconClass="upload-icon icon-size-42"
-* onClick={() => alert("Upload File clicked")}
-* className="bg-blue-600"
-* />
-* </div>
-* );
-* }
-*
-* Notes for Developers:
-* ---------------------
-* - The `iconClass` lets you swap out icons dynamically by just changing the class string.
-* - If you need SVG or inline icons, you can refactor to accept an `icon` ReactNode prop instead.
-* - The default styling is based on the original HTML snippet (dark background, flex, centered).
-* Override or extend using the optional `className` prop.
-*/
-
+ * ButtonCard Component
+ * --------------------
+ * A reusable UI component that displays a card-like button with:
+ * - An icon (customizable via CSS class)
+ * - A text label (string passed as a prop)
+ * - A click handler (function passed as a prop)
+ *
+ * Props:
+ * ------
+ * @param {string} text - The text displayed under the icon.
+ * @param {string} iconClass - The class(es) applied to the <span> element for styling the icon.
+ * Example: "live-icon icon-size-42".
+ * @param {function} onClick - The function triggered when the button is clicked.
+ * @param {string} [className] - (Optional) Additional classes to extend/override the default wrapper styles.
+ *
+ * Usage Example:
+ * --------------
+ * import ButtonCard from "./ButtonCard";
+ *
+ * function App() {
+ * const handleLiveClick = () => {
+ * console.log("Capture Live button clicked!");
+ * };
+ *
+ * return (
+ * <div className="flex gap-4">
+ * <ButtonCard
+ * text="Capture Live"
+ * iconClass="live-icon icon-size-42"
+ * onClick={handleLiveClick}
+ * />
+ *
+ * <ButtonCard
+ * text="Upload File"
+ * iconClass="upload-icon icon-size-42"
+ * onClick={() => alert("Upload File clicked")}
+ * className="bg-blue-600"
+ * />
+ * </div>
+ * );
+ * }
+ *
+ * Notes for Developers:
+ * ---------------------
+ * - The `iconClass` lets you swap out icons dynamically by just changing the class string.
+ * - If you need SVG or inline icons, you can refactor to accept an `icon` ReactNode prop instead.
+ * - The default styling is based on the original HTML snippet (dark background, flex, centered).
+ * Override or extend using the optional `className` prop.
+ */
 
 const ButtonCard = ({ text, iconClass, onClick, className = "" }) => {
-return (
-<div
-className={`button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs ${className}`}
-onClick={onClick}
->
-{/* Icon section - styled via passed classes */}
-<span className={`icon m-3 ${iconClass}`}></span>
+  return (
+    <div
+      className={`button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs ${className}`}
+      onClick={onClick}
+    >
+      {/* Icon section - styled via passed classes */}
+      <span className={`icon m-3 ${iconClass}`}></span>
 
-
-{/* Text section */}
-<p className="text-center text bg">{text}</p>
-</div>
-);
+      {/* Text section */}
+      <p className="text-center text bg">{text}</p>
+    </div>
+  );
 };
 
 
 
-export { ButtonSm, Checkbox, ButtonCard };
+export { ButtonSm, Checkbox, ButtonCard, SegmentedControl };

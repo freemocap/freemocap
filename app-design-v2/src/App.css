@@ -187,12 +187,12 @@ h1 {
   /* letter-spacing: -0.43px; */
 }
 /* text colors */
-.color-gray-400 {
+/* .color-gray-400 {
   color: var(--gray-400);
 }
 .color-gray-100 {
   color: var(--gray-100);
-}
+} */
 
 /* =========================
    UTILITIES (Tailwind-like)
@@ -631,10 +631,10 @@ body,
    TEXT COLOR
    ========================= */
 
-.text-white {
+.text-white, .color-white {
   color: var(--gray-100);
 }
-.text-gray {
+.text-gray, .color-gray {
   color: var(--gray-400);
 }
 

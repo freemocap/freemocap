@@ -38,18 +38,18 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
             {/* row 1 */}
             <div className="actions-top flex felx-1 flex-col p-1 gap-3">
               <h1 className="title">
-                <span className="color-gray-100">Free Motion Capture</span>
+                <span className="text-white">Free Motion Capture</span>
                 <br />
-                <span className="color-gray-400">for Everyone –—</span>
+                <span className="text-gray">for Everyone –—</span>
               </h1>
 
               {/* row 2 */}
               <div className="button-card-container flex gap-4">
-                <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center color-gray-100 button card bg-dark flex-1 br-2 flex items-center justify-center text-gray text-xs">
+                <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs">
                   <span className="icon m-3 live-icon icon-size-42"></span>
                   <p>Capture Live</p>
                 </div>
-                <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center color-gray-100 button card bg-dark flex-1 br-2 flex items-center justify-center text-gray text-xs">
+                <div className="button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs">
                   <span className="icon m-3 import-icon icon-size-42"></span>
                   <p>Import videos</p>
                 </div>

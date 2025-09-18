@@ -4,23 +4,21 @@ import viteLogo from "/vite.svg";
 import React from "react";
 import "./App.css";
 import SplashModal from "./components/SplashModal"; // imported modal
-import { SegmentedControl } from "./components/uicomponents";
+import { ButtonSm, SegmentedControl } from "./components/uicomponents";
 
 function App() {
-  
   const [showSplash, setShowSplash] = useState(true); // modal state
 
   const [mode, setMode] = useState("Capture Live");
-  const [infoMode, setInfoMode] = useState("Logs"); // <-- added state
-
-  // Handler for the first segmented control
+  // Handler for the first segmented control .. main modes
   const handleMode = (selected) => {
     setMode(selected);
     console.log("User selected mode:", selected);
     // Add your logic for the first segmented control here
   };
-
-  // Handler for the second segmented control
+  
+  const [infoMode, setInfoMode] = useState("Logs"); // <-- added state
+  // Handler for the second segmented control .. info container mode
   const handleInfoMode = (selected) => {
     setInfoMode(selected);
     console.log("User selected info mode:", selected);
@@ -33,7 +31,45 @@ function App() {
       {showSplash && <SplashModal onClose={() => setShowSplash(false)} />}
 
       {/* top-header */}
-      <div className="top-header br-2 h-25" />
+      <div className="flex flex-row justify-content-space-between top-header br-2 h-25">
+        <div className="flex left-section">
+        <ButtonSm
+          iconClass="loader-icon" // Connected-icon || loader-icon || warning-icon
+          text="Connecting..."
+          rightSideIcon="dropdown" // dropdown || externallink || ""
+          textColor="text-gray" // text-white || text-gray
+          onClick={() => {
+                  // Developers: Replace this with navigation to community page
+                  console.log("Connect clicked");
+                }}
+        />
+        </div>
+        <div className="flex right-section gap-2">
+
+                <ButtonSm
+                                iconClass="donate-icon"
+                                text="Support the freemocap"
+                                rightSideIcon="externallink"
+                                textColor="text-gray"
+                                onClick={() => {
+                                  // Developers: Replace this with navigation or tutorial logic
+                                  console.log("Support freemocap clicked");
+                                }}
+                              />  
+
+                              <ButtonSm
+                                              iconClass=""
+                                              text="Help"
+                                              rightSideIcon="dropdown"
+                                              textColor="text-gray"
+                                              onClick={() => {
+                                                // Developers: Replace this with navigation or tutorial logic
+                                                console.log("help button clicked");
+                                              }}
+                                            />
+
+        </div>
+      </div>
 
       {/* main-container */}
       <div className="main-container gap-1 overflow-hidden flex flex-row flex-1">
@@ -41,7 +77,6 @@ function App() {
         <div className="mode-container br-2 bg-darkgray border-mid-black border-2 .bg-darkgray overflow-hidden flex flex-col flex-1 gap-1 p-1">
           {/* header-tool-bar */}
           <div className="header-tool-bar br-2">
-            
             <SegmentedControl
               options={[
                 { label: "Capture Live", value: "Capture Live" },
@@ -51,7 +86,6 @@ function App() {
               value={mode}
               onChange={handleMode}
             />
-
           </div>
 
           {/* visualize-container */}
@@ -78,7 +112,7 @@ function App() {
       {/* bottom info-container */}
       <div className="bottom-info-container bg-middark border-mid-black h-100 p-1 border-2 border-black br-2 flex flex-col">
         <div className="info-header-control h-25 bg-middark">
-            <SegmentedControl
+          <SegmentedControl
             options={[
               { label: "Logs", value: "Logs" },
               { label: "Recording info", value: "Recording info" },
@@ -87,10 +121,58 @@ function App() {
             size="sm"
             value={infoMode}
             onChange={handleInfoMode}
-            />
+          />
         </div>
-              
-        <div className="info-container flex flex-col flex-1 br-2 p-1 gap-1" />
+
+        <div className="overflow-y info-container flex flex-col flex-1 br-2 p-1 gap-1">
+          <p className="text md text-left">
+            \Users\andre\freemocap_data\logs_info_and_settings\last_successful_calibration.toml.
+            [2024-01-18T23:14:32.0235][INFO ] [ProcessID: 1192, ThreadID: 22204]
+            [freemocap.gui.qt.utilities.update_most_recent_recording_toml:update_most_recent_recording_toml():16]:::
+            Saving most recent recording path C:
+            \Users\andre\freemocap_data\recording sessions\freemocap_sample_data
+            to toml file:
+            C:\Users\andre\freemocap_data\logs_info_and_settings\most_recent_recording.toml.
+            [2024-01-18T23:14:32.0251][INFO ] [ProcessID: 1192, ThreadID: 22204]
+            [freemocap.data_layer.recording_models.recording_info_model:get_number_of_mp4s_in_synched_videos_directory():238]
+            ::: Number of `.mp4''s in C:
+            \Users\andre\freemocap_data\recording_sessions\freemocap_sample_data\synchronized_videos:
+            3.0.\Users\andre\freemocap_data\logs_info_and_settings\last_successful_calibration.toml.
+            [2024-01-18T23:14:32.0235][INFO ] [ProcessID: 1192, ThreadID: 22204]
+            [freemocap.gui.qt.utilities.update_most_recent_recording_toml:update_most_recent_recording_toml():16]:::
+            Saving most recent recording path C:
+            \Users\andre\freemocap_data\recording sessions\freemocap_sample_data
+            to toml file:
+            C:\Users\andre\freemocap_data\logs_info_and_settings\most_recent_recording.toml.
+            [2024-01-18T23:14:32.0251][INFO ] [ProcessID: 1192, ThreadID: 22204]
+            [freemocap.data_layer.recording_models.recording_info_model:get_number_of_mp4s_in_synched_videos_directory():238]
+            ::: Number of `.mp4''s in C:
+            \Users\andre\freemocap_data\recording_sessions\freemocap_sample_data\synchronized_videos:
+            3.0.\Users\andre\freemocap_data\logs_info_and_settings\last_successful_calibration.toml.
+            [2024-01-18T23:14:32.0235][INFO ] [ProcessID: 1192, ThreadID: 22204]
+            [freemocap.gui.qt.utilities.update_most_recent_recording_toml:update_most_recent_recording_toml():16]:::
+            Saving most recent recording path C:
+            \Users\andre\freemocap_data\recording sessions\freemocap_sample_data
+            to toml file:
+            C:\Users\andre\freemocap_data\logs_info_and_settings\most_recent_recording.toml.
+            [2024-01-18T23:14:32.0251][INFO ] [ProcessID: 1192, ThreadID: 22204]
+            [freemocap.data_layer.recording_models.recording_info_model:get_number_of_mp4s_in_synched_videos_directory():238]
+            ::: Number of `.mp4''s in C:
+            \Users\andre\freemocap_data\recording_sessions\freemocap_sample_data\synchronized_videos:
+            3.0.\Users\andre\freemocap_data\logs_info_and_settings\last_successful_calibration.toml.
+            [2024-01-18T23:14:32.0235][INFO ] [ProcessID: 1192, ThreadID: 22204]
+            [freemocap.gui.qt.utilities.update_most_recent_recording_toml:update_most_recent_recording_toml():16]:::
+            Saving most recent recording path C:
+            \Users\andre\freemocap_data\recording sessions\freemocap_sample_data
+            to toml file:
+            C:\Users\andre\freemocap_data\logs_info_and_settings\most_recent_recording.toml.
+            [2024-01-18T23:14:32.0251][INFO ] [ProcessID: 1192, ThreadID: 22204]
+            [freemocap.data_layer.recording_models.recording_info_model:get_number_of_mp4s_in_synched_videos_directory():238]
+            ::: Number of `.mp4''s in C:
+            \Users\andre\freemocap_data\recording_sessions\freemocap_sample_data\synchronized_videos:
+            3.0.
+          </p>
+        </div>
       </div>
     </div>
   );

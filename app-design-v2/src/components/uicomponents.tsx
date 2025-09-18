@@ -139,30 +139,33 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
 // - text (string): the button label text.
 // - onClick (function): the action to run when button is clicked.
 //   If none is provided, it defaults to a no-op function.
+
+
 const ButtonSm = ({
-  iconClass,
+  iconClass = "", // left-side icon
   text,
   onClick = () => {},
-  externalLink = false,
+  rightSideIcon = "", // "externallink" | "dropdown" | ""
+  textColor = "text-gray", // "text-gray" | "text-white"
 }) => {
   return (
     <button
-      className={`gap-1 br-1 button sm flex-inline text-left items-center ${
-        externalLink ? "externallink" : ""
-      }`}
-      onClick={onClick} // <-- Attach your custom function here
+      className={`gap-1 br-1 button sm flex-inline text-left items-center ${rightSideIcon}`}
+      onClick={onClick}
     >
-      {/* ICON SECTION */}
-      {/* "icon-size-16" ensures a consistent icon size. */}
-      {/* iconClass is dynamic, so pass in something like "live-icon" */}
-      <span className={`icon ${iconClass} icon-size-16`}></span>
+      {/* LEFT ICON */}
+      {iconClass && <span className={`icon ${iconClass} icon-size-16`} />}
 
-      {/* TEXT SECTION */}
-      {/* text prop sets the button label. */}
-      <p className="text-gray text md text-align-left">{text}</p>
+      {/* TEXT */}
+      <p className={`${textColor} text md text-align-left`}>{text}</p>
     </button>
   );
 };
+
+
+
+
+
 
 /**
  * Reusable Checkbox Component

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import clsx from "clsx";
+
 
 // /**
 //  * ToggleComponent
@@ -58,26 +60,28 @@ import React, { useState, useEffect } from "react";
 
 interface ToggleProps {
   text: string;
-  iconOn?: React.ReactNode;       // icon for "on" state
-  iconOff?: React.ReactNode;      // icon for "off" state
-  className?: string;             // optional class for parent div
-  iconClass?: string;             // optional class for dropdown icon
+  // iconOn?: React.ReactNode;
+  // iconOff?: React.ReactNode;
+  className?: string;
+  iconClass?: string;
+  defaultToggelState?: boolean; // <-- new prop for default state
 }
 
 const ToggleComponent: React.FC<ToggleProps> = ({
   text,
-  iconOn = "✔️",
-  iconOff = "❌",
+  // iconOn = "✔️",
+  // iconOff = "❌",
   className = "",
   iconClass,
+  defaultToggelState = false, // default is off
 }) => {
-  const [isToggled, setIsToggled] = useState(false);
+  const [isToggled, setIsToggled] = useState(defaultToggelState); // <-- use prop here
 
   const handleToggle = () => setIsToggled((prev) => !prev);
 
   return (
     <div
-      className={`button toggle-button p-1 flex justify-content-space-between items-center h-25 ${className}`}
+      className={`button toggle-button p-1 br-1 flex justify-content-space-between items-center h-25 ${className}`}
       onClick={handleToggle}
     >
       {/* Text + optional icon */}
@@ -93,6 +97,7 @@ const ToggleComponent: React.FC<ToggleProps> = ({
     </div>
   );
 };
+
 
 
 
@@ -243,6 +248,7 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
 
 const ButtonSm = ({
   iconClass = "", // left-side icon
+  buttonType = "", // valid types are : use classes like this  // for primaruy use: primary full-width justify-center // for secondary use " secondary full-width justify-center ""
   text,
   onClick = () => {},
   rightSideIcon = "", // "externallink" | "dropdown" | ""
@@ -250,14 +256,18 @@ const ButtonSm = ({
 }) => {
   return (
     <button
-      className={`gap-1 br-1 button sm flex-inline text-left items-center ${rightSideIcon}`}
       onClick={onClick}
+      className={clsx(
+        "gap-1 br-1 button sm flex-inline text-left items-center", // base styles
+        buttonType, // multiple classes supported here
+        rightSideIcon // this is being treated as classes, same as before
+      )}
     >
       {/* LEFT ICON */}
-      {iconClass && <span className={`icon ${iconClass} icon-size-16`} />}
+      {iconClass && <span className={clsx("icon icon-size-16", iconClass)} />}
 
       {/* TEXT */}
-      <p className={`${textColor} text md text-align-left`}>{text}</p>
+      <p className={clsx(textColor, "text md text-align-left")}>{text}</p>
     </button>
   );
 };

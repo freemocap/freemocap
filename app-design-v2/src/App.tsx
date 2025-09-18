@@ -76,7 +76,7 @@ function App() {
       {/* main-container */}
       <div className="main-container gap-1 overflow-hidden flex flex-row flex-1">
         {/* mode-container */}
-        <div className="mode-container br-2 bg-darkgray border-mid-black border-2 .bg-darkgray overflow-hidden flex flex-col flex-1 gap-1 p-1">
+        <div className="mode-container br-2 bg-darkgray border-mid-black border-1 .bg-darkgray overflow-hidden flex flex-col flex-1 gap-1 p-1">
           {/* header-tool-bar */}
           <div className="header-tool-bar br-2">
             <SegmentedControl
@@ -104,50 +104,96 @@ function App() {
         </div>
 
         {/* action container */}
-        <div className="action-container overflow-y bg-darkgray br-2 border-mid-black border-2 .bg-darkgray overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
-          <div className="subaction-container flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
+        <div className="action-container overflow-y bg-darkgray br-2 border-mid-black border-1 .bg-darkgray overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
+          <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
+            <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
+              <ToggleComponent
+                text="Charuco size"
+                className=""
+                iconClass=""
+              />
+                                  <ButtonSm
+                        iconClass="calibrate-icon"
+                        text="Calibrate"
+                        buttonType="full-width secondary justify-center"
+                        rightSideIcon=""
+                        textColor="text-white"
+                        onClick={() => {
+                    // Developers: Replace this with navigation or tutorial logic
+                    console.log("help button clicked");
+            }}
+          />
+          <ToggleComponent
+                text="Skip calibration"
+                className=""
+                iconClass=""
+              />
+              
+            </div>
+            <div className="flex flex-col record-container br-1 p-1 gap-1 bg-middark">
+              <ToggleComponent
+                text="Auto process save"
+                className=""
+                iconClass=""
+              />
+              <ToggleComponent
+                text="Generate jupyter notebook"
+                className=""
+                iconClass=""
+              />
+              <ToggleComponent
+                text="Auto open Blender"
+                className=""
+                iconClass=""
+                defaultToggelState={true}
+              />
+                    <ButtonSm
+                        iconClass="record-icon"
+                        text="Record"
+                        buttonType="full-width primary justify-center"
+                        rightSideIcon=""
+                        textColor="text-white"
+                        onClick={() => {
+                    // Developers: Replace this with navigation or tutorial logic
+                    console.log("help button clicked");
+            }}
+          />
+            </div>
+          </div>
+          <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-darkgray">
             <ToggleComponent
-              text="Auto process save"
+              text="Run 2d image tracking"
               className=""
               iconClass=""
             />
             <ToggleComponent
-              text="Generate jupyter notebook"
+              text="Multiprocessing"
+              className=""
+              iconClass=""
+              defaultToggelState={true}
+            />
+
+            <ToggleComponent
+              text="Max core count"
               className=""
               iconClass="subcat-icon"
             />
 
-            <ToggleComponent
-              text="Auto open Blender"
+
+                 <ToggleComponent
+              text="Yolo crop mode"
               className=""
               iconClass=""
-            />
-          </div>
-          <div className="subaction-container record-container br-1 p-1 gap-1 bg-middark">
-                           <ToggleComponent
-              text="Auto process save"
-              className=""
-              iconClass=""
-            />
-            <ToggleComponent
-              text="Generate jupyter notebook"
-              className=""
-              iconClass="subcat-icon"
+              defaultToggelState={true}
             />
 
-            <ToggleComponent
-              text="Auto open Blender"
-              className=""
-              iconClass=""
-            />
-          
+           
           </div>
-          <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-middark" />
         </div>
       </div>
 
       {/* bottom info-container */}
-      <div className="gap-2 overflow-hidden bottom-info-container bg-middark border-mid-black h-100 p-1 border-2 border-black br-2 flex flex-col">
+      <div className="gap-2 overflow-hidden bottom-info-container bg-middark border-mid-black h-100 p-1 border-1 border-black br-2 flex flex-col">
         <div className="info-header-control h-25 bg-middark">
           <SegmentedControl
             options={[

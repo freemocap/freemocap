@@ -10,7 +10,7 @@
   --gray-700: #272727;
   --gray-600: #323232;
   --gray-500: #4f4f4f;
-  --gray-400: #838383;
+  --gray-400: #9b9b9b;
   --gray-100: #e4e4e4;
 
   --overlay: rgba(6, 6, 6, 0.6);
@@ -39,6 +39,9 @@
   --import-icon: url("./assets/icons/import_icon.svg");
   --externallink-icon: url("./assets/icons/externallink_icon.svg");
   --dropdown-icon: url("./assets/icons/dropdown_icon.svg");
+   --record-icon: url("./assets/icons/record_icon.svg");
+      --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
+
   --learn-icon: url("./assets/icons/learn_icon.svg");
   --discord-icon: url("./assets/icons/discord_icon.svg");
   --connected-icon: url("./assets/icons/connected_icon.svg");
@@ -163,6 +166,10 @@ q::after {
   background-color: var(--gray-600);
   transition: background-color var(--speed-2);
 }
+.toggle-button:active {
+  background-color: var(--gray-800);
+  transition: background-color var(--speed-1);
+}
 .toggle-button {
     transition: background-color var(--speed-2);
 }
@@ -177,7 +184,7 @@ q::after {
 .icon.toggle-circle { /* idle state */
   width: 8px;
   height: 8px;
-  background-color: var(--gray-100);
+  background-color: var(--gray-400);
   border-radius: 50%;
   position: absolute;
   top: 2px;
@@ -194,6 +201,24 @@ q::after {
 
 /* BUTTON STYLES AND SHAPES */
 
+/* Primary fullwidth button */
+.primary {
+    background-color: var(--red-500);
+}
+.primary:hover {
+    background-color: var(--red-800);
+}
+
+.full-width {
+    min-width: 100%;
+}
+/* Primary fullwidth button */
+.secondary {
+    background-color: var(--gray-500);
+}
+.secondary:hover {
+    background-color: var(--gray-600);
+}
 
 
 /* card button */
@@ -216,6 +241,7 @@ q::after {
   content: var(--dropdown-icon);
 }
 
+
 .button.sm {
   padding: 4px 6px;
   min-height: 25px;
@@ -227,7 +253,7 @@ q::after {
 
 }
 
-.button.sm:hover {
+.button.sm:not(.primary,.secondary):hover {
   background-color: var(--gray-700);
   transition: background-color var(--speed-1) ease-in-out;
 }
@@ -436,7 +462,9 @@ a:after {
 .pos-rel {
   position: relative;
 }
-
+.pos-sticky {
+  position: sticky;
+}
 /* positions */
 .top-0 {
   top: 0;
@@ -639,7 +667,7 @@ a:after {
    BORDER SIZES
    ========================= */
 .border-1 {
-  border-width: 1px;
+  border-width: 1.5px;
   border-style: solid;
 }
 
@@ -762,7 +790,12 @@ a:after {
 .donate-icon {
   background-image: var(--donate-icon);
 }
-
+.record-icon {
+  background-image: var(--record-icon);
+}
+.calibrate-icon {
+  background-image: var(--calibrate-icon);
+}
 .learn-icon {
   background-image: var(--learn-icon);
 }
@@ -827,6 +860,7 @@ body,
 .bg-darkgray {
   background-color: var(--gray-700);
 }
+
 
 .bg-pink {
   background-color: var(--green-100);

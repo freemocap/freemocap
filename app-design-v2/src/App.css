@@ -10,7 +10,7 @@
   --gray-700: #272727;
   --gray-600: #323232;
   --gray-500: #4f4f4f;
-  --gray-400: #838383;
+  --gray-400: #9b9b9b;
   --gray-100: #e4e4e4;
 
   --overlay: rgba(6, 6, 6, 0.6);
@@ -860,6 +860,7 @@ body,
 .bg-darkgray {
   background-color: var(--gray-700);
 }
+
 
 .bg-pink {
   background-color: var(--green-100);

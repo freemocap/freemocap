@@ -248,7 +248,7 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
 
 const ButtonSm = ({
   iconClass = "", // left-side icon
-  buttonType = "", // can now accept multiple classes like "full-width primary"
+  buttonType = "", // valid types are : use classes like this  // for primaruy use: primary full-width justify-center // for secondary use " secondary full-width justify-center ""
   text,
   onClick = () => {},
   rightSideIcon = "", // "externallink" | "dropdown" | ""

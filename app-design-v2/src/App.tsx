@@ -160,7 +160,7 @@ function App() {
           />
             </div>
           </div>
-          <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-middark">
+          <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-darkgray">
             <ToggleComponent
               text="Run 2d image tracking"
               className=""

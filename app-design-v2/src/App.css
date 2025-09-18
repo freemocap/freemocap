@@ -49,6 +49,7 @@
   --loader-icon: url("./assets/icons/loader_icon.svg");
     --donate-icon: url("./assets/icons/donate_icon.svg");
     --subcat-icon: url("./assets/icons/subcat_icon.svg");
+    --download-icon: url("./assets/icons/download_icon.svg");
 
 
   /* ANIMATION SPEED AND OTHER ANIMATION RELATED PROPS */
@@ -510,7 +511,9 @@ a:after {
 .justify-center {
   justify-content: center;
 }
-
+.align-end {
+  align-items: flex-end;
+}
 .justify-content-space-between {
   justify-content: space-between;
 }
@@ -802,6 +805,9 @@ a:after {
 .subcat-icon {
   background-image: var(--subcat-icon);
 }
+.download-icon {
+  background-image: var(--download-icon);
+}
 
 
 /* individual borders */
@@ -860,7 +866,9 @@ body,
 .bg-darkgray {
   background-color: var(--gray-700);
 }
-
+.bg-gray {
+  background-color: var(--gray-600);
+}
 
 .bg-pink {
   background-color: var(--green-100);

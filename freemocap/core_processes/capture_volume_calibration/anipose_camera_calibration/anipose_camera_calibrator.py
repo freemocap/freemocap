@@ -1,4 +1,6 @@
 import logging
+from collections import namedtuple
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Union
 
@@ -7,6 +9,13 @@ import numpy as np
 
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
+)
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import (
+    compute_basis_vectors_of_new_reference,
+    find_good_frame,
+    skellyforge_data,
+    CharucoVisibilityError,
+    CharucoVelocityError
 )
 from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import (
     CharucoBoardDefinition,
@@ -18,34 +27,24 @@ from freemocap.system.paths_and_filenames.path_getters import (
 )
 from freemocap.utilities.get_video_paths import get_video_paths
 
-
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import (
-    compute_basis_vectors_of_new_reference, 
-    find_good_frame,
-    skellyforge_data,
-    CharucoVisibilityError,
-    CharucoVelocityError
-)
-
-from dataclasses import dataclass
-
-from collections import namedtuple
 logger = logging.getLogger(__name__)
 
 Extrinsics = namedtuple("Extrinsics", ["rvecs", "tvecs"])
+
 
 @dataclass
 class GroundPlaneSuccess:
     success: bool
     error: str = None
 
+
 class AniposeCameraCalibrator:
     def __init__(
-        self,
-        charuco_board_object: CharucoBoardDefinition,
-        charuco_square_size: Union[int, float],
-        calibration_videos_folder_path: Union[str, Path],
-        progress_callback: Callable[[str], None] = lambda _: None
+            self,
+            charuco_board_object: CharucoBoardDefinition,
+            charuco_square_size: Union[int, float],
+            calibration_videos_folder_path: Union[str, Path],
+            progress_callback: Callable[[str], None] = lambda _: None
 
     ):
         self._charuco_board_object = charuco_board_object
@@ -87,7 +86,8 @@ class AniposeCameraCalibrator:
             dict_size=250,
         )
 
-    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False, use_charuco_as_groundplane: bool = False) -> tuple[Path, GroundPlaneSuccess]:
+    def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False,
+                                        use_charuco_as_groundplane: bool = False) -> tuple[Path, GroundPlaneSuccess]:
         video_paths_list_of_list_of_strings = [[str(this_path)] for this_path in self._list_of_video_paths]
 
         (
@@ -101,18 +101,19 @@ class AniposeCameraCalibrator:
         logger.info(success_str)
         self._progress_callback(success_str)
         self._anipose_camera_group_object.metadata["groundplane_calibration"] = False
- 
+
         if pin_camera_0_to_origin:
             self._anipose_camera_group_object = self.pin_camera_zero_to_origin(self._anipose_camera_group_object)
             groundplane_success = None
 
         if use_charuco_as_groundplane:
-            self._anipose_camera_group_object, groundplane_success = self.set_charuco_board_as_groundplane(self._anipose_camera_group_object)
+            self._anipose_camera_group_object, groundplane_success = self.set_charuco_board_as_groundplane(
+                self._anipose_camera_group_object)
             if groundplane_success.success:
                 self._anipose_camera_group_object.metadata["groundplane_calibration"] = True
-        
+
         self.get_real_world_matrices(self._anipose_camera_group_object)
-        
+
         calibration_toml_filename = create_camera_calibration_file_name(
             recording_name=self._calibration_videos_folder_path.parent.stem
         )
@@ -205,13 +206,12 @@ class AniposeCameraCalibrator:
             # Update the translation vector
             new_tvecs[cam_i, :] = tvecs[cam_i, :] + delta_to_origin_camera_i
         return new_tvecs
-    
-    def set_charuco_board_as_groundplane(self, cam_group:freemocap_anipose.CameraGroup):
-        import multiprocessing
+
+    def set_charuco_board_as_groundplane(self, cam_group: freemocap_anipose.CameraGroup):
         # Get the camera group object
         logger.info("Getting 2d Charuco data")
 
-        charuco_2d_xy:np.ndarray = cam_group.charuco_2d_data
+        charuco_2d_xy: np.ndarray = cam_group.charuco_2d_data
 
         if charuco_2d_xy is None:
             error_message = "Charuco 2d data was not retrieved successfully. Check for an error during calibration."
@@ -220,7 +220,7 @@ class AniposeCameraCalibrator:
         logger.info("Charuco 2d data retrieved successfully with shape: "
                     f"{charuco_2d_xy.shape}")
         charuco_2d_xy = charuco_2d_xy.astype(np.float64)
-        num_cameras, num_frames, num_tracked_points,_ = charuco_2d_xy.shape
+        num_cameras, num_frames, num_tracked_points, _ = charuco_2d_xy.shape
         charuco_2d_flat = charuco_2d_xy.reshape(num_cameras, -1, 2)
 
         logger.info("Getting 3d Charuco data")
@@ -230,11 +230,11 @@ class AniposeCameraCalibrator:
         logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
 
         charuco_3d_xyz_interpolated = skellyforge_data(raw_charuco_data=charuco_3d_xyz)
-        
+
         try:
             charuco_still_frame_idx = find_good_frame(charuco_data=charuco_3d_xyz_interpolated,
-                                                       number_of_squares_width=self._charuco_board_object.number_of_squares_width,
-                                                       number_of_squares_height=self._charuco_board_object.number_of_squares_height,)
+                                                      number_of_squares_width=self._charuco_board_object.number_of_squares_width,
+                                                      number_of_squares_height=self._charuco_board_object.number_of_squares_height, )
         except CharucoVisibilityError as e:
             logger.warning(
                 "Ground-plane alignment skipped – reverting to original calibration: %s",
@@ -248,19 +248,20 @@ class AniposeCameraCalibrator:
                 e,
                 exc_info=True, )
             success = GroundPlaneSuccess(success=False, error=str(e))
-            return cam_group,success
+            return cam_group, success
 
         charuco_frame = charuco_3d_xyz_interpolated[charuco_still_frame_idx]
 
         x_hat, y_hat, z_hat = compute_basis_vectors_of_new_reference(charuco_frame,
                                                                      number_of_squares_width=self._charuco_board_object.number_of_squares_width,
                                                                      number_of_squares_height=self._charuco_board_object.number_of_squares_height)
-        charuco_origin_in_world = charuco_frame[0] 
-        rmat_charuco_to_world = np.column_stack([x_hat, y_hat, z_hat]) #rotation matrix that transforms a point in the new world reference frame(defined by the charuco) into legacy world frame   
+        charuco_origin_in_world = charuco_frame[0]
+        rmat_charuco_to_world = np.column_stack([x_hat, y_hat,
+                                                 z_hat])  # rotation matrix that transforms a point in the new world reference frame(defined by the charuco) into legacy world frame
 
         extrinsics = self.adjust_world_reference_frame_to_charuco(cam_group=cam_group,
-                                                                                charuco_origin_in_world=charuco_origin_in_world,
-                                                                                rmat_charuco_to_world=rmat_charuco_to_world)
+                                                                  charuco_origin_in_world=charuco_origin_in_world,
+                                                                  rmat_charuco_to_world=rmat_charuco_to_world)
         cam_group.set_rotations(extrinsics.rvecs)
         cam_group.set_translations(extrinsics.tvecs)
         success = GroundPlaneSuccess(success=True)
@@ -274,35 +275,36 @@ class AniposeCameraCalibrator:
         charuco_3d_xyz_interpolated = skellyforge_data(raw_charuco_data=charuco_3d_xyz)
 
         charuco_save_path = self._recording_folder_path / "output_data" / "charuco_3d_xyz.npy"
-        np.save(charuco_save_path, charuco_3d_xyz_interpolated) #NOTE - there may be a more robust way to get this path but this is the simplest for now
+        np.save(charuco_save_path,
+                charuco_3d_xyz_interpolated)  # NOTE - there may be a more robust way to get this path but this is the simplest for now
         logger.info(f"Charuco 3d data saved to {charuco_save_path}")
 
         return cam_group, success
 
-    def adjust_world_reference_frame_to_charuco(self, 
-                                                cam_group:freemocap_anipose.CameraGroup,
-                                                charuco_origin_in_world:np.ndarray,
-                                                rmat_charuco_to_world:np.ndarray):
-            
-            tvecs = cam_group.get_translations()
-            rvecs = cam_group.get_rotations()
-            
-            tvecs_new = np.zeros_like(tvecs)
-            rvecs_new = np.zeros_like(rvecs)
+    def adjust_world_reference_frame_to_charuco(self,
+                                                cam_group: freemocap_anipose.CameraGroup,
+                                                charuco_origin_in_world: np.ndarray,
+                                                rmat_charuco_to_world: np.ndarray):
 
-            for i in range(tvecs.shape[0]):
-                rmat_world_to_cam_i, _ = cv2.Rodrigues(rvecs[i])
-                #Xcam = Rc->w*Xworld + tvec (base formula for this transformation)
-                t_delta = rmat_world_to_cam_i @ charuco_origin_in_world #Rc->w*Xworld (rmat is Rc->w)
-                tvecs_new[i] = t_delta + tvecs[i] #Rc->w*Xworld + tvec
+        tvecs = cam_group.get_translations()
+        rvecs = cam_group.get_rotations()
 
-                new_rmat = rmat_world_to_cam_i @ rmat_charuco_to_world #composes w' -> w (rotation matrix) with w -> c (rmat) to get w' -> c
-                new_rvec, _ = cv2.Rodrigues(new_rmat)
-                rvecs_new[i] = new_rvec.flatten()
-            return Extrinsics(rvecs_new, tvecs_new)
-    
+        tvecs_new = np.zeros_like(tvecs)
+        rvecs_new = np.zeros_like(rvecs)
+
+        for i in range(tvecs.shape[0]):
+            rmat_world_to_cam_i, _ = cv2.Rodrigues(rvecs[i])
+            # Xcam = Rc->w*Xworld + tvec (base formula for this transformation)
+            t_delta = rmat_world_to_cam_i @ charuco_origin_in_world  # Rc->w*Xworld (rmat is Rc->w)
+            tvecs_new[i] = t_delta + tvecs[i]  # Rc->w*Xworld + tvec
+
+            new_rmat = rmat_world_to_cam_i @ rmat_charuco_to_world  # composes w' -> w (rotation matrix) with w -> c (rmat) to get w' -> c
+            new_rvec, _ = cv2.Rodrigues(new_rmat)
+            rvecs_new[i] = new_rvec.flatten()
+        return Extrinsics(rvecs_new, tvecs_new)
+
     def get_real_world_matrices(self,
-                                cam_group:freemocap_anipose.CameraGroup):
+                                cam_group: freemocap_anipose.CameraGroup):
         rvecs = cam_group.get_rotations()
         tvecs = cam_group.get_translations()
 

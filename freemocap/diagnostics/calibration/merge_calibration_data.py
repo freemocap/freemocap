@@ -48,7 +48,6 @@ for f in csv_files:
             print(f"  Raw content of {f.name}:")
             print(fh.read())
 
-
 if not rows:
     sys.exit("❌ No valid CSV data found")
 

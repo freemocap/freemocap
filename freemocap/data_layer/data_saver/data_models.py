@@ -3,7 +3,6 @@ from typing import List, Dict, Tuple
 from typing import Optional, Any
 
 from pydantic import BaseModel, Field, model_validator
-
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeModelInfo,
 )
@@ -114,7 +113,8 @@ class InfoDict(BaseModel):
     """
 
     # segment_lengths: Dict[str, Any] = Field(default_factory=dict, description="The lengths of the segments of the body")
-    schemas: Optional[Dict[str, Any]] = Field(default_factory=dict, description="The segment connections for the tracked points")
+    schemas: Optional[Dict[str, Any]] = Field(default_factory=dict,
+                                              description="The segment connections for the tracked points")
 
 
 if __name__ == "__main__":

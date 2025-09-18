@@ -21,12 +21,12 @@ class AniposeCalibrationThreadWorker(QThread):
     groundplane_failed = Signal(str)
 
     def __init__(
-        self,
-        calibration_videos_folder_path: Union[str, Path],
-        charuco_square_size: Union[int, float],
-        kill_thread_event: threading.Event,
-        charuco_board_definition: CharucoBoardDefinition,
-        use_charuco_as_groundplane: bool = False,
+            self,
+            calibration_videos_folder_path: Union[str, Path],
+            charuco_square_size: Union[int, float],
+            kill_thread_event: threading.Event,
+            charuco_board_definition: CharucoBoardDefinition,
+            use_charuco_as_groundplane: bool = False,
     ):
         super().__init__()
         logger.info(

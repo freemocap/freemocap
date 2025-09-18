@@ -37,7 +37,7 @@ def get_charuco_neighbor_pairs(rows: int, cols: int):
 
 
 def get_neighbor_distances(
-    number_of_squares_width: int, number_of_squares_height: int, charuco_3d_data: np.ndarray
+        number_of_squares_width: int, number_of_squares_height: int, charuco_3d_data: np.ndarray
 ) -> list:
     distances_per_frame = []
     num_cols = number_of_squares_width - 1
@@ -77,10 +77,10 @@ def get_neighbor_stats(distances: np.ndarray, charuco_square_size_mm: float) -> 
 
 
 def calculate_calibration_diagnostics(
-    charuco_3d_data: np.ndarray,
-    charuco_square_size_mm: float,
-    number_of_squares_width: int,
-    number_of_squares_height: int,
+        charuco_3d_data: np.ndarray,
+        charuco_square_size_mm: float,
+        number_of_squares_width: int,
+        number_of_squares_height: int,
 ) -> CharucoNeighborStats:
     distances = get_neighbor_distances(
         number_of_squares_width=number_of_squares_width,

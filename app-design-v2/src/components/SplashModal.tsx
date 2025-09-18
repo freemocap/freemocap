@@ -10,7 +10,7 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
   const [sendAnonymousInfo, setSendAnonymousInfo] = useState(false);
 
   /* Closing popup and Escape key pressed */
-    React.useEffect(() => {
+  React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
@@ -22,7 +22,6 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [onClose]);
-
 
   return (
     <div
@@ -59,18 +58,18 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
               </h1>
 
               {/* row 2 */}
-              
+
               <div className="button-card-container flex gap-4">
-              {/* /**
-              * Example of a separate handler function
-              * --------------------------------------
-              * - Use this approach if:
-              *   1. The logic is complex (API calls, state updates, navigation).
-              *   2. You need to reuse the same click action in multiple places.
-              *   3. You want to keep the JSX cleaner and easier to read.
-              *   4. You plan to test this function in isolation.
-              */ }
-              {/* const handleLiveClick = () => {
+                {/* /**
+                 * Example of a separate handler function
+                 * --------------------------------------
+                 * - Use this approach if:
+                 *   1. The logic is complex (API calls, state updates, navigation).
+                 *   2. You need to reuse the same click action in multiple places.
+                 *   3. You want to keep the JSX cleaner and easier to read.
+                 *   4. You plan to test this function in isolation.
+                 */}
+                {/* const handleLiveClick = () => {
                 console.log("Capture Live button clicked!"); */}
                 {/* // 👉 Here you can:
                 // - Trigger camera capture
@@ -78,15 +77,15 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
                 // - Dispatch a Redux action
                 // - Navigate to another route (React Router)
               }; */}
-              
-              {/* /*
+
+                {/* /*
                 Example 1: Using inline onClick function
                 ----------------------------------------
                 - Good for short, one-off logic.
                 - Keeps everything self-contained in one place.
                 - ⚠️ Avoid for long or repeated logic (becomes messy). */}
-              
-                          <ButtonCard
+
+                <ButtonCard
                   text="Capture Live"
                   iconClass="live-icon icon-size-42"
                   onClick={() => {
@@ -94,7 +93,7 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
                     // 👉 Quick actions like logging, simple UI feedback, or toggles.
                   }}
                 />
-                                   <ButtonCard
+                <ButtonCard
                   text="Import videos"
                   iconClass="import-icon icon-size-42"
                   onClick={() => {
@@ -119,9 +118,8 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
                 />
                 ,{"\u00A0"} {/* single between text and the hyperlink space */}
                 <a className="text sm" href="#" target="_blank">
-                    privacy policy
-                  </a>
-                
+                  privacy policy
+                </a>
               </div>
             </div>
 
@@ -131,7 +129,8 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
               <ButtonSm
                 iconClass="learn-icon"
                 text="Learn how to use FreeMocap"
-                externalLink={true}
+                rightSideIcon="externallink"
+                textColor="text-gray"
                 onClick={() => {
                   // Developers: Replace this with navigation or tutorial logic
                   console.log("Learn how to use FreeMocap clicked");
@@ -141,7 +140,8 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
               <ButtonSm
                 iconClass="discord-icon"
                 text="Join community"
-                externalLink={true}
+                rightSideIcon="externallink"
+                textColor="text-gray"
                 onClick={() => {
                   // Developers: Replace this with navigation to community page
                   console.log("Join community clicked");

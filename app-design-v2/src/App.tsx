@@ -108,7 +108,7 @@ function App() {
       </div>
 
       {/* bottom info-container */}
-      <div className="bottom-info-container bg-middark border-mid-black h-100 p-1 border-2 border-black br-2 flex flex-col">
+      <div className="gap-2 overflow-hidden bottom-info-container bg-middark border-mid-black h-100 p-1 border-2 border-black br-2 flex flex-col">
         <div className="info-header-control h-25 bg-middark">
           <SegmentedControl
             options={[

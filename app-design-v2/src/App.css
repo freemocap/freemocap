@@ -45,6 +45,7 @@
   --warning-icon: url("./assets/icons/warning_icon.svg");
   --loader-icon: url("./assets/icons/loader_icon.svg");
     --donate-icon: url("./assets/icons/donate_icon.svg");
+    --subcat-icon: url("./assets/icons/subcat_icon.svg");
 
 
   /* ANIMATION SPEED AND OTHER ANIMATION RELATED PROPS */
@@ -147,7 +148,54 @@ q::after {
 }
 
 
+/* TOGGLE STYLES AND SHAPES */
+.icon.toggle-container {
+  width: 24px;
+  height: 16px;
+  border-radius: 9999px;
+  padding: 2px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color var(--speed-2);
+  border: 2px solid transparent
+}
+.toggle-button:hover {
+  background-color: var(--gray-600);
+  transition: background-color var(--speed-2);
+}
+.toggle-button {
+    transition: background-color var(--speed-2);
+}
+.icon.toggle-container.off {
+  border: 2px solid var(--gray-500);
+}
+
+.icon.toggle-container.on {
+  background-color: var(--blue-900); /* green when on */
+}
+
+.icon.toggle-circle { /* idle state */
+  width: 8px;
+  height: 8px;
+  background-color: var(--gray-100);
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left var(--speed-2) ease-in-out; /* animate horizontally */
+}
+
+.icon.toggle-container.on .toggle-circle {
+  left: 12px; /* move to far right: 24 - 8 - 3 padding = 13px */
+  top: 2px;
+  background-color: var(--blue-800);
+}
+
+
 /* BUTTON STYLES AND SHAPES */
+
+
+
 /* card button */
 .button.card {
   width: 100px;
@@ -184,7 +232,7 @@ q::after {
   transition: background-color var(--speed-1) ease-in-out;
 }
 
-.button:not(p, .button.checkbox, button.text-sm, input, button.active):active {
+.button:not(p, .button.checkbox, button.text-sm, input, button.active, .toggle-button):active {
   transform: scale(96%);
 }
 
@@ -718,6 +766,9 @@ a:after {
 .learn-icon {
   background-image: var(--learn-icon);
 }
+.subcat-icon {
+  background-image: var(--subcat-icon);
+}
 
 
 /* individual borders */
@@ -1006,3 +1057,11 @@ input[type="checkbox"]:disabled {
     opacity: 1;
   }
 }
+
+
+
+
+
+
+
+

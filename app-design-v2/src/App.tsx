@@ -4,7 +4,11 @@ import viteLogo from "/vite.svg";
 import React from "react";
 import "./App.css";
 import SplashModal from "./components/SplashModal"; // imported modal
-import { ButtonSm, SegmentedControl } from "./components/uicomponents";
+import {
+  ButtonSm,
+  SegmentedControl,
+  ToggleComponent,
+} from "./components/uicomponents";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true); // modal state
@@ -101,8 +105,43 @@ function App() {
 
         {/* action container */}
         <div className="action-container overflow-y bg-darkgray br-2 border-mid-black border-2 .bg-darkgray overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
-          <div className="subaction-container calibrate-container flex-1 br-1 p-1 gap-1 bg-middark" />
-          <div className="subaction-container record-container flex-1 br-1 p-1 gap-1 bg-middark" />
+          <div className="subaction-container flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
+            <ToggleComponent
+              text="Auto process save"
+              className=""
+              iconClass=""
+            />
+            <ToggleComponent
+              text="Generate jupyter notebook"
+              className=""
+              iconClass="subcat-icon"
+            />
+
+            <ToggleComponent
+              text="Auto open Blender"
+              className=""
+              iconClass=""
+            />
+          </div>
+          <div className="subaction-container record-container br-1 p-1 gap-1 bg-middark">
+                           <ToggleComponent
+              text="Auto process save"
+              className=""
+              iconClass=""
+            />
+            <ToggleComponent
+              text="Generate jupyter notebook"
+              className=""
+              iconClass="subcat-icon"
+            />
+
+            <ToggleComponent
+              text="Auto open Blender"
+              className=""
+              iconClass=""
+            />
+          
+          </div>
           <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-middark" />
         </div>
       </div>

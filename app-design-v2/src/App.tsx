@@ -8,6 +8,7 @@ import {
   ButtonSm,
   SegmentedControl,
   ToggleComponent,
+  DropdownButton,
 } from "./components/uicomponents";
 
 function App() {
@@ -60,15 +61,39 @@ function App() {
             }}
           />
 
-          <ButtonSm
-            iconClass=""
-            text="Help"
-            rightSideIcon="dropdown"
-            textColor="text-gray"
-            onClick={() => {
-              // Developers: Replace this with navigation or tutorial logic
-              console.log("help button clicked");
+          <DropdownButton
+            buttonProps={{
+              text: "Help",
+              rightSideIcon: "dropdown",
+              textColor: "text-gray",
+              iconClass: "",
+              onClick: () => console.log("help dropdown button clicked"),
             }}
+dropdownItems={[
+  <ButtonSm
+    key="FreeMocap Guide"
+    rightSideIcon="externallink"
+    buttonType="full-width"
+    text="FreeMocap Guide"
+    iconClass="learn-icon"
+    onClick={() => console.log("FreeMocap Guide clicked")}
+  />,
+  <ButtonSm
+    key="Ask Question on Discord"
+    rightSideIcon="externallink"
+    buttonType="full-width"
+    text="Ask Question on Discord"
+    iconClass="discord-icon"
+    onClick={() => console.log("Ask Question on Discord clicked")}
+  />,
+  <ButtonSm
+    key="tutorials"
+    buttonType="full-width"
+    text="Download Sample Videos"
+    iconClass="download-icon"
+    onClick={() => console.log("Download Sample Videos clicked")}
+  />,
+]}
           />
         </div>
       </div>
@@ -107,28 +132,23 @@ function App() {
         <div className="action-container overflow-y bg-darkgray br-2 border-mid-black border-1 .bg-darkgray overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
           <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
             <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
-              <ToggleComponent
-                text="Charuco size"
-                className=""
-                iconClass=""
+              <ToggleComponent text="Charuco size" className="" iconClass="" />
+              <ButtonSm
+                iconClass="calibrate-icon"
+                text="Calibrate"
+                buttonType="full-width secondary justify-center"
+                rightSideIcon=""
+                textColor="text-white"
+                onClick={() => {
+                  // Developers: Replace this with navigation or tutorial logic
+                  console.log("help button clicked");
+                }}
               />
-                                  <ButtonSm
-                        iconClass="calibrate-icon"
-                        text="Calibrate"
-                        buttonType="full-width secondary justify-center"
-                        rightSideIcon=""
-                        textColor="text-white"
-                        onClick={() => {
-                    // Developers: Replace this with navigation or tutorial logic
-                    console.log("help button clicked");
-            }}
-          />
-          <ToggleComponent
+              <ToggleComponent
                 text="Skip calibration"
                 className=""
                 iconClass=""
               />
-              
             </div>
             <div className="flex flex-col record-container br-1 p-1 gap-1 bg-middark">
               <ToggleComponent
@@ -147,17 +167,17 @@ function App() {
                 iconClass=""
                 defaultToggelState={true}
               />
-                    <ButtonSm
-                        iconClass="record-icon"
-                        text="Record"
-                        buttonType="full-width primary justify-center"
-                        rightSideIcon=""
-                        textColor="text-white"
-                        onClick={() => {
-                    // Developers: Replace this with navigation or tutorial logic
-                    console.log("help button clicked");
-            }}
-          />
+              <ButtonSm
+                iconClass="record-icon"
+                text="Record"
+                buttonType="full-width primary justify-center"
+                rightSideIcon=""
+                textColor="text-white"
+                onClick={() => {
+                  // Developers: Replace this with navigation or tutorial logic
+                  console.log("help button clicked");
+                }}
+              />
             </div>
           </div>
           <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-darkgray">
@@ -179,15 +199,12 @@ function App() {
               iconClass="subcat-icon"
             />
 
-
-                 <ToggleComponent
+            <ToggleComponent
               text="Yolo crop mode"
               className=""
               iconClass=""
               defaultToggelState={true}
             />
-
-           
           </div>
         </div>
       </div>

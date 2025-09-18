@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import clsx from "clsx";
-
 
 // /**
 //  * ToggleComponent
@@ -23,7 +22,7 @@ import clsx from "clsx";
 //  * function App() {
 //  *   return (
 //  *     <div className="flex flex-col gap-4">
-//  *       
+//  *
 //  *       {/* Default toggle */}
 //  *       <ToggleComponent text="Default Toggle" />
 //  *
@@ -86,7 +85,9 @@ const ToggleComponent: React.FC<ToggleProps> = ({
     >
       {/* Text + optional icon */}
       <div className="text-container flex items-center gap-1">
-        {iconClass && <span className={`icon icon-size-16 ${iconClass}`}></span>}
+        {iconClass && (
+          <span className={`icon icon-size-16 ${iconClass}`}></span>
+        )}
         <p className="text text-left">{text}</p>
       </div>
 
@@ -97,13 +98,6 @@ const ToggleComponent: React.FC<ToggleProps> = ({
     </div>
   );
 };
-
-
-
-
-
-
-
 
 interface SegmentedControlProps {
   /**
@@ -206,7 +200,9 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
   const textSizeClass = size === "sm" ? "sm" : "md";
 
   return (
-    <div className={`segmented-control-container br-1-1 gap-1 p-1 bg-middark flex ${className}`}>
+    <div
+      className={`segmented-control-container br-1-1 gap-1 p-1 bg-middark flex ${className}`}
+    >
       {options.map((option) => (
         <button
           key={option.value}
@@ -245,7 +241,6 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
 // - onClick (function): the action to run when button is clicked.
 //   If none is provided, it defaults to a no-op function.
 
-
 const ButtonSm = ({
   iconClass = "", // left-side icon
   buttonType = "", // valid types are : use classes like this  // for primaruy use: primary full-width justify-center // for secondary use " secondary full-width justify-center ""
@@ -271,11 +266,6 @@ const ButtonSm = ({
     </button>
   );
 };
-
-
-
-
-
 
 /**
  * Reusable Checkbox Component
@@ -383,6 +373,74 @@ const ButtonCard = ({ text, iconClass, onClick, className = "" }) => {
   );
 };
 
+/* Dropdown button */
 
+interface DropdownButtonProps {
+  buttonProps: {
+    text: string;
+    iconClass?: string;
+    rightSideIcon?: string;
+    textColor?: string;
+    buttonType?: string;
+    onClick?: () => void; // optional, in addition to dropdown toggle
+  };
+  dropdownItems?: ReactNode; // any JSX to render inside dropdown
+}
 
-export { ButtonSm, Checkbox, ButtonCard, SegmentedControl, ToggleComponent };
+export default function DropdownButton({
+  buttonProps,
+  dropdownItems,
+}: DropdownButtonProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleButtonClick = () => {
+    // Toggle dropdown
+    setOpen((prev) => !prev);
+    // Run any additional onClick passed to the main button
+    buttonProps.onClick?.();
+  };
+
+  return (
+    <div className="flex flex-col z-2 align-end" ref={containerRef}>
+      <ButtonSm
+        {...buttonProps}
+        onClick={handleButtonClick} // wraps dropdown toggle + optional extra onClick
+      />
+
+      {open && (
+        <div
+          className="dropdown-container border-1 border-black bg-middark br-2 pos-abs flex flex-col  gap-1 p-1"
+          style={{ top: "33px" }}
+        >
+          {dropdownItems}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export {
+  ButtonSm,
+  Checkbox,
+  ButtonCard,
+  SegmentedControl,
+  ToggleComponent,
+  DropdownButton,
+};

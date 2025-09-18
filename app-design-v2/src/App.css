@@ -163,6 +163,10 @@ q::after {
   background-color: var(--gray-600);
   transition: background-color var(--speed-2);
 }
+.toggle-button:active {
+  background-color: var(--gray-800);
+  transition: background-color var(--speed-1);
+}
 .toggle-button {
     transition: background-color var(--speed-2);
 }
@@ -177,7 +181,7 @@ q::after {
 .icon.toggle-circle { /* idle state */
   width: 8px;
   height: 8px;
-  background-color: var(--gray-100);
+  background-color: var(--gray-400);
   border-radius: 50%;
   position: absolute;
   top: 2px;
@@ -436,7 +440,9 @@ a:after {
 .pos-rel {
   position: relative;
 }
-
+.pos-sticky {
+  position: sticky;
+}
 /* positions */
 .top-0 {
   top: 0;
@@ -639,7 +645,7 @@ a:after {
    BORDER SIZES
    ========================= */
 .border-1 {
-  border-width: 1px;
+  border-width: 1.5px;
   border-style: solid;
 }
 

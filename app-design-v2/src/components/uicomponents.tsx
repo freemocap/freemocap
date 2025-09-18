@@ -58,26 +58,28 @@ import React, { useState, useEffect } from "react";
 
 interface ToggleProps {
   text: string;
-  iconOn?: React.ReactNode;       // icon for "on" state
-  iconOff?: React.ReactNode;      // icon for "off" state
-  className?: string;             // optional class for parent div
-  iconClass?: string;             // optional class for dropdown icon
+  // iconOn?: React.ReactNode;
+  // iconOff?: React.ReactNode;
+  className?: string;
+  iconClass?: string;
+  defaultToggelState?: boolean; // <-- new prop for default state
 }
 
 const ToggleComponent: React.FC<ToggleProps> = ({
   text,
-  iconOn = "✔️",
-  iconOff = "❌",
+  // iconOn = "✔️",
+  // iconOff = "❌",
   className = "",
   iconClass,
+  defaultToggelState = false, // default is off
 }) => {
-  const [isToggled, setIsToggled] = useState(false);
+  const [isToggled, setIsToggled] = useState(defaultToggelState); // <-- use prop here
 
   const handleToggle = () => setIsToggled((prev) => !prev);
 
   return (
     <div
-      className={`button toggle-button p-1 flex justify-content-space-between items-center h-25 ${className}`}
+      className={`button toggle-button p-1 br-1 flex justify-content-space-between items-center h-25 ${className}`}
       onClick={handleToggle}
     >
       {/* Text + optional icon */}
@@ -93,6 +95,7 @@ const ToggleComponent: React.FC<ToggleProps> = ({
     </div>
   );
 };
+
 
 
 

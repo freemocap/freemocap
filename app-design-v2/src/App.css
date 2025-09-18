@@ -39,6 +39,9 @@
   --import-icon: url("./assets/icons/import_icon.svg");
   --externallink-icon: url("./assets/icons/externallink_icon.svg");
   --dropdown-icon: url("./assets/icons/dropdown_icon.svg");
+   --record-icon: url("./assets/icons/record_icon.svg");
+      --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
+
   --learn-icon: url("./assets/icons/learn_icon.svg");
   --discord-icon: url("./assets/icons/discord_icon.svg");
   --connected-icon: url("./assets/icons/connected_icon.svg");
@@ -198,6 +201,24 @@ q::after {
 
 /* BUTTON STYLES AND SHAPES */
 
+/* Primary fullwidth button */
+.primary {
+    background-color: var(--red-500);
+}
+.primary:hover {
+    background-color: var(--red-800);
+}
+
+.full-width {
+    min-width: 100%;
+}
+/* Primary fullwidth button */
+.secondary {
+    background-color: var(--gray-500);
+}
+.secondary:hover {
+    background-color: var(--gray-600);
+}
 
 
 /* card button */
@@ -220,6 +241,7 @@ q::after {
   content: var(--dropdown-icon);
 }
 
+
 .button.sm {
   padding: 4px 6px;
   min-height: 25px;
@@ -231,7 +253,7 @@ q::after {
 
 }
 
-.button.sm:hover {
+.button.sm:not(.primary,.secondary):hover {
   background-color: var(--gray-700);
   transition: background-color var(--speed-1) ease-in-out;
 }
@@ -768,7 +790,12 @@ a:after {
 .donate-icon {
   background-image: var(--donate-icon);
 }
-
+.record-icon {
+  background-image: var(--record-icon);
+}
+.calibrate-icon {
+  background-image: var(--calibrate-icon);
+}
 .learn-icon {
   background-image: var(--learn-icon);
 }

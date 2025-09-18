@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import clsx from "clsx";
+
 
 // /**
 //  * ToggleComponent
@@ -246,6 +248,7 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
 
 const ButtonSm = ({
   iconClass = "", // left-side icon
+  buttonType = "", // can now accept multiple classes like "full-width primary"
   text,
   onClick = () => {},
   rightSideIcon = "", // "externallink" | "dropdown" | ""
@@ -253,14 +256,18 @@ const ButtonSm = ({
 }) => {
   return (
     <button
-      className={`gap-1 br-1 button sm flex-inline text-left items-center ${rightSideIcon}`}
       onClick={onClick}
+      className={clsx(
+        "gap-1 br-1 button sm flex-inline text-left items-center", // base styles
+        buttonType, // multiple classes supported here
+        rightSideIcon // this is being treated as classes, same as before
+      )}
     >
       {/* LEFT ICON */}
-      {iconClass && <span className={`icon ${iconClass} icon-size-16`} />}
+      {iconClass && <span className={clsx("icon icon-size-16", iconClass)} />}
 
       {/* TEXT */}
-      <p className={`${textColor} text md text-align-left`}>{text}</p>
+      <p className={clsx(textColor, "text md text-align-left")}>{text}</p>
     </button>
   );
 };

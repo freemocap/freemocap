@@ -16,7 +16,7 @@ function App() {
     console.log("User selected mode:", selected);
     // Add your logic for the first segmented control here
   };
-  
+
   const [infoMode, setInfoMode] = useState("Logs"); // <-- added state
   // Handler for the second segmented control .. info container mode
   const handleInfoMode = (selected) => {
@@ -33,41 +33,39 @@ function App() {
       {/* top-header */}
       <div className="flex flex-row justify-content-space-between top-header br-2 h-25">
         <div className="flex left-section">
-        <ButtonSm
-          iconClass="loader-icon" // Connected-icon || loader-icon || warning-icon
-          text="Connecting..."
-          rightSideIcon="dropdown" // dropdown || externallink || ""
-          textColor="text-gray" // text-white || text-gray
-          onClick={() => {
-                  // Developers: Replace this with navigation to community page
-                  console.log("Connect clicked");
-                }}
-        />
+          <ButtonSm
+            iconClass="loader-icon" // Connected-icon || loader-icon || warning-icon
+            text="Connecting..."
+            rightSideIcon="dropdown" // dropdown || externallink || ""
+            textColor="text-gray" // text-white || text-gray
+            onClick={() => {
+              // Developers: Replace this with navigation to community page
+              console.log("Connect clicked");
+            }}
+          />
         </div>
         <div className="flex right-section gap-2">
+          <ButtonSm
+            iconClass="donate-icon"
+            text="Support the freemocap"
+            rightSideIcon="externallink"
+            textColor="text-gray"
+            onClick={() => {
+              // Developers: Replace this with navigation or tutorial logic
+              console.log("Support freemocap clicked");
+            }}
+          />
 
-                <ButtonSm
-                                iconClass="donate-icon"
-                                text="Support the freemocap"
-                                rightSideIcon="externallink"
-                                textColor="text-gray"
-                                onClick={() => {
-                                  // Developers: Replace this with navigation or tutorial logic
-                                  console.log("Support freemocap clicked");
-                                }}
-                              />  
-
-                              <ButtonSm
-                                              iconClass=""
-                                              text="Help"
-                                              rightSideIcon="dropdown"
-                                              textColor="text-gray"
-                                              onClick={() => {
-                                                // Developers: Replace this with navigation or tutorial logic
-                                                console.log("help button clicked");
-                                              }}
-                                            />
-
+          <ButtonSm
+            iconClass=""
+            text="Help"
+            rightSideIcon="dropdown"
+            textColor="text-gray"
+            onClick={() => {
+              // Developers: Replace this with navigation or tutorial logic
+              console.log("help button clicked");
+            }}
+          />
         </div>
       </div>
 

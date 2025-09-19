@@ -79,6 +79,9 @@ body,
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--gray-100);
+    -webkit-text-size-adjust: 100%; /* iOS Safari */
+  -ms-text-size-adjust: 100%;     /* old IE */
+  text-size-adjust: 100%;         /* Modern browsers */
 }
 
 * {

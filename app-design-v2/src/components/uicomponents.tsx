@@ -88,7 +88,7 @@ const ToggleComponent: React.FC<ToggleProps> = ({
         {iconClass && (
           <span className={`icon icon-size-16 ${iconClass}`}></span>
         )}
-        <p className="text text-left">{text}</p>
+        <p className="text text-left md">{text}</p>
       </div>
 
       {/* Toggle switch */}

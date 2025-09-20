@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import React from "react";
@@ -15,8 +15,12 @@ function App() {
   // state for show and hide record if skip calibration is turned off or on
   const [skipCalibration, setSkipCalibration] = useState(true); // default true
 
-  // state for show and hide multiprocessing toggle
   const [isMultiprocessing, setIsMultiprocessing] = useState(true);
+  const [maxCoreCount, setMaxCoreCount] = useState(false); // local state
+
+useEffect(() => {
+  if (!isMultiprocessing) setMaxCoreCount(false);
+}, [isMultiprocessing]);
 
   const [showSplash, setShowSplash] = useState(true); // modal state
 
@@ -161,13 +165,11 @@ function App() {
             </div>
             {/* Show record-container only if skipCalibration is true */}
             {/* {skipCalibration && ( */}
-            <div
-              className="flex flex-col record-container br-1 p-1 gap-1 bg-middark"
-              style={{
-                opacity: skipCalibration ? 1 : 0.3, // fade effect
-                pointerEvents: skipCalibration ? "auto" : "none", // disable interactions when faded
-              }}
-            >
+                <div
+                className={`flex flex-col record-container br-1 p-1 gap-1 bg-middark reveal ${
+                  skipCalibration ? "" : "disabled"
+                }`}
+              >
               <ToggleComponent
                 text="Auto process save"
                 className=""
@@ -204,23 +206,22 @@ function App() {
               className=""
               iconClass=""
             />
+{/* Parent toggle */}
+<ToggleComponent
+  text="Multiprocessing"
+  defaultToggelState={true}
+  isToggled={isMultiprocessing}
+  onToggle={setIsMultiprocessing}
+/>
 
-            <ToggleComponent
-              text="Multiprocessing"
-              defaultToggelState={true}
-              isToggled={isMultiprocessing}
-              onToggle={setIsMultiprocessing}
-            />
-
-            {/* {isMultiprocessing && ( */}
-              <ToggleComponent
-                  text="Max core count"
-                  iconClass="subcat-icon"
-                      style={{
-                      opacity: isMultiprocessing ? 1 : 0.3,
-                      pointerEvents: isMultiprocessing ? "auto" : "none",
-                      // transition: "opacity 0.3s",
-                    }}
+{/* Dependent toggle */}
+<ToggleComponent
+  text="Max core count"
+  iconClass="subcat-icon"
+  isToggled={maxCoreCount}
+  onToggle={setMaxCoreCount}
+  disabled={!isMultiprocessing} // disables interaction when parent off
+  className={!isMultiprocessing ? "disabled" : ""}
 />
 
             <ToggleComponent

@@ -961,7 +961,11 @@ body,
 }
 
 
-
+.disabled {
+  opacity: 0.3;
+  pointer-events: none; /* prevents clicking */
+  transition: opacity var(--speed-2) ease-in-out;
+}
 
 .splash-screen-logo {
   opacity: 0.5;
@@ -1161,6 +1165,8 @@ input[type="checkbox"]:disabled {
   animation-duration: var(--speed-2);
   animation-iteration-count: 1;
   animation-fill-mode: forwards;
+  transition-property: opacity;
+  transition-duration: var(--speed-2);
   
 }
 .anim-delay-1 {

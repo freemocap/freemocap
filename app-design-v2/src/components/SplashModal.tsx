@@ -50,7 +50,7 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
           {/* right column */}
           <div className="splash-right-col flex-1 flex flex-col gap-2 p-1 justify-content-space-between">
             {/* row 1 */}
-            <div className="actions-top flex felx-1 flex-col p-1 gap-3">
+            <div className="actions-top flex felx-1 flex-col p-2 gap-3">
               <h1 className="title">
                 <span className="text-white">Free Motion Capture</span>
                 <br />

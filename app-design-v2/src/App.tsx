@@ -11,9 +11,12 @@ import {
   DropdownButton,
   ToggleButtonComponent,
   ConnectionDropdown,
+  StandaloneToggleExample,
 } from "./components/uicomponents";
 
 function App() {
+
+  const [streamState, setStreamState] = useState("disconnected"); // <-- FIX
   // /* stream connnection logic */
   // const handleConnect = () => {
   //   // 🔌 TODO: Replace with your real "connect" logic
@@ -141,32 +144,36 @@ function App() {
             />
             <div className="active-tools-header br-1-1 gap-1 p-1 flex ">
               <ToggleButtonComponent
-                connectConfig={{
-                  text: "Stream",
-                  iconClass: "stream-icon",
-                  rightSideIcon: "",
-                  extraClasses: "",
-                }}
-                connectingConfig={{
-                  text: "Checking...",
-                  iconClass: "loader-icon",
-                  rightSideIcon: "",
-                  extraClasses: "loading disabled",
-                }}
-                connectedConfig={{
-                  text: "Streaming",
-                  iconClass: "streaming-icon",
-                  rightSideIcon: "",
-                  extraClasses: "activated",
-                }}
-                textColor="text-white"
-                onConnect={() => 
-                  console.log("streaming...") // Developers: Replace this with
-                }
-                onDisconnect={() => 
-                  console.log("Stopped streaming!") // Developers: Replace this with
-                }
-              />
+  state={streamState}  // <-- controlled state
+  connectConfig={{
+    text: "Stream",
+    iconClass: "stream-icon",
+    rightSideIcon: "",
+    extraClasses: "",
+  }}
+  connectingConfig={{
+    text: "Checking...",
+    iconClass: "loader-icon",
+    rightSideIcon: "",
+    extraClasses: "loading disabled",
+  }}
+  connectedConfig={{
+    text: "Streaming",
+    iconClass: "streaming-icon",
+    rightSideIcon: "",
+    extraClasses: "activated",
+  }}
+  textColor="text-white"
+  onConnect={() => {
+    console.log("Checking before streaming…");
+    setStreamState("connecting");
+    setTimeout(() => setStreamState("connected"), 2000);
+  }}
+  onDisconnect={() => {
+    console.log("Stopped streaming!");
+    setStreamState("disconnected");
+  }}
+/>
             </div>
           </div>
 

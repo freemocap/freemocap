@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import React from "react";
@@ -12,6 +12,16 @@ import {
 } from "./components/uicomponents";
 
 function App() {
+  // state for show and hide record if skip calibration is turned off or on
+  const [skipCalibration, setSkipCalibration] = useState(true); // default true
+
+  const [isMultiprocessing, setIsMultiprocessing] = useState(true);
+  const [maxCoreCount, setMaxCoreCount] = useState(false); // local state
+
+useEffect(() => {
+  if (!isMultiprocessing) setMaxCoreCount(false);
+}, [isMultiprocessing]);
+
   const [showSplash, setShowSplash] = useState(true); // modal state
 
   const [mode, setMode] = useState("Capture Live");
@@ -69,31 +79,31 @@ function App() {
               iconClass: "",
               onClick: () => console.log("help dropdown button clicked"),
             }}
-dropdownItems={[
-  <ButtonSm
-    key="FreeMocap Guide"
-    rightSideIcon="externallink"
-    buttonType="full-width"
-    text="FreeMocap Guide"
-    iconClass="learn-icon"
-    onClick={() => console.log("FreeMocap Guide clicked")}
-  />,
-  <ButtonSm
-    key="Ask Question on Discord"
-    rightSideIcon="externallink"
-    buttonType="full-width"
-    text="Ask Question on Discord"
-    iconClass="discord-icon"
-    onClick={() => console.log("Ask Question on Discord clicked")}
-  />,
-  <ButtonSm
-    key="tutorials"
-    buttonType="full-width"
-    text="Download Sample Videos"
-    iconClass="download-icon"
-    onClick={() => console.log("Download Sample Videos clicked")}
-  />,
-]}
+            dropdownItems={[
+              <ButtonSm
+                key="FreeMocap Guide"
+                rightSideIcon="externallink"
+                buttonType="full-width"
+                text="FreeMocap Guide"
+                iconClass="learn-icon"
+                onClick={() => console.log("FreeMocap Guide clicked")}
+              />,
+              <ButtonSm
+                key="Ask Question on Discord"
+                rightSideIcon="externallink"
+                buttonType="full-width"
+                text="Ask Question on Discord"
+                iconClass="discord-icon"
+                onClick={() => console.log("Ask Question on Discord clicked")}
+              />,
+              <ButtonSm
+                key="tutorials"
+                buttonType="full-width"
+                text="Download Sample Videos"
+                iconClass="download-icon"
+                onClick={() => console.log("Download Sample Videos clicked")}
+              />,
+            ]}
           />
         </div>
       </div>
@@ -101,7 +111,7 @@ dropdownItems={[
       {/* main-container */}
       <div className="main-container gap-1 overflow-hidden flex flex-row flex-1">
         {/* mode-container */}
-        <div className="mode-container br-2 bg-darkgray border-mid-black border-1 .bg-darkgray overflow-hidden flex flex-col flex-1 gap-1 p-1">
+        <div className="mode-container flex-5 br-2 bg-darkgray border-mid-black border-1 .bg-darkgray overflow-hidden flex flex-col flex-1 gap-1 p-1">
           {/* header-tool-bar */}
           <div className="header-tool-bar br-2">
             <SegmentedControl
@@ -129,7 +139,7 @@ dropdownItems={[
         </div>
 
         {/* action container */}
-        <div className="action-container overflow-y bg-darkgray br-2 border-mid-black border-1 .bg-darkgray overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
+        <div className="action-container flex-1 overflow-y bg-darkgray br-2 border-mid-black border-1 .bg-darkgray overflow-y min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
           <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
             <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
               <ToggleComponent text="Charuco size" className="" iconClass="" />
@@ -148,9 +158,18 @@ dropdownItems={[
                 text="Skip calibration"
                 className=""
                 iconClass=""
+                defaultToggelState={true}
+                isToggled={skipCalibration}
+                onToggle={setSkipCalibration}
               />
             </div>
-            <div className="flex flex-col record-container br-1 p-1 gap-1 bg-middark">
+            {/* Show record-container only if skipCalibration is true */}
+            {/* {skipCalibration && ( */}
+                <div
+                className={`flex flex-col record-container br-1 p-1 gap-1 bg-middark reveal ${
+                  skipCalibration ? "" : "disabled"
+                }`}
+              >
               <ToggleComponent
                 text="Auto process save"
                 className=""
@@ -177,8 +196,16 @@ dropdownItems={[
                   // Developers: Replace this with navigation or tutorial logic
                   console.log("help button clicked");
                 }}
-              />
+                />
+                <div className="p-1 g-1">
+
+                  <p className="text bg-md text-left">
+                    Camera views may lag at higher settings. Try lowering the resolution/reducing the number of cameras. fix is coming soon.
+                  </p>
+                </div>
+              
             </div>
+            {/* // )} */}
           </div>
           <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-darkgray">
             <ToggleComponent
@@ -186,18 +213,23 @@ dropdownItems={[
               className=""
               iconClass=""
             />
-            <ToggleComponent
-              text="Multiprocessing"
-              className=""
-              iconClass=""
-              defaultToggelState={true}
-            />
+{/* Parent toggle */}
+<ToggleComponent
+  text="Multiprocessing"
+  defaultToggelState={true}
+  isToggled={isMultiprocessing}
+  onToggle={setIsMultiprocessing}
+/>
 
-            <ToggleComponent
-              text="Max core count"
-              className=""
-              iconClass="subcat-icon"
-            />
+{/* Dependent toggle */}
+<ToggleComponent
+  text="Max core count"
+  iconClass="subcat-icon"
+  isToggled={maxCoreCount}
+  onToggle={setMaxCoreCount}
+  disabled={!isMultiprocessing} // disables interaction when parent off
+  className={!isMultiprocessing ? "disabled" : ""}
+/>
 
             <ToggleComponent
               text="Yolo crop mode"

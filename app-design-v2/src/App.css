@@ -1,7 +1,7 @@
 /* =========================
    RESET + GLOBAL
    ========================= */
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,600;1,14..32,500,600,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 
 :root {
   /* Gray Shades */
@@ -157,7 +157,7 @@ q::after {
 
 /* TOGGLE STYLES AND SHAPES */
 .icon.toggle-container {
-  width: 24px;
+  min-width: 24px;
   height: 16px;
   border-radius: 9999px;
   padding: 2px;
@@ -202,6 +202,13 @@ q::after {
   background-color: var(--blue-800);
 }
 
+.text-nowrap {
+  text-wrap: nowrap;
+    text-overflow: ellipsis;
+   
+    overflow: hidden;
+
+}
 
 /* BUTTON STYLES AND SHAPES */
 
@@ -303,22 +310,27 @@ h1 {
   /* letter-spacing: -0.43px; */
 }
 
-.text.sm {
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 14px;
-  /* letter-spacing: -0.43px; */
-}
-
 .text.bg {
   font-size: 12px;
   font-weight: 500;
   line-height: 17px;
   letter-spacing: -0.43px;
 }
+.text.bg-md {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
+  letter-spacing: -0.43px;
+}
 
 .text.md {
   font-size: 12px;
+  font-weight: 500;
+  line-height: 14px;
+  /* letter-spacing: -0.43px; */
+}
+.text.sm {
+  font-size: 11px;
   font-weight: 500;
   line-height: 14px;
   /* letter-spacing: -0.43px; */
@@ -538,6 +550,17 @@ a:after {
   flex: 3;
 }
 
+.flex-4 {
+  flex: 4;
+}
+
+.flex-5 {
+  flex: 5;
+}
+
+.flex-6 {
+  flex: 6;
+}
 /* fractional helper used in layout */
 .flex-15 {
   flex: 1.5;
@@ -638,8 +661,8 @@ a:after {
   min-width: 200px;
 }
 
-.max-w-300 {
-  max-width: 300px;
+.max-w-350 {
+  max-width: 350px;
 }
 
 /* =========================
@@ -931,17 +954,23 @@ body,
   align-items: center;
   justify-content: center;
   z-index: 50;
-  animation: fadeIn 0.3s ease forwards;
+  /* animation: fadeIn 0.3s ease forwards; */
+  animation: fadeIn;
 }
 
 .splash-modal {
   width: 481px;
   height: 320px;
-  animation: scaleIn 0.3s ease forwards;
+  /* animation: scaleIn 0.3s ease forwards; */
+  animation: fadeIn, scaleIn;
 }
 
 
-
+.disabled {
+  opacity: 0.3;
+  pointer-events: none; /* prevents clicking */
+  transition: opacity var(--speed-2) ease-in-out;
+}
 
 .splash-screen-logo {
   opacity: 0.5;
@@ -1079,9 +1108,108 @@ input[type="checkbox"]:disabled {
   100% { transform: rotate(1080deg); }
 }
 
-/* fade in */
+/* ui components animation setup  */
 
+/* =========================
+   Keyframes
+========================= */
+
+/* Slide Up */
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide Down */
+@keyframes slide-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fadein */
 @keyframes fadeIn {
+  0% {
+    opacity: 0;
+    /* transform: scale(0.75); */
+  }
+  100% {
+    opacity: 1;
+    /* transform: scale(1); */
+  }
+}
+/* scaleIn */
+@keyframes scaleIn {
+  0% {
+    /* opacity: 0; */
+    transform: scale(0.75);
+  }
+  100% {
+    /* opacity: 1; */
+    transform: scale(1);
+  }
+}
+
+
+/* =========================
+   Base Animation Class
+========================= */
+
+.reveal {
+  animation-duration: var(--speed-2);
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  transition-property: opacity;
+  transition-duration: var(--speed-2);
+  
+}
+.anim-delay-1 {
+animation-delay: 100ms;
+}
+.anim-delay-2 {
+animation-delay: 200ms;
+}
+
+/* Specific animations */
+.slide-up {
+  animation-name: slide-up;
+}
+
+.slide-down {
+  animation-name: slide-down;
+}
+
+.fadeIn { /* include scale as well */
+  animation-name: fadeIn;
+}
+.scaleIn { /* include scale as well */
+  animation-name: scaleIn;
+}
+
+/* =========================
+   Reduced Motion Support
+========================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    animation: none; /* skip animation, show element instantly */
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* @keyframes fadeIn {
   from {
     opacity: 0;
   }
@@ -1101,7 +1229,7 @@ input[type="checkbox"]:disabled {
     transform: scale(1);
     opacity: 1;
   }
-}
+} */
 
 
 

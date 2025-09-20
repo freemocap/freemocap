@@ -25,12 +25,12 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
 
   return (
     <div
-      className="splash-overlay inset-0"
+      className="splash-overlay inset-0 reveal fade"
       onClick={onClose} // clicking overlay closes modal
     >
       {/* modal container */}
       <div
-        className="splash-modal main-container br-2 flex flex-col p-1 bg-dark border-1 border-black"
+        className="splash-modal fade reveal main-container br-2 flex flex-col p-1 bg-dark border-1 border-black"
         onClick={(e) => e.stopPropagation()} // prevent overlay click from closing when clicking inside
       >
         <div className="visualize-container overflow-hidden flex-1 bg-middark splash-modal-inner-container br-1 gap-3 flex flex-row p-2">
@@ -50,7 +50,7 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
           {/* right column */}
           <div className="splash-right-col flex-1 flex flex-col gap-2 p-1 justify-content-space-between">
             {/* row 1 */}
-            <div className="actions-top flex felx-1 flex-col p-1 gap-3">
+            <div className="actions-top flex felx-1 flex-col p-2 gap-3">
               <h1 className="title">
                 <span className="text-white">Free Motion Capture</span>
                 <br />

@@ -426,7 +426,7 @@ export default function DropdownButton({
 
       {open && (
         <div
-          className="dropdown-container border-1 border-black bg-middark br-2 pos-abs flex flex-col  gap-1 p-1"
+          className="reveal slide-down dropdown-container border-1 border-black bg-middark br-2 pos-abs flex flex-col  gap-1 p-1"
           style={{ top: "33px" }}
         >
           {dropdownItems}

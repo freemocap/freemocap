@@ -10,6 +10,7 @@ import {
   ToggleComponent,
   DropdownButton,
   ToggleButtonComponent,
+  ConnectionDropdown,
 } from "./components/uicomponents";
 
 function App() {
@@ -70,94 +71,7 @@ function App() {
               console.log("Connect clicked");
             }}
           /> */}
-          <DropdownButton
-            buttonProps={{
-              text: "Not connected",
-              rightSideIcon: "dropdown",
-              textColor: "text-gray",
-              iconClass: "warning-icon",
-              
-              onClick: () => console.log("help dropdown button clicked"),
-            }}
-            dropdownItems={[
-              <div className="conection-container flex flex-col p-1 gap-1 br-2 bg-darkgray border-1 border-mid-black  ">
-                   <div className="connection-actions bg-middark flex flex-col p-1 gap-1 br-1">
-                      <div className="gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
-                          <div class="text-container overflow-hidden flex items-center gap-1">
-                            <span className="icon icon-size-16 warning-icon"></span>
-                            <p className="text text-nowrap text-left bg">Python server</p>
-                          </div>
-                                      <ToggleButtonComponent
-                                  connectConfig={{
-                                    text: "Connect",
-                                    iconClass: "",
-                                    rightSideIcon: "",
-                                    extraClasses: "",
-                                  }}
-                                  connectingConfig={{
-                                    text: "Connecting...",
-                                    iconClass: "loader-icon",
-                                    rightSideIcon: "",
-                                    extraClasses: "loading disabled",
-                                  }}
-                                  connectedConfig={{
-                                    text: "Connected",
-                                    iconClass: "connected-icon",
-                                    rightSideIcon: "",
-                                    extraClasses: "activated",
-                                  }}
-                                  textColor="text-white"
-                                  onConnect={() => 
-                                    console.log("Connected to python") // Developers: Replace this with
-                                  }
-                                  onDisconnect={() => 
-                                    console.log("stop the python connection!") // Developers: Replace this with
-                                   }
-                                    />
-                      </div>
-                             <div className="gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
-                          <div class="text-container overflow-hidden flex items-center gap-1">
-                            <span className="icon icon-size-16 warning-icon"></span>
-                            <p className="text text-nowrap text-left bg">Websocket</p>
-                          </div>
-                          <ToggleButtonComponent
-                                  connectConfig={{
-                                    text: "Connect",
-                                    iconClass: "",
-                                    rightSideIcon: "",
-                                    extraClasses: "",
-                                  }}
-                                  connectingConfig={{
-                                    text: "Connecting...",
-                                    iconClass: "loader-icon",
-                                    rightSideIcon: "",
-                                    extraClasses: "loading disabled",
-                                  }}
-                                  connectedConfig={{
-                                    text: "Connected",
-                                    iconClass: "connected-icon",
-                                    rightSideIcon: "",
-                                    extraClasses: "activated",
-                                  }}
-                                  textColor="text-white"
-                                  onConnect={() => 
-                                    console.log("Connected to python") // Developers: Replace this with
-                                  }
-                                  onDisconnect={() => 
-                                    console.log("stop the python connection!") // Developers: Replace this with
-                                   }
-                                    />
-                            </div>
-                    </div>
-               <div className="flex flex-row p-1 gap-1">
-                    <p className="text-left text">
-                      Having trouble connecting?  Learn how to connect...
-                   </p>
-              </div>
-
-              </div>
-            ]}
-          />
+          <ConnectionDropdown />
         </div>
         <div className="flex right-section gap-2">
           <ButtonSm

@@ -1044,7 +1044,9 @@ body,
   /* animation: scaleIn 0.3s ease forwards; */
   animation: fadeIn, scaleIn;
 }
-
+.conection-container {
+  width: 255px;
+}
 .disabled > * {
   opacity: 0.3;
 

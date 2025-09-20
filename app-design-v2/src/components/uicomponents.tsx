@@ -380,6 +380,8 @@ const ButtonCard = ({ text, iconClass, onClick, className = "" }) => {
 
 /* Dropdown button */
 
+
+
 interface DropdownButtonProps {
   buttonProps: {
     text: string;
@@ -390,11 +392,13 @@ interface DropdownButtonProps {
     onClick?: () => void; // optional, in addition to dropdown toggle
   };
   dropdownItems?: ReactNode; // any JSX to render inside dropdown
+  containerClassName?: string; // NEW: optional classes for the container div
 }
 
 export default function DropdownButton({
   buttonProps,
   dropdownItems,
+  containerClassName, // NEW: allow external classes
 }: DropdownButtonProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -423,7 +427,11 @@ export default function DropdownButton({
   };
 
   return (
-    <div className="flex flex-col z-2 align-end" ref={containerRef}>
+    <div
+      ref={containerRef}
+      // Default classes + any custom ones provided
+      className={clsx("flex flex-col z-2", containerClassName)}
+    >
       <ButtonSm
         {...buttonProps}
         onClick={handleButtonClick} // wraps dropdown toggle + optional extra onClick
@@ -431,7 +439,7 @@ export default function DropdownButton({
 
       {open && (
         <div
-          className="reveal slide-down dropdown-container border-1 border-black bg-middark br-2 pos-abs flex flex-col  gap-1 p-1"
+          className="reveal slide-down dropdown-container border-1 border-black bg-middark br-2 pos-abs flex flex-col gap-1 p-1"
           style={{ top: "33px" }}
         >
           {dropdownItems}
@@ -440,6 +448,48 @@ export default function DropdownButton({
     </div>
   );
 }
+
+/* --------------------------------------------------------------------------
+USAGE EXAMPLES
+
+1. Basic usage (same as before, default container styling):
+
+<DropdownButton
+  buttonProps={{ text: "Menu" }}
+  dropdownItems={<div>Item 1</div>}
+/>
+
+2. Add custom styles to the container:
+
+<DropdownButton
+  buttonProps={{ text: "Menu" }}
+  dropdownItems={<div>Item 1</div>}
+  containerClassName="items-end bg-gray-800"
+/>
+
+➡ This will merge the default classes (flex flex-col z-2 align-end) with your
+   provided classes (items-end bg-gray-800).
+
+3. Advanced example with extra button props:
+
+<DropdownButton
+  buttonProps={{
+    text: "Settings",
+    iconClass: "icon-gear",
+    textColor: "text-white",
+    buttonType: "primary",
+    onClick: () => console.log("Main button clicked"),
+  }}
+  dropdownItems={
+    <>
+      <div>Profile</div>
+      <div>Logout</div>
+    </>
+  }
+  containerClassName="w-48 border rounded shadow-lg"
+/>
+
+-------------------------------------------------------------------------- */
 
 
 // Toggle button states

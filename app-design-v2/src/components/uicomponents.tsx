@@ -59,31 +59,39 @@ import clsx from "clsx";
 
 interface ToggleProps {
   text: string;
-  // iconOn?: React.ReactNode;
-  // iconOff?: React.ReactNode;
   className?: string;
   iconClass?: string;
-  defaultToggelState?: boolean; // <-- new prop for default state
+  defaultToggelState?: boolean;
+  isToggled?: boolean; // controlled state
+  onToggle?: (state: boolean) => void; // callback to parent
 }
 
 const ToggleComponent: React.FC<ToggleProps> = ({
   text,
-  // iconOn = "✔️",
-  // iconOff = "❌",
   className = "",
   iconClass,
-  defaultToggelState = false, // default is off
+  defaultToggelState = false,
+  isToggled,
+  onToggle,
 }) => {
-  const [isToggled, setIsToggled] = useState(defaultToggelState); // <-- use prop here
+  const [internalToggle, setInternalToggle] = useState(defaultToggelState);
 
-  const handleToggle = () => setIsToggled((prev) => !prev);
+  // Use controlled if available, else internal
+  const toggled = isToggled !== undefined ? isToggled : internalToggle;
+
+  const handleToggle = () => {
+    const newState = !toggled;
+    if (isToggled === undefined) {
+      setInternalToggle(newState);
+    }
+    onToggle?.(newState);
+  };
 
   return (
     <div
       className={`button toggle-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 ${className}`}
       onClick={handleToggle}
     >
-      {/* Text + optional icon */}
       <div className="text-container overflow-hidden flex items-center gap-1">
         {iconClass && (
           <span className={`icon icon-size-16 ${iconClass}`}></span>
@@ -91,8 +99,7 @@ const ToggleComponent: React.FC<ToggleProps> = ({
         <p className="text text-nowrap text-left md">{text}</p>
       </div>
 
-      {/* Toggle switch */}
-      <div className={`icon toggle-container ${isToggled ? "on" : "off"}`}>
+      <div className={`icon toggle-container ${toggled ? "on" : "off"}`}>
         <div className="icon toggle-circle"></div>
       </div>
     </div>

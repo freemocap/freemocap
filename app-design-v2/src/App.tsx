@@ -12,6 +12,10 @@ import {
 } from "./components/uicomponents";
 
 function App() {
+
+ // 👇 add this state here
+  const [isMultiprocessing, setIsMultiprocessing] = useState(true);
+
   const [showSplash, setShowSplash] = useState(true); // modal state
 
   const [mode, setMode] = useState("Capture Live");
@@ -186,18 +190,20 @@ dropdownItems={[
               className=""
               iconClass=""
             />
-            <ToggleComponent
-              text="Multiprocessing"
-              className=""
-              iconClass=""
-              defaultToggelState={true}
-            />
 
-            <ToggleComponent
-              text="Max core count"
-              className=""
-              iconClass="subcat-icon"
-            />
+             <ToggleComponent
+          text="Multiprocessing"
+          defaultToggelState={true}
+          isToggled={isMultiprocessing}
+          onToggle={setIsMultiprocessing}
+        />
+
+        {isMultiprocessing && (
+          <ToggleComponent
+            text="Max core count"
+            iconClass="subcat-icon"
+          />
+        )}
 
             <ToggleComponent
               text="Yolo crop mode"

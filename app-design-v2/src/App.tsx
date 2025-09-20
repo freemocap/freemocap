@@ -101,7 +101,7 @@ dropdownItems={[
       {/* main-container */}
       <div className="main-container gap-1 overflow-hidden flex flex-row flex-1">
         {/* mode-container */}
-        <div className="mode-container br-2 bg-darkgray border-mid-black border-1 .bg-darkgray overflow-hidden flex flex-col flex-1 gap-1 p-1">
+        <div className="mode-container flex-5 br-2 bg-darkgray border-mid-black border-1 .bg-darkgray overflow-hidden flex flex-col flex-1 gap-1 p-1">
           {/* header-tool-bar */}
           <div className="header-tool-bar br-2">
             <SegmentedControl
@@ -129,7 +129,7 @@ dropdownItems={[
         </div>
 
         {/* action container */}
-        <div className="action-container overflow-y bg-darkgray br-2 border-mid-black border-1 .bg-darkgray overflow-y min-w-200 max-w-300 flex flex-col gap-1 flex-1 p-1">
+        <div className="action-container flex-1 overflow-y bg-darkgray br-2 border-mid-black border-1 .bg-darkgray overflow-y min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
           <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
             <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
               <ToggleComponent text="Charuco size" className="" iconClass="" />

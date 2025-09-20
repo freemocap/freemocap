@@ -80,15 +80,15 @@ const ToggleComponent: React.FC<ToggleProps> = ({
 
   return (
     <div
-      className={`button toggle-button p-1 br-1 flex justify-content-space-between items-center h-25 ${className}`}
+      className={`button toggle-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 ${className}`}
       onClick={handleToggle}
     >
       {/* Text + optional icon */}
-      <div className="text-container flex items-center gap-1">
+      <div className="text-container overflow-hidden flex items-center gap-1">
         {iconClass && (
           <span className={`icon icon-size-16 ${iconClass}`}></span>
         )}
-        <p className="text text-left md">{text}</p>
+        <p className="text text-nowrap text-left md">{text}</p>
       </div>
 
       {/* Toggle switch */}

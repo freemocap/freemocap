@@ -157,7 +157,7 @@ q::after {
 
 /* TOGGLE STYLES AND SHAPES */
 .icon.toggle-container {
-  width: 24px;
+  min-width: 24px;
   height: 16px;
   border-radius: 9999px;
   padding: 2px;
@@ -202,6 +202,13 @@ q::after {
   background-color: var(--blue-800);
 }
 
+.text-nowrap {
+  text-wrap: nowrap;
+    text-overflow: ellipsis;
+   
+    overflow: hidden;
+
+}
 
 /* BUTTON STYLES AND SHAPES */
 
@@ -538,6 +545,17 @@ a:after {
   flex: 3;
 }
 
+.flex-4 {
+  flex: 4;
+}
+
+.flex-5 {
+  flex: 5;
+}
+
+.flex-6 {
+  flex: 6;
+}
 /* fractional helper used in layout */
 .flex-15 {
   flex: 1.5;
@@ -638,8 +656,8 @@ a:after {
   min-width: 200px;
 }
 
-.max-w-300 {
-  max-width: 300px;
+.max-w-350 {
+  max-width: 350px;
 }
 
 /* =========================

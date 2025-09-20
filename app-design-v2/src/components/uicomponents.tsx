@@ -380,6 +380,8 @@ const ButtonCard = ({ text, iconClass, onClick, className = "" }) => {
 
 /* Dropdown button */
 
+
+
 interface DropdownButtonProps {
   buttonProps: {
     text: string;
@@ -390,11 +392,13 @@ interface DropdownButtonProps {
     onClick?: () => void; // optional, in addition to dropdown toggle
   };
   dropdownItems?: ReactNode; // any JSX to render inside dropdown
+  containerClassName?: string; // NEW: optional classes for the container div
 }
 
 export default function DropdownButton({
   buttonProps,
   dropdownItems,
+  containerClassName, // NEW: allow external classes
 }: DropdownButtonProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -423,7 +427,11 @@ export default function DropdownButton({
   };
 
   return (
-    <div className="flex flex-col z-2 align-end" ref={containerRef}>
+    <div
+      ref={containerRef}
+      // Default classes + any custom ones provided
+      className={clsx("flex flex-col z-2", containerClassName)}
+    >
       <ButtonSm
         {...buttonProps}
         onClick={handleButtonClick} // wraps dropdown toggle + optional extra onClick
@@ -431,7 +439,7 @@ export default function DropdownButton({
 
       {open && (
         <div
-          className="reveal slide-down dropdown-container border-1 border-black bg-middark br-2 pos-abs flex flex-col  gap-1 p-1"
+          className="reveal slide-down dropdown-container border-1 border-black bg-middark br-2 pos-abs flex flex-col gap-1 p-1"
           style={{ top: "33px" }}
         >
           {dropdownItems}
@@ -441,6 +449,139 @@ export default function DropdownButton({
   );
 }
 
+/* --------------------------------------------------------------------------
+USAGE EXAMPLES
+
+1. Basic usage (same as before, default container styling):
+
+<DropdownButton
+  buttonProps={{ text: "Menu" }}
+  dropdownItems={<div>Item 1</div>}
+/>
+
+2. Add custom styles to the container:
+
+<DropdownButton
+  buttonProps={{ text: "Menu" }}
+  dropdownItems={<div>Item 1</div>}
+  containerClassName="items-end bg-gray-800"
+/>
+
+➡ This will merge the default classes (flex flex-col z-2 align-end) with your
+   provided classes (items-end bg-gray-800).
+
+3. Advanced example with extra button props:
+
+<DropdownButton
+  buttonProps={{
+    text: "Settings",
+    iconClass: "icon-gear",
+    textColor: "text-white",
+    buttonType: "primary",
+    onClick: () => console.log("Main button clicked"),
+  }}
+  dropdownItems={
+    <>
+      <div>Profile</div>
+      <div>Logout</div>
+    </>
+  }
+  containerClassName="w-48 border rounded shadow-lg"
+/>
+
+-------------------------------------------------------------------------- */
+
+
+// Toggle button states
+// Toggle button states
+const STATES = {
+  CONNECT: "connect",
+  CONNECTING: "connecting",
+  CONNECTED: "connected",
+};
+
+const ToggleButtonComponent = ({
+  // ✅ Configs per state
+  connectConfig = {
+    text: "Connect",
+    iconClass: "icon-plug",
+    rightSideIcon: "",
+    extraClasses: "primary full-width justify-center",
+  },
+  connectingConfig = {
+    text: "Connecting...",
+    iconClass: "icon-loader", // example loader icon
+    rightSideIcon: "",
+    extraClasses: "secondary full-width justify-center",
+  },
+  connectedConfig = {
+    text: "Connected",
+    iconClass: "icon-check",
+    rightSideIcon: "",
+    extraClasses: "success full-width justify-center",
+  },
+
+  textColor = "text-gray",
+
+  // optional external click handler
+  onConnect = () => {}, // TODO: Replace with real connect logic
+  onDisconnect = () => {}, // TODO: Replace with real disconnect logic
+}) => {
+  const [state, setState] = useState(STATES.CONNECT);
+
+  const handleClick = () => {
+    if (state === STATES.CONNECT) {
+      // Start connecting
+      setState(STATES.CONNECTING);
+
+      // Dummy loading simulation for 3 seconds
+      setTimeout(() => {
+        setState(STATES.CONNECTED);
+        onConnect(); // developer wires real connect logic here
+      }, 3000);
+    } else if (state === STATES.CONNECTED) {
+      // Disconnect
+      setState(STATES.CONNECT);
+      onDisconnect(); // developer wires real disconnect logic here
+    }
+  };
+
+  // Map current state to config
+  const getButtonConfig = () => {
+    switch (state) {
+      case STATES.CONNECT:
+        return connectConfig;
+      case STATES.CONNECTING:
+        return connectingConfig;
+      case STATES.CONNECTED:
+        return connectedConfig;
+      default:
+        return {};
+    }
+  };
+
+  const { text, iconClass, rightSideIcon, extraClasses } = getButtonConfig();
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={state === STATES.CONNECTING}
+      className={clsx(
+        "gap-1 br-1 button sm flex-inline text-left items-center", // base styles
+        extraClasses,
+        rightSideIcon
+      )}
+    >
+      {/* LEFT ICON */}
+      {iconClass && <span className={clsx("icon icon-size-16", iconClass)} />}
+
+      {/* TEXT */}
+      <p className={clsx(textColor, "text md text-align-left")}>{text}</p>
+    </button>
+  );
+};
+
+
 export {
   ButtonSm,
   Checkbox,
@@ -448,4 +589,5 @@ export {
   SegmentedControl,
   ToggleComponent,
   DropdownButton,
+  ToggleButtonComponent,
 };

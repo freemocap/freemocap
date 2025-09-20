@@ -9,18 +9,30 @@ import {
   SegmentedControl,
   ToggleComponent,
   DropdownButton,
+  ToggleButtonComponent,
 } from "./components/uicomponents";
 
 function App() {
+  // /* stream connnection logic */
+  // const handleConnect = () => {
+  //   // 🔌 TODO: Replace with your real "connect" logic
+  //   console.log("Connected!");
+  // };
+
+  // const handleDisconnect = () => {
+  //   // 🔌 TODO: Replace with your real "disconnect" logic
+  //   console.log("Disconnected!");
+  // };
+
   // state for show and hide record if skip calibration is turned off or on
   const [skipCalibration, setSkipCalibration] = useState(true); // default true
 
   const [isMultiprocessing, setIsMultiprocessing] = useState(true);
   const [maxCoreCount, setMaxCoreCount] = useState(false); // local state
 
-useEffect(() => {
-  if (!isMultiprocessing) setMaxCoreCount(false);
-}, [isMultiprocessing]);
+  useEffect(() => {
+    if (!isMultiprocessing) setMaxCoreCount(false);
+  }, [isMultiprocessing]);
 
   const [showSplash, setShowSplash] = useState(true); // modal state
 
@@ -48,7 +60,7 @@ useEffect(() => {
       {/* top-header */}
       <div className="flex flex-row justify-content-space-between top-header br-2 h-25">
         <div className="flex left-section">
-          <ButtonSm
+          {/* <ButtonSm
             iconClass="loader-icon" // Connected-icon || loader-icon || warning-icon
             text="Connecting..."
             rightSideIcon="dropdown" // dropdown || externallink || ""
@@ -57,6 +69,94 @@ useEffect(() => {
               // Developers: Replace this with navigation to community page
               console.log("Connect clicked");
             }}
+          /> */}
+          <DropdownButton
+            buttonProps={{
+              text: "Not connected",
+              rightSideIcon: "dropdown",
+              textColor: "text-gray",
+              iconClass: "warning-icon",
+              
+              onClick: () => console.log("help dropdown button clicked"),
+            }}
+            dropdownItems={[
+              <div className="conection-container flex flex-col p-1 gap-1 br-2 bg-darkgray border-1 border-mid-black  ">
+                   <div className="connection-actions bg-middark flex flex-col p-1 gap-1 br-1">
+                      <div className="gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
+                          <div class="text-container overflow-hidden flex items-center gap-1">
+                            <span className="icon icon-size-16 warning-icon"></span>
+                            <p className="text text-nowrap text-left bg">Python server</p>
+                          </div>
+                                      <ToggleButtonComponent
+                                  connectConfig={{
+                                    text: "Connect",
+                                    iconClass: "",
+                                    rightSideIcon: "",
+                                    extraClasses: "",
+                                  }}
+                                  connectingConfig={{
+                                    text: "Connecting...",
+                                    iconClass: "loader-icon",
+                                    rightSideIcon: "",
+                                    extraClasses: "loading disabled",
+                                  }}
+                                  connectedConfig={{
+                                    text: "Connected",
+                                    iconClass: "connected-icon",
+                                    rightSideIcon: "",
+                                    extraClasses: "activated",
+                                  }}
+                                  textColor="text-white"
+                                  onConnect={() => 
+                                    console.log("Connected to python") // Developers: Replace this with
+                                  }
+                                  onDisconnect={() => 
+                                    console.log("stop the python connection!") // Developers: Replace this with
+                                   }
+                                    />
+                      </div>
+                             <div className="gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
+                          <div class="text-container overflow-hidden flex items-center gap-1">
+                            <span className="icon icon-size-16 warning-icon"></span>
+                            <p className="text text-nowrap text-left bg">Websocket</p>
+                          </div>
+                          <ToggleButtonComponent
+                                  connectConfig={{
+                                    text: "Connect",
+                                    iconClass: "",
+                                    rightSideIcon: "",
+                                    extraClasses: "",
+                                  }}
+                                  connectingConfig={{
+                                    text: "Connecting...",
+                                    iconClass: "loader-icon",
+                                    rightSideIcon: "",
+                                    extraClasses: "loading disabled",
+                                  }}
+                                  connectedConfig={{
+                                    text: "Connected",
+                                    iconClass: "connected-icon",
+                                    rightSideIcon: "",
+                                    extraClasses: "activated",
+                                  }}
+                                  textColor="text-white"
+                                  onConnect={() => 
+                                    console.log("Connected to python") // Developers: Replace this with
+                                  }
+                                  onDisconnect={() => 
+                                    console.log("stop the python connection!") // Developers: Replace this with
+                                   }
+                                    />
+                            </div>
+                    </div>
+               <div className="flex flex-row p-1 gap-1">
+                    <p className="text-left text">
+                      Having trouble connecting?  Learn how to connect...
+                   </p>
+              </div>
+
+              </div>
+            ]}
           />
         </div>
         <div className="flex right-section gap-2">
@@ -72,11 +172,13 @@ useEffect(() => {
           />
 
           <DropdownButton
+            containerClassName="align-end"
             buttonProps={{
               text: "Help",
               rightSideIcon: "dropdown",
               textColor: "text-gray",
               iconClass: "",
+              
               onClick: () => console.log("help dropdown button clicked"),
             }}
             dropdownItems={[
@@ -113,7 +215,7 @@ useEffect(() => {
         {/* mode-container */}
         <div className="mode-container flex-5 br-2 bg-darkgray border-mid-black border-1 .bg-darkgray overflow-hidden flex flex-col flex-1 gap-1 p-1">
           {/* header-tool-bar */}
-          <div className="header-tool-bar br-2">
+          <div className="flex flex-row header-tool-bar br-2 gap-4">
             <SegmentedControl
               options={[
                 { label: "Capture Live", value: "Capture Live" },
@@ -123,17 +225,50 @@ useEffect(() => {
               value={mode}
               onChange={handleMode}
             />
+            <div className="active-tools-header br-1-1 gap-1 p-1 flex ">
+              <ToggleButtonComponent
+                connectConfig={{
+                  text: "Stream",
+                  iconClass: "stream-icon",
+                  rightSideIcon: "",
+                  extraClasses: "",
+                }}
+                connectingConfig={{
+                  text: "Checking...",
+                  iconClass: "loader-icon",
+                  rightSideIcon: "",
+                  extraClasses: "loading disabled",
+                }}
+                connectedConfig={{
+                  text: "Streaming",
+                  iconClass: "streaming-icon",
+                  rightSideIcon: "",
+                  extraClasses: "activated",
+                }}
+                textColor="text-white"
+                onConnect={() => 
+                  console.log("streaming...") // Developers: Replace this with
+                }
+                onDisconnect={() => 
+                  console.log("Stopped streaming!") // Developers: Replace this with
+                }
+              />
+            </div>
           </div>
 
           {/* visualize-container */}
-          <div className="visualize-container overflow-hidden flex gap-2 flex-3">
+          <div className="visualize-container overflow-y flex gap-2 flex-3 flex-start">
             {/* 3d-container */}
-            <div className="3d-container flex-15 bg-middark br-2" />
+            {/* <div className="3d-visualizer-container flex-15 bg-middark br-2" /> */}
 
             {/* video-container */}
-            <div className="video-container overflow-y flex flex-col gap-2 flex-15">
-              <div className="flex-1 bg-middark br-2" />
-              <div className="flex-1 bg-middark br-2" />
+            <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start">
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+              <div className="video-tile size-1 bg-middark br-2 empty" />
             </div>
           </div>
         </div>
@@ -165,11 +300,11 @@ useEffect(() => {
             </div>
             {/* Show record-container only if skipCalibration is true */}
             {/* {skipCalibration && ( */}
-                <div
-                className={`flex flex-col record-container br-1 p-1 gap-1 bg-middark reveal ${
-                  skipCalibration ? "" : "disabled"
-                }`}
-              >
+            <div
+              className={`flex flex-col record-container br-1 p-1 gap-1 bg-middark reveal ${
+                skipCalibration ? "" : "disabled"
+              }`}
+            >
               <ToggleComponent
                 text="Auto process save"
                 className=""
@@ -196,14 +331,13 @@ useEffect(() => {
                   // Developers: Replace this with navigation or tutorial logic
                   console.log("help button clicked");
                 }}
-                />
-                <div className="p-1 g-1">
-
-                  <p className="text bg-md text-left">
-                    Camera views may lag at higher settings. Try lowering the resolution/reducing the number of cameras. fix is coming soon.
-                  </p>
-                </div>
-              
+              />
+              <div className="p-1 g-1">
+                <p className="text bg-md text-left">
+                  Camera views may lag at higher settings. Try lowering the
+                  resolution/reducing the number of cameras. fix is coming soon.
+                </p>
+              </div>
             </div>
             {/* // )} */}
           </div>
@@ -213,23 +347,23 @@ useEffect(() => {
               className=""
               iconClass=""
             />
-{/* Parent toggle */}
-<ToggleComponent
-  text="Multiprocessing"
-  defaultToggelState={true}
-  isToggled={isMultiprocessing}
-  onToggle={setIsMultiprocessing}
-/>
+            {/* Parent toggle */}
+            <ToggleComponent
+              text="Multiprocessing"
+              defaultToggelState={true}
+              isToggled={isMultiprocessing}
+              onToggle={setIsMultiprocessing}
+            />
 
-{/* Dependent toggle */}
-<ToggleComponent
-  text="Max core count"
-  iconClass="subcat-icon"
-  isToggled={maxCoreCount}
-  onToggle={setMaxCoreCount}
-  disabled={!isMultiprocessing} // disables interaction when parent off
-  className={!isMultiprocessing ? "disabled" : ""}
-/>
+            {/* Dependent toggle */}
+            <ToggleComponent
+              text="Max core count"
+              iconClass="subcat-icon"
+              isToggled={maxCoreCount}
+              onToggle={setMaxCoreCount}
+              disabled={!isMultiprocessing} // disables interaction when parent off
+              className={!isMultiprocessing ? "disabled" : ""}
+            />
 
             <ToggleComponent
               text="Yolo crop mode"

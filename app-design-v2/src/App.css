@@ -39,23 +39,26 @@
   --import-icon: url("./assets/icons/import_icon.svg");
   --externallink-icon: url("./assets/icons/externallink_icon.svg");
   --dropdown-icon: url("./assets/icons/dropdown_icon.svg");
-   --record-icon: url("./assets/icons/record_icon.svg");
-      --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
+    --stream-icon: url("./assets/icons/stream_icon.svg");
+      --streaming-icon: url("./assets/icons/streaming_icon.svg");
+        --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
+          --calibrated-icon: url("./assets/icons/calibrated_icon.svg");
+    --camera-icon: url("./assets/icons/camera_icon.svg");
+  --record-icon: url("./assets/icons/record_icon.svg");
+  --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
 
   --learn-icon: url("./assets/icons/learn_icon.svg");
   --discord-icon: url("./assets/icons/discord_icon.svg");
   --connected-icon: url("./assets/icons/connected_icon.svg");
   --warning-icon: url("./assets/icons/warning_icon.svg");
   --loader-icon: url("./assets/icons/loader_icon.svg");
-    --donate-icon: url("./assets/icons/donate_icon.svg");
-    --subcat-icon: url("./assets/icons/subcat_icon.svg");
-    --download-icon: url("./assets/icons/download_icon.svg");
-
+  --donate-icon: url("./assets/icons/donate_icon.svg");
+  --subcat-icon: url("./assets/icons/subcat_icon.svg");
+  --download-icon: url("./assets/icons/download_icon.svg");
 
   /* ANIMATION SPEED AND OTHER ANIMATION RELATED PROPS */
   --speed-1: 120ms;
   --speed-2: 220ms;
-
 }
 
 /* base / reset */
@@ -79,9 +82,12 @@ body,
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--gray-100);
-    -webkit-text-size-adjust: 100%; /* iOS Safari */
-  -ms-text-size-adjust: 100%;     /* old IE */
-  text-size-adjust: 100%;         /* Modern browsers */
+  -webkit-text-size-adjust: 100%;
+  /* iOS Safari */
+  -ms-text-size-adjust: 100%;
+  /* old IE */
+  text-size-adjust: 100%;
+  /* Modern browsers */
 }
 
 * {
@@ -154,7 +160,6 @@ q::after {
   content: "";
 }
 
-
 /* TOGGLE STYLES AND SHAPES */
 .icon.toggle-container {
   min-width: 24px;
@@ -164,28 +169,34 @@ q::after {
   cursor: pointer;
   position: relative;
   transition: background-color var(--speed-2);
-  border: 2px solid transparent
+  border: 2px solid transparent;
 }
+
 .toggle-button:hover {
   background-color: var(--gray-600);
   transition: background-color var(--speed-2);
 }
+
 .toggle-button:active {
   background-color: var(--gray-800);
   transition: background-color var(--speed-1);
 }
+
 .toggle-button {
-    transition: background-color var(--speed-2);
+  transition: background-color var(--speed-2);
 }
+
 .icon.toggle-container.off {
   border: 2px solid var(--gray-500);
 }
 
 .icon.toggle-container.on {
-  background-color: var(--blue-900); /* green when on */
+  background-color: var(--blue-900);
+  /* green when on */
 }
 
-.icon.toggle-circle { /* idle state */
+.icon.toggle-circle {
+  /* idle state */
   width: 8px;
   height: 8px;
   background-color: var(--gray-400);
@@ -193,44 +204,54 @@ q::after {
   position: absolute;
   top: 2px;
   left: 2px;
-  transition: left var(--speed-2) ease-in-out; /* animate horizontally */
+  transition: left var(--speed-2) ease-in-out;
+  /* animate horizontally */
 }
 
 .icon.toggle-container.on .toggle-circle {
-  left: 12px; /* move to far right: 24 - 8 - 3 padding = 13px */
+  left: 12px;
+  /* move to far right: 24 - 8 - 3 padding = 13px */
   top: 2px;
   background-color: var(--blue-800);
 }
 
 .text-nowrap {
   text-wrap: nowrap;
-    text-overflow: ellipsis;
-   
-    overflow: hidden;
+  text-overflow: ellipsis;
 
+  overflow: hidden;
 }
 
 /* BUTTON STYLES AND SHAPES */
+/* Activate button */
+.activated > p {
+    color: var(--green-100);
+}
+.button.activated:hover {
+    background-color: var(--green-900);
+}
 
 /* Primary fullwidth button */
 .primary {
-    background-color: var(--red-500);
+  background-color: var(--red-500);
 }
+
 .primary:hover {
-    background-color: var(--red-800);
+  background-color: var(--red-800);
 }
 
 .full-width {
-    min-width: 100%;
-}
-/* Primary fullwidth button */
-.secondary {
-    background-color: var(--gray-500);
-}
-.secondary:hover {
-    background-color: var(--gray-600);
+  min-width: 100%;
 }
 
+/* Primary fullwidth button */
+.secondary {
+  background-color: var(--gray-500);
+}
+
+.secondary:hover {
+  background-color: var(--gray-600);
+}
 
 /* card button */
 .button.card {
@@ -248,10 +269,10 @@ q::after {
 .button.sm.externallink:after {
   content: var(--externallink-icon);
 }
+
 .button.sm.dropdown:after {
   content: var(--dropdown-icon);
 }
-
 
 .button.sm {
   padding: 4px 6px;
@@ -261,18 +282,43 @@ q::after {
   max-width: max-content;
   /* to fit its content */
   transition: background-color var(--speed-1) ease-in-out;
-
 }
 
-.button.sm:not(.primary,.secondary):hover {
-  background-color: var(--gray-700);
+.button.sm:not(.primary, .secondary, .activated):hover {
+  background-color: var(--gray-600);
   transition: background-color var(--speed-1) ease-in-out;
 }
 
-.button:not(p, .button.checkbox, button.text-sm, input, button.active, .toggle-button):active {
+.button:not(
+    p,
+    .button.checkbox,
+    button.text-sm,
+    input,
+    button.active,
+    .toggle-button
+  ):active {
   transform: scale(96%);
 }
+/* video tiles */
+.video-tile {
+    flex: 1 1 200px;
+ 
+    height: auto;
+    aspect-ratio: 1 / 1;
+    }
+.video-tile.size-1 {
+   min-width: 300px
+}
+.video-tile.empty:before {
+    content: var(--camera-icon);
+    margin: 8px;
+    display: block;
+}
+.video-tile.empty {
+    border: 1.5px dashed var(--gray-500);
 
+    background: transparent;
+}
 /* segmented-control design */
 .segmented-control-container {
   max-width: max-content;
@@ -285,17 +331,17 @@ q::after {
   transition: color var(--speed-1) ease-in-out;
 }
 
-.segmented-control-button>p.text.md {
+.segmented-control-button > p.text.md {
   /* medium size */
   min-height: 25px;
 }
 
-.segmented-control-button>p.text.sm {
+.segmented-control-button > p.text.sm {
   /* small size */
   min-height: 22px;
 }
 
-.segmented-control-button:hover>p {
+.segmented-control-button:hover > p {
   color: var(--gray-100);
   transition: color var(--speed-1) ease-in-out;
 }
@@ -312,10 +358,11 @@ h1 {
 
 .text.bg {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 17px;
   letter-spacing: -0.43px;
 }
+
 .text.bg-md {
   font-size: 12px;
   font-weight: 400;
@@ -329,6 +376,7 @@ h1 {
   line-height: 14px;
   /* letter-spacing: -0.43px; */
 }
+
 .text.sm {
   font-size: 11px;
   font-weight: 500;
@@ -478,9 +526,11 @@ a:after {
 .pos-rel {
   position: relative;
 }
+
 .pos-sticky {
   position: sticky;
 }
+
 /* positions */
 .top-0 {
   top: 0;
@@ -518,7 +568,9 @@ a:after {
 .flex-col {
   flex-direction: column;
 }
-
+.flex-wrap {
+  flex-wrap: wrap;
+}
 .items-center {
   align-items: center;
 }
@@ -526,9 +578,14 @@ a:after {
 .justify-center {
   justify-content: center;
 }
+.flex-start {
+  align-items: flex-start;
+}
+
 .align-end {
   align-items: flex-end;
 }
+
 .justify-content-space-between {
   justify-content: space-between;
 }
@@ -561,6 +618,7 @@ a:after {
 .flex-6 {
   flex: 6;
 }
+
 /* fractional helper used in layout */
 .flex-15 {
   flex: 1.5;
@@ -769,7 +827,7 @@ a:after {
   justify-content: center;
 }
 
-.icon-button:hover>.icon {
+.icon-button:hover > .icon {
   filter: brightness(2);
   /* filter animation out */
   transition: filter var(--speed-1) ease-in-out;
@@ -779,6 +837,7 @@ a:after {
   background-color: var(--gray-700);
   transition: background-color var(--speed-1) ease-in-out;
 }
+
 /* icon setup on the left side */
 .icon {
   background-repeat: no-repeat;
@@ -791,6 +850,18 @@ a:after {
 /* icon type */
 .close-icon {
   background-image: var(--close-icon);
+}
+.stream-icon {
+  background-image: var(--stream-icon);
+}
+.streaming-icon {
+  background-image: var(--streaming-icon);
+}
+.calibrate-icon {
+  background-image: var(--calibrate-icon);
+}
+.calibrated-icon {
+  background-image: var(--calibrated-icon);
 }
 
 /* icon types */
@@ -805,36 +876,44 @@ a:after {
 .discord-icon {
   background-image: var(--discord-icon);
 }
+
 .connected-icon {
   background-image: var(--connected-icon);
 }
+
 .loader-icon {
   background-image: var(--loader-icon);
   animation: spin-ramp 2s infinite;
   animation-timing-function: cubic-bezier(0.95, 0.17, 0.37, 0.72);
 }
+
 .warning-icon {
   background-image: var(--warning-icon);
 }
+
 .donate-icon {
   background-image: var(--donate-icon);
 }
+
 .record-icon {
   background-image: var(--record-icon);
 }
+
 .calibrate-icon {
   background-image: var(--calibrate-icon);
 }
+
 .learn-icon {
   background-image: var(--learn-icon);
 }
+
 .subcat-icon {
   background-image: var(--subcat-icon);
 }
+
 .download-icon {
   background-image: var(--download-icon);
 }
-
 
 /* individual borders */
 /* .border-t-1 { border-top-width: 1px; border-style: solid; }
@@ -892,6 +971,7 @@ body,
 .bg-darkgray {
   background-color: var(--gray-700);
 }
+
 .bg-gray {
   background-color: var(--gray-600);
 }
@@ -964,12 +1044,19 @@ body,
   /* animation: scaleIn 0.3s ease forwards; */
   animation: fadeIn, scaleIn;
 }
-
-
-.disabled {
+.conection-container {
+  width: 255px;
+}
+.disabled > * {
   opacity: 0.3;
-  pointer-events: none; /* prevents clicking */
+
   transition: opacity var(--speed-2) ease-in-out;
+}
+
+.disabled,
+.disabled > * {
+  pointer-events: none;
+  /* prevents clicking */
 }
 
 .splash-screen-logo {
@@ -994,9 +1081,7 @@ body,
 /* --------- ui components styles -------- */
 /* --------- ui components styles -------- */
 
-
 /* --------- checkbox -------- */
-
 
 /* =========================================
    Custom CSS Checkboxes (Reusable)
@@ -1022,7 +1107,7 @@ body,
   gap: 0.5em;
 }
 
-.form-control+.form-control {
+.form-control + .form-control {
   margin-top: 1em;
 }
 
@@ -1056,7 +1141,6 @@ input[type="checkbox"] {
   display: grid;
   place-content: center;
   cursor: pointer;
-
 }
 
 /* Pseudo-element for checkmark indicator */
@@ -1093,19 +1177,21 @@ input[type="checkbox"]:disabled {
   cursor: not-allowed;
 }
 
-
-
-
 /* ---- Animations ---- */
 
 /* loader */
 @keyframes spin-ramp {
-  0%   { transform: rotate(0deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
   /* 20%  { transform: rotate(90deg); }
   40%  { transform: rotate(180deg); }
   60%  { transform: rotate(300deg); }
   80%  { transform: rotate(420deg); } */
-  100% { transform: rotate(1080deg); }
+  100% {
+    transform: rotate(1080deg);
+  }
 }
 
 /* ui components animation setup  */
@@ -1120,6 +1206,7 @@ input[type="checkbox"]:disabled {
     opacity: 0;
     transform: translateY(40px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -1132,6 +1219,7 @@ input[type="checkbox"]:disabled {
     opacity: 0;
     transform: translateY(-20px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -1144,23 +1232,25 @@ input[type="checkbox"]:disabled {
     opacity: 0;
     /* transform: scale(0.75); */
   }
+
   100% {
     opacity: 1;
     /* transform: scale(1); */
   }
 }
+
 /* scaleIn */
 @keyframes scaleIn {
   0% {
     /* opacity: 0; */
     transform: scale(0.75);
   }
+
   100% {
     /* opacity: 1; */
     transform: scale(1);
   }
 }
-
 
 /* =========================
    Base Animation Class
@@ -1172,13 +1262,14 @@ input[type="checkbox"]:disabled {
   animation-fill-mode: forwards;
   transition-property: opacity;
   transition-duration: var(--speed-2);
-  
 }
+
 .anim-delay-1 {
-animation-delay: 100ms;
+  animation-delay: 100ms;
 }
+
 .anim-delay-2 {
-animation-delay: 200ms;
+  animation-delay: 200ms;
 }
 
 /* Specific animations */
@@ -1190,10 +1281,13 @@ animation-delay: 200ms;
   animation-name: slide-down;
 }
 
-.fadeIn { /* include scale as well */
+.fadeIn {
+  /* include scale as well */
   animation-name: fadeIn;
 }
-.scaleIn { /* include scale as well */
+
+.scaleIn {
+  /* include scale as well */
   animation-name: scaleIn;
 }
 
@@ -1203,7 +1297,8 @@ animation-delay: 200ms;
 
 @media (prefers-reduced-motion: reduce) {
   .reveal {
-    animation: none; /* skip animation, show element instantly */
+    animation: none;
+    /* skip animation, show element instantly */
     opacity: 1;
     transform: none;
   }
@@ -1230,11 +1325,3 @@ animation-delay: 200ms;
     opacity: 1;
   }
 } */
-
-
-
-
-
-
-
-

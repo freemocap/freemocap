@@ -949,13 +949,15 @@ body,
   align-items: center;
   justify-content: center;
   z-index: 50;
-  animation: fadeIn 0.3s ease forwards;
+  /* animation: fadeIn 0.3s ease forwards; */
+  animation: fadeIn;
 }
 
 .splash-modal {
   width: 481px;
   height: 320px;
-  animation: scaleIn 0.3s ease forwards;
+  /* animation: scaleIn 0.3s ease forwards; */
+  animation: fadeIn, scaleIn;
 }
 
 
@@ -1097,9 +1099,106 @@ input[type="checkbox"]:disabled {
   100% { transform: rotate(1080deg); }
 }
 
-/* fade in */
+/* ui components animation setup  */
 
+/* =========================
+   Keyframes
+========================= */
+
+/* Slide Up */
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide Down */
+@keyframes slide-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fadein */
 @keyframes fadeIn {
+  0% {
+    opacity: 0;
+    /* transform: scale(0.75); */
+  }
+  100% {
+    opacity: 1;
+    /* transform: scale(1); */
+  }
+}
+/* scaleIn */
+@keyframes scaleIn {
+  0% {
+    /* opacity: 0; */
+    transform: scale(0.75);
+  }
+  100% {
+    /* opacity: 1; */
+    transform: scale(1);
+  }
+}
+
+
+/* =========================
+   Base Animation Class
+========================= */
+
+.reveal {
+  animation-duration: var(--speed-2);
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  
+}
+.anim-delay-1 {
+animation-delay: 100ms;
+}
+.anim-delay-2 {
+animation-delay: 200ms;
+}
+
+/* Specific animations */
+.slide-up {
+  animation-name: slide-up;
+}
+
+.slide-down {
+  animation-name: slide-down;
+}
+
+.fadeIn { /* include scale as well */
+  animation-name: fadeIn;
+}
+.scaleIn { /* include scale as well */
+  animation-name: scaleIn;
+}
+
+/* =========================
+   Reduced Motion Support
+========================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    animation: none; /* skip animation, show element instantly */
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* @keyframes fadeIn {
   from {
     opacity: 0;
   }
@@ -1119,7 +1218,7 @@ input[type="checkbox"]:disabled {
     transform: scale(1);
     opacity: 1;
   }
-}
+} */
 
 
 

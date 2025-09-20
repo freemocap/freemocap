@@ -66,24 +66,22 @@ interface ToggleProps {
   onToggle?: (state: boolean) => void; // callback to parent
 }
 
-const ToggleComponent: React.FC<ToggleProps> = ({
+const ToggleComponent: React.FC<ToggleProps & { style?: React.CSSProperties }> = ({
   text,
   className = "",
   iconClass,
   defaultToggelState = false,
   isToggled,
   onToggle,
+  style, // <-- accept style prop
 }) => {
   const [internalToggle, setInternalToggle] = useState(defaultToggelState);
 
-  // Use controlled if available, else internal
   const toggled = isToggled !== undefined ? isToggled : internalToggle;
 
   const handleToggle = () => {
     const newState = !toggled;
-    if (isToggled === undefined) {
-      setInternalToggle(newState);
-    }
+    if (isToggled === undefined) setInternalToggle(newState);
     onToggle?.(newState);
   };
 
@@ -91,11 +89,10 @@ const ToggleComponent: React.FC<ToggleProps> = ({
     <div
       className={`button toggle-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 ${className}`}
       onClick={handleToggle}
+      style={style} // <-- apply style here
     >
       <div className="text-container overflow-hidden flex items-center gap-1">
-        {iconClass && (
-          <span className={`icon icon-size-16 ${iconClass}`}></span>
-        )}
+        {iconClass && <span className={`icon icon-size-16 ${iconClass}`}></span>}
         <p className="text text-nowrap text-left md">{text}</p>
       </div>
 

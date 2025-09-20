@@ -15,7 +15,7 @@ function App() {
   // state for show and hide record if skip calibration is turned off or on
   const [skipCalibration, setSkipCalibration] = useState(true); // default true
 
- // state for show and hide multiprocessing toggle
+  // state for show and hide multiprocessing toggle
   const [isMultiprocessing, setIsMultiprocessing] = useState(true);
 
   const [showSplash, setShowSplash] = useState(true); // modal state
@@ -75,31 +75,31 @@ function App() {
               iconClass: "",
               onClick: () => console.log("help dropdown button clicked"),
             }}
-dropdownItems={[
-  <ButtonSm
-    key="FreeMocap Guide"
-    rightSideIcon="externallink"
-    buttonType="full-width"
-    text="FreeMocap Guide"
-    iconClass="learn-icon"
-    onClick={() => console.log("FreeMocap Guide clicked")}
-  />,
-  <ButtonSm
-    key="Ask Question on Discord"
-    rightSideIcon="externallink"
-    buttonType="full-width"
-    text="Ask Question on Discord"
-    iconClass="discord-icon"
-    onClick={() => console.log("Ask Question on Discord clicked")}
-  />,
-  <ButtonSm
-    key="tutorials"
-    buttonType="full-width"
-    text="Download Sample Videos"
-    iconClass="download-icon"
-    onClick={() => console.log("Download Sample Videos clicked")}
-  />,
-]}
+            dropdownItems={[
+              <ButtonSm
+                key="FreeMocap Guide"
+                rightSideIcon="externallink"
+                buttonType="full-width"
+                text="FreeMocap Guide"
+                iconClass="learn-icon"
+                onClick={() => console.log("FreeMocap Guide clicked")}
+              />,
+              <ButtonSm
+                key="Ask Question on Discord"
+                rightSideIcon="externallink"
+                buttonType="full-width"
+                text="Ask Question on Discord"
+                iconClass="discord-icon"
+                onClick={() => console.log("Ask Question on Discord clicked")}
+              />,
+              <ButtonSm
+                key="tutorials"
+                buttonType="full-width"
+                text="Download Sample Videos"
+                iconClass="download-icon"
+                onClick={() => console.log("Download Sample Videos clicked")}
+              />,
+            ]}
           />
         </div>
       </div>
@@ -150,18 +150,24 @@ dropdownItems={[
                   console.log("help button clicked");
                 }}
               />
-                        <ToggleComponent
-                  text="Skip calibration"
-                  className=""
-                  iconClass=""
-                  defaultToggelState={true}
-                  isToggled={skipCalibration}
-                  onToggle={setSkipCalibration}
-                />
+              <ToggleComponent
+                text="Skip calibration"
+                className=""
+                iconClass=""
+                defaultToggelState={true}
+                isToggled={skipCalibration}
+                onToggle={setSkipCalibration}
+              />
             </div>
             {/* Show record-container only if skipCalibration is true */}
-{skipCalibration && (
-            <div className="flex flex-col record-container br-1 p-1 gap-1 bg-middark">
+            {/* {skipCalibration && ( */}
+            <div
+              className="flex flex-col record-container br-1 p-1 gap-1 bg-middark"
+              style={{
+                opacity: skipCalibration ? 1 : 0.3, // fade effect
+                pointerEvents: skipCalibration ? "auto" : "none", // disable interactions when faded
+              }}
+            >
               <ToggleComponent
                 text="Auto process save"
                 className=""
@@ -190,7 +196,7 @@ dropdownItems={[
                 }}
               />
             </div>
-            )}
+            {/* // )} */}
           </div>
           <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-darkgray">
             <ToggleComponent
@@ -199,19 +205,23 @@ dropdownItems={[
               iconClass=""
             />
 
-             <ToggleComponent
-          text="Multiprocessing"
-          defaultToggelState={true}
-          isToggled={isMultiprocessing}
-          onToggle={setIsMultiprocessing}
-        />
+            <ToggleComponent
+              text="Multiprocessing"
+              defaultToggelState={true}
+              isToggled={isMultiprocessing}
+              onToggle={setIsMultiprocessing}
+            />
 
-        {isMultiprocessing && (
-          <ToggleComponent
-            text="Max core count"
-            iconClass="subcat-icon"
-          />
-        )}
+            {/* {isMultiprocessing && ( */}
+              <ToggleComponent
+                  text="Max core count"
+                  iconClass="subcat-icon"
+                      style={{
+                      opacity: isMultiprocessing ? 1 : 0.3,
+                      pointerEvents: isMultiprocessing ? "auto" : "none",
+                      // transition: "opacity 0.3s",
+                    }}
+/>
 
             <ToggleComponent
               text="Yolo crop mode"

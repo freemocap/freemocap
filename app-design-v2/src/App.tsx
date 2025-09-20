@@ -196,7 +196,14 @@ useEffect(() => {
                   // Developers: Replace this with navigation or tutorial logic
                   console.log("help button clicked");
                 }}
-              />
+                />
+                <div className="p-1 g-1">
+
+                  <p className="text bg-md text-left">
+                    Camera views may lag at higher settings. Try lowering the resolution/reducing the number of cameras. fix is coming soon.
+                  </p>
+                </div>
+              
             </div>
             {/* // )} */}
           </div>

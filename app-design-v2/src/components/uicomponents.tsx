@@ -644,7 +644,7 @@ const ConnectionDropdown = () => {
       }}
       /* --- Dropdown content: list of connections --- */
       dropdownItems={
-        <div className="connection-container flex flex-col p-1 gap-1 br-2 bg-darkgray border-1 border-mid-black">
+        <div className="connection-container flex flex-col p-1 gap-1 br-1 bg-darkgray border-1 border-mid-black">
           {connectionTypes.map(({ key, label }) => (
             <div
               key={key}

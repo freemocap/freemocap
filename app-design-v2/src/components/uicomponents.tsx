@@ -492,14 +492,14 @@ USAGE EXAMPLES
 -------------------------------------------------------------------------- */
 
 
-/* --- Connection states (enum-like object) --- */
+/* --- Connection states (enum-like) --- */
 const STATES = {
   DISCONNECTED: "disconnected",
   CONNECTING: "connecting",
   CONNECTED: "connected",
 };
 
-/* --- Reusable toggle button (Connect / Connecting / Connected) --- */
+/* --- Reusable Toggle Button --- */
 const ToggleButtonComponent = ({
   state,
   connectConfig,
@@ -509,16 +509,16 @@ const ToggleButtonComponent = ({
   onConnect = () => {},
   onDisconnect = () => {},
 }) => {
-  // Decide what happens when the button is clicked
+  // Handle button clicks
   const handleClick = () => {
     if (state === STATES.DISCONNECTED) {
-      onConnect(); // start connection process
+      onConnect(); // trigger connect
     } else if (state === STATES.CONNECTED) {
-      onDisconnect(); // disconnect
+      onDisconnect(); // trigger disconnect
     }
   };
 
-  // Pick the right button config based on current state
+  // Get the right config based on current state
   const getButtonConfig = () => {
     switch (state) {
       case STATES.CONNECTING:
@@ -530,24 +530,27 @@ const ToggleButtonComponent = ({
     }
   };
 
-  // Extract display properties
-  const { text, extraClasses } = getButtonConfig();
+  const { text, iconClass, rightSideIcon, extraClasses } = getButtonConfig();
 
   return (
     <button
       onClick={handleClick}
-      disabled={state === STATES.CONNECTING} // disable when in progress
+      disabled={state === STATES.CONNECTING}
       className={clsx(
         "gap-1 br-1 button sm flex-inline text-left items-center",
         extraClasses
       )}
     >
-      {/* NOTE: No icons here for connect buttons, only text */}
+      {/* Optional left-side icon */}
+      {iconClass && <span className={`icon icon-size-16 ${iconClass}`} />}
       <p className={`${textColor} text md text-align-left`}>{text}</p>
+      {/* Optional right-side icon */}
+      {rightSideIcon && (
+        <span className={`icon icon-size-16 ${rightSideIcon}`} />
+      )}
     </button>
   );
 };
-
 /* --- Dropdown wrapper with connection controls --- */
 const ConnectionDropdown = () => {
   // Track the state of each connection independently
@@ -685,6 +688,51 @@ const ConnectionDropdown = () => {
   );
 };
 
+
+/* --- Example: Standalone Toggle Usage --- */
+const StandaloneToggleExample = () => {
+  const [state, setState] = useState(STATES.DISCONNECTED);
+
+  return (
+    <ToggleButtonComponent
+      state={state}
+      connectConfig={{
+        text: "Stream",
+        iconClass: "stream-icon",
+        rightSideIcon: "",
+        extraClasses: "",
+      }}
+      connectingConfig={{
+        text: "Checking...",
+        iconClass: "loader-icon",
+        rightSideIcon: "",
+        extraClasses: "loading disabled",
+      }}
+      connectedConfig={{
+        text: "Streaming",
+        iconClass: "streaming-icon",
+        rightSideIcon: "",
+        extraClasses: "activated",
+      }}
+      textColor="text-white"
+      onConnect={() => {
+        console.log("Checking before streaming…");
+        setState(STATES.CONNECTING);
+
+        // Simulate async check before streaming
+        setTimeout(() => {
+          console.log("Streaming started!");
+          setState(STATES.CONNECTED);
+        }, 2000);
+      }}
+      onDisconnect={() => {
+        console.log("Stopped streaming!");
+        setState(STATES.DISCONNECTED);
+      }}
+    />
+  );
+};
+
 export {
   ButtonSm,
   Checkbox,
@@ -693,5 +741,6 @@ export {
   ToggleComponent,
   DropdownButton,
   ToggleButtonComponent,
-  ConnectionDropdown
+  ConnectionDropdown,
+  StandaloneToggleExample,
 };

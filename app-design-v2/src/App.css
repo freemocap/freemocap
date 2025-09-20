@@ -39,6 +39,11 @@
   --import-icon: url("./assets/icons/import_icon.svg");
   --externallink-icon: url("./assets/icons/externallink_icon.svg");
   --dropdown-icon: url("./assets/icons/dropdown_icon.svg");
+    --stream-icon: url("./assets/icons/stream_icon.svg");
+      --streaming-icon: url("./assets/icons/streaming_icon.svg");
+        --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
+          --calibrated-icon: url("./assets/icons/calibrated_icon.svg");
+    --camera-icon: url("./assets/icons/camera_icon.svg");
   --record-icon: url("./assets/icons/record_icon.svg");
   --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
 
@@ -273,7 +278,7 @@ q::after {
 }
 
 .button.sm:not(.primary, .secondary):hover {
-  background-color: var(--gray-700);
+  background-color: var(--gray-600);
   transition: background-color var(--speed-1) ease-in-out;
 }
 
@@ -287,7 +292,26 @@ q::after {
   ):active {
   transform: scale(96%);
 }
+/* video tiles */
+.video-tile {
+    flex: 1 1 200px;
+ 
+    height: auto;
+    aspect-ratio: 1 / 1;
+    }
+.video-tile.size-1 {
+   min-width: 300px
+}
+.video-tile.empty:before {
+    content: var(--camera-icon);
+    margin: 8px;
+    display: block;
+}
+.video-tile.empty {
+    border: 1.5px dashed var(--gray-500);
 
+    background: transparent;
+}
 /* segmented-control design */
 .segmented-control-container {
   max-width: max-content;
@@ -537,13 +561,18 @@ a:after {
 .flex-col {
   flex-direction: column;
 }
-
+.flex-wrap {
+  flex-wrap: wrap;
+}
 .items-center {
   align-items: center;
 }
 
 .justify-center {
   justify-content: center;
+}
+.flex-start {
+  align-items: flex-start;
 }
 
 .align-end {
@@ -814,6 +843,18 @@ a:after {
 /* icon type */
 .close-icon {
   background-image: var(--close-icon);
+}
+.stream-icon {
+  background-image: var(--stream-icon);
+}
+.streaming-icon {
+  background-image: var(--streaming-icon);
+}
+.calibrate-icon {
+  background-image: var(--calibrate-icon);
+}
+.calibrated-icon {
+  background-image: var(--calibrated-icon);
 }
 
 /* icon types */

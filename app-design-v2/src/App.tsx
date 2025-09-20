@@ -113,7 +113,7 @@ useEffect(() => {
         {/* mode-container */}
         <div className="mode-container flex-5 br-2 bg-darkgray border-mid-black border-1 .bg-darkgray overflow-hidden flex flex-col flex-1 gap-1 p-1">
           {/* header-tool-bar */}
-          <div className="header-tool-bar br-2">
+          <div className="flex flex-row header-tool-bar br-2 gap-4">
             <SegmentedControl
               options={[
                 { label: "Capture Live", value: "Capture Live" },
@@ -123,17 +123,34 @@ useEffect(() => {
               value={mode}
               onChange={handleMode}
             />
+            <div className="active-tools-header br-1-1 gap-1 p-1 flex ">
+              <ButtonSm
+            iconClass="stream-icon"
+            text="Stream"
+            rightSideIcon=""
+            textColor="text-white"
+            onClick={() => {
+              // Developers: Replace this with navigation or tutorial logic
+              console.log("Support freemocap clicked");
+            }}
+          />
+              </div>
           </div>
 
           {/* visualize-container */}
-          <div className="visualize-container overflow-hidden flex gap-2 flex-3">
+          <div className="visualize-container overflow-y flex gap-2 flex-3 flex-start">
             {/* 3d-container */}
-            <div className="3d-container flex-15 bg-middark br-2" />
+            {/* <div className="3d-visualizer-container flex-15 bg-middark br-2" /> */}
 
             {/* video-container */}
-            <div className="video-container overflow-y flex flex-col gap-2 flex-15">
-              <div className="flex-1 bg-middark br-2" />
-              <div className="flex-1 bg-middark br-2" />
+            <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start">
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+              <div className="video-tile size-1 bg-middark br-2 empty" />
+
             </div>
           </div>
         </div>
@@ -151,7 +168,7 @@ useEffect(() => {
                 textColor="text-white"
                 onClick={() => {
                   // Developers: Replace this with navigation or tutorial logic
-                  console.log("help button clicked");
+                console.log("help button clicked");
                 }}
               />
               <ToggleComponent

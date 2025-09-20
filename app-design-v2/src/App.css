@@ -966,7 +966,7 @@ body,
 }
 
 
-.disabled {
+.disabled > * {
   opacity: 0.3;
   pointer-events: none; /* prevents clicking */
   transition: opacity var(--speed-2) ease-in-out;

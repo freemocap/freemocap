@@ -9,9 +9,24 @@ import {
   SegmentedControl,
   ToggleComponent,
   DropdownButton,
+  ToggleButtonComponent,
 } from "./components/uicomponents";
 
 function App() {
+
+  /* stream connnection logic */
+  const handleConnect = () => {
+    // 🔌 TODO: Replace with your real "connect" logic
+    console.log("Connected!");
+  };
+
+  const handleDisconnect = () => {
+    // 🔌 TODO: Replace with your real "disconnect" logic
+    console.log("Disconnected!");
+  };
+
+
+
   // state for show and hide record if skip calibration is turned off or on
   const [skipCalibration, setSkipCalibration] = useState(true); // default true
 
@@ -124,16 +139,29 @@ useEffect(() => {
               onChange={handleMode}
             />
             <div className="active-tools-header br-1-1 gap-1 p-1 flex ">
-              <ButtonSm
-            iconClass="stream-icon"
-            text="Stream"
-            rightSideIcon=""
-            textColor="text-white"
-            onClick={() => {
-              // Developers: Replace this with navigation or tutorial logic
-              console.log("Support freemocap clicked");
-            }}
-          />
+            <ToggleButtonComponent
+                    connectConfig={{
+                      text: "Stream",
+                      iconClass: "stream-icon",
+                      rightSideIcon: "",
+                      extraClasses: "",
+                    }}
+                    connectingConfig={{
+                      text: "Checking...",
+                      iconClass: "loader-icon",
+                      rightSideIcon: "",
+                      extraClasses: "loading disabled",
+                    }}
+                    connectedConfig={{
+                      text: "Streaming",
+                      iconClass: "streaming-icon",
+                      rightSideIcon: "",
+                      extraClasses: "activated",
+                    }}
+                    textColor="text-white"
+                    onConnect={() => console.log("Connected!")}
+                    onDisconnect={() => console.log("Disconnected!")}
+                  />
               </div>
           </div>
 

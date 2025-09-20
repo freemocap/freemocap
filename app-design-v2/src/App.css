@@ -223,6 +223,13 @@ q::after {
 }
 
 /* BUTTON STYLES AND SHAPES */
+/* Activate button */
+.activated > p {
+    color: var(--green-100);
+}
+.button.activated:hover {
+    background-color: var(--green-900);
+}
 
 /* Primary fullwidth button */
 .primary {
@@ -277,7 +284,7 @@ q::after {
   transition: background-color var(--speed-1) ease-in-out;
 }
 
-.button.sm:not(.primary, .secondary):hover {
+.button.sm:not(.primary, .secondary, .activated):hover {
   background-color: var(--gray-600);
   transition: background-color var(--speed-1) ease-in-out;
 }

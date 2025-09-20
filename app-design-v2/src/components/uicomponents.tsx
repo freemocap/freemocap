@@ -441,6 +441,97 @@ export default function DropdownButton({
   );
 }
 
+
+// Toggle button states
+// Toggle button states
+const STATES = {
+  CONNECT: "connect",
+  CONNECTING: "connecting",
+  CONNECTED: "connected",
+};
+
+const ToggleButtonComponent = ({
+  // ✅ Configs per state
+  connectConfig = {
+    text: "Connect",
+    iconClass: "icon-plug",
+    rightSideIcon: "",
+    extraClasses: "primary full-width justify-center",
+  },
+  connectingConfig = {
+    text: "Connecting...",
+    iconClass: "icon-loader", // example loader icon
+    rightSideIcon: "",
+    extraClasses: "secondary full-width justify-center",
+  },
+  connectedConfig = {
+    text: "Connected",
+    iconClass: "icon-check",
+    rightSideIcon: "",
+    extraClasses: "success full-width justify-center",
+  },
+
+  textColor = "text-gray",
+
+  // optional external click handler
+  onConnect = () => {}, // TODO: Replace with real connect logic
+  onDisconnect = () => {}, // TODO: Replace with real disconnect logic
+}) => {
+  const [state, setState] = useState(STATES.CONNECT);
+
+  const handleClick = () => {
+    if (state === STATES.CONNECT) {
+      // Start connecting
+      setState(STATES.CONNECTING);
+
+      // Dummy loading simulation for 3 seconds
+      setTimeout(() => {
+        setState(STATES.CONNECTED);
+        onConnect(); // developer wires real connect logic here
+      }, 3000);
+    } else if (state === STATES.CONNECTED) {
+      // Disconnect
+      setState(STATES.CONNECT);
+      onDisconnect(); // developer wires real disconnect logic here
+    }
+  };
+
+  // Map current state to config
+  const getButtonConfig = () => {
+    switch (state) {
+      case STATES.CONNECT:
+        return connectConfig;
+      case STATES.CONNECTING:
+        return connectingConfig;
+      case STATES.CONNECTED:
+        return connectedConfig;
+      default:
+        return {};
+    }
+  };
+
+  const { text, iconClass, rightSideIcon, extraClasses } = getButtonConfig();
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={state === STATES.CONNECTING}
+      className={clsx(
+        "gap-1 br-1 button sm flex-inline text-left items-center", // base styles
+        extraClasses,
+        rightSideIcon
+      )}
+    >
+      {/* LEFT ICON */}
+      {iconClass && <span className={clsx("icon icon-size-16", iconClass)} />}
+
+      {/* TEXT */}
+      <p className={clsx(textColor, "text md text-align-left")}>{text}</p>
+    </button>
+  );
+};
+
+
 export {
   ButtonSm,
   Checkbox,
@@ -448,4 +539,5 @@ export {
   SegmentedControl,
   ToggleComponent,
   DropdownButton,
+  ToggleButtonComponent,
 };

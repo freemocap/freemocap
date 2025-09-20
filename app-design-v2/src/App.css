@@ -51,11 +51,9 @@
   --subcat-icon: url("./assets/icons/subcat_icon.svg");
   --download-icon: url("./assets/icons/download_icon.svg");
 
-
   /* ANIMATION SPEED AND OTHER ANIMATION RELATED PROPS */
   --speed-1: 120ms;
   --speed-2: 220ms;
-
 }
 
 /* base / reset */
@@ -157,7 +155,6 @@ q::after {
   content: "";
 }
 
-
 /* TOGGLE STYLES AND SHAPES */
 .icon.toggle-container {
   min-width: 24px;
@@ -167,7 +164,7 @@ q::after {
   cursor: pointer;
   position: relative;
   transition: background-color var(--speed-2);
-  border: 2px solid transparent
+  border: 2px solid transparent;
 }
 
 .toggle-button:hover {
@@ -218,7 +215,6 @@ q::after {
   text-overflow: ellipsis;
 
   overflow: hidden;
-
 }
 
 /* BUTTON STYLES AND SHAPES */
@@ -245,7 +241,6 @@ q::after {
   background-color: var(--gray-600);
 }
 
-
 /* card button */
 .button.card {
   width: 100px;
@@ -267,7 +262,6 @@ q::after {
   content: var(--dropdown-icon);
 }
 
-
 .button.sm {
   padding: 4px 6px;
   min-height: 25px;
@@ -276,7 +270,6 @@ q::after {
   max-width: max-content;
   /* to fit its content */
   transition: background-color var(--speed-1) ease-in-out;
-
 }
 
 .button.sm:not(.primary, .secondary):hover {
@@ -284,7 +277,14 @@ q::after {
   transition: background-color var(--speed-1) ease-in-out;
 }
 
-.button:not(p, .button.checkbox, button.text-sm, input, button.active, .toggle-button):active {
+.button:not(
+    p,
+    .button.checkbox,
+    button.text-sm,
+    input,
+    button.active,
+    .toggle-button
+  ):active {
   transform: scale(96%);
 }
 
@@ -300,17 +300,17 @@ q::after {
   transition: color var(--speed-1) ease-in-out;
 }
 
-.segmented-control-button>p.text.md {
+.segmented-control-button > p.text.md {
   /* medium size */
   min-height: 25px;
 }
 
-.segmented-control-button>p.text.sm {
+.segmented-control-button > p.text.sm {
   /* small size */
   min-height: 22px;
 }
 
-.segmented-control-button:hover>p {
+.segmented-control-button:hover > p {
   color: var(--gray-100);
   transition: color var(--speed-1) ease-in-out;
 }
@@ -791,7 +791,7 @@ a:after {
   justify-content: center;
 }
 
-.icon-button:hover>.icon {
+.icon-button:hover > .icon {
   filter: brightness(2);
   /* filter animation out */
   transition: filter var(--speed-1) ease-in-out;
@@ -866,7 +866,6 @@ a:after {
 .download-icon {
   background-image: var(--download-icon);
 }
-
 
 /* individual borders */
 /* .border-t-1 { border-top-width: 1px; border-style: solid; }
@@ -998,15 +997,14 @@ body,
   animation: fadeIn, scaleIn;
 }
 
-
-.disabled>* {
+.disabled > * {
   opacity: 0.3;
 
   transition: opacity var(--speed-2) ease-in-out;
 }
 
 .disabled,
-.disabled>* {
+.disabled > * {
   pointer-events: none;
   /* prevents clicking */
 }
@@ -1033,9 +1031,7 @@ body,
 /* --------- ui components styles -------- */
 /* --------- ui components styles -------- */
 
-
 /* --------- checkbox -------- */
-
 
 /* =========================================
    Custom CSS Checkboxes (Reusable)
@@ -1061,7 +1057,7 @@ body,
   gap: 0.5em;
 }
 
-.form-control+.form-control {
+.form-control + .form-control {
   margin-top: 1em;
 }
 
@@ -1095,7 +1091,6 @@ input[type="checkbox"] {
   display: grid;
   place-content: center;
   cursor: pointer;
-
 }
 
 /* Pseudo-element for checkmark indicator */
@@ -1131,9 +1126,6 @@ input[type="checkbox"]:disabled {
   color: var(--form-control-disabled);
   cursor: not-allowed;
 }
-
-
-
 
 /* ---- Animations ---- */
 
@@ -1210,7 +1202,6 @@ input[type="checkbox"]:disabled {
   }
 }
 
-
 /* =========================
    Base Animation Class
 ========================= */
@@ -1221,7 +1212,6 @@ input[type="checkbox"]:disabled {
   animation-fill-mode: forwards;
   transition-property: opacity;
   transition-duration: var(--speed-2);
-
 }
 
 .anim-delay-1 {

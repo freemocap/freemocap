@@ -12,8 +12,10 @@ import {
 } from "./components/uicomponents";
 
 function App() {
+  // state for show and hide record if skip calibration is turned off or on
+  const [skipCalibration, setSkipCalibration] = useState(true); // default true
 
- // 👇 add this state here
+ // state for show and hide multiprocessing toggle
   const [isMultiprocessing, setIsMultiprocessing] = useState(true);
 
   const [showSplash, setShowSplash] = useState(true); // modal state
@@ -148,12 +150,17 @@ dropdownItems={[
                   console.log("help button clicked");
                 }}
               />
-              <ToggleComponent
-                text="Skip calibration"
-                className=""
-                iconClass=""
-              />
+                        <ToggleComponent
+                  text="Skip calibration"
+                  className=""
+                  iconClass=""
+                  defaultToggelState={true}
+                  isToggled={skipCalibration}
+                  onToggle={setSkipCalibration}
+                />
             </div>
+            {/* Show record-container only if skipCalibration is true */}
+{skipCalibration && (
             <div className="flex flex-col record-container br-1 p-1 gap-1 bg-middark">
               <ToggleComponent
                 text="Auto process save"
@@ -183,6 +190,7 @@ dropdownItems={[
                 }}
               />
             </div>
+            )}
           </div>
           <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-darkgray">
             <ToggleComponent

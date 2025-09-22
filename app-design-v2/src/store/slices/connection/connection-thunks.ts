@@ -1,6 +1,7 @@
 // store/slices/server/simplified-server-thunks.ts
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import type {RootState} from '@/store/types';
+import {connectionOrchestrator} from "@/services/connection/connection-orchestrator.ts";
 
 /**
  * Connect to server (managed or external)
@@ -19,7 +20,6 @@ export const connectToServer = createAsyncThunk<
         const result = await connectionOrchestrator.connect({
             host: args.host,
             port: args.port,
-            executablePath: args.executablePath,
             autoConnectWebSocket: true
         });
 
@@ -67,27 +67,6 @@ export const checkServerHealth = createAsyncThunk<
 /**
  * Refresh executable candidates
  */
-export const refreshExecutableCandidates = createAsyncThunk<
-    ExecutableCandidate[]
->(
-    'server/refreshCandidates',
-    async () => {
-        if (!electronIpc) {
-            return [];
-        }
-
-        const candidates = await electronIpc.pythonServer.refreshCandidates.mutate();
-
-        return candidates.map((candidate: any): ExecutableCandidate => ({
-            name: candidate.name,
-            path: candidate.path,
-            description: candidate.description,
-            isValid: candidate.isValid ?? false,
-            error: candidate.error,
-            resolvedPath: candidate.resolvedPath,
-        }));
-    }
-);
 
 /**
  * Auto-connect based on configuration
@@ -100,7 +79,7 @@ export const autoConnect = createAsyncThunk<
     'server/autoConnect',
     async (_, { getState, dispatch }) => {
         const state = getState();
-        const { autoSpawn, autoConnect } = state.server.config;
+        const {  autoConnect } = state.server.config;
 
         // Already connected?
         if (connectionOrchestrator.isConnected()) {
@@ -110,16 +89,12 @@ export const autoConnect = createAsyncThunk<
         // Try external connection first
         if (autoConnect) {
             try {
-                await dispatch(connectToServer({ mode: 'external' })).unwrap();
+                await dispatch(connectToServer({})).unwrap();
                 return;
             } catch {
                 // Continue to auto-spawn if configured
             }
         }
 
-        // Try managed connection
-        if (autoSpawn && electronIpc) {
-            await dispatch(connectToServer({ mode: 'managed' })).unwrap();
-        }
     }
 );

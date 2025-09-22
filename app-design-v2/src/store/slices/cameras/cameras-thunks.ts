@@ -1,6 +1,6 @@
 import {createAsyncThunk} from '@reduxjs/toolkit';
-import {RootState} from '../../types';
-import {CAMERA_DEFAULT_CONSTRAINTS, CameraConfig, CameraDevice, createDefaultCameraConfig} from './cameras-types';
+import type {RootState} from '../../types';
+import {CAMERA_DEFAULT_CONSTRAINTS, type CameraConfig, type CameraDevice, createDefaultCameraConfig} from './cameras-types';
 import {selectSelectedCameraConfigs} from './cameras-selectors';
 import {selectServerEndpoints} from "@/store";
 

@@ -1,88 +1,38 @@
 /* --- Dropdown wrapper with connection controls --- */
-import  {useState} from "react";
-import {STATES} from "@/components/connection-states.tsx";
+import { useAppSelector, type ServerStatus } from "@/store";
+
 import DropdownButton from "@/components/composites/DropdownButton.tsx";
-import {ConnectionToggleButtonComponent} from "@/components/primitives/Toggles/ToggleButton.tsx";
+import {ConnectionToggleButton} from "@/components/features/ConnectionDropdown/ConnectionToggleButton.tsx";
 
 const ConnectionDropdown = () => {
-    // Track the state of each connection independently
-    const [connections, setConnections] = useState({
-        server: STATES.DISCONNECTED,
-        websocket: STATES.DISCONNECTED,
-    });
-
-    /* --- Handlers to connect / disconnect a given type --- */
-    const handleConnect = (type: string) => {
-        // Step 1: mark as "connecting"
-        setConnections((prev) => ({...prev, [type]: STATES.CONNECTING}));
-
-        // Step 2: simulate async connection with timeout
-        // 👉 Replace this with REAL connection logic later
-        setTimeout(() => {
-            setConnections((prev) => ({...prev, [type]: STATES.CONNECTED}));
-        }, 2000);
-    };
-
-    const handleDisconnect = (type: string) => {
-        // 👉 Replace with real disconnect logic (close connection, cleanup)
-        setConnections((prev) => ({...prev, [type]: STATES.DISCONNECTED}));
-    };
-
-    /* --- Config for the button label (without icons) --- */
-    const getToggleConfig = (state: string) => {
-        switch (state) {
-            case STATES.CONNECTING:
-                return {
-                    text: "Connecting...",
-                    extraClasses: "loading disabled",
-                };
-            case STATES.CONNECTED:
-                return {
-                    text: "Connected",
-                    extraClasses: "activated",
-                };
-            default:
-                return {
-                    text: "Connect",
-                    extraClasses: "",
-                };
-        }
-    };
+    // Get server status from RTK store
+    const serverStatus = useAppSelector((state) => state.server.connection.status);
 
     /* --- Helper: get the correct status icon for a row --- */
-    const getStatusIcon = (state: string) => {
-        switch (state) {
-            case STATES.CONNECTED:
+    const getStatusIcon = (status: ServerStatus) => {
+        switch (status) {
+            case 'healthy':
                 return "connected-icon";
-            case STATES.CONNECTING:
+            case 'closing':
                 return "loader-icon";
-            default:
+            case 'error':
+                return "error-icon";
+            default: // 'disconnected'
                 return "warning-icon";
         }
     };
 
-    /* --- Types of connections we support --- */
-    const connectionTypes = [
-        {key: "server", label: "Server"},
-        {key: "websocket", label: "Websocket"},
-    ];
-
-    /* --- Dropdown button state depends on both connections --- */
+    /* --- Dropdown button state depends on server status --- */
     const getDropdownButtonState = () => {
-        const states = Object.values(connections);
-
-        if (states.every((s) => s === STATES.CONNECTED)) {
-            // ✅ Both connected → just say "Connected"
-            return {text: "Connected", iconClass: "connected-icon"};
-        } else if (states.some((s) => s === STATES.CONNECTING)) {
-            // 🔄 Any connecting → show "Connecting..."
-            return {text: "Connecting...", iconClass: "loader-icon"};
-        } else if (states.some((s) => s === STATES.CONNECTED)) {
-            // ⚠️ At least one connected → "Partially Connected"
-            return {text: "Partially Connected", iconClass: "connected-icon"};
-        } else {
-            // ❌ None connected
-            return {text: "Not Connected", iconClass: "warning-icon"};
+        switch (serverStatus) {
+            case 'healthy':
+                return {text: "Connected", iconClass: "connected-icon"};
+            case 'closing':
+                return {text: "Disconnecting...", iconClass: "loader-icon"};
+            case 'error':
+                return {text: "Connection Error", iconClass: "error-icon"};
+            default: // 'disconnected'
+                return {text: "Not Connected", iconClass: "warning-icon"};
         }
     };
 
@@ -101,33 +51,21 @@ const ConnectionDropdown = () => {
             dropdownItems={
                 <div
                     className="connection-container flex flex-col p-1 gap-1 br-1 bg-darkgray border-1 border-mid-black">
-                    {connectionTypes.map(({key, label}) => (
-                        <div
-                            key={key}
-                            className="gap-1 p-1 br-1 flex justify-content-space-between items-center h-25"
-                        >
-                            {/* Left side: status icon + label */}
-                            <div className="text-container overflow-hidden flex items-center gap-1">
-                <span
-                    className={`icon icon-size-16 ${getStatusIcon(
-                        connections[key]
-                    )}`}
-                ></span>
-                                <p className="text text-nowrap text-left bg">{label}</p>
-                            </div>
-
-                            {/* Right side: individual toggle button */}
-                            <ConnectionToggleButtonComponent
-                                state={connections[key]}
-                                connectConfig={getToggleConfig(STATES.DISCONNECTED)}
-                                connectingConfig={getToggleConfig(STATES.CONNECTING)}
-                                connectedConfig={getToggleConfig(STATES.CONNECTED)}
-                                textColor="text-white"
-                                onConnect={() => handleConnect(key)}
-                                onDisconnect={() => handleDisconnect(key)}
-                            />
+                    {/* Server connection row */}
+                    <div
+                        className="gap-1 p-1 br-1 flex justify-content-space-between items-center h-25"
+                    >
+                        {/* Left side: status icon + label */}
+                        <div className="text-container overflow-hidden flex items-center gap-1">
+                            <span
+                                className={`icon icon-size-16 ${getStatusIcon(serverStatus)}`}
+                            ></span>
+                            <p className="text text-nowrap text-left bg">Server</p>
                         </div>
-                    ))}
+
+                        {/* Right side: individual toggle button */}
+                        <ConnectionToggleButton />
+                    </div>
 
                     {/* Footer info */}
                     <div className="flex flex-row p-1 gap-1">
@@ -140,59 +78,5 @@ const ConnectionDropdown = () => {
         />
     );
 };
-export {ConnectionDropdown};
 
-// /* --- Example: Standalone Toggle Usage --- */
-// const StandaloneToggleExample = () => {
-//     const [state, setState] = useState(STATES.DISCONNECTED);
-//
-//     return (
-//         <ToggleButtonComponent
-//             state={state}
-//             connectConfig={{
-//                 text: "Stream",
-//                 iconClass: "stream-icon",
-//                 rightSideIcon: "",
-//                 extraClasses: "",
-//             }}
-//             connectingConfig={{
-//                 text: "Checking...",
-//                 iconClass: "loader-icon",
-//                 rightSideIcon: "",
-//                 extraClasses: "loading disabled",
-//             }}
-//             connectedConfig={{
-//                 text: "Streaming",
-//                 iconClass: "streaming-icon",
-//                 rightSideIcon: "",
-//                 extraClasses: "activated",
-//             }}
-//             textColor="text-white"
-//             onConnect={() => {
-//                 console.log("Checking before streaming…");
-//                 setState(STATES.CONNECTING);
-//
-//                 // Simulate async check before streaming
-//                 setTimeout(() => {
-//                     console.log("Streaming started!");
-//                     setState(STATES.CONNECTED);
-//                 }, 2000);
-//             }}
-//             onDisconnect={() => {
-//                 console.log("Stopped streaming!");
-//                 setState(STATES.DISCONNECTED);
-//             }}
-//         />
-//     );
-// };
-//
-// export {
-//     ButtonSm,
-//     Checkbox,
-//     ButtonCard,
-//     SegmentedControl,
-//     ToggleComponent,
-//     DropdownButton,
-//     ToggleButtonComponent,
-//     StandaloneToggleExample,
-// };
+export {ConnectionDropdown};

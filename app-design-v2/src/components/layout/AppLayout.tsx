@@ -5,17 +5,15 @@ import SplashModal from "../features/SplashModal/SplashModal.tsx";
 // Import sub-components with their types
 import {Header} from "./Header.tsx";
 import {MainContentPanel} from "./MainContentPanel.tsx";
-import {SidePanel, type SidePanelSettings} from "./SidePanel.tsx";
-import {BottomPanel, type InfoMode} from "./BottomPanel.tsx";
+import {SidePanel} from "./SidePanel.tsx";
+import {BottomPanel} from "./BottomPanel.tsx";
 
 export interface AppLayoutProps {
     initialShowSplash?: boolean;
-    onGlobalStateChange?: (componentName: string, state: unknown) => void;
 }
 
 const AppLayout: FC<AppLayoutProps> = ({
                                            initialShowSplash = true,
-                                           onGlobalStateChange,
                                        }): ReactElement => {
     const [showSplash, setShowSplash] = useState<boolean>(initialShowSplash);
 

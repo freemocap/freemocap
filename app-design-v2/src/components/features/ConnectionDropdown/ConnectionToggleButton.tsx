@@ -1,59 +1,68 @@
-
-/* --- Connection states (enum-like) --- */
-import {STATES} from "@/components/connection-states.tsx";
+/* --- Connection Toggle Button Component --- */
 import clsx from "clsx";
+import { useAppDispatch, useAppSelector } from "@/store";
+import { checkServerHealth } from "@/store/slices/server";
 
+interface ConnectionToggleButtonProps {
+    textColor?: string;
+}
 
-
-/* --- Reusable Toggle Button --- */
+/* --- Self-contained Toggle Button --- */
 export const ConnectionToggleButton = ({
-                                   state,
-                                   connectConfig,
-                                   connectingConfig,
-                                   connectedConfig,
-                                   textColor = "text-gray",
-                                   onConnect = () => {},
-                                   onDisconnect = () => {},
-                               }) => {
+                                                    textColor = "text-gray",
+                                                }: ConnectionToggleButtonProps) => {
+    const dispatch = useAppDispatch();
+    const serverStatus = useAppSelector((state) => state.server.connection.status);
+
     // Handle button clicks
     const handleClick = () => {
-        if (state === STATES.DISCONNECTED) {
-            onConnect(); // trigger connect
-        } else if (state === STATES.CONNECTED) {
-            onDisconnect(); // trigger disconnect
+        if (serverStatus === 'disconnected' || serverStatus === 'error') {
+            dispatch(checkServerHealth());
+        } else if (serverStatus === 'healthy') {
+            // TODO: Add proper disconnect action when available
+            dispatch(checkServerHealth());
         }
+        // Don't do anything if state is 'closing'
     };
 
-    // Get the right config based on current state
+    // Get the button configuration based on current state
     const getButtonConfig = () => {
-        switch (state) {
-            case STATES.CONNECTING:
-                return connectingConfig;
-            case STATES.CONNECTED:
-                return connectedConfig;
-            default:
-                return connectConfig;
+        switch (serverStatus) {
+            case 'closing':
+                return {
+                    text: "Disconnecting...",
+                    extraClasses: "loading disabled",
+                };
+            case 'healthy':
+                return {
+                    text: "Connected",
+                    extraClasses: "activated",
+                };
+            case 'error':
+                return {
+                    text: "Error",
+                    extraClasses: "error",
+                };
+            default: // 'disconnected'
+                return {
+                    text: "Connect",
+                    extraClasses: "",
+                };
         }
     };
 
-    const { text, iconClass, rightSideIcon, extraClasses } = getButtonConfig();
+    const { text, extraClasses } = getButtonConfig();
 
     return (
         <button
             onClick={handleClick}
-            disabled={state === STATES.CONNECTING}
+            disabled={serverStatus === 'closing'}
             className={clsx(
                 "gap-1 br-1 button sm flex-inline text-left items-center",
                 extraClasses
             )}
         >
-            {/* Optional left-side icon */}
-            {iconClass && <span className={`icon icon-size-16 ${iconClass}`} />}
             <p className={`${textColor} text md text-align-left`}>{text}</p>
-            {/* Optional right-side icon */}
-            {rightSideIcon && (
-                <span className={`icon icon-size-16 ${rightSideIcon}`} />
-            )}
         </button>
     );
 };

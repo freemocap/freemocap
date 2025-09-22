@@ -1,13 +1,12 @@
 import { type FC, type ReactElement, type SetStateAction, useState } from "react";
 import { SegmentedControl } from "@/components/primitives/Controls/SegmentedControlComponent.tsx";
-import { ConnectionToggleButtonComponent } from "@/components/primitives/Toggles/ToggleButton.tsx";
+import {ConnectionToggleButton} from "@/components/features/ConnectionDropdown/ConnectionToggleButton.tsx";
 
 export interface MainContentPanelProps {
     onModeChange?: (mode: string) => void;
     onStreamStateChange?: (state: string) => void;
 }
 
-export type StreamState = "disconnected" | "connecting" | "connected";
 export type AppMode = "Capture Live" | "Post-process";
 
 interface SegmentedControlOption {
@@ -17,10 +16,8 @@ interface SegmentedControlOption {
 
 export const MainContentPanel: FC<MainContentPanelProps> = ({
                                                                 onModeChange,
-                                                                onStreamStateChange,
                                                             }): ReactElement => {
     const [mode, setMode] = useState<AppMode>("Capture Live");
-    const [streamState, setStreamState] = useState<StreamState>("disconnected");
 
     const modeOptions: SegmentedControlOption[] = [
         { label: "Capture Live", value: "Capture Live" },
@@ -40,26 +37,7 @@ export const MainContentPanel: FC<MainContentPanelProps> = ({
         }
     };
 
-    const handleStreamStateChange = (state: StreamState): void => {
-        setStreamState(state);
 
-        if (onStreamStateChange) {
-            onStreamStateChange(state);
-        }
-    };
-
-    const handleStreamConnect = (): void => {
-        console.log("Checking before streaming…");
-        handleStreamStateChange("connecting");
-        setTimeout(() => {
-            handleStreamStateChange("connected");
-        }, 2000);
-    };
-
-    const handleStreamDisconnect = (): void => {
-        console.log("Stopped streaming!");
-        handleStreamStateChange("disconnected");
-    };
 
     const renderVideoTiles = (): ReactElement[] => {
         const tileCount: number = 6;
@@ -81,30 +59,7 @@ export const MainContentPanel: FC<MainContentPanelProps> = ({
                     onChange={handleModeChange}
                 />
                 <div className="active-tools-header br-1-1 gap-1 p-1 flex">
-                    <ConnectionToggleButtonComponent
-                        state={streamState}
-                        connectConfig={{
-                            text: "Stream",
-                            iconClass: "stream-icon",
-                            rightSideIcon: "",
-                            extraClasses: "",
-                        }}
-                        connectingConfig={{
-                            text: "Checking...",
-                            iconClass: "loader-icon",
-                            rightSideIcon: "",
-                            extraClasses: "loading disabled",
-                        }}
-                        connectedConfig={{
-                            text: "Streaming",
-                            iconClass: "streaming-icon",
-                            rightSideIcon: "",
-                            extraClasses: "activated",
-                        }}
-                        textColor="text-white"
-                        onConnect={handleStreamConnect}
-                        onDisconnect={handleStreamDisconnect}
-                    />
+                    <ConnectionToggleButton/>
                 </div>
             </div>
 

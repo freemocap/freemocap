@@ -28,23 +28,7 @@ export interface ServerConnectionInfo {
     retryCount: number;
 }
 
-/**
- * Complete server state
- */
 export interface ServerState {
     config: ServerConfig;
     connection: ServerConnectionInfo;
-}
-
-/**
- * Server connection options
- */
-export interface ServerConnectionOptions {
-    host?: string;
-    port?: number;
-}
-
-export interface ExternalServerConnectionResult {
-    serverUrl: string;
-    isHealthy: boolean;
 }

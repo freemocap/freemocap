@@ -1,6 +1,6 @@
 // log-records-slice.ts
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { LogRecord } from './logs-types';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type {LogRecord} from './logs-types';
 
 interface LogRecordsState {
     entries: LogRecord[];

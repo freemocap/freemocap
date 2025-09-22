@@ -1,9 +1,9 @@
 import {
     createSlice,
-    PayloadAction,
-    EntityState,
+    type PayloadAction,
+    type EntityState,
 } from '@reduxjs/toolkit';
-import { CameraDevice, CameraConfig } from './cameras-types';
+import type {CameraDevice, CameraConfig} from './cameras-types';
 import { cameraAdapter } from './cameras-adapter';
 import {
     detectCameras,

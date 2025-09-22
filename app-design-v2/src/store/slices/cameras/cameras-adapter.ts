@@ -1,5 +1,5 @@
 import { createEntityAdapter } from '@reduxjs/toolkit';
-import { CameraDevice } from './cameras-types';
+import type {CameraDevice} from './cameras-types';
 
 export const cameraAdapter = createEntityAdapter<CameraDevice, string>({
     selectId: (camera) => camera.cameraId,

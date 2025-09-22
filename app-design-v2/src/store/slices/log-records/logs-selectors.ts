@@ -1,7 +1,7 @@
 // logs-selectors.ts
 import { createSelector } from '@reduxjs/toolkit';
-import { RootState } from '../../types';
-import { LogRecord } from './logs-types';
+import { type RootState } from '../../types';
+import { type LogRecord } from './logs-types';
 
 // Basic selectors
 export const selectAllLogs = (state: RootState): LogRecord[] =>

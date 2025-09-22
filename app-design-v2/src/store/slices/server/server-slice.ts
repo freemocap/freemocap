@@ -1,8 +1,7 @@
 // store/slices/server/server-slice.ts
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type {
-    ServerConfig,
-    ServerState,
+    ServerConfig, ServerState,
     ServerStatus,
 } from './server-types';
 import {

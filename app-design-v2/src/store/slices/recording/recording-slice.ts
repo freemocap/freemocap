@@ -1,5 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { RecordingInfo } from './recording-types';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type {RecordingInfo} from './recording-types';
 import { startRecording, stopRecording } from './recording-thunks';
 
 const initialState: RecordingInfo = {

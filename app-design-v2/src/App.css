@@ -1,0 +1,1327 @@
+/* =========================
+   RESET + GLOBAL
+   ========================= */
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+
+:root {
+  /* Gray Shades */
+  --gray-900: #060606;
+  --gray-800: #1b1b1b;
+  --gray-700: #272727;
+  --gray-600: #323232;
+  --gray-500: #4f4f4f;
+  --gray-400: #9b9b9b;
+  --gray-100: #e4e4e4;
+
+  --overlay: rgba(6, 6, 6, 0.6);
+
+  /* Green Shades */
+  --green-100: #16dd12;
+  --green-900: #022701;
+
+  /* Red Shades */
+  --red-500: #d7184b;
+  --red-600: #a01238;
+  --red-800: #720925;
+
+  /* Warning/Orange */
+  --warning-500: #e64900;
+
+  /* Blue Shades */
+  --blue-100: #aed9f7;
+  --blue-800: #0898ff;
+  --blue-900: #083f66;
+
+  /* icons vars */
+
+  --close-icon: url("./assets/icons/close_icon.svg");
+  --live-icon: url("./assets/icons/live_icon.svg");
+  --import-icon: url("./assets/icons/import_icon.svg");
+  --externallink-icon: url("./assets/icons/externallink_icon.svg");
+  --dropdown-icon: url("./assets/icons/dropdown_icon.svg");
+    --stream-icon: url("./assets/icons/stream_icon.svg");
+      --streaming-icon: url("./assets/icons/streaming_icon.svg");
+        --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
+          --calibrated-icon: url("./assets/icons/calibrated_icon.svg");
+    --camera-icon: url("./assets/icons/camera_icon.svg");
+  --record-icon: url("./assets/icons/record_icon.svg");
+  --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
+
+  --learn-icon: url("./assets/icons/learn_icon.svg");
+  --discord-icon: url("./assets/icons/discord_icon.svg");
+  --connected-icon: url("./assets/icons/connected_icon.svg");
+  --warning-icon: url("./assets/icons/warning_icon.svg");
+  --loader-icon: url("./assets/icons/loader_icon.svg");
+  --donate-icon: url("./assets/icons/donate_icon.svg");
+  --subcat-icon: url("./assets/icons/subcat_icon.svg");
+  --download-icon: url("./assets/icons/download_icon.svg");
+
+  /* ANIMATION SPEED AND OTHER ANIMATION RELATED PROPS */
+  --speed-1: 120ms;
+  --speed-2: 220ms;
+}
+
+/* base / reset */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+  /* base font size */
+  line-height: 14px;
+  /* base line height */
+  letter-spacing: -0px;
+  /* letter spacing base*/
+  font-weight: 500;
+  color: var(--gray-400);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--gray-100);
+  -webkit-text-size-adjust: 100%;
+  /* iOS Safari */
+  -ms-text-size-adjust: 100%;
+  /* old IE */
+  text-size-adjust: 100%;
+  /* Modern browsers */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* element resets */
+ul,
+ol {
+  list-style: none;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+button,
+.button {
+  cursor: pointer;
+  transform-origin: center center;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+strong,
+b {
+  font-weight: bold;
+}
+
+blockquote,
+q {
+  quotes: none;
+}
+
+blockquote::before,
+blockquote::after,
+q::before,
+q::after {
+  content: "";
+}
+
+/* TOGGLE STYLES AND SHAPES */
+.icon.toggle-container {
+  min-width: 24px;
+  height: 16px;
+  border-radius: 9999px;
+  padding: 2px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color var(--speed-2);
+  border: 2px solid transparent;
+}
+
+.toggle-button:hover {
+  background-color: var(--gray-600);
+  transition: background-color var(--speed-2);
+}
+
+.toggle-button:active {
+  background-color: var(--gray-800);
+  transition: background-color var(--speed-1);
+}
+
+.toggle-button {
+  transition: background-color var(--speed-2);
+}
+
+.icon.toggle-container.off {
+  border: 2px solid var(--gray-500);
+}
+
+.icon.toggle-container.on {
+  background-color: var(--blue-900);
+  /* green when on */
+}
+
+.icon.toggle-circle {
+  /* idle state */
+  width: 8px;
+  height: 8px;
+  background-color: var(--gray-400);
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left var(--speed-2) ease-in-out;
+  /* animate horizontally */
+}
+
+.icon.toggle-container.on .toggle-circle {
+  left: 12px;
+  /* move to far right: 24 - 8 - 3 padding = 13px */
+  top: 2px;
+  background-color: var(--blue-800);
+}
+
+.text-nowrap {
+  text-wrap: nowrap;
+  text-overflow: ellipsis;
+
+  overflow: hidden;
+}
+
+/* BUTTON STYLES AND SHAPES */
+/* Activate button */
+.activated > p {
+    color: var(--green-100);
+}
+.button.activated:hover {
+    background-color: var(--green-900);
+}
+
+/* Primary fullwidth button */
+.primary {
+  background-color: var(--red-500);
+}
+
+.primary:hover {
+  background-color: var(--red-800);
+}
+
+.full-width {
+  min-width: 100%;
+}
+
+/* Primary fullwidth button */
+.secondary {
+  background-color: var(--gray-500);
+}
+
+.secondary:hover {
+  background-color: var(--gray-600);
+}
+
+/* card button */
+.button.card {
+  width: 100px;
+  height: 116px;
+  transition: background-color var(--speed-1) ease-in-out;
+}
+
+.button.sm:after {
+  /* right side icon setup*/
+  width: 16px;
+  height: 16px;
+}
+
+.button.sm.externallink:after {
+  content: var(--externallink-icon);
+}
+
+.button.sm.dropdown:after {
+  content: var(--dropdown-icon);
+}
+
+.button.sm {
+  padding: 4px 6px;
+  min-height: 25px;
+  width: auto;
+  /* to fit its content */
+  max-width: max-content;
+  /* to fit its content */
+  transition: background-color var(--speed-1) ease-in-out;
+}
+
+.button.sm:not(.primary, .secondary, .activated):hover {
+  background-color: var(--gray-600);
+  transition: background-color var(--speed-1) ease-in-out;
+}
+
+.button:not(
+    p,
+    .button.checkbox,
+    button.text-sm,
+    input,
+    button.active,
+    .toggle-button
+  ):active {
+  transform: scale(96%);
+}
+/* video tiles */
+.video-tile {
+    flex: 1 1 200px;
+ 
+    height: auto;
+    aspect-ratio: 1 / 1;
+    }
+.video-tile.size-1 {
+   min-width: 300px
+}
+.video-tile.empty:before {
+    content: var(--camera-icon);
+    margin: 8px;
+    display: block;
+}
+.video-tile.empty {
+    border: 1.5px dashed var(--gray-500);
+
+    background: transparent;
+}
+/* segmented-control design */
+.segmented-control-container {
+  max-width: max-content;
+}
+
+.segmented-control-button {
+  /* global size */
+  min-width: 104px;
+  /* min-height: 22px; */
+  transition: color var(--speed-1) ease-in-out;
+}
+
+.segmented-control-button > p.text.md {
+  /* medium size */
+  min-height: 25px;
+}
+
+.segmented-control-button > p.text.sm {
+  /* small size */
+  min-height: 22px;
+}
+
+.segmented-control-button:hover > p {
+  color: var(--gray-100);
+  transition: color var(--speed-1) ease-in-out;
+}
+
+/* typepography */
+
+.title,
+h1 {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 14px;
+  /* letter-spacing: -0.43px; */
+}
+
+.text.bg {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 17px;
+  letter-spacing: -0.43px;
+}
+
+.text.bg-md {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
+  letter-spacing: -0.43px;
+}
+
+.text.md {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 14px;
+  /* letter-spacing: -0.43px; */
+}
+
+.text.sm {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 14px;
+  /* letter-spacing: -0.43px; */
+}
+
+/* text colors */
+/* .color-gray-400 {
+  color: var(--gray-400);
+}
+.color-gray-100 {
+  color: var(--gray-100);
+} */
+
+/* =========================
+   UTILITIES (Tailwind-like)
+   ========================= */
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-y {
+  overflow-y: auto;
+}
+
+.overflow-x {
+  overflow-x: auto;
+}
+
+/* ==========================
+   Global Scrollbar Styling
+   Applies to all scrollbars
+   ========================== */
+
+/* Track: the background of the scrollbar */
+::-webkit-scrollbar-track {
+  border-radius: 10px;
+  /* Rounded corners for the track */
+  background-color: transparent;
+  /* Change to any color you want */
+}
+
+/* Scrollbar: the actual scrollbar container */
+::-webkit-scrollbar {
+  width: calc(12px - 4px);
+  /* Width of the vertical scrollbar */
+  height: 12px;
+  /* Height of the horizontal scrollbar */
+  background-color: transparent;
+  /* Background color behind the thumb */
+}
+
+/* Thumb: the draggable part of the scrollbar */
+::-webkit-scrollbar-thumb {
+  border-radius: 99px;
+  /* Fully rounded thumb */
+  background-color: var(--gray-600);
+  /* Default thumb color */
+  cursor: grab;
+  /* Cursor when hovering over thumb */
+  border: 2px solid var(--gray-700);
+  /* Padding/border around thumb, match scrollbar background */
+}
+
+/* Thumb hover state: when mouse is over the thumb */
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gray-700);
+  /* Change thumb color on hover */
+}
+
+/* Thumb active state: when mouse is clicking/dragging the thumb */
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--gray-800);
+  /* Change thumb color when active */
+  cursor: grabbing;
+  /* Cursor changes when dragging */
+}
+
+a,
+a.link {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: inherit;
+  transition: filter var(--speed-1) ease-in-out;
+}
+
+a:hover,
+a.link:hover {
+  filter: brightness(0.8);
+  transition: filter var(--speed-1) ease-in-out;
+}
+
+a:after {
+  content: var(--externallink-icon);
+  display: inline-block;
+  position: absolute;
+  margin-left: 2px;
+}
+
+/* z-index */
+.z-1 {
+  z-index: 1;
+}
+
+.z-2 {
+  z-index: 2;
+}
+
+.z-3 {
+  z-index: 3;
+}
+
+.z-4 {
+  z-index: 4;
+}
+
+.z-5 {
+  z-index: 5;
+}
+
+.z-6 {
+  z-index: 6;
+}
+
+.z-7 {
+  z-index: 7;
+}
+
+.z-8 {
+  z-index: 8;
+}
+
+.z-9 {
+  z-index: 9;
+}
+
+.z-10 {
+  z-index: 10;
+}
+
+/* positions */
+.pos-abs {
+  position: absolute;
+}
+
+.pos-rel {
+  position: relative;
+}
+
+.pos-sticky {
+  position: sticky;
+}
+
+/* positions */
+.top-0 {
+  top: 0;
+}
+
+.left-0 {
+  left: 0;
+}
+
+.right-0 {
+  right: 0;
+}
+
+.bottom-0 {
+  bottom: 0;
+}
+
+.inset-0 {
+  inset: 0;
+}
+
+/* display / flex */
+.flex {
+  display: flex;
+}
+
+.flex-inline {
+  display: inline-flex;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+.flex-start {
+  align-items: flex-start;
+}
+
+.align-end {
+  align-items: flex-end;
+}
+
+.justify-content-space-between {
+  justify-content: space-between;
+}
+
+.align-items-end {
+  align-items: flex-end;
+}
+
+/* flex (proportions) */
+.flex-1 {
+  flex: 1;
+}
+
+.flex-2 {
+  flex: 2;
+}
+
+.flex-3 {
+  flex: 3;
+}
+
+.flex-4 {
+  flex: 4;
+}
+
+.flex-5 {
+  flex: 5;
+}
+
+.flex-6 {
+  flex: 6;
+}
+
+/* fractional helper used in layout */
+.flex-15 {
+  flex: 1.5;
+}
+
+/* left / middle proportions in example */
+.flex-grow {
+  flex-grow: 1;
+}
+
+/* gaps */
+.gap-1 {
+  gap: 4px;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+.gap-3 {
+  gap: 12px;
+}
+
+.gap-4 {
+  gap: 16px;
+}
+
+/* padding */
+.p-0 {
+  padding: 0;
+}
+
+.p-1 {
+  padding: 4px;
+}
+
+.p-2 {
+  padding: 8px;
+}
+
+.p-3 {
+  padding: 12px;
+}
+
+.p-4 {
+  padding: 16px;
+}
+
+/* margin */
+.m-0 {
+  margin: 0;
+}
+
+.m-1 {
+  margin: 4px;
+}
+
+.m-2 {
+  margin: 8px;
+}
+
+.m-3 {
+  margin: 12px;
+}
+
+.m-4 {
+  margin: 16px;
+}
+
+/* widths/heights */
+.w-full {
+  width: 100%;
+}
+
+.h-full {
+  height: 100%;
+}
+
+.h-25 {
+  height: 25px;
+}
+
+/* .h-30 {
+  height: 30px;
+} */
+/* .h-40 {
+  height: 40px;
+} */
+.h-70 {
+  height: 70px;
+}
+
+.h-100 {
+  height: 100px;
+}
+
+.min-w-200 {
+  min-width: 200px;
+}
+
+.max-w-350 {
+  max-width: 350px;
+}
+
+/* =========================
+   BORDER RADIUS
+   ========================= */
+.br-1 {
+  border-radius: 4px;
+}
+
+.br-1-1 {
+  border-radius: 6px;
+}
+
+.br-2 {
+  border-radius: 8px;
+}
+
+.br-3 {
+  border-radius: 12px;
+}
+
+.br-4 {
+  border-radius: 16px;
+}
+
+.br-5 {
+  border-radius: 18px;
+}
+
+/* =========================
+   BORDER SIZES
+   ========================= */
+.border-1 {
+  border-width: 1.5px;
+  border-style: solid;
+}
+
+.border-2 {
+  border-width: 2px;
+  border-style: solid;
+}
+
+.border-3 {
+  border-width: 3px;
+  border-style: solid;
+}
+
+.border-4 {
+  border-width: 4px;
+  border-style: solid;
+}
+
+.border-5 {
+  border-width: 5px;
+  border-style: solid;
+}
+
+/* =========================
+   BORDER COLORS
+   ========================= */
+.border-black {
+  border-color: var(--gray-500);
+}
+
+.border-mid-black {
+  border-color: var(--gray-600);
+}
+
+.border-red {
+  border-color: var(--red-500);
+}
+
+.border-blue {
+  border-color: var(--red-500-500);
+}
+
+.border-pink {
+  border-color: var(--green-100);
+}
+
+.border-white {
+  border-color: var(--gray-100);
+}
+
+/* =========================
+   icons buttons
+   ========================= */
+
+.icon-size-16 {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-size-42 {
+  width: 42px;
+  height: 42px;
+}
+
+.icon-button {
+  width: 25px;
+  height: 25px;
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.icon-button:hover > .icon {
+  filter: brightness(2);
+  /* filter animation out */
+  transition: filter var(--speed-1) ease-in-out;
+}
+
+.button.card:hover {
+  background-color: var(--gray-700);
+  transition: background-color var(--speed-1) ease-in-out;
+}
+
+/* icon setup on the left side */
+.icon {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  /* filter animation in */
+  transition: filter var(--speed-1) ease-in-out;
+}
+
+/* icon type */
+.close-icon {
+  background-image: var(--close-icon);
+}
+.stream-icon {
+  background-image: var(--stream-icon);
+}
+.streaming-icon {
+  background-image: var(--streaming-icon);
+}
+.calibrate-icon {
+  background-image: var(--calibrate-icon);
+}
+.calibrated-icon {
+  background-image: var(--calibrated-icon);
+}
+
+/* icon types */
+.live-icon {
+  background-image: var(--live-icon);
+}
+
+.import-icon {
+  background-image: var(--import-icon);
+}
+
+.discord-icon {
+  background-image: var(--discord-icon);
+}
+
+.connected-icon {
+  background-image: var(--connected-icon);
+}
+
+.loader-icon {
+  background-image: var(--loader-icon);
+  animation: spin-ramp 2s infinite;
+  animation-timing-function: cubic-bezier(0.95, 0.17, 0.37, 0.72);
+}
+
+.warning-icon {
+  background-image: var(--warning-icon);
+}
+
+.donate-icon {
+  background-image: var(--donate-icon);
+}
+
+.record-icon {
+  background-image: var(--record-icon);
+}
+
+.calibrate-icon {
+  background-image: var(--calibrate-icon);
+}
+
+.learn-icon {
+  background-image: var(--learn-icon);
+}
+
+.subcat-icon {
+  background-image: var(--subcat-icon);
+}
+
+.download-icon {
+  background-image: var(--download-icon);
+}
+
+/* individual borders */
+/* .border-t-1 { border-top-width: 1px; border-style: solid; }
+.border-t-2 { border-top-width: 2px; border-style: solid; }
+.border-t-3 { border-top-width: 3px; border-style: solid; }
+.border-t-black { border-top-color: var(--gray-900); }
+.border-t-red   { border-top-color: var(--red-500); }
+
+.border-b-1 { border-bottom-width: 1px; border-style: solid; }
+.border-b-2 { border-bottom-width: 2px; border-style: solid; }
+.border-b-3 { border-bottom-width: 3px; border-style: solid; }
+.border-b-black { border-bottom-color: var(--gray-900); }
+.border-b-red   { border-bottom-color: var(--red-500); }
+
+.border-l-1 { border-left-width: 1px; border-style: solid; }
+.border-l-2 { border-left-width: 2px; border-style: solid; }
+.border-l-3 { border-left-width: 3px; border-style: solid; }
+.border-l-black { border-left-color: var(--gray-900); }
+.border-l-red   { border-left-color: var(--red-500); }
+
+.border-r-1 { border-right-width: 1px; border-style: solid; }
+.border-r-2 { border-right-width: 2px; border-style: solid; }
+.border-r-3 { border-right-width: 3px; border-style: solid; }
+.border-r-black { border-right-color: var(--gray-900); }
+.border-r-red   { border-right-color: var(--red-500); } */
+
+/* =========================
+   OVERFLOW
+   ========================= */
+.overflow-hidden {
+  overflow: hidden;
+}
+
+/* =========================
+   BACKGROUND COLORS
+   ========================= */
+.bg-red {
+  background-color: var(--red-500);
+}
+
+.bg-blue {
+  background-color: var(--red-500);
+}
+
+html,
+body,
+.bg-middark {
+  background-color: var(--gray-800);
+}
+
+.bg-dark {
+  background-color: var(--gray-900);
+}
+
+.bg-darkgray {
+  background-color: var(--gray-700);
+}
+
+.bg-gray {
+  background-color: var(--gray-600);
+}
+
+.bg-pink {
+  background-color: var(--green-100);
+}
+
+.bg-white {
+  background-color: var(--gray-100);
+}
+
+/* =========================
+   TEXT
+   ========================= */
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+/* =========================
+   TEXT COLOR
+   ========================= */
+
+.text-white,
+.color-white {
+  color: var(--gray-100);
+}
+
+.text-gray,
+.color-gray {
+  color: var(--gray-400);
+}
+
+/* =========================
+   HELPERS
+   ========================= */
+.hidden {
+  display: none;
+}
+
+/* =========================
+   OPTIONAL: small layout helpers
+   ========================= */
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ---- Splash Modal Styles ---- */
+.splash-overlay {
+  position: fixed;
+  /* inset: 0; */
+  background-color: var(--overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  /* animation: fadeIn 0.3s ease forwards; */
+  animation: fadeIn;
+}
+
+.splash-modal {
+  width: 481px;
+  height: 320px;
+  /* animation: scaleIn 0.3s ease forwards; */
+  animation: fadeIn, scaleIn;
+}
+.conection-container {
+  width: 255px;
+}
+.disabled > * {
+  opacity: 0.3;
+
+  transition: opacity var(--speed-2) ease-in-out;
+}
+
+.disabled,
+.disabled > * {
+  pointer-events: none;
+  /* prevents clicking */
+}
+
+.splash-screen-logo {
+  opacity: 0.5;
+}
+
+.splash-image-container {
+  background-image: url(/images/splashmodal_art.webp);
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.splash-image-logo-container {
+  background-image: url(/images/logo_name.svg);
+  background-repeat: no-repeat;
+  background-size: contain;
+  width: 88px;
+  height: 28px;
+  opacity: 0.5;
+}
+
+/* --------- ui components styles -------- */
+/* --------- ui components styles -------- */
+
+/* --------- checkbox -------- */
+
+/* =========================================
+   Custom CSS Checkboxes (Reusable)
+   Based on ModernCSS.dev
+   ========================================= */
+
+/* Root variables */
+:root {
+  /* --form-control-color: currentColor; */
+  --form-control-disabled: #959495;
+}
+
+/* Label container */
+.form-control {
+  font-family: system-ui, sans-serif;
+  font-size: 2rem;
+  /* scales checkbox size */
+  font-weight: bold;
+  line-height: 1.1;
+
+  display: grid;
+  grid-template-columns: 1em auto;
+  gap: 0.5em;
+}
+
+.form-control + .form-control {
+  margin-top: 1em;
+}
+
+/* Disabled label style (must add .form-control--disabled) */
+.form-control--disabled {
+  color: var(--form-control-disabled);
+  cursor: not-allowed;
+}
+
+/* Base checkbox reset */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  /* Safari/old iOS */
+  appearance: none;
+  background-color: var(--gray-100);
+  /* ensure clean background */
+  margin: 0;
+
+  /* Inherit sizing + color */
+  font: inherit;
+  color: var(--gray-600);
+
+  width: 0.9em;
+  height: 0.9em;
+  border: 0.19em solid var(--gray-600);
+  border-radius: 2px;
+
+  transform: translateY(-0.075em);
+
+  /* For custom indicator */
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+}
+
+/* Pseudo-element for checkmark indicator */
+input[type="checkbox"]::before {
+  content: "";
+  width: 0.65em;
+  height: 0.65em;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em var(--form-control-color);
+  /* Checkmark shape */
+  /* clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  box-shadow: inset 1em 1em var(--form-control-color); */
+
+  /* Forced-colors (High Contrast mode) */
+  background-color: CanvasText;
+}
+
+/* Checked state */
+input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+/* Focus state */
+input[type="checkbox"]:focus {
+  /* outline: max(2px, 0.15em) solid currentColor;
+  outline-offset: max(2px, 0.15em); */
+}
+
+/* Disabled checkbox */
+input[type="checkbox"]:disabled {
+  --form-control-color: var(--form-control-disabled);
+  color: var(--form-control-disabled);
+  cursor: not-allowed;
+}
+
+/* ---- Animations ---- */
+
+/* loader */
+@keyframes spin-ramp {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  /* 20%  { transform: rotate(90deg); }
+  40%  { transform: rotate(180deg); }
+  60%  { transform: rotate(300deg); }
+  80%  { transform: rotate(420deg); } */
+  100% {
+    transform: rotate(1080deg);
+  }
+}
+
+/* ui components animation setup  */
+
+/* =========================
+   Keyframes
+========================= */
+
+/* Slide Up */
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide Down */
+@keyframes slide-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fadein */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    /* transform: scale(0.75); */
+  }
+
+  100% {
+    opacity: 1;
+    /* transform: scale(1); */
+  }
+}
+
+/* scaleIn */
+@keyframes scaleIn {
+  0% {
+    /* opacity: 0; */
+    transform: scale(0.75);
+  }
+
+  100% {
+    /* opacity: 1; */
+    transform: scale(1);
+  }
+}
+
+/* =========================
+   Base Animation Class
+========================= */
+
+.reveal {
+  animation-duration: var(--speed-2);
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  transition-property: opacity;
+  transition-duration: var(--speed-2);
+}
+
+.anim-delay-1 {
+  animation-delay: 100ms;
+}
+
+.anim-delay-2 {
+  animation-delay: 200ms;
+}
+
+/* Specific animations */
+.slide-up {
+  animation-name: slide-up;
+}
+
+.slide-down {
+  animation-name: slide-down;
+}
+
+.fadeIn {
+  /* include scale as well */
+  animation-name: fadeIn;
+}
+
+.scaleIn {
+  /* include scale as well */
+  animation-name: scaleIn;
+}
+
+/* =========================
+   Reduced Motion Support
+========================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    animation: none;
+    /* skip animation, show element instantly */
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* @keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+} */

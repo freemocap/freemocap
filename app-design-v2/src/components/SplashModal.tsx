@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ButtonSm, Checkbox, ButtonCard } from "./uicomponents";
+import { Checkbox, ButtonCard } from "./uicomponents";
+import { ButtonSm } from "./primitives/Buttons/ButtonSm";
 
 interface SplashModalProps {
   onClose: () => void;

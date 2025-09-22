@@ -6,9 +6,9 @@ import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import React from "react";
 import "./App.css";
+import { ButtonSm } from "./components/primitives/Buttons/ButtonSm";
 import SplashModal from "./components/SplashModal"; // imported modal
 import {
-  ButtonSm,
   SegmentedControl,
   ToggleComponent,
   DropdownButton,

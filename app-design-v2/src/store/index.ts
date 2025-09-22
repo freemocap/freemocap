@@ -8,4 +8,4 @@ export * from './slices/cameras';
 export * from './slices/recording';
 export * from './slices/framerate';
 export * from './slices/log-records';
-export * from './slices/connection';
+export * from './slices/server';

@@ -1,6 +1,6 @@
 import { type FC, type ReactElement, type SetStateAction, useState } from "react";
 import { SegmentedControl } from "@/components/primitives/Controls/SegmentedControlComponent.tsx";
-import { ToggleButtonComponent } from "@/components/primitives/Toggles/ToggleButton.tsx";
+import { ConnectionToggleButtonComponent } from "@/components/primitives/Toggles/ToggleButton.tsx";
 
 export interface MainContentPanelProps {
     onModeChange?: (mode: string) => void;
@@ -81,7 +81,7 @@ export const MainContentPanel: FC<MainContentPanelProps> = ({
                     onChange={handleModeChange}
                 />
                 <div className="active-tools-header br-1-1 gap-1 p-1 flex">
-                    <ToggleButtonComponent
+                    <ConnectionToggleButtonComponent
                         state={streamState}
                         connectConfig={{
                             text: "Stream",

@@ -54,7 +54,7 @@ class WebSocketService {
     private debugStats = {
         totalBinaryMessages: 0,
         totalTextMessages: 0,
-        totalByteesReceived: 0,
+        totalBytesReceived: 0,
         lastMessageTime: 0,
         messagesSinceConnect: 0,
     };
@@ -297,7 +297,7 @@ class WebSocketService {
 
             if (event.data instanceof ArrayBuffer) {
                 this.debugStats.totalBinaryMessages++;
-                this.debugStats.totalByteesReceived += dataSize;
+                this.debugStats.totalBytesReceived += dataSize;
 
                 // Log every 10th binary message to avoid spam
                 if (this.debugStats.totalBinaryMessages % 10 === 1) {
@@ -330,7 +330,7 @@ class WebSocketService {
                     console.error(`❌ WebSocketService: Binary handler error:`, error);
                 }
             });
-        } else if (typeof data === 'string') {
+        } else {
             // Handle ping/pong
             if (data === 'ping') {
                 console.log('🏓 WebSocketService: Received ping, sending pong');
@@ -354,7 +354,7 @@ class WebSocketService {
                 console.log(`🔄 WebSocketService: Routing to ${this.messageHandlers.size} custom handlers`);
                 this.messageHandlers.forEach(handler => handler(message));
             } catch (error) {
-                console.warn('⚠️ WebSocketService: Received non-JSON string message:', data);
+                console.warn('⚠️ WebSocketService: Received non-JSON string message or parse error:', error);
             }
         }
     }

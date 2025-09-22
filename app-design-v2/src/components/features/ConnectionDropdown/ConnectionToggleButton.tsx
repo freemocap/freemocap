@@ -6,7 +6,7 @@ import clsx from "clsx";
 
 
 /* --- Reusable Toggle Button --- */
-export const ToggleButtonComponent = ({
+export const ConnectionToggleButton = ({
                                    state,
                                    connectConfig,
                                    connectingConfig,

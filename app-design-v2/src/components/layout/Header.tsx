@@ -8,27 +8,16 @@ export interface HeaderProps {
     onHelpItemClick?: (item: string) => void;
 }
 
-export const Header: FC<HeaderProps> = ({
-                                            onSupportClick,
-                                            onHelpItemClick
-                                        }): ReactElement => {
+export const Header: FC<HeaderProps> = (): ReactElement => {
     const handleSupportClick = (event: MouseEvent<HTMLButtonElement>): void => {
         event.preventDefault();
-        if (onSupportClick) {
-            onSupportClick();
-        } else {
             console.log("Support freemocap clicked");
             // TODO: Add navigation to donation/support page
-        }
     };
 
     const handleHelpItemClick = (item: string): void => {
-        if (onHelpItemClick) {
-            onHelpItemClick(item);
-        } else {
             console.log(`${item} clicked`);
             // TODO: Add navigation logic based on item
-        }
     };
 
     const helpDropdownItems: ReactElement[] = [

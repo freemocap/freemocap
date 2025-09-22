@@ -1,7 +1,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { z } from 'zod';
-import { RootState } from '@/store/types';
-import { selectServerEndpoints } from '@/store/slices/connection/server-selectors';
+import type {RootState} from '@/store/types';
+import { selectServerEndpoints } from '@/store/slices/server/server-selectors';
 
 const RecordStartRequestSchema = z.object({
     recording_name: z.string(),

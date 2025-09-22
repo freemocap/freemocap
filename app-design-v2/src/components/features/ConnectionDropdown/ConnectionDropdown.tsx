@@ -2,12 +2,12 @@
 import  {useState} from "react";
 import {STATES} from "@/components/connection-states.tsx";
 import DropdownButton from "@/components/composites/DropdownButton.tsx";
-import {ToggleButtonComponent} from "@/components/primitives/Toggles/ToggleButton.tsx";
+import {ConnectionToggleButtonComponent} from "@/components/primitives/Toggles/ToggleButton.tsx";
 
 const ConnectionDropdown = () => {
     // Track the state of each connection independently
     const [connections, setConnections] = useState({
-        python: STATES.DISCONNECTED,
+        server: STATES.DISCONNECTED,
         websocket: STATES.DISCONNECTED,
     });
 
@@ -63,7 +63,7 @@ const ConnectionDropdown = () => {
 
     /* --- Types of connections we support --- */
     const connectionTypes = [
-        {key: "python", label: "Python server"},
+        {key: "server", label: "Server"},
         {key: "websocket", label: "Websocket"},
     ];
 
@@ -117,7 +117,7 @@ const ConnectionDropdown = () => {
                             </div>
 
                             {/* Right side: individual toggle button */}
-                            <ToggleButtonComponent
+                            <ConnectionToggleButtonComponent
                                 state={connections[key]}
                                 connectConfig={getToggleConfig(STATES.DISCONNECTED)}
                                 connectingConfig={getToggleConfig(STATES.CONNECTING)}

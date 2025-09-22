@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
         with:
@@ -25,7 +27,7 @@ jobs:
       - name: Install libegl1
         run: |
           sudo apt-get update
-          sudo apt-get install libegl1-mesa
+          sudo apt-get install libgl1
       - name: Run noxfile
         run: |
           nox --session coverage

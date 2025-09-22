@@ -3,12 +3,17 @@ from typing import Dict, List, Union
 
 import numpy as np
 
+<<<<<<< HEAD:freemocap/old/core_processes/post_process_skeleton_data/enforce_rigid_bones.py
 from freemocap.old.data_layer.skeleton_models.segments import Segment
 from freemocap.old.data_layer.skeleton_models.skeleton import Skeleton
+=======
+from freemocap.data_layer.skeleton_models.segments import Segment
+from freemocap.data_layer.skeleton_models.skeleton import Skeleton
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/post_process_skeleton_data/enforce_rigid_bones.py
 
 
 def calculate_bone_lengths_and_statistics(
-    marker_data: Dict[str, np.ndarray], segment_connections: Dict[str, Segment]
+        marker_data: Dict[str, np.ndarray], segment_connections: Dict[str, Segment]
 ) -> Dict[str, Dict[str, Union[np.ndarray, float]]]:
     """
     Calculates bone lengths for each frame and their statistics (median and standard deviation)
@@ -42,10 +47,10 @@ def calculate_bone_lengths_and_statistics(
 
 
 def enforce_rigid_bones(
-    marker_data: Dict[str, np.ndarray],
-    segment_connections: Dict[str, Segment],
-    bone_lengths_and_statistics: Dict[str, Dict[str, Union[np.ndarray, float]]],
-    joint_hierarchy: Dict[str, List[str]],
+        marker_data: Dict[str, np.ndarray],
+        segment_connections: Dict[str, Segment],
+        bone_lengths_and_statistics: Dict[str, Dict[str, Union[np.ndarray, float]]],
+        joint_hierarchy: Dict[str, List[str]],
 ) -> Dict[str, np.ndarray]:
     """
     Enforces rigid bones by adjusting the distal joints of each segment to match the median length.
@@ -87,11 +92,11 @@ def enforce_rigid_bones(
 
 
 def adjust_children(
-    parent_marker: str,
-    frame_index: int,
-    adjustment: np.ndarray,
-    marker_data: Dict[str, np.ndarray],
-    joint_hierarchy: Dict[str, List[str]],
+        parent_marker: str,
+        frame_index: int,
+        adjustment: np.ndarray,
+        marker_data: Dict[str, np.ndarray],
+        joint_hierarchy: Dict[str, List[str]],
 ):
     """
     Recursively adjusts the positions of child markers based on the adjustment of the parent marker.

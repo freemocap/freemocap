@@ -2,16 +2,16 @@ import nox
 from nox.sessions import Session
 
 
-@nox.session(python=["3.9", "3.10", "3.11", "3.12"])
+@nox.session(python=["3.10", "3.11", "3.12"])
 def test(session: Session):
-    """Run the full test suite on python versions 3.9, 3.10, 3.11, and 3.12."""
+    """Run the full test suite on python versions 3.10, 3.11, and 3.12."""
     session.install("-e", ".")
     session.run("pytest", "freemocap/tests")
 
 
-@nox.session(python=["3.9", "3.10"])
-def test_9_10(session: Session):
-    """Run the full test suite on python versions 3.9 and 3.10."""
+@nox.session(python=["3.10"])
+def test_10(session: Session):
+    """Run the full test suite on python versions 3.10."""
     session.install("-e", ".")
     session.run("pytest", "freemocap/tests")
 

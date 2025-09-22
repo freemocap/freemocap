@@ -1,11 +1,20 @@
 import logging
 from typing import Dict, List, Optional
+<<<<<<< HEAD:freemocap/old/data_layer/skeleton_models/skeleton.py
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from freemocap.old.data_layer.skeleton_models.marker_info import MarkerInfo
 from freemocap.old.data_layer.skeleton_models.segments import Segment, Segments, SegmentAnthropometry
+=======
+
+import numpy as np
+from pydantic import BaseModel, ConfigDict
+
+from freemocap.data_layer.skeleton_models.marker_info import MarkerInfo
+from freemocap.data_layer.skeleton_models.segments import Segment, Segments, SegmentAnthropometry
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/data_layer/skeleton_models/skeleton.py
 
 logger = logging.getLogger(__name__)
 

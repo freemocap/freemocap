@@ -1,13 +1,38 @@
-# pyproject.toml
-# originally based on - https://realpython.com/pypi-publish-python-package/
-
-[build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
-
 [project]
 name = "freemocap"
+version = "0.1.0"
+description = "Add your description here"
 readme = "README.md"
+<<<<<<< HEAD
+requires-python = ">=3.11"
+dependencies = [
+    "aniposelib>=0.7.0",
+    #    "freemocap-blender-addon",
+    "ajc27_freemocap_blender_addon==v2024.12.1032",
+    "libsass>=0.23.0",
+    "opencv-contrib-python>=4.8.1.78",
+    "pyinstaller>=6.11.0",
+    "requests>=2.32.3",
+    #    "skelly-synchronize",
+    "skelly-viewer",
+    "skellycam",
+    "skellyforge",
+    "skellytracker",
+    "pydantic>=2.10.4",
+    "numpydantic>=1.6.7",
+    #    "ltrt"
+    "mediapipe>=0.10.21",
+]
+
+[tool.uv.sources]
+skellycam = { git = "https://github.com/freemocap/skellycam", branch = "jon/development" }
+skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "jon/development" }
+skellyforge = { git = "https://github.com/freemocap/skellyforge" }
+#skelly-viewer = { git = "https://github.com/freemocap/skellyviewer" }
+#freemocap-blender-addon = { git = "https://github.com/freemocap/freemocap_blender_addon"}#, branch = "jon/development" }
+#skelly-synchronize = { git = "https://github.com/freemocap/skelly_synchronize", branch = "jon/development" }
+#ltrt = { git = "https://github.com/freemocap/LTRT" }
+=======
 authors = [
     { name = "Skelly FreeMoCap", email = "info@freemocap.org" },
     { name = "Endurance Idehen" },
@@ -84,19 +109,19 @@ dependencies = [
 ]
 
 requires-python = ">=3.10,<3.13"
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d
 
-dynamic = ["version", "description"]
+[project.scripts]
+freemocap = "freemocap.__main__:main"
+[tool.setuptools]
+py-modules = ["freemocap"]
+[tool.uv]
+package = true
+dev-dependencies = [
+#    "pydantic2zod>=0.1.1",
+    "bumpver",
+]
 
-[project.optional-dependencies]
-dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit", "flake8", "flake8-bugbear", "flake8-bandit"]
-
-[project.packages]
-freemocap = { include = ["assets"] }
-
-[project.urls]
-Homepage = "https://freemocap.org"
-Documentation = "https://freemocap.github.io/documentation/"
-Github = "https://github.com/freemocap/freemocap"
 
 [tool.uv]
 override-dependencies = ["opencv-python; sys_platform == 'never'"]
@@ -113,6 +138,8 @@ push = true
 #"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
 "freemocap/__init__.py" = ["{version}"]
 ".github/workflows/*_installer.yml" = ['export PYAPP_PROJECT_VERSION={version}']
+<<<<<<< HEAD
+=======
 
 #[tool.setuptools.dynamic]
 #dependencies = {file = "requirements.txt"}
@@ -137,3 +164,4 @@ format = "black freemocap"
 dev = [
     "bumpver>=2024.1130",
 ]
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d

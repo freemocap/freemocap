@@ -1,10 +1,10 @@
 import pytest
 
-from freemocap.core_processes.process_motion_capture_videos.process_recording_headless import (
+from freemocap.old.core_processes.process_motion_capture_videos.process_recording_headless import (
     process_recording_headless,
     find_calibration_toml_path,
 )
-from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.old.data_layer.recording_models.recording_info_model import RecordingInfoModel
 from freemocap.utilities.download_sample_data import (
     download_test_data,
 )

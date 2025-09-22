@@ -9,10 +9,9 @@ __package_name__ = "freemocap"
 __repo_url__ = f"https://github.com/freemocap/{__package_name__}/"
 __repo_issues_url__ = f"{__repo_url__}issues"
 
-from freemocap.system.logging.configure_logging import configure_logging, LogLevel
+from freemocap.system.logging_configuration.configure_logging import configure_logging
+from freemocap.system.logging_configuration.log_levels import LogLevels
 
-configure_logging(LogLevel.TRACE)
-import logging
+LOG_LEVEL = LogLevels.TRACE
+configure_logging(LOG_LEVEL)
 
-logger = logging.getLogger(__name__)
-logger.info(f"Initializing {__package_name__} package, version: {__version__}, from file: {__file__}")

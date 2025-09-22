@@ -1,0 +1,85 @@
+import filecmp
+import logging
+import shutil
+from pathlib import Path
+from typing import Union
+
+from freemocap.old.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
+    AniposeCameraGroup
+from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
+
+logger = logging.getLogger(__name__)
+
+
+def load_most_recent_anipose_calibration_toml(
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/get_anipose_calibration_object.py
+    save_copy_of_calibration_to_this_path: Union[str, Path, None] = None
+) -> AniposeCameraGroup:
+=======
+        save_copy_of_calibration_to_this_path: Union[str, Path, None] = None
+) -> freemocap_anipose.CameraGroup:
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/get_anipose_calibration_object.py
+    most_recent_calibration_toml_path = get_last_successful_calibration_toml_path()
+    logger.info(f"loading `most recent calibration from:{str(most_recent_calibration_toml_path)}")
+    if save_copy_of_calibration_to_this_path is not None:
+        logger.info(f"Saving copy of `most_recent_calibration.toml` to {save_copy_of_calibration_to_this_path}")
+
+        shutil.copy(
+            str(most_recent_calibration_toml_path),
+            str(Path(save_copy_of_calibration_to_this_path) / Path(most_recent_calibration_toml_path).name),
+        )
+
+    try:
+        camera_group = AniposeCameraGroup.load(str(most_recent_calibration_toml_path))
+    except Exception as e:
+        logger.exception(e)
+        raise
+    return camera_group
+
+
+def load_anipose_calibration_toml_from_path(
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/get_anipose_calibration_object.py
+    camera_calibration_data_toml_path: Union[str, Path],
+    save_copy_of_calibration_to_this_path: Union[str, Path, None] = None,
+) -> AniposeCameraGroup:
+=======
+        camera_calibration_data_toml_path: Union[str, Path],
+        save_copy_of_calibration_to_this_path: Union[str, Path, None] = None,
+) -> freemocap_anipose.CameraGroup:
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/get_anipose_calibration_object.py
+    logger.info(f"loading camera calibration file from:{str(camera_calibration_data_toml_path)}")
+    try:
+        anipose_calibration_object = AniposeCameraGroup.load(str(camera_calibration_data_toml_path))
+        if save_copy_of_calibration_to_this_path is not None:
+            copy_toml_path = str(
+                Path(save_copy_of_calibration_to_this_path) / Path(camera_calibration_data_toml_path).name
+            )
+
+            if Path(copy_toml_path).is_file() and not filecmp.cmp(
+                    str(camera_calibration_data_toml_path), copy_toml_path
+            ):
+                logger.info(
+                    f"Saving copy of {camera_calibration_data_toml_path} to {save_copy_of_calibration_to_this_path}"
+                )
+                shutil.copyfile(str(camera_calibration_data_toml_path), copy_toml_path)
+
+        return anipose_calibration_object
+    except Exception as e:
+        logger.error(f"Failed to load anipose calibration info from {str(camera_calibration_data_toml_path)}")
+        raise e
+
+
+def load_calibration_from_session_id(
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/get_anipose_calibration_object.py
+    session_calibration_file_path: Union[str, Path],
+) -> AniposeCameraGroup:
+=======
+        session_calibration_file_path: Union[str, Path],
+) -> freemocap_anipose.CameraGroup:
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/get_anipose_calibration_object.py
+    logger.info(f"loading camera calibration file from:{str(session_calibration_file_path)}")
+    try:
+        return AniposeCameraGroup.load(str(session_calibration_file_path))
+    except Exception as e:
+        logger.error(f"Failed to load anipose calibration info from {str(session_calibration_file_path)}")
+        raise e

@@ -245,7 +245,10 @@ interface CheckboxProps {
   checked?: boolean; // optional controlled state
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void; // handler for state changes
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 46c19ac6 (refactored buttonCard + SplashModal)
 }
 
 const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange }) => {

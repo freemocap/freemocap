@@ -3,30 +3,30 @@ import React, {useEffect, useState} from "react";
 
 
 interface SegmentedControlProps {
-  /**
-   * Array of options to display.
-   */
-  options: SegmentedControlOption[];
-  /**
-   * Default selected value (uncontrolled mode).
-   */
-  defaultValue?: string;
-  /**
-   * Callback when selection changes.
-   */
-  onChange?: (value: string) => void;
-  /**
-   * Additional class for the container.
-   */
-  className?: string;
-  /**
-   * Size of the text: "sm" for small, "md" for medium (default).
-   */
-  size?: "sm" | "md";
-  /**
-   * Optional value for controlled mode.
-   */
-  value?: string;
+    /**
+     * Array of options to display.
+     */
+    options: SegmentedControlOption[];
+    /**
+     * Default selected value (uncontrolled mode).
+     */
+    defaultValue?: string;
+    /**
+     * Callback when selection changes.
+     */
+    onChange?: (value: string) => void;
+    /**
+     * Additional class for the container.
+     */
+    className?: string;
+    /**
+     * Size of the text: "sm" for small, "md" for medium (default).
+     */
+    size?: "sm" | "md";
+    /**
+     * Optional value for controlled mode.
+     */
+    value?: string;
 }
 
 /**
@@ -74,56 +74,56 @@ interface SegmentedControlProps {
  * - For uncontrolled usage, use `defaultValue`.
  * - Customize the active/idle styling via CSS classes.
  */
-const SegmentedControl: React.FC<SegmentedControlProps> = ({
-  options,
-  defaultValue,
-  onChange,
-  className = "",
-  size = "md",
-  value: controlledValue,
-}) => {
-  const isControlled = controlledValue !== undefined;
-  const [activeValue, setActiveValue] = useState(
-    isControlled ? controlledValue : defaultValue || options[0]?.value
-  );
+export const SegmentedControl: React.FC<SegmentedControlProps> = ({
+                                                                      options,
+                                                                      defaultValue,
+                                                                      onChange,
+                                                                      className = "",
+                                                                      size = "md",
+                                                                      value: controlledValue,
+                                                                  }) => {
+    const isControlled = controlledValue !== undefined;
+    const [activeValue, setActiveValue] = useState(
+        isControlled ? controlledValue : defaultValue || options[0]?.value
+    );
 
-  useEffect(() => {
-    if (isControlled && controlledValue !== activeValue) {
-      setActiveValue(controlledValue);
-    }
-  }, [controlledValue, isControlled, activeValue]);
+    useEffect(() => {
+        if (isControlled && controlledValue !== activeValue) {
+            setActiveValue(controlledValue);
+        }
+    }, [controlledValue, isControlled, activeValue]);
 
-  const handleClick = (value: string) => {
-    if (!isControlled) {
-      setActiveValue(value);
-    }
-    if (onChange) onChange(value);
-  };
+    const handleClick = (value: string) => {
+        if (!isControlled) {
+            setActiveValue(value);
+        }
+        if (onChange) onChange(value);
+    };
 
-  const textSizeClass = size === "sm" ? "sm" : "md";
+    const textSizeClass = size === "sm" ? "sm" : "md";
 
-  return (
-    <div
-      className={`segmented-control-container br-1-1 gap-1 p-1 bg-middark flex ${className}`}
-    >
-      {options.map((option) => (
-        <button
-          key={option.value}
-          className={`segmented-control-button justify-center button gap-1 br-1 flex-inline items-center ${
-            activeValue === option.value
-              ? "active text-white bg-dark"
-              : "idle text-gray"
-          }`}
-          onClick={() => handleClick(option.value)}
+    return (
+        <div
+            className={`segmented-control-container br-1-1 gap-1 p-1 bg-middark flex ${className}`}
         >
-          {option.iconClass && <i className={option.iconClass} />}
-          <p className={`${textSizeClass} text text-center p-1`}>
-            {option.label}
-          </p>
-        </button>
-      ))}
-    </div>
-  );
+            {options.map((option) => (
+                <button
+                    key={option.value}
+                    className={`segmented-control-button justify-center button gap-1 br-1 flex-inline items-center ${
+                        activeValue === option.value
+                            ? "active text-white bg-dark"
+                            : "idle text-gray"
+                    }`}
+                    onClick={() => handleClick(option.value)}
+                >
+                    {option.iconClass && <i className={option.iconClass}/>}
+                    <p className={`${textSizeClass} text text-center p-1`}>
+                        {option.label}
+                    </p>
+                </button>
+            ))}
+        </div>
+    );
 };
 
 // Example usage:

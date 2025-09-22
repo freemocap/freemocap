@@ -1,6 +1,6 @@
 import {type FC, type ReactElement, useState} from "react";
 import "../../App.css";
-import SplashModal from "../features/SplashModal/SplashModal-new.tsx";
+import SplashModal from "../features/SplashModal/SplashModal.tsx";
 
 // Import sub-components with their types
 import {Header} from "./Header.tsx";

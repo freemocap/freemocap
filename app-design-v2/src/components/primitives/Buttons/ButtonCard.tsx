@@ -49,17 +49,18 @@
  * Override or extend using the optional `className` prop.
  */
 
-const ButtonCard = ({ text, iconClass, onClick, className = "" }) => {
-  return (
-    <div
-      className={`button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs ${className}`}
-      onClick={onClick}
-    >
-      {/* Icon section - styled via passed classes */}
-      <span className={`icon m-3 ${iconClass}`}></span>
 
-      {/* Text section */}
-      <p className="text-center text bg">{text}</p>
-    </div>
-  );
+export const ButtonCard = ({ text, iconClass, onClick, className = "" }) => {
+    return (
+        <div
+            className={`button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs ${className}`}
+            onClick={onClick}
+        >
+            {/* Icon section - styled via passed classes */}
+            <span className={`icon m-3 ${iconClass}`}></span>
+
+            {/* Text section */}
+            <p className="text-center text bg">{text}</p>
+        </div>
+    );
 };

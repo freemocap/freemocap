@@ -2,50 +2,67 @@
 import clsx from "clsx";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { checkServerHealth } from "@/store/slices/server";
-import { ToggleButtonComponent } from "@/components/features/ConnectionDropdown/ConnectionDropdown";
-// import { ConnectionDropdown } from "./ConnectionDropdown";
 
+interface ConnectionToggleButtonProps {
+    textColor?: string;
+}
 
+/* --- Self-contained Toggle Button --- */
+export const ConnectionToggleButton = ({
+                                                    textColor = "text-gray",
+                                                }: ConnectionToggleButtonProps) => {
+    const dispatch = useAppDispatch();
+    const serverStatus = useAppSelector((state) => state.server.connection.status);
 
-const StandaloneToggleExample = () => {
-  const [state, setState] = useState(STATES.DISCONNECTED);
+    // Handle button clicks
+    const handleClick = () => {
+        if (serverStatus === 'disconnected' || serverStatus === 'error') {
+            dispatch(checkServerHealth());
+        } else if (serverStatus === 'healthy') {
+            // TODO: Add proper disconnect action when available
+            dispatch(checkServerHealth());
+        }
+        // Don't do anything if state is 'closing'
+    };
 
-  return (
-    <ToggleButtonComponent
-      state={state}
-      connectConfig={{
-        text: "Stream",
-        iconClass: "stream-icon",
-        rightSideIcon: "",
-        extraClasses: "",
-      }}
-      connectingConfig={{
-        text: "Checking...",
-        iconClass: "loader-icon",
-        rightSideIcon: "",
-        extraClasses: "loading disabled",
-      }}
-      connectedConfig={{
-        text: "Streaming",
-        iconClass: "streaming-icon",
-        rightSideIcon: "",
-        extraClasses: "activated",
-      }}
-      textColor="text-white"
-      onConnect={() => {
-        console.log("Checking before streaming…");
-        setState(STATES.CONNECTING);
+    // Get the button configuration based on current state
+    const getButtonConfig = () => {
+        switch (serverStatus) {
+            case 'closing':
+                return {
+                    text: "Disconnecting...",
+                    extraClasses: "loading disabled",
+                };
+            case 'healthy':
+                return {
+                    text: "Connected",
+                    extraClasses: "activated",
+                };
+            case 'error':
+                return {
+                    text: "Error",
+                    extraClasses: "error",
+                };
+            default: // 'disconnected'
+                return {
+                    text: "Connect",
+                    extraClasses: "",
+                };
+        }
+    };
 
-        // Simulate async check before streaming
-        setTimeout(() => {
-          console.log("Streaming started!");
-          setState(STATES.CONNECTED);
-        }, 2000);
-      }}
-      onDisconnect={() => {
-        console.log("Stopped streaming!");
-        setState(STATES.DISCONNECTED);
-      }}
-    />
-  );
+    const { text, extraClasses } = getButtonConfig();
+
+    return (
+        <button
+            onClick={handleClick}
+            disabled={serverStatus === 'closing'}
+            className={clsx(
+                "gap-1 br-1 button sm flex-inline text-left items-center",
+                extraClasses
+            )}
+        >
+            <p className={`${textColor} text md text-align-left`}>{text}</p>
+        </button>
+    );
 };

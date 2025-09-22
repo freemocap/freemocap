@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ButtonCard } from "./primitives/Buttons/ButtonCard";
+import { ButtonCard } from "./uicomponents";
 import { ButtonSm } from "./primitives/Buttons/ButtonSm";
 import { Checkbox } from "./primitives/Toggles/Checkbox.tsx";
 

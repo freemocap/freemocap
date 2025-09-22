@@ -30,7 +30,7 @@ const ConnectionDropdown = () => {
             case 'closing':
                 return {text: "Disconnecting...", iconClass: "loader-icon"};
             case 'error':
-                return {text: "Connection Error", iconClass: "warning-icon"};
+                return {text: "Connection Error", iconClass: "error-icon"};
             default: // 'disconnected'
                 return {text: "Not Connected", iconClass: "warning-icon"};
         }

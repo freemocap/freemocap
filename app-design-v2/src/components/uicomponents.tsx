@@ -246,7 +246,10 @@ interface CheckboxProps {
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void; // handler for state changes
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 46c19ac6 (refactored buttonCard + SplashModal)
 =======
 >>>>>>> parent of 46c19ac6 (refactored buttonCard + SplashModal)
 }

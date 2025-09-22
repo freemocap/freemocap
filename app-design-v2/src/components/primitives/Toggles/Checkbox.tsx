@@ -1,4 +1,3 @@
-
 /**
  * Reusable Checkbox Component
  * ----------------------------
@@ -9,32 +8,32 @@
  */
 
 interface CheckboxProps {
-    label: string; // text shown next to the checkbox (developers can change this freely)
-    checked?: boolean; // optional controlled state
-    onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void; // handler for state changes
+  label: string; // text shown next to the checkbox (developers can change this freely)
+  checked?: boolean; // optional controlled state
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void; // handler for state changes
 }
 
-export const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange }) => {
-    return (
-        <div
-            className="button checkbox gap-1 flex flex-row items-center"
-            onClick={(e) => {
-                // Allow clicking anywhere on the container to toggle checkbox
-                if (onChange) {
-                    onChange({
-                        ...e,
-                        target: {...(e.target as HTMLInputElement), checked: !checked},
-                    } as unknown as React.ChangeEvent<HTMLInputElement>);
-                }
-            }}
-        >
-            <input
-                type="checkbox"
-                checked={checked}
-                onChange={onChange}
-                className="button"
-            />
-            <p className="text-gray text sm text-align-left">{label}</p>
-        </div>
-    );
+const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange }) => {
+  return (
+    <div
+      className="button checkbox gap-1 flex flex-row items-center"
+      onClick={(e) => {
+        // Allow clicking anywhere on the container to toggle checkbox
+        if (onChange) {
+          onChange({
+            ...e,
+            target: { ...(e.target as HTMLInputElement), checked: !checked },
+          } as React.ChangeEvent<HTMLInputElement>);
+        }
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="button"
+      />
+      <p className="text-gray text sm text-align-left">{label}</p>
+    </div>
+  );
 };

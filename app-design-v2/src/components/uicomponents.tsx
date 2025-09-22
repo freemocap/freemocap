@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ButtonSm } from "./primitives/Buttons/ButtonSm";
 import clsx from "clsx";
 
 // /**
@@ -229,7 +228,49 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
   );
 };
 
+// Example usage:
+// --------------
+// const [mode, setMode] = useState("live");
+// <SegmentedControl
+//   options={[
+//     { label: "Live Capture", value: "live", iconClass: "live-icon" },
+//     { label: "Post-process", value: "post", iconClass: "post-icon" },
+//   ]}
+//   defaultValue="live"
+//   onChange={setMode}
+// />
 
+// PROPS for ButtonSm:
+// - iconClass (string): class name for the icon (e.g., "live-icon").
+// - text (string): the button label text.
+// - onClick (function): the action to run when button is clicked.
+//   If none is provided, it defaults to a no-op function.
+
+const ButtonSm = ({
+  iconClass = "", // left-side icon
+  buttonType = "", // valid types are : use classes like this  // for primaruy use: primary full-width justify-center // for secondary use " secondary full-width justify-center ""
+  text,
+  onClick = () => {},
+  rightSideIcon = "", // "externallink" | "dropdown" | ""
+  textColor = "text-gray", // "text-gray" | "text-white"
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      className={clsx(
+        "gap-1 br-1 button sm flex-inline text-left items-center", // base styles
+        buttonType, // multiple classes supported here
+        rightSideIcon // this is being treated as classes, same as before
+      )}
+    >
+      {/* LEFT ICON */}
+      {iconClass && <span className={clsx("icon icon-size-16", iconClass)} />}
+
+      {/* TEXT */}
+      <p className={clsx(textColor, "text md text-align-left")}>{text}</p>
+    </button>
+  );
+};
 
 /**
  * Reusable Checkbox Component
@@ -244,14 +285,6 @@ interface CheckboxProps {
   label: string; // text shown next to the checkbox (developers can change this freely)
   checked?: boolean; // optional controlled state
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void; // handler for state changes
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> parent of 46c19ac6 (refactored buttonCard + SplashModal)
-=======
->>>>>>> parent of 46c19ac6 (refactored buttonCard + SplashModal)
 }
 
 const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange }) => {
@@ -360,101 +393,103 @@ interface DropdownButtonProps {
   };
   dropdownItems?: ReactNode; // any JSX to render inside dropdown
   containerClassName?: string; // NEW: optional classes for the container div
->>>>>>> parent of 46c19ac6 (refactored buttonCard + SplashModal)
 }
 
-const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange }) => {
+export default function DropdownButton({
+  buttonProps,
+  dropdownItems,
+  containerClassName, // NEW: allow external classes
+}: DropdownButtonProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleButtonClick = () => {
+    // Toggle dropdown
+    setOpen((prev) => !prev);
+    // Run any additional onClick passed to the main button
+    buttonProps.onClick?.();
+  };
+
   return (
     <div
-      className="button checkbox gap-1 flex flex-row items-center"
-      onClick={(e) => {
-        // Allow clicking anywhere on the container to toggle checkbox
-        if (onChange) {
-          onChange({
-            ...e,
-            target: { ...(e.target as HTMLInputElement), checked: !checked },
-          } as React.ChangeEvent<HTMLInputElement>);
-        }
-      }}
+      ref={containerRef}
+      // Default classes + any custom ones provided
+      className={clsx("flex flex-col z-2", containerClassName)}
     >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        className="button"
+      <ButtonSm
+        {...buttonProps}
+        onClick={handleButtonClick} // wraps dropdown toggle + optional extra onClick
       />
-      <p className="text-gray text sm text-align-left">{label}</p>
+
+      {open && (
+        <div
+          className="reveal slide-down dropdown-container border-1 border-black bg-middark br-2 pos-abs flex flex-col gap-1 p-1"
+          style={{ top: "33px" }}
+        >
+          {dropdownItems}
+        </div>
+      )}
     </div>
   );
-};
+}
 
-/**
- * ButtonCard Component
- * --------------------
- * A reusable UI component that displays a card-like button with:
- * - An icon (customizable via CSS class)
- * - A text label (string passed as a prop)
- * - A click handler (function passed as a prop)
- *
- * Props:
- * ------
- * @param {string} text - The text displayed under the icon.
- * @param {string} iconClass - The class(es) applied to the <span> element for styling the icon.
- * Example: "live-icon icon-size-42".
- * @param {function} onClick - The function triggered when the button is clicked.
- * @param {string} [className] - (Optional) Additional classes to extend/override the default wrapper styles.
- *
- * Usage Example:
- * --------------
- * import ButtonCard from "./ButtonCard";
- *
- * function App() {
- * const handleLiveClick = () => {
- * console.log("Capture Live button clicked!");
- * };
- *
- * return (
- * <div className="flex gap-4">
- * <ButtonCard
- * text="Capture Live"
- * iconClass="live-icon icon-size-42"
- * onClick={handleLiveClick}
- * />
- *
- * <ButtonCard
- * text="Upload File"
- * iconClass="upload-icon icon-size-42"
- * onClick={() => alert("Upload File clicked")}
- * className="bg-blue-600"
- * />
- * </div>
- * );
- * }
- *
- * Notes for Developers:
- * ---------------------
- * - The `iconClass` lets you swap out icons dynamically by just changing the class string.
- * - If you need SVG or inline icons, you can refactor to accept an `icon` ReactNode prop instead.
- * - The default styling is based on the original HTML snippet (dark background, flex, centered).
- * Override or extend using the optional `className` prop.
- */
+/* --------------------------------------------------------------------------
+USAGE EXAMPLES
 
-const ButtonCard = ({ text, iconClass, onClick, className = "" }) => {
-  return (
-    <div
-      className={`button items-center flex-col justify-content-space-between p-3 text-aligh-center button card bg-dark flex-1 br-2 flex items-center justify-center text-white text-xs ${className}`}
-      onClick={onClick}
-    >
-      {/* Icon section - styled via passed classes */}
-      <span className={`icon m-3 ${iconClass}`}></span>
+1. Basic usage (same as before, default container styling):
 
-      {/* Text section */}
-      <p className="text-center text bg">{text}</p>
-    </div>
-  );
-};
+<DropdownButton
+  buttonProps={{ text: "Menu" }}
+  dropdownItems={<div>Item 1</div>}
+/>
 
+2. Add custom styles to the container:
 
+<DropdownButton
+  buttonProps={{ text: "Menu" }}
+  dropdownItems={<div>Item 1</div>}
+  containerClassName="items-end bg-gray-800"
+/>
+
+➡ This will merge the default classes (flex flex-col z-2 align-end) with your
+   provided classes (items-end bg-gray-800).
+
+3. Advanced example with extra button props:
+
+<DropdownButton
+  buttonProps={{
+    text: "Settings",
+    iconClass: "icon-gear",
+    textColor: "text-white",
+    buttonType: "primary",
+    onClick: () => console.log("Main button clicked"),
+  }}
+  dropdownItems={
+    <>
+      <div>Profile</div>
+      <div>Logout</div>
+    </>
+  }
+  containerClassName="w-48 border rounded shadow-lg"
+/>
+
+-------------------------------------------------------------------------- */
 
 
 /* --- Connection states (enum-like) --- */
@@ -699,12 +734,12 @@ const StandaloneToggleExample = () => {
 };
 
 export {
-  // ButtonSm,
+  ButtonSm,
   Checkbox,
   ButtonCard,
   SegmentedControl,
   ToggleComponent,
-  // DropdownButton,
+  DropdownButton,
   ToggleButtonComponent,
   ConnectionDropdown,
   StandaloneToggleExample,

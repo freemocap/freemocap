@@ -3,10 +3,10 @@ import { store } from "./store";
 import React, { useState } from "react";
 import "./App.css";
 
-import Header from "./components/HeaderPanel";
+import Header from "./components/panels/HeaderPanel";
 import SplashModal from "./components/SplashModal";
-import InfoPanel from "./components/InfoPanel";
-import ModePanel from "./components/ModePanel";
+import InfoPanel from "./components/panels/InfoPanel";
+import ModePanel from "./components/panels/ModePanel";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);

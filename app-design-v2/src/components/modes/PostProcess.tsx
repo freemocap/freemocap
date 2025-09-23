@@ -1,14 +1,12 @@
 import React, { useState } from "react";
-import { ButtonSm, ToggleComponent, ToggleButtonComponent } from "./uicomponents";
+import { ButtonSm, ToggleComponent, ToggleButtonComponent } from "../uicomponents";
 import clsx from "clsx";
 
 const PostProcess = () => {
-  const [processState, setProcessState] = useState("idle");
 
-  const handleStartProcess = () => {
+  const HandleImportVideos = () => {
     console.log("Starting post-process…");
-    setProcessState("running");
-    setTimeout(() => setProcessState("completed"), 2000);
+    setTimeout(() => console.log("Improt videos button clicked"));
   };
 
   return (
@@ -17,12 +15,12 @@ const PostProcess = () => {
         <div className="flex flex-row header-tool-bar br-2 gap-4">
           <div className="active-tools-header br-1-1 gap-1 p-1 flex ">
             <ButtonSm
-              iconClass="process-icon"
-              text={processState === "idle" ? "Start Process" : processState}
-              buttonType="full-width primary justify-center"
+              iconClass="import-icon"
+              text="Import videos"
+              buttonType=""
               rightSideIcon=""
               textColor="text-white"
-              onClick={handleStartProcess}
+              onClick={HandleImportVideos}
             />
           </div>
         </div>

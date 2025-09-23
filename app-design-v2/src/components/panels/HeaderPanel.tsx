@@ -1,5 +1,5 @@
 import React from "react";
-import { ButtonSm, DropdownButton, ConnectionDropdown } from "./uicomponents";
+import { ButtonSm, DropdownButton, ConnectionDropdown } from "../uicomponents";
 
 /**
  * HeaderPanel Component

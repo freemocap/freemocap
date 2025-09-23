@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ButtonSm, ToggleComponent, ToggleButtonComponent, SegmentedControl } from "./uicomponents";
+import { ButtonSm, ToggleComponent, ToggleButtonComponent, SegmentedControl } from "../uicomponents";
 import clsx from "clsx";
 
 const CaptureLive = () => {

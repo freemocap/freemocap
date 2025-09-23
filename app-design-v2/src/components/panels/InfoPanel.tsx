@@ -8,7 +8,7 @@ import {
   ToggleButtonComponent,
   ConnectionDropdown,
   // StandaloneToggleExample,
-} from "./uicomponents";
+} from "../uicomponents";
 
 /**
  * InfoPanel Component

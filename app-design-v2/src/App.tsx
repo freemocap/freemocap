@@ -6,6 +6,7 @@ import viteLogo from "/vite.svg";
 import React from "react";
 import "./App.css";
 import clsx from "clsx";
+import InfoPanel from "./components/InfoPanel"; 
 import SplashModal from "./components/SplashModal"; // imported modal
 import {
   ButtonSm,
@@ -16,6 +17,8 @@ import {
   ConnectionDropdown,
   StandaloneToggleExample,
 } from "./components/uicomponents";
+
+
 
 function App() {
 
@@ -298,72 +301,9 @@ function App() {
           </div>
         </div>
       </div>
-
-      {/* bottom info-container */}
-      <div className="gap-2 overflow-hidden bottom-info-container bg-middark border-mid-black h-100 p-1 border-1 border-black br-2 flex flex-col">
-        <div className="info-header-control h-25 bg-middark">
-          <SegmentedControl
-            options={[
-              { label: "Logs", value: "Logs" },
-              { label: "Recording info", value: "Recording info" },
-              { label: "File directory", value: "File directory" },
-            ]}
-            size="sm"
-            value={infoMode}
-            onChange={handleInfoMode}
-          />
-        </div>
-
-        <div className="overflow-y info-container flex flex-col flex-1 br-2 p-1 gap-1">
-          <p className="text md text-left">
-            \Users\andre\freemocap_data\logs_info_and_settings\last_successful_calibration.toml.
-            [2024-01-18T23:14:32.0235][INFO ] [ProcessID: 1192, ThreadID: 22204]
-            [freemocap.gui.qt.utilities.update_most_recent_recording_toml:update_most_recent_recording_toml():16]:::
-            Saving most recent recording path C:
-            \Users\andre\freemocap_data\recording sessions\freemocap_sample_data
-            to toml file:
-            C:\Users\andre\freemocap_data\logs_info_and_settings\most_recent_recording.toml.
-            [2024-01-18T23:14:32.0251][INFO ] [ProcessID: 1192, ThreadID: 22204]
-            [freemocap.data_layer.recording_models.recording_info_model:get_number_of_mp4s_in_synched_videos_directory():238]
-            ::: Number of `.mp4''s in C:
-            \Users\andre\freemocap_data\recording_sessions\freemocap_sample_data\synchronized_videos:
-            3.0.\Users\andre\freemocap_data\logs_info_and_settings\last_successful_calibration.toml.
-            [2024-01-18T23:14:32.0235][INFO ] [ProcessID: 1192, ThreadID: 22204]
-            [freemocap.gui.qt.utilities.update_most_recent_recording_toml:update_most_recent_recording_toml():16]:::
-            Saving most recent recording path C:
-            \Users\andre\freemocap_data\recording sessions\freemocap_sample_data
-            to toml file:
-            C:\Users\andre\freemocap_data\logs_info_and_settings\most_recent_recording.toml.
-            [2024-01-18T23:14:32.0251][INFO ] [ProcessID: 1192, ThreadID: 22204]
-            [freemocap.data_layer.recording_models.recording_info_model:get_number_of_mp4s_in_synched_videos_directory():238]
-            ::: Number of `.mp4''s in C:
-            \Users\andre\freemocap_data\recording_sessions\freemocap_sample_data\synchronized_videos:
-            3.0.\Users\andre\freemocap_data\logs_info_and_settings\last_successful_calibration.toml.
-            [2024-01-18T23:14:32.0235][INFO ] [ProcessID: 1192, ThreadID: 22204]
-            [freemocap.gui.qt.utilities.update_most_recent_recording_toml:update_most_recent_recording_toml():16]:::
-            Saving most recent recording path C:
-            \Users\andre\freemocap_data\recording sessions\freemocap_sample_data
-            to toml file:
-            C:\Users\andre\freemocap_data\logs_info_and_settings\most_recent_recording.toml.
-            [2024-01-18T23:14:32.0251][INFO ] [ProcessID: 1192, ThreadID: 22204]
-            [freemocap.data_layer.recording_models.recording_info_model:get_number_of_mp4s_in_synched_videos_directory():238]
-            ::: Number of `.mp4''s in C:
-            \Users\andre\freemocap_data\recording_sessions\freemocap_sample_data\synchronized_videos:
-            3.0.\Users\andre\freemocap_data\logs_info_and_settings\last_successful_calibration.toml.
-            [2024-01-18T23:14:32.0235][INFO ] [ProcessID: 1192, ThreadID: 22204]
-            [freemocap.gui.qt.utilities.update_most_recent_recording_toml:update_most_recent_recording_toml():16]:::
-            Saving most recent recording path C:
-            \Users\andre\freemocap_data\recording sessions\freemocap_sample_data
-            to toml file:
-            C:\Users\andre\freemocap_data\logs_info_and_settings\most_recent_recording.toml.
-            [2024-01-18T23:14:32.0251][INFO ] [ProcessID: 1192, ThreadID: 22204]
-            [freemocap.data_layer.recording_models.recording_info_model:get_number_of_mp4s_in_synched_videos_directory():238]
-            ::: Number of `.mp4''s in C:
-            \Users\andre\freemocap_data\recording_sessions\freemocap_sample_data\synchronized_videos:
-            3.0.
-          </p>
-        </div>
-      </div>
+                
+      {/* bottom info-container replaced with InfoPanel */}
+      <InfoPanel /> 
     </div>
   );
 }

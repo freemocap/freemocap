@@ -7,7 +7,7 @@ import {
   DropdownButton,
   ToggleButtonComponent,
   ConnectionDropdown,
-  StandaloneToggleExample,
+  // StandaloneToggleExample,
 } from "./uicomponents";
 
 /**

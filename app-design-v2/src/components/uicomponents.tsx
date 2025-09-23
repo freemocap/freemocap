@@ -551,6 +551,7 @@ const ToggleButtonComponent = ({
     </button>
   );
 };
+
 /* --- Dropdown wrapper with connection controls --- */
 const ConnectionDropdown = () => {
   // Track the state of each connection independently

@@ -323,7 +323,15 @@ q::after {
 .segmented-control-container {
   max-width: max-content;
 }
+.main-segmented-control {
+  position: absolute;
+    left: 9px;
+    top: 38px;
+}
+.active-tools-header {
+  margin-left: 226px;
 
+}
 .segmented-control-button {
   /* global size */
   min-width: 104px;

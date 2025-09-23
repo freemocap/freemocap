@@ -551,6 +551,7 @@ const ToggleButtonComponent = ({
     </button>
   );
 };
+
 /* --- Dropdown wrapper with connection controls --- */
 const ConnectionDropdown = () => {
   // Track the state of each connection independently
@@ -690,48 +691,48 @@ const ConnectionDropdown = () => {
 
 
 /* --- Example: Standalone Toggle Usage --- */
-const StandaloneToggleExample = () => {
-  const [state, setState] = useState(STATES.DISCONNECTED);
+// const StandaloneToggleExample = () => {
+//   const [state, setState] = useState(STATES.DISCONNECTED);
 
-  return (
-    <ToggleButtonComponent
-      state={state}
-      connectConfig={{
-        text: "Stream",
-        iconClass: "stream-icon",
-        rightSideIcon: "",
-        extraClasses: "",
-      }}
-      connectingConfig={{
-        text: "Checking...",
-        iconClass: "loader-icon",
-        rightSideIcon: "",
-        extraClasses: "loading disabled",
-      }}
-      connectedConfig={{
-        text: "Streaming",
-        iconClass: "streaming-icon",
-        rightSideIcon: "",
-        extraClasses: "activated",
-      }}
-      textColor="text-white"
-      onConnect={() => {
-        console.log("Checking before streaming…");
-        setState(STATES.CONNECTING);
+//   return (
+//     <ToggleButtonComponent
+//       state={state}
+//       connectConfig={{
+//         text: "Stream",
+//         iconClass: "stream-icon",
+//         rightSideIcon: "",
+//         extraClasses: "",
+//       }}
+//       connectingConfig={{
+//         text: "Checking...",
+//         iconClass: "loader-icon",
+//         rightSideIcon: "",
+//         extraClasses: "loading disabled",
+//       }}
+//       connectedConfig={{
+//         text: "Streaming",
+//         iconClass: "streaming-icon",
+//         rightSideIcon: "",
+//         extraClasses: "activated",
+//       }}
+//       textColor="text-white"
+//       onConnect={() => {
+//         console.log("Checking before streaming…");
+//         setState(STATES.CONNECTING);
 
-        // Simulate async check before streaming
-        setTimeout(() => {
-          console.log("Streaming started!");
-          setState(STATES.CONNECTED);
-        }, 2000);
-      }}
-      onDisconnect={() => {
-        console.log("Stopped streaming!");
-        setState(STATES.DISCONNECTED);
-      }}
-    />
-  );
-};
+//         // Simulate async check before streaming
+//         setTimeout(() => {
+//           console.log("Streaming started!");
+//           setState(STATES.CONNECTED);
+//         }, 2000);
+//       }}
+//       onDisconnect={() => {
+//         console.log("Stopped streaming!");
+//         setState(STATES.DISCONNECTED);
+//       }}
+//     />
+//   );
+// };
 
 export {
   ButtonSm,
@@ -742,5 +743,5 @@ export {
   DropdownButton,
   ToggleButtonComponent,
   ConnectionDropdown,
-  StandaloneToggleExample,
+  // StandaloneToggleExample,
 };

@@ -6,6 +6,7 @@ import viteLogo from "/vite.svg";
 import React from "react";
 import "./App.css";
 import clsx from "clsx";
+import HeaderPanel from "./components/HeaderPanel";
 import InfoPanel from "./components/InfoPanel"; 
 import SplashModal from "./components/SplashModal"; // imported modal
 import {
@@ -67,72 +68,8 @@ function App() {
       {/* splash modal */}
       {showSplash && <SplashModal onClose={() => setShowSplash(false)} />}
 
-      {/* top-header */}
-      <div className="flex flex-row justify-content-space-between top-header br-2 h-25">
-        <div className="flex left-section">
-          {/* <ButtonSm
-            iconClass="loader-icon" // Connected-icon || loader-icon || warning-icon
-            text="Connecting..."
-            rightSideIcon="dropdown" // dropdown || externallink || ""
-            textColor="text-gray" // text-white || text-gray
-            onClick={() => {
-              // Developers: Replace this with navigation to community page
-              console.log("Connect clicked");
-            }}
-          /> */}
-          <ConnectionDropdown />
-        </div>
-        <div className="flex right-section gap-2">
-          <ButtonSm
-            iconClass="donate-icon"
-            text="Support the freemocap"
-            rightSideIcon="externallink"
-            textColor="text-gray"
-            onClick={() => {
-              // Developers: Replace this with navigation or tutorial logic
-              console.log("Support freemocap clicked");
-            }}
-          />
-
-          <DropdownButton
-            containerClassName="align-end"
-            buttonProps={{
-              text: "Help",
-              rightSideIcon: "dropdown",
-              textColor: "text-gray",
-              iconClass: "",
-              
-              onClick: () => console.log("help dropdown button clicked"),
-            }}
-            dropdownItems={[
-              <ButtonSm
-                key="FreeMocap Guide"
-                rightSideIcon="externallink"
-                buttonType="full-width"
-                text="FreeMocap Guide"
-                iconClass="learn-icon"
-                onClick={() => console.log("FreeMocap Guide clicked")}
-              />,
-              <ButtonSm
-                key="Ask Question on Discord"
-                rightSideIcon="externallink"
-                buttonType="full-width"
-                text="Ask Question on Discord"
-                iconClass="discord-icon"
-                onClick={() => console.log("Ask Question on Discord clicked")}
-              />,
-              <ButtonSm
-                key="tutorials"
-                buttonType="full-width"
-                text="Download Sample Videos"
-                iconClass="download-icon"
-                onClick={() => console.log("Download Sample Videos clicked")}
-              />,
-            ]}
-          />
-        </div>
-      </div>
-
+      {/* Header panel */}
+      <HeaderPanel />
       {/* main-container */}
       <div className="main-container gap-1 overflow-hidden flex flex-row flex-1">
         {/* mode-container */}

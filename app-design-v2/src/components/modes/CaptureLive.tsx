@@ -32,7 +32,7 @@ const CaptureLive = () => {
       <div className="mode-container flex-5 br-2 bg-darkgray border-mid-black border-1 overflow-hidden flex flex-col flex-1 gap-1 p-1">
         <div className="flex flex-row header-tool-bar br-2 gap-4">
           {/* You can still keep SegmentedControl here if needed */}
-          <div className="active-tools-header br-1-1 gap-1 p-1 flex ">
+          <div className="reveal fadeIn active-tools-header br-1-1 gap-1 p-1 flex ">
             <ToggleButtonComponent
               state={streamState}
               connectConfig={{
@@ -60,7 +60,7 @@ const CaptureLive = () => {
           </div>
         </div>
 
-        <div className="visualize-container overflow-y flex gap-2 flex-3 flex-start">
+        <div className="reveal fadeIn visualize-container overflow-y flex gap-2 flex-3 flex-start">
           <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start">
             {[...Array(6)].map((_, idx) => (
               <div key={idx} className="video-tile size-1 bg-middark br-2 empty" />
@@ -69,7 +69,7 @@ const CaptureLive = () => {
         </div>
       </div>
 
-      <div className="action-container flex-1 overflow-y bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
+      <div className="reveal fadeIn action-container flex-1 overflow-y bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
         <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
           <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
             <ToggleComponent text="Charuco size" className="" iconClass="" />

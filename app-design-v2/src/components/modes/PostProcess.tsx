@@ -29,7 +29,7 @@ const PostProcess = () => {
 
         <div className="visualize-container overflow-hidden flex-row flex gap-2 flex-3 flex-start">
           {/* 3D Scene Container */}
-          <div className="3D-container br-2 flex flex-row flex-wrap gap-2 flex-2 flex-start bg-middark h-full">
+          <div className="overflow-hidden 3D-container br-2 flex flex-row flex-wrap gap-2 flex-2 flex-start bg-middark h-full">
             <ThreeDScene />
           </div>
 

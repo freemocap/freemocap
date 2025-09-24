@@ -44,6 +44,7 @@
         --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
           --calibrated-icon: url("./assets/icons/calibrated_icon.svg");
     --camera-icon: url("./assets/icons/camera_icon.svg");
+      --video-icon: url("./assets/icons/video_icon.svg");
   --record-icon: url("./assets/icons/record_icon.svg");
   --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
 
@@ -309,10 +310,19 @@ q::after {
 .video-tile.size-1 {
    min-width: 250px
 }
-.video-tile.empty:before {
-    content: var(--camera-icon);
+.video-tile.camera-source.empty:before,
+.video-tile.video-source.empty:before  {
+    
     margin: 8px;
-    display: block;
+    display: inline-block;
+}
+.video-tile.camera-source.empty:before {
+    content: var(--camera-icon);
+
+}
+.video-tile.video-source.empty:before {
+    content: var(--video-icon);
+
 }
 .video-tile.empty {
     border: 1.5px dashed var(--gray-500);

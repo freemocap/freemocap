@@ -30,7 +30,7 @@ const ThreeDScene: React.FC = () => {
       {/* <style>{loaderStyles}</style> */}
 
       {/* Loader Overlay */}
-      {loading && <div className="loader-overlay" style={{ opacity: loading ? 1 : 0 }} />}
+      {loading && <div className="skeleton-loader-overlay" style={{ opacity: loading ? 1 : 0 }} />}
 
       <Canvas
         camera={{ position: cameraPosition, fov: 60, rotation: cameraRotation }}

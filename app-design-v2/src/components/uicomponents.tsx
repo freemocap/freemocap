@@ -734,6 +734,108 @@ const ConnectionDropdown = () => {
 //   );
 // };
 
+
+// Reusable InputWithUnit
+const InputWithUnit = ({
+  value,
+  onChange,
+  unit = "",
+  placeholder = "",
+  className = "",
+  inputClassName = "",
+  unitClassName = ""
+}) => {
+  return (
+    <div className={`input-with-unit ${className}`}>
+      <input
+        type="number"
+        value={value}
+        min={1}
+        max={999}
+        onChange={(e) => {
+          const val = Math.max(1, Math.min(999, Number(e.target.value) || 1));
+          onChange(val);
+        }}
+        onFocus={(e) => e.target.select()}
+        placeholder={placeholder}
+        className={`input-field text md text-center ${inputClassName}`}
+      />
+      {unit && <span className={`unit-label ${unitClassName}`}>{unit}</span>}
+    </div>
+  );
+};
+
+// Main component
+const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
+  const [value, setValue] = useState(initialValue);
+  const [open, setOpen] = useState(false);
+  const tooltipRef = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const increment = () => {
+    if (value < 999) setValue((v) => v + 1);
+  };
+  const decrement = () => {
+    if (value > 1) setValue((v) => v - 1);
+  };
+
+  return (
+    <div className="value-selector relative inline-block">
+      {/* Trigger Button */}
+      <button
+        className="input-with-unit button sm dropdown"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span className="value-label text md">{value}</span>
+        <span className="unit-label text md">{unit}</span>
+        {/* <span className="icon icon-size-16 dropdown-icon"></span> */}
+      </button>
+
+      {/* Tooltip */}
+      {open && (
+        <div className="value-selector-container elevated-sharp pos-abs flex flex-row right-0 p-1 bg-dark br-2 z-1 reveal slide-down">
+          <div
+            ref={tooltipRef}
+            className="flex right-0 p-2 gap-2 bg-middark br-1 z-1">
+            {/* Minus button */}
+            <button
+              onClick={decrement}
+              className={`button icon-button close-button ${
+                value <= 1 ? "deactivated" : ""
+              }`}
+            >
+              <span className="icon minus-icon icon-size-16"></span>
+            </button>
+            {/* Input */}
+            <InputWithUnit value={value} onChange={setValue} unit={unit} />
+            {/* Plus button */}
+            <button
+              onClick={increment}
+              className={`button icon-button close-button ${
+                value >= 999 ? "deactivated" : ""
+              }`}
+            >
+              <span className="icon plus-icon icon-size-16"></span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+
 export {
   ButtonSm,
   Checkbox,
@@ -743,5 +845,6 @@ export {
   DropdownButton,
   ToggleButtonComponent,
   ConnectionDropdown,
+  ValueSelector,
   // StandaloneToggleExample,
 };

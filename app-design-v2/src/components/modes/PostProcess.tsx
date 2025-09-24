@@ -4,6 +4,7 @@ import {
   ToggleComponent,
   ToggleButtonComponent,
   SegmentedControl,
+  ValueSelector,
 } from "../uicomponents";
 import clsx from "clsx";
 import ThreeDScene from "../ThreeDScene";
@@ -20,6 +21,10 @@ const PostProcess = () => {
   const [skipCalibration, setSkipCalibration] = useState(true);
   const [isMultiprocessing, setIsMultiprocessing] = useState(true);
   const [maxCoreCount, setMaxCoreCount] = useState(false);
+
+  const [charucoSize, setCharucoSize] = useState(10);
+
+  const [selectedValue, setSelectedValue] = useState(10);
 
   useEffect(() => {
     if (!isMultiprocessing) setMaxCoreCount(false);
@@ -60,7 +65,23 @@ const PostProcess = () => {
       <div className="reveal fadeIn action-container flex-1 overflow-y bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
         <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
           <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
-            <ToggleComponent text="Charuco size" className="" iconClass="" />
+            {/* text input container numeric value */}
+            <div class="text-input-container gap-1 br-1 flex justify-content-space-between items-center h-25  ">
+              <div class="text-container overflow-hidden flex items-center">
+                {/* explainer icon */}
+                <button onClick="" className="button icon-button close-button">
+                  <span className="icon explainer-icon icon-size-16"></span>
+                </button>
+
+                <p class="text text-nowrap text-left md">Charuco size</p>
+              </div>
+              <ValueSelector
+                unit="mm"
+                initialValue={selectedValue}
+                onChange={(val) => setSelectedValue(val)}
+              />
+            </div>
+
             <ButtonSm
               iconClass="calibrate-icon"
               text="Calibrate"

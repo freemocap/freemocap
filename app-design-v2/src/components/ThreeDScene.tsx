@@ -12,13 +12,13 @@ const ThreeDScene: React.FC = () => {
       <ambientLight intensity={0.5} />
       <directionalLight position={[5, 5, 5]} intensity={1} />
 
-      {/* Example cube */}
-      <mesh rotation={[0.4, 0.2, 0]}>
+      {/* Example cube, flat on ground */}
+      <mesh position={[0, 0.5, 0]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="orange" />
       </mesh>
 
-      {/* Grid */}
+      {/* Grid (ground plane) */}
       <Grid
         args={[10, 10]}
         cellSize={1}
@@ -27,12 +27,8 @@ const ThreeDScene: React.FC = () => {
         infiniteGrid
       />
 
-      {/* Orbit Controls */}
-      <OrbitControls
-        enableDamping
-        minPolarAngle={Math.PI / 2}
-        maxPolarAngle={Math.PI / 2}
-      />
+      {/* Orbit Controls – allow some vertical rotation so grid is visible */}
+      <OrbitControls enableDamping minPolarAngle={0} maxPolarAngle={Math.PI / 2} />
     </Canvas>
   );
 };

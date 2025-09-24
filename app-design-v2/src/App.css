@@ -44,6 +44,7 @@
         --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
           --calibrated-icon: url("./assets/icons/calibrated_icon.svg");
     --camera-icon: url("./assets/icons/camera_icon.svg");
+     --processmocap-icon: url("./assets/icons/processmocap_icon.svg");
       --video-icon: url("./assets/icons/video_icon.svg");
   --record-icon: url("./assets/icons/record_icon.svg");
   --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
@@ -935,6 +936,10 @@ a:after {
 
 .download-icon {
   background-image: var(--download-icon);
+}
+
+.processmocap-icon {
+  background-image: var(--processmocap-icon);
 }
 
 /* individual borders */

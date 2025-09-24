@@ -8,12 +8,7 @@ const CaptureLive = () => {
 
   // Calibration & toggles
   const [skipCalibration, setSkipCalibration] = useState(true);
-  const [isMultiprocessing, setIsMultiprocessing] = useState(true);
-  const [maxCoreCount, setMaxCoreCount] = useState(false);
 
-  useEffect(() => {
-    if (!isMultiprocessing) setMaxCoreCount(false);
-  }, [isMultiprocessing]);
 
   // Functions (duplicated & isolated for ModeCaptureLive)
   const handleStreamConnect = () => {
@@ -116,19 +111,6 @@ const CaptureLive = () => {
           </div>
         </div>
 
-        <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-darkgray">
-          <ToggleComponent text="Run 2d image tracking" className="" iconClass="" />
-          <ToggleComponent text="Multiprocessing" defaultToggelState={true} isToggled={isMultiprocessing} onToggle={setIsMultiprocessing} />
-          <ToggleComponent
-            text="Max core count"
-            iconClass="subcat-icon"
-            isToggled={maxCoreCount}
-            onToggle={setMaxCoreCount}
-            disabled={!isMultiprocessing}
-            className={!isMultiprocessing ? "disabled" : ""}
-          />
-          <ToggleComponent text="Yolo crop mode" className="" iconClass="" defaultToggelState={true} />
-        </div>
       </div>
     </>
   );

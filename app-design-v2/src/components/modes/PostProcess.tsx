@@ -25,8 +25,18 @@ const PostProcess = () => {
           </div>
         </div>
 
-        <div className="visualize-container overflow-y flex gap-2 flex-3 flex-start">
-          <p className="text-white p-2">Post-process mode content will go here.</p>
+        <div className="visualize-container overflow-hidden flex-row  flex gap-2 flex-3 flex-start">
+                <div className="3D-container br-2 flex flex-row flex-wrap gap-2 flex-2 flex-start bg-middark h-full">
+
+
+                </div>
+
+                <div className="align-content-start align-start video-container overflow-y flex flex-row flex-wrap gap-2 flex-3 flex-start h-full">
+                        {[...Array(6)].map((_, idx) => (
+                          <div key={idx} className="video-tile size-1 bg-middark br-2 empty" />
+                        ))}
+                </div>
+
         </div>
       </div>
 

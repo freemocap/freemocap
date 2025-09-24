@@ -33,17 +33,22 @@
   --blue-900: #083f66;
 
   /* icons vars */
-
+  --plus-icon: url("./assets/icons/plus_icon.svg");
+  --minus-icon: url("./assets/icons/minus_icon.svg");
   --close-icon: url("./assets/icons/close_icon.svg");
   --live-icon: url("./assets/icons/live_icon.svg");
   --import-icon: url("./assets/icons/import_icon.svg");
   --externallink-icon: url("./assets/icons/externallink_icon.svg");
   --dropdown-icon: url("./assets/icons/dropdown_icon.svg");
-    --stream-icon: url("./assets/icons/stream_icon.svg");
-      --streaming-icon: url("./assets/icons/streaming_icon.svg");
-        --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
-          --calibrated-icon: url("./assets/icons/calibrated_icon.svg");
-    --camera-icon: url("./assets/icons/camera_icon.svg");
+  --stream-icon: url("./assets/icons/stream_icon.svg");
+  --streaming-icon: url("./assets/icons/streaming_icon.svg");
+  --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
+  --calibrated-icon: url("./assets/icons/calibrated_icon.svg");
+  --camera-icon: url("./assets/icons/camera_icon.svg");
+  --explainer-icon: url("./assets/icons/explainer_icon.svg");
+
+  --processmocap-icon: url("./assets/icons/processmocap_icon.svg");
+  --video-icon: url("./assets/icons/video_icon.svg");
   --record-icon: url("./assets/icons/record_icon.svg");
   --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
 
@@ -143,6 +148,18 @@ h6 {
   font-weight: inherit;
 }
 
+/* Remove arrows in Chrome, Safari, Edge, Opera */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Remove arrows in Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 strong,
 b {
   font-weight: bold;
@@ -224,11 +241,12 @@ q::after {
 
 /* BUTTON STYLES AND SHAPES */
 /* Activate button */
-.activated > p {
-    color: var(--green-100);
+.activated>p {
+  color: var(--green-100);
 }
+
 .button.activated:hover {
-    background-color: var(--green-900);
+  background-color: var(--green-900);
 }
 
 /* Primary fullwidth button */
@@ -289,49 +307,66 @@ q::after {
   transition: background-color var(--speed-1) ease-in-out;
 }
 
-.button:not(
-    p,
-    .button.checkbox,
-    button.text-sm,
-    input,
-    button.active,
-    .toggle-button
-  ):active {
+.button:not(p,
+  .button.checkbox,
+  button.text-sm,
+  input,
+  button.active,
+  .toggle-button):active {
   transform: scale(96%);
 }
+
 /* video tiles */
 .video-tile {
-    flex: 1 1 250px;
- 
-    height: auto;
-    aspect-ratio: 1 / 1;
-    }
-.video-tile.size-1 {
-   min-width: 250px
-}
-.video-tile.empty:before {
-    content: var(--camera-icon);
-    margin: 8px;
-    display: block;
-}
-.video-tile.empty {
-    border: 1.5px dashed var(--gray-500);
+  flex: 1 1 250px;
 
-    background: transparent;
+  height: auto;
+  aspect-ratio: 1 / 1;
 }
+
+.video-tile.size-1 {
+  min-width: 250px
+}
+
+.video-tile.camera-source.empty:before,
+.video-tile.video-source.empty:before {
+
+  margin: 8px;
+  display: inline-block;
+}
+
+.video-tile.camera-source.empty:before {
+  content: var(--camera-icon);
+
+}
+
+.video-tile.video-source.empty:before {
+  content: var(--video-icon);
+
+}
+
+.video-tile.empty {
+  border: 1.5px dashed var(--gray-500);
+
+  background: transparent;
+}
+
 /* segmented-control design */
 .segmented-control-container {
   max-width: max-content;
 }
+
 .main-segmented-control {
   position: absolute;
-    left: 9px;
-    top: 38px;
+  left: 9px;
+  top: 38px;
 }
+
 .active-tools-header {
   margin-left: 226px;
 
 }
+
 .segmented-control-button {
   /* global size */
   min-width: 104px;
@@ -339,17 +374,17 @@ q::after {
   transition: color var(--speed-1) ease-in-out;
 }
 
-.segmented-control-button > p.text.md {
+.segmented-control-button>p.text.md {
   /* medium size */
   min-height: 25px;
 }
 
-.segmented-control-button > p.text.sm {
+.segmented-control-button>p.text.sm {
   /* small size */
   min-height: 22px;
 }
 
-.segmented-control-button:hover > p {
+.segmented-control-button:hover>p {
   color: var(--gray-100);
   transition: color var(--speed-1) ease-in-out;
 }
@@ -576,9 +611,11 @@ a:after {
 .flex-col {
   flex-direction: column;
 }
+
 .flex-wrap {
   flex-wrap: wrap;
 }
+
 .items-center {
   align-items: center;
 }
@@ -586,12 +623,15 @@ a:after {
 .justify-center {
   justify-content: center;
 }
+
 .flex-start {
   align-items: flex-start;
 }
+
 .align-content-start {
   align-content: flex-start;
 }
+
 .align-end {
   align-items: flex-end;
 }
@@ -710,9 +750,11 @@ a:after {
 .h-25 {
   height: 25px;
 }
+
 .h-full {
-  height:100%;
+  height: 100%;
 }
+
 /* .h-30 {
   height: 30px;
 } */
@@ -839,7 +881,7 @@ a:after {
   justify-content: center;
 }
 
-.icon-button:hover > .icon {
+.icon-button:hover>.icon {
   filter: brightness(2);
   /* filter animation out */
   transition: filter var(--speed-1) ease-in-out;
@@ -863,17 +905,33 @@ a:after {
 .close-icon {
   background-image: var(--close-icon);
 }
+
 .stream-icon {
   background-image: var(--stream-icon);
 }
+
 .streaming-icon {
   background-image: var(--streaming-icon);
 }
+
 .calibrate-icon {
   background-image: var(--calibrate-icon);
 }
+
+.explainer-icon {
+  background-image: var(--explainer-icon);
+}
+
 .calibrated-icon {
   background-image: var(--calibrated-icon);
+}
+
+.plus-icon {
+  background-image: var(--plus-icon);
+}
+
+.minus-icon {
+  background-image: var(--minus-icon);
 }
 
 /* icon types */
@@ -925,6 +983,10 @@ a:after {
 
 .download-icon {
   background-image: var(--download-icon);
+}
+
+.processmocap-icon {
+  background-image: var(--processmocap-icon);
 }
 
 /* individual borders */
@@ -1056,17 +1118,19 @@ body,
   /* animation: scaleIn 0.3s ease forwards; */
   animation: fadeIn, scaleIn;
 }
+
 .conection-container {
   width: 255px;
 }
-.disabled > * {
+
+.disabled>* {
   opacity: 0.3;
 
   transition: opacity var(--speed-2) ease-in-out;
 }
 
 .disabled,
-.disabled > * {
+.disabled>* {
   pointer-events: none;
   /* prevents clicking */
 }
@@ -1119,7 +1183,7 @@ body,
   gap: 0.5em;
 }
 
-.form-control + .form-control {
+.form-control+.form-control {
   margin-top: 1em;
 }
 
@@ -1340,30 +1404,91 @@ input[type="checkbox"]:disabled {
 
 
 .skeleton-loader-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
       #1b1b1b 25%,
       #2a2a2a 50%,
-      #1b1b1b 75%
-    );
-    background-size: 200% 100%;
-    animation: skeleton-loader 1.5s infinite;
-    z-index: 10;
-    transition: opacity 0.5s;
-    pointer-events: none;
-    opacity: 1;
+      #1b1b1b 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loader 1.5s infinite;
+  z-index: 10;
+  transition: opacity 0.5s;
+  pointer-events: none;
+  opacity: 1;
+}
+
+@keyframes skeleton-loader {
+  0% {
+    background-position: 200% 0;
   }
 
-  @keyframes skeleton-loader {
-    0% {
-      background-position: 200% 0;
-    }
-    100% {
-      background-position: -200% 0;
-    }
+  100% {
+    background-position: -200% 0;
   }
+}
+
+
+
+
+
+
+/* Example CSS */
+/* Style the container */
+.input-with-unit {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--gray-600);
+  border-radius: 6px;
+  padding: 4px 8px;
+  height: 25px;
+  width: 77px;
+}
+
+
+/* Style the input */
+.input-field {
+
+ flex: 1;
+  min-width: 0;
+}
+
+
+/* Style the numeric input specifically */
+.numeric-input {
+  color: var(--gray-400);
+  font-weight: bold;
+  text-align: right;
+}
+
+
+/* Style the unit text */
+.unit-label {
+  margin-left: 8px;
+}
+
+
+.unit-text {
+  color: #007acc;
+  font-style: italic;
+}
+
+.value-selector-container {
+    top: 9px;
+    right: 9px;
+}
+.value-label, .input-field {
+
+  color: var(--gray-400);
+}
+.unit-label {
+
+  color: var(--gray-500);
+}
+
+.elevated-sharp {
+    box-shadow: 0px 7px 15px rgba(0,0,0,0.5);
+}

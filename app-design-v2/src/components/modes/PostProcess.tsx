@@ -1,29 +1,10 @@
-import React, { useState } from "react";
+import React from "react";
 import { ButtonSm } from "../uicomponents";
-import clsx from "clsx";
+import ThreeDScene from "../ThreeDScene"; 
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { OrbitControls, Grid } from "@react-three/drei";
 
-// Simple 3D Scene Component
-const ThreeDScene = () => {
-  return (
-    <Canvas camera={{ position: [3, 3, 3], fov: 60 }}>
-      {/* Lighting */}
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 5, 5]} intensity={1} />
-
-      {/* A cube to visualize */}
-      <mesh rotation={[0.4, 0.2, 0]}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="orange" />
-      </mesh>
-
-      {/* Orbit controls */}
-      <OrbitControls enableDamping={true} />
-    </Canvas>
-  );
-};
-
+// ------------------ PostProcess UI ------------------
 const PostProcess = () => {
   const HandleImportVideos = () => {
     console.log("Starting post-process…");

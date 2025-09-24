@@ -735,6 +735,8 @@ const ConnectionDropdown = () => {
 // };
 
 
+
+
 // Reusable InputWithUnit
 const InputWithUnit = ({
   value,
@@ -769,12 +771,12 @@ const InputWithUnit = ({
 const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
   const [value, setValue] = useState(initialValue);
   const [open, setOpen] = useState(false);
-  const tooltipRef = useRef(null);
+  const containerRef = useRef(null); // wrap button + tooltip
 
   // Close on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (tooltipRef.current && !tooltipRef.current.contains(e.target)) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
         setOpen(false);
       }
     };
@@ -790,7 +792,7 @@ const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
   };
 
   return (
-    <div className="value-selector relative inline-block">
+    <div ref={containerRef} className="value-selector relative inline-block">
       {/* Trigger Button */}
       <button
         className="input-with-unit button sm dropdown"
@@ -798,15 +800,12 @@ const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
       >
         <span className="value-label text md">{value}</span>
         <span className="unit-label text md">{unit}</span>
-        {/* <span className="icon icon-size-16 dropdown-icon"></span> */}
       </button>
 
       {/* Tooltip */}
       {open && (
-        <div className="value-selector-container elevated-sharp pos-abs flex flex-row right-0 p-1 bg-dark br-2 z-1 reveal slide-down">
-          <div
-            ref={tooltipRef}
-            className="flex right-0 p-2 gap-2 bg-middark br-1 z-1">
+        <div className="value-selector-container border-1 border-black elevated-sharp pos-abs flex flex-row right-0 p-1 bg-dark br-2 z-1 reveal slide-down">
+          <div className="flex right-0 p-2 gap-2 bg-middark br-1 z-1">
             {/* Minus button */}
             <button
               onClick={decrement}
@@ -816,8 +815,10 @@ const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
             >
               <span className="icon minus-icon icon-size-16"></span>
             </button>
+
             {/* Input */}
             <InputWithUnit value={value} onChange={setValue} unit={unit} />
+
             {/* Plus button */}
             <button
               onClick={increment}
@@ -833,6 +834,9 @@ const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
     </div>
   );
 };
+
+
+
 
 
 

@@ -1477,8 +1477,8 @@ input[type="checkbox"]:disabled {
 }
 
 .value-selector-container {
-    top: 9px;
-    right: 9px;
+    top: 24px;
+    right: 3px;
 }
 .value-label, .input-field {
 

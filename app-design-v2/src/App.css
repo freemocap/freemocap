@@ -301,13 +301,13 @@ q::after {
 }
 /* video tiles */
 .video-tile {
-    flex: 1 1 200px;
+    flex: 1 1 250px;
  
     height: auto;
     aspect-ratio: 1 / 1;
     }
 .video-tile.size-1 {
-   min-width: 300px
+   min-width: 250px
 }
 .video-tile.empty:before {
     content: var(--camera-icon);
@@ -589,7 +589,9 @@ a:after {
 .flex-start {
   align-items: flex-start;
 }
-
+.align-content-start {
+  align-content: flex-start;
+}
 .align-end {
   align-items: flex-end;
 }
@@ -708,7 +710,9 @@ a:after {
 .h-25 {
   height: 25px;
 }
-
+.h-full {
+  height:100%;
+}
 /* .h-30 {
   height: 30px;
 } */

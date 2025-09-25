@@ -34,7 +34,7 @@ const CaptureLive = () => {
             <ToggleButtonComponent
               state={streamState}
               connectConfig={{
-                text: "Stream",
+                text: "Stream Camera",
                 iconClass: "stream-icon",
                 rightSideIcon: "",
                 extraClasses: "",
@@ -46,7 +46,7 @@ const CaptureLive = () => {
                 extraClasses: "loading disabled",
               }}
               connectedConfig={{
-                text: "Streaming",
+                text: "Streaming...",
                 iconClass: "streaming-icon",
                 rightSideIcon: "",
                 extraClasses: "activated",
@@ -58,7 +58,7 @@ const CaptureLive = () => {
           </div>
         </div>
 
-        <div className="reveal fadeIn visualize-container overflow-y flex gap-2 flex-3 flex-start">
+        <div className="reveal fadeIn visualize-container flex gap-2 flex-3 flex-start">
           <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start">
             {[...Array(6)].map((_, idx) => (
               <div key={idx} className="video-tile camera-source size-1 bg-middark br-2 empty" />

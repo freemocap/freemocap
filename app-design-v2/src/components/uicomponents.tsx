@@ -80,20 +80,24 @@ const ToggleComponent: React.FC<ToggleProps> = ({
 
   const toggled = isToggled !== undefined ? isToggled : internalToggle;
 
-const handleToggle = () => {
-  if (disabled) return; // ignore clicks if disabled
-  const newState = !toggled;
-  if (isToggled === undefined) setInternalToggle(newState);
-  onToggle?.(newState);
-};
+  const handleToggle = () => {
+    if (disabled) return; // ignore clicks if disabled
+    const newState = !toggled;
+    if (isToggled === undefined) setInternalToggle(newState);
+    onToggle?.(newState);
+  };
 
   return (
     <div
-      className={`button toggle-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 ${className} ${disabled ? "disabled" : ""}`}
+      className={`button toggle-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 ${className} ${
+        disabled ? "disabled" : ""
+      }`}
       onClick={handleToggle}
     >
       <div className="text-container overflow-hidden flex items-center gap-1">
-        {iconClass && <span className={`icon icon-size-16 ${iconClass}`}></span>}
+        {iconClass && (
+          <span className={`icon icon-size-16 ${iconClass}`}></span>
+        )}
         <p className="text text-nowrap text-left md">{text}</p>
       </div>
       <div className={`icon toggle-container ${toggled ? "on" : "off"}`}>
@@ -102,7 +106,6 @@ const handleToggle = () => {
     </div>
   );
 };
-
 
 interface SegmentedControlProps {
   /**
@@ -380,8 +383,6 @@ const ButtonCard = ({ text, iconClass, onClick, className = "" }) => {
 
 /* Dropdown button */
 
-
-
 interface DropdownButtonProps {
   buttonProps: {
     text: string;
@@ -490,7 +491,6 @@ USAGE EXAMPLES
 />
 
 -------------------------------------------------------------------------- */
-
 
 /* --- Connection states (enum-like) --- */
 const STATES = {
@@ -689,7 +689,6 @@ const ConnectionDropdown = () => {
   );
 };
 
-
 /* --- Example: Standalone Toggle Usage --- */
 // const StandaloneToggleExample = () => {
 //   const [state, setState] = useState(STATES.DISCONNECTED);
@@ -698,7 +697,7 @@ const ConnectionDropdown = () => {
 //     <ToggleButtonComponent
 //       state={state}
 //       connectConfig={{
-//         text: "Stream",
+//         text: "Stream Camera",
 //         iconClass: "stream-icon",
 //         rightSideIcon: "",
 //         extraClasses: "",
@@ -734,9 +733,6 @@ const ConnectionDropdown = () => {
 //   );
 // };
 
-
-
-
 // Reusable InputWithUnit
 const InputWithUnit = ({
   value,
@@ -745,30 +741,42 @@ const InputWithUnit = ({
   placeholder = "",
   className = "",
   inputClassName = "",
-  unitClassName = ""
+  unitClassName = "",
+  min = 1, // new prop
+  max = 999, // new prop
 }) => {
   return (
-    <div className={`input-with-unit ${className}`}>
+    <div className={`input-with-unit tooltip${className}`}>
       <input
         type="number"
         value={value}
-        min={1}
-        max={999}
+        min={min}
+        max={max}
         onChange={(e) => {
-          const val = Math.max(1, Math.min(999, Number(e.target.value) || 1));
+          const val = Math.max(
+            min,
+            Math.min(max, Number(e.target.value) || min)
+          );
           onChange(val);
         }}
         onFocus={(e) => e.target.select()}
         placeholder={placeholder}
         className={`input-field text md text-center ${inputClassName}`}
       />
-      {unit && <span className={`unit-label ${unitClassName}`}>{unit}</span>}
+      {unit && (
+        <span className={`unit-label text md${unitClassName}`}>{unit}</span>
+      )}
     </div>
   );
 };
 
 // Main component
-const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
+const ValueSelector = ({
+  unit = "mm",
+  initialValue = 1,
+  min = 1, // new prop
+  max = 999, // new prop
+}) => {
   const [value, setValue] = useState(initialValue);
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null); // wrap button + tooltip
@@ -785,14 +793,14 @@ const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
   }, []);
 
   const increment = () => {
-    if (value < 999) setValue((v) => v + 1);
+    if (value < max) setValue((v) => v + 1);
   };
   const decrement = () => {
-    if (value > 1) setValue((v) => v - 1);
+    if (value > min) setValue((v) => v - 1);
   };
 
   return (
-    <div ref={containerRef} className="value-selector relative inline-block">
+    <div ref={containerRef} className="value-selector pos-rel inline-block">
       {/* Trigger Button */}
       <button
         className="input-with-unit button sm dropdown"
@@ -810,20 +818,26 @@ const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
             <button
               onClick={decrement}
               className={`button icon-button close-button ${
-                value <= 1 ? "deactivated" : ""
+                value <= min ? "deactivated" : ""
               }`}
             >
               <span className="icon minus-icon icon-size-16"></span>
             </button>
 
             {/* Input */}
-            <InputWithUnit value={value} onChange={setValue} unit={unit} />
+            <InputWithUnit
+              value={value}
+              onChange={setValue}
+              unit={unit}
+              min={min}
+              max={max}
+            />
 
             {/* Plus button */}
             <button
               onClick={increment}
               className={`button icon-button close-button ${
-                value >= 999 ? "deactivated" : ""
+                value >= max ? "deactivated" : ""
               }`}
             >
               <span className="icon plus-icon icon-size-16"></span>
@@ -835,10 +849,88 @@ const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
   );
 };
 
+const SubactionHeader = ({ text = "2d image trackers" }) => {
+  return (
+    <div className="subaction-header-container gap-1 br-1 flex justify-between items-center h-25 p-1">
+      <div className="text-container overflow-hidden flex items-center">
+        <p className="text-nowrap text-left bg-md text-darkgray">{text}</p>
+      </div>
+    </div>
+  );
+};
 
+/**
+ * Reusable NameDropdownSelector
+ * Props:
+ * - options: array of strings for the buttons inside dropdown
+ * - initialValue: initial selected string
+ * - onChange: callback when selection changes
+ * - className: additional classes for container
+ */
+const NameDropdownSelector = ({
+  options = [],
+  initialValue = "",
+  onChange,
+  className = "",
+}) => {
+  const [selected, setSelected] = useState(initialValue);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
+  const handleSelect = (option) => {
+    setSelected(option);
+    if (onChange) onChange(option);
+    setOpen(false);
+  };
 
+  return (
+    <div
+      ref={containerRef}
+      className={`name-dropdown-selector pos-rel inline-block ${className}`}
+    >
+      {/* Trigger button */}
+      <button
+        className="gap-1 br-1 button sm flex-inline text-left items-center full-width dropdown border-1 border-mid-black"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <p className="text-gray text md text-align-left">
+          {selected || "Select..."}
+        </p>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="dropdown-container border-1 border-black elevated-sharp pos-abs flex flex-col right-0 p-1 bg-dark br-2 z-1 reveal slide-down">
+
+          <div className="flex flex-col right-0 p-1 gap-2 bg-middark br-1 z-1">
+            {options.map((option, index) => (
+              <button
+                key={index}
+                className={`gap-1 br-1 button sm flex-inline text-left items-center full-width ${
+                  selected === option ? "selected" : ""
+                }`}
+                onClick={() => handleSelect(option)}
+              >
+                <p className="text-gray text md text-align-left">{option}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export {
   ButtonSm,
@@ -850,5 +942,7 @@ export {
   ToggleButtonComponent,
   ConnectionDropdown,
   ValueSelector,
+  SubactionHeader,
+  NameDropdownSelector,
   // StandaloneToggleExample,
 };

@@ -244,7 +244,9 @@ q::after {
 .activated>p {
   color: var(--green-100);
 }
-
+.selected>p {
+  color: var(--gray-100);
+}
 .button.activated:hover {
   background-color: var(--green-900);
 }
@@ -737,6 +739,9 @@ a:after {
 .m-4 {
   margin: 16px;
 }
+.mb-4 {
+  margin-bottom: 16px;
+}
 
 /* widths/heights */
 .w-full {
@@ -1081,6 +1086,10 @@ body,
 .text-gray,
 .color-gray {
   color: var(--gray-400);
+}
+.text-darkgray,
+.color-darkgray {
+  color: var(--gray-500);
 }
 
 /* =========================
@@ -1442,17 +1451,18 @@ input[type="checkbox"]:disabled {
   display: flex;
   align-items: center;
   border: 1px solid var(--gray-600);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 4px 8px;
   height: 25px;
   width: 77px;
+  transition: border var(--speed-2);
 }
 
 
 /* Style the input */
 .input-field {
 
- flex: 1;
+  flex: 1;
   min-width: 0;
 }
 
@@ -1477,18 +1487,33 @@ input[type="checkbox"]:disabled {
 }
 
 .value-selector-container {
-    top: 24px;
-    right: 3px;
+  top: 25px;
+  right: 0px;
 }
-.value-label, .input-field {
+
+.value-label,
+.input-field {
 
   color: var(--gray-400);
 }
+
 .unit-label {
 
   color: var(--gray-500);
 }
 
+
+.input-with-unit.tooltip:has(input.input-field:hover) {
+  border-color: var(--gray-400);
+  transition: border var(--speed-2);
+}
+
+.input-with-unit.tooltip:focus-within {
+  box-shadow: 0px 0px 0px 1px rgba(255, 255, 255, 0.5);
+  border-color: var(--gray-100);
+  transition: border var(--speed-2);
+}
+
 .elevated-sharp {
-    box-shadow: 0px 7px 15px rgba(0,0,0,0.5);
+  box-shadow: 0px 7px 15px rgba(0, 0, 0, 0.5);
 }

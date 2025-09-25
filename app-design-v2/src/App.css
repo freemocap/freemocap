@@ -244,7 +244,9 @@ q::after {
 .activated>p {
   color: var(--green-100);
 }
-
+.selected>p {
+  color: var(--gray-100);
+}
 .button.activated:hover {
   background-color: var(--green-900);
 }
@@ -1449,7 +1451,7 @@ input[type="checkbox"]:disabled {
   display: flex;
   align-items: center;
   border: 1px solid var(--gray-600);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 4px 8px;
   height: 25px;
   width: 77px;

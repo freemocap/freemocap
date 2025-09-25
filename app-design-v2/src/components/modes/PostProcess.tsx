@@ -6,6 +6,7 @@ import {
   SegmentedControl,
   ValueSelector,
   SubactionHeader,
+  NameDropdownSelector,
 } from "../uicomponents";
 import clsx from "clsx";
 import ThreeDScene from "../ThreeDScene";
@@ -27,11 +28,31 @@ const PostProcess = () => {
 
   const [selectedValue, setSelectedValue] = useState(10);
 
-  const [selectedBufferPercentage, setselectedBufferPercentage] = useState(3);
+  const [selectedBufferPercentage, setselectedBufferPercentage] = useState(30);
 
   useEffect(() => {
     if (!isMultiprocessing) setMaxCoreCount(false);
   }, [isMultiprocessing]);
+
+  const ModelSize = () => {
+    // State for each dropdown
+    const [selectedModel1, setSelectedModel1] = useState("Nano");
+
+    const options = ["Nano", "Medium", "Large"];
+
+    return (
+      <div className="flex flex-col">
+        <div className="dropdown-container">
+          <NameDropdownSelector
+            options={options}
+            initialValue={selectedModel1}
+            onChange={setSelectedModel1}
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="mode-container flex-5 br-2 bg-darkgray border-mid-black border-1 overflow-hidden flex flex-col flex-1 gap-1 p-1">
@@ -80,6 +101,8 @@ const PostProcess = () => {
               </div>
               <ValueSelector
                 unit="mm"
+                min={1}
+                max={999}
                 initialValue={selectedValue}
                 onChange={(val) => setSelectedValue(val)}
               />
@@ -162,11 +185,8 @@ const PostProcess = () => {
                 <span class="icon icon-size-16 subcat-icon"></span>
                 <p class="text text-nowrap text-left md">Model size</p>
               </div>
-              <ValueSelector
-                unit=""
-                initialValue={selectedValue}
-                onChange={(val) => setSelectedValue(val)}
-              />
+              {/* Replaced old dropdowns with ModelSize */}
+              <ModelSize />
             </div>
             <div class="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25  ">
               <div class="gap-1 text-container overflow-hidden flex items-center">
@@ -185,11 +205,11 @@ const PostProcess = () => {
                 <p class="text text-nowrap text-left md">Buffer percentage</p>
               </div>
               <ValueSelector
-                unit=""
-                initialValue={selectedBufferPercentage}
-                onChange={
-                  ""
-                }
+                unit="%"
+                min={0}
+                max={100}
+                initialValue={selectedValue}
+                onChange={(val) => setSelectedValue(val)}
               />
             </div>
           </div>

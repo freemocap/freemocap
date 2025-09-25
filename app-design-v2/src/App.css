@@ -1082,6 +1082,10 @@ body,
 .color-gray {
   color: var(--gray-400);
 }
+.text-darkgray,
+.color-darkgray {
+  color: var(--gray-500);
+}
 
 /* =========================
    HELPERS
@@ -1453,7 +1457,7 @@ input[type="checkbox"]:disabled {
 /* Style the input */
 .input-field {
 
- flex: 1;
+  flex: 1;
   min-width: 0;
 }
 
@@ -1478,29 +1482,33 @@ input[type="checkbox"]:disabled {
 }
 
 .value-selector-container {
-    top: 24px;
-    right: 3px;
+  top: 24px;
+  right: 3px;
 }
-.value-label, .input-field {
-  
+
+.value-label,
+.input-field {
+
   color: var(--gray-400);
 }
+
 .unit-label {
-  
+
   color: var(--gray-500);
 }
 
 
-.input-with-unit:has(.input-field:hover) {
+.input-with-unit.tooltip:has(input.input-field:hover) {
   border-color: var(--gray-400);
   transition: border var(--speed-2);
 }
 
-.input-with-unit:focus-within {
-  box-shadow: 0px 0px 0px 1px rgba(255,255,255,0.5);
+.input-with-unit.tooltip:focus-within {
+  box-shadow: 0px 0px 0px 1px rgba(255, 255, 255, 0.5);
   border-color: var(--gray-100);
   transition: border var(--speed-2);
 }
+
 .elevated-sharp {
-    box-shadow: 0px 7px 15px rgba(0,0,0,0.5);
+  box-shadow: 0px 7px 15px rgba(0, 0, 0, 0.5);
 }

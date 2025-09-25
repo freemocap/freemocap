@@ -748,7 +748,7 @@ const InputWithUnit = ({
   unitClassName = ""
 }) => {
   return (
-    <div className={`input-with-unit ${className}`}>
+    <div className={`input-with-unit tooltip${className}`}>
       <input
         type="number"
         value={value}
@@ -836,7 +836,15 @@ const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
 };
 
 
-
+const SubactionHeader = ({ text = "2d image trackers" }) => {
+  return (
+    <div className="subaction-header-container gap-1 br-1 flex justify-between items-center h-25 p-1">
+      <div className="text-container overflow-hidden flex items-center">
+        <p className="text-nowrap text-left bg-md text-darkgray">{text}</p>
+      </div>
+    </div>
+  );
+};
 
 
 
@@ -850,5 +858,6 @@ export {
   ToggleButtonComponent,
   ConnectionDropdown,
   ValueSelector,
+  SubactionHeader,
   // StandaloneToggleExample,
 };

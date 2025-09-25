@@ -5,6 +5,7 @@ import {
   ToggleButtonComponent,
   SegmentedControl,
   ValueSelector,
+  SubactionHeader,
 } from "../uicomponents";
 import clsx from "clsx";
 import ThreeDScene from "../ThreeDScene";
@@ -122,32 +123,73 @@ const PostProcess = () => {
             </div>
           </div>
         </div>
-        <div className="subaction-container properties-container flex-1 br-1 p-1 gap-1 bg-darkgray">
-          <ToggleComponent
-            text="Run 2d image tracking"
-            className=""
-            iconClass=""
-          />
-          <ToggleComponent
-            text="Multiprocessing"
-            defaultToggelState={true}
-            isToggled={isMultiprocessing}
-            onToggle={setIsMultiprocessing}
-          />
-          <ToggleComponent
-            text="Max core count"
-            iconClass="subcat-icon"
-            isToggled={maxCoreCount}
-            onToggle={setMaxCoreCount}
-            disabled={!isMultiprocessing}
-            className={!isMultiprocessing ? "disabled" : ""}
-          />
+        <div className="subaction-container properties-container flex-1 br-1 p-1 gap-2 bg-darkgray">
+          <div className="subaction-group flex-1 gap-1">
+            
+            {/* subcat-header-container */}
+            <SubactionHeader text="2d image trackers" />
+            <ToggleComponent
+              text="Run 2d image tracking"
+              className=""
+              iconClass=""
+            />
+            <ToggleComponent
+              text="Multiprocessing"
+              defaultToggelState={true}
+              isToggled={isMultiprocessing}
+              onToggle={setIsMultiprocessing}
+            />
+            <ToggleComponent
+              text="Max core count"
+              iconClass="subcat-icon"
+              isToggled={maxCoreCount}
+              onToggle={setMaxCoreCount}
+              disabled={!isMultiprocessing}
+              className={!isMultiprocessing ? "disabled" : ""}
+            />
+          </div>
+          <div className="subaction-group flex-1 gap-1">
+          <SubactionHeader text="Mediapipe" />
           <ToggleComponent
             text="Yolo crop mode"
             className=""
             iconClass=""
             defaultToggelState={true}
           />
+          <div class="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25  ">
+            <div class="gap-1 text-container overflow-hidden flex items-center">
+              <span class="icon icon-size-16 subcat-icon"></span>
+              <p class="text text-nowrap text-left md">Model size</p>
+            </div>
+            <ValueSelector
+              unit="mm"
+              initialValue={selectedValue}
+              onChange={(val) => setSelectedValue(val)}
+            />
+          </div>
+          <div class="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25  ">
+            <div class="gap-1 text-container overflow-hidden flex items-center">
+              <span class="icon icon-size-16 subcat-icon"></span>
+              <p class="text text-nowrap text-left md">Buffer bounding box</p>
+            </div>
+            <ValueSelector
+              unit="mm"
+              initialValue={selectedValue}
+              onChange={(val) => setSelectedValue(val)}
+            />
+          </div>
+          <div class="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25  ">
+            <div class="gap-1 text-container overflow-hidden flex items-center">
+              <span class="icon icon-size-16 subcat-icon"></span>
+              <p class="text text-nowrap text-left md">Buffer percentage</p>
+            </div>
+            <ValueSelector
+              unit="mm"
+              initialValue={selectedValue}
+              onChange={(val) => setSelectedValue(val)}
+            />
+            </div>
+          </div>
         </div>
       </div>
     </>

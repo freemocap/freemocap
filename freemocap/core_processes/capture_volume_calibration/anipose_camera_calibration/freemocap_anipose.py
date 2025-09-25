@@ -16,7 +16,6 @@ import numpy as np
 import toml
 from aniposelib.boards import extract_points, extract_rtvecs, get_video_params, merge_rows, CharucoBoard
 from aniposelib.utils import get_rtvec, make_M
-from numba import jit
 from scipy import optimize
 from scipy import signal
 from scipy.cluster.hierarchy import linkage, fcluster
@@ -26,9 +25,6 @@ from scipy.sparse import dok_matrix
 from skellytracker.process_folder_of_videos import process_list_of_videos
 from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
 from tqdm import trange
-
-numba_logger = logging.getLogger("numba")
-numba_logger.setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +48,6 @@ ARUCO_DICTS = {
 }
 
 
-@jit(nopython=True, parallel=False)
 def triangulate_simple(points, camera_mats):
     num_cams = len(camera_mats)
     A = np.zeros((num_cams * 2, 4))
@@ -889,7 +884,6 @@ class CameraGroup:
             points_ransac, undistort=undistort, min_cams=min_cams, progress=progress, kill_event=kill_event
         )
 
-    @jit(parallel=True, forceobj=True)
     def reprojection_error(self, points_3d, points_2d, mean=False):
         """Given an Nx3 array of 3D points and an CxNx2 array of 2D points,
         where N is the number of points and C is the number of cameras,
@@ -1111,7 +1105,6 @@ class CameraGroup:
         error = self.average_error(p2ds)
         return error
 
-    @jit(parallel=True, forceobj=True)
     def _error_fun_bundle(self, params, p2ds, n_cam_params, extra):
         """Error function for bundle adjustment"""
         good = ~np.isnan(p2ds)
@@ -1522,7 +1515,6 @@ class CameraGroup:
 
         return self.optim_points(points, p3ds, **kwargs)
 
-    @jit(forceobj=True, parallel=True)
     def _error_fun_triangulation(
             self,
             params,

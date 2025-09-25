@@ -288,7 +288,7 @@ const PostProcess = () => {
               }
             >
               <div className="gap-1 text-container overflow-hidden flex items-center">
-                <span className="icon icon-size-16 subcat-icon"></span>
+                {/* <span className="icon icon-size-16 subcat-icon"></span> */}
                 <p className="text text-nowrap text-left md">
                   Model complexity
                 </p>
@@ -299,7 +299,7 @@ const PostProcess = () => {
               className="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25"
             >
               <div className="gap-1 text-container overflow-hidden flex items-center">
-                <span className="icon icon-size-16 subcat-icon"></span>
+                {/* <span className="icon icon-size-16 subcat-icon"></span> */}
                 <p className="text text-nowrap text-left md">Min detection confidence</p>
               </div>
               <ValueSelector
@@ -314,7 +314,7 @@ const PostProcess = () => {
               className="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25"
             >
               <div className="gap-1 text-container overflow-hidden flex items-center">
-                <span className="icon icon-size-16 subcat-icon"></span>
+                {/* <span className="icon icon-size-16 subcat-icon"></span> */}
                 <p className="text text-nowrap text-left md">Min tracking confidence</p>
               </div>
               <ValueSelector

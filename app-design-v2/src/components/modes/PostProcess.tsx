@@ -53,14 +53,28 @@ const PostProcess = () => {
     );
   };
 
-
   const [isYoloCrop, setIsYoloCrop] = useState(true);
 
-    useEffect(() => {
-      // You could do extra logic here if needed
-    }, [isYoloCrop]);
+  useEffect(() => {
+    // You could do extra logic here if needed
+  }, [isYoloCrop]);
+
+  const [runReprojectionFilter, setRunReprojectionFilter] = useState(true);
+
+  const [ThresholdValue, setThresholdValue] = useState(30);
+
+  const [RequiredCameras, setRequiredCameras] = useState(3);
 
 
+  const [ButterworthFilter, setButterworthFilter] = useState(true);
+
+  const [FrameRateValue, setFrameRateValue] = useState(30);
+
+  const [CutOffSequence, setCutOffSequence] = useState(3);
+
+  const [OrderValue, setOrderValue] = useState(3);
+
+  
   return (
     <>
       <div className="mode-container flex-5 br-2 bg-darkgray border-mid-black border-1 overflow-hidden flex flex-col flex-1 gap-1 p-1">
@@ -94,8 +108,8 @@ const PostProcess = () => {
         </div>
       </div>
 
-      <div className="reveal fadeIn action-container flex-1 overflow-y bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
-        <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
+      <div className="reveal fadeIn action-container flex-1 bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
+        <div className="br-1 bg-darkgray subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
           <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
             {/* text input container numeric value */}
             <div class="text-input-container gap-1 br-1 flex justify-content-space-between items-center h-25  ">
@@ -156,7 +170,7 @@ const PostProcess = () => {
             </div>
           </div>
         </div>
-        <div className="subaction-container properties-container flex-1 br-1 p-1 gap-2 bg-darkgray">
+        <div className="subaction-container overflow-y properties-container flex-1 br-1 p-1 gap-2 bg-darkgray">
           <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
             {/* subcat-header-container */}
             <SubactionHeader text="2d image trackers" />
@@ -183,56 +197,205 @@ const PostProcess = () => {
           <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
             <SubactionHeader text="Mediapipe" />
             <ToggleComponent
-  text="Yolo crop mode"
-  className=""
-  iconClass=""
-  defaultToggelState={true}
-  isToggled={isYoloCrop}
-  onToggle={setIsYoloCrop}
-/>
+              text="Yolo crop mode"
+              className=""
+              iconClass=""
+              defaultToggelState={true}
+              isToggled={isYoloCrop}
+              onToggle={setIsYoloCrop}
+            />
 
-<div className={clsx(
-  "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
-  { disabled: !isYoloCrop }
-)}>
-  <div className="gap-1 text-container overflow-hidden flex items-center">
-    <span className="icon icon-size-16 subcat-icon"></span>
-    <p className="text text-nowrap text-left md">Model size</p>
-  </div>
-  <ModelSize />
-</div>
+            <div
+              className={clsx(
+                "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+                { disabled: !isYoloCrop }
+              )}
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">Model size</p>
+              </div>
+              <ModelSize />
+            </div>
 
-<div className={clsx(
-  "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
-  { disabled: !isYoloCrop }
-)}>
-  <div className="gap-1 text-container overflow-hidden flex items-center">
-    <span className="icon icon-size-16 subcat-icon"></span>
-    <p className="text text-nowrap text-left md">Buffer bounding box</p>
-  </div>
-  <ValueSelector
-    unit=""
-    initialValue={selectedValue}
-    onChange={(val) => setSelectedValue(val)}
-  />
-</div>
+            <div
+              className={clsx(
+                "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+                { disabled: !isYoloCrop }
+              )}
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">
+                  Buffer bounding box
+                </p>
+              </div>
+              <ValueSelector
+                unit=""
+                initialValue={selectedValue}
+                onChange={(val) => setSelectedValue(val)}
+              />
+            </div>
 
-<div className={clsx(
-  "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
-  { disabled: !isYoloCrop }
-)}>
-  <div className="gap-1 text-container overflow-hidden flex items-center">
-    <span className="icon icon-size-16 subcat-icon"></span>
-    <p className="text text-nowrap text-left md">Buffer percentage</p>
-  </div>
-  <ValueSelector
-    unit="%"
-    min={0}
-    max={100}
-    initialValue={selectedValue}
-    onChange={(val) => setSelectedValue(val)}
-  />
-</div>
+            <div
+              className={clsx(
+                "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+                { disabled: !isYoloCrop }
+              )}
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">
+                  Buffer percentage
+                </p>
+              </div>
+              <ValueSelector
+                unit="%"
+                min={0}
+                max={100}
+                initialValue={selectedValue}
+                onChange={(val) => setSelectedValue(val)}
+              />
+            </div>
+          </div>
+          <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
+            <SubactionHeader text="3d triangulation methods" />
+            <ToggleComponent
+              text="Run 3d triangulation"
+              className=""
+              iconClass=""
+            />
+          </div>
+          <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
+            <SubactionHeader text="Anipose triangulation" />
+            <ToggleComponent text="RANSAC method" className="" iconClass="" />
+            <ToggleComponent
+              text="Flatten single camera data"
+              className=""
+              iconClass=""
+            />
+          </div>
+          <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
+            <SubactionHeader text="Reprojection error filtering" />
+            <ToggleComponent
+              text="Run reprojection error filtering"
+              className=""
+              iconClass=""
+              defaultToggelState={true}
+              isToggled={runReprojectionFilter}
+              onToggle={setRunReprojectionFilter}
+            />
+
+            <div
+              className={clsx(
+                "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+                { disabled: !runReprojectionFilter }
+              )}
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">Threshold (%)</p>
+              </div>
+              <ValueSelector
+                unit="%"
+                min={0}
+                max={100}
+                initialValue={ThresholdValue}
+                onChange={setThresholdValue}
+              />
+            </div>
+
+            <div
+              className={clsx(
+                "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+                { disabled: !runReprojectionFilter }
+              )}
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">
+                  Required cameras
+                </p>
+              </div>
+              <ValueSelector
+                unit=""
+                min={0}
+                max={20}
+                initialValue={RequiredCameras}
+                onChange={setRequiredCameras}
+              />
+            </div>
+          </div>
+          <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
+            <SubactionHeader text="Post processing data cleanup" />
+            <ToggleComponent
+              text="Butterworth filter"
+              className=""
+              iconClass=""
+              defaultToggelState={true}
+              isToggled={ButterworthFilter}
+              onToggle={setButterworthFilter}
+            />
+
+            <div
+              className={clsx(
+                "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+                { disabled: !ButterworthFilter }
+              )}
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">Framerate</p>
+              </div>
+              <ValueSelector
+                unit="FPS"
+                min={30}
+                max={120}
+                initialValue={FrameRateValue}
+                onChange={setFrameRateValue}
+              />
+            </div>
+
+            <div
+              className={clsx(
+                "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+                { disabled: !ButterworthFilter}
+              )}
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">
+                  Cutoff frequence
+                </p>
+              </div>
+              <ValueSelector
+                unit=""
+                min={1}
+                max={7}
+                initialValue={CutOffSequence}
+                onChange={setCutOffSequence}
+              />
+            </div>
+            <div
+              className={clsx(
+                "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+                { disabled: !ButterworthFilter}
+              )}
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">
+                  Order
+                </p>
+              </div>
+              <ValueSelector
+                unit=""
+                min={1}
+                max={7}
+                initialValue={OrderValue}
+                onChange={setOrderValue}
+              />
+            </div>
           </div>
         </div>
       </div>

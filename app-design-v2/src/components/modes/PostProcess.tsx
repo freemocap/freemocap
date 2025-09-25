@@ -124,7 +124,7 @@ const PostProcess = () => {
           </div>
         </div>
         <div className="subaction-container properties-container flex-1 br-1 p-1 gap-2 bg-darkgray">
-          <div className="subaction-group flex-1 gap-1">
+          <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
             
             {/* subcat-header-container */}
             <SubactionHeader text="2d image trackers" />
@@ -148,7 +148,7 @@ const PostProcess = () => {
               className={!isMultiprocessing ? "disabled" : ""}
             />
           </div>
-          <div className="subaction-group flex-1 gap-1">
+          <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
           <SubactionHeader text="Mediapipe" />
           <ToggleComponent
             text="Yolo crop mode"

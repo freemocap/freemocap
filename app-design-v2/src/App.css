@@ -737,6 +737,9 @@ a:after {
 .m-4 {
   margin: 16px;
 }
+.mb-4 {
+  margin-bottom: 16px;
+}
 
 /* widths/heights */
 .w-full {

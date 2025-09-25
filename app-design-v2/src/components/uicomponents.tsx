@@ -792,7 +792,7 @@ const ValueSelector = ({ unit = "mm", initialValue = 1 }) => {
   };
 
   return (
-    <div ref={containerRef} className="value-selector relative inline-block">
+    <div ref={containerRef} className="value-selector pos-rel inline-block">
       {/* Trigger Button */}
       <button
         className="input-with-unit button sm dropdown"

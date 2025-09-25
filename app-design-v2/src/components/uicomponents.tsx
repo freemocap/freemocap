@@ -904,7 +904,7 @@ const NameDropdownSelector = ({
         className="gap-1 br-1 button sm flex-inline text-left items-center full-width dropdown border-1 border-mid-black"
         onClick={() => setOpen((prev) => !prev)}
       >
-        <p className="text-gray text md text-align-left">
+        <p className="text-gray text md text-align-left text-nowrap">
           {selected || "Select..."}
         </p>
       </button>
@@ -922,7 +922,7 @@ const NameDropdownSelector = ({
                 }`}
                 onClick={() => handleSelect(option)}
               >
-                <p className="text-gray text md text-align-left">{option}</p>
+                <p className="text-gray text md text-align-left text-nowrap">{option}</p>
               </button>
             ))}
           </div>

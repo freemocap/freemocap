@@ -52,6 +52,24 @@ const PostProcess = () => {
       </div>
     );
   };
+  const ModelComplexity = () => {
+    // State for each dropdown
+    const [selectedModel1, setSelectedModel1] = useState("Fastest, Loose");
+
+    const options = ["Fastest, Loose", "Medium, Balanced", "Slowest, Precise"];
+
+    return (
+      <div className="flex flex-col">
+        <div className="dropdown-container">
+          <NameDropdownSelector
+            options={options}
+            initialValue={selectedModel1}
+            onChange={setSelectedModel1}
+          />
+        </div>
+      </div>
+    );
+  };
 
   const [isYoloCrop, setIsYoloCrop] = useState(true);
 
@@ -65,7 +83,6 @@ const PostProcess = () => {
 
   const [RequiredCameras, setRequiredCameras] = useState(3);
 
-
   const [ButterworthFilter, setButterworthFilter] = useState(true);
 
   const [FrameRateValue, setFrameRateValue] = useState(30);
@@ -73,6 +90,14 @@ const PostProcess = () => {
   const [CutOffSequence, setCutOffSequence] = useState(3);
 
   const [OrderValue, setOrderValue] = useState(3);
+
+
+  const [Mindetectionconfidence, setMindetectionconfidence] = useState(0.5);
+
+  const [Mintrackingconfidence, setMintrackingconfidence] = useState(0.5);
+
+
+  const [Staticimagemode, setStaticimagemode] = useState(true);
 
   
   return (
@@ -257,6 +282,57 @@ const PostProcess = () => {
                 onChange={(val) => setSelectedValue(val)}
               />
             </div>
+            <div
+              className={
+                "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25"
+              }
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">
+                  Model complexity
+                </p>
+              </div>
+              <ModelComplexity />
+            </div>
+            <div
+              className="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25"
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">Min detection confidence</p>
+              </div>
+              <ValueSelector
+                unit=""
+                min={1}
+                max={7}
+                initialValue={Mindetectionconfidence}
+                onChange={setMindetectionconfidence}
+              />
+            </div>
+            <div
+              className="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25"
+            >
+              <div className="gap-1 text-container overflow-hidden flex items-center">
+                <span className="icon icon-size-16 subcat-icon"></span>
+                <p className="text text-nowrap text-left md">Min tracking confidence</p>
+              </div>
+              <ValueSelector
+                unit=""
+                min={1}
+                max={7}
+                initialValue={Mintrackingconfidence}
+                onChange={setMintrackingconfidence}
+              />
+            </div>
+            <ToggleComponent
+              text="Static image mode"
+              className=""
+              iconClass=""
+              defaultToggelState={true}
+              isToggled={Staticimagemode}
+              onToggle={setStaticimagemode}
+            />
           </div>
           <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
             <SubactionHeader text="3d triangulation methods" />
@@ -359,7 +435,7 @@ const PostProcess = () => {
             <div
               className={clsx(
                 "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
-                { disabled: !ButterworthFilter}
+                { disabled: !ButterworthFilter }
               )}
             >
               <div className="gap-1 text-container overflow-hidden flex items-center">
@@ -379,14 +455,12 @@ const PostProcess = () => {
             <div
               className={clsx(
                 "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
-                { disabled: !ButterworthFilter}
+                { disabled: !ButterworthFilter }
               )}
             >
               <div className="gap-1 text-container overflow-hidden flex items-center">
                 <span className="icon icon-size-16 subcat-icon"></span>
-                <p className="text text-nowrap text-left md">
-                  Order
-                </p>
+                <p className="text text-nowrap text-left md">Order</p>
               </div>
               <ValueSelector
                 unit=""

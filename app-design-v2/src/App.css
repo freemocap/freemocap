@@ -1446,6 +1446,7 @@ input[type="checkbox"]:disabled {
   padding: 4px 8px;
   height: 25px;
   width: 77px;
+  transition: border var(--speed-2);
 }
 
 
@@ -1481,14 +1482,25 @@ input[type="checkbox"]:disabled {
     right: 3px;
 }
 .value-label, .input-field {
-
+  
   color: var(--gray-400);
 }
 .unit-label {
-
+  
   color: var(--gray-500);
 }
 
+
+.input-with-unit:has(.input-field:hover) {
+  border-color: var(--gray-400);
+  transition: border var(--speed-2);
+}
+
+.input-with-unit:focus-within {
+  box-shadow: 0px 0px 0px 1px rgba(255,255,255,0.5);
+  border-color: var(--gray-100);
+  transition: border var(--speed-2);
+}
 .elevated-sharp {
     box-shadow: 0px 7px 15px rgba(0,0,0,0.5);
 }

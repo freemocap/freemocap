@@ -34,7 +34,7 @@ const CaptureLive = () => {
             <ToggleButtonComponent
               state={streamState}
               connectConfig={{
-                text: "Stream",
+                text: "Stream Camera",
                 iconClass: "stream-icon",
                 rightSideIcon: "",
                 extraClasses: "",
@@ -46,7 +46,7 @@ const CaptureLive = () => {
                 extraClasses: "loading disabled",
               }}
               connectedConfig={{
-                text: "Streaming",
+                text: "Streaming...",
                 iconClass: "streaming-icon",
                 rightSideIcon: "",
                 extraClasses: "activated",

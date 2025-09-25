@@ -698,7 +698,7 @@ const ConnectionDropdown = () => {
 //     <ToggleButtonComponent
 //       state={state}
 //       connectConfig={{
-//         text: "Stream",
+//         text: "Stream Camera",
 //         iconClass: "stream-icon",
 //         rightSideIcon: "",
 //         extraClasses: "",
@@ -762,7 +762,7 @@ const InputWithUnit = ({
         placeholder={placeholder}
         className={`input-field text md text-center ${inputClassName}`}
       />
-      {unit && <span className={`unit-label ${unitClassName}`}>{unit}</span>}
+      {unit && <span className={`unit-label text md${unitClassName}`}>{unit}</span>}
     </div>
   );
 };

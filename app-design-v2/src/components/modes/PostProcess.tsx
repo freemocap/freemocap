@@ -53,6 +53,14 @@ const PostProcess = () => {
     );
   };
 
+
+  const [isYoloCrop, setIsYoloCrop] = useState(true);
+
+    useEffect(() => {
+      // You could do extra logic here if needed
+    }, [isYoloCrop]);
+
+
   return (
     <>
       <div className="mode-container flex-5 br-2 bg-darkgray border-mid-black border-1 overflow-hidden flex flex-col flex-1 gap-1 p-1">
@@ -175,43 +183,56 @@ const PostProcess = () => {
           <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
             <SubactionHeader text="Mediapipe" />
             <ToggleComponent
-              text="Yolo crop mode"
-              className=""
-              iconClass=""
-              defaultToggelState={true}
-            />
-            <div class="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25  ">
-              <div class="gap-1 text-container overflow-hidden flex items-center">
-                <span class="icon icon-size-16 subcat-icon"></span>
-                <p class="text text-nowrap text-left md">Model size</p>
-              </div>
-              {/* Replaced old dropdowns with ModelSize */}
-              <ModelSize />
-            </div>
-            <div class="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25  ">
-              <div class="gap-1 text-container overflow-hidden flex items-center">
-                <span class="icon icon-size-16 subcat-icon"></span>
-                <p class="text text-nowrap text-left md">Buffer bounding box</p>
-              </div>
-              <ValueSelector
-                unit=""
-                initialValue={selectedValue}
-                onChange={(val) => setSelectedValue(val)}
-              />
-            </div>
-            <div class="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25  ">
-              <div class="gap-1 text-container overflow-hidden flex items-center">
-                <span class="icon icon-size-16 subcat-icon"></span>
-                <p class="text text-nowrap text-left md">Buffer percentage</p>
-              </div>
-              <ValueSelector
-                unit="%"
-                min={0}
-                max={100}
-                initialValue={selectedValue}
-                onChange={(val) => setSelectedValue(val)}
-              />
-            </div>
+  text="Yolo crop mode"
+  className=""
+  iconClass=""
+  defaultToggelState={true}
+  isToggled={isYoloCrop}
+  onToggle={setIsYoloCrop}
+/>
+
+<div className={clsx(
+  "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+  { disabled: !isYoloCrop }
+)}>
+  <div className="gap-1 text-container overflow-hidden flex items-center">
+    <span className="icon icon-size-16 subcat-icon"></span>
+    <p className="text text-nowrap text-left md">Model size</p>
+  </div>
+  <ModelSize />
+</div>
+
+<div className={clsx(
+  "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+  { disabled: !isYoloCrop }
+)}>
+  <div className="gap-1 text-container overflow-hidden flex items-center">
+    <span className="icon icon-size-16 subcat-icon"></span>
+    <p className="text text-nowrap text-left md">Buffer bounding box</p>
+  </div>
+  <ValueSelector
+    unit=""
+    initialValue={selectedValue}
+    onChange={(val) => setSelectedValue(val)}
+  />
+</div>
+
+<div className={clsx(
+  "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+  { disabled: !isYoloCrop }
+)}>
+  <div className="gap-1 text-container overflow-hidden flex items-center">
+    <span className="icon icon-size-16 subcat-icon"></span>
+    <p className="text text-nowrap text-left md">Buffer percentage</p>
+  </div>
+  <ValueSelector
+    unit="%"
+    min={0}
+    max={100}
+    initialValue={selectedValue}
+    onChange={(val) => setSelectedValue(val)}
+  />
+</div>
           </div>
         </div>
       </div>

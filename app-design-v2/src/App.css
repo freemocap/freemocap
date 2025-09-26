@@ -1559,3 +1559,8 @@ input[type="checkbox"]:disabled {
 .elevated-sharp {
   box-shadow: 0px 7px 15px rgba(0, 0, 0, 0.5);
 }
+.file-directory-settings-modal {
+    position: absolute;
+    right: 101%;
+    top: -5px;
+}

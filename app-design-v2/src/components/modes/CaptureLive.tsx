@@ -62,7 +62,7 @@ const CaptureLive = () => {
           </div>
         </div>
 
-        <div className="reveal fadeIn visualize-container flex gap-2 flex-3 flex-start">
+        <div className="reveal overflow-y fadeIn visualize-container flex gap-2 flex-3 flex-start">
           <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start">
             {[...Array(6)].map((_, idx) => (
               <div

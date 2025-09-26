@@ -5,6 +5,7 @@ import {
   ToggleButtonComponent,
   SegmentedControl,
   ValueSelector,
+  SubactionHeader,
 } from "../uicomponents";
 import clsx from "clsx";
 
@@ -27,6 +28,15 @@ const CaptureLive = () => {
     console.log("Stopped streaming!");
     setStreamState("disconnected");
   };
+
+  const [Countdown, setCountdown] = useState(false);
+  const [CounterValue, setCounterValue] = useState(3);
+
+  const [timeStampPrefix, settimeStampPrefix] = useState(false);
+
+  const [AutoIncrement, setAutoIncrement] = useState(false);
+
+  const [AutoIncrementValue, setAutoIncrementValue] = useState(3);
 
   return (
     <>
@@ -74,7 +84,7 @@ const CaptureLive = () => {
         </div>
       </div>
 
-      <div className="reveal fadeIn action-container flex-1 overflow-y bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
+      <div className="reveal fadeIn action-container flex-1 bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
         <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
           <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
             {/* text input container numeric value */}
@@ -133,14 +143,140 @@ const CaptureLive = () => {
               iconClass=""
               defaultToggelState={true}
             />
-            <ButtonSm
-              iconClass="record-icon"
-              text="Record"
-              buttonType="full-width primary justify-center"
-              rightSideIcon=""
-              textColor="text-white"
-              onClick={() => console.log("Record clicked")}
-            />
+
+            {/* button to trigger the folder directory settings */}
+
+            <div className="record-group flex flex-col gap-1 border-1 border-mid-black br-2 p-1 pb-2">
+              <ButtonSm
+                iconClass="record-icon"
+                text="Record"
+                buttonType="full-width primary justify-center"
+                rightSideIcon=""
+                textColor="text-white"
+                onClick={() => console.log("Record clicked")}
+              />
+
+              <div className="trigger-file-directory-settings overflow-hidden button modal-trigger-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
+                {/* <p className="gap-1 flex flex-row"> */}
+
+                <span class="folder-directory overflow-hidden text-nowrap text md">
+                  D:\Users\pooyasondeperson
+                </span>
+
+                <span class="subfolder-directory overflow-hidden text-nowrap text md">
+                  Subfolder_name
+                </span>
+
+                {/* </p> */}
+
+                <button class="button icon-button pos-rel top-0 right-0">
+                  <span class="icon settings-icon icon-size-16"></span>
+                </button>
+              </div>
+
+              <ToggleComponent
+                text="Countdown"
+                className=""
+                iconClass=""
+                isToggled={Countdown}
+                onToggle={setCountdown}
+              />
+              <div
+                className={clsx(
+                  "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+                  { disabled: !Countdown }
+                )}
+              >
+                <div className="gap-1 text-container overflow-hidden flex items-center">
+                  <span className="icon icon-size-16 subcat-icon"></span>
+                  <p className="text text-nowrap text-left md">Start after</p>
+                </div>
+                <ValueSelector
+                  unit="s"
+                  min={1}
+                  max={120}
+                  initialValue={CounterValue}
+                  onChange={setCounterValue}
+                />
+              </div>
+            </div>
+
+            <div className="file-directory-settings-modal modal border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
+              <div className="flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">
+                <SubactionHeader text="Recording directory" />
+                <div class="flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block gap-1">
+                  <button class="overflow-hidden flex-1 flex input-with-unit button sm select-folder gap-1">
+                      <span class="text-nowrap value-label text md">
+                        C:\Users\pooyasonsdsdsdsdsd
+                      </span>
+                  </button>
+                  {/* addsubfolder button top-right */}
+                  <button
+                    onClick={""}
+                    className="button icon-button close-button pos-rel top-0 right-0"
+                  >
+                    <span className="icon addsubfolder-icon icon-size-16"></span>
+                  </button>
+                </div>
+                <div class="items-center gap-1 flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block">
+                  <span className="icon subcat-icon icon-size-16"></span>
+                  <button class="overflow-hidden flex-1 flex input-with-unit button sm dropdown">
+                    <span class="text-nowrap value-label text md">
+                      Subfolder_name
+                    </span>
+                  </button>
+                  {/* minus or remove buttoons top-right */}
+                  <button
+                    onClick={""}
+                    className="button icon-button close-button pos-rel top-0 right-0"
+                  >
+                    <span className="icon minus-icon icon-size-16"></span>
+                  </button>
+                </div>
+                <SubactionHeader text="Recording name" />
+                <div class="items-center gap-1 flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block">
+                  <span className="icon file-icon icon-size-16"></span>
+                  <button class="overflow-hidden flex-1 flex input-with-unit button sm dropdown">
+                    <span class="text-nowrap value-label text md">
+                      Subfolder_name
+                    </span>
+                  </button>
+                  {/* minus or remove buttoons top-right */}
+                </div>
+                <ToggleComponent
+                  text="Timestamp prefix"
+                  className=""
+                  iconClass=""
+                  isToggled={timeStampPrefix}
+                  onToggle={settimeStampPrefix}
+                />
+                <ToggleComponent
+                  text="Auto increment"
+                  className=""
+                  iconClass=""
+                  isToggled={AutoIncrement}
+                  onToggle={setAutoIncrement}
+                />
+                <div
+                  className={clsx(
+                    "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+                    { disabled: !AutoIncrement }
+                  )}
+                >
+                  <div className="gap-1 text-container overflow-hidden flex items-center">
+                    <span className="icon icon-size-16 subcat-icon"></span>
+                    <p className="text text-nowrap text-left md">Number</p>
+                  </div>
+                  <ValueSelector
+                    unit=""
+                    min={1}
+                    max={99999}
+                    initialValue={AutoIncrementValue}
+                    onChange={setAutoIncrementValue}
+                  />
+                </div>
+              </div>
+            </div>
             <div className="p-1 g-1">
               <p className="text bg-md text-left">
                 Camera views may lag at higher settings. Try lowering the

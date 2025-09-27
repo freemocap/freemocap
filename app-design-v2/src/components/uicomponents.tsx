@@ -1010,7 +1010,7 @@ const TextSelector: React.FC<TextSelectorProps> = ({
     <div ref={containerRef} className="flex flex-1 text-selector pos-rel inline-block">
       {/* Trigger Button */}
       <button
-        className="input-with-string flex-1 button sm w-full dropdown"
+        className="recording-name-field-container overflow-hidden input-with-string flex-1 button sm w-full dropdown"
         onClick={() => setOpen((prev) => !prev)}
       >
         <span className="value-label text md">
@@ -1020,8 +1020,8 @@ const TextSelector: React.FC<TextSelectorProps> = ({
 
       {/* Tooltip / Input */}
       {open && (
-        <div className="text-selector-container border-1 border-black elevated-sharp pos-abs flex flex-row right-0 p-1 bg-dark br-2 z-1 reveal slide-down">
-          <div className="flex right-0 p-2 gap-2 bg-middark br-1 z-1">
+        <div className="border-1 border-black elevated-sharp pos-abs flex flex-row right-0 p-1 bg-dark br-2 z-1 reveal slide-down">
+          <div className=" flex right-0 p-2 gap-2 bg-middark br-1 z-1">
             <div className={`text-input`}>
               <input
                 ref={inputRef}
@@ -1030,7 +1030,7 @@ const TextSelector: React.FC<TextSelectorProps> = ({
                 onChange={(e) => onChange?.(e.target.value)}
                 onKeyDown={handleKeyDown} // ✅ handle Enter
                 placeholder={placeholder}
-                className={`input-field text md text-center`}
+                className={`text-nowrap input-field text md text-center`}
               />
             </div>
           </div>

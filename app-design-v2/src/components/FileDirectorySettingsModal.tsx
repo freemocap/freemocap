@@ -1,4 +1,12 @@
 import React, { useState, useEffect } from "react";
+
+// Extend the Window interface to include showDirectoryPicker
+declare global {
+  interface Window {
+    showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
+  }
+}
+
 import {
   ToggleComponent,
   ValueSelector,
@@ -12,11 +20,12 @@ interface FileDirectorySettingsModalProps {
 
   // Directory
   directoryPath: string;
-  onSelectDirectory: () => void;
+  onSelectDirectory: (path: string) => void;
   onAddSubfolder: () => void;
 
   // Subfolder
   subfolderName: string;
+  hasSubfolder: boolean;
   onSelectSubfolder: () => void;
   onRemoveSubfolder: () => void;
 
@@ -44,6 +53,7 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
   onAddSubfolder,
 
   subfolderName,
+  hasSubfolder,
   onSelectSubfolder,
   onRemoveSubfolder,
 
@@ -65,6 +75,37 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
     setShowSubfolder(true);
   };
 
+  const handleSelectDirectory = async () => {
+    if (window.electronAPI) {
+      const path = await window.electronAPI.selectDirectory();
+      if (path) {
+        onSelectDirectory(path);
+      }
+    } else if (window.showDirectoryPicker) {
+      // Modern web API for directory selection
+      try {
+        const directoryHandle = await window.showDirectoryPicker();
+        onSelectDirectory(directoryHandle.name);
+      } catch (error) {
+        console.error("Error selecting directory:", error);
+      }
+    } else {
+      // Fallback for older browsers
+      console.log("Your browser does not support modern directory selection. Using fallback.");
+      const input = document.createElement("input");
+      input.type = "file";
+      input.webkitdirectory = true;
+      input.onchange = (event: any) => {
+        const files = event.target.files;
+        if (files.length > 0) {
+          const path = files[0].webkitRelativePath.split("/")[0];
+          onSelectDirectory(path);
+        }
+      };
+      input.click();
+    }
+  };
+
   const handleRemoveSubfolder = () => {
     onRemoveSubfolder();
     setShowSubfolder(false);
@@ -79,7 +120,7 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
         <SubactionHeader text="Recording directory" />
         <div className="flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block gap-1">
           <button
-            onClick={onSelectDirectory}
+            onClick={handleSelectDirectory}
             className="overflow-hidden flex-1 flex input-with-unit button sm select-folder gap-1"
           >
             <span className="folder-directory overflow-hidden text-nowrap text md value-label">{directoryPath}</span>

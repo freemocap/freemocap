@@ -69,6 +69,31 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
   setAutoIncrementValue,
 }) => {
   const [showSubfolder, setShowSubfolder] = useState(false);
+  const [formattedTimestamp, setFormattedTimestamp] = useState("");
+
+  const getFormattedTimestamp = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const seconds = String(now.getSeconds()).padStart(2, "0");
+    return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}\u00A0`;
+  };
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    if (timeStampPrefix) {
+      setFormattedTimestamp(getFormattedTimestamp());
+      intervalId = setInterval(() => {
+        setFormattedTimestamp(getFormattedTimestamp());
+      }, 1000);
+    }
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [timeStampPrefix]);
 
   const handleAddSubfolder = () => {
     onAddSubfolder();
@@ -166,6 +191,11 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
             onClick={onSelectRecordingName}
             className="overflow-hidden flex-1 flex input-with-unit button sm dropdown"
           >
+            {timeStampPrefix && (
+              <span className="timestamp-lable text-white text-nowrap text md">
+                {formattedTimestamp}
+              </span>
+            )}
             <span className="text-nowrap value-label text md">{recordingName}</span>
           </button>
         </div>

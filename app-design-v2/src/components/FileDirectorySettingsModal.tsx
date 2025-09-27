@@ -69,7 +69,11 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
   autoIncrementValue,
   setAutoIncrementValue,
 }) => {
-  const [showSubfolder, setShowSubfolder] = useState(false);
+  const [showSubfolder, setShowSubfolder] = useState(hasSubfolder);
+
+useEffect(() => {
+  setShowSubfolder(hasSubfolder);
+}, [hasSubfolder]);
   const [formattedTimestamp, setFormattedTimestamp] = useState("");
 
   const [editingRecordingName, setEditingRecordingName] =

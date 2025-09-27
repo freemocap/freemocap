@@ -43,9 +43,9 @@ const CaptureLive = () => {
   const [hasSubfolder, setHasSubfolder] = useState(false);
 
   const handleAddSubfolder = () => {
-    setSubfolderName("NewSubfolder");
-    setHasSubfolder(true);
-  };
+  setSubfolderName("NewSubfolder");
+  setHasSubfolder(true);
+};
 
   const handleRemoveSubfolder = () => {
     setSubfolderName("");
@@ -207,7 +207,7 @@ const CaptureLive = () => {
                   onAddSubfolder={handleAddSubfolder}
                   subfolderName={subfolderName}
                   hasSubfolder={hasSubfolder}
-                  onSelectSubfolder={() => console.log("Select subfolder clicked")}
+                  onSelectSubfolder={setSubfolderName}
                   onRemoveSubfolder={handleRemoveSubfolder}
                   recordingName="Recording1"
                   onSelectRecordingName={() => console.log("Select recording name clicked")}

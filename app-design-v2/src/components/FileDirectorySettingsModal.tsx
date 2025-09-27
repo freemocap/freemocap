@@ -82,7 +82,7 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
             onClick={onSelectDirectory}
             className="overflow-hidden flex-1 flex input-with-unit button sm select-folder gap-1"
           >
-            <span className="text-nowrap value-label text md">{directoryPath}</span>
+            <span className="folder-directory overflow-hidden text-nowrap text md value-label">{directoryPath}</span>
           </button>
           <button
             onClick={handleAddSubfolder}
@@ -162,10 +162,13 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
           />
         </div>
 
-        {/* Close button */}
-        <button onClick={onClose} className="button mt-2 self-end">
-          Close
-        </button>
+       {/* close button top-right */}
+          <button
+            onClick={onClose}
+            className="button icon-button close-button pos-abs top-0 right-0 m-1"
+          >
+            <span className="icon close-icon icon-size-16"></span>
+          </button>
       </div>
     </div>
   );

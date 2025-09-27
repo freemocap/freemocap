@@ -9,9 +9,6 @@ import {
 import clsx from "clsx";
 import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
 
-//-------------------- File directory modal logic -------------//
-// NOTE: Keep comments for developers — real logic can be filled in later.
-
 const CaptureLive = () => {
   // -------------------- Modal state --------------------
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,9 +33,22 @@ const CaptureLive = () => {
     };
   }, [isModalOpen]);
 
-  // Toggle modal open/close
   const toggleModal = () => {
     setIsModalOpen((prev) => !prev);
+  };
+
+  // -------------------- Subfolder state --------------------
+  const [subfolderName, setSubfolderName] = useState("");
+  const [hasSubfolder, setHasSubfolder] = useState(false);
+
+  const handleAddSubfolder = () => {
+    setSubfolderName("NewSubfolder");
+    setHasSubfolder(true);
+  };
+
+  const handleRemoveSubfolder = () => {
+    setSubfolderName("");
+    setHasSubfolder(false);
   };
 
   // -------------------- Stream state --------------------
@@ -49,11 +59,12 @@ const CaptureLive = () => {
   const handleStreamConnect = () => {
     console.log("Checking before streaming…");
     setStreamState("connecting");
-    setTimeout(() => setStreamState("connected"), 2000); // real connect logic here later
+    setTimeout(() => setStreamState("connected"), 2000);
   };
+
   const handleStreamDisconnect = () => {
     console.log("Stopped streaming!");
-    setStreamState("disconnected"); // real disconnect logic here later
+    setStreamState("disconnected");
   };
 
   // -------------------- Countdown state --------------------
@@ -175,93 +186,36 @@ const CaptureLive = () => {
                   className="trigger-file-directory-settings overflow-hidden button modal-trigger-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 cursor-pointer"
                 >
                   <span className="folder-directory overflow-hidden text-nowrap text md">
-                    D:\Users\pooyasondeperson
+                    C:\Users\pooya
                   </span>
                   <span className="subfolder-directory overflow-hidden text-nowrap text md">
-                    Subfolder_name
+                    {hasSubfolder ? subfolderName : "No subfolder"}
                   </span>
                   <button className="button icon-button pos-rel top-0 right-0">
                     <span className="icon settings-icon icon-size-16"></span>
                   </button>
                 </div>
 
-                {/* -------------------- Modal -------------------- */}
-                {isModalOpen && (
-                  // <div className="pos-abs right-0">
-                    <div className="file-directory-settings-modal modal border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
-                      <div className="flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">
-                        <SubactionHeader text="Recording directory" />
-                        <div className="flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block gap-1">
-                          <button className="overflow-hidden flex-1 flex input-with-unit button sm select-folder gap-1">
-                            <span className="text-nowrap value-label text md">
-                              C:\Users\pooyasonsdsdsdsdsd
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => {}}
-                            className="button icon-button close-button pos-rel top-0 right-0"
-                          >
-                            <span className="icon addsubfolder-icon icon-size-16"></span>
-                          </button>
-                        </div>
-
-                        <div className="items-center gap-1 flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block">
-                          <span className="icon subcat-icon icon-size-16"></span>
-                          <button className="overflow-hidden flex-1 flex input-with-unit button sm dropdown">
-                            <span className="text-nowrap value-label text md">Subfolder_name</span>
-                          </button>
-                          <button
-                            onClick={() => {}}
-                            className="button icon-button close-button pos-rel top-0 right-0"
-                          >
-                            <span className="icon minus-icon icon-size-16"></span>
-                          </button>
-                        </div>
-
-                        <SubactionHeader text="Recording name" />
-                        <div className="items-center gap-1 flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block">
-                          <span className="icon file-icon icon-size-16"></span>
-                          <button className="overflow-hidden flex-1 flex input-with-unit button sm dropdown">
-                            <span className="text-nowrap value-label text md">Subfolder_name</span>
-                          </button>
-                        </div>
-
-                        <ToggleComponent
-                          text="Timestamp prefix"
-                          className=""
-                          iconClass=""
-                          isToggled={timeStampPrefix}
-                          onToggle={settimeStampPrefix}
-                        />
-                        <ToggleComponent
-                          text="Auto increment"
-                          className=""
-                          iconClass=""
-                          isToggled={AutoIncrement}
-                          onToggle={setAutoIncrement}
-                        />
-                        <div
-                          className={clsx(
-                            "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
-                            { disabled: !AutoIncrement }
-                          )}
-                        >
-                          <div className="gap-1 text-container overflow-hidden flex items-center">
-                            <span className="icon icon-size-16 subcat-icon"></span>
-                            <p className="text text-nowrap text-left md">Number</p>
-                          </div>
-                          <ValueSelector
-                            unit=""
-                            min={1}
-                            max={99999}
-                            initialValue={AutoIncrementValue}
-                            onChange={setAutoIncrementValue}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  // </div>
-                )}
+                {/* Modal */}
+                <FileDirectorySettingsModal
+                  isOpen={isModalOpen}
+                  onClose={() => setIsModalOpen(false)}
+                  directoryPath="C:\\Users\\pooya"
+                  onSelectDirectory={() => console.log("Select directory clicked")}
+                  onAddSubfolder={handleAddSubfolder}
+                  subfolderName={subfolderName}
+                  hasSubfolder={hasSubfolder}
+                  onSelectSubfolder={() => console.log("Select subfolder clicked")}
+                  onRemoveSubfolder={handleRemoveSubfolder}
+                  recordingName="Recording1"
+                  onSelectRecordingName={() => console.log("Select recording name clicked")}
+                  timeStampPrefix={timeStampPrefix}
+                  setTimeStampPrefix={settimeStampPrefix}
+                  autoIncrement={AutoIncrement}
+                  setAutoIncrement={setAutoIncrement}
+                  autoIncrementValue={AutoIncrementValue}
+                  setAutoIncrementValue={setAutoIncrementValue}
+                />
               </div>
 
               <ToggleComponent

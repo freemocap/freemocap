@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from "react";
 import {
-  ButtonSm,
   ToggleComponent,
-  ToggleButtonComponent,
-  SegmentedControl,
   ValueSelector,
   SubactionHeader,
-  NameDropdownSelector,
 } from "./uicomponents";
 import clsx from "clsx";
-
 
 interface FileDirectorySettingsModalProps {
   isOpen: boolean;
@@ -63,6 +58,18 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
   autoIncrementValue,
   setAutoIncrementValue,
 }) => {
+  const [showSubfolder, setShowSubfolder] = useState(false);
+
+  const handleAddSubfolder = () => {
+    onAddSubfolder();
+    setShowSubfolder(true);
+  };
+
+  const handleRemoveSubfolder = () => {
+    onRemoveSubfolder();
+    setShowSubfolder(false);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -78,15 +85,23 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
             <span className="text-nowrap value-label text md">{directoryPath}</span>
           </button>
           <button
-            onClick={onAddSubfolder}
-            className="button icon-button close-button pos-rel top-0 right-0"
+            onClick={handleAddSubfolder}
+            className={clsx(
+              "button icon-button addsubfolder-button pos-rel top-0 right-0",
+              { vanished: showSubfolder }
+            )}
           >
             <span className="icon addsubfolder-icon icon-size-16"></span>
           </button>
         </div>
 
         {/* Subfolder */}
-        <div className="items-center gap-1 flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block">
+        <div
+          className={clsx(
+            "addsubfolder-container items-center gap-1 flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block",
+            { hidden: !showSubfolder }
+          )}
+        >
           <span className="icon subcat-icon icon-size-16"></span>
           <button
             onClick={onSelectSubfolder}
@@ -95,7 +110,7 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
             <span className="text-nowrap value-label text md">{subfolderName}</span>
           </button>
           <button
-            onClick={onRemoveSubfolder}
+            onClick={handleRemoveSubfolder}
             className="button icon-button close-button pos-rel top-0 right-0"
           >
             <span className="icon minus-icon icon-size-16"></span>
@@ -142,15 +157,13 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
             min={1}
             max={99999}
             initialValue={autoIncrementValue}
+            value={autoIncrementValue}
             onChange={setAutoIncrementValue}
           />
         </div>
 
         {/* Close button */}
-        <button
-          onClick={onClose}
-          className="button mt-2 self-end"
-        >
+        <button onClick={onClose} className="button mt-2 self-end">
           Close
         </button>
       </div>

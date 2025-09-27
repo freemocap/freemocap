@@ -1563,4 +1563,11 @@ input[type="checkbox"]:disabled {
     position: absolute;
     right: 101%;
     top: -5px;
+    min-width: 300px;
+    max-width: 300px;
+}
+.vanished {
+  opacity: 0;
+      pointer-events: none;
+
 }

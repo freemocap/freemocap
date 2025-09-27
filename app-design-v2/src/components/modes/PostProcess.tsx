@@ -370,7 +370,7 @@ const PostProcess = () => {
             >
               <div className="gap-1 text-container overflow-hidden flex items-center">
                 <span className="icon icon-size-16 subcat-icon"></span>
-                <p className="text text-nowrap text-left md">Threshold (%)</p>
+                <p className="text text-nowrap text-left md">Threshold</p>
               </div>
               <ValueSelector
                 unit="%"

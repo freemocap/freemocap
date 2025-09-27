@@ -98,7 +98,7 @@ const ToggleComponent: React.FC<ToggleProps> = ({
         {iconClass && (
           <span className={`icon icon-size-16 ${iconClass}`}></span>
         )}
-        <p className="text text-nowrap text-left md">{text}</p>
+        <p className={clsx("text text-nowrap text-left md", toggled && "color-white")}>{text}</p>
       </div>
       <div className={`icon toggle-container ${toggled ? "on" : "off"}`}>
         <div className="icon toggle-circle"></div>
@@ -261,7 +261,7 @@ const ButtonSm = ({
     <button
       onClick={onClick}
       className={clsx(
-        "gap-1 br-1 button sm flex-inline text-left items-center", // base styles
+        "gap-1 br-1 button sm fit-content flex-inline text-left items-center", // base styles
         buttonType, // multiple classes supported here
         rightSideIcon // this is being treated as classes, same as before
       )}
@@ -537,7 +537,7 @@ const ToggleButtonComponent = ({
       onClick={handleClick}
       disabled={state === STATES.CONNECTING}
       className={clsx(
-        "gap-1 br-1 button sm flex-inline text-left items-center",
+        "gap-1 br-1 button sm fit-content flex-inline text-left items-center",
         extraClasses
       )}
     >
@@ -774,12 +774,15 @@ const InputWithUnit = ({
 const ValueSelector = ({
   unit = "mm",
   initialValue = 1,
-  min = 1, // new prop
-  max = 999, // new prop
+  min = 1,
+  max = 999,
+  onChange,
+  value,
 }) => {
-  const [value, setValue] = useState(initialValue);
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null); // wrap button + tooltip
+
+  const currentValue = value !== undefined ? value : initialValue;
 
   // Close on outside click
   useEffect(() => {
@@ -793,20 +796,20 @@ const ValueSelector = ({
   }, []);
 
   const increment = () => {
-    if (value < max) setValue((v) => v + 1);
+    if (currentValue < max) onChange?.(currentValue + 1);
   };
   const decrement = () => {
-    if (value > min) setValue((v) => v - 1);
+    if (currentValue > min) onChange?.(currentValue - 1);
   };
 
   return (
     <div ref={containerRef} className="value-selector pos-rel inline-block">
       {/* Trigger Button */}
       <button
-        className="input-with-unit button sm dropdown"
+        className="input-with-unit button sm fit-content dropdown"
         onClick={() => setOpen((prev) => !prev)}
       >
-        <span className="value-label text md">{value}</span>
+        <span className="value-label text md">{currentValue}</span>
         <span className="unit-label text md">{unit}</span>
       </button>
 
@@ -818,7 +821,7 @@ const ValueSelector = ({
             <button
               onClick={decrement}
               className={`button icon-button close-button ${
-                value <= min ? "deactivated" : ""
+                currentValue <= min ? "deactivated" : ""
               }`}
             >
               <span className="icon minus-icon icon-size-16"></span>
@@ -826,8 +829,8 @@ const ValueSelector = ({
 
             {/* Input */}
             <InputWithUnit
-              value={value}
-              onChange={setValue}
+              value={currentValue}
+              onChange={onChange}
               unit={unit}
               min={min}
               max={max}
@@ -837,7 +840,7 @@ const ValueSelector = ({
             <button
               onClick={increment}
               className={`button icon-button close-button ${
-                value >= max ? "deactivated" : ""
+                currentValue >= max ? "deactivated" : ""
               }`}
             >
               <span className="icon plus-icon icon-size-16"></span>
@@ -901,7 +904,7 @@ const NameDropdownSelector = ({
     >
       {/* Trigger button */}
       <button
-        className="gap-1 br-1 button sm flex-inline text-left items-center full-width dropdown border-1 border-mid-black"
+        className="gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width dropdown border-1 border-mid-black"
         onClick={() => setOpen((prev) => !prev)}
       >
         <p className="text-gray text md text-align-left text-nowrap">
@@ -917,7 +920,7 @@ const NameDropdownSelector = ({
             {options.map((option, index) => (
               <button
                 key={index}
-                className={`gap-1 br-1 button sm flex-inline text-left items-center full-width ${
+                className={`gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width ${
                   selected === option ? "selected" : ""
                 }`}
                 onClick={() => handleSelect(option)}

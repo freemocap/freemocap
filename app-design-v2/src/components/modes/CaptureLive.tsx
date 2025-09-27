@@ -12,6 +12,7 @@ import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
 const CaptureLive = () => {
   // -------------------- Modal state --------------------
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [directoryPath, setDirectoryPath] = useState("C:\\Users\\pooyadeperson.com");
   const [timeStampPrefix, settimeStampPrefix] = useState(false);
   const [AutoIncrement, setAutoIncrement] = useState(false);
   const [AutoIncrementValue, setAutoIncrementValue] = useState(3);
@@ -132,7 +133,8 @@ const CaptureLive = () => {
               <ValueSelector
                 unit="mm"
                 initialValue={selectedValue}
-                onChange={(val) => setSelectedValue(val)}
+                value={selectedValue}
+                onChange={(val: number) => setSelectedValue(val)}
               />
             </div>
             <ButtonSm
@@ -186,10 +188,10 @@ const CaptureLive = () => {
                   className="trigger-file-directory-settings overflow-hidden button modal-trigger-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 cursor-pointer"
                 >
                   <span className="folder-directory overflow-hidden text-nowrap text md">
-                    C:\Users\pooyadeperson.com
+                    {directoryPath}
                   </span>
                   <span className="subfolder-directory overflow-hidden text-nowrap text md">
-                    {hasSubfolder ? subfolderName : "No subfolder"}
+                    {hasSubfolder ? subfolderName : ""}
                   </span>
                   <button className="button icon-button pos-rel top-0 right-0">
                     <span className="icon settings-icon icon-size-16"></span>
@@ -200,8 +202,8 @@ const CaptureLive = () => {
                 <FileDirectorySettingsModal
                   isOpen={isModalOpen}
                   onClose={() => setIsModalOpen(false)}
-                  directoryPath="C:\\Users\\pooyadeperson.com"
-                  onSelectDirectory={() => console.log("Select directory clicked")}
+                  directoryPath={directoryPath}
+                  onSelectDirectory={setDirectoryPath}
                   onAddSubfolder={handleAddSubfolder}
                   subfolderName={subfolderName}
                   hasSubfolder={hasSubfolder}
@@ -240,6 +242,7 @@ const CaptureLive = () => {
                   min={1}
                   max={120}
                   initialValue={CounterValue}
+                  value={CounterValue}
                   onChange={setCounterValue}
                 />
               </div>

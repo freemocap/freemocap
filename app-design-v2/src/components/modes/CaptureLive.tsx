@@ -186,7 +186,7 @@ const CaptureLive = () => {
                   className="trigger-file-directory-settings overflow-hidden button modal-trigger-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 cursor-pointer"
                 >
                   <span className="folder-directory overflow-hidden text-nowrap text md">
-                    C:\Users\pooya
+                    C:\Users\pooyadeperson.com
                   </span>
                   <span className="subfolder-directory overflow-hidden text-nowrap text md">
                     {hasSubfolder ? subfolderName : "No subfolder"}
@@ -200,7 +200,7 @@ const CaptureLive = () => {
                 <FileDirectorySettingsModal
                   isOpen={isModalOpen}
                   onClose={() => setIsModalOpen(false)}
-                  directoryPath="C:\\Users\\pooya"
+                  directoryPath="C:\\Users\\pooyadeperson.com"
                   onSelectDirectory={() => console.log("Select directory clicked")}
                   onAddSubfolder={handleAddSubfolder}
                   subfolderName={subfolderName}

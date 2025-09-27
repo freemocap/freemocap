@@ -1499,6 +1499,16 @@ input[type="checkbox"]:disabled {
   width: 77px;
   transition: border var(--speed-2);
 }
+.input-with-string {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--gray-600);
+  border-radius: 4px;
+  padding: 4px 8px;
+  height: 25px;
+  width: 100%;
+  transition: border var(--speed-2);
+}
 
 
 /* Style the input */

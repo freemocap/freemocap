@@ -11,6 +11,7 @@ import {
   ToggleComponent,
   ValueSelector,
   SubactionHeader,
+  TextSelector,
 } from "./uicomponents";
 import clsx from "clsx";
 
@@ -26,12 +27,12 @@ interface FileDirectorySettingsModalProps {
   // Subfolder
   subfolderName: string;
   hasSubfolder: boolean;
-  onSelectSubfolder: () => void;
+  onSelectSubfolder: (name: string) => void;
   onRemoveSubfolder: () => void;
 
   // Recording name
   recordingName: string;
-  onSelectRecordingName: () => void;
+  onSelectRecordingName: (name: string) => void;
 
   // Toggles
   timeStampPrefix: boolean;
@@ -71,6 +72,22 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
   const [showSubfolder, setShowSubfolder] = useState(false);
   const [formattedTimestamp, setFormattedTimestamp] = useState("");
 
+  const [editingRecordingName, setEditingRecordingName] =
+    useState(recordingName);
+
+  const [editingSubfolderName, setEditingSubfolderName] =
+    useState(subfolderName);
+
+  // Sync recording name with parent prop
+  useEffect(() => {
+    setEditingRecordingName(recordingName);
+  }, [recordingName]);
+
+  // Sync subfolder name with parent prop
+  useEffect(() => {
+    setEditingSubfolderName(subfolderName);
+  }, [subfolderName]);
+
   const getFormattedTimestamp = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -103,11 +120,8 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
   const handleSelectDirectory = async () => {
     if (window.electronAPI) {
       const path = await window.electronAPI.selectDirectory();
-      if (path) {
-        onSelectDirectory(path);
-      }
+      if (path) onSelectDirectory(path);
     } else if (window.showDirectoryPicker) {
-      // Modern web API for directory selection
       try {
         const directoryHandle = await window.showDirectoryPicker();
         onSelectDirectory(directoryHandle.name);
@@ -115,8 +129,6 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
         console.error("Error selecting directory:", error);
       }
     } else {
-      // Fallback for older browsers
-      console.log("Your browser does not support modern directory selection. Using fallback.");
       const input = document.createElement("input");
       input.type = "file";
       input.webkitdirectory = true;
@@ -142,104 +154,118 @@ const FileDirectorySettingsModal: React.FC<FileDirectorySettingsModalProps> = ({
     <div className="file-directory-settings-modal modal border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
       <div className="flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">
         {/* Directory */}
-        <SubactionHeader text="Recording directory" />
-        <div className="flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block gap-1">
-          <button
-            onClick={handleSelectDirectory}
-            className="overflow-hidden flex-1 flex input-with-unit button sm select-folder gap-1"
-          >
-            <span className="folder-directory overflow-hidden text-nowrap text md value-label">{directoryPath}</span>
-          </button>
-          <button
-            onClick={handleAddSubfolder}
+        <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
+          <SubactionHeader text="Recording directory" />
+          <div className="flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block gap-1">
+            <button
+              onClick={handleSelectDirectory}
+              className="overflow-hidden flex-1 flex input-with-unit button sm select-folder gap-1"
+            >
+              <span className="folder-directory overflow-hidden text-nowrap text md value-label">
+                {directoryPath}
+              </span>
+            </button>
+            <button
+              onClick={handleAddSubfolder}
+              className={clsx(
+                "button icon-button addsubfolder-button pos-rel top-0 right-0",
+                { vanished: showSubfolder }
+              )}
+            >
+              <span className="icon addsubfolder-icon icon-size-16"></span>
+            </button>
+          </div>
+
+          {/* Subfolder */}
+          <div
             className={clsx(
-              "button icon-button addsubfolder-button pos-rel top-0 right-0",
-              { vanished: showSubfolder }
+              "addsubfolder-container items-center gap-1 flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block",
+              { hidden: !showSubfolder }
             )}
           >
-            <span className="icon addsubfolder-icon icon-size-16"></span>
-          </button>
-        </div>
+            <span className="icon subcat-icon icon-size-16"></span>
 
-        {/* Subfolder */}
-        <div
-          className={clsx(
-            "addsubfolder-container items-center gap-1 flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block",
-            { hidden: !showSubfolder }
-          )}
-        >
-          <span className="icon subcat-icon icon-size-16"></span>
-          <button
-            onClick={onSelectSubfolder}
-            className="overflow-hidden flex-1 flex input-with-unit button sm dropdown"
-          >
-            <span className="text-nowrap value-label text md">{subfolderName}</span>
-          </button>
-          <button
-            onClick={handleRemoveSubfolder}
-            className="button icon-button close-button pos-rel top-0 right-0"
-          >
-            <span className="icon minus-icon icon-size-16"></span>
-          </button>
+            <TextSelector
+              value={editingSubfolderName}
+              onChange={(value) => {
+                setEditingSubfolderName(value);
+                onSelectSubfolder(value);
+              }}
+              placeholder="Enter subfolder name"
+            />
+
+            <button
+              onClick={handleRemoveSubfolder}
+              className="button icon-button close-button pos-rel top-0 right-0"
+            >
+              <span className="icon minus-icon icon-size-16"></span>
+            </button>
+          </div>
         </div>
 
         {/* Recording Name */}
-        <SubactionHeader text="Recording name" />
-        <div className="items-center gap-1 flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block">
-          <span className="icon file-icon icon-size-16"></span>
-          <button
-            onClick={onSelectRecordingName}
-            className="overflow-hidden flex-1 flex input-with-unit button sm dropdown"
-          >
-            {timeStampPrefix && (
-              <span className="timestamp-lable text-white text-nowrap text md">
-                {formattedTimestamp}
-              </span>
-            )}
-            <span className="text-nowrap value-label text md">{recordingName}</span>
-          </button>
-        </div>
-
-        {/* Toggles */}
-        <ToggleComponent
-          text="Timestamp prefix"
-          isToggled={timeStampPrefix}
-          onToggle={setTimeStampPrefix}
-        />
-        <ToggleComponent
-          text="Auto increment"
-          isToggled={autoIncrement}
-          onToggle={setAutoIncrement}
-        />
-
-        {/* Auto Increment Value */}
-        <div
-          className={clsx(
-            "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
-            { disabled: !autoIncrement }
-          )}
-        >
-          <div className="gap-1 text-container overflow-hidden flex items-center">
-            <span className="icon icon-size-16 subcat-icon"></span>
-            <p className="text text-nowrap text-left md">Number</p>
+        <div className="subaction-group flex flex-col flex-1 gap-1">
+          <SubactionHeader text="Recording name" />
+          <div className="items-center gap-1 flex flex-row input-string value-selector justify-content-space-between pos-rel inline-block">
+            <span className="icon file-icon icon-size-16"></span>
+            <div className="flex flex-row gap-1 items-center flex-1">
+              {timeStampPrefix && (
+                <span className="flex flex-1 timestamp-label text-white text-nowrap text md">
+                  {formattedTimestamp}
+                </span>
+              )}
+              <TextSelector
+                value={editingRecordingName}
+                onChange={(value) => {
+                  setEditingRecordingName(value);
+                  onSelectRecordingName(value);
+                }}
+                placeholder="Enter recording name"
+              />
+            </div>
           </div>
-          <ValueSelector
-            unit=""
-            min={1}
-            max={99999}
-            initialValue={autoIncrementValue}
-            value={autoIncrementValue}
-            onChange={setAutoIncrementValue}
+
+          {/* Toggles */}
+          <ToggleComponent
+            text="Timestamp prefix"
+            isToggled={timeStampPrefix}
+            onToggle={setTimeStampPrefix}
           />
+          <ToggleComponent
+            text="Auto increment"
+            isToggled={autoIncrement}
+            onToggle={setAutoIncrement}
+          />
+
+          {/* Auto Increment Value */}
+          <div
+            className={clsx(
+              "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
+              { disabled: !autoIncrement }
+            )}
+          >
+            <div className="gap-1 text-container overflow-hidden flex items-center">
+              <span className="icon icon-size-16 subcat-icon"></span>
+              <p className="text text-nowrap text-left md">Number</p>
+            </div>
+            <ValueSelector
+              unit=""
+              min={1}
+              max={99999}
+              initialValue={autoIncrementValue}
+              value={autoIncrementValue}
+              onChange={setAutoIncrementValue}
+            />
+          </div>
         </div>
 
-       {/* close button top-right */}
-          <button
-            onClick={onClose}
-            className="button icon-button close-button pos-abs top-0 right-0 m-1"
-          >
-            <span className="icon close-icon icon-size-16"></span>
-          </button>
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="button icon-button close-button pos-abs top-0 right-0 m-1"
+        >
+          <span className="icon close-icon icon-size-16"></span>
+        </button>
       </div>
     </div>
   );

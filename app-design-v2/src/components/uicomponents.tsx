@@ -98,7 +98,14 @@ const ToggleComponent: React.FC<ToggleProps> = ({
         {iconClass && (
           <span className={`icon icon-size-16 ${iconClass}`}></span>
         )}
-        <p className={clsx("text text-nowrap text-left md", toggled && "color-white")}>{text}</p>
+        <p
+          className={clsx(
+            "text text-nowrap text-left md",
+            toggled && "color-white"
+          )}
+        >
+          {text}
+        </p>
       </div>
       <div className={`icon toggle-container ${toggled ? "on" : "off"}`}>
         <div className="icon toggle-circle"></div>
@@ -742,12 +749,23 @@ const InputWithUnit = ({
   className = "",
   inputClassName = "",
   unitClassName = "",
-  min = 1, // new prop
-  max = 999, // new prop
+  min = 1,
+  max = 999,
+  onEnter, // ✅ new prop
 }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      onEnter?.();
+      inputRef.current?.blur(); // optional: remove focus
+    }
+  };
+
   return (
     <div className={`input-with-unit tooltip${className}`}>
       <input
+        ref={inputRef}
         type="number"
         value={value}
         min={min}
@@ -760,6 +778,7 @@ const InputWithUnit = ({
           onChange(val);
         }}
         onFocus={(e) => e.target.select()}
+        onKeyDown={handleKeyDown} // ✅ handle Enter
         placeholder={placeholder}
         className={`input-field text md text-center ${inputClassName}`}
       />
@@ -780,14 +799,14 @@ const ValueSelector = ({
   value,
 }) => {
   const [open, setOpen] = useState(false);
-  const containerRef = useRef(null); // wrap button + tooltip
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const currentValue = value !== undefined ? value : initialValue;
 
   // Close on outside click
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
@@ -834,6 +853,7 @@ const ValueSelector = ({
               unit={unit}
               min={min}
               max={max}
+              onEnter={() => setOpen(false)} // ✅ close tooltip on Enter
             />
 
             {/* Plus button */}
@@ -851,6 +871,7 @@ const ValueSelector = ({
     </div>
   );
 };
+
 
 const SubactionHeader = ({ text = "2d image trackers" }) => {
   return (
@@ -915,7 +936,6 @@ const NameDropdownSelector = ({
       {/* Dropdown */}
       {open && (
         <div className="dropdown-container border-1 border-black elevated-sharp pos-abs flex flex-col right-0 p-1 bg-dark br-2 z-1 reveal slide-down">
-
           <div className="flex flex-col right-0 p-1 gap-2 bg-middark br-1 z-1">
             {options.map((option, index) => (
               <button
@@ -925,7 +945,9 @@ const NameDropdownSelector = ({
                 }`}
                 onClick={() => handleSelect(option)}
               >
-                <p className="text-gray text md text-align-left text-nowrap">{option}</p>
+                <p className="text-gray text md text-align-left text-nowrap">
+                  {option}
+                </p>
               </button>
             ))}
           </div>
@@ -934,6 +956,90 @@ const NameDropdownSelector = ({
     </div>
   );
 };
+
+interface TextSelectorProps {
+  initialValue?: string;
+  onChange?: (value: string) => void;
+  value?: string;
+  placeholder?: string;
+}
+
+const TextSelector: React.FC<TextSelectorProps> = ({
+  initialValue = "",
+  onChange,
+  value,
+  placeholder = "Enter text",
+}) => {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const currentValue = value !== undefined ? value : initialValue;
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Focus input when dropdown opens
+  useEffect(() => {
+    if (open && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [open]);
+
+  // Close on Enter key
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      setOpen(false);
+      inputRef.current?.blur(); // optional: remove focus
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="flex flex-1 text-selector pos-rel inline-block">
+      {/* Trigger Button */}
+      <button
+        className="input-with-string flex-1 button sm w-full dropdown"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span className="value-label text md">
+          {currentValue || placeholder}
+        </span>
+      </button>
+
+      {/* Tooltip / Input */}
+      {open && (
+        <div className="text-selector-container border-1 border-black elevated-sharp pos-abs flex flex-row right-0 p-1 bg-dark br-2 z-1 reveal slide-down">
+          <div className="flex right-0 p-2 gap-2 bg-middark br-1 z-1">
+            <div className={`text-input`}>
+              <input
+                ref={inputRef}
+                type="text"
+                value={currentValue}
+                onChange={(e) => onChange?.(e.target.value)}
+                onKeyDown={handleKeyDown} // ✅ handle Enter
+                placeholder={placeholder}
+                className={`input-field text md text-center`}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 export {
   ButtonSm,
@@ -947,5 +1053,6 @@ export {
   ValueSelector,
   SubactionHeader,
   NameDropdownSelector,
+  TextSelector,
   // StandaloneToggleExample,
 };

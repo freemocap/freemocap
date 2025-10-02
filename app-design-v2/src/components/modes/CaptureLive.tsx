@@ -12,7 +12,6 @@ import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
 const CaptureLive = () => {
   const [activeCameras, setActiveCameras] = useState<MediaDeviceInfo[]>([]);
 
-
   // -------------------- Modal state --------------------
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [directoryPath, setDirectoryPath] = useState(
@@ -60,14 +59,24 @@ const CaptureLive = () => {
     setHasSubfolder(false);
   };
 
+
+  const STATES = {
+  DISCONNECTED: "disconnected",
+  CONNECTING: "connecting",
+  CONNECTED: "connected",
+};
+
+
   // -------------------- Stream state --------------------
-  const [streamState, setStreamState] = useState<"disconnected" | "connecting" | "connected">("disconnected");
+  const [streamState, setStreamState] = useState<
+    "disconnected" | "connecting" | "connected"
+  >("disconnected");
 
   const [skipCalibration, setSkipCalibration] = useState(true);
   const [selectedValue, setSelectedValue] = useState(10);
 
   // Video refs for each camera tile
-  const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   const getCameras = async () => {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -75,8 +84,6 @@ const CaptureLive = () => {
   };
 
   const handleStreamConnect = async () => {
-  setStreamState("connecting");
-
   try {
     const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
     tempStream.getTracks().forEach((track) => track.stop());
@@ -105,17 +112,41 @@ const CaptureLive = () => {
 };
 
 
- const handleStreamDisconnect = () => {
-  videoRefs.current.forEach((video) => {
-    if (video && video.srcObject) {
-      (video.srcObject as MediaStream).getTracks().forEach((track) => track.stop());
-      video.srcObject = null;
-    }
-  });
+  const handleStreamDisconnect = () => {
+    videoRefs.current.forEach((video) => {
+      if (video && video.srcObject) {
+        (video.srcObject as MediaStream)
+          .getTracks()
+          .forEach((track) => track.stop());
+        video.srcObject = null;
+      }
+    });
 
-  setActiveCameras([]); // keeps empty tiles intact
-  setStreamState("disconnected");
+    setActiveCameras([]); // keeps empty tiles intact
+    setStreamState("disconnected");
+  };
+
+  // -------------------- Stream toggle handler --------------------
+const handleStreamToggle = () => {
+  if (streamState === "disconnected") {
+    setStreamState("connecting"); // immediately show "Checking..."
+    handleStreamConnect();
+  } else if (streamState === "connected") {
+    handleStreamDisconnect();
+  }
 };
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   // -------------------- Countdown state --------------------
@@ -129,7 +160,7 @@ const CaptureLive = () => {
         <div className="flex flex-row header-tool-bar br-2 gap-4">
           {/* stream connect/disconnect button */}
           <div className="reveal fadeIn active-tools-header br-1-1 gap-1 p-1 flex ">
-            <ToggleButtonComponent
+<ToggleButtonComponent
               state={streamState}
               connectConfig={{
                 text: "Stream Camera",
@@ -150,43 +181,48 @@ const CaptureLive = () => {
                 extraClasses: "activated",
               }}
               textColor="text-white"
-              onConnect={handleStreamConnect}
-              onDisconnect={handleStreamDisconnect}
+              onConnect={handleStreamToggle}
+              onDisconnect={handleStreamToggle}
             />
+
+
           </div>
         </div>
 
         <div className="reveal overflow-y fadeIn visualize-container flex gap-2 flex-3 flex-start">
           <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start">
-  {[...Array(6)].map((_, idx) => {
-    const camera = activeCameras[idx];
-    return (
-      <div
-        key={idx}
-        className={clsx(
-          "video-tile camera-source size-1 bg-middark br-2",
-          camera ? "active-camera" : "empty",
-          `video-tile-${idx}`
-        )}
-      >
-        {camera && (
-          <video
-            ref={(el) => (videoRefs.current[idx] = el)}
-            className="w-full h-full object-cover"
-            autoPlay
-            muted
-          />
-        )}
-        {camera && (
-          <p className="camera-label text-white text-sm absolute top-1 left-1">
-            {camera.label || `Camera ${idx + 1}`}
-          </p>
-        )}
-      </div>
-    );
-  })}
-</div>
-
+            {[...Array(6)].map((_, idx) => {
+              const camera = activeCameras[idx];
+              return (
+                <div
+                  key={idx}
+                  className={clsx(
+                    "video-tile camera-source size-1 bg-middark br-2",
+                    camera ? "active-camera" : "empty",
+                    `video-tile-${idx}`
+                  )}
+                >
+                  {camera && (
+                    <video
+                      ref={(el) => {
+                        if (videoRefs.current) {
+                          videoRefs.current[idx] = el;
+                        }
+                      }}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      muted
+                    />
+                  )}
+                  {camera && (
+                    <p className="camera-label text-white text-sm absolute top-1 left-1">
+                      {camera.label || `Camera ${idx + 1}`}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

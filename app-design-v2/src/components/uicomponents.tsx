@@ -500,12 +500,11 @@ USAGE EXAMPLES
 -------------------------------------------------------------------------- */
 
 /* --- Connection states (enum-like) --- */
-const STATES = {
+export const STATES = { // <-- ADD export
   DISCONNECTED: "disconnected",
   CONNECTING: "connecting",
   CONNECTED: "connected",
 };
-
 /* --- Reusable Toggle Button --- */
 const ToggleButtonComponent = ({
   state,

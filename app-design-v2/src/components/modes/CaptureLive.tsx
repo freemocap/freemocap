@@ -10,9 +10,14 @@ import clsx from "clsx";
 import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
 
 const CaptureLive = () => {
+  const [activeCameras, setActiveCameras] = useState<MediaDeviceInfo[]>([]);
+
+
   // -------------------- Modal state --------------------
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [directoryPath, setDirectoryPath] = useState("C:\\Users\\pooyadeperson.com");
+  const [directoryPath, setDirectoryPath] = useState(
+    "C:\\Users\\pooyadeperson.com"
+  );
   const [timeStampPrefix, settimeStampPrefix] = useState(false);
   const [AutoIncrement, setAutoIncrement] = useState(false);
   const [AutoIncrementValue, setAutoIncrementValue] = useState(3);
@@ -22,7 +27,10 @@ const CaptureLive = () => {
   // Handle outside click to close modal
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
         setIsModalOpen(false);
       }
     }
@@ -43,9 +51,9 @@ const CaptureLive = () => {
   const [hasSubfolder, setHasSubfolder] = useState(false);
 
   const handleAddSubfolder = () => {
-  setSubfolderName("NewSubfolder");
-  setHasSubfolder(true);
-};
+    setSubfolderName("NewSubfolder");
+    setHasSubfolder(true);
+  };
 
   const handleRemoveSubfolder = () => {
     setSubfolderName("");
@@ -53,20 +61,62 @@ const CaptureLive = () => {
   };
 
   // -------------------- Stream state --------------------
-  const [streamState, setStreamState] = useState("disconnected");
+  const [streamState, setStreamState] = useState<"disconnected" | "connecting" | "connected">("disconnected");
+
   const [skipCalibration, setSkipCalibration] = useState(true);
   const [selectedValue, setSelectedValue] = useState(10);
 
-  const handleStreamConnect = () => {
-    console.log("Checking before streaming…");
-    setStreamState("connecting");
-    setTimeout(() => setStreamState("connected"), 2000);
+  // Video refs for each camera tile
+  const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
+
+  const getCameras = async () => {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter((device) => device.kind === "videoinput");
   };
 
-  const handleStreamDisconnect = () => {
-    console.log("Stopped streaming!");
+  const handleStreamConnect = async () => {
+  setStreamState("connecting");
+
+  try {
+    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    tempStream.getTracks().forEach((track) => track.stop());
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cameras = devices.filter((device) => device.kind === "videoinput");
+    setActiveCameras(cameras);
+
+    for (let i = 0; i < cameras.length; i++) {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: cameras[i].deviceId },
+        audio: false,
+      });
+      const video = videoRefs.current[i];
+      if (video) {
+        video.srcObject = stream;
+        video.play();
+      }
+    }
+
+    setStreamState("connected");
+  } catch (err) {
+    console.error("Error accessing cameras:", err);
     setStreamState("disconnected");
-  };
+  }
+};
+
+
+ const handleStreamDisconnect = () => {
+  videoRefs.current.forEach((video) => {
+    if (video && video.srcObject) {
+      (video.srcObject as MediaStream).getTracks().forEach((track) => track.stop());
+      video.srcObject = null;
+    }
+  });
+
+  setActiveCameras([]); // keeps empty tiles intact
+  setStreamState("disconnected");
+};
+
 
   // -------------------- Countdown state --------------------
   const [Countdown, setCountdown] = useState(false);
@@ -108,13 +158,35 @@ const CaptureLive = () => {
 
         <div className="reveal overflow-y fadeIn visualize-container flex gap-2 flex-3 flex-start">
           <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start">
-            {[...Array(6)].map((_, idx) => (
-              <div
-                key={idx}
-                className="video-tile camera-source size-1 bg-middark br-2 empty"
-              />
-            ))}
-          </div>
+  {[...Array(6)].map((_, idx) => {
+    const camera = activeCameras[idx];
+    return (
+      <div
+        key={idx}
+        className={clsx(
+          "video-tile camera-source size-1 bg-middark br-2",
+          camera ? "active-camera" : "empty",
+          `video-tile-${idx}`
+        )}
+      >
+        {camera && (
+          <video
+            ref={(el) => (videoRefs.current[idx] = el)}
+            className="w-full h-full object-cover"
+            autoPlay
+            muted
+          />
+        )}
+        {camera && (
+          <p className="camera-label text-white text-sm absolute top-1 left-1">
+            {camera.label || `Camera ${idx + 1}`}
+          </p>
+        )}
+      </div>
+    );
+  })}
+</div>
+
         </div>
       </div>
 
@@ -125,7 +197,10 @@ const CaptureLive = () => {
             {/* numeric value input */}
             <div className="text-input-container gap-1 br-1 flex justify-content-space-between items-center h-25">
               <div className="text-container overflow-hidden flex items-center">
-                <button onClick={() => {}} className="button icon-button close-button">
+                <button
+                  onClick={() => {}}
+                  className="button icon-button close-button"
+                >
                   <span className="icon explainer-icon icon-size-16"></span>
                 </button>
                 <p className="text text-nowrap text-left md">Charuco size</p>
@@ -161,8 +236,16 @@ const CaptureLive = () => {
               { disabled: !skipCalibration }
             )}
           >
-            <ToggleComponent text="Auto process save" className="" iconClass="" />
-            <ToggleComponent text="Generate jupyter notebook" className="" iconClass="" />
+            <ToggleComponent
+              text="Auto process save"
+              className=""
+              iconClass=""
+            />
+            <ToggleComponent
+              text="Generate jupyter notebook"
+              className=""
+              iconClass=""
+            />
             <ToggleComponent
               text="Auto open Blender"
               className=""
@@ -210,7 +293,9 @@ const CaptureLive = () => {
                   onSelectSubfolder={setSubfolderName}
                   onRemoveSubfolder={handleRemoveSubfolder}
                   recordingName="Recording1"
-                  onSelectRecordingName={() => console.log("Select recording name clicked")}
+                  onSelectRecordingName={() =>
+                    console.log("Select recording name clicked")
+                  }
                   timeStampPrefix={timeStampPrefix}
                   setTimeStampPrefix={settimeStampPrefix}
                   autoIncrement={AutoIncrement}
@@ -250,8 +335,8 @@ const CaptureLive = () => {
 
             <div className="p-1 g-1">
               <p className="text bg-md text-left">
-                Camera views may lag at higher settings. Try lowering the resolution/reducing the
-                number of cameras. fix is coming soon.
+                Camera views may lag at higher settings. Try lowering the
+                resolution/reducing the number of cameras. fix is coming soon.
               </p>
             </div>
           </div>

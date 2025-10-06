@@ -1270,7 +1270,7 @@ input[type="checkbox"] {
   -webkit-appearance: none;
   /* Safari/old iOS */
   appearance: none;
-  background-color: var(--gray-100);
+  background-color: black;
   /* ensure clean background */
   margin: 0;
 
@@ -1279,11 +1279,11 @@ input[type="checkbox"] {
   color: var(--gray-600);
 
   width: 0.9em;
-  height: 0.9em;
-  border: 0.19em solid var(--gray-600);
+  height: 0.85em;
+  border: 0.15em solid var(--gray-400);
   border-radius: 2px;
 
-  transform: translateY(-0.075em);
+  transform: translateY(-0.035em);
 
   /* For custom indicator */
   display: grid;
@@ -1294,11 +1294,11 @@ input[type="checkbox"] {
 /* Pseudo-element for checkmark indicator */
 input[type="checkbox"]::before {
   content: "";
-  width: 0.65em;
-  height: 0.65em;
-  transform: scale(0);
+  width: 0.74em;
+    height: 0.63em;
+  transform: scale(0.7);
   transition: 120ms transform ease-in-out;
-  box-shadow: inset 1em 1em var(--form-control-color);
+  box-shadow: inset 1em 1em var(--blue-800);
   /* Checkmark shape */
   /* clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
   box-shadow: inset 1em 1em var(--form-control-color); */
@@ -1309,7 +1309,8 @@ input[type="checkbox"]::before {
 
 /* Checked state */
 input[type="checkbox"]:checked::before {
-  transform: scale(1);
+  transform: scale(0.9);
+   box-shadow: inset 1em 1em black;
 }
 
 /* Focus state */

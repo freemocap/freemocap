@@ -258,90 +258,96 @@ const CaptureLive = () => {
 
         <div className="reveal overflow-y fadeIn visualize-container flex gap-2 flex-3 flex-start">
           <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start">
-  {[...Array(6)].map((_, idx) => {
-    const camera = activeCameras[idx];
+            {[...Array(6)].map((_, idx) => {
+              const camera = activeCameras[idx];
 
-    return (
-      <div
-        key={idx}
-        className={clsx(
-          "flex p-1 gap-1 flex-col video-tile camera-source size-4 br-2",
-          camera ? "bg-gray active-camera" : "bg-middark empty",
-          `video-tile-${idx}`
-        )}
-      >
-        {camera && (
-          <div className="flex flex-row items-center justify-content-space-between relative">
-            {/* Checkbox + Camera Name */}
-            <div className="flex items-center gap-1 p-1">
-              <Checkbox
-                label={camera.label || `Camera ${idx + 1}`} // Use camera name here
-                checked={camera.checked || false}
-                onChange={(e) => {
-                  setActiveCameras((prev) => {
-                    const updated = [...prev];
-                    updated[idx] = { ...updated[idx], checked: e.target.checked };
-                    return updated;
-                  });
-
-                  console.log(
-                    `${camera.label || `Camera ${idx + 1}`} checkbox clicked:`,
-                    e.target.checked
-                  );
-
-                  // --- FUTURE LOGIC ---
-                  // handleCameraToggle(camera.deviceId, e.target.checked);
-                }}
-              />
-            </div>
-
-            {/* Settings Button */}
-            <div className="settings-button-wrapper- pos-rel">
-              <button
-                className="button icon-button settings-button"
-                ref={(el) => (cameraButtonRefs.current[idx] = el)}
-                onClick={() => toggleCameraSettings(idx)}
-              >
-                <span className="icon settings-icon icon-size-16"></span>
-              </button>
-
-              {cameraSettingsOpen[idx] && (
+              return (
                 <div
-                  className="camera-settings-modal-wrapper pos-rel"
-                  ref={(el) => (cameraModalRefs.current[idx] = el)}
+                  key={idx}
+                  className={clsx(
+                    "flex p-1 gap-1 flex-col video-tile camera-source size-4 br-2",
+                    camera ? "bg-gray active-camera" : "bg-middark empty",
+                    `video-tile-${idx}`
+                  )}
                 >
-                  <CameraSettingsModal onRotate={() => handleRotateCamera(idx)} />
+                  {camera && (
+                    <div className="flex flex-row items-center justify-content-space-between pos-rel   items-center">
+                      {/* Checkbox + Camera Name */}
+                      <div className="overflow-hidden flex items-center gap-1 p-1">
+                        <Checkbox
+                          label={camera.label || `Camera ${idx + 1}`} // display the label
+                          checked={camera.checked || false}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+
+                            setActiveCameras((prev) => {
+                              const updated = [...prev];
+                              updated[idx] = {
+                                ...updated[idx],
+                                checked: isChecked,
+                                label: prev[idx].label, // ensure original label stays
+                              };
+                              return updated;
+                            });
+
+                            console.log(
+                              `${
+                                activeCameras[idx]?.label || `Camera ${idx + 1}`
+                              } checkbox clicked:`,
+                              isChecked
+                            );
+                          }}
+                        />
+                      </div>
+
+                      {/* Settings Button */}
+                      <div className="settings-button-wrapper- pos-rel">
+                        <button
+                          className="button icon-button settings-button"
+                          ref={(el) => (cameraButtonRefs.current[idx] = el)}
+                          onClick={() => toggleCameraSettings(idx)}
+                        >
+                          <span className="icon settings-icon icon-size-16"></span>
+                        </button>
+
+                        {cameraSettingsOpen[idx] && (
+                          <div
+                            className="camera-settings-modal-wrapper pos-rel"
+                            ref={(el) => (cameraModalRefs.current[idx] = el)}
+                          >
+                            <CameraSettingsModal
+                              onRotate={() => handleRotateCamera(idx)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Video feed */}
+                  <div className="video-feed-container w-full h-full">
+                    {camera ? (
+                      <video
+                        ref={(el) => {
+                          videoRefs.current[idx] = el;
+                        }}
+                        autoPlay
+                        muted
+                        style={{
+                          transform: `rotate(${cameraRotations[idx] || 0}deg)`,
+                          transition: "transform 0.3s ease",
+                        }}
+                      />
+                    ) : (
+                      <div className="flex w-full h-full items-center justify-center text-gray-400 text-sm">
+                        {/* No Camera */}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
+              );
+            })}
           </div>
-        )}
-
-        {/* Video feed */}
-        <div className="video-feed-container w-full h-full">
-          {camera ? (
-            <video
-              ref={(el) => {
-                videoRefs.current[idx] = el;
-              }}
-              autoPlay
-              muted
-              style={{
-                transform: `rotate(${cameraRotations[idx] || 0}deg)`,
-                transition: "transform 0.3s ease",
-              }}
-            />
-          ) : (
-            <div className="flex w-full h-full items-center justify-center text-gray-400 text-sm">
-              {/* No Camera */}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  })}
-</div>
-
         </div>
       </div>
 

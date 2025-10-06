@@ -1597,6 +1597,13 @@ input[type="checkbox"]:disabled {
     min-width: 300px;
     /* max-width: 300px; */
 }
+.camera-settings-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    min-width: 225px;
+    /* max-width: 300px; */
+}
 .vanished {
   opacity: 0;
       pointer-events: none;

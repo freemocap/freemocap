@@ -36,6 +36,7 @@
   --plus-icon: url("./assets/icons/plus_icon.svg");
   --minus-icon: url("./assets/icons/minus_icon.svg");
   --close-icon: url("./assets/icons/close_icon.svg");
+  --rotate-icon: url("./assets/icons/rotate_icon.svg");
   --live-icon: url("./assets/icons/live_icon.svg");
   --import-icon: url("./assets/icons/import_icon.svg");
   --externallink-icon: url("./assets/icons/externallink_icon.svg");
@@ -71,6 +72,7 @@
 
 
   /* ANIMATION SPEED AND OTHER ANIMATION RELATED PROPS */
+  --speed-0: 50ms;
   --speed-1: 120ms;
   --speed-2: 220ms;
 }
@@ -310,7 +312,7 @@ q::after {
   margin-left: auto;
 }
 
-.button.sm {
+.button.sm, button.rotate-button {
   padding: 4px 6px;
   min-height: 25px;
   width: auto;
@@ -318,7 +320,7 @@ q::after {
   /* max-width: max-content; */
   /* to fit its content */
   position: relative;
-  transition: background-color var(--speed-1) ease-in-out;
+  transition: background-color var(--speed-1) ease-in-out, transform var(--speed-1) ease-in-out;
 }
 
 .fit-content {
@@ -328,6 +330,12 @@ q::after {
 .button.sm:not(.primary, .secondary, .activated):hover {
   background-color: var(--gray-600);
   transition: background-color var(--speed-1) ease-in-out;
+  
+}
+.button.rotate-button:not(.primary, .secondary, .activated):hover,
+.toggle-button:hover > .button.rotate-button:not(.primary, .secondary, .activated) {
+  transform: rotate(45deg);
+  transition: transform var(--speed-2) ease-in-out;
 }
 
 .button:not(p,
@@ -335,21 +343,31 @@ q::after {
   button.text-sm,
   input,
   button.active,
-  .toggle-button):active {
+  .toggle-button,.rotate-button):active {
   transform: scale(96%);
+}
+
+.button.rotate-button:not(.primary, .secondary, .activated):hover:active,
+.toggle-button:hover:active > .button.rotate-button:not(.primary, .secondary, .activated)  {
+    transform: rotate(90deg);
+    transition: transform var(--speed-0) ease-in-out;
 }
 
 /* video tiles */
 .video-tile {
-  flex: 1 1 250px;
-
+  /* flex: 1 0 25%; */
   height: auto;
   aspect-ratio: 1 / 1;
 }
-
-.video-tile.size-1 {
-  min-width: 250px
+.video-tile.size-2 {
+  flex: 1 0 calc(50% - 8px);
+  max-width: calc(50% - 8px);
 }
+.video-tile.size-4 {
+  flex: 1 0 calc(25% - 8px);
+  max-width: calc(25% - 8px);
+}
+
 
 .video-tile.camera-source.empty:before,
 .video-tile.video-source.empty:before {
@@ -937,6 +955,9 @@ a:after {
 /* icon type */
 .close-icon {
   background-image: var(--close-icon);
+}
+.rotate-icon {
+  background-image: var(--rotate-icon);
 }
 
 .stream-icon {
@@ -1579,5 +1600,14 @@ input[type="checkbox"]:disabled {
 .vanished {
   opacity: 0;
       pointer-events: none;
+
+}
+
+@media screen (min-width : 1920px) {
+
+  ds\:video-tile.size-25 {
+  flex: 1 0 calc(25%);
+    max-width: calc(37%);
+}
 
 }

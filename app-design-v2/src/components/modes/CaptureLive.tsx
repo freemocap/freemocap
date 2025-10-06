@@ -6,9 +6,10 @@ import {
   ValueSelector,
   SubactionHeader,
 } from "../uicomponents";
+import { STATES } from "../uicomponents"; // <--- ENSURE YOU IMPORT STATES HERE
 import clsx from "clsx";
 import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
-import { STATES } from "../uicomponents"; // <--- ENSURE YOU IMPORT STATES HERE
+import CameraSettingsModal from "../CameraSettingsModal";
 
 const CaptureLive = () => {
   const [activeCameras, setActiveCameras] = useState<MediaDeviceInfo[]>([]);
@@ -191,6 +192,7 @@ const CaptureLive = () => {
         </div>
 
         <div className="reveal overflow-y fadeIn visualize-container flex gap-2 flex-3 flex-start">
+        
           <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start">
             {[...Array(6)].map((_, idx) => {
               const camera = activeCameras[idx];
@@ -198,7 +200,7 @@ const CaptureLive = () => {
                 <div
                   key={idx}
                   className={clsx(
-                    "video-tile camera-source size-1 bg-middark br-2",
+                    "video-tile camera-source size-4 bg-middark br-2",
                     camera ? "active-camera" : "empty",
                     `video-tile-${idx}`
                   )}
@@ -230,6 +232,8 @@ const CaptureLive = () => {
       {/* action-container */}
       <div className="reveal fadeIn action-container flex-1 bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
         <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
+            {/* Camera Settings */}
+                <CameraSettingsModal/>
           <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
             {/* numeric value input */}
             <div className="text-input-container gap-1 br-1 flex justify-content-space-between items-center h-25">

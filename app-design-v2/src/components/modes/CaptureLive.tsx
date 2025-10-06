@@ -5,6 +5,7 @@ import {
   ToggleButtonComponent,
   ValueSelector,
   SubactionHeader,
+  Checkbox,
 } from "../uicomponents";
 import { STATES } from "../uicomponents"; // <--- ENSURE YOU IMPORT STATES HERE
 import clsx from "clsx";
@@ -15,7 +16,6 @@ const CaptureLive = () => {
   const cameraButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const cameraModalRefs = useRef<(HTMLDivElement | null)[]>([]);
-
 
   const [activeCameras, setActiveCameras] = useState<MediaDeviceInfo[]>([]);
 
@@ -29,9 +29,6 @@ const CaptureLive = () => {
   const [AutoIncrementValue, setAutoIncrementValue] = useState(3);
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-
-
-  
 
   // Handle outside click to close modal
   useEffect(() => {
@@ -110,7 +107,9 @@ const CaptureLive = () => {
       setCameraSettingsOpen(new Array(cameras.length).fill(false)); // --- NEW ---
 
       if (cameras.length === 0) {
-        console.warn("No video input devices found. Proceeding to CONNECTED state.");
+        console.warn(
+          "No video input devices found. Proceeding to CONNECTED state."
+        );
       }
       console.log(`Found ${cameras.length} cameras. Starting streams...`);
 
@@ -131,7 +130,9 @@ const CaptureLive = () => {
           if (video) {
             video.srcObject = stream;
             video.play();
-            console.log(`Stream started for: ${camera.label || "Unknown Camera"}`);
+            console.log(
+              `Stream started for: ${camera.label || "Unknown Camera"}`
+            );
           }
         } catch (streamErr) {
           console.error(
@@ -179,8 +180,6 @@ const CaptureLive = () => {
     });
   };
 
-
-  
   // --- NEW: Per-camera modal toggle handler ---
   const toggleCameraSettings = (index: number) => {
     setCameraSettingsOpen((prev) => {
@@ -190,39 +189,38 @@ const CaptureLive = () => {
     });
   };
 
- useEffect(() => {
-  function handleClickOutside(event: MouseEvent) {
-    setCameraSettingsOpen((prev) => {
-      const updated = [...prev];
-      let changed = false;
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      setCameraSettingsOpen((prev) => {
+        const updated = [...prev];
+        let changed = false;
 
-      cameraModalRefs.current.forEach((modalRef, idx) => {
-        const buttonRef = cameraButtonRefs.current[idx];
-        if (
-          prev[idx] &&
-          modalRef &&
-          !modalRef.contains(event.target as Node) &&
-          buttonRef &&
-          !buttonRef.contains(event.target as Node)
-        ) {
-          updated[idx] = false;
-          changed = true;
-        }
+        cameraModalRefs.current.forEach((modalRef, idx) => {
+          const buttonRef = cameraButtonRefs.current[idx];
+          if (
+            prev[idx] &&
+            modalRef &&
+            !modalRef.contains(event.target as Node) &&
+            buttonRef &&
+            !buttonRef.contains(event.target as Node)
+          ) {
+            updated[idx] = false;
+            changed = true;
+          }
+        });
+
+        return changed ? updated : prev;
       });
+    }
 
-      return changed ? updated : prev;
-    });
-  }
+    if (cameraSettingsOpen.some((open) => open)) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
 
-  if (cameraSettingsOpen.some((open) => open)) {
-    document.addEventListener("mousedown", handleClickOutside);
-  }
-
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, [cameraSettingsOpen]);
-
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [cameraSettingsOpen]);
 
   return (
     <>
@@ -260,82 +258,96 @@ const CaptureLive = () => {
 
         <div className="reveal overflow-y fadeIn visualize-container flex gap-2 flex-3 flex-start">
           <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start">
-            {[...Array(6)].map((_, idx) => {
-              const camera = activeCameras[idx];
+  {[...Array(6)].map((_, idx) => {
+    const camera = activeCameras[idx];
 
-              return (
+    return (
+      <div
+        key={idx}
+        className={clsx(
+          "flex p-1 gap-1 flex-col video-tile camera-source size-4 br-2",
+          camera ? "bg-gray active-camera" : "bg-middark empty",
+          `video-tile-${idx}`
+        )}
+      >
+        {camera && (
+          <div className="flex flex-row items-center justify-content-space-between relative">
+            {/* Checkbox + Camera Name */}
+            <div className="flex items-center gap-1 p-1">
+              <Checkbox
+                label={camera.label || `Camera ${idx + 1}`} // Use camera name here
+                checked={camera.checked || false}
+                onChange={(e) => {
+                  setActiveCameras((prev) => {
+                    const updated = [...prev];
+                    updated[idx] = { ...updated[idx], checked: e.target.checked };
+                    return updated;
+                  });
+
+                  console.log(
+                    `${camera.label || `Camera ${idx + 1}`} checkbox clicked:`,
+                    e.target.checked
+                  );
+
+                  // --- FUTURE LOGIC ---
+                  // handleCameraToggle(camera.deviceId, e.target.checked);
+                }}
+              />
+            </div>
+
+            {/* Settings Button */}
+            <div className="settings-button-wrapper- pos-rel">
+              <button
+                className="button icon-button settings-button"
+                ref={(el) => (cameraButtonRefs.current[idx] = el)}
+                onClick={() => toggleCameraSettings(idx)}
+              >
+                <span className="icon settings-icon icon-size-16"></span>
+              </button>
+
+              {cameraSettingsOpen[idx] && (
                 <div
-                  key={idx}
-                  className={clsx(
-                    "flex p-1 gap-1 flex-col video-tile camera-source size-4 br-2",
-                    camera ? "bg-gray active-camera" : "bg-middark empty",
-                    `video-tile-${idx}`
-                  )}
+                  className="camera-settings-modal-wrapper pos-rel"
+                  ref={(el) => (cameraModalRefs.current[idx] = el)}
                 >
-                  {/* Header (only visible if camera is active) */}
-                  {camera && (
-                    <div className="flex flex-row items-center justify-content-space-between relative">
-                      <div className="text-nowrap camera-label p-1 text-white text-sm absolute top-1 left-1">
-                        {camera.label || `Camera ${idx + 1}`}
-                      </div>
-
-                      {/* --- NEW: Wrap settings button + modal inside one div --- */}
-                      <div className="settings-button-wrapper- pos-rel">
-                        <button
-                          className="button icon-button settings-button"
-                          ref={(el) => (cameraButtonRefs.current[idx] = el)}
-                          onClick={() => toggleCameraSettings(idx)}
-                        >
-                          <span className="icon settings-icon icon-size-16"></span>
-                        </button>
-
-                      {cameraSettingsOpen[idx] && (
-  <div
-    className="camera-settings-modal-wrapper pos-rel"
-    ref={(el) => (cameraModalRefs.current[idx] = el)}
-  >
-    <CameraSettingsModal
-      onRotate={() => handleRotateCamera(idx)}
-      // onClose={() => toggleCameraSettings(idx)} // optional close button
-    />
-  </div>
-)}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="video-feed-container w-full h-full">
-                    {camera ? (
-                      <video
-                        ref={(el) => {
-                          videoRefs.current[idx] = el;
-                        }}
-                        className=""
-                        autoPlay
-                        muted
-                        style={{
-                          transform: `rotate(${cameraRotations[idx] || 0}deg)`, // --- NEW: Apply rotation
-                          transition: "transform 0.3s ease",
-                        }}
-                      />
-                    ) : (
-                      <div className="flex w-full h-full items-center justify-center text-gray-400 text-sm">
-                        {/* No Camera */}
-                      </div>
-                    )}
-                  </div>
+                  <CameraSettingsModal onRotate={() => handleRotateCamera(idx)} />
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
+        )}
+
+        {/* Video feed */}
+        <div className="video-feed-container w-full h-full">
+          {camera ? (
+            <video
+              ref={(el) => {
+                videoRefs.current[idx] = el;
+              }}
+              autoPlay
+              muted
+              style={{
+                transform: `rotate(${cameraRotations[idx] || 0}deg)`,
+                transition: "transform 0.3s ease",
+              }}
+            />
+          ) : (
+            <div className="flex w-full h-full items-center justify-center text-gray-400 text-sm">
+              {/* No Camera */}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  })}
+</div>
+
         </div>
       </div>
 
       {/* action-container */}
       <div className="reveal fadeIn action-container flex-1 bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
         <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
-          
-
           <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
             {/* numeric value input */}
             <div className="text-input-container gap-1 br-1 flex justify-content-space-between items-center h-25">
@@ -379,7 +391,11 @@ const CaptureLive = () => {
               { disabled: !skipCalibration }
             )}
           >
-            <ToggleComponent text="Auto process save" className="" iconClass="" />
+            <ToggleComponent
+              text="Auto process save"
+              className=""
+              iconClass=""
+            />
             <ToggleComponent
               text="Generate jupyter notebook"
               className=""

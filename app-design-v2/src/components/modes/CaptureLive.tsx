@@ -12,6 +12,11 @@ import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
 import CameraSettingsModal from "../CameraSettingsModal";
 
 const CaptureLive = () => {
+  const cameraButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const cameraModalRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+
   const [activeCameras, setActiveCameras] = useState<MediaDeviceInfo[]>([]);
 
   // --- Modal and Directory States (Unchanged) ---
@@ -24,6 +29,9 @@ const CaptureLive = () => {
   const [AutoIncrementValue, setAutoIncrementValue] = useState(3);
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+
+  
 
   // Handle outside click to close modal
   useEffect(() => {
@@ -182,6 +190,40 @@ const CaptureLive = () => {
     });
   };
 
+ useEffect(() => {
+  function handleClickOutside(event: MouseEvent) {
+    setCameraSettingsOpen((prev) => {
+      const updated = [...prev];
+      let changed = false;
+
+      cameraModalRefs.current.forEach((modalRef, idx) => {
+        const buttonRef = cameraButtonRefs.current[idx];
+        if (
+          prev[idx] &&
+          modalRef &&
+          !modalRef.contains(event.target as Node) &&
+          buttonRef &&
+          !buttonRef.contains(event.target as Node)
+        ) {
+          updated[idx] = false;
+          changed = true;
+        }
+      });
+
+      return changed ? updated : prev;
+    });
+  }
+
+  if (cameraSettingsOpen.some((open) => open)) {
+    document.addEventListener("mousedown", handleClickOutside);
+  }
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, [cameraSettingsOpen]);
+
+
   return (
     <>
       {/* mode-container */}
@@ -238,21 +280,26 @@ const CaptureLive = () => {
                       </div>
 
                       {/* --- NEW: Wrap settings button + modal inside one div --- */}
-                      <div className="settings-wrapper relative">
+                      <div className="settings-button-wrapper- pos-rel">
                         <button
                           className="button icon-button settings-button"
+                          ref={(el) => (cameraButtonRefs.current[idx] = el)}
                           onClick={() => toggleCameraSettings(idx)}
                         >
                           <span className="icon settings-icon icon-size-16"></span>
                         </button>
 
-                        {cameraSettingsOpen[idx] && (
-                          <div className="absolute top-8 right-0 z-10">
-                            <CameraSettingsModal
-                              onRotate={() => handleRotateCamera(idx)} // --- NEW: Pass rotation handler
-                            />
-                          </div>
-                        )}
+                      {cameraSettingsOpen[idx] && (
+  <div
+    className="camera-settings-modal-wrapper pos-rel"
+    ref={(el) => (cameraModalRefs.current[idx] = el)}
+  >
+    <CameraSettingsModal
+      onRotate={() => handleRotateCamera(idx)}
+      // onClose={() => toggleCameraSettings(idx)} // optional close button
+    />
+  </div>
+)}
                       </div>
                     </div>
                   )}

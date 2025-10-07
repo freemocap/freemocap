@@ -257,7 +257,7 @@ const CaptureLive = () => {
                   )}
                 >
                   {camera && (
-                    <div className="flex flex-row items-center justify-content-space-between pos-rel   items-center">
+                    <div className="camera-action-container pos-rel flex flex-row items-center justify-content-space-between pos-rel items-center">
                       {/* Checkbox + Camera Name */}
                       <div className="overflow-hidden flex items-center gap-1 p-1">
                         <Checkbox

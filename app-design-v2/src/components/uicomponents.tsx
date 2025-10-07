@@ -300,7 +300,7 @@ interface CheckboxProps {
 const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onChange }) => {
   return (
     <div
-      className="button checkbox gap-1 flex flex-row items-center"
+      className="text-nowrap button checkbox gap-1 flex flex-row items-center"
       onClick={(e) => {
         // Allow clicking anywhere on the container to toggle checkbox
         if (onChange) {

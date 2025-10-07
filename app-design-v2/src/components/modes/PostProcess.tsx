@@ -122,7 +122,7 @@ const PostProcess = () => {
             {[...Array(6)].map((_, idx) => (
               <div
                 key={idx}
-                className="video-tile video-source size-1 bg-middark br-2 empty"
+                className="video-tile video-source size-2 bg-middark br-2 empty"
               />
             ))}
           </div>

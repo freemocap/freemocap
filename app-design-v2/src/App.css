@@ -200,12 +200,14 @@ q::after {
   border: 2px solid transparent;
 }
 
-.toggle-button:hover, .modal-trigger-button:hover {
+.toggle-button:hover,
+.modal-trigger-button:hover {
   background-color: var(--gray-600);
   transition: background-color var(--speed-2);
 }
 
-.toggle-button:active, .modal-trigger-button:active {
+.toggle-button:active,
+.modal-trigger-button:active {
   background-color: var(--gray-800);
   transition: background-color var(--speed-1);
 }
@@ -307,12 +309,14 @@ q::after {
   content: var(--dropdown-icon);
   margin-left: auto;
 }
+
 .button.sm.select-folder:after {
   content: var(--importproject_icon);
   margin-left: auto;
 }
 
-.button.sm, button.rotate-button {
+.button.sm,
+button.rotate-button {
   padding: 4px 6px;
   min-height: 25px;
   width: auto;
@@ -330,10 +334,11 @@ q::after {
 .button.sm:not(.primary, .secondary, .activated):hover {
   background-color: var(--gray-600);
   transition: background-color var(--speed-1) ease-in-out;
-  
+
 }
+
 .button.rotate-button:not(.primary, .secondary, .activated):hover,
-.toggle-button:hover > .button.rotate-button:not(.primary, .secondary, .activated) {
+.toggle-button:hover>.button.rotate-button:not(.primary, .secondary, .activated) {
   transform: rotate(45deg);
   transition: transform var(--speed-2) ease-in-out;
 }
@@ -343,14 +348,14 @@ q::after {
   button.text-sm,
   input,
   button.active,
-  .toggle-button,.rotate-button):active {
+  .toggle-button, .rotate-button):active {
   transform: scale(96%);
 }
 
 .button.rotate-button:not(.primary, .secondary, .activated):hover:active,
-.toggle-button:hover:active > .button.rotate-button:not(.primary, .secondary, .activated)  {
-    transform: rotate(90deg);
-    transition: transform var(--speed-0) ease-in-out;
+.toggle-button:hover:active>.button.rotate-button:not(.primary, .secondary, .activated) {
+  transform: rotate(90deg);
+  transition: transform var(--speed-0) ease-in-out;
 }
 
 /* video tiles */
@@ -359,10 +364,12 @@ q::after {
   height: auto;
   aspect-ratio: 1 / 1;
 }
+
 .video-tile.size-2 {
   flex: 1 0 calc(50% - 8px);
   max-width: calc(50% - 8px);
 }
+
 .video-tile.size-4 {
   flex: 1 0 calc(25% - 8px);
   max-width: calc(25% - 8px);
@@ -956,6 +963,7 @@ a:after {
 .close-icon {
   background-image: var(--close-icon);
 }
+
 .rotate-icon {
   background-image: var(--rotate-icon);
 }
@@ -979,18 +987,23 @@ a:after {
 .calibrated-icon {
   background-image: var(--calibrated-icon);
 }
+
 .subfolder-icon {
   background-image: var(--subfolder_icon);
 }
+
 .file-icon {
   background-image: var(--file_icon);
 }
+
 .settings-icon {
   background-image: var(--settings_icon);
 }
+
 .plus-icon {
   background-image: var(--plus-icon);
 }
+
 .addsubfolder-icon {
   background-image: var(--addsubfolder_icon);
 }
@@ -1149,6 +1162,7 @@ body,
 .color-gray {
   color: var(--gray-400);
 }
+
 .text-warning {
   color: var(--warning-500);
 }
@@ -1271,6 +1285,7 @@ body,
 /* Base checkbox reset */
 input[type="checkbox"] {
   -webkit-appearance: none;
+  transform-origin: center center;
   /* Safari/old iOS */
   appearance: none;
   background-color: black;
@@ -1281,8 +1296,8 @@ input[type="checkbox"] {
   font: inherit;
   color: var(--gray-600);
 
-  width: 0.9em;
-  height: 0.85em;
+  /* min-width: 8px;
+  min-height: 8px; */
   border: 0.15em solid var(--gray-400);
   border-radius: 2px;
 
@@ -1297,24 +1312,25 @@ input[type="checkbox"] {
 /* Pseudo-element for checkmark indicator */
 input[type="checkbox"]::before {
   content: "";
-  width: 0.74em;
-    height: 0.63em;
+  min-width: 8px;
+  min-height: 8px;
   transform: scale(0.7);
   transition: 120ms transform ease-in-out;
-  box-shadow: inset 1em 1em black;
+  box-shadow: inset 1em 1em var(--gray-900);
   /* Checkmark shape */
   /* clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
   box-shadow: inset 1em 1em var(--form-control-color); */
 
   /* Forced-colors (High Contrast mode) */
-  background-color: CanvasText;
+  background-color: var(--gray-900);
+  transform-origin: center center;
 }
 
 /* Checked state */
 input[type="checkbox"]:checked::before {
   transform: scale(0.6);
-   box-shadow: inset 1em 1em var(--blue-800);
-   transform-origin: center center;
+  box-shadow: inset 1em 1em var(--blue-800);
+  transform-origin: center center;
 }
 
 /* Focus state */
@@ -1525,6 +1541,7 @@ input[type="checkbox"]:disabled {
   width: 77px;
   transition: border var(--speed-2);
 }
+
 .input-with-string {
   display: flex;
   align-items: center;
@@ -1595,35 +1612,39 @@ input[type="checkbox"]:disabled {
 .elevated-sharp {
   box-shadow: 0px 7px 15px rgba(0, 0, 0, 0.5);
 }
+
 .file-directory-settings-modal {
-    position: absolute;
-    right: 101%;
-    top: -5px;
-    min-width: 300px;
-    /* max-width: 300px; */
+  position: absolute;
+  right: 101%;
+  top: -5px;
+  min-width: 300px;
+  /* max-width: 300px; */
 }
+
 .camera-settings-modal {
-    position: absolute;
-    right: 0;
-    top: 110px;
-    min-width: 225px;
-    /* max-width: 300px; */
+  position: absolute;
+  right: 0;
+  top: 110px;
+  min-width: 225px;
+  /* max-width: 300px; */
 }
+
 .excluded-camera-tooltip {
   top: 21px;
   left: 0px;
 }
+
 .vanished {
   opacity: 0;
-      pointer-events: none;
+  pointer-events: none;
 
 }
 
 @media screen (min-width : 1920px) {
 
   ds\:video-tile.size-25 {
-  flex: 1 0 calc(25%);
+    flex: 1 0 calc(25%);
     max-width: calc(37%);
-}
+  }
 
 }

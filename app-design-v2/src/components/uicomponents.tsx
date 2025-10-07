@@ -1012,7 +1012,7 @@ const TextSelector: React.FC<TextSelectorProps> = ({
         className="recording-name-field-container overflow-hidden input-with-string flex-1 button sm w-full dropdown"
         onClick={() => setOpen((prev) => !prev)}
       >
-        <span className="value-label text md">
+        <span className="text-nowrap value-label text md">
           {currentValue || placeholder}
         </span>
       </button>

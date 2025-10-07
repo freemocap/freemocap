@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { STATES } from "../uicomponents"; // <--- ENSURE YOU IMPORT STATES HERE
 import {
   ButtonSm,
   ToggleComponent,
@@ -7,12 +8,17 @@ import {
   SubactionHeader,
   Checkbox,
 } from "../uicomponents";
-import { STATES } from "../uicomponents"; // <--- ENSURE YOU IMPORT STATES HERE
+import ExcludedCameraTooltip from "../ExcludedCameraTooltip";
 import clsx from "clsx";
 import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
 import CameraSettingsModal from "../CameraSettingsModal";
 
 const CaptureLive = () => {
+  
+
+
+  const [cameraChecked, setCameraChecked] = useState<boolean[]>([]);
+
   const cameraButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const cameraModalRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -82,74 +88,58 @@ const CaptureLive = () => {
 
   // --- MODIFIED: Ensure CONNECTED state is set, even on stream error ---
   const handleStreamConnect = async () => {
-    console.log("Attempting connection. Setting state to:", STATES.CONNECTING);
     setStreamState(STATES.CONNECTING);
 
     try {
-      try {
-        const tempStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false,
-        });
-        tempStream.getTracks().forEach((track) => track.stop());
-        console.log("Initial access check successful.");
-      } catch (e) {
-        console.warn(
-          "Initial camera access check failed (May be a transient error, proceeding):",
-          e
-        );
-      }
+      // Request permission first
+      const tempStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false,
+      });
+      tempStream.getTracks().forEach((track) => track.stop()); // stop immediately
 
+
+
+      
+
+      // Enumerate devices AFTER permission granted
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const cameras = devices.filter((device) => device.kind === "videoinput");
-      setActiveCameras(cameras);
-      setCameraRotations(new Array(cameras.length).fill(0)); // --- NEW ---
-      setCameraSettingsOpen(new Array(cameras.length).fill(false)); // --- NEW ---
+     const cameras = devices.filter((d) => d.kind === "videoinput");
+setActiveCameras(cameras);
+setCameraChecked(new Array(cameras.length).fill(true)); // all cameras checked by default
 
-      if (cameras.length === 0) {
-        console.warn(
-          "No video input devices found. Proceeding to CONNECTED state."
-        );
-      }
-      console.log(`Found ${cameras.length} cameras. Starting streams...`);
+      // start streams...
+      // Sequentially start streams
+for (let idx = 0; idx < cameras.length; idx++) {
+  const camera = cameras[idx];
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        deviceId: { exact: camera.deviceId },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
 
-      for (let i = 0; i < cameras.length; i++) {
-        const camera = cameras[i];
-
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: {
-              deviceId: { exact: camera.deviceId },
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-            },
-          });
-
-          const video = videoRefs.current[i];
-          if (video) {
-            video.srcObject = stream;
-            video.play();
-            console.log(
-              `Stream started for: ${camera.label || "Unknown Camera"}`
-            );
-          }
-        } catch (streamErr) {
-          console.error(
-            `Failed to start stream for ${camera.label || "Unknown Camera"}:`,
-            streamErr
-          );
-        }
-      }
-    } catch (globalErr) {
-      console.error(
-        "A critical non-stream error occurred during enumeration:",
-        globalErr
-      );
+    const video = videoRefs.current[idx];
+    if (video && stream) {
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        video.play();
+      };
     }
+  } catch (err) {
+    console.error(`Failed to start stream for ${camera.originalLabel}:`, err);
+  }
+}
 
-    setStreamState(STATES.CONNECTED);
-    console.log("Connection attempt finalized. State set to CONNECTED.");
+
+      setStreamState(STATES.CONNECTED);
+    } catch (err) {
+      console.error("Error connecting to cameras:", err);
+      setStreamState(STATES.CONNECTED);
+    }
   };
 
   // --- handleStreamDisconnect is UNCHANGED and correct ---
@@ -271,33 +261,22 @@ const CaptureLive = () => {
                   )}
                 >
                   {camera && (
-                    <div className="flex flex-row items-center justify-content-space-between pos-rel   items-center">
+                    <div className="camera-action-container pos-rel flex flex-row items-center justify-content-space-between pos-rel items-center">
                       {/* Checkbox + Camera Name */}
                       <div className="overflow-hidden flex items-center gap-1 p-1">
                         <Checkbox
-                          label={camera.label || `Camera ${idx + 1}`} // display the label
-                          checked={camera.checked || false}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
+  label={camera.label || `Camera ${idx + 1}`}
+  checked={cameraChecked[idx]}
+  onChange={(e) => {
+    const isChecked = e.target.checked;
+    setCameraChecked((prev) => {
+      const updated = [...prev];
+      updated[idx] = isChecked;
+      return updated;
+    });
+  }}
+/>
 
-                            setActiveCameras((prev) => {
-                              const updated = [...prev];
-                              updated[idx] = {
-                                ...updated[idx],
-                                checked: isChecked,
-                                label: prev[idx].label, // ensure original label stays
-                              };
-                              return updated;
-                            });
-
-                            console.log(
-                              `${
-                                activeCameras[idx]?.label || `Camera ${idx + 1}`
-                              } checkbox clicked:`,
-                              isChecked
-                            );
-                          }}
-                        />
                       </div>
 
                       {/* Settings Button */}
@@ -321,11 +300,14 @@ const CaptureLive = () => {
                           </div>
                         )}
                       </div>
+
+                      {/* EXCLUDED CAMERA TOOLTIP */}
+                      {!cameraChecked[idx] && <ExcludedCameraTooltip />}
                     </div>
                   )}
 
                   {/* Video feed */}
-                  <div className="video-feed-container w-full h-full">
+                  <div className="video-feed-container overflow-hidden br-1">
                     {camera ? (
                       <video
                         ref={(el) => {
@@ -353,6 +335,51 @@ const CaptureLive = () => {
 
       {/* action-container */}
       <div className="reveal fadeIn action-container flex-1 bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
+        <div className="z-2 subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
+          <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
+            <SubactionHeader text="File location" />
+            {/* trigger button + modal wrapper */}
+            <div className="pos-rel" ref={wrapperRef}>
+              <div
+                onClick={toggleModal}
+                className="trigger-file-directory-settings overflow-hidden button modal-trigger-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 cursor-pointer"
+              >
+                <span className="folder-directory overflow-hidden text-nowrap text md">
+                  {directoryPath}
+                </span>
+                <span className="subfolder-directory overflow-hidden text-nowrap text md">
+                  {hasSubfolder ? subfolderName : ""}
+                </span>
+                <button className="button icon-button pos-rel top-0 right-0">
+                  <span className="icon settings-icon icon-size-16"></span>
+                </button>
+              </div>
+
+              {/* Modal */}
+              <FileDirectorySettingsModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                directoryPath={directoryPath}
+                onSelectDirectory={setDirectoryPath}
+                onAddSubfolder={handleAddSubfolder}
+                subfolderName={subfolderName}
+                hasSubfolder={hasSubfolder}
+                onSelectSubfolder={setSubfolderName}
+                onRemoveSubfolder={handleRemoveSubfolder}
+                recordingName="Recording1"
+                onSelectRecordingName={() =>
+                  console.log("Select recording name clicked")
+                }
+                timeStampPrefix={timeStampPrefix}
+                setTimeStampPrefix={settimeStampPrefix}
+                autoIncrement={AutoIncrement}
+                setAutoIncrement={setAutoIncrement}
+                autoIncrementValue={AutoIncrementValue}
+                setAutoIncrementValue={setAutoIncrementValue}
+              />
+            </div>
+          </div>
+        </div>
         <div className="subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
           <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
             {/* numeric value input */}
@@ -424,47 +451,6 @@ const CaptureLive = () => {
                 textColor="text-white"
                 onClick={() => console.log("Record clicked")}
               />
-
-              {/* trigger button + modal wrapper */}
-              <div className="pos-rel" ref={wrapperRef}>
-                <div
-                  onClick={toggleModal}
-                  className="trigger-file-directory-settings overflow-hidden button modal-trigger-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 cursor-pointer"
-                >
-                  <span className="folder-directory overflow-hidden text-nowrap text md">
-                    {directoryPath}
-                  </span>
-                  <span className="subfolder-directory overflow-hidden text-nowrap text md">
-                    {hasSubfolder ? subfolderName : ""}
-                  </span>
-                  <button className="button icon-button pos-rel top-0 right-0">
-                    <span className="icon settings-icon icon-size-16"></span>
-                  </button>
-                </div>
-
-                {/* Modal */}
-                <FileDirectorySettingsModal
-                  isOpen={isModalOpen}
-                  onClose={() => setIsModalOpen(false)}
-                  directoryPath={directoryPath}
-                  onSelectDirectory={setDirectoryPath}
-                  onAddSubfolder={handleAddSubfolder}
-                  subfolderName={subfolderName}
-                  hasSubfolder={hasSubfolder}
-                  onSelectSubfolder={setSubfolderName}
-                  onRemoveSubfolder={handleRemoveSubfolder}
-                  recordingName="Recording1"
-                  onSelectRecordingName={() =>
-                    console.log("Select recording name clicked")
-                  }
-                  timeStampPrefix={timeStampPrefix}
-                  setTimeStampPrefix={settimeStampPrefix}
-                  autoIncrement={AutoIncrement}
-                  setAutoIncrement={setAutoIncrement}
-                  autoIncrementValue={AutoIncrementValue}
-                  setAutoIncrementValue={setAutoIncrementValue}
-                />
-              </div>
 
               <ToggleComponent
                 text="Countdown"

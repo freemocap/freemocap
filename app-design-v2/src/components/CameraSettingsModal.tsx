@@ -1,12 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import clsx from "clsx";
 import {
   ValueSelector,
   SubactionHeader,
   NameDropdownSelector,
 } from "./uicomponents";
+import useDraggableTooltips from "./useDraggableTooltips";
 
-const Resolution = ({ selectedResolution, setSelectedResolution }) => {
+interface CameraSettingsModalProps {
+  onRotate?: () => void;
+  onClose?: () => void;
+}
+
+const Resolution = ({
+  selectedResolution,
+  setSelectedResolution,
+}: {
+  selectedResolution: string;
+  setSelectedResolution: React.Dispatch<React.SetStateAction<string>>;
+}) => {
   const options = ["1920 × 1080", "1280 × 720", "640 × 480"];
 
   return (
@@ -22,7 +34,13 @@ const Resolution = ({ selectedResolution, setSelectedResolution }) => {
   );
 };
 
-const Exposure = ({ selectedExposure, setSelectedExposure }) => {
+const Exposure = ({
+  selectedExposure,
+  setSelectedExposure,
+}: {
+  selectedExposure: string;
+  setSelectedExposure: React.Dispatch<React.SetStateAction<string>>;
+}) => {
   const options = ["Auto", "Manual", "Recommended"];
 
   return (
@@ -38,11 +56,6 @@ const Exposure = ({ selectedExposure, setSelectedExposure }) => {
   );
 };
 
-interface CameraSettingsModalProps {
-  onRotate?: () => void;
-  onClose?: () => void;
-}
-
 const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({
   onRotate,
   onClose,
@@ -51,8 +64,21 @@ const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({
   const [selectedExposure, setSelectedExposure] = useState("Auto");
   const [autoIncrementValue, setAutoIncrementValue] = useState(0);
 
+  // 🧩 Enable dragging when modal mounts
+  useDraggableTooltips();
+
+  // 🧠 Optionally make sure modal is `.draggable`
+  useEffect(() => {
+    const modalEl = document.querySelector(
+      ".camera-settings-modal"
+    ) as HTMLElement | null;
+    if (modalEl && !modalEl.classList.contains("draggable")) {
+      modalEl.classList.add("draggable");
+    }
+  }, []);
+
   return (
-    <div className="reveal slide-down camera-settings-modal modal border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1 z-2">
+    <div className="reveal slide-down camera-settings-modal modal draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1 z-2">
       <div className="flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">
         <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
           <SubactionHeader text="Camera settings" />
@@ -92,7 +118,7 @@ const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({
             />
           </div>
 
-          {/* Change exposure (enabled only when NOT Auto) */}
+          {/* Change exposure (enabled only when Manual) */}
           <div
             className={clsx(
               "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
@@ -114,7 +140,7 @@ const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({
             />
           </div>
 
-          {/* Optional close button inside modal */}
+          {/* Optional close button */}
           {onClose && (
             <button
               className="button icon-button close-button absolute top-1 right-1"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import useDraggableTooltips from "./useDraggableTooltips";
 
 // Extend the Window interface to include showDirectoryPicker
 declare global {
@@ -120,7 +121,9 @@ useEffect(() => {
     onAddSubfolder();
     setShowSubfolder(true);
   };
-
+  // 🧩 Enable dragging when modal mounts
+  useDraggableTooltips();
+  
   const handleSelectDirectory = async () => {
     if (window.electronAPI) {
       const path = await window.electronAPI.selectDirectory();
@@ -155,7 +158,7 @@ useEffect(() => {
   if (!isOpen) return null;
 
   return (
-    <div className="file-directory-settings-modal modal border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
+    <div className="file-directory-settings-modal draggable modal border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
       <div className="flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">
         {/* Directory */}
         <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">

@@ -1,24 +1,75 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import clsx from "clsx";
+
+// ---- Combined imports from uicomponents (avoid duplicate imports) ----
 import {
   ButtonSm,
   ToggleComponent,
   ToggleButtonComponent,
-  SegmentedControl,
   ValueSelector,
   SubactionHeader,
-  NameDropdownSelector,
+  Checkbox,
+  NameDropdownSelector, // added — component was referenced but not imported
+  STATES, // if your uicomponents exports STATES, keep this; otherwise remove
 } from "../uicomponents";
-import clsx from "clsx";
+
+import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
 import ThreeDScene from "../ThreeDScene";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Grid } from "@react-three/drei";
 
 // ------------------ PostProcess UI ------------------
-const PostProcess = () => {
-  const HandleImportVideos = () => {
+const PostProcess: React.FC = () => {
+  // --- Modal and Directory States ---
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [directoryPath, setDirectoryPath] = useState(
+    "C:\\Users\\pooyadeperson.com"
+  );
+  const [timeStampPrefix, setTimeStampPrefix] = useState(false);
+  const [autoIncrement, setAutoIncrement] = useState(false);
+  const [autoIncrementValue, setAutoIncrementValue] = useState(3);
+
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  // Handle outside click to close modal
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
+        setIsModalOpen(false);
+      }
+    }
+    if (isModalOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isModalOpen]);
+
+  const toggleModal = () => {
+    setIsModalOpen((prev) => !prev);
+  };
+
+  // -------------------- Subfolder state --------------------
+  const [subfolderName, setSubfolderName] = useState("");
+  const [hasSubfolder, setHasSubfolder] = useState(false);
+
+  const handleAddSubfolder = () => {
+    setSubfolderName("NewSubfolder");
+    setHasSubfolder(true);
+  };
+
+  const handleRemoveSubfolder = () => {
+    setSubfolderName("");
+    setHasSubfolder(false);
+  };
+
+  const handleImportVideos = () => {
     console.log("Starting post-process…");
     setTimeout(() => console.log("Import videos button clicked"));
   };
+
   // Calibration & toggles
   const [skipCalibration, setSkipCalibration] = useState(true);
   const [isMultiprocessing, setIsMultiprocessing] = useState(true);
@@ -28,16 +79,15 @@ const PostProcess = () => {
 
   const [selectedValue, setSelectedValue] = useState(10);
 
-  const [selectedBufferPercentage, setselectedBufferPercentage] = useState(30);
+  const [selectedBufferPercentage, setSelectedBufferPercentage] =
+    useState(30);
 
   useEffect(() => {
     if (!isMultiprocessing) setMaxCoreCount(false);
   }, [isMultiprocessing]);
 
-  const ModelSize = () => {
-    // State for each dropdown
+  const ModelSize: React.FC = () => {
     const [selectedModel1, setSelectedModel1] = useState("Nano");
-
     const options = ["Nano", "Medium", "Large"];
 
     return (
@@ -52,11 +102,15 @@ const PostProcess = () => {
       </div>
     );
   };
-  const ModelComplexity = () => {
-    // State for each dropdown
-    const [selectedModel1, setSelectedModel1] = useState("Fastest, Loose");
 
-    const options = ["Fastest, Loose", "Medium, Balanced", "Slowest, Precise"];
+  const ModelComplexity: React.FC = () => {
+    const [selectedModel1, setSelectedModel1] =
+      useState("Fastest, Loose");
+    const options = [
+      "Fastest, Loose",
+      "Medium, Balanced",
+      "Slowest, Precise",
+    ];
 
     return (
       <div className="flex flex-col">
@@ -73,33 +127,29 @@ const PostProcess = () => {
 
   const [isYoloCrop, setIsYoloCrop] = useState(true);
 
-  useEffect(() => {
-    // You could do extra logic here if needed
-  }, [isYoloCrop]);
+  const [runReprojectionFilter, setRunReprojectionFilter] =
+    useState(true);
 
-  const [runReprojectionFilter, setRunReprojectionFilter] = useState(true);
+  const [thresholdValue, setThresholdValue] = useState(30);
 
-  const [ThresholdValue, setThresholdValue] = useState(30);
+  const [requiredCameras, setRequiredCameras] = useState(3);
 
-  const [RequiredCameras, setRequiredCameras] = useState(3);
+  const [butterworthFilter, setButterworthFilter] = useState(true);
 
-  const [ButterworthFilter, setButterworthFilter] = useState(true);
+  const [frameRateValue, setFrameRateValue] = useState(30);
 
-  const [FrameRateValue, setFrameRateValue] = useState(30);
+  const [cutOffSequence, setCutOffSequence] = useState(3);
 
-  const [CutOffSequence, setCutOffSequence] = useState(3);
+  const [orderValue, setOrderValue] = useState(3);
 
-  const [OrderValue, setOrderValue] = useState(3);
+  const [minDetectionConfidence, setMinDetectionConfidence] =
+    useState(0.5);
 
+  const [minTrackingConfidence, setMinTrackingConfidence] =
+    useState(0.5);
 
-  const [Mindetectionconfidence, setMindetectionconfidence] = useState(0.5);
+  const [staticImageMode, setStaticImageMode] = useState(true);
 
-  const [Mintrackingconfidence, setMintrackingconfidence] = useState(0.5);
-
-
-  const [Staticimagemode, setStaticimagemode] = useState(true);
-
-  
   return (
     <>
       <div className="mode-container flex-5 br-2 bg-darkgray border-mid-black border-1 overflow-hidden flex flex-col flex-1 gap-1 p-1">
@@ -111,7 +161,7 @@ const PostProcess = () => {
               buttonType=""
               rightSideIcon=""
               textColor="text-white"
-              onClick={HandleImportVideos}
+              onClick={handleImportVideos}
             />
           </div>
         </div>
@@ -134,17 +184,66 @@ const PostProcess = () => {
       </div>
 
       <div className="reveal fadeIn action-container flex-1 bg-darkgray br-2 border-mid-black border-1 min-w-200 max-w-350 flex flex-col gap-1 flex-1 p-1">
+        <div className="z-2 subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
+          <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
+            <SubactionHeader text="File location" />
+            {/* trigger button + modal wrapper */}
+            <div className="pos-rel" ref={wrapperRef}>
+              <div
+                onClick={toggleModal}
+                className="trigger-file-directory-settings overflow-hidden button modal-trigger-button gap-1 p-1 br-1 flex justify-content-space-between items-center h-25 cursor-pointer"
+              >
+                <span className="folder-directory overflow-hidden text-nowrap text md">
+                  {directoryPath}
+                </span>
+                <span className="subfolder-directory overflow-hidden text-nowrap text md">
+                  {hasSubfolder ? subfolderName : ""}
+                </span>
+                <button className="button icon-button pos-rel top-0 right-0">
+                  <span className="icon settings-icon icon-size-16"></span>
+                </button>
+              </div>
+
+              {/* Modal */}
+              <FileDirectorySettingsModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                directoryPath={directoryPath}
+                onSelectDirectory={setDirectoryPath}
+                onAddSubfolder={handleAddSubfolder}
+                subfolderName={subfolderName}
+                hasSubfolder={hasSubfolder}
+                onSelectSubfolder={setSubfolderName}
+                onRemoveSubfolder={handleRemoveSubfolder}
+                recordingName="Recording1"
+                onSelectRecordingName={() =>
+                  console.log("Select recording name clicked")
+                }
+                timeStampPrefix={timeStampPrefix}
+                setTimeStampPrefix={setTimeStampPrefix}
+                autoIncrement={autoIncrement}
+                setAutoIncrement={setAutoIncrement}
+                autoIncrementValue={autoIncrementValue}
+                setAutoIncrementValue={setAutoIncrementValue}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="br-1 bg-darkgray subaction-container pos-sticky gap-1 z-1 top-0 flex flex-col">
           <div className="flex flex-col calibrate-container br-1 p-1 gap-1 bg-middark">
             {/* text input container numeric value */}
-            <div class="text-input-container gap-1 br-1 flex justify-content-space-between items-center h-25  ">
-              <div class="text-container overflow-hidden flex items-center">
+            <div className="text-input-container gap-1 br-1 flex justify-content-space-between items-center h-25">
+              <div className="text-container overflow-hidden flex items-center">
                 {/* explainer icon */}
-                <button onClick="" className="button icon-button close-button">
+                <button
+                  onClick={() => {}}
+                  className="button icon-button close-button"
+                >
                   <span className="icon explainer-icon icon-size-16"></span>
                 </button>
 
-                <p class="text text-nowrap text-left md">Charuco size</p>
+                <p className="text text-nowrap text-left md">Charuco size</p>
               </div>
               <ValueSelector
                 unit="mm"
@@ -195,15 +294,11 @@ const PostProcess = () => {
             </div>
           </div>
         </div>
+
         <div className="subaction-container overflow-y properties-container flex-1 br-1 p-1 gap-2 bg-darkgray">
           <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
-            {/* subcat-header-container */}
             <SubactionHeader text="2d image trackers" />
-            <ToggleComponent
-              text="Run 2d image tracking"
-              className=""
-              iconClass=""
-            />
+            <ToggleComponent text="Run 2d image tracking" className="" iconClass="" />
             <ToggleComponent
               text="Multiprocessing"
               defaultToggelState={true}
@@ -219,6 +314,7 @@ const PostProcess = () => {
               className={!isMultiprocessing ? "disabled" : ""}
             />
           </div>
+
           <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
             <SubactionHeader text="Mediapipe" />
             <ToggleComponent
@@ -278,70 +374,63 @@ const PostProcess = () => {
                 unit="%"
                 min={0}
                 max={100}
-                initialValue={selectedValue}
-                onChange={(val) => setSelectedValue(val)}
+                initialValue={selectedBufferPercentage}
+                onChange={(val) => setSelectedBufferPercentage(val)}
               />
             </div>
-            <div
-              className={
-                "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25"
-              }
-            >
+
+            <div className="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
               <div className="gap-1 text-container overflow-hidden flex items-center">
-                {/* <span className="icon icon-size-16 subcat-icon"></span> */}
-                <p className="text text-nowrap text-left md">
-                  Model complexity
-                </p>
+                <p className="text text-nowrap text-left md">Model complexity</p>
               </div>
               <ModelComplexity />
             </div>
-            <div
-              className="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25"
-            >
+
+            <div className="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
               <div className="gap-1 text-container overflow-hidden flex items-center">
-                {/* <span className="icon icon-size-16 subcat-icon"></span> */}
-                <p className="text text-nowrap text-left md">Min detection confidence</p>
+                <p className="text text-nowrap text-left md">
+                  Min detection confidence
+                </p>
               </div>
               <ValueSelector
                 unit=""
-                min={1}
-                max={7}
-                initialValue={Mindetectionconfidence}
-                onChange={setMindetectionconfidence}
+                min={0}
+                max={1}
+                initialValue={minDetectionConfidence}
+                onChange={(val) => setMinDetectionConfidence(val)}
               />
             </div>
-            <div
-              className="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25"
-            >
+
+            <div className="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
               <div className="gap-1 text-container overflow-hidden flex items-center">
-                {/* <span className="icon icon-size-16 subcat-icon"></span> */}
-                <p className="text text-nowrap text-left md">Min tracking confidence</p>
+                <p className="text text-nowrap text-left md">
+                  Min tracking confidence
+                </p>
               </div>
               <ValueSelector
                 unit=""
-                min={1}
-                max={7}
-                initialValue={Mintrackingconfidence}
-                onChange={setMintrackingconfidence}
+                min={0}
+                max={1}
+                initialValue={minTrackingConfidence}
+                onChange={(val) => setMinTrackingConfidence(val)}
               />
             </div>
+
             <ToggleComponent
               text="Static image mode"
               className=""
               iconClass=""
               defaultToggelState={true}
-              isToggled={Staticimagemode}
-              onToggle={setStaticimagemode}
+              isToggled={staticImageMode}
+              onToggle={setStaticImageMode}
             />
           </div>
+
           <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
             <SubactionHeader text="3d triangulation methods" />
-            <ToggleComponent
-              text="Run 3d triangulation"
-              className=""
-              iconClass=""
-            />
+            <ToggleComponent text="Run 3d triangulation" className="" iconClass="" />
           </div>
+
           <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
             <SubactionHeader text="Anipose triangulation" />
             <ToggleComponent text="RANSAC method" className="" iconClass="" />
@@ -351,6 +440,7 @@ const PostProcess = () => {
               iconClass=""
             />
           </div>
+
           <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
             <SubactionHeader text="Reprojection error filtering" />
             <ToggleComponent
@@ -376,7 +466,7 @@ const PostProcess = () => {
                 unit="%"
                 min={0}
                 max={100}
-                initialValue={ThresholdValue}
+                initialValue={thresholdValue}
                 onChange={setThresholdValue}
               />
             </div>
@@ -397,11 +487,12 @@ const PostProcess = () => {
                 unit=""
                 min={0}
                 max={20}
-                initialValue={RequiredCameras}
+                initialValue={requiredCameras}
                 onChange={setRequiredCameras}
               />
             </div>
           </div>
+
           <div className="subaction-group flex flex-col flex-1 gap-1 mb-4">
             <SubactionHeader text="Post processing data cleanup" />
             <ToggleComponent
@@ -409,14 +500,14 @@ const PostProcess = () => {
               className=""
               iconClass=""
               defaultToggelState={true}
-              isToggled={ButterworthFilter}
+              isToggled={butterworthFilter}
               onToggle={setButterworthFilter}
             />
 
             <div
               className={clsx(
                 "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
-                { disabled: !ButterworthFilter }
+                { disabled: !butterworthFilter }
               )}
             >
               <div className="gap-1 text-container overflow-hidden flex items-center">
@@ -427,7 +518,7 @@ const PostProcess = () => {
                 unit="FPS"
                 min={30}
                 max={120}
-                initialValue={FrameRateValue}
+                initialValue={frameRateValue}
                 onChange={setFrameRateValue}
               />
             </div>
@@ -435,7 +526,7 @@ const PostProcess = () => {
             <div
               className={clsx(
                 "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
-                { disabled: !ButterworthFilter }
+                { disabled: !butterworthFilter }
               )}
             >
               <div className="gap-1 text-container overflow-hidden flex items-center">
@@ -448,14 +539,15 @@ const PostProcess = () => {
                 unit=""
                 min={1}
                 max={7}
-                initialValue={CutOffSequence}
+                initialValue={cutOffSequence}
                 onChange={setCutOffSequence}
               />
             </div>
+
             <div
               className={clsx(
                 "text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center h-25",
-                { disabled: !ButterworthFilter }
+                { disabled: !butterworthFilter }
               )}
             >
               <div className="gap-1 text-container overflow-hidden flex items-center">
@@ -466,7 +558,7 @@ const PostProcess = () => {
                 unit=""
                 min={1}
                 max={7}
-                initialValue={OrderValue}
+                initialValue={orderValue}
                 onChange={setOrderValue}
               />
             </div>

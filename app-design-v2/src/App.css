@@ -1149,6 +1149,9 @@ body,
 .color-gray {
   color: var(--gray-400);
 }
+.text-warning {
+  color: var(--warning-500);
+}
 
 .text-darkgray,
 .color-darkgray {
@@ -1298,7 +1301,7 @@ input[type="checkbox"]::before {
     height: 0.63em;
   transform: scale(0.7);
   transition: 120ms transform ease-in-out;
-  box-shadow: inset 1em 1em var(--blue-800);
+  box-shadow: inset 1em 1em black;
   /* Checkmark shape */
   /* clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
   box-shadow: inset 1em 1em var(--form-control-color); */
@@ -1309,8 +1312,9 @@ input[type="checkbox"]::before {
 
 /* Checked state */
 input[type="checkbox"]:checked::before {
-  transform: scale(0.9);
-   box-shadow: inset 1em 1em black;
+  transform: scale(0.6);
+   box-shadow: inset 1em 1em var(--blue-800);
+   transform-origin: center center;
 }
 
 /* Focus state */
@@ -1601,7 +1605,7 @@ input[type="checkbox"]:disabled {
 .camera-settings-modal {
     position: absolute;
     right: 0;
-    top: 160px;
+    top: 110px;
     min-width: 225px;
     /* max-width: 300px; */
 }

@@ -1600,8 +1600,8 @@ input[type="checkbox"]:disabled {
 }
 .camera-settings-modal {
     position: absolute;
-    left: 0;
-    top: 0;
+    right: 0;
+    top: 160px;
     min-width: 225px;
     /* max-width: 300px; */
 }

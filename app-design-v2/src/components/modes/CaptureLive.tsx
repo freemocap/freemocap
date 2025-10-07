@@ -8,11 +8,17 @@ import {
   SubactionHeader,
   Checkbox,
 } from "../uicomponents";
+import ExcludedCameraTooltip from "../ExcludedCameraTooltip";
 import clsx from "clsx";
 import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
 import CameraSettingsModal from "../CameraSettingsModal";
 
 const CaptureLive = () => {
+  
+
+
+  const [cameraChecked, setCameraChecked] = useState<boolean[]>([]);
+
   const cameraButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const cameraModalRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -92,44 +98,42 @@ const CaptureLive = () => {
       });
       tempStream.getTracks().forEach((track) => track.stop()); // stop immediately
 
+
+
+      
+
       // Enumerate devices AFTER permission granted
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const cameras = devices
-        .filter((device) => device.kind === "videoinput")
-        .map((camera, idx) => ({
-          ...camera,
-          checked: true,
-          originalLabel: camera.label || `Camera ${idx + 1}`, // store original label
-        }));
-
-      setActiveCameras(cameras);
-      setCameraRotations(new Array(cameras.length).fill(0));
-      setCameraSettingsOpen(new Array(cameras.length).fill(false));
+     const cameras = devices.filter((d) => d.kind === "videoinput");
+setActiveCameras(cameras);
+setCameraChecked(new Array(cameras.length).fill(true)); // all cameras checked by default
 
       // start streams...
-      for (let i = 0; i < cameras.length; i++) {
-        const camera = cameras[i];
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              deviceId: { exact: camera.deviceId },
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-            },
-            audio: false,
-          });
-          const video = videoRefs.current[i];
-          if (video) {
-            video.srcObject = stream;
-            video.play();
-          }
-        } catch (err) {
-          console.error(
-            `Failed to start stream for ${camera.originalLabel}:`,
-            err
-          );
-        }
-      }
+      // Sequentially start streams
+for (let idx = 0; idx < cameras.length; idx++) {
+  const camera = cameras[idx];
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        deviceId: { exact: camera.deviceId },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
+
+    const video = videoRefs.current[idx];
+    if (video && stream) {
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        video.play();
+      };
+    }
+  } catch (err) {
+    console.error(`Failed to start stream for ${camera.originalLabel}:`, err);
+  }
+}
+
 
       setStreamState(STATES.CONNECTED);
     } catch (err) {
@@ -261,20 +265,18 @@ const CaptureLive = () => {
                       {/* Checkbox + Camera Name */}
                       <div className="overflow-hidden flex items-center gap-1 p-1">
                         <Checkbox
-                          label={camera.originalLabel}
-                          checked={camera.checked}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            setActiveCameras((prev) => {
-                              const updated = [...prev];
-                              updated[idx] = {
-                                ...updated[idx],
-                                checked: isChecked,
-                              }; // label stays intact
-                              return updated;
-                            });
-                          }}
-                        />
+  label={camera.label || `Camera ${idx + 1}`}
+  checked={cameraChecked[idx]}
+  onChange={(e) => {
+    const isChecked = e.target.checked;
+    setCameraChecked((prev) => {
+      const updated = [...prev];
+      updated[idx] = isChecked;
+      return updated;
+    });
+  }}
+/>
+
                       </div>
 
                       {/* Settings Button */}
@@ -298,6 +300,9 @@ const CaptureLive = () => {
                           </div>
                         )}
                       </div>
+
+                      {/* EXCLUDED CAMERA TOOLTIP */}
+                      {!cameraChecked[idx] && <ExcludedCameraTooltip />}
                     </div>
                   )}
 

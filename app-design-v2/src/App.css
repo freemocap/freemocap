@@ -1609,6 +1609,10 @@ input[type="checkbox"]:disabled {
     min-width: 225px;
     /* max-width: 300px; */
 }
+.excluded-camera-tooltip {
+  top: 21px;
+  left: 0px;
+}
 .vanished {
   opacity: 0;
       pointer-events: none;

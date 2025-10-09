@@ -210,7 +210,7 @@ class CalibrationControlPanel(QWidget):
         self._use_charuco_as_groundplane_checkbox.setToolTip(
             "Set the Charuco board's coordinate system as the global origin"
         )
-        self._use_charuco_as_groundplane_checkbox.setChecked(True)
+        self._use_charuco_as_groundplane_checkbox.setChecked(False)
         self._use_charuco_as_groundplane_checkbox.setEnabled(False)
         self._use_charuco_as_groundplane_checkbox.setVisible(False)
 

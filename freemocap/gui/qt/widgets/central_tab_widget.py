@@ -69,7 +69,7 @@ class CentralTabWidget(QTabWidget):
         self._camera_view_layout.addWidget(self._skelly_cam_widget)
 
         lag_note_label = QLabel(
-            "NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras. The frames are likely being being recorded properly, its just the viewer that is lagging. A fix is incoming soon!"
+            "NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras. The frames are likely being recorded properly, its just the viewer that is lagging. A fix is incoming soon!"
         )
         lag_note_label.setStyleSheet("font-size: 10px;")
         lag_note_label.setWordWrap(True)

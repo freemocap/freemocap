@@ -4,18 +4,14 @@ from pathlib import Path
 
 import numpy as np
 
-from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import \
-    freemocap_anipose
-from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import \
-    charuco_7x5
-from freemocap.core_processes.capture_volume_calibration.run_anipose_capture_volume_calibration import \
-    run_anipose_capture_volume_calibration
-from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import \
-    triangulate_3d_data
-from freemocap.data_layer.recording_models.recording_info_model import \
-    RecordingInfoModel
-from freemocap.diagnostics.calibration.calibration_utils import \
-    get_charuco_2d_data
+from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import freemocap_anipose
+from freemocap.core_processes.capture_volume_calibration.charuco_stuff.charuco_board_definition import charuco_7x5
+from freemocap.core_processes.capture_volume_calibration.run_anipose_capture_volume_calibration import (
+    run_anipose_capture_volume_calibration,
+)
+from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
+from freemocap.data_layer.recording_models.recording_info_model import RecordingInfoModel
+from freemocap.diagnostics.calibration.calibration_utils import get_charuco_2d_data
 from freemocap.utilities.download_sample_data import download_test_data
 
 # Configure logging
@@ -49,7 +45,7 @@ def setup_session():
     logger.info("Calibrating")
 
     board_info_path = (
-            Path(SessionInfo.sample_session_folder_path) / "charuco_board_info.json"
+        Path(SessionInfo.sample_session_folder_path) / "charuco_board_info.json"
     )  # NOTE - I added this JSON to the sample data zip file to make it easier to get square size/height/width
     with open(board_info_path, "r", encoding="utf-8") as fh:
         board_info = json.load(fh)

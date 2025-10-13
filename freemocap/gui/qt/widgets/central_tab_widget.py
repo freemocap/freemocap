@@ -2,6 +2,7 @@ import logging
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QWidget, QLabel, QTabWidget
+
 # from skelly_viewer import SkellyViewer
 from skellycam import SkellyCamWidget
 
@@ -14,14 +15,14 @@ logger = logging.getLogger(__name__)
 
 class CentralTabWidget(QTabWidget):
     def __init__(
-            self,
-            skelly_cam_widget: SkellyCamWidget,
-            camera_controller_widget: QWidget,
-            welcome_to_freemocap_widget: HomeWidget,
-            skelly_viewer_widget: QWidget,
-            directory_view_widget: QWidget,
-            active_recording_info_widget: QWidget,
-            parent=None,
+        self,
+        skelly_cam_widget: SkellyCamWidget,
+        camera_controller_widget: QWidget,
+        welcome_to_freemocap_widget: HomeWidget,
+        skelly_viewer_widget: QWidget,
+        directory_view_widget: QWidget,
+        active_recording_info_widget: QWidget,
+        parent=None,
     ):
         super().__init__(parent=parent)
         self.parent = parent
@@ -77,6 +78,7 @@ class CentralTabWidget(QTabWidget):
         layout.addWidget(lag_note_label)
         layout.setAlignment(Qt.AlignmentFlag.AlignBottom)
         self._camera_view_layout.addLayout(layout)
+        self._camera_view_layout.setContentsMargins(20, 0, 20, 0)
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):
         logger.debug("Creating export_data tab")

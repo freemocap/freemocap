@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QRadioButton,
     QCheckBox,
-    QComboBox, QFrame,
+    QComboBox,
+    QFrame,
 )
 from skellycam import SkellyCamControllerWidget, SkellyCamWidget
 
@@ -52,9 +53,14 @@ class CameraControllerGroupBox(QGroupBox):
 
         self.setLayout(self._layout)
 
-        self._layout.addLayout(self._make_record_button_layout())
+        create_calibration_recording_option_layout = self._create_calibration_recording_option_layout()
 
-        self._layout.addLayout(self._make_options_layout())
+        vbox = QVBoxLayout()
+        vbox.addLayout(self._make_options_layout())
+        vbox.addLayout(self._create_mocap_recording_option_layout())
+        vbox.addLayout(create_calibration_recording_option_layout)
+
+        self._layout.addLayout(vbox)
 
         self._calibration_videos_radio_button.toggled.connect(self._set_record_button_text)
         self._annotate_charuco_checkbox.toggled.connect(self._on_annotate_charuco_checkbox_changed)
@@ -119,7 +125,7 @@ class CameraControllerGroupBox(QGroupBox):
 
         self._mocap_videos_radio_button.setChecked(True)
         hbox.addWidget(QLabel(" - "))
-        self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
+        self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos")
         self._auto_process_videos_checkbox.setChecked(self.gui_state.auto_process_videos_on_save)
         hbox.addWidget(self._auto_process_videos_checkbox)
 
@@ -163,16 +169,14 @@ class CameraControllerGroupBox(QGroupBox):
         hbox_bottom.setAlignment(Qt.AlignmentFlag.AlignLeft)
         # Add indentation spacing (adjust the width as needed)
         indent_spacer = QLabel("")
-        indent_spacer.setFixedWidth(180)  # Adjust this value for more/less indentation
+        indent_spacer.setFixedWidth(80)  # Adjust this value for more/less indentation
         hbox_bottom.addWidget(indent_spacer)
         self._annotate_charuco_checkbox = QCheckBox("Charuco Overlay (requires camera restart)")
         self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_charuco_images)
         self._skellycam_widget.annotate_images = self._annotate_charuco_checkbox.isChecked()
         hbox_bottom.addWidget(self._annotate_charuco_checkbox)
 
-        self._use_charuco_as_groundplane_checkbox = QCheckBox(
-            "Use initial board position as origin"
-        )
+        self._use_charuco_as_groundplane_checkbox = QCheckBox("Use initial board position as origin")
         self._use_charuco_as_groundplane_checkbox.setChecked(self.gui_state.use_charuco_as_groundplane)
         hbox_bottom.addWidget(self._use_charuco_as_groundplane_checkbox)
 
@@ -188,14 +192,11 @@ class CameraControllerGroupBox(QGroupBox):
         """Open the calibration documentation in the default web browser."""
         QDesktopServices.openUrl(url)
 
-    def _make_options_layout(self) -> QVBoxLayout:
-        options_vbox = QVBoxLayout()
-        options_vbox.addLayout(self._create_mocap_recording_option_layout())
+    def _make_options_layout(self) -> QHBoxLayout:
+        options_vbox = QHBoxLayout()
 
-        options_vbox.addLayout(self._create_calibration_recording_option_layout())
-        # Add horizontal separator line
-        separator = self._create_horizontal_separator()
-        options_vbox.addWidget(separator)
+        options_vbox.addLayout(self._make_record_button_layout())
+
         options_vbox.addLayout(self._create_videos_will_save_to_layout())
 
         return options_vbox
@@ -207,13 +208,15 @@ class CameraControllerGroupBox(QGroupBox):
         separator.setFrameShadow(QFrame.Shadow.Sunken)
         separator.setLineWidth(1)
         # Optional: Add some styling to make it more visible or subtle
-        separator.setStyleSheet("""
+        separator.setStyleSheet(
+            """
             QFrame {
                 color: #d0d0d0;
                 margin-top: 5px;
                 margin-bottom: 5px;
             }
-        """)
+        """
+        )
         return separator
 
     def _make_record_button_layout(self) -> QVBoxLayout:
@@ -253,6 +256,7 @@ class CameraControllerGroupBox(QGroupBox):
         self._recording_string_tag_line_edit = QLineEdit(parent=self)
         self._recording_string_tag_line_edit.setPlaceholderText("(Optional)")
         self._recording_string_tag_line_edit.setMaxLength(200)
+        self._recording_string_tag_line_edit.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         recording_string_tag_form_layout.addRow("Tag:", self._recording_string_tag_line_edit)
         recording_name_hbox.addWidget(QLabel(" - "))
@@ -264,6 +268,7 @@ class CameraControllerGroupBox(QGroupBox):
         full_path_key_label = QLabel("Full Path: ")
         full_path_hbox.addWidget(full_path_key_label)
         self._full_path_label = QLabel(recording_path_full)
+        self._full_path_label.setWordWrap(True)
         self._full_path_label.setStyleSheet("font-family: monospace;")
         full_path_hbox.addWidget(self._full_path_label)
 
@@ -324,6 +329,7 @@ class CameraControllerGroupBox(QGroupBox):
     def _on_use_charuco_groundplane_checkbox_changed(self) -> None:
         self.gui_state.use_charuco_as_groundplane = self._use_charuco_as_groundplane_checkbox.isChecked()
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self.controller_group_box_calibration_updated.emit()
 
     def _on_auto_process_videos_checkbox_changed(self) -> None:
         self.gui_state.auto_process_videos_on_save = self._auto_process_videos_checkbox.isChecked()
@@ -356,3 +362,4 @@ class CameraControllerGroupBox(QGroupBox):
         self.gui_state = load_gui_state(file_pathstring=get_gui_state_json_path())
         self._board_dropdown.setCurrentText(self.gui_state.charuco_board_name)
         self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
+        self._use_charuco_as_groundplane_checkbox.setChecked(self.gui_state.use_charuco_as_groundplane)

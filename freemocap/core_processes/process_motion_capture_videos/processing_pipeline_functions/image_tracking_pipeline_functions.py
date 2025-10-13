@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 
 
 def run_image_tracking_pipeline(
-        processing_parameters: ProcessingParameterModel,
-        kill_event: multiprocessing.Event,
-        queue: multiprocessing.Queue,
-        use_tqdm: bool,
+    processing_parameters: ProcessingParameterModel,
+    kill_event: multiprocessing.Event,
+    queue: multiprocessing.Queue,
+    use_tqdm: bool,
 ) -> np.ndarray:
     if queue:
         handler = DirectQueueHandler(queue)
@@ -56,7 +56,7 @@ def run_image_tracking_pipeline(
                 processing_parameters.recording_info_model.synchronized_videos_folder_path
             ),
             output_data_folder_path=Path(processing_parameters.recording_info_model.output_data_folder_path)
-                                    / RAW_DATA_FOLDER_NAME,
+            / RAW_DATA_FOLDER_NAME,
             kill_event=kill_event,
             use_tqdm=use_tqdm,
         )
@@ -75,12 +75,12 @@ def run_image_tracking_pipeline(
 
 
 def run_image_tracking(
-        model_info: ModelInfo,
-        tracking_params: BaseTrackingParams,
-        synchronized_videos_folder_path: Path,
-        output_data_folder_path: Path,
-        kill_event: multiprocessing.Event = None,
-        use_tqdm: bool = True,
+    model_info: ModelInfo,
+    tracking_params: BaseTrackingParams,
+    synchronized_videos_folder_path: Path,
+    output_data_folder_path: Path,
+    kill_event: multiprocessing.Event = None,
+    use_tqdm: bool = True,
 ):
     if hasattr(tracking_params, "use_yolo_crop_method") and tracking_params.use_yolo_crop_method:
         model_info.tracker_name = "YOLOMediapipeComboTracker"

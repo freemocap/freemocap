@@ -37,13 +37,13 @@ class ProcessMotionCaptureDataPanel(QWidget):
     processing_finished_signal = Signal()
 
     def __init__(
-            self,
-            recording_processing_parameters: ProcessingParameterModel,
-            get_active_recording_info: Callable[..., RecordingInfoModel],
-            kill_thread_event: threading.Event,
-            log_update: Callable,
-            gui_state: GuiState,
-            parent=None,
+        self,
+        recording_processing_parameters: ProcessingParameterModel,
+        get_active_recording_info: Callable[..., RecordingInfoModel],
+        kill_thread_event: threading.Event,
+        log_update: Callable,
+        gui_state: GuiState,
+        parent=None,
     ):
         super().__init__(parent=parent)
 
@@ -94,7 +94,7 @@ class ProcessMotionCaptureDataPanel(QWidget):
         return self._process_motion_capture_data_button
 
     def calibrate_from_active_recording(
-            self, charuco_square_size_mm: float, use_charuco_as_groundplane: bool, charuco_board_name: str
+        self, charuco_square_size_mm: float, use_charuco_as_groundplane: bool, charuco_board_name: str
     ):
         self._calibration_control_panel.calibrate_from_active_recording(
             charuco_square_size_mm=charuco_square_size_mm,
@@ -107,9 +107,9 @@ class ProcessMotionCaptureDataPanel(QWidget):
         self._calibration_control_panel.update_calibration_toml_path()
 
     def _add_parameters_to_parameter_tree_widget(
-            self,
-            parameter_tree_widget: ParameterTree,
-            session_processing_parameter_model: ProcessingParameterModel,
+        self,
+        parameter_tree_widget: ParameterTree,
+        session_processing_parameter_model: ProcessingParameterModel,
     ):
         parameter_group = self._convert_session_processing_parameter_model_to_parameter_group(
             session_processing_parameter_model
@@ -119,8 +119,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
         return parameter_group
 
     def _convert_session_processing_parameter_model_to_parameter_group(
-            self,
-            session_processing_parameter_model: ProcessingParameterModel,
+        self,
+        session_processing_parameter_model: ProcessingParameterModel,
     ):
         return Parameter.create(
             name="Processing Parameters",
@@ -157,13 +157,13 @@ class ProcessMotionCaptureDataPanel(QWidget):
                         ),
                     ],
                     tip="Methods for cleaning up the data (e.g. filtering/smoothing, gap filling, etc ...)"
-                        "TODO - Add/expose more post processing methods here (e.g. gap filling, outlier removal, etc ...)",
+                    "TODO - Add/expose more post processing methods here (e.g. gap filling, outlier removal, etc ...)",
                 ),
             ],
         )
 
     def _create_session_parameter_model(
-            self,
+        self,
     ) -> ProcessingParameterModel:
         recording_processing_parameter_model = extract_parameter_model_from_parameter_tree(
             parameter_object=self._parameter_group
@@ -241,8 +241,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
 
             # check if there is already a calibration toml  in the recording folder, if not save this one there
             if (
-                    len(list(Path(session_parameter_model.recording_info_model.path).glob("*.toml"))) == 0
-                    and Path(selected_camera_calibration_toml_path).exists()
+                len(list(Path(session_parameter_model.recording_info_model.path).glob("*.toml"))) == 0
+                and Path(selected_camera_calibration_toml_path).exists()
             ):
                 # copy the calibration toml to the recording folder (keeping the original filename)
                 logger.info(
@@ -250,8 +250,8 @@ class ProcessMotionCaptureDataPanel(QWidget):
                 )
                 Path(session_parameter_model.recording_info_model.path).mkdir(parents=True, exist_ok=True)
                 copied_toml_path = (
-                        Path(session_parameter_model.recording_info_model.path)
-                        / Path(selected_camera_calibration_toml_path).name
+                    Path(session_parameter_model.recording_info_model.path)
+                    / Path(selected_camera_calibration_toml_path).name
                 )
                 shutil.copyfile(selected_camera_calibration_toml_path, copied_toml_path)
 

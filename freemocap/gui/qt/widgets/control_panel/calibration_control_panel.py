@@ -41,11 +41,11 @@ class CalibrationControlPanel(QWidget):
     control_panel_calibration_updated = Signal()
 
     def __init__(
-            self,
-            get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
-            kill_thread_event: threading.Event,
-            gui_state: GuiState,
-            parent: Optional[QObject] = None,
+        self,
+        get_active_recording_info: Callable[..., Union[RecordingInfoModel, Path]],
+        kill_thread_event: threading.Event,
+        gui_state: GuiState,
+        parent: Optional[QObject] = None,
     ):
         super().__init__(parent=parent)
         self.gui_state = gui_state
@@ -210,9 +210,12 @@ class CalibrationControlPanel(QWidget):
         self._use_charuco_as_groundplane_checkbox.setToolTip(
             "Set the Charuco board's coordinate system as the global origin"
         )
-        self._use_charuco_as_groundplane_checkbox.setChecked(True)
+        self._use_charuco_as_groundplane_checkbox.setChecked(False)
         self._use_charuco_as_groundplane_checkbox.setEnabled(False)
         self._use_charuco_as_groundplane_checkbox.setVisible(False)
+        self._use_charuco_as_groundplane_checkbox.stateChanged.connect(
+            self._on_use_charuco_groundplane_checkbox_changed
+        )
 
         hbox2.addWidget(self._use_charuco_as_groundplane_checkbox)
 
@@ -343,7 +346,6 @@ class CalibrationControlPanel(QWidget):
         charuco_square_size_layout.addStretch()
         return charuco_square_size_layout
 
-
     def _create_board_dropdown(self) -> QComboBox:
         board_dropdown = QComboBox()
         board_dropdown.setToolTip("Select the Charuco board to use for calibration")
@@ -368,21 +370,27 @@ class CalibrationControlPanel(QWidget):
         save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
         self.control_panel_calibration_updated.emit()
 
+    def _on_use_charuco_groundplane_checkbox_changed(self):
+        self.gui_state.use_charuco_as_groundplane = self._use_charuco_as_groundplane_checkbox.isChecked()
+        save_gui_state(gui_state=self.gui_state, file_pathstring=get_gui_state_json_path())
+        self.control_panel_calibration_updated.emit()
+
     @Slot()
     def charuco_option_updated(self):
         self.gui_state = load_gui_state(file_pathstring=get_gui_state_json_path())
         self._board_dropdown.setCurrentText(self.gui_state.charuco_board_name)
         self._charuco_square_size_line_edit.setText(str(self.gui_state.charuco_square_size))
+        self._use_charuco_as_groundplane_checkbox.setChecked(self.gui_state.use_charuco_as_groundplane)
 
     @Slot(str)
     def _log_calibration_progress_callbacks(self, message: str):
         logger.info(message)
 
     def calibrate_from_active_recording(
-            self,
-            charuco_square_size_mm: float = None,
-            use_charuco_as_groundplane: bool = None,
-            charuco_board_name: str = None,
+        self,
+        charuco_square_size_mm: float = None,
+        use_charuco_as_groundplane: bool = None,
+        charuco_board_name: str = None,
     ):
         if not charuco_square_size_mm:
             charuco_square_size_mm = float(self._charuco_square_size_line_edit.text())

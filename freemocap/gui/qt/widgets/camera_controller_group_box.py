@@ -53,9 +53,14 @@ class CameraControllerGroupBox(QGroupBox):
 
         self.setLayout(self._layout)
 
-        self._layout.addLayout(self._make_record_button_layout())
+        create_calibration_recording_option_layout = self._create_calibration_recording_option_layout()
 
-        self._layout.addLayout(self._make_options_layout())
+        vbox = QVBoxLayout()
+        vbox.addLayout(self._make_options_layout())
+        vbox.addLayout(self._create_mocap_recording_option_layout())
+        vbox.addLayout(create_calibration_recording_option_layout)
+
+        self._layout.addLayout(vbox)
 
         self._calibration_videos_radio_button.toggled.connect(self._set_record_button_text)
         self._annotate_charuco_checkbox.toggled.connect(self._on_annotate_charuco_checkbox_changed)
@@ -120,7 +125,7 @@ class CameraControllerGroupBox(QGroupBox):
 
         self._mocap_videos_radio_button.setChecked(True)
         hbox.addWidget(QLabel(" - "))
-        self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos on Save")
+        self._auto_process_videos_checkbox = QCheckBox("Auto Process Videos")
         self._auto_process_videos_checkbox.setChecked(self.gui_state.auto_process_videos_on_save)
         hbox.addWidget(self._auto_process_videos_checkbox)
 
@@ -164,7 +169,7 @@ class CameraControllerGroupBox(QGroupBox):
         hbox_bottom.setAlignment(Qt.AlignmentFlag.AlignLeft)
         # Add indentation spacing (adjust the width as needed)
         indent_spacer = QLabel("")
-        indent_spacer.setFixedWidth(180)  # Adjust this value for more/less indentation
+        indent_spacer.setFixedWidth(80)  # Adjust this value for more/less indentation
         hbox_bottom.addWidget(indent_spacer)
         self._annotate_charuco_checkbox = QCheckBox("Charuco Overlay (requires camera restart)")
         self._annotate_charuco_checkbox.setChecked(self.gui_state.annotate_charuco_images)
@@ -187,14 +192,11 @@ class CameraControllerGroupBox(QGroupBox):
         """Open the calibration documentation in the default web browser."""
         QDesktopServices.openUrl(url)
 
-    def _make_options_layout(self) -> QVBoxLayout:
-        options_vbox = QVBoxLayout()
-        options_vbox.addLayout(self._create_mocap_recording_option_layout())
+    def _make_options_layout(self) -> QHBoxLayout:
+        options_vbox = QHBoxLayout()
 
-        options_vbox.addLayout(self._create_calibration_recording_option_layout())
-        # Add horizontal separator line
-        separator = self._create_horizontal_separator()
-        options_vbox.addWidget(separator)
+        options_vbox.addLayout(self._make_record_button_layout())
+
         options_vbox.addLayout(self._create_videos_will_save_to_layout())
 
         return options_vbox
@@ -254,6 +256,7 @@ class CameraControllerGroupBox(QGroupBox):
         self._recording_string_tag_line_edit = QLineEdit(parent=self)
         self._recording_string_tag_line_edit.setPlaceholderText("(Optional)")
         self._recording_string_tag_line_edit.setMaxLength(200)
+        self._recording_string_tag_line_edit.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         recording_string_tag_form_layout.addRow("Tag:", self._recording_string_tag_line_edit)
         recording_name_hbox.addWidget(QLabel(" - "))
@@ -265,6 +268,7 @@ class CameraControllerGroupBox(QGroupBox):
         full_path_key_label = QLabel("Full Path: ")
         full_path_hbox.addWidget(full_path_key_label)
         self._full_path_label = QLabel(recording_path_full)
+        self._full_path_label.setWordWrap(True)
         self._full_path_label.setStyleSheet("font-family: monospace;")
         full_path_hbox.addWidget(self._full_path_label)
 

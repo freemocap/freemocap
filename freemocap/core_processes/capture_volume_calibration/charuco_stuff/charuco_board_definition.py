@@ -26,7 +26,7 @@ class CharucoBoardDefinition:
 
 def charuco_7x5() -> CharucoBoardDefinition:
     return CharucoBoardDefinition(
-        name="full_board_7x5",
+        name="7x5 Charuco",
         number_of_squares_width=7,
         number_of_squares_height=5,
         black_square_side_length=1,
@@ -36,7 +36,7 @@ def charuco_7x5() -> CharucoBoardDefinition:
 
 def charuco_5x3() -> CharucoBoardDefinition:
     return CharucoBoardDefinition(
-        name="mini_board_5x3",
+        name="5x3 Charuco",
         number_of_squares_width=5,
         number_of_squares_height=3,
         black_square_side_length=1,
@@ -44,7 +44,8 @@ def charuco_5x3() -> CharucoBoardDefinition:
     )
 
 
+CHARUCO_BOARD_IMAGES_URL = "https://github.com/freemocap/freemocap/blob/main/freemocap/assets/charuco/"
 CHARUCO_BOARDS = {
-    "Full Charuco (7x5)": charuco_7x5,
-    "Mini Charuco (5x3)": charuco_5x3,
+    "7x5 Charuco": charuco_7x5,
+    "5x3 Charuco": charuco_5x3,
 }

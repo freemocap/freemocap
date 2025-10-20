@@ -1,8 +1,8 @@
 import logging
 import signal
 import sys
-from pathlib import Path
 from importlib.metadata import distributions
+from pathlib import Path
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
@@ -59,8 +59,7 @@ def qt_gui_main():
     sys.exit()
 
 
-def handle_pop_ups(freemocap_main_window):
-
+def handle_pop_ups(freemocap_main_window: MainWindow):
     if freemocap_main_window._gui_state.show_welcome_screen:
         freemocap_main_window.open_welcome_screen_dialog()
     if not freemocap_main_window._gui_state.shown_latest_release_notes:

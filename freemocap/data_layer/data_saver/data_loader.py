@@ -4,10 +4,10 @@ from typing import Union, Dict, Any
 
 import numpy as np
 import pandas as pd
+from skellytracker.trackers.base_tracker.model_info import ModelInfo
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeModelInfo,
 )
-from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 from freemocap.data_layer.data_saver.data_models import FrameData, Timestamps, Point, SkeletonSchema
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -26,7 +26,6 @@ from freemocap.system.paths_and_filenames.path_getters import (
 )
 
 logger = logging.getLogger(__name__)
-
 
 # TODO: Need to generalize this beyond mediapipe, and make COM data optional
 mediapipe_model_info = MediapipeModelInfo()
@@ -68,8 +67,12 @@ class DataLoader:
         self.number_of_frames = len(self.body_dataframe)
         if self.include_hands:
             try:
-                self.right_hand_dataframe = self._load_dataframe(self._file_prefix + RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
-                self.left_hand_dataframe = self._load_dataframe(self._file_prefix + LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME)
+                self.right_hand_dataframe = self._load_dataframe(
+                    self._file_prefix + RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME
+                )
+                self.left_hand_dataframe = self._load_dataframe(
+                    self._file_prefix + LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME
+                )
             except FileNotFoundError:
                 logger.warning("Unable to load hand data from file.")
                 self.right_hand_dataframe = None
@@ -127,10 +130,14 @@ class DataLoader:
         """
         try:
             self.center_of_mass_xyz = np.load(
-                self._output_folder_path / CENTER_OF_MASS_FOLDER_NAME / (self._file_prefix + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
+                self._output_folder_path
+                / CENTER_OF_MASS_FOLDER_NAME
+                / (self._file_prefix + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)
             )
             self.segment_center_of_mass_segment_xyz = np.load(
-                self._output_folder_path / CENTER_OF_MASS_FOLDER_NAME / (self._file_prefix + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)
+                self._output_folder_path
+                / CENTER_OF_MASS_FOLDER_NAME
+                / (self._file_prefix + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)
             )
         except FileNotFoundError:
             logger.warning("Unable to load center of mass data from file.")
@@ -207,7 +214,7 @@ class DataLoader:
             raise ValueError("center of mass definitions are not provided.")
 
         for segment_number, segment_name in enumerate(self._model_info.center_of_mass_definitions.keys()):
-            com_data[f'com_{segment_name}'] = Point(
+            com_data[f"com_{segment_name}"] = Point(
                 x=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 0],
                 y=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 1],
                 z=self.segment_center_of_mass_segment_xyz[frame_number, segment_number, 2],

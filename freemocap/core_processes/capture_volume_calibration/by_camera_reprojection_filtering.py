@@ -1,9 +1,9 @@
 import logging
 from pathlib import Path
 from typing import Tuple, Union
-from matplotlib import pyplot as plt
-import numpy as np
 
+import numpy as np
+from matplotlib import pyplot as plt
 
 from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
     save_3d_data_to_npy,
@@ -67,10 +67,12 @@ def run_reprojection_error_filtering(
     plot_reprojection_error(
         raw_reprojection_error_frame_marker=skeleton_reprojection_error_fr_mar,
         filtered_reprojection_error_frame_marker=reprojection_filtered_skeleton_reprojection_error_fr_mar,
-        reprojection_error_threshold=float(np.nanpercentile(
-            skeleton_reprojection_error_cam_fr_mar,
-            processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
-        )),
+        reprojection_error_threshold=float(
+            np.nanpercentile(
+                skeleton_reprojection_error_cam_fr_mar,
+                processing_parameters.anipose_triangulate_3d_parameters_model.reprojection_error_confidence_cutoff,
+            )
+        ),
         output_folder_path=processing_parameters.recording_info_model.raw_data_folder_path,
     )
     return reprojection_filtered_skel3d_frame_marker_xyz

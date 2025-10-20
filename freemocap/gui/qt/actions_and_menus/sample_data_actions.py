@@ -1,4 +1,5 @@
 from PySide6.QtGui import QAction
+
 from freemocap.utilities.download_sample_data import DATASETS
 
 
@@ -13,8 +14,8 @@ class DatasetDownloadAction(QAction):
 
 
 def make_download_data_action(
-    dataset_key: str,
-    freemocap_main_window,
+        dataset_key: str,
+        freemocap_main_window,
 ) -> DatasetDownloadAction:
     """
     Makes a DatasetDownloadAction for the specified dataset key.

@@ -70,7 +70,7 @@ class CentralTabWidget(QTabWidget):
         self._camera_view_layout.addWidget(self._skelly_cam_widget)
 
         lag_note_label = QLabel(
-            "NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras. The frames are likely being being recorded properly, its just the viewer that is lagging. A fix is incoming soon!"
+            "NOTE: If you experience lag in your camera views, decrease the resolution and/or use fewer cameras. The frames are likely being recorded properly, its just the viewer that is lagging. A fix is incoming soon!"
         )
         lag_note_label.setStyleSheet("font-size: 10px;")
         lag_note_label.setWordWrap(True)
@@ -78,6 +78,7 @@ class CentralTabWidget(QTabWidget):
         layout.addWidget(lag_note_label)
         layout.setAlignment(Qt.AlignmentFlag.AlignBottom)
         self._camera_view_layout.addLayout(layout)
+        self._camera_view_layout.setContentsMargins(20, 0, 20, 0)
 
     def _create_skelly_viewer_tab(self, tab_widget: QTabWidget):
         logger.debug("Creating export_data tab")

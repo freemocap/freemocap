@@ -146,6 +146,8 @@ class MainWindow(QMainWindow):
         self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
         self._tools_dock_widget.setWidget(self._control_panel_widget)
 
+        self._connect_calibration_updates()
+
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
         log_view_dock_widget.setWidget(self._log_view_widget)
@@ -482,7 +484,7 @@ class MainWindow(QMainWindow):
         dialog = TabbedReleaseNotesDialog(
             kill_thread_event=threading.Event(),
             gui_state=self._gui_state,
-            dark_mode=True  # Set to True for dark mode, False for light mode
+            dark_mode=True,  # Set to True for dark mode, False for light mode
         )
         dialog.exec()
 
@@ -552,6 +554,14 @@ class MainWindow(QMainWindow):
 
         self._active_recording_info_widget.set_active_recording(
             recording_folder_path=Path(folder_to_save_videos).parent
+        )
+
+    def _connect_calibration_updates(self):
+        self._process_motion_capture_data_panel._calibration_control_panel.control_panel_calibration_updated.connect(
+            self._controller_group_box.charuco_option_updated
+        )
+        self._controller_group_box.controller_group_box_calibration_updated.connect(
+            self._process_motion_capture_data_panel._calibration_control_panel.charuco_option_updated
         )
 
     def reboot_gui(self):

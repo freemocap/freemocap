@@ -29,7 +29,7 @@ def get_unit_vector(vector: np.ndarray) -> np.ndarray:
 
 
 def compute_basis_vectors_of_new_reference(
-    charuco_frame: np.ndarray, number_of_squares_width: int, number_of_squares_height: int
+        charuco_frame: np.ndarray, number_of_squares_width: int, number_of_squares_height: int
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     origin = charuco_frame[0]
 
@@ -69,13 +69,12 @@ def find_still_frame(points_velocity: np.ndarray, max_allowed_velocity: float = 
 
 
 def find_good_frame(
-    charuco_data: np.ndarray,
-    number_of_squares_width: int,
-    number_of_squares_height: int,
-    frame_to_use: int = 0,
-    search_range: int = 120,
+        charuco_data: np.ndarray,
+        number_of_squares_width: int,
+        number_of_squares_height: int,
+        frame_to_use: int = 0,
+        search_range: int = 120,
 ):
-
     if frame_to_use == 0:
         slice_to_search = slice(0, search_range)
     elif frame_to_use == -1:

@@ -1,9 +1,9 @@
 import logging
 
 from pydantic import BaseModel, ConfigDict
-from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import MediapipeTrackingParams, MediapipeModelInfo
 from skellytracker.trackers.base_tracker.base_tracking_params import BaseTrackingParams
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import MediapipeTrackingParams, MediapipeModelInfo
 
 from freemocap.data_layer.recording_models.recording_info_model import (
     RecordingInfoModel,

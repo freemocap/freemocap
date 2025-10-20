@@ -160,7 +160,8 @@ class ImportVideosWizard(QDialog):
 
         line_edit_layout.addWidget(QLabel("Brightness Contrast Threshold:"), alignment=Qt.AlignmentFlag.AlignLeft)
         line_edit_layout.addWidget(self.brightness_contrast_threshold_line_edit, alignment=Qt.AlignmentFlag.AlignLeft)
-        line_edit_layout.addWidget(QLabel("   Only applies to brightness contrast detection"), alignment=Qt.AlignmentFlag.AlignLeft)
+        line_edit_layout.addWidget(QLabel("   Only applies to brightness contrast detection"),
+                                   alignment=Qt.AlignmentFlag.AlignLeft)
         line_edit_layout.addStretch()
 
         extension_layout.addLayout(synch_button_layout)

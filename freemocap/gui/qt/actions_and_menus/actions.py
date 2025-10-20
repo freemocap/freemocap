@@ -1,13 +1,11 @@
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QAction, QDesktopServices
 
+from freemocap.gui.qt.actions_and_menus.sample_data_actions import make_download_data_action
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     DOCUMENTATION_WELCOME_URL,
 )
-
 from freemocap.utilities.download_sample_data import DATASETS
-from freemocap.gui.qt.actions_and_menus.sample_data_actions import make_download_data_action
-
 
 CREATE_NEW_RECORDING_ACTION_NAME = "New Recording"
 LOAD_MOST_RECENT_RECORDING_ACTION_NAME = "Load Most Recent Recording"

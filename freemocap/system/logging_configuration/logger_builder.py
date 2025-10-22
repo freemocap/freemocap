@@ -8,7 +8,8 @@ from .handlers.colored_console import ColoredConsoleHandler
 from .handlers.websocket_log_queue_handler import WebSocketQueueHandler
 from .log_format_string import LOG_FORMAT_STRING
 from .log_levels import LogLevels
-from ..paths_and_filenames.path_getters import get_log_file_path
+from ..default_paths import get_log_file_path
+
 
 class LoggerBuilder:
 

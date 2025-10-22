@@ -65,6 +65,7 @@ export class WebSocketConnection {
         this.setState(ConnectionState.CONNECTING);
 
         try {
+            console.log(`Connecting to WebSocket at ${this.config.url}`);
             this.ws = new WebSocket(this.config.url);
             this.ws.binaryType = 'arraybuffer';
 

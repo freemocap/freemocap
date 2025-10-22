@@ -37,7 +37,7 @@ export const ProcessingPipelinePanel: React.FC = () => {
                                 r: 2,
                             }}
                         >
-                            <LanIcon sx={{transform: 'scaleY(-1.3) scaleX(1.25)'}}/>
+                            <LanIcon sx={{transform: 'scaleY(-1.05) scaleX(1)'}}/>
 
                             <Typography sx={{pl: 1, flexGrow: 1}} variant="h6" component="div">
                                 Data Processing

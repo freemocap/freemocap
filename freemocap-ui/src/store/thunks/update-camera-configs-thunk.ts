@@ -1,18 +1,19 @@
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {
-    selectCameraById,
     selectConfigsForSelectedCameras,
     setError,
-    setLoading, updateCameraConfig, updateCameraConfigs
+    setLoading,
+    updateCameraConfigs
 } from "@/store/slices/cameras-slices/camerasSlice";
-import { CameraConfig } from "../slices/cameras-slices/camera-types";
-import {urlService} from "@/config/appUrlService";
+import {CameraConfig} from "../slices/cameras-slices/camera-types";
+import {useAppUrls} from "@/hooks/useAppUrls";
+
 export const updateCameraConfigsThunk = createAsyncThunk(
     'camera/update',
-    async (_, { dispatch, getState }) => {
+    async (_, {dispatch, getState}) => {
         const state = getState() as any;
         dispatch(setLoading(true));
-        const connectUrl = urlService.getHttpEndpointUrls().updateConfigs;
+        const updateConfigsUrl = useAppUrls.getHttpEndpointUrls().updateConfigs;
 
         const payload = {
             camera_configs: selectConfigsForSelectedCameras(state)
@@ -20,8 +21,8 @@ export const updateCameraConfigsThunk = createAsyncThunk(
 
         const requestBody = JSON.stringify(payload, null, 2);
         try {
-            console.log(`Updating Camera Configs at ${connectUrl} with request body keys:`, Object.keys(payload));
-            const response = await fetch(connectUrl, {
+            console.log(`Updating Camera Configs at ${updateConfigsUrl} with request body keys:`, Object.keys(payload));
+            const response = await fetch(updateConfigsUrl, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

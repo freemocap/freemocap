@@ -5,19 +5,22 @@ import {TreeItem} from "@mui/x-tree-view/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import VideocamIcon from "@mui/icons-material/Videocam";
-import {useAppDispatch, useAppSelector} from "@/store/AppStateStore";
+import {useAppDispatch, useAppSelector} from "@/store";
 import {
     StartStopRecordingButton
 } from "@/components/recording-info-panel/recording-subcomponents/StartStopRecordingButton";
-import {startRecording, stopRecording,} from "@/store/thunks/start-stop-recording-thunks";
-import {setRecordingInfo} from "@/store/slices/recordingInfoSlice";
+// Updated imports - using the recording thunks from the store barrel export
+import {startRecording, stopRecording, recordingInfoUpdated} from "@/store";
 import {RecordingPathTreeItem} from "@/components/recording-info-panel/RecordingPathTreeItem";
+import {electronIpc, useElectronIPC} from "@/services/electron-ipc/electron-ipc";
+import {electronIpcClient} from "@/services";
 
 export const RecordingInfoPanel: React.FC = () => {
     const theme = useTheme();
     const dispatch = useAppDispatch();
+    // Updated selector to match the store structure
     const recordingInfo = useAppSelector(
-        (state) => state.recordingStatus.currentRecordingInfo
+        (state) => state.recording
     );
 
     // Local UI state
@@ -33,19 +36,22 @@ export const RecordingInfoPanel: React.FC = () => {
     const [baseName, setBaseName] = useState("recording");
     const [customSubfolderName, setCustomSubfolderName] = useState("");
     const [recordingTag, setRecordingTag] = useState("");
+    const {isElectron, api} = useElectronIPC();
 
     // replace ~ with user's home directory
     useEffect(() => {
-        if (recordingInfo?.recordingDirectory?.startsWith("~")) {
-            window.electronAPI.getHomeDirectory().then((homePath: string) => {
+        if (recordingInfo?.recordingDirectory?.startsWith("~") && isElectron && api) {
+            api.fileSystem.getHomeDirectory.query().then((homePath: string) => {
                 const updatedDirectory = recordingInfo.recordingDirectory.replace(
                     "~",
                     homePath
                 );
-                dispatch(setRecordingInfo({recordingDirectory: updatedDirectory}));
+                dispatch(recordingInfoUpdated({recordingDirectory: updatedDirectory}));
+            }).catch((error: any) => {
+                console.error("Failed to get home directory:", error);
             });
         }
-    }, [recordingInfo, dispatch]);
+    }, [recordingInfo.recordingDirectory, isElectron, api, dispatch]);
 
     // Handle countdown timer
     useEffect(() => {
@@ -84,18 +90,18 @@ export const RecordingInfoPanel: React.FC = () => {
         });
 
         // Build the timestamp string in a filename-friendly format
-        const timestamp = `${partMap.year}-${partMap.month}-${partMap.day}_${
+        return `${partMap.year}-${partMap.month}-${partMap.day}_${
             partMap.hour
         }-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(
             ":",
             ""
         )}`;
-
-        return timestamp;
     };
+
     const handleRecordingTagChange = (tag: string) => {
         setRecordingTag(tag);
     };
+
     const buildRecordingName = (): string => {
         const parts: string[] = [];
 
@@ -163,7 +169,8 @@ export const RecordingInfoPanel: React.FC = () => {
                 color: "text.primary",
                 backgroundColor: theme.palette.primary.main,
                 borderRadius: 1,
-                mb: 2,
+                mx: 1,
+                my: 0.5,
             }}
         >
             <SimpleTreeView
@@ -172,7 +179,17 @@ export const RecordingInfoPanel: React.FC = () => {
                     collapseIcon: ExpandMoreIcon,
                     expandIcon: ChevronRightIcon,
                 }}
-                sx={{flexGrow: 1}}
+                sx={{
+                    flexGrow: 1,
+                    '& .MuiTreeItem-content': {
+                        padding: '2px 4px',
+                        margin: '1px 0',
+                    },
+                    '& .MuiTreeItem-label': {
+                        fontSize: 13,
+                        padding: '1px 0',
+                    },
+                }}
             >
                 <TreeItem
                     itemId="recording-main"
@@ -181,29 +198,23 @@ export const RecordingInfoPanel: React.FC = () => {
                             sx={{
                                 display: "flex",
                                 alignItems: "center",
-                                // justifyContent: "space-between",
                                 width: "100%",
-                                r: 2,
+                                py: 0.25,
+
                             }}
                         >
-                            <VideocamIcon/>
-                            <Typography sx={{pl: 1, flexGrow: 1}} variant="h6" component="div">
-                                Record Videos
+                            <VideocamIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                            <Typography sx={{ flexGrow: 1, fontSize: 13, fontWeight: 500 }}>
+                                Record
                             </Typography>
 
-
-                            <Box sx={{display: "flex", flexGrow:1, pl: 2, alignItems: "left"}}>
-                                <StartStopRecordingButton
-                                    isRecording={recordingInfo.isRecording}
-                                    countdown={countdown}
-                                    onClick={handleRecordButtonClick}
-                                />
-                            </Box>
-
-
+                            <StartStopRecordingButton
+                                isRecording={recordingInfo.isRecording}
+                                countdown={countdown}
+                                onClick={handleRecordButtonClick}
+                            />
                         </Box>
                     }
-
                 >
                     <RecordingPathTreeItem
                         recordingDirectory={recordingInfo.recordingDirectory}

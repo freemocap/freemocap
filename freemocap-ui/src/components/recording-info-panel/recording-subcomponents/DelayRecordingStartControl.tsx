@@ -9,11 +9,11 @@ interface DelayStartControlProps {
 }
 
 export const DelayRecordingStartControl: React.FC<DelayStartControlProps> = ({
-    useDelay,
-    delaySeconds,
-    onDelayToggle,
-    onDelayChange
-}) => {
+                                                                                 useDelay,
+                                                                                 delaySeconds,
+                                                                                 onDelayToggle,
+                                                                                 onDelayChange
+                                                                             }) => {
     const theme = useTheme();
     return (
         <Box display="flex" alignItems="center" gap={2}>

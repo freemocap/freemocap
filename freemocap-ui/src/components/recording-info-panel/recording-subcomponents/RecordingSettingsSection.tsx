@@ -17,19 +17,19 @@ interface RecordingSettingsProps {
 }
 
 export const RecordingSettingsSection: React.FC<RecordingSettingsProps> = ({
-    useTimestamp,
-    baseName,
-    useIncrement,
-    currentIncrement,
-    createSubfolder,
-    customSubfolderName,
-    onUseTimestampChange,
-    onBaseNameChange,
-    onUseIncrementChange,
-    onIncrementChange,
-    onCreateSubfolderChange,
-    onCustomSubfolderNameChange,
-}) => {
+                                                                               useTimestamp,
+                                                                               baseName,
+                                                                               useIncrement,
+                                                                               currentIncrement,
+                                                                               createSubfolder,
+                                                                               customSubfolderName,
+                                                                               onUseTimestampChange,
+                                                                               onBaseNameChange,
+                                                                               onUseIncrementChange,
+                                                                               onIncrementChange,
+                                                                               onCreateSubfolderChange,
+                                                                               onCustomSubfolderNameChange,
+                                                                           }) => {
     const theme = useTheme();
 
     return (
@@ -41,7 +41,7 @@ export const RecordingSettingsSection: React.FC<RecordingSettingsProps> = ({
                 : 'rgba(0, 0, 0, 0.04)',
             borderRadius: 1
         }}>
-            <Typography variant="subtitle1" sx={{ mb: 2 }}>Recording Settings</Typography>
+            <Typography variant="subtitle1" sx={{mb: 2}}>Recording Settings</Typography>
 
             <Grid container spacing={2} alignItems="center">
                 {/* Timestamp & Base name row */}
@@ -49,8 +49,8 @@ export const RecordingSettingsSection: React.FC<RecordingSettingsProps> = ({
                     <FormControlLabel
                         control={
                             <Checkbox
-                            color="primary"
-                            checked={useTimestamp}
+                                color="primary"
+                                checked={useTimestamp}
                                 onChange={(e) => onUseTimestampChange(e.target.checked)}
                             />
                         }
@@ -113,7 +113,7 @@ export const RecordingSettingsSection: React.FC<RecordingSettingsProps> = ({
                         value={currentIncrement}
                         onChange={(e) => onIncrementChange(parseInt(e.target.value) || 1)}
                         disabled={!useIncrement}
-                        inputProps={{ min: 1, step: 1 }}
+                        inputProps={{min: 1, step: 1}}
                         size="small"
                         fullWidth
                     />

@@ -6,11 +6,11 @@ import {
     updateCameraConfigs
 } from "@/store/slices/cameras-slices/camerasSlice";
 import {CameraConfig} from "@/store/slices/cameras-slices/camera-types";
-import {urlService} from "@/config/appUrlService";
+import {useAppUrls} from "@/hooks/useAppUrls";
 
 export const connectToCameras = createAsyncThunk(
     'cameras/connect',
-    async (_, { dispatch, getState }) => {
+    async (_, {dispatch, getState}) => {
         const state = getState() as any;
         const cameraConfigs = selectConfigsForSelectedCameras(state);
 
@@ -21,7 +21,8 @@ export const connectToCameras = createAsyncThunk(
         }
 
         dispatch(setLoading(true));
-        const connectUrl = urlService.getHttpEndpointUrls().createGroup;
+
+        const connectUrl = useAppUrls.getHttpEndpointUrls().createGroup;
 
         const payload = {
             camera_configs: cameraConfigs

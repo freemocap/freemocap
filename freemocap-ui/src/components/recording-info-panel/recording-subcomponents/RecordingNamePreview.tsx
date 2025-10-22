@@ -9,11 +9,11 @@ interface RecordingNamePreviewProps {
 }
 
 export const RecordingNamePreview: React.FC<RecordingNamePreviewProps> = ({
-    name,
-    tag,
-    isRecording,
-    onTagChange
-}) => {
+                                                                              name,
+                                                                              tag,
+                                                                              isRecording,
+                                                                              onTagChange
+                                                                          }) => {
     return (
         <>
             <Typography variant="body2" sx={{mb: 1}}>
@@ -24,6 +24,9 @@ export const RecordingNamePreview: React.FC<RecordingNamePreviewProps> = ({
                     label="Recording Tag"
                     value={tag}
                     onChange={(e) => onTagChange(e.target.value)}
+                    onKeyDown={(e) => {
+                        // Stop the TreeView from intercepting keyboard navigation
+                        e.stopPropagation();}}
                     size="small"
                     fullWidth
                     placeholder="Optional tag"

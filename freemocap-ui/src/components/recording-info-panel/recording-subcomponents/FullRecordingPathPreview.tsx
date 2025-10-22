@@ -1,10 +1,12 @@
-// skellycam-ui/src/components/recording-info-panel/recording-subcomponents/FullRecordingPathPreview.tsx
+// freemocap-ui/src/components/recording-info-panel/recording-subcomponents/FullRecordingPathPreview.tsx
 import React from 'react';
 import {Box, IconButton, Paper, Tooltip, Typography, useTheme} from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
 import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import {useElectronIPC} from "@/services";
+
 
 interface FullPathPreviewProps {
     directory: string;
@@ -18,23 +20,24 @@ export const FullRecordingPathPreview: React.FC<FullPathPreviewProps> = ({
                                                                              subfolder
                                                                          }) => {
     const theme = useTheme();
-
+    const { api } = useElectronIPC()
     const parts = [
         {icon: <FolderIcon/>, text: directory},
         ...(subfolder ? [{icon: <FolderIcon/>, text: subfolder}] : []),
         {icon: <FolderSpecialIcon/>, text: filename}
     ];
 
-    const fullPath = parts.map(p => p.text).join('/');
+    const fullPath: string = parts.map(p => p.text).join('/');
 
     // Get the directory path only (without the filename)
-    const directoryToOpen = subfolder
+    const directoryToOpen: string = subfolder
         ? `${directory}/${subfolder}`
         : directory;
 
+
     const handleOpenFolder = async () => {
         try {
-            await window.electronAPI.openFolder(directoryToOpen);
+            await api?.fileSystem.openFolder.mutate({ path: directoryToOpen });
         } catch (error) {
             console.error('Failed to open folder:', error);
         }

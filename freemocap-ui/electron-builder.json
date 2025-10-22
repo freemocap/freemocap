@@ -7,12 +7,14 @@
     "dist-electron",
     "dist",
     "freemocap_server.exe",
-    "../shared/logo/freemocap_skelly_logo.ico"
+    "../shared/freemocap-logo/freemocap-favicon.ico",
+    "../shared/freemocap-logo/freemocap-logo.png"
   ],
-  "icon": "../shared/logo/freemocap_skelly_logo.ico",
+  "icon": "../shared/freemocap-logo/freemocap-favicon.ico",
   "asar": true,
   "asarUnpack": [
-    "**/freemocap_server.exe"
+    "**/freemocap_server.exe",
+    "**/freemocap-logo.png"
   ],
   "mac": {
     "artifactName": "${productName}_${version}_installer.${ext}",
@@ -36,7 +38,7 @@
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false,
+    "deleteAppDataOnUninstall": false
   },
   "publish": {
     "provider": "generic",

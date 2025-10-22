@@ -1,7 +1,7 @@
-import {urlService} from "@/config/appUrlService";
+import {useAppUrls} from "@/hooks/useAppUrls";
 
 export const pauseUnpauseThunk = async () => {
-    const pauseUnpauseUrl = urlService.getHttpEndpointUrls().pauseUnpauseCameras;
+    const pauseUnpauseUrl = useAppUrls.getHttpEndpointUrls().pauseUnpauseCameras;
     const response = await fetch(pauseUnpauseUrl, {method: 'GET'});
 
     if (!response.ok) {

@@ -255,8 +255,9 @@ for (let idx = 0; idx < cameras.length; idx++) {
                 <div
                   key={idx}
                   className={clsx(
-                    "flex p-1 gap-1 flex-col video-tile camera-source size-4 br-2",
+                    "flex p-1 gap-1 flex-col video-tile camera-source size-4 br-2 pos-rel",
                     camera ? "bg-gray active-camera" : "bg-middark empty",
+                    cameraSettingsOpen[idx] && "selected-camera-feed",
                     `video-tile-${idx}`
                   )}
                 >

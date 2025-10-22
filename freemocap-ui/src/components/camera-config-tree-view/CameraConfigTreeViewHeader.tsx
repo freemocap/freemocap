@@ -112,7 +112,7 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
             </Typography>
 
             <Stack direction="row" spacing={1} sx={{mr: 2}}>
-                {/* Connect/Apply Button - Always visible, changes icon and behavior */}
+                {/* Connect/Apply Button */}
                 <Tooltip title={"Connect to selected cameras or update connected cameras"}>
                     <span>
                         <IconButton
@@ -130,7 +130,7 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
                                         scale: '1.6'
                                     }}
                                 />
-                            )
+
                         </IconButton>
                     </span>
                 </Tooltip>

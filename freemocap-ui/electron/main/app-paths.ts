@@ -49,12 +49,12 @@ export const APP_PATHS = {
     RENDERER_HTML: path.join(__dirname, "../../dist/index.html"),
     FREEMOCAP_ICON_PATH: path.resolve(
         __dirname,
-        "../../../shared/freemocap-logo/freemocap-favicon.ico"
+        "../../../shared/logo/freemocap-logo.ico"
     ),
         FREEMOCAP_LOGO_PNG_RESOURCES_PATH: path.join(getResourcesPath(), 'dist/freemocap-logo.png'),
     FREEMOCAP_LOGO_PNG_SHARED_PATH:path.resolve(
         __dirname,
-        "../../../shared/freemocap-logo/freemocap-logo.png"
+        "../../../shared/logo/freemocap-logo.png"
     ),
 
 };

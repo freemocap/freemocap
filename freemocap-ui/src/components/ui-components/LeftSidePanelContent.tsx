@@ -7,9 +7,11 @@ import ThemeToggle from "@/components/ui-components/ThemeToggle";
 import HomeIcon from '@mui/icons-material/Home';
 import {useLocation, useNavigate} from "react-router-dom";
 import VideocamIcon from '@mui/icons-material/Videocam';
+import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import {VideoFolderPanel} from "@/components/video-folder-panel/VideoFolderPanel";
 import {CameraConfigTreeView} from "@/components/camera-config-tree-view/CameraConfigTreeView";
 import {ServerConnectionStatus} from "@/components/ServerConnectionStatus";
+import {ProcessingPipelinePanel} from "@/components/processing-pipeline-panel/ProcessingPipelinePanel";
 
 // Extract reusable scrollbar styles
 const scrollbarStyles = {
@@ -93,6 +95,12 @@ export const LeftSidePanelContent = () => {
                         >
                             <HomeIcon sx={{ fontSize: 18 }} />
                         </IconButton>
+                        <IconButton
+                            color="inherit"
+                            onClick={() => navigate('/viewport3d')}
+                        >
+                            <DirectionsRunIcon/>
+                        </IconButton>
 
                         <IconButton
                             size="small"
@@ -133,6 +141,7 @@ export const LeftSidePanelContent = () => {
             }}>
                 <RecordingInfoPanel/>
                 <CameraConfigTreeView/>
+                <ProcessingPipelinePanel/>
             </Box>
         </Box>
     );

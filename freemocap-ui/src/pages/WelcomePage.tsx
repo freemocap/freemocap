@@ -4,7 +4,7 @@ import {useNavigate} from 'react-router-dom';
 import {useTheme} from '@mui/material/styles';
 import {Footer} from '@/components/ui-components/Footer';
 import {useElectronIPC} from "@/services";
-import {useServer} from "@/services/server/ServerContextProvider"; // Adjust import path as needed
+import {useServer} from "@/services/server/ServerContextProvider";
 
 const WelcomePage: React.FC = () => {
     const theme = useTheme();

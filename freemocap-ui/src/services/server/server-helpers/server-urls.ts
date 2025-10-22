@@ -13,7 +13,7 @@ class ServerUrls {
      * Get WebSocket base URL
      */
     getWebSocketUrl(): string {
-        return `ws://${this.host}:${this.port}/skellycam/websocket/connect`;
+        return `ws://${this.host}:${this.port}/websocket/connect`;
     }
     get endpoints() {
         const baseUrl = this.getHttpUrl();

@@ -2,7 +2,8 @@
   "name": "freemocap",
   "version": "2.0.0",
   "main": "dist-electron/main/index.js",
-  "description": "SkellyCam - the camera backend for the FreeMoCap software.",
+  "description": "FreeMocap - Free open source markerless motion capture for everyone.",
+  "homepage": "https://freemocap.org",
   "author": "Skelly FreeMocap <info@freemocap.org>",
   "license": "AGPL-3.0-or-later",
   "debug": {
@@ -13,8 +14,8 @@
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development vite",
-    "demo": "cross-env NODE_ENV=production vite build && old_electron .",
-    "build": "tsc && vite build && electron-builder",
+    "demo": "cross-env NODE_ENV=production vite build && electron .",
+    "build": "cross-env NODE_ENV=production && tsc && vite build && electron-builder",
     "preview": "vite preview",
     "pree2e": "vite build --mode=test",
     "e2e": "playwright test"

@@ -32,7 +32,7 @@ class PipelineManager:
 
 
 @dataclass
-class FreemocapApplication:
+class FreemocApp:
     global_kill_flag: multiprocessing.Value
     pipeline_shutdown_event: multiprocessing.Event
     skellycam_app: SkellycamApplication
@@ -67,19 +67,19 @@ class FreemocapApplication:
         self.skellycam_app.shutdown_skellycam() if self.skellycam_app else None
 
 
-FREEMOCAP_APP: FreemocapApplication | None = None
+FREEMOCAP_APP: FreemocApp | None = None
 
 
-def create_freemocap_app(global_kill_flag: multiprocessing.Value) -> FreemocapApplication:
+def create_freemocap_app(global_kill_flag: multiprocessing.Value) -> FreemocApp:
     global FREEMOCAP_APP
     if FREEMOCAP_APP is None:
-        FREEMOCAP_APP = FreemocapApplication.create(global_kill_flag=global_kill_flag)
+        FREEMOCAP_APP = FreemocApp.create(global_kill_flag=global_kill_flag)
     else:
         raise ValueError("FreemocapApplication already exists!")
     return FREEMOCAP_APP
 
 
-def get_freemocap_app() -> FreemocapApplication:
+def get_freemocap_app() -> FreemocApp:
     global FREEMOCAP_APP
     if FREEMOCAP_APP is None:
         raise ValueError("FreemocapApplication does not exist!")

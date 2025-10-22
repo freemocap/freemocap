@@ -20,6 +20,7 @@ class PipelineManager:
 
     def create_pipeline(self, camera_group:CameraGroup ) -> ProcessingPipeline:
         pipeline =  ProcessingPipeline.from_camera_group(camera_group=camera_group)
+        pipeline.start()
         self.pipelines[pipeline.id] = pipeline
         logger.info(f"Created pipeline with ID: {pipeline.id} for camera group ID: {camera_group.id}")
         return pipeline
@@ -40,7 +41,6 @@ class FreemocApp:
 
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value):
-
         return cls(global_kill_flag=global_kill_flag,
                    pipeline_shutdown_event=multiprocessing.Event(),
                    skellycam_app=create_skellycam_app(global_kill_flag=global_kill_flag),

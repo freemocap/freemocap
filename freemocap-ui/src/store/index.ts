@@ -10,3 +10,4 @@ export * from './slices/framerate';
 export * from './slices/log-records';
 export * from './slices/theme';
 export * from './slices/videos';
+export * from './slices/pipeline';

@@ -11,10 +11,10 @@ from typing import Hashable
 import numpy as np
 from numpydantic import NDArray, Shape
 from pydantic import BaseModel, ConfigDict
+from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemoryDTO, \
+    CameraGroupSharedMemoryManager
 from skellycam.core.ipc.shared_memory.frame_payload_shared_memory_ring_buffer import FramePayloadSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
-from skellycam.core.ipc.shared_memory.shared_memory_number import SharedMemoryNumber
-from skellycam.core.ipc.shared_memory.shared_memory_element import SharedMemoryElementDTO
 from skellycam.core.types.type_overloads import CameraIdString, WorkerType, WorkerStrategy, TopicSubscriptionQueue, \
     CameraGroupIdString
 from skellycam.utilities.wait_functions import wait_1ms
@@ -29,11 +29,6 @@ from freemocap.core.pubsub.pubsub_topics import SkellyTrackerConfigsMessage, Pro
 from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)
-
-
-class ReadTypes(str, Enum):
-    LATEST = auto()  # For realtime processing, i.e. drop frames to keep up to date
-    NEXT = auto()  # For offline processing, i.e. make sure to process every frame
 
 
 class BasePipelineData(BaseModel, ABC):
@@ -195,7 +190,7 @@ class AggregationNode(ABC):
     def create(cls,
                camera_group_id: CameraGroupIdString,
                camera_ids: list[CameraIdString],
-               latest_multiframe_number_shm: SharedMemoryNumber,
+               camera_group_shm_dto:CameraGroupSharedMemoryDTO,
                ipc: PipelineIPC,
                worker_strategy: WorkerStrategy):
         shutdown_self_flag = multiprocessing.Value('b', False)
@@ -211,7 +206,7 @@ class AggregationNode(ABC):
                                                                 TopicTypes.CAMERA_NODE_OUTPUT),
                                                             skellytracker_configs_subscription=ipc.pubsub.get_subscription(
                                                                 TopicTypes.SKELLY_TRACKER_CONFIGS),
-                                                            latest_multiframe_number_shm_dto=latest_multiframe_number_shm.to_dto(),
+                                                            camera_group_shm_dto=camera_group_shm_dto,
                                                             ),
                                                 daemon=True
                                                 ),
@@ -224,7 +219,7 @@ class AggregationNode(ABC):
              shutdown_self_flag: multiprocessing.Value,
              camera_node_subscription: TopicSubscriptionQueue,
              skellytracker_configs_subscription: TopicSubscriptionQueue,
-             latest_multiframe_number_shm_dto: SharedMemoryElementDTO
+             camera_group_shm_dto: CameraGroupSharedMemoryDTO
              ):
         if multiprocessing.parent_process():
             # Configure logging if multiprocessing (i.e. if there is a parent process)
@@ -233,15 +228,16 @@ class AggregationNode(ABC):
             configure_logging(LOG_LEVEL, ws_queue=ipc.pubsub.topics[TopicTypes.LOGS].publication)
         logger.debug(f"Starting aggregation process for camera group {camera_group_id}")
         camera_node_outputs: dict[TrackerTypeString, dict[CameraIdString, CameraNodeOutputMessage | None] | None] = {}
-        latest_multiframe_number_shm = SharedMemoryNumber.recreate(dto=latest_multiframe_number_shm_dto,
+        camera_group_shm  = CameraGroupSharedMemoryManager.recreate(shm_dto=camera_group_shm_dto,
                                                                    read_only=True)
         latest_requested_frame: int = -1
         while ipc.should_continue and not shutdown_self_flag.value:
             wait_1ms()
-            if latest_requested_frame < 0 or any(
+            if camera_group_shm.latest_multiframe_number < 0 or any(
                     [tracker_results is None for tracker_results in camera_node_outputs.values()]):
                 ipc.pubsub.topics[TopicTypes.PROCESS_FRAME_NUMBER].publish(
-                    ProcessFrameNumberMessage(frame_number=latest_multiframe_number_shm.value))
+                    ProcessFrameNumberMessage(frame_number=camera_group_shm.latest_multiframe_number))
+                latest_requested_frame = camera_group_shm.latest_multiframe_number
             # Check for Camera Node Output
             if not camera_node_subscription.empty():
                 camera_node_output_message = camera_node_subscription.get()
@@ -257,6 +253,8 @@ class AggregationNode(ABC):
                 if not camera_id in camera_ids:
                     raise ValueError(
                         f"Camera ID {camera_id} not in camera IDs {camera_ids}")
+                if not tracker_type in camera_node_outputs.keys() or camera_node_outputs[tracker_type] is None:
+                    camera_node_outputs[tracker_type] = {camera_id: None for camera_id in camera_ids}
                 camera_node_outputs[tracker_type][camera_id] = camera_node_output_message
 
             # Check if ready to process a frame output
@@ -298,7 +296,8 @@ def handle_aggregration_calculations(tracker_type: TrackerTypeString,
     if len(frame_number_set) != 1:
         logger.warning(f"Frame numbers from tracker results do not match - got {frame_number_set}")
     frame_number = frame_number_set.pop()
-    points3d = {}  # Do the aggregation logic here, e.g. averaging points from different cameras
+    points3d = {}  # Do the aggregation logic here
+    logger.info(f"Pretend we're aggregating 3D points for tracker {tracker_type} at frame {frame_number}")
     return AggregationNodeOutputMessage(
         frame_number=frame_number,
         tracked_points3d=points3d)
@@ -341,6 +340,7 @@ class ProcessingPipeline:
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
                                  )
         camera_group_shm_dto = camera_group.shm.to_dto()
+        process_this_frame_number = multiprocessing.Value('q', -1)
         camera_nodes = {camera_id: CameraNode.create(camera_id=camera_id,
                                                      camera_shm_dto=camera_group_shm_dto.camera_shm_dtos[camera_id],
                                                      worker_strategy=camera_node_strategy,
@@ -348,7 +348,7 @@ class ProcessingPipeline:
                         for camera_id, config in camera_group.configs.items()}
         aggregation_process = AggregationNode.create(camera_group_id=camera_group.id,
                                                      camera_ids=list(camera_nodes.keys()),
-                                                     latest_multiframe_number_shm=camera_group.shm.latest_multiframe_number,
+                                                     camera_group_shm_dto=camera_group_shm_dto,
                                                      ipc=ipc,
                                                      worker_strategy=aggregation_node_strategy,
                                                      )
@@ -358,63 +358,6 @@ class ProcessingPipeline:
                    ipc=ipc,
                    id=str(uuid.uuid4())[:6]
                    )
-
-    #
-    # async def process_multiframe_payload(self, multiframe_payload: MultiFramePayload, annotate_images: bool = True) -> \
-    #         tuple[MultiFramePayload, BasePipelineOutputData]:
-    #     self.intake_data(multiframe_payload)
-    #     pipeline_output = await self.get_next_data_async()
-    #     if not multiframe_payload.multi_frame_number == pipeline_output.multi_frame_number:
-    #         raise ValueError(
-    #             f"Frame number mismatch: {multiframe_payload.multi_frame_number} != {pipeline_output.multi_frame_number}")
-    #     annotated_payload = self.annotate_images(multiframe_payload, pipeline_output)
-    #     return annotated_payload, pipeline_output
-    #
-    # def intake_data(self, multiframe_payload: MultiFramePayload):
-    #     if not self.ready_to_intake:
-    #         raise ValueError("Pipeline not ready to intake data!")
-    #     if not all(camera_id in self.camera_nodes.keys() for camera_id in multiframe_payload.camera_ids):
-    #         raise ValueError("Data provided for camera IDs not in camera processes!")
-    #     for camera_id, frame_payload in multiframe_payload.frames.items():
-    #         if not frame_payload.frame_number == multiframe_payload.multi_frame_number:
-    #             raise ValueError(
-    #                 f"Frame number mismatch: {frame_payload.frame_number} != {multiframe_payload.multi_frame_number}")
-    #         self.camera_nodes[camera_id].intake_data(frame_payload)
-    #
-    # def get_next_data(self) -> BasePipelineOutputData | None:
-    #     if self.aggregation_node.output_queue.empty():
-    #         return None
-    #     data = self.aggregation_node.output_queue.get()
-    #     return data
-    #
-    # async def get_next_data_async(self) -> BasePipelineOutputData:
-    #     while self.aggregation_node.output_queue.empty():
-    #         await asyncio.sleep(0.001)
-    #     data = self.aggregation_node.output_queue.get()
-    #     return data
-    #
-    # def get_latest_data(self) -> BasePipelineOutputData | None:
-    #     while not self.aggregation_node.output_queue.empty():
-    #         self.latest_pipeline_data = self.aggregation_node.output_queue.get()
-    #
-    #     return self.latest_pipeline_data
-    #
-    # def get_output_for_frame(self, target_frame_number: int) -> BasePipelineOutputData | None:
-    #     while not self.aggregation_node.output_queue.empty():
-    #         self.latest_pipeline_data: BasePipelineOutputData = self.aggregation_node.output_queue.get()
-    #         print(f"Frame Annotator got data for frame {self.latest_pipeline_data.multi_frame_number}")
-    #         if self.latest_pipeline_data.multi_frame_number > target_frame_number:
-    #             raise ValueError(
-    #                 f"We missed the target frame number {target_frame_number} - current output is for frame {self.latest_pipeline_data.multi_frame_number}")
-    #
-    #         if self.latest_pipeline_data.multi_frame_number == target_frame_number:
-    #             return self.latest_pipeline_data
-    #
-    # def annotate_images(self, multiframe_payload: MultiFramePayload,
-    #                     pipeline_output: BasePipelineOutputData | None) -> MultiFramePayload:
-    #     if pipeline_output is None:
-    #         return multiframe_payload
-    #     return self.annotator.annotate_images(multiframe_payload, pipeline_output)
 
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__} with camera processes {list(self.camera_nodes.keys())}...")

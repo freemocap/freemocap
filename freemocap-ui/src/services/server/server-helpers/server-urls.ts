@@ -34,6 +34,10 @@ class ServerUrls {
             startRecording: `${baseUrl}/skellycam/camera/group/all/record/start`,
             stopRecording: `${baseUrl}/skellycam/camera/group/all/record/stop`,
 
+            // Pipeline endpoints
+            pipelineConnect: `${baseUrl}/freemocap/pipeline/connect`,
+            pipelineDisconnect: `${baseUrl}/freemocap/pipeline/disconnect`,
+
             // WebSocket
             websocket: this.getWebSocketUrl(),
         };

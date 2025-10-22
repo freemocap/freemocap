@@ -32,7 +32,7 @@ export const ROTATION_LABELS: Record<RotationValue, string> = {
 };
 
 // ==================== Camera Configuration ====================
-export const CameraConfigSchema = z.object({
+const CameraConfigSchema = z.object({
     // Identity
     camera_id: z.string(),
     camera_index: z.number(),

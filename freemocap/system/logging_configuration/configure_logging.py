@@ -2,9 +2,9 @@ import logging
 import multiprocessing
 from typing import Optional
 
-from skellycam.system.logging_configuration.handlers.websocket_log_queue_handler import create_websocket_log_queue
-from skellycam.system.logging_configuration.log_levels import LogLevels
-from skellycam.system.logging_configuration.package_log_quieters import suppress_noisy_package_logs
+from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import create_websocket_log_queue
+from freemocap.system.logging_configuration.log_levels import LogLevels
+from freemocap.system.logging_configuration.package_log_quieters import suppress_noisy_package_logs
 from .log_test_messages import log_test_messages
 from .logger_builder import LoggerBuilder
 

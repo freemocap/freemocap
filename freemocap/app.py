@@ -24,6 +24,7 @@ from freemocap.api.middleware.cors import cors
 from freemocap.api.routers import SKELLYCAM_ROUTERS, FREEMOCAP_ROUTERS
 from freemocap.api.server_constants import APP_URL
 from freemocap.api.websocket.websocket_connect import websocket_router
+from freemocap.freemocap_app.freemocap_application import create_freemocap_app
 from freemocap.system.default_paths import (
     get_default_freemocap_base_folder_path, FREEMOCAP_FAVICON_ICO_PATH
 )
@@ -58,7 +59,7 @@ async def app_lifespan(
     base_path = Path(get_default_freemocap_base_folder_path())
     base_path.mkdir(parents=True, exist_ok=True)
     logger.info(f"Base folder: {base_path}")
-
+    create_freemocap_app(global_kill_flag=app.state.global_kill_flag)
     # Start background task to monitor kill flag
     monitor_task = asyncio.create_task(monitor_kill_flag(app=app))
 

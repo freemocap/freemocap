@@ -75,12 +75,12 @@ def create_freemocap_app(global_kill_flag: multiprocessing.Value) -> FreemocApp:
     if FREEMOCAP_APP is None:
         FREEMOCAP_APP = FreemocApp.create(global_kill_flag=global_kill_flag)
     else:
-        raise ValueError("FreemocapApplication already exists!")
+        raise ValueError("FreemocApp already exists!")
     return FREEMOCAP_APP
 
 
 def get_freemocap_app() -> FreemocApp:
     global FREEMOCAP_APP
     if FREEMOCAP_APP is None:
-        raise ValueError("FreemocapApplication does not exist!")
+        raise ValueError("FreemocApp does not exist!")
     return FREEMOCAP_APP

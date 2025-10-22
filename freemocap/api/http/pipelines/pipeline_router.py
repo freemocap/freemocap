@@ -43,7 +43,7 @@ def pipeline_connect_post_endpoint(
             cg = get_freemocap_app().skellycam_app.camera_group_manager.find_camera_group_by_camera_ids(
                 camera_ids=request.camera_ids)
         if not cg:
-            raise HTTPException(status_code=400,  # ← Fixed: changed from `return` to `raise`
+            raise HTTPException(status_code=400,
                                 detail=f"No camera group found with specified camera IDs: {request.camera_ids}. Create a camera group first.")
         else:
             camera_group_id, pipeline_id = get_freemocap_app().connect_pipeline(camera_group=cg)

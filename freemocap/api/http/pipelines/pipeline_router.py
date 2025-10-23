@@ -47,7 +47,7 @@ def pipeline_connect_post_endpoint(
             raise HTTPException(status_code=400,
                                 detail=f"No camera group found with specified camera IDs: {request.camera_ids}. Create a camera group first.")
         else:
-            pipeline_config = request.pipeline_config or PipelineConfig.create(camera_configs=cg.configs)
+            pipeline_config = request.pipeline_config or PipelineConfig.from_camera_configs(camera_configs=cg.configs)
             camera_group_id, pipeline_id = get_freemocap_app().connect_pipeline(camera_group=cg,
                                                                                 pipeline_config=pipeline_config)
             response = PipelineCreateResponse(camera_group_id=camera_group_id,

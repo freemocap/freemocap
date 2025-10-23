@@ -19,7 +19,9 @@ class PipelineManager:
     global_kill_flag: multiprocessing.Value
     pipelines: dict[PipelineIdString, ProcessingPipeline] = field(default_factory=dict)
 
-    def create_pipeline(self, camera_group:CameraGroup, pipeline_config:PipelineConfig ) -> ProcessingPipeline:
+    def create_pipeline(self,
+                        camera_group:CameraGroup,
+                        pipeline_config:PipelineConfig ) -> ProcessingPipeline:
         pipeline =  ProcessingPipeline.from_camera_group(camera_group=camera_group,
                                                         pipeline_config=pipeline_config)
         pipeline.start()
@@ -53,9 +55,9 @@ class FreemocApp:
     def should_continue(self) -> bool:
         return not self.global_kill_flag.value
 
-    def connect_pipeline(self, camera_group: CameraGroup, pipeline_config:PipelineConfig) -> tuple[CameraGroupIdString, PipelineIdString]:
-        if len(self.skellycam_app.camera_group_manager.camera_groups) == 0:
-            raise ValueError("No camera groups available to create a processing pipeline! Start a camera group first.")
+    def connect_pipeline(self,
+                         camera_group: CameraGroup,
+                         pipeline_config:PipelineConfig) -> tuple[CameraGroupIdString, PipelineIdString]:
         pipeline = self.pipeline_manager.create_pipeline(camera_group=camera_group, pipeline_config=pipeline_config)
         return camera_group.id, pipeline.id
 

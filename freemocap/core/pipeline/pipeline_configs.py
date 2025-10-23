@@ -1,56 +1,76 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from skellycam.core.camera.config.camera_config import CameraConfigs, CameraConfig
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
 
-
-class CalibrationPipelineCameraNodeConfig(BaseModel):
+class CameraNodeTaskConfig(BaseModel):
     camera_config: CameraConfig
+
+class AggregationTaskConfig(BaseModel):
+    camera_configs: CameraConfigs
+
+class CalibrationCameraNodeConfig(CameraNodeTaskConfig):
     tracker_config: CharucoTrackerConfig
 
-
-class CalibrationAggregationNodeConfig(BaseModel):
+class CalibrationAggregationNodeConfig(AggregationTaskConfig):
     pass
 
-
-
-class CameraNodeConfig(BaseModel):
+class MocapCameraNodeConfig(CameraNodeTaskConfig):
     pass
 
+class MocapAggregationNodeConfig(AggregationTaskConfig):
+    pass
 
 class AggregationNodeConfig(BaseModel):
-    pass
+    camera_configs: CameraConfigs
+    calibration_aggregation_node_config: CalibrationAggregationNodeConfig
+    mocap_aggregation_node_config: MocapAggregationNodeConfig
 
+class CameraNodeConfig(BaseModel):
+    camera_config: CameraConfig
+    calibration_camera_node_config: CalibrationCameraNodeConfig
+    mocap_camera_node_config: MocapCameraNodeConfig
 
-class PipelineTaskConfig(BaseModel):
+class PipelineConfig(BaseModel):
     camera_node_configs: dict[CameraIdString, CameraNodeConfig]
     aggregation_node_config: AggregationNodeConfig
 
-
-class CalibrationPipelineTaskConfig(PipelineTaskConfig):
-    camera_node_configs: dict[CameraIdString, CalibrationPipelineCameraNodeConfig]
-    aggregation_node_config: CalibrationAggregationNodeConfig
+    @model_validator(mode="after")
+    def validate(self   ):
+        if set(self.camera_node_configs.keys()) != set(self.aggregation_node_config.camera_configs.keys()):
+            raise ValueError("Camera IDs in camera_node_configs and aggregation_node_config.camera_configs must match")
+        return self
 
     @classmethod
-    def create(cls,
-               camera_configs: CameraConfigs,
-               tracker_config: CharucoTrackerConfig):
-        return cls(camera_node_configs={camera_id: CalibrationPipelineCameraNodeConfig(camera_config=camera_config,
-                                                                                       tracker_config=tracker_config)
-                                        for camera_id, camera_config in camera_configs.items()},
-                   aggregation_node_config=CalibrationAggregationNodeConfig())
-
-
-class PipelineConfig(BaseModel):
-    calibration_task_config: CalibrationPipelineTaskConfig
-    mocap_task_config: PipelineTaskConfig | None = None
-    @classmethod
-    def create(cls,
-               camera_configs:CameraConfigs,
-               charuco_tracker_config: CharucoTrackerConfig|None = None):
-        return cls(
-            calibration_task_config=CalibrationPipelineTaskConfig.create(
-                camera_configs=camera_configs,
-                tracker_config=charuco_tracker_config or CharucoTrackerConfig()
+    def from_camera_configs(cls, *, camera_configs: CameraConfigs) -> "PipelineConfig":
+        camera_node_configs = {}
+        for cam_id, cam_config in camera_configs.items():
+            calibration_camera_node_config = CalibrationCameraNodeConfig(
+                camera_config=cam_config,
+                tracker_config=CharucoTrackerConfig()
             )
+            mocap_camera_node_config = MocapCameraNodeConfig(
+                camera_config=cam_config
+            )
+            camera_node_configs[cam_id] = CameraNodeConfig(
+                camera_config=cam_config,
+                calibration_camera_node_config=calibration_camera_node_config,
+                mocap_camera_node_config=mocap_camera_node_config
+            )
+        calibration_aggregation_node_config = CalibrationAggregationNodeConfig(
+            camera_configs=camera_configs
         )
+        mocap_aggregation_node_config = MocapAggregationNodeConfig(
+            camera_configs=camera_configs
+        )
+        aggregation_node_config = AggregationNodeConfig(
+            camera_configs=camera_configs,
+            calibration_aggregation_node_config=calibration_aggregation_node_config,
+            mocap_aggregation_node_config=mocap_aggregation_node_config
+        )
+        return cls(
+            camera_node_configs=camera_node_configs,
+            aggregation_node_config=aggregation_node_config
+        )
+
+

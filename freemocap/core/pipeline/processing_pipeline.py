@@ -27,13 +27,14 @@ class BasePipelineData(BaseModel, ABC):
 
 
 class Point3d(BaseModel):
-    x:float
-    y:float
-    z:float
+    x: float
+    y: float
+    z: float
+
 
 class BaseAggregationLayerOutputData(BasePipelineData):
     multi_frame_number: int
-    points3d: dict[Hashable,Point3d]
+    points3d: dict[Hashable, Point3d]
 
 
 class BaseCameraNodeOutputData(BasePipelineData):
@@ -55,7 +56,6 @@ class BasePipelineOutputData(BasePipelineData):
         return frame_numbers[0]
 
 
-
 @dataclass
 class ProcessingPipeline:
     id: PipelineIdString
@@ -75,7 +75,6 @@ class ProcessingPipeline:
                           pipeline_config: PipelineConfig,
                           camera_node_strategy: WorkerStrategy = WorkerStrategy.PROCESS,
                           aggregation_node_strategy: WorkerStrategy = WorkerStrategy.PROCESS,
-
                           ):
 
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
@@ -84,17 +83,18 @@ class ProcessingPipeline:
         camera_nodes = {camera_id: CameraNode.create(camera_id=camera_id,
                                                      camera_shm_dto=camera_group_shm_dto.camera_shm_dtos[camera_id],
                                                      worker_strategy=camera_node_strategy,
+                                                     config=pipeline_config.camera_node_configs[camera_id],
                                                      ipc=ipc)
                         for camera_id, config in camera_group.configs.items()}
-        aggregation_process = AggregationNode.create(camera_group_id=camera_group.id,
-                                                     camera_ids=list(camera_nodes.keys()),
-                                                     camera_group_shm_dto=camera_group_shm_dto,
-                                                     ipc=ipc,
-                                                     worker_strategy=aggregation_node_strategy,
-                                                     )
+        aggregation_node = AggregationNode.create(camera_group_id=camera_group.id,
+                                                  config=pipeline_config.aggregation_node_config,
+                                                  camera_group_shm_dto=camera_group_shm_dto,
+                                                  ipc=ipc,
+                                                  worker_strategy=aggregation_node_strategy,
+                                                  )
 
         return cls(camera_nodes=camera_nodes,
-                   aggregation_node=aggregation_process,
+                   aggregation_node=aggregation_node,
                    ipc=ipc,
                    id=str(uuid.uuid4())[:6],
                    config=pipeline_config

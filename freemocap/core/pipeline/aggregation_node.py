@@ -9,6 +9,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, WorkerType,
 from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackerNameString
 
+from freemocap.core.pipeline.pipeline_configs import AggregationNodeConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigTopic, ProcessFrameNumberTopic, \
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic
@@ -16,25 +17,23 @@ from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, Pipelin
 logger = multiprocessing.get_logger()
 
 @dataclass
-class AggregationNode(ABC):
-    camera_group_id: CameraGroupIdString
+class AggregationNode:
     shutdown_self_flag: multiprocessing.Value
     worker: WorkerType
 
     @classmethod
     def create(cls,
-               camera_group_id: CameraGroupIdString,
-               camera_ids: list[CameraIdString],
+               config:AggregationNodeConfig,
+                camera_group_id: CameraGroupIdString,
                camera_group_shm_dto: CameraGroupSharedMemoryDTO,
                ipc: PipelineIPC,
                worker_strategy: WorkerStrategy):
         shutdown_self_flag = multiprocessing.Value('b', False)
-        return cls(camera_group_id=camera_group_id,
-                   shutdown_self_flag=shutdown_self_flag,
-                   worker=worker_strategy.value(target=cls._run,
+        return cls(shutdown_self_flag=shutdown_self_flag,
+                   worker=multiprocessing.Process(target=cls._run,
                                                 name=f"CameraGroup-{camera_group_id}-AggregationNode",
-                                                kwargs=dict(camera_group_id=camera_group_id,
-                                                            camera_ids=camera_ids,
+                                                kwargs=dict(config=config,
+                                                            camera_group_id=camera_group_id,
                                                             ipc=ipc,
                                                             shutdown_self_flag=shutdown_self_flag,
                                                             camera_node_subscription=ipc.pubsub.topics[CameraNodeOutputTopic].get_subscription(),
@@ -46,8 +45,8 @@ class AggregationNode(ABC):
                    )
 
     @staticmethod
-    def _run(camera_group_id: CameraGroupIdString,
-             camera_ids: list[CameraIdString],
+    def _run(config:AggregationNodeConfig,
+             camera_group_id: CameraGroupIdString,
              ipc: PipelineIPC,
              shutdown_self_flag: multiprocessing.Value,
              camera_node_subscription: TopicSubscriptionQueue,
@@ -68,6 +67,7 @@ class AggregationNode(ABC):
             wait_1ms()
             if camera_group_shm.latest_multiframe_number < 0 or any(
                     [tracker_results is None for tracker_results in camera_node_outputs.values()]):
+                logger.info(f'Requesting frame {camera_group_shm.latest_multiframe_number} for aggregation')
                 ipc.pubsub.topics[ProcessFrameNumberTopic].publish(
                     ProcessFrameNumberMessage(frame_number=camera_group_shm.latest_multiframe_number))
                 latest_requested_frame = camera_group_shm.latest_multiframe_number
@@ -107,11 +107,11 @@ class AggregationNode(ABC):
                         f"Published aggregation output for frame {latest_requested_frame} with points3d: {aggregation_output.tracked_points3d.keys()}")
 
     def start(self):
-        logger.debug(f"Starting {self.__class__.__name__}")
+        logger.debug(f"Starting AggregationNode worker")
         self.worker.start()
 
     def stop(self):
-        logger.debug(f"Stopping {self.__class__.__name__}")
+        logger.debug(f"Stopping AggregationNode worker")
         self.shutdown_self_flag.value = True
         self.worker.join()
 

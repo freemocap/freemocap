@@ -7,7 +7,8 @@ from skellycam.core.types.type_overloads import CameraGroupIdString
 from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_skellycam_app
 
 from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.core.pipeline.processing_pipeline import ProcessingPipeline, PipelineConfig
+from freemocap.core.pipeline.processing_pipeline import ProcessingPipeline
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +53,10 @@ class FreemocApp:
     def should_continue(self) -> bool:
         return not self.global_kill_flag.value
 
-    def connect_pipeline(self, camera_group: CameraGroup) -> tuple[CameraGroupIdString, PipelineIdString]:
+    def connect_pipeline(self, camera_group: CameraGroup, pipeline_config:PipelineConfig) -> tuple[CameraGroupIdString, PipelineIdString]:
         if len(self.skellycam_app.camera_group_manager.camera_groups) == 0:
             raise ValueError("No camera groups available to create a processing pipeline! Start a camera group first.")
-        pipeline = self.pipeline_manager.create_pipeline(camera_group=camera_group)
+        pipeline = self.pipeline_manager.create_pipeline(camera_group=camera_group, pipeline_config=pipeline_config)
         return camera_group.id, pipeline.id
 
     def disconnect_pipeline(self):

@@ -3,9 +3,8 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 import toml
-from skellycam import CameraId
-
 from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
+from skellycam import CameraId
 
 MINIUMUM_CAMERAS_FOR_TRIANGULATION = 2
 

@@ -9,7 +9,8 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 
 from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.calibration_numpy_types import ObjectPoints3D, \
     ImagePoints2D
-from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.camera_math_models import RotationVector, TranslationVector, \
+from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.camera_math_models import RotationVector, \
+    TranslationVector, \
     TransformationMatrix, CameraDistortionCoefficients, CameraMatrix
 
 logger = logging.getLogger(__name__)

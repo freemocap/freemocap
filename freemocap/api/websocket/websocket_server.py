@@ -8,8 +8,7 @@ from fastapi import FastAPI
 from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt, MultiframeTimestampFloat
-from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import LogRecordModel, \
-    get_websocket_log_queue, MIN_LOG_LEVEL_FOR_WEBSOCKET
+from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue, MIN_LOG_LEVEL_FOR_WEBSOCKET
 from freemocap.utilities.wait_functions import await_10ms
 
 logger = logging.getLogger(__name__)
@@ -144,13 +143,15 @@ class WebsocketServer:
         try:
             while self.should_continue:
                 if not logs_queue.empty() and self.websocket.client_state == WebSocketState.CONNECTED:
-                    log_record: LogRecordModel = LogRecordModel(**logs_queue.get_nowait())
+                    log_record: logging.LogRecord = logs_queue.get_nowait()
                     if log_record.levelno < ws_log_level:
                         continue  # Skip logs below the specified level
 
-                    # Convert to JSON with ensure_ascii=False to preserve formatting
-                    log_data = log_record.model_dump()
-                    await self.websocket.send_json(log_data)
+                    # if traceback is present, replace with string
+                    if log_record.exc_info:
+                        log_record.exc_text = logging.Formatter().formatException(log_record.exc_info)
+                        log_record.exc_info = None
+                    await self.websocket.send_json(log_record)
                 else:
                     await await_10ms()
         except asyncio.CancelledError:

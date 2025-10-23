@@ -7,11 +7,11 @@ from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGr
 from skellycam.core.types.type_overloads import CameraGroupIdString, WorkerType, CameraIdString, WorkerStrategy, \
     TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
-from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackerTypeString
+from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackerNameString
 
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigTopic, ProcessFrameNumberTopic, \
-    ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, LogsTopic
+    ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic
 
 logger = multiprocessing.get_logger()
 
@@ -37,7 +37,7 @@ class AggregationNode(ABC):
                                                             camera_ids=camera_ids,
                                                             ipc=ipc,
                                                             shutdown_self_flag=shutdown_self_flag,
-                                                            camera_node_subscription=ipc.pubsub.topics[CameraNodeOutputMessage].get_subscription(),
+                                                            camera_node_subscription=ipc.pubsub.topics[CameraNodeOutputTopic].get_subscription(),
                                                             pipeline_config_subscription=ipc.pubsub.topics[PipelineConfigTopic].get_subscription(),
                                                             camera_group_shm_dto=camera_group_shm_dto,
                                                             ),
@@ -51,16 +51,16 @@ class AggregationNode(ABC):
              ipc: PipelineIPC,
              shutdown_self_flag: multiprocessing.Value,
              camera_node_subscription: TopicSubscriptionQueue,
-             skellytracker_configs_subscription: TopicSubscriptionQueue,
+             pipeline_config_subscription: TopicSubscriptionQueue,
              camera_group_shm_dto: CameraGroupSharedMemoryDTO
              ):
         if multiprocessing.parent_process():
             # Configure logging if multiprocessing (i.e. if there is a parent process)
             from freemocap.system.logging_configuration.configure_logging import configure_logging
             from freemocap import LOG_LEVEL
-            configure_logging(LOG_LEVEL, ws_queue=ipc.pubsub.topics[LogsTopic].publication)
+            configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
         logger.debug(f"Starting aggregation process for camera group {camera_group_id}")
-        camera_node_outputs: dict[TrackerTypeString, dict[CameraIdString, CameraNodeOutputMessage | None] | None] = {}
+        camera_node_outputs: dict[TrackerNameString, dict[CameraIdString, CameraNodeOutputMessage | None] | None] = {}
         camera_group_shm = CameraGroupSharedMemoryManager.recreate(shm_dto=camera_group_shm_dto,
                                                                    read_only=True)
         latest_requested_frame: int = -1
@@ -73,25 +73,22 @@ class AggregationNode(ABC):
                 latest_requested_frame = camera_group_shm.latest_multiframe_number
             # Check for Camera Node Output
             if not camera_node_subscription.empty():
-                camera_node_output_message = camera_node_subscription.get()
-                if not isinstance(camera_node_output_message, CameraNodeOutputMessage):
-                    raise ValueError(
-                        f"Expected CameraNodeOutputMessage got {type(camera_node_output_message)}")
+                camera_node_output_message:CameraNodeOutputMessage = camera_node_subscription.get()
 
                 # Process the camera node output and aggregate it
-                tracker_type = camera_node_output_message.tracker_type
+                tracker_name = camera_node_output_message.tracker_name
                 camera_id = camera_node_output_message.camera_id
-                if not tracker_type in camera_node_outputs.keys() or camera_node_outputs[tracker_type] is None:
-                    camera_node_outputs[tracker_type] = {camera_id: None for camera_id in camera_ids}
+                if not tracker_name in camera_node_outputs.keys() or camera_node_outputs[tracker_name] is None:
+                    camera_node_outputs[tracker_name] = {camera_id: None for camera_id in camera_ids}
                 if not camera_id in camera_ids:
                     raise ValueError(
                         f"Camera ID {camera_id} not in camera IDs {camera_ids}")
-                if not tracker_type in camera_node_outputs.keys() or camera_node_outputs[tracker_type] is None:
-                    camera_node_outputs[tracker_type] = {camera_id: None for camera_id in camera_ids}
-                camera_node_outputs[tracker_type][camera_id] = camera_node_output_message
+                if not tracker_name in camera_node_outputs.keys() or camera_node_outputs[tracker_name] is None:
+                    camera_node_outputs[tracker_name] = {camera_id: None for camera_id in camera_ids}
+                camera_node_outputs[tracker_name][camera_id] = camera_node_output_message
 
             # Check if ready to process a frame output
-            for tracker_type, tracker_results in camera_node_outputs.items():
+            for tracker_name, tracker_results in camera_node_outputs.items():
                 if all([camera_node_output_message is not None for camera_node_output_message in
                         tracker_results.values()]):
                     # All cameras have observations for this tracker and the frame number is greater than or equal to the latest requested frame
@@ -100,9 +97,9 @@ class AggregationNode(ABC):
                         logger.warning(
                             f"Frame numbers from tracker results do not match - got {[camera_node_output_message.frame_metadata.frame_number for camera_node_output_message in tracker_results.values()]}")
 
-                    camera_node_outputs[tracker_type] = None
+                    camera_node_outputs[tracker_name] = None
                     aggregation_output: AggregationNodeOutputMessage = handle_aggregation_calculations(
-                        tracker_type=tracker_type,
+                        tracker_name=tracker_name,
                         tracker_results=tracker_results
                     )
                     ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
@@ -119,8 +116,8 @@ class AggregationNode(ABC):
         self.worker.join()
 
 
-def handle_aggregation_calculations (tracker_type: TrackerTypeString,
-                                    tracker_results: dict[
+def handle_aggregation_calculations (tracker_name: TrackerNameString,
+                                     tracker_results: dict[
                                          CameraIdString, CameraNodeOutputMessage]) -> AggregationNodeOutputMessage:
     """ Calculate the aggregation output for a given tracker name and its results from camera nodes.
     This function aggregates the 3D points from the tracker results and returns a BaseAggregationLayerOutputData object.
@@ -130,7 +127,7 @@ def handle_aggregation_calculations (tracker_type: TrackerTypeString,
         logger.warning(f"Frame numbers from tracker results do not match - got {frame_number_set}")
     frame_number = frame_number_set.pop()
     points3d = {}  # Do the aggregation logic here
-    logger.info(f"Pretend we're aggregating 3D points for tracker {tracker_type} at frame {frame_number}")
+    logger.info(f"Pretend we're aggregating 3D points for tracker {tracker_name} at frame {frame_number}")
     return AggregationNodeOutputMessage(
         frame_number=frame_number,
         tracked_points3d=points3d)

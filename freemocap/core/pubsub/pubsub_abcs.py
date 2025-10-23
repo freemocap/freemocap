@@ -10,7 +10,10 @@ logger = logging.getLogger(__name__)
 
 class TopicMessageABC(BaseModel):
     """Base for all message data models."""
-    pass
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=True
+    )
 
 
 # MessageType represents "any type that is a subclass of TopicMessageABC"
@@ -34,7 +37,6 @@ class PubSubTopicABC(BaseModel, Generic[MessageType]):
         super().__init_subclass__(**kwargs)
         if not cls.__name__.startswith('_'):  # Skip private/base classes
             PubSubTopicABC.topic_registry.add(cls)
-            logger.debug(f"✅ Registered topic: {cls.__name__}")
 
     @classmethod
     def get_registered_topics(cls) -> set[type['PubSubTopicABC']]:

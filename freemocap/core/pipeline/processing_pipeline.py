@@ -5,68 +5,17 @@ from dataclasses import dataclass
 from typing import Hashable
 
 import numpy as np
-from numpydantic import NDArray, Shape
-from pydantic import BaseModel, ConfigDict, Field
-from skellycam.core.camera.config.camera_config import CameraConfigs
+from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraIdString, WorkerStrategy
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseImageAnnotator, \
-    BaseImageAnnotatorConfig
-from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
 
 from freemocap.core.pipeline.aggregation_node import AggregationNode
-from freemocap.core.pipeline.tasks.calibration_task.calibration_aggregation_node import CalibrationAggregationNodeConfig
-from freemocap.core.pipeline.tasks.calibration_task.calibration_pipeline_task import CalibrationPipelineCameraNodeConfig
 from freemocap.core.pipeline.camera_node import CameraNode
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)
-
-
-class CameraNodeConfig(BaseModel):
-    pass
-
-
-class AggregationNodeConfig(BaseModel):
-    pass
-
-
-class PipelineTaskConfig(BaseModel):
-    camera_node_configs: dict[CameraIdString, CameraNodeConfig]
-    aggregation_node_config: AggregationNodeConfig
-
-
-class CalibrationPipelineTaskConfig(PipelineTaskConfig):
-    camera_node_configs: dict[CameraIdString, CalibrationPipelineCameraNodeConfig]
-    aggregation_node_config: CalibrationAggregationNodeConfig
-
-    @classmethod
-    def create(cls,
-               camera_configs: CameraConfigs,
-               tracker_config: CharucoTrackerConfig):
-        return cls(camera_node_configs={camera_id: CalibrationPipelineCameraNodeConfig(camera_config=camera_config,
-                                                                                       tracker_config=tracker_config)
-                                        for camera_id, camera_config in camera_configs.items()},
-                   aggregation_node_config=CalibrationAggregationNodeConfig())
-
-
-
-class PipelineConfig(BaseModel):
-    calibration_task_config: CalibrationPipelineTaskConfig
-    mocap_task_config: PipelineTaskConfig | None = None
-    @classmethod
-    def create(cls,
-               camera_configs:CameraConfigs,
-               charuco_tracker_config: CharucoTrackerConfig|None = None):
-        return cls(
-            calibration_task_config=CalibrationPipelineTaskConfig.create(
-                camera_configs=camera_configs,
-                tracker_config=charuco_tracker_config or CharucoTrackerConfig()
-            )
-        )
-
-
 
 
 class BasePipelineData(BaseModel, ABC):
@@ -148,7 +97,7 @@ class ProcessingPipeline:
                    aggregation_node=aggregation_process,
                    ipc=ipc,
                    id=str(uuid.uuid4())[:6],
-                   config=config if config else PipelineConfig()
+                   config=pipeline_config
                    )
 
     def start(self):

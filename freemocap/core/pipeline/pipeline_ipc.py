@@ -4,13 +4,14 @@ from dataclasses import dataclass, field
 
 from freemocap.core.pubsub.pubsub_manager import PubSubTopicManager, create_pipeline_pubsub_manager
 from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue
 
-from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemoryDTO
 
 @dataclass
 class PipelineIPC:
-    pubsub: PubSubTopicManager
     pipeline_id: PipelineIdString
+    pubsub: PubSubTopicManager
+    ws_queue: multiprocessing.Queue
     global_kill_flag: multiprocessing.Value
     pipeline_shutdown_flag: multiprocessing.Value = field(default_factory=lambda: multiprocessing.Value('b', False))
 
@@ -25,6 +26,7 @@ class PipelineIPC:
             pipeline_id=pipeline_id,
             pubsub=pubsub,
             global_kill_flag=global_kill_flag,
+            ws_queue=get_websocket_log_queue()
         )
 
     def should_continue(self) -> bool:

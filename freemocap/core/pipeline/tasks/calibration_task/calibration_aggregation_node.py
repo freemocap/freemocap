@@ -7,14 +7,15 @@ from threading import Thread
 from typing import Dict
 
 import numpy as np
-from skellycam import CameraId
+from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pipeline.tasks.calibration_task.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
-from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.multi_camera_calibrator import MultiCameraCalibrator, \
-    MultiCameraCalibrationEstimate
-from freemocap.core.pipeline.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
-    BasePipelineOutputData
 from freemocap.core.pipeline.aggregation_node import AggregationNode
+from freemocap.core.pipeline.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineOutputData
+from freemocap.core.pipeline.tasks.calibration_task.calibration_camera_node_output_data import \
+    CalibrationCameraNodeOutputData
+from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.multi_camera_calibrator import \
+    MultiCameraCalibrator, \
+    MultiCameraCalibrationEstimate
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +26,8 @@ class CalibrationAggregationLayerOutputData(BaseAggregationLayerOutputData):
 
 
 class CalibrationPipelineOutputData(BasePipelineOutputData):
-    camera_node_output: dict[CameraId, CalibrationCameraNodeOutputData]
+    camera_node_output: dict[CameraIdString, CalibrationCameraNodeOutputData]
     aggregation_layer_output: CalibrationAggregationLayerOutputData
-
-
-class CalibrationAggregationNodeConfig(BasePipelineStageConfig):
-    pass
 
 
 @dataclass
@@ -38,9 +35,9 @@ class CalibrationAggregationProcessNode(AggregationNode):
     @classmethod
     def create(cls,
                config: CalibrationAggregationNodeConfig,
-               input_queues: dict[CameraId, Queue],
+               input_queues: dict[CameraIdString, Queue],
                output_queue: Queue,
-               all_ready_events: dict[CameraId | str, multiprocessing.Event],
+               all_ready_events: dict[CameraIdString | str, multiprocessing.Event],
                shutdown_event: multiprocessing.Event,
                use_thread: bool = False):
 
@@ -68,9 +65,9 @@ class CalibrationAggregationProcessNode(AggregationNode):
 
     @staticmethod
     def _run(config: CalibrationAggregationNodeConfig,
-             input_queues: Dict[CameraId, Queue],
+             input_queues: Dict[CameraIdString, Queue],
              output_queue: Queue,
-             all_ready_events: dict[CameraId | str, multiprocessing.Event],
+             all_ready_events: dict[CameraIdString | str, multiprocessing.Event],
              shutdown_event: multiprocessing.Event):
         all_ready_events[-1].set()
         logger.trace(f"Aggregation processing node ready!")

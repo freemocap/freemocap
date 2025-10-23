@@ -13,10 +13,11 @@ from skellytracker.trackers.mediapipe_tracker import MediapipeTrackerConfig
 from skellytracker.trackers.mediapipe_tracker.mediapipe_annotator import MediapipeImageAnnotator, \
     MediapipeAnnotatorConfig
 
+from freemocap.core.pipeline.processing_pipeline import BasePipelineConfig, PipelineImageAnnotator, \
+    BaseProcessingPipeline
 from freemocap.core.pipeline.tasks.mocap_task.mocap_aggregation_node import MocapAggregationNodeConfig, \
     MocapPipelineOutputData, MocapAggregationProcessNode
 from freemocap.core.pipeline.tasks.mocap_task.mocap_camera_node import MocapPipelineCameraNodeConfig, MocapCameraNode
-from freemocap.core.pipeline.processing_pipeline import BasePipelineConfig, PipelineImageAnnotator, BaseProcessingPipeline
 
 logger = logging.getLogger(__name__)
 

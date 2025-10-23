@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 
-from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.calibration_numpy_types import RotationVectorArray, \
+from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.calibration_numpy_types import \
+    RotationVectorArray, \
     TranslationVectorArray, ObjectPoints3D
 
 

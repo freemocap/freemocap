@@ -10,9 +10,10 @@ from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseTracker
 
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.processing_pipeline import logger
 from freemocap.core.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigTopic, CameraNodeOutputTopic, \
-    PipelineConfigMessage, LogsTopic, ProcessFrameNumberMessage, CameraNodeOutputMessage
+    PipelineConfigMessage,  ProcessFrameNumberMessage, CameraNodeOutputMessage
+
+logger = multiprocessing.get_logger()
 
 
 @dataclass
@@ -57,7 +58,7 @@ class CameraNode:
             # Configure logging if multiprocessing (i.e. if there is a parent process)
             from freemocap.system.logging_configuration.configure_logging import configure_logging
             from freemocap import LOG_LEVEL
-            configure_logging(LOG_LEVEL, ws_queue=ipc.pubsub.topics[LogsTopic].publication)
+            configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
         logger.trace(f"Starting camera processing node for camera {camera_id}")
         camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
                                                            read_only=False)
@@ -68,7 +69,7 @@ class CameraNode:
 
             # Check trackers config updates
             if not pipeline_config_subscription.empty():
-                new_pipeline_config_message:PipelineConfigMessage = pipeline_config_subscription.get()
+                new_pipeline_config_message: PipelineConfigMessage = pipeline_config_subscription.get()
                 logger.debug(f"Received new skelly tracker s for camera {camera_id}: {new_pipeline_config_message}")
 
                 # TODO - This method of updating trackers is sloppy and won't scale as we add more trackers, should make more sophisticated
@@ -100,7 +101,7 @@ class CameraNode:
 
             # Check for new frame to process
             if not process_frame_number_subscription.empty():
-                process_frame_number_message:ProcessFrameNumberMessage = process_frame_number_subscription.get()
+                process_frame_number_message: ProcessFrameNumberMessage = process_frame_number_subscription.get()
 
                 logger.debug(
                     f"Camera {camera_id} received request to process frame number {process_frame_number_message.frame_number}")

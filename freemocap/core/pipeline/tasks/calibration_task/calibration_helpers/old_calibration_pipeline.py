@@ -4,8 +4,8 @@ import numpy as np
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoImageAnnotator, CharucoAnnotatorConfig
 
-from freemocap.core.pipeline.tasks.calibration_task.calibration_aggregation_node import CalibrationPipelineOutputData
 from freemocap.core.pipeline.processing_pipeline import PipelineImageAnnotator
+from freemocap.core.pipeline.tasks.calibration_task.calibration_aggregation_node import CalibrationPipelineOutputData
 
 logger = logging.getLogger(__name__)
 

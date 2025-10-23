@@ -4,6 +4,7 @@ from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.freemocap_app.freemocap_application import get_freemocap_app
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ pipeline_router = APIRouter(prefix=f"/pipeline",
 class PipelineConnectRequest(BaseModel):
     camera_ids: list[CameraIdString] = Field(default=list,
                                              description="List of camera IDs comprising the CameraGroup we're attaching a pipeline to")
-
+    pipeline_config: PipelineConfig|None = None
 
 class PipelineCreateResponse(BaseModel):
     camera_group_id: CameraGroupIdString = Field(..., description="ID of the camera group attached to the pipeline")
@@ -46,7 +47,9 @@ def pipeline_connect_post_endpoint(
             raise HTTPException(status_code=400,
                                 detail=f"No camera group found with specified camera IDs: {request.camera_ids}. Create a camera group first.")
         else:
-            camera_group_id, pipeline_id = get_freemocap_app().connect_pipeline(camera_group=cg)
+            pipeline_config = request.pipeline_config or PipelineConfig.create(camera_configs=cg.configs)
+            camera_group_id, pipeline_id = get_freemocap_app().connect_pipeline(camera_group=cg,
+                                                                                pipeline_config=pipeline_config)
             response = PipelineCreateResponse(camera_group_id=camera_group_id,
                                               pipeline_id=pipeline_id)
             logger.api(

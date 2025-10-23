@@ -9,10 +9,12 @@ from typing_extensions import Self
 from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.calibration_numpy_types import \
     ImagePoints2D, ImagePoint2D, CameraExtrinsicsMatrix
 from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.camera_math_models import TransformationMatrix
-from freemocap.core.pipeline.tasks.calibration_task.shared_view_accumulator import MultiCameraTargetView, MultiFrameNumber
-from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.single_camera_calibrator import CameraIntrinsicsEstimate
+from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.single_camera_calibrator import \
+    CameraIntrinsicsEstimate
 from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.triangulate_points import undistort_points, \
     calculate_reprojection_error, triangulate_point
+from freemocap.core.pipeline.tasks.calibration_task.shared_view_accumulator import MultiCameraTargetView, \
+    MultiFrameNumber
 
 
 class SparseBundleOptimizer(BaseModel):

@@ -21,15 +21,11 @@ class ProcessFrameNumberMessage(TopicMessageABC):
     frame_number: int = Field(ge=0, description="Imperative to process this frame number")
 
 
-class SkellyTrackerConfigsMessage(TopicMessageABC):
+class PipelineConfigMessage(TopicMessageABC):
     """
-    Message containing SkellyTracker configurations.
-    This is used to update the SkellyTracker configurations across processes.
+    Message containing the Pipeline configuration updates.
     """
-    tracker_configs: list[BaseTrackerConfig] = Field(
-        default_factory=list,
-        description="List of SkellyTracker configurations to be applied."
-    )
+    pipeline_config: PipelineConfig
 
 class CameraNodeOutputMessage(TopicMessageABC):
     """
@@ -95,12 +91,11 @@ class ProcessFrameNumberTopic(PubSubTopicABC):
     message_type: Type[ProcessFrameNumberMessage] = ProcessFrameNumberMessage
 
 
-class SkellyTrackerConfigsTopic(PubSubTopicABC):
+class PipelineConfigTopic(PubSubTopicABC):
     """
-    Topic for publishing SkellyTracker configurations.
-    This is used to update the SkellyTracker configurations across processes.
+    Topic for publishing Pipeline config updates
     """
-    message_type: Type[SkellyTrackerConfigsMessage] = SkellyTrackerConfigsMessage
+    message_type: Type[PipelineConfigMessage] = PipelineConfigMessage
 
 
 class LogsTopic(PubSubTopicABC):

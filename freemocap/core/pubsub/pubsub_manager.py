@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.ipc.pubsub.pubsub_abcs import PubSubTopicABC
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
-from freemocap.core.pubsub.pubsub_topics import LogsTopic, ProcessFrameNumberTopic, SkellyTrackerConfigsTopic, \
+from freemocap.core.pubsub.pubsub_topics import LogsTopic, ProcessFrameNumberTopic, PipelineConfigTopic, \
     CameraNodeOutputTopic, AggregationNodeOutputTopic
 from freemocap.core.types.type_overloads import PipelineIdString
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class TopicTypes(Enum):
     PROCESS_FRAME_NUMBER = auto()  # Imperative to process a particular frame number
-    SKELLY_TRACKER_CONFIGS = auto()  # Skelly Tracker configuration updates
+    NEW_PIPELINE_CONFIG = auto()  # Skelly Tracker configuration updates
     CAMERA_NODE_OUTPUT = auto()  # Output from camera nodes
     AGGREGATION_NODE_OUTPUT = auto()  # Output from aggregation node
     LOGS = auto()
@@ -24,7 +24,7 @@ class TopicTypes(Enum):
 class PubSubTopicManager(BaseModel):
     topics: dict[TopicTypes, PubSubTopicABC] = Field(default_factory=lambda: {
         TopicTypes.PROCESS_FRAME_NUMBER: ProcessFrameNumberTopic(),
-        TopicTypes.SKELLY_TRACKER_CONFIGS: SkellyTrackerConfigsTopic(),
+        TopicTypes.NEW_PIPELINE_CONFIG: PipelineConfigTopic(),
         TopicTypes.CAMERA_NODE_OUTPUT: CameraNodeOutputTopic(),
         TopicTypes.AGGREGATION_NODE_OUTPUT: AggregationNodeOutputTopic(),
         TopicTypes.LOGS: LogsTopic(),

@@ -9,11 +9,12 @@ from typing import Dict
 import numpy as np
 from skellycam import CameraId
 
-from freemocap.core.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
-from freemocap.core.pipelines.calibration_pipeline.multi_camera_calibrator import MultiCameraCalibrator, \
+from freemocap.core.pipeline.tasks.calibration_task.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
+from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.multi_camera_calibrator import MultiCameraCalibrator, \
     MultiCameraCalibrationEstimate
-from freemocap.core.pipelines.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
-    AggregationNode, BasePipelineOutputData
+from freemocap.core.pipeline.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
+    BasePipelineOutputData
+from freemocap.core.pipeline.aggregation_node import AggregationNode
 
 logger = logging.getLogger(__name__)
 

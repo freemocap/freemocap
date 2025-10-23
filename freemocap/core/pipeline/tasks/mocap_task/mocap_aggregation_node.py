@@ -7,10 +7,11 @@ from typing import Dict
 
 from skellycam import CameraId
 
-from freemocap.core.pipelines.mocap_pipeline.mocap_camera_node import MocapCameraNodeOutputData
-from freemocap.core.pipelines.mocap_pipeline.point_trangulator import PointTriangulator
-from freemocap.core.pipelines.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
-    AggregationNode, BasePipelineOutputData
+from freemocap.core.pipeline.tasks.mocap_task.mocap_camera_node import MocapCameraNodeOutputData
+from freemocap.core.pipeline.tasks.mocap_task.point_trangulator import PointTriangulator
+from freemocap.core.pipeline.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
+    BasePipelineOutputData
+from freemocap.core.pipeline.aggregation_node import AggregationNode
 
 logger = logging.getLogger(__name__)
 

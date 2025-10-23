@@ -12,7 +12,7 @@ from skellycam.core.frames.payloads.metadata.frame_metadata import FrameMetadata
 from skellytracker.trackers.mediapipe_tracker import MediapipeTrackerConfig, MediapipeTracker
 from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
 
-from freemocap.core.pipelines.processing_pipeline import BaseCameraNode, BasePipelineStageConfig, BaseCameraNodeOutputData
+from freemocap.core.pipeline.processing_pipeline import BaseCameraNode, BasePipelineStageConfig, BaseCameraNodeOutputData
 
 logger = logging.getLogger(__name__)
 

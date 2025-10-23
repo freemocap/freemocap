@@ -12,7 +12,7 @@ class PipelineIPC:
     pubsub: PubSubTopicManager
     pipeline_id: PipelineIdString
     global_kill_flag: multiprocessing.Value
-    pipeline_kill_flag: multiprocessing.Value = field(default_factory=lambda: multiprocessing.Value('b', False))
+    pipeline_shutdown_flag: multiprocessing.Value = field(default_factory=lambda: multiprocessing.Value('b', False))
 
     @classmethod
     def create(cls,
@@ -28,12 +28,12 @@ class PipelineIPC:
         )
 
     def should_continue(self) -> bool:
-        return not self.global_kill_flag.value and not self.pipeline_kill_flag.value
+        return not self.global_kill_flag.value and not self.pipeline_shutdown_flag.value
 
-    def kill_pipeline(self):
-        self.pipeline_kill_flag.value = True
+    def shutdown_pipeline(self):
+        self.pipeline_shutdown_flag.value = True
         self.pubsub.close()
 
     def kill_everything(self):
-        self.kill_pipeline()
+        self.shutdown_pipeline()
         self.global_kill_flag.value = True

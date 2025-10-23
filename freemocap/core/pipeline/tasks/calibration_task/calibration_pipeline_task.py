@@ -12,9 +12,9 @@ from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camer
 from skellycam.core.frames.payloads.metadata.frame_metadata import FrameMetadata
 from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig, CharucoTracker
 
-from freemocap.core.pipelines.calibration_pipeline.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
-from freemocap.core.pipelines.calibration_pipeline.single_camera_calibrator import SingleCameraCalibrator
-from freemocap.core.pipelines.processing_pipeline import BaseCameraNode, BasePipelineStageConfig
+from freemocap.core.pipeline.tasks.calibration_task.calibration_camera_node_output_data import CalibrationCameraNodeOutputData
+from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.single_camera_calibrator import SingleCameraCalibrator
+from freemocap.core.pipeline.processing_pipeline import BaseCameraNode, BasePipelineStageConfig
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class CalibrationPipelineCameraNodeConfig(BasePipelineStageConfig):
     camera_config: CameraConfig
     tracker_config: CharucoTrackerConfig
-    param1: int = 1
+
 
 
 @dataclass

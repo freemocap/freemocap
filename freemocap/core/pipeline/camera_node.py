@@ -1,21 +1,17 @@
 import multiprocessing
-from copy import deepcopy
 from dataclasses import dataclass
 
 import numpy as np
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
-from skellycam.core.types.type_overloads import CameraIdString, WorkerType, WorkerStrategy, TopicSubscriptionQueue
+from skellycam.core.types.type_overloads import CameraIdString, WorkerType, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseTracker
 
 from freemocap.core.pipeline.pipeline_configs import CameraNodeConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.tasks.calibration_task.calibration_pipeline_task import BaseCameraNodeTask, \
-    CalibrationCameraNodeTask
+from freemocap.core.pipeline.tasks.calibration_task.calibration_pipeline_task import CalibrationCameraNodeTask
 from freemocap.core.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigTopic, CameraNodeOutputTopic, \
-    PipelineConfigMessage,  ProcessFrameNumberMessage, CameraNodeOutputMessage
-from freemocap.core.types.type_overloads import TrackerTypeString
+    PipelineConfigMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage
 
 logger = multiprocessing.get_logger()
 
@@ -75,7 +71,6 @@ class CameraNode:
         frame_rec_array: np.recarray | None = None
         while ipc.should_continue and not shutdown_self_flag.value:
             wait_1ms()
-            print(f"CameraNode {camera_id} loop iteration")
             # Check trackers config updates
             if not pipeline_config_subscription.empty():
                 new_pipeline_config_message: PipelineConfigMessage = pipeline_config_subscription.get()
@@ -95,15 +90,16 @@ class CameraNode:
 
                 # Process the frame
                 frame_rec_array = camera_shm.get_data_by_index(index=process_frame_number_message.frame_number,
-                                                               frame_rec_array=frame_rec_array)
-                observation = calibration_task.process_image(frame_number=frame_rec_array.frame_metadata.frame_number,
-                                                    image=frame_rec_array.image, )
+                                                               rec_array=frame_rec_array)
+                observation = calibration_task.process_image(frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                                                    image=frame_rec_array.image[0], )
                 if observation is not None:
                     # Publish the observation to the IPC
                     ipc.pubsub.publish(
                         topic_type=CameraNodeOutputTopic,
                         message=CameraNodeOutputMessage(
-                            frame_metadata=frame_rec_array.metadata,
+                            camera_id = frame_rec_array.frame_metadata.camera_config.camera_id[0],
+                            frame_number=frame_rec_array.frame_metadata.frame_number[0],
                             tracker_name=calibration_task.__class__.__name__,
                             observation=observation,
                         ),

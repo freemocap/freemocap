@@ -2,12 +2,10 @@ import logging
 import uuid
 from abc import ABC
 from dataclasses import dataclass
-from typing import Hashable
 
-import numpy as np
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.types.type_overloads import CameraIdString, WorkerStrategy
+from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
@@ -24,36 +22,6 @@ class BasePipelineData(BaseModel, ABC):
         frozen=True,
     )
     pass
-
-
-class Point3d(BaseModel):
-    x: float
-    y: float
-    z: float
-
-
-class BaseAggregationLayerOutputData(BasePipelineData):
-    multi_frame_number: int
-    points3d: dict[Hashable, Point3d]
-
-
-class BaseCameraNodeOutputData(BasePipelineData):
-    frame_metadata: np.recarray  # dtype: FRAME_METADATA_DTYPE
-    time_to_retrieve_frame_ns: int
-    time_to_process_frame_ns: int
-
-
-class BasePipelineOutputData(BasePipelineData):
-    camera_node_output: dict[CameraIdString, BaseCameraNodeOutputData]
-    aggregation_layer_output: BaseAggregationLayerOutputData
-
-    @property
-    def multi_frame_number(self) -> int:
-        frame_numbers = [camera_node_output.frame_metadata.frame_number for camera_node_output in
-                         self.camera_node_output.values()]
-        if len(set(frame_numbers)) > 1:
-            raise ValueError(f"Frame numbers from camera nodes do not match - got {frame_numbers}")
-        return frame_numbers[0]
 
 
 @dataclass

@@ -5,7 +5,7 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservatio
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pubsub.pubsub_abcs import TopicMessageABC, create_topic
-from freemocap.core.types.type_overloads import TrackerTypeString, FrameNumberInt, TrackedPoint3d
+from freemocap.core.types.type_overloads import TrackerTypeString, FrameNumberInt, TrackedPoint3d, Point3d
 
 
 class ProcessFrameNumberMessage(TopicMessageABC):
@@ -17,20 +17,17 @@ class PipelineConfigMessage(TopicMessageABC):
 
 
 class CameraNodeOutputMessage(TopicMessageABC):
-    frame_metadata: np.recarray
+    camera_id: CameraIdString
+    frame_number: FrameNumberInt
     tracker_name: TrackerTypeString
     observation: BaseObservation
 
-    @property
-    def camera_id(self) -> CameraIdString:
-        return self.frame_metadata.camera_config.camera_id[0]
 
 
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt
     camera_group_id: CameraGroupIdString
-    tracker_name: TrackerTypeString
-    tracked_points3d: dict[TrackedPointIdString, TrackedPoint3d] = Field(default_factory=dict)
+    tracked_points3d: dict[TrackedPointIdString,Point3d] = Field(default_factory=dict)
 
 class LogRecordMessage(TopicMessageABC):
     name: str

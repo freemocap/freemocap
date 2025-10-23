@@ -80,7 +80,6 @@ class PubSubTopicManager(BaseModel):
             )
 
         self.topics[topic_type].publish(message)
-        logger.trace(f"Published message to {topic_type.__name__}")
 
     def close(self) -> None:
         """Close all topics in the manager."""

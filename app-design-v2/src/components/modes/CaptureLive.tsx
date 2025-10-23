@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { STATES } from "../uicomponents"; // <--- ENSURE YOU IMPORT STATES HERE
+import IconSegmentedControl from "../uicomponents/IconSegmentedControl";
 import {
   ButtonSm,
   ToggleComponent,
@@ -14,9 +15,6 @@ import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
 import CameraSettingsModal from "../CameraSettingsModal";
 
 const CaptureLive = () => {
-  
-
-
   const [cameraChecked, setCameraChecked] = useState<boolean[]>([]);
 
   const cameraButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -85,6 +83,8 @@ const CaptureLive = () => {
   // --- NEW: Per-camera rotation and modal open states ---
   const [cameraRotations, setCameraRotations] = useState<number[]>([]);
   const [cameraSettingsOpen, setCameraSettingsOpen] = useState<boolean[]>([]);
+  // --- grid layout switch control
+  const [gridLayout, setGridLayout] = useState("grid3"); // default layout
 
   // --- MODIFIED: Ensure CONNECTED state is set, even on stream error ---
   const handleStreamConnect = async () => {
@@ -98,42 +98,40 @@ const CaptureLive = () => {
       });
       tempStream.getTracks().forEach((track) => track.stop()); // stop immediately
 
-
-
-      
-
       // Enumerate devices AFTER permission granted
       const devices = await navigator.mediaDevices.enumerateDevices();
-     const cameras = devices.filter((d) => d.kind === "videoinput");
-setActiveCameras(cameras);
-setCameraChecked(new Array(cameras.length).fill(true)); // all cameras checked by default
+      const cameras = devices.filter((d) => d.kind === "videoinput");
+      setActiveCameras(cameras);
+      setCameraChecked(new Array(cameras.length).fill(true)); // all cameras checked by default
 
       // start streams...
       // Sequentially start streams
-for (let idx = 0; idx < cameras.length; idx++) {
-  const camera = cameras[idx];
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        deviceId: { exact: camera.deviceId },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-      audio: false,
-    });
+      for (let idx = 0; idx < cameras.length; idx++) {
+        const camera = cameras[idx];
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              deviceId: { exact: camera.deviceId },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            audio: false,
+          });
 
-    const video = videoRefs.current[idx];
-    if (video && stream) {
-      video.srcObject = stream;
-      video.onloadedmetadata = () => {
-        video.play();
-      };
-    }
-  } catch (err) {
-    console.error(`Failed to start stream for ${camera.originalLabel}:`, err);
-  }
-}
-
+          const video = videoRefs.current[idx];
+          if (video && stream) {
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+              video.play();
+            };
+          }
+        } catch (err) {
+          console.error(
+            `Failed to start stream for ${camera.originalLabel}:`,
+            err
+          );
+        }
+      }
 
       setStreamState(STATES.CONNECTED);
     } catch (err) {
@@ -212,13 +210,16 @@ for (let idx = 0; idx < cameras.length; idx++) {
     };
   }, [cameraSettingsOpen]);
 
+
+  
+
   return (
     <>
       {/* mode-container */}
       <div className="mode-container flex-5 br-2 bg-darkgray border-mid-black border-1 overflow-hidden flex flex-col flex-1 gap-1 p-1">
         <div className="flex flex-row header-tool-bar br-2 gap-4">
           {/* stream connect/disconnect button */}
-          <div className="reveal fadeIn active-tools-header br-1-1 gap-1 p-1 flex ">
+          <div className="w-full reveal fadeIn active-tools-header br-1-1 gap-1 p-1 flex justify-content-space-between">
             <ToggleButtonComponent
               state={streamState}
               connectConfig={{
@@ -243,6 +244,16 @@ for (let idx = 0; idx < cameras.length; idx++) {
               onConnect={handleStreamConnect}
               onDisconnect={handleStreamDisconnect}
             />
+                 <IconSegmentedControl
+  options={[
+    { value: "grid2", iconClass: "grid2-icon" },
+    { value: "grid3", iconClass: "grid3-icon" },
+    { value: "grid4", iconClass: "grid4-icon" },
+  ]}
+  defaultValue="grid3"
+  onChange={(value) => setGridLayout(value)}
+/>
+
           </div>
         </div>
 
@@ -254,29 +265,33 @@ for (let idx = 0; idx < cameras.length; idx++) {
               return (
                 <div
                   key={idx}
-                  className={clsx(
-                    "flex p-1 gap-1 flex-col video-tile camera-source size-4 br-2",
-                    camera ? "bg-gray active-camera" : "bg-middark empty",
-                    `video-tile-${idx}`
-                  )}
+           className={clsx(
+  "flex p-1 gap-1 flex-col video-tile camera-source br-2 pos-rel",
+  gridLayout === "grid2" && "size-2",
+  gridLayout === "grid3" && "size-3",
+  gridLayout === "grid4" && "size-4",
+  camera ? "bg-gray active-camera" : "bg-middark empty",
+  cameraSettingsOpen[idx] && "selected-camera-feed",
+  `video-tile-${idx}`
+)}
+
                 >
                   {camera && (
                     <div className="camera-action-container pos-rel flex flex-row items-center justify-content-space-between pos-rel items-center">
                       {/* Checkbox + Camera Name */}
                       <div className="overflow-hidden flex items-center gap-1 p-1">
                         <Checkbox
-  label={camera.label || `Camera ${idx + 1}`}
-  checked={cameraChecked[idx]}
-  onChange={(e) => {
-    const isChecked = e.target.checked;
-    setCameraChecked((prev) => {
-      const updated = [...prev];
-      updated[idx] = isChecked;
-      return updated;
-    });
-  }}
-/>
-
+                          label={camera.label || `Camera ${idx + 1}`}
+                          checked={cameraChecked[idx]}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setCameraChecked((prev) => {
+                              const updated = [...prev];
+                              updated[idx] = isChecked;
+                              return updated;
+                            });
+                          }}
+                        />
                       </div>
 
                       {/* Settings Button */}

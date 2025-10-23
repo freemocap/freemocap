@@ -105,6 +105,7 @@ class AggregationNode:
                                                             )}  # Placeholder for actual aggregation logic
                 )
                 ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
+                camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
                 logger.debug(
                     f"Published aggregation output for frame {latest_requested_frame} with points3d: {aggregation_output.tracked_points3d.keys()}")
 

@@ -11,9 +11,8 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseTracker
 
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.processing_pipeline import logger
-from freemocap.core.pubsub.pubsub_manager import TopicTypes
-from freemocap.core.pubsub.pubsub_topics import PipelineConfigMessage, ProcessFrameNumberMessage, \
-    CameraNodeOutputMessage
+from freemocap.core.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigTopic, CameraNodeOutputTopic, \
+    PipelineConfigMessage, LogsTopic, ProcessFrameNumberMessage, CameraNodeOutputMessage
 
 
 @dataclass
@@ -38,9 +37,9 @@ class CameraNode:
                                                             ipc=ipc,
                                                             shutdown_self_flag=shutdown_self_flag,
                                                             process_frame_number_subscription=ipc.pubsub.get_subscription(
-                                                                TopicTypes.PROCESS_FRAME_NUMBER),
+                                                                ProcessFrameNumberTopic),
                                                             pipeline_config_subscription=ipc.pubsub.get_subscription(
-                                                                TopicTypes.NEW_PIPELINE_CONFIG)
+                                                                PipelineConfigTopic),
                                                             ),
                                                 daemon=True
                                                 ),
@@ -58,7 +57,7 @@ class CameraNode:
             # Configure logging if multiprocessing (i.e. if there is a parent process)
             from freemocap.system.logging_configuration.configure_logging import configure_logging
             from freemocap import LOG_LEVEL
-            configure_logging(LOG_LEVEL, ws_queue=ipc.pubsub.topics[TopicTypes.LOGS].publication)
+            configure_logging(LOG_LEVEL, ws_queue=ipc.pubsub.topics[LogsTopic].publication)
         logger.trace(f"Starting camera processing node for camera {camera_id}")
         camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
                                                            read_only=False)
@@ -69,9 +68,7 @@ class CameraNode:
 
             # Check trackers config updates
             if not pipeline_config_subscription.empty():
-                new_pipeline_config_message = pipeline_config_subscription.get()
-                if not isinstance(new_pipeline_config_message, PipelineConfigMessage):
-                    raise ValueError(f"Expected SkellyTrackerConfigsMessage got {type(new_pipeline_config_message)}")
+                new_pipeline_config_message:PipelineConfigMessage = pipeline_config_subscription.get()
                 logger.debug(f"Received new skelly tracker s for camera {camera_id}: {new_pipeline_config_message}")
 
                 # TODO - This method of updating trackers is sloppy and won't scale as we add more trackers, should make more sophisticated
@@ -103,10 +100,7 @@ class CameraNode:
 
             # Check for new frame to process
             if not process_frame_number_subscription.empty():
-                process_frame_number_message = process_frame_number_subscription.get()
-                if not isinstance(process_frame_number_message, ProcessFrameNumberMessage):
-                    raise ValueError(
-                        f"Expected ProcessFrameNumberMessage for process frame number, got {type(process_frame_number_message)}")
+                process_frame_number_message:ProcessFrameNumberMessage = process_frame_number_subscription.get()
 
                 logger.debug(
                     f"Camera {camera_id} received request to process frame number {process_frame_number_message.frame_number}")
@@ -119,10 +113,14 @@ class CameraNode:
                                                         image=frame_rec_array.image, )
                     if observation is not None:
                         # Publish the observation to the IPC
-                        ipc.pubsub.topics[TopicTypes.CAMERA_NODE_OUTPUT].publish(
-                            CameraNodeOutputMessage(frame_metadata=frame_rec_array.metadata,
-                                                    tracker_name=tracker.__class__.__name__,
-                                                    observation=observation))
+                        ipc.pubsub.publish(
+                            topic_type=CameraNodeOutputTopic,
+                            message=CameraNodeOutputMessage(
+                                frame_metadata=frame_rec_array.metadata,
+                                tracker_name=tracker.__class__.__name__,
+                                observation=observation,
+                            ),
+                        )
 
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__} for camera {self.camera_id}")

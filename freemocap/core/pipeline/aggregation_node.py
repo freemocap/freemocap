@@ -10,11 +10,10 @@ from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackerTypeString
 
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.processing_pipeline import logger
-from freemocap.core.pubsub.pubsub_manager import TopicTypes
-from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, ProcessFrameNumberMessage, \
-    AggregationNodeOutputMessage
+from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigTopic, ProcessFrameNumberTopic, \
+    ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, LogsTopic
 
+logger = multiprocessing.get_logger()
 
 @dataclass
 class AggregationNode(ABC):
@@ -38,10 +37,8 @@ class AggregationNode(ABC):
                                                             camera_ids=camera_ids,
                                                             ipc=ipc,
                                                             shutdown_self_flag=shutdown_self_flag,
-                                                            camera_node_subscription=ipc.pubsub.get_subscription(
-                                                                TopicTypes.CAMERA_NODE_OUTPUT),
-                                                            skellytracker_configs_subscription=ipc.pubsub.get_subscription(
-                                                                TopicTypes.NEW_PIPELINE_CONFIG),
+                                                            camera_node_subscription=ipc.pubsub.topics[CameraNodeOutputMessage].get_subscription(),
+                                                            pipeline_config_subscription=ipc.pubsub.topics[PipelineConfigTopic].get_subscription(),
                                                             camera_group_shm_dto=camera_group_shm_dto,
                                                             ),
                                                 daemon=True
@@ -61,7 +58,7 @@ class AggregationNode(ABC):
             # Configure logging if multiprocessing (i.e. if there is a parent process)
             from freemocap.system.logging_configuration.configure_logging import configure_logging
             from freemocap import LOG_LEVEL
-            configure_logging(LOG_LEVEL, ws_queue=ipc.pubsub.topics[TopicTypes.LOGS].publication)
+            configure_logging(LOG_LEVEL, ws_queue=ipc.pubsub.topics[LogsTopic].publication)
         logger.debug(f"Starting aggregation process for camera group {camera_group_id}")
         camera_node_outputs: dict[TrackerTypeString, dict[CameraIdString, CameraNodeOutputMessage | None] | None] = {}
         camera_group_shm = CameraGroupSharedMemoryManager.recreate(shm_dto=camera_group_shm_dto,
@@ -71,7 +68,7 @@ class AggregationNode(ABC):
             wait_1ms()
             if camera_group_shm.latest_multiframe_number < 0 or any(
                     [tracker_results is None for tracker_results in camera_node_outputs.values()]):
-                ipc.pubsub.topics[TopicTypes.PROCESS_FRAME_NUMBER].publish(
+                ipc.pubsub.topics[ProcessFrameNumberTopic].publish(
                     ProcessFrameNumberMessage(frame_number=camera_group_shm.latest_multiframe_number))
                 latest_requested_frame = camera_group_shm.latest_multiframe_number
             # Check for Camera Node Output
@@ -108,7 +105,7 @@ class AggregationNode(ABC):
                         tracker_type=tracker_type,
                         tracker_results=tracker_results
                     )
-                    ipc.pubsub.topics[TopicTypes.AGGREGATION_NODE_OUTPUT].publish(aggregation_output)
+                    ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
                     logger.debug(
                         f"Published aggregation output for frame {latest_requested_frame} with points3d: {aggregation_output.tracked_points3d.keys()}")
 

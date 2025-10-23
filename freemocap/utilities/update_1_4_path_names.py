@@ -29,7 +29,7 @@ def update_1_4_path_names(freemocap_data_folder_path: Optional[Union[str, Path]]
 
 def update_recording_folder(recording_folder: Path) -> None:
     if (
-        recording_folder.name == OUTPUT_DATA_FOLDER_NAME
+            recording_folder.name == OUTPUT_DATA_FOLDER_NAME
     ):  # this covers cases where the recording folder isn't a subfolder of a session
         rename_skeleton_file_path(recording_folder)
         if (recording_folder / RAW_DATA_FOLDER_NAME).exists():

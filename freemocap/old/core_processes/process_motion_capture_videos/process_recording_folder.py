@@ -2,14 +2,23 @@ import logging
 import multiprocessing
 from typing import Optional
 
+<<<<<<< HEAD:freemocap/old/core_processes/process_motion_capture_videos/process_recording_folder.py
 from freemocap.old.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data
 from freemocap.old.core_processes.process_motion_capture_videos.processing_pipeline_functions.anatomical_data_pipeline_functions import (
+=======
+from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import post_process_data
+from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.anatomical_data_pipeline_functions import (
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/process_motion_capture_videos/process_recording_folder.py
     calculate_anatomical_data,
 )
 from freemocap.old.core_processes.process_motion_capture_videos.processing_pipeline_functions.data_saving_pipeline_functions import (
     save_data,
 )
+<<<<<<< HEAD:freemocap/old/core_processes/process_motion_capture_videos/process_recording_folder.py
 from freemocap.old.core_processes.process_motion_capture_videos.processing_pipeline_functions.image_tracking_pipeline_functions import (
+=======
+from freemocap.core_processes.process_motion_capture_videos.processing_pipeline_functions.image_tracking_pipeline_functions import (
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/process_motion_capture_videos/process_recording_folder.py
     run_image_tracking_pipeline,
 )
 from freemocap.old.core_processes.process_motion_capture_videos.processing_pipeline_functions.pipeline_check import (
@@ -18,21 +27,28 @@ from freemocap.old.core_processes.process_motion_capture_videos.processing_pipel
 from freemocap.old.core_processes.process_motion_capture_videos.processing_pipeline_functions.triangulation_pipeline_functions import (
     get_triangulated_data,
 )
+<<<<<<< HEAD:freemocap/old/core_processes/process_motion_capture_videos/process_recording_folder.py
 from freemocap.old.data_layer.data_saver.data_saver import DataSaver
 from freemocap.old.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 # from freemocap.system.logging.queue_logger import DirectQueueHandler
 # from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
+=======
+from freemocap.data_layer.data_saver.data_saver import DataSaver
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
+from freemocap.system.logging.queue_logger import DirectQueueHandler
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/process_motion_capture_videos/process_recording_folder.py
 from freemocap.utilities.kill_event_exception import KillEventException
 
 logger = logging.getLogger(__name__)
 
 
 def process_recording_folder(
-    recording_processing_parameter_model: ProcessingParameterModel,
-    kill_event: multiprocessing.Event = None,
-    logging_queue: Optional[multiprocessing.Queue] = None,
-    use_tqdm: bool = True,
+        recording_processing_parameter_model: ProcessingParameterModel,
+        kill_event: multiprocessing.Event = None,
+        logging_queue: Optional[multiprocessing.Queue] = None,
+        use_tqdm: bool = True,
 ) -> None:
     """
 
@@ -105,12 +121,10 @@ def process_recording_folder(
         raise exception
 
     try:
-        # TODO: move the rotate by 90 function into skellyforge to skip duplication of responsibility
-        rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
         # TODO: find out if skellyforge does all the error handling we need - if not add it to post_process_data
         skel3d_frame_marker_xyz = post_process_data(
             recording_processing_parameter_model=recording_processing_parameter_model,
-            raw_skel3d_frame_marker_xyz=rotated_raw_skel3d_frame_marker_xyz,
+            raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
             queue=logging_queue,
         )
     except (RuntimeError, ValueError, AttributeError) as e:

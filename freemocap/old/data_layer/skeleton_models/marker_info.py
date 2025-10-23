@@ -22,7 +22,7 @@ class VirtualMarkerInfo(BaseModel):
                 raise ValueError(f"Marker names must be a list of strings for {marker_names}.")
 
             if not isinstance(marker_weights, list) or not all(
-                isinstance(weight, (int, float)) for weight in marker_weights
+                    isinstance(weight, (int, float)) for weight in marker_weights
             ):
                 raise ValueError(f"Marker weights must be a list of numbers for {virtual_marker_name}.")
 

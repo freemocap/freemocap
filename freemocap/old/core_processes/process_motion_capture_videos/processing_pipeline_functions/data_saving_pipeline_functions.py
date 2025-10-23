@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 from pathlib import Path
 from typing import Optional
+<<<<<<< HEAD:freemocap/old/core_processes/process_motion_capture_videos/processing_pipeline_functions/data_saving_pipeline_functions.py
 
 import numpy as np
 
@@ -10,6 +11,16 @@ from freemocap.old.core_processes.post_process_skeleton_data.split_and_save impo
 from freemocap.old.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 # from freemocap.system.logging.queue_logger import DirectQueueHandler
 # from freemocap.system.logging.configure_logging import log_view_logging_format_string
+=======
+
+import numpy as np
+
+from freemocap.core_processes.post_process_skeleton_data.post_process_skeleton import save_numpy_array_to_disk
+from freemocap.core_processes.post_process_skeleton_data.split_and_save import split_and_save
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
+from freemocap.system.logging.queue_logger import DirectQueueHandler
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/process_motion_capture_videos/processing_pipeline_functions/data_saving_pipeline_functions.py
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     CENTER_OF_MASS_FOLDER_NAME,
     DATA_3D_NPY_FILE_NAME,
@@ -22,12 +33,12 @@ logger = logging.getLogger(__name__)
 
 
 def save_data(
-    skel3d_frame_marker_xyz: np.ndarray,
-    segment_COM_frame_imgPoint_XYZ: Optional[np.ndarray],
-    totalBodyCOM_frame_XYZ: Optional[np.ndarray],
-    rigid_bones_data: Optional[np.ndarray],
-    processing_parameters: ProcessingParameterModel,
-    queue: multiprocessing.Queue,
+        skel3d_frame_marker_xyz: np.ndarray,
+        segment_COM_frame_imgPoint_XYZ: Optional[np.ndarray],
+        totalBodyCOM_frame_XYZ: Optional[np.ndarray],
+        rigid_bones_data: Optional[np.ndarray],
+        processing_parameters: ProcessingParameterModel,
+        queue: multiprocessing.Queue,
 ):
     # if queue:
     #     handler = DirectQueueHandler(queue)

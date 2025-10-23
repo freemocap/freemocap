@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 from typing import Dict, Union
+<<<<<<< HEAD:freemocap/old/core_processes/process_motion_capture_videos/processing_pipeline_functions/anatomical_data_pipeline_functions.py
 
 import numpy as np
 
@@ -13,14 +14,27 @@ from freemocap.old.data_layer.recording_models.post_processing_parameter_models 
 
 # from freemocap.system.logging.queue_logger import DirectQueueHandler
 # from freemocap.system.logging.configure_logging import log_view_logging_format_string
+=======
+
+import numpy as np
+
+from freemocap.core_processes.post_process_skeleton_data.calculate_center_of_mass import (
+    calculate_center_of_mass_from_skeleton,
+)
+from freemocap.core_processes.post_process_skeleton_data.create_skeleton import create_skeleton_model
+from freemocap.core_processes.post_process_skeleton_data.enforce_rigid_bones import enforce_rigid_bones_from_skeleton
+from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
+from freemocap.system.logging.configure_logging import log_view_logging_format_string
+from freemocap.system.logging.queue_logger import DirectQueueHandler
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/process_motion_capture_videos/processing_pipeline_functions/anatomical_data_pipeline_functions.py
 
 logger = logging.getLogger(__name__)
 
 
 def calculate_anatomical_data(
-    processing_parameters: ProcessingParameterModel,
-    skel3d_frame_marker_xyz: np.ndarray,
-    queue: multiprocessing.Queue,
+        processing_parameters: ProcessingParameterModel,
+        skel3d_frame_marker_xyz: np.ndarray,
+        queue: multiprocessing.Queue,
 ) -> Dict[str, Union[np.ndarray, None]]:
     # if queue:
     #     handler = DirectQueueHandler(queue)

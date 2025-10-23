@@ -14,10 +14,17 @@ logger = logging.getLogger(__name__)
 
 
 def triangulate_3d_data(
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/triangulate_3d_data.py
     anipose_calibration_object: AniposeCameraGroup,
     image_2d_data: np.ndarray,
     use_triangulate_ransac: bool = False,
     kill_event: multiprocessing.Event = None,
+=======
+        anipose_calibration_object: CameraGroup,
+        image_2d_data: np.ndarray,
+        use_triangulate_ransac: bool = False,
+        kill_event: multiprocessing.Event = None,
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/triangulate_3d_data.py
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     number_of_cameras = image_2d_data.shape[0]
     number_of_frames = image_2d_data.shape[1]

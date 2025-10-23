@@ -36,5 +36,5 @@
   },
   "include": [
     "src"
-  ]
+, "src/components/uicomponents"  ]
 }

@@ -70,6 +70,9 @@
   --importproject_icon: url("./assets/icons/importproject_icon.svg");
   --settings_icon: url("./assets/icons/settings_icon.svg");
 
+    --grid4_icon: url("./assets/icons/grid4_icon.svg");
+    --grid3_icon: url("./assets/icons/grid3_icon.svg");
+    --grid2_icon: url("./assets/icons/grid2_icon.svg");
 
   /* ANIMATION SPEED AND OTHER ANIMATION RELATED PROPS */
   --speed-0: 50ms;
@@ -363,11 +366,16 @@ button.rotate-button {
   /* flex: 1 0 25%; */
   height: auto;
   aspect-ratio: 1 / 1;
+  
 }
 
 .video-tile.size-2 {
   flex: 1 0 calc(50% - 8px);
   max-width: calc(50% - 8px);
+}
+.video-tile.size-3 {
+  flex: 1 0 calc(33.33% - 8px);
+  max-width: calc(33.33% - 8px);
 }
 
 .video-tile.size-4 {
@@ -535,13 +543,13 @@ h1 {
 
 /* Thumb hover state: when mouse is over the thumb */
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--gray-700);
+  background-color: var(--gray-900);
   /* Change thumb color on hover */
 }
 
 /* Thumb active state: when mouse is clicking/dragging the thumb */
 ::-webkit-scrollbar-thumb:active {
-  background-color: var(--gray-800);
+  background-color: var(--gray-900);
   /* Change thumb color when active */
   cursor: grabbing;
   /* Cursor changes when dragging */
@@ -795,7 +803,10 @@ a:after {
 .mb-4 {
   margin-bottom: 16px;
 }
-
+/* margin top */
+.mt-1 {
+  margin-top: 4px;
+}
 /* widths/heights */
 .w-full {
   width: 100%;
@@ -996,6 +1007,15 @@ a:after {
   background-image: var(--file_icon);
 }
 
+.grid4-icon {
+  background-image: var(--grid4_icon);
+}
+.grid3-icon {
+  background-image: var(--grid3_icon);
+}
+.grid2-icon {
+  background-image: var(--grid2_icon);
+}
 .settings-icon {
   background-image: var(--settings_icon);
 }
@@ -1597,6 +1617,9 @@ input[type="checkbox"]:disabled {
   color: var(--gray-500);
 }
 
+.segmented-control-icon {
+  filter: brightness(2);
+}
 
 .input-with-unit.tooltip:has(input.input-field:hover) {
   border-color: var(--gray-400);

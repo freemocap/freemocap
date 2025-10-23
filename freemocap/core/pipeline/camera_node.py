@@ -31,7 +31,6 @@ class CameraNode:
                camera_id: CameraIdString,
                config:CameraNodeConfig,
                camera_shm_dto: SharedMemoryRingBufferDTO,
-               worker_strategy: WorkerStrategy,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         return cls(camera_id=camera_id,
@@ -76,7 +75,7 @@ class CameraNode:
         frame_rec_array: np.recarray | None = None
         while ipc.should_continue and not shutdown_self_flag.value:
             wait_1ms()
-
+            print(f"CameraNode {camera_id} loop iteration")
             # Check trackers config updates
             if not pipeline_config_subscription.empty():
                 new_pipeline_config_message: PipelineConfigMessage = pipeline_config_subscription.get()

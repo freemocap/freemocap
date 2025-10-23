@@ -19,15 +19,14 @@ logger = multiprocessing.get_logger()
 @dataclass
 class AggregationNode:
     shutdown_self_flag: multiprocessing.Value
-    worker: WorkerType
+    worker: multiprocessing.Process
 
     @classmethod
     def create(cls,
                config:AggregationNodeConfig,
                 camera_group_id: CameraGroupIdString,
                camera_group_shm_dto: CameraGroupSharedMemoryDTO,
-               ipc: PipelineIPC,
-               worker_strategy: WorkerStrategy):
+               ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         return cls(shutdown_self_flag=shutdown_self_flag,
                    worker=multiprocessing.Process(target=cls._run,
@@ -65,6 +64,7 @@ class AggregationNode:
         latest_requested_frame: int = -1
         while ipc.should_continue and not shutdown_self_flag.value:
             wait_1ms()
+            print(f"Hello from AggregationNode for camera group {camera_group_id}")
             if camera_group_shm.latest_multiframe_number < 0 or any(
                     [tracker_results is None for tracker_results in camera_node_outputs.values()]):
                 logger.info(f'Requesting frame {camera_group_shm.latest_multiframe_number} for aggregation')
@@ -79,12 +79,12 @@ class AggregationNode:
                 tracker_name = camera_node_output_message.tracker_name
                 camera_id = camera_node_output_message.camera_id
                 if not tracker_name in camera_node_outputs.keys() or camera_node_outputs[tracker_name] is None:
-                    camera_node_outputs[tracker_name] = {camera_id: None for camera_id in camera_ids}
-                if not camera_id in camera_ids:
+                    camera_node_outputs[tracker_name] = {camera_id: None for camera_id in config.camera_configs.keys()}
+                if not camera_id in config.camera_configs.keys():
                     raise ValueError(
-                        f"Camera ID {camera_id} not in camera IDs {camera_ids}")
+                        f"Camera ID {camera_id} not in camera IDs {list(config.camera_configs.keys())}")
                 if not tracker_name in camera_node_outputs.keys() or camera_node_outputs[tracker_name] is None:
-                    camera_node_outputs[tracker_name] = {camera_id: None for camera_id in camera_ids}
+                    camera_node_outputs[tracker_name] = {camera_id: None for camera_id in config.camera_configs.keys()}
                 camera_node_outputs[tracker_name][camera_id] = camera_node_output_message
 
             # Check if ready to process a frame output

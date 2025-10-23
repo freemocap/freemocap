@@ -1,5 +1,4 @@
 import logging
-import time
 
 import numpy as np
 from pydantic import BaseModel
@@ -7,7 +6,6 @@ from skellycam.core.camera.config.camera_config import CameraConfig
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseTracker, BaseObservation
 from skellytracker.trackers.charuco_tracker import CharucoTracker
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.pipeline_configs import CameraNodeTaskConfig, CalibrationCameraNodeConfig
 from freemocap.core.types.type_overloads import FrameNumberInt

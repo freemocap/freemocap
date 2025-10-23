@@ -29,6 +29,7 @@ class PipelineIPC:
             ws_queue=get_websocket_log_queue()
         )
 
+    @property
     def should_continue(self) -> bool:
         return not self.global_kill_flag.value and not self.pipeline_shutdown_flag.value
 

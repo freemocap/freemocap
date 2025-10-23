@@ -274,7 +274,7 @@ const CaptureLive = () => {
   cameraSettingsOpen[idx] && "selected-camera-feed",
   `video-tile-${idx}`
 )}
-1
+
                 >
                   {camera && (
                     <div className="camera-action-container pos-rel flex flex-row items-center justify-content-space-between pos-rel items-center">

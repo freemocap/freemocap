@@ -275,7 +275,7 @@ def test_manager_get_subscription() -> None:
     manager = PubSubTopicManager.create()
     
     # Get subscription
-    sub = manager.get_topic_subscription(topic_type=TestTopic)
+    sub = manager.get_subscription(topic_type=TestTopic)
     
     # Should be a valid queue
     assert sub is not None
@@ -294,7 +294,7 @@ def test_manager_get_subscription_unknown_topic() -> None:
     PubSubTopicABC.topic_registry.discard(UnregisteredTopic)
     
     with pytest.raises(ValueError, match="Unknown topic type"):
-        manager.get_topic_subscription(topic_type=UnregisteredTopic)
+        manager.get_subscription(topic_type=UnregisteredTopic)
 
 
 def test_manager_publish() -> None:
@@ -302,7 +302,7 @@ def test_manager_publish() -> None:
     TestTopic = create_topic(message_type=TestMessage)
     manager = PubSubTopicManager.create()
     
-    sub = manager.get_topic_subscription(topic_type=TestTopic)
+    sub = manager.get_subscription(topic_type=TestTopic)
     
     msg = TestMessage(value=777)
     manager.publish(topic_type=TestTopic, message=msg)
@@ -334,8 +334,8 @@ def test_manager_close() -> None:
     manager = PubSubTopicManager.create()
     
     # Get some subscriptions to verify they exist
-    sub1 = manager.get_topic_subscription(topic_type=TestTopic1)
-    sub2 = manager.get_topic_subscription(topic_type=TestTopic2)
+    sub1 = manager.get_subscription(topic_type=TestTopic1)
+    sub2 = manager.get_subscription(topic_type=TestTopic2)
     
     assert len(manager.topics) == 2
     
@@ -372,7 +372,7 @@ def test_create_pipeline_pubsub_manager_replaces_existing() -> None:
     
     # Create first manager
     manager1 = create_pipeline_pubsub_manager(pipeline_id=pipeline_id)
-    sub1 = manager1.get_topic_subscription(topic_type=TestTopic)
+    sub1 = manager1.get_subscription(topic_type=TestTopic)
     
     # Create second manager for same pipeline
     manager2 = create_pipeline_pubsub_manager(pipeline_id=pipeline_id)
@@ -420,9 +420,9 @@ def test_full_pubsub_workflow() -> None:
     manager = PubSubTopicManager.create()
     
     # Get subscriptions
-    sub1 = manager.get_topic_subscription(topic_type=TestTopic)
-    sub2 = manager.get_topic_subscription(topic_type=TestTopic)
-    sub_other = manager.get_topic_subscription(topic_type=AnotherTopic)
+    sub1 = manager.get_subscription(topic_type=TestTopic)
+    sub2 = manager.get_subscription(topic_type=TestTopic)
+    sub_other = manager.get_subscription(topic_type=AnotherTopic)
     
     # Publish messages
     manager.publish(topic_type=TestTopic, message=TestMessage(value=100))
@@ -455,8 +455,8 @@ def test_multiple_message_types_isolated() -> None:
     
     manager = PubSubTopicManager.create()
     
-    test_sub = manager.get_topic_subscription(topic_type=TestTopic)
-    another_sub = manager.get_topic_subscription(topic_type=AnotherTopic)
+    test_sub = manager.get_subscription(topic_type=TestTopic)
+    another_sub = manager.get_subscription(topic_type=AnotherTopic)
     
     # Publish to different topics
     manager.publish(topic_type=TestTopic, message=TestMessage(value=42))
@@ -491,7 +491,7 @@ def test_publish_before_subscription() -> None:
     manager.publish(topic_type=TestTopic, message=TestMessage(value=1))
     
     # Now subscribe
-    sub = manager.get_topic_subscription(topic_type=TestTopic)
+    sub = manager.get_subscription(topic_type=TestTopic)
     
     # Publish after subscribing
     manager.publish(topic_type=TestTopic, message=TestMessage(value=2))

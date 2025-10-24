@@ -1,6 +1,6 @@
 import logging
 import multiprocessing
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraGroupIdString
@@ -9,7 +9,6 @@ from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_s
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_manager import PipelineManager
 from freemocap.core.tasks.frontend_payload_builder.frontend_payload import FrontendPayload
-from freemocap.core.tasks.frontend_payload_builder.frontend_paylod_builder import FrontendPayloadBuilder
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 logger = logging.getLogger(__name__)
@@ -21,22 +20,15 @@ class FreemocApp:
     pipeline_shutdown_event: multiprocessing.Event
     skellycam_app: SkellycamApplication
     pipeline_manager: PipelineManager
-    frontend_payload_builder: FrontendPayloadBuilder = field(default_factory=FrontendPayloadBuilder)
 
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value):
         skellycam_app = create_skellycam_app(global_kill_flag=global_kill_flag)
         pipeline_manager = PipelineManager(global_kill_flag=global_kill_flag)
-        frontend_frame_builder = FrontendPayloadBuilder(
-            camera_group_manager=skellycam_app.camera_group_manager,
-            pipeline_manager=pipeline_manager
-        )
         return cls(global_kill_flag=global_kill_flag,
                    pipeline_shutdown_event=multiprocessing.Event(),
                    skellycam_app=skellycam_app,
                    pipeline_manager=pipeline_manager,
-                   frontend_payload_builder=frontend_frame_builder
-
                    )
 
     @property
@@ -57,7 +49,7 @@ class FreemocApp:
         self.pipeline_manager.close_all_pipelines()
 
     def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[PipelineIdString, FrontendPayload]:
-        return self.pipeline_manager.get_latest_frontend_payload(if_newer_than=if_newer_than)
+        return self.pipeline_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)
 
     def close(self):
         self.global_kill_flag.value = True

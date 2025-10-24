@@ -32,6 +32,10 @@ class CameraNodeConfig(BaseModel):
     calibration_camera_node_config: CalibrationCameraNodeConfig
     mocap_camera_node_config: MocapCameraNodeConfig
 
+    @property
+    def camera_id(self) -> CameraIdString:
+        return self.camera_config.camera_id
+
     def create_image_annotater(self):
         raise NotImplementedError("Method create_image_annotator is not implemented yet.")
 

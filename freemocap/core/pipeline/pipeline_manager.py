@@ -31,7 +31,7 @@ class PipelineManager:
         self.pipelines.clear()
         logger.info("All pipelines closed successfully")
 
-    def get_latest_frontend_payload(self,if_newer_than:FrameNumberInt) -> dict[PipelineIdString, dict]:
+    def get_latest_frontend_payloads(self,if_newer_than:FrameNumberInt) -> dict[PipelineIdString, dict]:
         payloads = {}
         for pipeline_id, pipeline in self.pipelines.items():
             payload = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)

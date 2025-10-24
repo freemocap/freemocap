@@ -157,11 +157,11 @@ class FrontendPayloadBuilder:
                                   kwargs=dict(pipeline_config=pipeline_config,
                                               camera_group_shm_dto=camera_group_shm_dto,
                                               update_latest_frontend_payload_callback=instance.update_latest_frontend_payload,
-                                              process_frame_number_subscription=ipc.pubsub.get_topic_subscription(
+                                              process_frame_number_subscription=ipc.pubsub.get_subscription(
                                                   ProcessFrameNumberTopic),
-                                              camera_node_output_subscription=ipc.pubsub.get_topic_subscription(
+                                              camera_node_output_subscription=ipc.pubsub.get_subscription(
                                                   CameraNodeOutputTopic),
-                                              aggregation_node_output_subscription=ipc.pubsub.get_topic_subscription(
+                                              aggregation_node_output_subscription=ipc.pubsub.get_subscription(
                                                   AggregationNodeOutputTopic),
                                               ipc=ipc,
                                               lock=lock,

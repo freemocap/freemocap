@@ -9,9 +9,7 @@ from skellycam.core.types.type_overloads import CameraIdString, WorkerType, Topi
 from skellycam.utilities.wait_functions import wait_1ms
 
 from skellytracker.trackers.charuco_tracker.charuco_annotator import  CharucoImageAnnotator
-from skellytracker.trackers.mediapipe_tracker.mediapipe_annotator import MediapipeImageAnnotator
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
-from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
 
 from freemocap.core.pipeline.pipeline_configs import CameraNodeConfig, PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
@@ -23,28 +21,29 @@ logger = multiprocessing.get_logger()
 
 class CameraNodeImageAnnotater(BaseModel):
     calibration_annotator: CharucoImageAnnotator
-    mocap_annotator: MediapipeImageAnnotator
+    # mocap_annotator: MediapipeImageAnnotator
 
     @classmethod
     def from_pipeline_config(cls,camera_id:CameraIdString, pipeline_config: PipelineConfig):
         return cls(
             calibration_annotator=CharucoImageAnnotator.create(
-                config=pipeline_config.camera_node_configs[camera_id].calibration_camera_node_config),
-            mocap_annotator=MediapipeImageAnnotator.create(
-                config=pipeline_config.camera_node_configs[camera_id].mocap_camera_node_config),
+                config=pipeline_config.camera_node_configs[camera_id].calibration_camera_node_config.tracker_config),
+            # mocap_annotator=MediapipeImageAnnotator.create(
+            #     config=pipeline_config.camera_node_configs[camera_id].mocap_camera_node_config),
         )
 
     def annotate_image(self,
                        image: np.ndarray,
                        charuco_observation:CharucoObservation|None=None,
-                       mediapipe_observaton:MediapipeObservation|None=None) -> np.ndarray:
+                       # mediapipe_observaton:MediapipeObservation|None=None,
+                       ) -> np.ndarray:
         annotated_image = image
         if charuco_observation is not None:
             annotated_image = self.calibration_annotator.annotate_image(image=annotated_image,
                                                                        observation=charuco_observation)
-        if mediapipe_observaton is not None:
-            annotated_image = self.mocap_annotator.annotate_image(image=annotated_image,
-                                                                 observation=mediapipe_observaton)
+        # if mediapipe_observaton is not None:
+        #     annotated_image = self.mocap_annotator.annotate_image(image=annotated_image,
+        #                                                          observation=mediapipe_observaton)
         return annotated_image
 
 @dataclass
@@ -69,9 +68,9 @@ class CameraNode:
                                                             ipc=ipc,
                                                             camera_node_config=config,
                                                             shutdown_self_flag=shutdown_self_flag,
-                                                            process_frame_number_subscription=ipc.pubsub.get_topic_subscription(
+                                                            process_frame_number_subscription=ipc.pubsub.get_subscription(
                                                                 ProcessFrameNumberTopic),
-                                                            pipeline_config_subscription=ipc.pubsub.get_topic_subscription(
+                                                            pipeline_config_subscription=ipc.pubsub.get_subscription(
                                                                 PipelineConfigTopic),
                                                             ),
                                                 daemon=True

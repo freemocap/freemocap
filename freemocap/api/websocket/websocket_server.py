@@ -116,20 +116,20 @@ class WebsocketServer:
                         logger.trace(
                             f"Backpressure detected: {backpressure} frames not acknowledged by frontend! Last sent frame: {self.last_sent_frame_number}, last received confirmation: {self.last_received_frontend_confirmation}")
 
-                backend_framerate_updates: dict[
-                    CameraGroupIdString, CurrentFramerate] = self._app.get_backend_framerate_updates()
-                if backend_framerate_updates:
-                    for camera_group_id, backend_framerate in backend_framerate_updates.items():
-                        if camera_group_id not in self._frontend_framerate_trackers:
-                            continue
-                        framerate_message = {
-                            "message_type": "framerate_update",
-                            "camera_group_id": camera_group_id,
-                            "backend_framerate": backend_framerate.model_dump(),
-                            "frontend_framerate": self._frontend_framerate_trackers[
-                                camera_group_id].current_framerate.model_dump()
-                        }
-                        await self.websocket.send_json(framerate_message)
+                # backend_framerate_updates: dict[
+                #     CameraGroupIdString, CurrentFramerate] = self._app.get_backend_framerate_updates()
+                # if backend_framerate_updates:
+                #     for camera_group_id, backend_framerate in backend_framerate_updates.items():
+                #         if camera_group_id not in self._frontend_framerate_trackers:
+                #             continue
+                #         framerate_message = {
+                #             "message_type": "framerate_update",
+                #             "camera_group_id": camera_group_id,
+                #             "backend_framerate": backend_framerate.model_dump(),
+                #             "frontend_framerate": self._frontend_framerate_trackers[
+                #                 camera_group_id].current_framerate.model_dump()
+                #         }
+                #         await self.websocket.send_json(framerate_message)
 
         except WebSocketDisconnect:
             logger.api("Client disconnected, ending Frontend Image relay task...")

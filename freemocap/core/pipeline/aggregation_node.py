@@ -37,9 +37,9 @@ class AggregationNode:
                                                               ipc=ipc,
                                                               shutdown_self_flag=shutdown_self_flag,
                                                               camera_node_subscription=ipc.pubsub.topics[
-                                                                  CameraNodeOutputTopic].get_topic_subscription(),
+                                                                  CameraNodeOutputTopic].get_subscription(),
                                                               pipeline_config_subscription=ipc.pubsub.topics[
-                                                                  PipelineConfigTopic].get_topic_subscription(),
+                                                                  PipelineConfigTopic].get_subscription(),
                                                               camera_group_shm_dto=camera_group_shm_dto,
                                                               ),
                                                   daemon=True

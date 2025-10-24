@@ -11,9 +11,9 @@ from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineOutputData
-from freemocap.core.pipeline.tasks.calibration_task.calibration_camera_node_output_data import \
+from freemocap.core.tasks.calibration_task.calibration_camera_node_output_data import \
     CalibrationCameraNodeOutputData
-from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.multi_camera_calibrator import \
+from freemocap.core.tasks.calibration_task.calibration_helpers.multi_camera_calibrator import \
     MultiCameraCalibrator, \
     MultiCameraCalibrationEstimate
 

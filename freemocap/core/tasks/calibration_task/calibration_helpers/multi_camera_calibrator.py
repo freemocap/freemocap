@@ -4,15 +4,15 @@ import numpy as np
 from pydantic import BaseModel
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pipeline.tasks.calibration_task.calibration_camera_node_output_data import \
+from freemocap.core.tasks.calibration_task.calibration_camera_node_output_data import \
     CalibrationCameraNodeOutputData
-from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.camera_math_models import TransformationMatrix
-from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.least_squares_optimizer import \
+from freemocap.core.tasks.calibration_task.calibration_helpers.camera_math_models import TransformationMatrix
+from freemocap.core.tasks.calibration_task.calibration_helpers.least_squares_optimizer import \
     SparseBundleOptimizer
-from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.single_camera_calibrator import \
+from freemocap.core.tasks.calibration_task.calibration_helpers.single_camera_calibrator import \
     CameraIntrinsicsEstimate, \
     SingleCameraCalibrator
-from freemocap.core.pipeline.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
+from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
 
 logger = logging.getLogger(__name__)
 

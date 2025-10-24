@@ -1,9 +1,7 @@
 import logging
 import uuid
-from abc import ABC
 from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraIdString
 
@@ -11,25 +9,20 @@ from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.tasks.frontend_payload_builder.frontend_paylod_builder import FrontendPayloadBuilder
 from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)
 
 
-class BasePipelineData(BaseModel, ABC):
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        frozen=True,
-    )
-    pass
-
-
 @dataclass
 class ProcessingPipeline:
     id: PipelineIdString
+    camera_group_id: CameraIdString
     config: PipelineConfig
     camera_nodes: dict[CameraIdString, CameraNode]
     aggregation_node: AggregationNode
+    fronted_payload_builder: FrontendPayloadBuilder
     ipc: PipelineIPC
 
     @property
@@ -56,11 +49,15 @@ class ProcessingPipeline:
                                                   camera_group_shm_dto=camera_group_shm_dto,
                                                   ipc=ipc,
                                                   )
-
+        frontend_payload_builder = FrontendPayloadBuilder.create(camera_group_id=camera_group.id,
+                                                                config=pipeline_config.frontend_payload_builder_config,
+                                                                ipc=ipc,
+                                                                )
         return cls(camera_nodes=camera_nodes,
                    aggregation_node=aggregation_node,
                    ipc=ipc,
                    id=str(uuid.uuid4())[:6],
+                   camera_group_id=camera_group.id,
                    config=pipeline_config
                    )
 
@@ -87,6 +84,7 @@ class ProcessingPipeline:
                 raise
 
         logger.info(f"All pipeline workers started successfully")
+
     def shutdown(self):
         logger.debug(f"Shutting down {self.__class__.__name__}...")
 

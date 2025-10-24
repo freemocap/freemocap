@@ -3,11 +3,8 @@ from typing import Hashable
 import numpy as np
 from numpydantic import NDArray, Shape
 from pydantic import BaseModel
-from skellycam import CameraId
-from skellycam.core.frames.payloads.frontend_image_payload import FrontendFramePayload
-from skellycam.core.frames.payloads.multi_frame_payload import MultiFramePayload
-
-from freemocap.core.pipeline.processing_pipeline import BasePipelineOutputData
+from freemocap.core.types.type_overloads import Point3d, FrameNumberInt
+from skellycam.core.types.type_overloads import  MultiframeTimestampFloat
 
 
 class CharucoBoardPayload(BaseModel):
@@ -19,7 +16,7 @@ class CharucoBoardPayload(BaseModel):
     @classmethod
     def create(cls,
                charuco_corners_in_object_coordinates: NDArray[Shape["* charuco_corners, 3 xyz"], np.float64] | None,
-               charuco_ids: NDArray[Shape["* ch0aruco_corners, ..."], np.int32] | None,
+               charuco_ids: NDArray[Shape["* charuco_corners, ..."], np.int32] | None,
                translation_vector: NDArray[Shape["3 xyz"], np.float64] | None,
                rotation_vector: NDArray[Shape["3 xyz"], np.float64] | None):
         return cls(
@@ -30,18 +27,9 @@ class CharucoBoardPayload(BaseModel):
             )
 
 
-class FreemocapFrontendPayload(FrontendFramePayload):
-    latest_pipeline_output: BasePipelineOutputData | None
-    points3d: dict[Hashable, NDArray[Shape["3 xyz"], np.float64]] | None
+class FrontendPayload(BaseModel):
+    frame_number:FrameNumberInt
+    timestamp: MultiframeTimestampFloat
+    images_byte_array: bytes
+    points3d: dict[Hashable, Point3d]
 
-
-    @classmethod
-    def create(cls,
-               multi_frame_payload: MultiFramePayload,
-               latest_pipeline_output: BasePipelineOutputData | None = None):
-
-        return cls(
-            **FrontendFramePayload.from_multi_frame_payload(multi_frame_payload).model_dump(),
-            latest_pipeline_output=latest_pipeline_output,
-            points3d=latest_pipeline_output.aggregation_layer_output.points3d if latest_pipeline_output is not None else None
-        )

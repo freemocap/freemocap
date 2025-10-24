@@ -8,6 +8,8 @@ from fastapi import FastAPI
 from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt, MultiframeTimestampFloat
+
+from freemocap.freemocap_app.freemocap_application import FreemocApp, get_freemocap_app
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue, MIN_LOG_LEVEL_FOR_WEBSOCKET
 from freemocap.utilities.wait_functions import await_10ms
 
@@ -17,11 +19,13 @@ BACKPRESSURE_WARNING_THRESHOLD: int = 100  # Number of frames before we warn abo
 
 
 class WebsocketServer:
-    def __init__(self, app: FastAPI, websocket: WebSocket):
+    def __init__(self, fast_api_app: FastAPI, websocket: WebSocket):
 
         self.websocket = websocket
-        self._global_kill_flag = app.state.global_kill_flag
-        self._cgm: CameraGroupManager = get_or_create_camera_group_manager(self._global_kill_flag)
+        if not hasattr(fast_api_app, "state") or not hasattr(fast_api_app.state, "global_kill_flag"):
+            raise RuntimeError("FastAPI app does not have a global_kill_flag in its state - define those fields when creating fastapi app")
+        self._global_kill_flag = fast_api_app.state.global_kill_flag
+        self._app: FreemocApp = get_freemocap_app()
 
         self._websocket_should_continue = True
         self.ws_tasks: list[asyncio.Task] = []
@@ -93,7 +97,7 @@ class WebsocketServer:
                     else:
                         new_frontend_payloads: dict[
                             CameraGroupIdString, tuple[
-                                FrameNumberInt, MultiframeTimestampFloat, bytes]] = self._cgm.get_latest_frontend_payloads(
+                                FrameNumberInt, MultiframeTimestampFloat, bytes]] = self._app.get_latest_frontend_payloads(
                             if_newer_than=self.last_sent_frame_number,
                             display_image_sizes=self._display_image_sizes)
 
@@ -114,7 +118,7 @@ class WebsocketServer:
                             f"Backpressure detected: {backpressure} frames not acknowledged by frontend! Last sent frame: {self.last_sent_frame_number}, last received confirmation: {self.last_received_frontend_confirmation}")
 
                 backend_framerate_updates: dict[
-                    CameraGroupIdString, CurrentFramerate] = self._cgm.get_backend_framerate_updates()
+                    CameraGroupIdString, CurrentFramerate] = self._app.get_backend_framerate_updates()
                 if backend_framerate_updates:
                     for camera_group_id, backend_framerate in backend_framerate_updates.items():
                         if camera_group_id not in self._frontend_framerate_trackers:

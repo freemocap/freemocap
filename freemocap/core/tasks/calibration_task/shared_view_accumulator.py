@@ -2,9 +2,9 @@ from pydantic import BaseModel, Field
 from pydantic import model_validator
 from skellycam import CameraId
 
-from freemocap.core.pipeline.tasks.calibration_task.calibration_camera_node_output_data import \
+from freemocap.core.tasks.calibration_task.calibration_camera_node_output_data import \
     CalibrationCameraNodeOutputData
-from freemocap.core.pipeline.tasks.calibration_task.calibration_helpers.calibration_numpy_types import ImagePoint2D
+from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_numpy_types import ImagePoint2D
 
 MultiFrameNumber = int
 class CameraPair(BaseModel):

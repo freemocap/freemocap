@@ -6,34 +6,12 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraGroupIdString
 from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_skellycam_app
 
-from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.core.pipeline.processing_pipeline import ProcessingPipeline
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_manager import PipelineManager
+from freemocap.core.tasks.frontend_payload_builder.frontend_paylod_builder import FrontendPayloadBuilder
+from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)
-
-
-
-@dataclass
-class PipelineManager:
-    global_kill_flag: multiprocessing.Value
-    pipelines: dict[PipelineIdString, ProcessingPipeline] = field(default_factory=dict)
-
-    def create_pipeline(self,
-                        camera_group:CameraGroup,
-                        pipeline_config:PipelineConfig ) -> ProcessingPipeline:
-        pipeline =  ProcessingPipeline.from_camera_group(camera_group=camera_group,
-                                                        pipeline_config=pipeline_config)
-        pipeline.start()
-        self.pipelines[pipeline.id] = pipeline
-        logger.info(f"Created pipeline with ID: {pipeline.id} for camera group ID: {camera_group.id}")
-        return pipeline
-
-    def close_all_pipelines(self):
-        for pipeline in self.pipelines.values():
-            pipeline.shutdown()
-        self.pipelines.clear()
-        logger.info("All pipelines closed successfully")
 
 
 @dataclass
@@ -42,27 +20,46 @@ class FreemocApp:
     pipeline_shutdown_event: multiprocessing.Event
     skellycam_app: SkellycamApplication
     pipeline_manager: PipelineManager
+    frontend_payload_builder: FrontendPayloadBuilder = field(default_factory=FrontendPayloadBuilder)
 
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value):
+        skellycam_app = create_skellycam_app(global_kill_flag=global_kill_flag)
+        pipeline_manager = PipelineManager(global_kill_flag=global_kill_flag)
+        frontend_frame_builder = FrontendPayloadBuilder(
+            camera_group_manager=skellycam_app.camera_group_manager,
+            pipeline_manager=pipeline_manager
+        )
         return cls(global_kill_flag=global_kill_flag,
                    pipeline_shutdown_event=multiprocessing.Event(),
-                   skellycam_app=create_skellycam_app(global_kill_flag=global_kill_flag),
-                   pipeline_manager=PipelineManager(global_kill_flag=global_kill_flag)
+                   skellycam_app=skellycam_app,
+                   pipeline_manager=pipeline_manager,
+                   frontend_payload_builder=frontend_frame_builder
+
                    )
 
     @property
     def should_continue(self) -> bool:
         return not self.global_kill_flag.value
 
+    @property
+    def camera_group_manager(self):
+        return self.skellycam_app.camera_group_manager
+
     def connect_pipeline(self,
                          camera_group: CameraGroup,
-                         pipeline_config:PipelineConfig) -> tuple[CameraGroupIdString, PipelineIdString]:
+                         pipeline_config: PipelineConfig) -> tuple[CameraGroupIdString, PipelineIdString]:
         pipeline = self.pipeline_manager.create_pipeline(camera_group=camera_group, pipeline_config=pipeline_config)
         return camera_group.id, pipeline.id
 
     def disconnect_pipeline(self):
         self.pipeline_manager.close_all_pipelines()
+
+    def get_latest_frontend_payloads(self):
+        return self.frontend_payload_builder.build_frontend_payloads(
+            pipeline_manager=self.pipeline_manager,
+            camera_group_manager=self.camera_group_manager
+        )
 
     def close(self):
         self.global_kill_flag.value = True

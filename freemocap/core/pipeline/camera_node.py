@@ -9,7 +9,7 @@ from skellycam.utilities.wait_functions import wait_1ms
 
 from freemocap.core.pipeline.pipeline_configs import CameraNodeConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.tasks.calibration_task.calibration_pipeline_task import CalibrationCameraNodeTask
+from freemocap.core.tasks.calibration_task.calibration_pipeline_task import CalibrationCameraNodeTask
 from freemocap.core.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigTopic, CameraNodeOutputTopic, \
     PipelineConfigMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage
 
@@ -38,9 +38,9 @@ class CameraNode:
                                                             ipc=ipc,
                                                             camera_node_config=config,
                                                             shutdown_self_flag=shutdown_self_flag,
-                                                            process_frame_number_subscription=ipc.pubsub.get_subscription(
+                                                            process_frame_number_subscription=ipc.pubsub.get_topic_subscription(
                                                                 ProcessFrameNumberTopic),
-                                                            pipeline_config_subscription=ipc.pubsub.get_subscription(
+                                                            pipeline_config_subscription=ipc.pubsub.get_topic_subscription(
                                                                 PipelineConfigTopic),
                                                             ),
                                                 daemon=True

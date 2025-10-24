@@ -10,8 +10,8 @@ from skellycam import CameraId
 from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BasePipelineOutputData
-from freemocap.core.pipeline.tasks.mocap_task.mocap_camera_node import MocapCameraNodeOutputData
-from freemocap.core.pipeline.tasks.mocap_task.point_trangulator import PointTriangulator
+from freemocap.core.tasks.mocap_task.mocap_camera_node import MocapCameraNodeOutputData
+from freemocap.core.tasks.mocap_task.point_trangulator import PointTriangulator
 
 logger = logging.getLogger(__name__)
 

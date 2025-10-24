@@ -38,7 +38,7 @@ class PubSubTopicManager(BaseModel):
             logger.debug(f"Instantiated topic: {topic_cls.__name__}")
         return manager
 
-    def get_subscription(self, topic_type: type[PubSubTopicABC]) -> TopicSubscriptionQueue:
+    def get_topic_subscription(self, topic_type: type[PubSubTopicABC]) -> TopicSubscriptionQueue:
         """
         Get a subscription queue for a topic.
 

@@ -42,7 +42,8 @@ def frontend_payload_builder_worker(
         )
 
     camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=camera_group_shm_dto, read_only=True)
-    process_frame_number: FrameNumberInt = -1
+    last_received_frame_number: FrameNumberInt = -1
+    last_processed_frame_number: FrameNumberInt = -1
     raw_frames: dict[CameraIdString, np.recarray] | None = None
     annotated_frames: dict[CameraIdString, np.recarray | None] = {camera_id: None for camera_id in
                                                                   pipeline_config.camera_configs.keys()}
@@ -51,11 +52,12 @@ def frontend_payload_builder_worker(
     aggregation_node_output: AggregationNodeOutputMessage | None = None
 
     while ipc.should_continue:
-        if not raw_frames and not camera_node_outputs and not aggregation_node_output:
+        if  last_processed_frame_number >= last_received_frame_number and all([output is None for output in camera_node_outputs.values()]) and not aggregation_node_output:
             while not process_frame_number_subscription.empty() and ipc.should_continue:
                 process_frame_number_message: ProcessFrameNumberMessage = process_frame_number_subscription.get()
-                process_frame_number = process_frame_number_message.frame_number
-                raw_frames = camera_group_shm.get_images_by_frame_number(frame_number=process_frame_number)
+                last_received_frame_number = process_frame_number_message.frame_number
+                raw_frames = camera_group_shm.get_images_by_frame_number(frame_number=last_received_frame_number,
+                                                                         frame_recarrays=raw_frames)
 
         if raw_frames and any(
                 [output is None for output in camera_node_outputs.values()]) and not aggregation_node_output:
@@ -63,15 +65,15 @@ def frontend_payload_builder_worker(
                 camera_node_output_message: CameraNodeOutputMessage = camera_node_output_subscription.get()
                 if not camera_node_output_message.camera_id in camera_node_outputs:
                     raise ValueError(f"Received output for unknown camera ID: {camera_node_output_message.camera_id}")
-                if not camera_node_output_message.frame_number == process_frame_number:
+                if not camera_node_output_message.frame_number == last_received_frame_number:
                     raise ValueError(
-                        f"Frame number mismatch in camera output. Expected {process_frame_number}, got {camera_node_output_message.frame_number}")
+                        f"Frame number mismatch in camera output. Expected {last_received_frame_number}, got {camera_node_output_message.frame_number}")
                 camera_node_outputs[camera_node_output_message.camera_id] = camera_node_output_message
+                annotated_frames[camera_node_output_message.camera_id] = raw_frames[camera_node_output_message.camera_id].copy()
                 annotated_frames[camera_node_output_message.camera_id].image[0] = image_annotators[
                     camera_node_output_message.camera_id].annotate_image(
                     image=raw_frames[camera_node_output_message.camera_id].image[0],
                     charuco_observation=camera_node_outputs[camera_node_output_message.camera_id].charuco_observation,
-                    mediapipe_observaton=None  # TODO - add mocap task
                 )
 
         if raw_frames and all(
@@ -80,9 +82,9 @@ def frontend_payload_builder_worker(
                 raise ValueError("Annotated frames are not all available when expected.")
             while not aggregation_node_output_subscription.empty() and ipc.should_continue:
                 aggregation_node_output_message: AggregationNodeOutputMessage = aggregation_node_output_subscription.get()
-                if not aggregation_node_output_message.frame_number == process_frame_number:
+                if not aggregation_node_output_message.frame_number == last_received_frame_number:
                     raise ValueError(
-                        f"Frame number mismatch in aggregation output. Expected {process_frame_number}, got {aggregation_node_output_message.frame_number}")
+                        f"Frame number mismatch in aggregation output. Expected {last_received_frame_number}, got {aggregation_node_output_message.frame_number}")
                 aggregation_node_output = aggregation_node_output_message
 
         if raw_frames and all([output is not None for output in camera_node_outputs.values()]) and all(
@@ -90,11 +92,12 @@ def frontend_payload_builder_worker(
                  annotated_frames.values()]) and aggregation_node_output:
             _, _, frames_byte_array = create_frontend_payload(annotated_frames)
             frontend_payload = FrontendPayload(
-                frame_number=process_frame_number,
+                frame_number=last_received_frame_number,
                 images_byte_array=frames_byte_array,
                 camera_node_outputs=camera_node_outputs,
                 aggregation_node_output=aggregation_node_output,
             )
+            last_processed_frame_number = last_received_frame_number
             with lock:
                 update_latest_frontend_payload_callback(frontend_payload)
             raw_frames = None

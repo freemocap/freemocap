@@ -27,7 +27,7 @@ class CameraNodeImageAnnotater(BaseModel):
     def from_pipeline_config(cls,camera_id:CameraIdString, pipeline_config: PipelineConfig):
         return cls(
             calibration_annotator=CharucoImageAnnotator.create(
-                config=pipeline_config.camera_node_configs[camera_id].calibration_camera_node_config.tracker_config),
+                config=pipeline_config.camera_node_configs[camera_id].calibration_camera_node_config.annotator_config),
             # mocap_annotator=MediapipeImageAnnotator.create(
             #     config=pipeline_config.camera_node_configs[camera_id].mocap_camera_node_config),
         )
@@ -121,9 +121,9 @@ class CameraNode:
                 # Process the frame
                 frame_rec_array = camera_shm.get_data_by_index(index=process_frame_number_message.frame_number,
                                                                rec_array=frame_rec_array)
-                observation = calibration_task.process_image(frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                charuco_observation = calibration_task.process_image(frame_number=frame_rec_array.frame_metadata.frame_number[0],
                                                     image=frame_rec_array.image[0], )
-                if observation is not None:
+                if charuco_observation is not None:
                     # Publish the observation to the IPC
                     ipc.pubsub.publish(
                         topic_type=CameraNodeOutputTopic,
@@ -131,7 +131,7 @@ class CameraNode:
                             camera_id = frame_rec_array.frame_metadata.camera_config.camera_id[0],
                             frame_number=frame_rec_array.frame_metadata.frame_number[0],
                             tracker_name=calibration_task.__class__.__name__,
-                            observation=observation,
+                            charuco_observation=charuco_observation,
                         ),
                     )
 

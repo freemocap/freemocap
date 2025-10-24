@@ -100,15 +100,13 @@ class WebsocketServer:
                             CameraGroupIdString, FrontendPayload] = self._app.get_latest_frontend_payloads(
                             if_newer_than=self.last_sent_frame_number)
 
-                        for camera_group_id, (frame_number,
-                                              multiframe_timestamp,
-                                              payload_bytes) in new_frontend_payloads.items():
-                            await self.websocket.send_bytes(payload_bytes)
-                            self.last_sent_frame_number = frame_number
-                            if camera_group_id not in self._frontend_framerate_trackers:
-                                self._frontend_framerate_trackers[camera_group_id] = FramerateTracker.create(
-                                    framerate_source=f"Frontend-{camera_group_id}")
-                            self._frontend_framerate_trackers[camera_group_id].update(multiframe_timestamp)
+                        for pipeline_id, frontend_payload  in new_frontend_payloads.items():
+                            await self.websocket.send_bytes(frontend_payload.images_byte_array)
+                            self.last_sent_frame_number = frontend_payload.frame_number
+                            if pipeline_id not in self._frontend_framerate_trackers:
+                                self._frontend_framerate_trackers[pipeline_id] = FramerateTracker.create(
+                                    framerate_source=f"Frontend-{pipeline_id}")
+                            # self._frontend_framerate_trackers[pipeline_id].update(multiframe_timestamp)
                 else:
                     skipped_previous = True
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation

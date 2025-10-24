@@ -70,15 +70,12 @@ class AggregationNode:
         while ipc.should_continue and not shutdown_self_flag.value:
             wait_1ms()
             if camera_group_shm.latest_multiframe_number > latest_requested_frame and last_received_frame >= latest_requested_frame:
-                logger.info(f'Requesting frame {camera_group_shm.latest_multiframe_number} for aggregation')
                 ipc.pubsub.topics[ProcessFrameNumberTopic].publish(
                     ProcessFrameNumberMessage(frame_number=camera_group_shm.latest_multiframe_number))
                 latest_requested_frame = camera_group_shm.latest_multiframe_number
             # Check for Camera Node Output
             if not camera_node_subscription.empty():
                 camera_node_output_message: CameraNodeOutputMessage = camera_node_subscription.get()
-                logger.info(
-                    f"AggregationNode received CameraNodeOutputMessage for frame {camera_node_output_message.frame_number} from camera {camera_node_output_message.camera_id}")
                 # Process the camera node output and aggregate it
                 camera_id = camera_node_output_message.camera_id
                 if not camera_id in config.camera_configs.keys():
@@ -105,8 +102,6 @@ class AggregationNode:
                 )
                 ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
                 camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
-                logger.debug(
-                    f"Published aggregation output for frame {latest_requested_frame} with points3d: {aggregation_output.tracked_points3d.keys()}")
 
     def start(self):
         logger.debug(f"Starting AggregationNode worker")

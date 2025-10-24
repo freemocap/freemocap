@@ -2,6 +2,8 @@ from pydantic import BaseModel, model_validator
 from skellycam.core.camera.config.camera_config import CameraConfigs, CameraConfig
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker import CharucoTrackerConfig
+from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoAnnotatorConfig
+
 
 class CameraNodeTaskConfig(BaseModel):
     camera_config: CameraConfig
@@ -11,6 +13,7 @@ class AggregationTaskConfig(BaseModel):
 
 class CalibrationCameraNodeConfig(CameraNodeTaskConfig):
     tracker_config: CharucoTrackerConfig
+    annotator_config:CharucoAnnotatorConfig
 
 class CalibrationAggregationNodeConfig(AggregationTaskConfig):
     pass
@@ -57,7 +60,8 @@ class PipelineConfig(BaseModel):
         for cam_id, cam_config in camera_configs.items():
             calibration_camera_node_config = CalibrationCameraNodeConfig(
                 camera_config=cam_config,
-                tracker_config=CharucoTrackerConfig()
+                tracker_config=CharucoTrackerConfig(),
+                annotator_config=CharucoAnnotatorConfig()
             )
             mocap_camera_node_config = MocapCameraNodeConfig(
                 camera_config=cam_config

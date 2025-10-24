@@ -8,8 +8,9 @@ from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_s
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_manager import PipelineManager
+from freemocap.core.tasks.frontend_payload_builder.frontend_payload import FrontendPayload
 from freemocap.core.tasks.frontend_payload_builder.frontend_paylod_builder import FrontendPayloadBuilder
-from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +56,8 @@ class FreemocApp:
     def disconnect_pipeline(self):
         self.pipeline_manager.close_all_pipelines()
 
-    def get_latest_frontend_payloads(self):
-        return self.frontend_payload_builder.build_frontend_payloads(
-            pipeline_manager=self.pipeline_manager,
-            camera_group_manager=self.camera_group_manager
-        )
+    def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[PipelineIdString, FrontendPayload]:
+        return self.pipeline_manager.get_latest_frontend_payload(if_newer_than=if_newer_than)
 
     def close(self):
         self.global_kill_flag.value = True

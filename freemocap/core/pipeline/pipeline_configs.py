@@ -26,15 +26,21 @@ class AggregationNodeConfig(BaseModel):
     calibration_aggregation_node_config: CalibrationAggregationNodeConfig
     mocap_aggregation_node_config: MocapAggregationNodeConfig
 
+
 class CameraNodeConfig(BaseModel):
     camera_config: CameraConfig
     calibration_camera_node_config: CalibrationCameraNodeConfig
     mocap_camera_node_config: MocapCameraNodeConfig
 
+    def create_image_annotater(self):
+        raise NotImplementedError("Method create_image_annotator is not implemented yet.")
+
 class PipelineConfig(BaseModel):
     camera_node_configs: dict[CameraIdString, CameraNodeConfig]
     aggregation_node_config: AggregationNodeConfig
-
+    @property
+    def camera_configs(self) -> CameraConfigs:
+        return self.aggregation_node_config.camera_configs
     @model_validator(mode="after")
     def validate(self   ):
         if set(self.camera_node_configs.keys()) != set(self.aggregation_node_config.camera_configs.keys()):

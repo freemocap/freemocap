@@ -9,6 +9,7 @@ from skellycam.core.camera_group.camera_group_manager import CameraGroupManager,
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt, MultiframeTimestampFloat
 
+from freemocap.core.tasks.frontend_payload_builder.frontend_payload import FrontendPayload
 from freemocap.freemocap_app.freemocap_application import FreemocApp, get_freemocap_app
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue, MIN_LOG_LEVEL_FOR_WEBSOCKET
 from freemocap.utilities.wait_functions import await_10ms
@@ -96,10 +97,8 @@ class WebsocketServer:
                         skipped_previous = False
                     else:
                         new_frontend_payloads: dict[
-                            CameraGroupIdString, tuple[
-                                FrameNumberInt, MultiframeTimestampFloat, bytes]] = self._app.get_latest_frontend_payloads(
-                            if_newer_than=self.last_sent_frame_number,
-                            display_image_sizes=self._display_image_sizes)
+                            CameraGroupIdString, FrontendPayload] = self._app.get_latest_frontend_payloads(
+                            if_newer_than=self.last_sent_frame_number)
 
                         for camera_group_id, (frame_number,
                                               multiframe_timestamp,

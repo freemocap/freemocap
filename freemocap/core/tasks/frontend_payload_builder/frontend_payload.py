@@ -3,8 +3,10 @@ from typing import Hashable
 import numpy as np
 from numpydantic import NDArray, Shape
 from pydantic import BaseModel
+
+from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, AggregationNodeOutputMessage
 from freemocap.core.types.type_overloads import Point3d, FrameNumberInt
-from skellycam.core.types.type_overloads import  MultiframeTimestampFloat
+from skellycam.core.types.type_overloads import MultiframeTimestampFloat, CameraIdString
 
 
 class CharucoBoardPayload(BaseModel):
@@ -29,7 +31,7 @@ class CharucoBoardPayload(BaseModel):
 
 class FrontendPayload(BaseModel):
     frame_number:FrameNumberInt
-    timestamp: MultiframeTimestampFloat
     images_byte_array: bytes
-    points3d: dict[Hashable, Point3d]
+    camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] #TODO - handle mocap stuff too
+    aggregation_node_output: AggregationNodeOutputMessage
 

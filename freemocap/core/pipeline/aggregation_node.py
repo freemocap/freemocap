@@ -4,10 +4,9 @@ from dataclasses import dataclass
 
 import numpy as np
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemoryDTO, \
-    CameraGroupSharedMemoryManager
+    CameraGroupSharedMemory
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
-from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackerNameString
 
 from freemocap.core.pipeline.pipeline_configs import AggregationNodeConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
@@ -64,7 +63,7 @@ class AggregationNode:
         logger.debug(f"Starting aggregation process for camera group {camera_group_id}")
         camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {camera_id: None for camera_id in
                                                                                      config.camera_configs.keys()}
-        camera_group_shm = CameraGroupSharedMemoryManager.recreate(shm_dto=camera_group_shm_dto,
+        camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=camera_group_shm_dto,
                                                                    read_only=True)
         latest_requested_frame: int = -1
         last_received_frame: int = -1
@@ -113,24 +112,9 @@ class AggregationNode:
         logger.debug(f"Starting AggregationNode worker")
         self.worker.start()
 
-    def stop(self):
+    def shutdown(self):
         logger.debug(f"Stopping AggregationNode worker")
         self.shutdown_self_flag.value = True
         self.worker.join()
 
 
-def handle_aggregation_calculations(tracker_name: TrackerNameString,
-                                    tracker_results: dict[
-                                        CameraIdString, CameraNodeOutputMessage]) -> AggregationNodeOutputMessage:
-    """ Calculate the aggregation output for a given tracker name and its results from camera nodes.
-    This function aggregates the 3D points from the tracker results and returns a BaseAggregationLayerOutputData object.
-    """
-    frame_number_set = {result.frame_metadata.frame_number for result in tracker_results.values()}
-    if len(frame_number_set) != 1:
-        logger.warning(f"Frame numbers from tracker results do not match - got {frame_number_set}")
-    frame_number = frame_number_set.pop()
-    points3d = {}  # Do the aggregation logic here
-    logger.info(f"Pretend we're aggregating 3D points for tracker {tracker_name} at frame {frame_number}")
-    return AggregationNodeOutputMessage(
-        frame_number=frame_number,
-        tracked_points3d=points3d)

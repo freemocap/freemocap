@@ -1,11 +1,13 @@
 import multiprocessing
 import uuid
 from dataclasses import dataclass, field
+from typing import Callable
 
 from freemocap.core.pubsub.pubsub_manager import PubSubTopicManager, create_pipeline_pubsub_manager
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue
 
+from skellycam.core.camera_group.camera_group_ipc import CameraGroupIPC
 
 @dataclass
 class PipelineIPC:
@@ -40,3 +42,6 @@ class PipelineIPC:
     def kill_everything(self):
         self.shutdown_pipeline()
         self.global_kill_flag.value = True
+
+    def pause_unpause(self):
+        self.pause_unpause_cameras()

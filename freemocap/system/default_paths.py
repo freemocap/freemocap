@@ -40,6 +40,11 @@ def get_default_freemocap_recordings_path() -> str:
 def get_default_recording_folder_path(tag: str = "") -> str:
     return str(Path(get_default_freemocap_base_folder_path()) / "recordings" / default_recording_name(string_tag=tag))
 
+def get_default_calibration_toml_path() -> str:
+    calib_path = Path(get_default_freemocap_base_folder_path()) / "calibrations" / f"{default_recording_name()}_camera_calibration.toml"
+    calib_path.parent.mkdir(exist_ok=True, parents=True)
+    return str(calib_path)
+
 
 def get_log_file_path() -> str:
     log_folder_path = (

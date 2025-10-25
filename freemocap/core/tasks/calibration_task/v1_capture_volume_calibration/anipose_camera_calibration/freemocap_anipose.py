@@ -23,8 +23,8 @@ from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
-from skellytracker.process_folder_of_videos import process_list_of_videos
-from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
+# from skellytracker.process_folder_of_videos import process_list_of_videos
+# from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
 from tqdm import trange
 
 numba_logger = logging.getLogger("numba")
@@ -691,7 +691,7 @@ class FisheyeCamera(Camera):
         )
 
 
-class CameraGroup:
+class AniposeCameraGroup:
     def __init__(self, cameras, metadata={}):
         self.cameras = cameras
         self.metadata = metadata
@@ -699,7 +699,7 @@ class CameraGroup:
 
     def subset_cameras(self, indices):
         cams = [self.cameras[ix].copy() for ix in indices]
-        return CameraGroup(cams, self.metadata)
+        return AniposeCameraGroup(cams, self.metadata)
 
     def subset_cameras_names(self, names):
         cur_names = self.get_names()
@@ -1801,7 +1801,7 @@ class CameraGroup:
     def copy(self):
         cameras = [cam.copy() for cam in self.cameras]
         metadata = copy(self.metadata)
-        return CameraGroup(cameras, metadata)
+        return AniposeCameraGroup(cameras, metadata)
 
     def set_rotations(self, rvecs):
         for cam, rvec in zip(self.cameras, rvecs):
@@ -1861,7 +1861,6 @@ class CameraGroup:
             init_intrinsics=True,
             init_extrinsics=True,
             verbose=True,
-            **kwargs,
     ):
         assert len(all_rows) == len(self.cameras), "Number of camera detections does not match number of cameras"
 
@@ -1940,19 +1939,20 @@ class CameraGroup:
         
         Should be called once during the initial calibration, and then referenced with self.charuco_2d_data
         """
-        video_paths = [Path(video[0]) for video in videos]
-        charuco_2d_data = process_list_of_videos(
-            model_info=CharucoModelInfo(),
-            tracking_params=CharucoTrackingParams(
-                charuco_squares_x_in=board.squaresX,
-                charuco_squares_y_in=board.squaresY,
-                charuco_dict_id=ARUCO_DICTS[(board.marker_bits, board.dict_size)]
-            ),
-            video_paths=video_paths,
-            num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
-        )
-
-        self.charuco_2d_data = charuco_2d_data
+        # video_paths = [Path(video[0]) for video in videos]
+        # charuco_2d_data = process_list_of_videos(
+        #     model_info=CharucoModelInfo(),
+        #     tracking_params=CharucoTrackingParams(
+        #         charuco_squares_x_in=board.squaresX,
+        #         charuco_squares_y_in=board.squaresY,
+        #         charuco_dict_id=ARUCO_DICTS[(board.marker_bits, board.dict_size)]
+        #     ),
+        #     video_paths=video_paths,
+        #     num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
+        # )
+        #
+        # self.charuco_2d_data = charuco_2d_data
+        pass
 
     def set_camera_sizes_videos(self, videos):
         for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):
@@ -1984,7 +1984,6 @@ class CameraGroup:
             init_intrinsics=init_intrinsics,
             init_extrinsics=init_extrinsics,
             verbose=verbose,
-            **kwargs,
         )
         return error, merged, charuco_frames
 
@@ -2002,7 +2001,7 @@ class CameraGroup:
             else:
                 cam = Camera.from_dict(d)
             cameras.append(cam)
-        return CameraGroup(cameras)
+        return AniposeCameraGroup(cameras)
 
     @staticmethod
     def from_names(names, fisheye=False):
@@ -2013,7 +2012,7 @@ class CameraGroup:
             else:
                 cam = Camera(name=name)
             cameras.append(cam)
-        return CameraGroup(cameras)
+        return AniposeCameraGroup(cameras)
 
     def load_dicts(self, arr):
         for cam, d in zip(self.cameras, arr):
@@ -2028,11 +2027,13 @@ class CameraGroup:
             toml.dump(master_dict, f)
 
     @staticmethod
-    def load(fname):
+    def load(fname:str):
+        if not Path(fname).is_file():
+            raise FileNotFoundError(f"File {fname} not found.")
         master_dict = toml.load(fname)
         keys = sorted(master_dict.keys())
         items = [master_dict[k] for k in keys if k != "metadata"]
-        cgroup = CameraGroup.from_dicts(items)
+        cgroup = AniposeCameraGroup.from_dicts(items)
         if "metadata" in master_dict:
             cgroup.metadata = master_dict["metadata"]
         return cgroup
@@ -2042,23 +2043,20 @@ class CameraGroup:
             cam.resize_camera(scale)
 
 
-class AniposeCharucoBoard(CharucoBoard):
+class AniposeCharucoBoard:
     def __init__(
             self,
-            squaresX,
-            squaresY,
-            square_length,
-            marker_length,
+            squaresX:int=5,
+            squaresY:int=7,
+            square_length:float=58.0,
+            marker_length:float=(58.0 * 0.8),
             marker_bits=4,
-            dict_size=50,
-            aruco_dict=None,
-            manually_verify=False,
+            dict_size=250,
     ):
         self.squaresX = squaresX
         self.squaresY = squaresY
         self.square_length = square_length
         self.marker_length = marker_length
-        self.manually_verify = manually_verify
         self.marker_bits = marker_bits
         self.dict_size = dict_size
 
@@ -2132,59 +2130,10 @@ class AniposeCharucoBoard(CharucoBoard):
         else:
             detectedCorners = detectedIds = np.float64([])
 
-        if (
-                len(detectedCorners) > 0
-                and self.manually_verify
-                and not self.manually_verify_board_detection(gray, detectedCorners, detectedIds)
-        ):
-            detectedCorners = detectedIds = np.float64([])
 
         return detectedCorners, detectedIds
 
-    def manually_verify_board_detection(self, image, corners, ids=None):
-        height, width = image.shape[:2]
-        image = cv2.aruco.drawDetectedCornersCharuco(image, corners, ids)
-        cv2.putText(
-            image,
-            "(a) Accept (d) Reject",
-            (int(width / 1.35), int(height / 16)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            255,
-            1,
-            cv2.LINE_AA,
-        )
-        cv2.imshow("verify_detection", image)
-        while 1:
-            key = cv2.waitKey(0) & 0xFF
-            if key == ord("a"):
-                cv2.putText(
-                    image,
-                    "Accepted!",
-                    (int(width / 2.5), int(height / 1.05)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    255,
-                    2,
-                    cv2.LINE_AA,
-                )
-                cv2.imshow("verify_detection", image)
-                cv2.waitKey(100)
-                return True
-            elif key == ord("d"):
-                cv2.putText(
-                    image,
-                    "Rejected!",
-                    (int(width / 2.5), int(height / 1.05)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    255,
-                    2,
-                    cv2.LINE_AA,
-                )
-                cv2.imshow("verify_detection", image)
-                cv2.waitKey(100)
-                return False
+
 
     def estimate_pose_points(self, camera, corners, ids):
         if corners is None or ids is None or len(corners) < 5:

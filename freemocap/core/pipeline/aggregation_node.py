@@ -14,7 +14,13 @@ from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigTopic, ProcessFrameNumberTopic, \
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
+from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import \
+    AniposeCameraGroup, AniposeCharucoBoard
+from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.charuco_observation_aggregator import \
+    anipose_calibration_from_charuco_observations
+
 from freemocap.core.types.type_overloads import Point3d
+from freemocap.system.default_paths import get_default_recording_folder_path, get_default_calibration_toml_path
 
 logger = logging.getLogger(__name__)
 
@@ -98,13 +104,32 @@ class AggregationNode:
                         camera_node_outputs.values()]):
                 if not all([camera_node_output_message.frame_number == latest_requested_frame for
                             camera_node_output_message in camera_node_outputs.values()]):
-                    raise ValueError(
+                    logger.warning(
                         f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
                 if tok is not None:
                     raise RuntimeError("tok should be None at this point")
                 tok = time.perf_counter_ns()
                 last_received_frame = latest_requested_frame
                 shared_view_accumulator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,multi_frame_number=latest_requested_frame)
+
+
+                # Check if ready to calibrate
+                calibration_observations = shared_view_accumulator.get_calibration_observations_if_ready(min_shared_views=100)
+
+                if calibration_observations is not None:
+                    logger.info(f"Starting calibration from aggregated charuco observations at frame {latest_requested_frame}, number of frames with shared views: {len(calibration_observations)}")
+                    anipose_camera_group = AniposeCameraGroup.from_names(names=config.camera_ids)
+                    anipose_charuco_board = AniposeCharucoBoard()
+                    logger.info('Performing Anipose calibration from charuco observations...')
+                    calibration_toml_path = get_default_calibration_toml_path()
+                    logger.info(f'Saving calibration to {calibration_toml_path}')
+                    anipose_calibration_from_charuco_observations(
+                        charuco_observations_by_frame=calibration_observations,
+                        charuco_board=anipose_charuco_board,
+                        anipose_camera_group=anipose_camera_group,
+                        calibration_toml_save_path=calibration_toml_path,
+                        # ... other params
+                    )
                 aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                     frame_number=latest_requested_frame,
                     camera_group_id=camera_group_id,

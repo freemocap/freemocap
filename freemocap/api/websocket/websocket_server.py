@@ -97,7 +97,7 @@ class WebsocketServer:
                         skipped_previous = False
                     else:
                         new_frontend_payloads: dict[
-                            CameraGroupIdString, FrontendPayload] = self._app.get_latest_frontend_payloads(
+                            CameraGroupIdString, tuple[FrontendPayload, bytes]] = self._app.get_latest_frontend_payloads(
                             if_newer_than=self.last_sent_frame_number)
 
                         for pipeline_id, (frontend_payload, images_bytearray)  in new_frontend_payloads.items():

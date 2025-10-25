@@ -1,30 +1,33 @@
+import logging
 import multiprocessing
-from pydantic import BaseModel
+import time
 from dataclasses import dataclass
 
 import numpy as np
+from pydantic import BaseModel
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.types.type_overloads import CameraIdString, WorkerType, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
-
-from skellytracker.trackers.charuco_tracker.charuco_annotator import  CharucoImageAnnotator
+from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoImageAnnotator
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.pipeline_configs import CameraNodeConfig, PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.tasks.calibration_task.calibration_pipeline_task import CalibrationCameraNodeTask
 from freemocap.core.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigTopic, CameraNodeOutputTopic, \
     PipelineConfigMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage
+from freemocap.core.tasks.calibration_task.calibration_pipeline_task import CalibrationCameraNodeTask
 
-logger = multiprocessing.get_logger()
+logger = logging.getLogger(__name__)
+
 
 class CameraNodeImageAnnotater(BaseModel):
     calibration_annotator: CharucoImageAnnotator
+
     # mocap_annotator: MediapipeImageAnnotator
 
     @classmethod
-    def from_pipeline_config(cls,camera_id:CameraIdString, pipeline_config: PipelineConfig):
+    def from_pipeline_config(cls, camera_id: CameraIdString, pipeline_config: PipelineConfig):
         return cls(
             calibration_annotator=CharucoImageAnnotator.create(
                 config=pipeline_config.camera_node_configs[camera_id].calibration_camera_node_config.annotator_config),
@@ -34,17 +37,18 @@ class CameraNodeImageAnnotater(BaseModel):
 
     def annotate_image(self,
                        image: np.ndarray,
-                       charuco_observation:CharucoObservation|None=None,
+                       charuco_observation: CharucoObservation | None = None,
                        # mediapipe_observaton:MediapipeObservation|None=None,
                        ) -> np.ndarray:
         annotated_image = image
         if charuco_observation is not None:
             annotated_image = self.calibration_annotator.annotate_image(image=annotated_image,
-                                                                       observation=charuco_observation)
+                                                                        observation=charuco_observation)
         # if mediapipe_observaton is not None:
         #     annotated_image = self.mocap_annotator.annotate_image(image=annotated_image,
         #                                                          observation=mediapipe_observaton)
         return annotated_image
+
 
 @dataclass
 class CameraNode:
@@ -55,26 +59,26 @@ class CameraNode:
     @classmethod
     def create(cls,
                camera_id: CameraIdString,
-               config:CameraNodeConfig,
+               config: CameraNodeConfig,
                camera_shm_dto: SharedMemoryRingBufferDTO,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         return cls(camera_id=camera_id,
                    shutdown_self_flag=shutdown_self_flag,
                    worker=multiprocessing.Process(target=cls._run,
-                                                name=f"CameraProcessingNode-{camera_id}",
-                                                kwargs=dict(camera_id=camera_id,
-                                                            camera_shm_dto=camera_shm_dto,
-                                                            ipc=ipc,
-                                                            camera_node_config=config,
-                                                            shutdown_self_flag=shutdown_self_flag,
-                                                            process_frame_number_subscription=ipc.pubsub.get_subscription(
-                                                                ProcessFrameNumberTopic),
-                                                            pipeline_config_subscription=ipc.pubsub.get_subscription(
-                                                                PipelineConfigTopic),
-                                                            ),
-                                                daemon=True
-                                                ),
+                                                  name=f"CameraProcessingNode-{camera_id}",
+                                                  kwargs=dict(camera_id=camera_id,
+                                                              camera_shm_dto=camera_shm_dto,
+                                                              ipc=ipc,
+                                                              camera_node_config=config,
+                                                              shutdown_self_flag=shutdown_self_flag,
+                                                              process_frame_number_subscription=ipc.pubsub.get_subscription(
+                                                                  ProcessFrameNumberTopic),
+                                                              pipeline_config_subscription=ipc.pubsub.get_subscription(
+                                                                  PipelineConfigTopic),
+                                                              ),
+                                                  daemon=True
+                                                  ),
                    )
 
     @staticmethod
@@ -95,7 +99,7 @@ class CameraNode:
         camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
                                                            read_only=False)
 
-        calibration_task= CalibrationCameraNodeTask.create(config=camera_node_config.calibration_camera_node_config)
+        calibration_task = CalibrationCameraNodeTask.create(config=camera_node_config.calibration_camera_node_config)
         # mocap_task: BaseCameraNodeTask|None = None # TODO - this
 
         frame_rec_array: np.recarray | None = None
@@ -104,36 +108,44 @@ class CameraNode:
             # Check trackers config updates
             if not pipeline_config_subscription.empty():
                 new_pipeline_config_message: PipelineConfigMessage = pipeline_config_subscription.get()
-                logger.debug(f"Received new skelly tracker s for camera {camera_id}: {new_pipeline_config_message}")
+                logger.debug(f"Received new skelly trackers for camera {camera_id}: {new_pipeline_config_message}")
 
-                # TODO - this
-                camera_node_config = new_pipeline_config_message.pipeline_config.camera_node_configs[camera_node_config.camera_id]
-                calibration_task= CalibrationCameraNodeTask.create(config=camera_node_config.calibration_camera_node_config)
+                camera_node_config = new_pipeline_config_message.pipeline_config.camera_node_configs[
+                    camera_node_config.camera_id]
+                calibration_task = CalibrationCameraNodeTask.create(
+                    config=camera_node_config.calibration_camera_node_config)
                 # mocap_task = None  # TODO - this
 
             # Check for new frame to process
             if not process_frame_number_subscription.empty():
                 process_frame_number_message: ProcessFrameNumberMessage = process_frame_number_subscription.get()
-
-                logger.debug(
-                    f"Camera {camera_id} received request to process frame number {process_frame_number_message.frame_number}")
+                #
+                # logger.trace(
+                #     f"Camera {camera_id} received request to process frame number {process_frame_number_message.frame_number}")
 
                 # Process the frame
+                tik = time.perf_counter_ns()
                 frame_rec_array = camera_shm.get_data_by_index(index=process_frame_number_message.frame_number,
                                                                rec_array=frame_rec_array)
-                charuco_observation = calibration_task.process_image(frame_number=frame_rec_array.frame_metadata.frame_number[0],
-                                                    image=frame_rec_array.image[0], )
+                charuco_observation = calibration_task.process_image(
+                    frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                    image=frame_rec_array.image[0], )
+                tok = time.perf_counter_ns()
                 if charuco_observation is not None:
                     # Publish the observation to the IPC
                     ipc.pubsub.publish(
                         topic_type=CameraNodeOutputTopic,
                         message=CameraNodeOutputMessage(
-                            camera_id = frame_rec_array.frame_metadata.camera_config.camera_id[0],
+                            camera_id=frame_rec_array.frame_metadata.camera_config.camera_id[0],
                             frame_number=frame_rec_array.frame_metadata.frame_number[0],
                             tracker_name=calibration_task.__class__.__name__,
                             charuco_observation=charuco_observation,
                         ),
                     )
+                    tok2 = time.perf_counter_ns()
+                    # logger.debug(
+                    #     f"Camera {camera_id} processed frame {frame_rec_array.frame_metadata.frame_number[0]} in "
+                    #     f"{(tok - tik) / 1e6:.2f} ms, published observation in {(tok2 - tok) / 1e6:.2f} ms")
 
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__} for camera {self.camera_id}")

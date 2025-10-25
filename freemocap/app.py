@@ -64,7 +64,7 @@ async def app_lifespan(
     monitor_task = asyncio.create_task(monitor_kill_flag(app=app))
 
     logger.success(
-        f"FreeMoCap API v{freemocap.__version__} started successfully 💀✨\n"
+        f"FreeMoCap API {freemocap.__version__} started successfully 💀✨\n"
         f"Swagger API docs: {APP_URL}/docs"
     )
 

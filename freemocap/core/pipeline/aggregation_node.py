@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -67,9 +68,15 @@ class AggregationNode:
                                                                    read_only=True)
         latest_requested_frame: int = -1
         last_received_frame: int = -1
+        tik:int|None = None
+        tok:int|None = None
+        tok2:int|None = None
         while ipc.should_continue and not shutdown_self_flag.value:
             wait_1ms()
             if camera_group_shm.latest_multiframe_number > latest_requested_frame and last_received_frame >= latest_requested_frame:
+                if tik is not None:
+                    raise RuntimeError("Request for new frame happened before expected")
+                tik = time.perf_counter_ns()
                 ipc.pubsub.topics[ProcessFrameNumberTopic].publish(
                     ProcessFrameNumberMessage(frame_number=camera_group_shm.latest_multiframe_number))
                 latest_requested_frame = camera_group_shm.latest_multiframe_number
@@ -84,13 +91,15 @@ class AggregationNode:
                 camera_node_outputs[camera_id] = camera_node_output_message
 
             # Check if ready to process a frame output
-            if not any([camera_node_output_message is None for camera_node_output_message in
+            if all([isinstance(camera_node_output_message, CameraNodeOutputMessage) for camera_node_output_message in
                         camera_node_outputs.values()]):
-                # All cameras have observations for this tracker and the frame number is greater than or equal to the latest requested frame
                 if not all([camera_node_output_message.frame_number == latest_requested_frame for
                             camera_node_output_message in camera_node_outputs.values()]):
                     raise ValueError(
                         f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
+                if tok is not None:
+                    raise RuntimeError("tok should be None at this point")
+                tok = time.perf_counter_ns()
                 last_received_frame = latest_requested_frame
                 aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                     frame_number=latest_requested_frame,
@@ -102,7 +111,13 @@ class AggregationNode:
                 )
                 ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
                 camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
-
+                if tok2 is not None:
+                    raise RuntimeError("tok2 should be None at this point")
+                tok2 = time.perf_counter_ns()
+                logger.success(f"Aggegator node request for frame {latest_requested_frame} processed in {(tok-tik)/1e6:.2f} ms, publishing took {(tok2 - tok)/1e6:.2f} ms")
+                tik = None
+                tok = None
+                tok2 = None
     def start(self):
         logger.debug(f"Starting AggregationNode worker")
         self.worker.start()

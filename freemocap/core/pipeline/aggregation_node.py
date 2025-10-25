@@ -13,6 +13,7 @@ from freemocap.core.pipeline.pipeline_configs import AggregationNodeConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigTopic, ProcessFrameNumberTopic, \
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic
+from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
 from freemocap.core.types.type_overloads import Point3d
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,7 @@ class AggregationNode:
                                                                                      config.camera_configs.keys()}
         camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=camera_group_shm_dto,
                                                                    read_only=True)
+        shared_view_accumulator = SharedViewAccumulator.create(camera_ids=config.camera_ids)
         latest_requested_frame: int = -1
         last_received_frame: int = -1
         tik:int|None = None
@@ -90,6 +92,7 @@ class AggregationNode:
                         f"Camera ID {camera_id} not in camera IDs {list(config.camera_configs.keys())}")
                 camera_node_outputs[camera_id] = camera_node_output_message
 
+
             # Check if ready to process a frame output
             if all([isinstance(camera_node_output_message, CameraNodeOutputMessage) for camera_node_output_message in
                         camera_node_outputs.values()]):
@@ -101,6 +104,7 @@ class AggregationNode:
                     raise RuntimeError("tok should be None at this point")
                 tok = time.perf_counter_ns()
                 last_received_frame = latest_requested_frame
+                shared_view_accumulator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,multi_frame_number=latest_requested_frame)
                 aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                     frame_number=latest_requested_frame,
                     camera_group_id=camera_group_id,
@@ -114,7 +118,7 @@ class AggregationNode:
                 if tok2 is not None:
                     raise RuntimeError("tok2 should be None at this point")
                 tok2 = time.perf_counter_ns()
-                logger.success(f"Aggegator node request for frame {latest_requested_frame} processed in {(tok-tik)/1e6:.2f} ms, publishing took {(tok2 - tok)/1e6:.2f} ms")
+                logger.success(f"Aggegator node request for frame {latest_requested_frame} processed in {(tok-tik)/1e6:.2f} ms, publishing took {(tok2 - tok)/1e6:.2f} ms- shared view accumulator shared view counter by camera:  {shared_view_accumulator.get_shared_view_count_per_camera()}")
                 tik = None
                 tok = None
                 tok2 = None

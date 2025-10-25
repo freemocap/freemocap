@@ -1,18 +1,17 @@
 from pydantic import BaseModel, Field
 from pydantic import model_validator
-from skellycam import CameraId
+from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.tasks.calibration_task.calibration_camera_node_output_data import \
-    CalibrationCameraNodeOutputData
+from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage
 from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_numpy_types import ImagePoint2D
 
 MultiFrameNumber = int
 class CameraPair(BaseModel):
-    base_camera_id: CameraId
-    other_camera_id: CameraId
+    base_camera_id: CameraIdString
+    other_camera_id: CameraIdString
 
     @classmethod
-    def from_ids(cls, base_camera_id: CameraId, other_camera_id: CameraId):
+    def from_ids(cls, base_camera_id: CameraIdString, other_camera_id: CameraIdString):
         return cls(base_camera_id=min(base_camera_id, other_camera_id), other_camera_id=max(base_camera_id, other_camera_id))
 
     @model_validator(mode='after')
@@ -36,7 +35,7 @@ class CameraPair(BaseModel):
 class CameraPairTargetView(BaseModel):
     multi_frame_number: MultiFrameNumber
     camera_pair: CameraPair
-    camera_node_output_by_camera: dict[CameraId, CalibrationCameraNodeOutputData]
+    camera_node_output_by_camera: dict[CameraIdString, CameraNodeOutputMessage]
 
     @model_validator(mode='after')
     def validate(self):
@@ -47,10 +46,10 @@ class CameraPairTargetView(BaseModel):
         return self
 
 
-PointIndex = int
+
 class MultiCameraTargetView(BaseModel):
     multi_frame_number: MultiFrameNumber
-    camera_node_output_by_camera: dict[CameraId, CalibrationCameraNodeOutputData]
+    camera_node_output_by_camera: dict[CameraIdString, CameraNodeOutputMessage]
 
     @model_validator(mode='after')
     def validate(self):
@@ -61,7 +60,7 @@ class MultiCameraTargetView(BaseModel):
         return self
 
     @property
-    def image_points_by_camera(self) -> dict[CameraId, list[ImagePoint2D]]:
+    def image_points_by_camera(self) -> dict[CameraIdString, list[ImagePoint2D]]:
         image_points_by_camera = {camera_id: [] for camera_id in self.camera_node_output_by_camera.keys()}
         for camera_id, camera_node_output in self.camera_node_output_by_camera.items():
             image_points_by_camera[camera_id].extend(list(camera_node_output.charuco_observation.detected_charuco_corners_in_full_array))
@@ -73,7 +72,7 @@ class SharedViewAccumulator(BaseModel):
     Keeps track of the data feeds from each camera, and keeps track of the frames where each can see the calibration target,
     and counts the number of shared views each camera has with each other camera (i.e. frames where both cameras can see the target)
     """
-    camera_ids: list[CameraId]
+    camera_ids: list[CameraIdString]
     target_views_by_camera_pair: dict[CameraPair, list[CameraPairTargetView]] = Field(default_factory=dict)
 
     @property
@@ -94,7 +93,7 @@ class SharedViewAccumulator(BaseModel):
         return mc_views
 
     @classmethod
-    def create(cls, camera_ids: list[CameraId]):
+    def create(cls, camera_ids: list[CameraIdString]):
         camera_pairs = []
         for i, camera_id in enumerate(camera_ids):
             for other_camera_id in camera_ids[i+1:]:
@@ -103,14 +102,14 @@ class SharedViewAccumulator(BaseModel):
 
 
     def receive_camera_node_output(self, multi_frame_number: int,
-                                   camera_node_output_by_camera: dict[CameraId, CalibrationCameraNodeOutputData]):
+                                   camera_node_output_by_camera: dict[CameraIdString, CameraNodeOutputMessage]):
 
         for camera_id, camera_node_output in camera_node_output_by_camera.items():
-            if camera_node_output.can_see_target:
+            if not camera_node_output.charuco_observation.charuco_empty:
                 for other_camera_id in self.camera_ids:
                     if other_camera_id == camera_id:
                         continue
-                    if camera_node_output_by_camera[other_camera_id].can_see_target:
+                    if not camera_node_output_by_camera[other_camera_id].charuco_observation.charuco_empty:
                         camera_pair = CameraPair.from_ids(camera_id, other_camera_id)
                         if camera_pair not in self.target_views_by_camera_pair:
                             raise ValueError(f"camera_pair {camera_pair} not in target_views_by_camera_pair keys {self.target_views_by_camera_pair.keys()}")
@@ -122,7 +121,7 @@ class SharedViewAccumulator(BaseModel):
                                                                                                                             other_camera_id: camera_node_output_by_camera[other_camera_id]}))
 
 
-    def get_shared_view_count_per_camera(self) -> dict[CameraId, int]:
+    def get_shared_view_count_per_camera(self) -> dict[CameraIdString, int]:
         """
         Get the number of shared views for each camera id, i.e. the number of frames where the camera can see the target and at least one other camera can also see the target
         """

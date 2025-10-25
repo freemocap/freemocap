@@ -28,6 +28,9 @@ class AggregationNodeConfig(BaseModel):
     camera_configs: CameraConfigs
     calibration_aggregation_node_config: CalibrationAggregationNodeConfig
     mocap_aggregation_node_config: MocapAggregationNodeConfig
+    @property
+    def camera_ids(self) -> list[CameraIdString]:
+        return list(self.camera_configs.keys())
 
 
 class CameraNodeConfig(BaseModel):

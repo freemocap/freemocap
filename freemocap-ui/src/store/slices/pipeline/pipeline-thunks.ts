@@ -41,7 +41,7 @@ export const disconnectPipeline = createAsyncThunk<void, void, { state: RootStat
         });
 
         if (!response.ok) {
-            throw new Error(`Failed to disconnect pipeline: ${response.statusText}`);
+            console.error(`Failed to disconnect pipeline: ${response.statusText}`);
         }
     }
 );

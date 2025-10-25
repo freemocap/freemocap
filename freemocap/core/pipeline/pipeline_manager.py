@@ -32,10 +32,10 @@ class PipelineManager:
         self.pipelines.clear()
         logger.info("All pipelines closed successfully")
 
-    def get_latest_frontend_payloads(self,if_newer_than:FrameNumberInt) -> dict[PipelineIdString, FrontendPayload]:
+    def get_latest_frontend_payloads(self,if_newer_than:FrameNumberInt) -> dict[PipelineIdString, tuple[FrontendPayload, bytes]]:
         payloads = {}
         for pipeline_id, pipeline in self.pipelines.items():
-            payload = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
-            if payload is not None:
-                payloads[pipeline_id] = payload
+            payload, images_bytearray = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
+            if payload is not None and images_bytearray is not None:
+                payloads[pipeline_id] = (payload, images_bytearray)
         return payloads

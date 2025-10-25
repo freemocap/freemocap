@@ -100,8 +100,8 @@ class WebsocketServer:
                             CameraGroupIdString, FrontendPayload] = self._app.get_latest_frontend_payloads(
                             if_newer_than=self.last_sent_frame_number)
 
-                        for pipeline_id, frontend_payload  in new_frontend_payloads.items():
-                            await self.websocket.send_bytes(frontend_payload.images_byte_array)
+                        for pipeline_id, (frontend_payload, images_bytearray)  in new_frontend_payloads.items():
+                            await self.websocket.send_bytes(images_bytearray)
                             self.last_sent_frame_number = frontend_payload.frame_number
                             if pipeline_id not in self._frontend_framerate_trackers:
                                 self._frontend_framerate_trackers[pipeline_id] = FramerateTracker.create(

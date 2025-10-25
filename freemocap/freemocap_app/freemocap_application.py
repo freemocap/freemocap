@@ -48,7 +48,7 @@ class FreemocApp:
     def disconnect_pipeline(self):
         self.pipeline_manager.close_all_pipelines()
 
-    def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[PipelineIdString, FrontendPayload]:
+    def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[PipelineIdString, tuple[FrontendPayload, bytes]]:
         return self.pipeline_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)
 
     def close(self):

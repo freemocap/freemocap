@@ -9,7 +9,8 @@ from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.tasks.frontend_payload_builder.frontend_paylod_builder import FrontendPayloadBuilder
+from freemocap.core.tasks.frontend_payload_builder.frontend_payload import FrontendPayload
+from freemocap.core.tasks.frontend_payload_builder.frontend_payload_builder import FrontendPayloadBuilder
 from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)
@@ -26,11 +27,11 @@ class ProcessingPipeline:
     frontend_payload_builder: FrontendPayloadBuilder
     ipc: PipelineIPC
 
-    def get_latest_frontend_payload(self, if_newer_than:FrameNumberInt) -> FrontendPayloadBuilder|None:
-        latest =  self.frontend_payload_builder.latest_frontend_payload
-        if latest and latest.frame_number > if_newer_than:
-            return latest
-        return None
+    def get_latest_frontend_payload(self, if_newer_than:FrameNumberInt) -> tuple[FrontendPayload|None, bytes|None]:
+        payload, images_bytearray =  self.frontend_payload_builder.latest_frontend_payload
+        if payload and images_bytearray and payload.frame_number > if_newer_than:
+            return payload, images_bytearray
+        return None, None
 
     @property
     def alive(self) -> bool:

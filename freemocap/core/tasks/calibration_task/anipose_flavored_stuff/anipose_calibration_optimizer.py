@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from scipy import optimize
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
-from skellycam import CameraId
+from skellycam.core.types.type_overloads import CameraIdString
 from tqdm import trange
 
 from freemocap.core.tasks.calibration_task.anipose_flavored_stuff.calibration_utilities import \

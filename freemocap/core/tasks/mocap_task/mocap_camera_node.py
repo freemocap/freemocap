@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass
 from multiprocessing import Queue, Process
 
-from skellycam import CameraId
+from skellycam.core.types.type_overloads import CameraIdString
 from skellycam.core.camera_group.camera.config.camera_config import CameraConfig
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_shared_memory import \
     CameraSharedMemoryDTO, SingleSlotCameraSharedMemory

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from multiprocessing import Queue
 from typing import Dict
 
-from skellycam import CameraId
+from skellycam.core.types.type_overloads import CameraIdString
 from skellycam.core.camera_group.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
     CameraSharedMemoryDTOs

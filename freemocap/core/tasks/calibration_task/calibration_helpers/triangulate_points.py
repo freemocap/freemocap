@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from skellycam import CameraId
+from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_numpy_types import ObjectPoint3D, \
     ImagePoints2D, ObjectPoints3D, ReprojectionError, CameraExtrinsicsMatrix, ImagePoint2D
@@ -33,8 +33,8 @@ def undistort_points(points2d: ImagePoints2D,
 
 
 # @jit(nopython=True, parallel=False)
-def triangulate_point(image_point_by_camera: dict[CameraId, ImagePoint2D],
-                       camera_extrinsics: dict[CameraId, CameraExtrinsicsMatrix]) -> ObjectPoint3D:
+def triangulate_point(image_point_by_camera: dict[CameraIdString, ImagePoint2D],
+                       camera_extrinsics: dict[CameraIdString, CameraExtrinsicsMatrix]) -> ObjectPoint3D:
     _validate_triangulation_input(camera_extrinsics=camera_extrinsics,
                                   image_point_by_camera=image_point_by_camera)
     camera_ids = list(camera_extrinsics.keys())
@@ -52,8 +52,8 @@ def triangulate_point(image_point_by_camera: dict[CameraId, ImagePoint2D],
     return points_3d
 
 
-def _validate_triangulation_input(camera_extrinsics: dict[CameraId, CameraExtrinsicsMatrix],
-                                  image_point_by_camera: dict[CameraId, ImagePoint2D]):
+def _validate_triangulation_input(camera_extrinsics: dict[CameraIdString, CameraExtrinsicsMatrix],
+                                  image_point_by_camera: dict[CameraIdString, ImagePoint2D]):
     if len(image_point_by_camera) < 2:
         raise ValueError("Need at least two cameras to triangulate points.")
     if image_point_by_camera.keys() != camera_extrinsics.keys():
@@ -65,10 +65,10 @@ def _validate_triangulation_input(camera_extrinsics: dict[CameraId, CameraExtrin
 
 
 def _validate_reprojection_error_input(object_points: ObjectPoints3D,
-                                        image_points_by_camera: dict[CameraId, ImagePoints2D],
-                                        camera_intrinsics: dict[CameraId, CameraIntrinsicsEstimate],
-                                        camera_transforms: dict[CameraId, TransformationMatrix],
-                                        image_sizes: dict[CameraId, tuple[int, int]]):
+                                        image_points_by_camera: dict[CameraIdString, ImagePoints2D],
+                                        camera_intrinsics: dict[CameraIdString, CameraIntrinsicsEstimate],
+                                        camera_transforms: dict[CameraIdString, TransformationMatrix],
+                                        image_sizes: dict[CameraIdString, tuple[int, int]]):
     if len(image_points_by_camera) < 2:
         raise ValueError("Need at least two cameras to triangulate points.")
     if any([image_sizes.keys() != camera_intrinsics.keys(),
@@ -83,17 +83,17 @@ def _validate_reprojection_error_input(object_points: ObjectPoints3D,
 
 # @jit(nopython=True, parallel=False)
 def calculate_reprojection_error(object_points: ObjectPoints3D,
-                                 image_points_by_camera: dict[CameraId, ImagePoints2D],
-                                 camera_intrinsics: dict[CameraId, CameraIntrinsicsEstimate],
-                                 camera_transforms: dict[CameraId, TransformationMatrix],
-                                 image_sizes: dict[CameraId, tuple[int, int]]) -> tuple[list[ReprojectionError], dict[CameraId, list[ReprojectionError]]]:
+                                 image_points_by_camera: dict[CameraIdString, ImagePoints2D],
+                                 camera_intrinsics: dict[CameraIdString, CameraIntrinsicsEstimate],
+                                 camera_transforms: dict[CameraIdString, TransformationMatrix],
+                                 image_sizes: dict[CameraIdString, tuple[int, int]]) -> tuple[list[ReprojectionError], dict[CameraIdString, list[ReprojectionError]]]:
     # https://docs.opencv.org/4.10.0/d9/d0c/group__calib3d.html#ga1019495a2c8d1743ed5cc23fa0daff8c
     _validate_reprojection_error_input(object_points=object_points,
                                         image_points_by_camera=image_points_by_camera,
                                         camera_intrinsics=camera_intrinsics,
                                         camera_transforms=camera_transforms,
                                         image_sizes=image_sizes)
-    reprojection_error_per_point_by_camera: dict[CameraId, list[ReprojectionError]] = {}
+    reprojection_error_per_point_by_camera: dict[CameraIdString, list[ReprojectionError]] = {}
     for camera_id in camera_intrinsics.keys():
         projected_image_points, jacobian = cv2.projectPoints(objectPoints=object_points,
                                                              rvec=camera_transforms[camera_id].rotation_vector.vector,

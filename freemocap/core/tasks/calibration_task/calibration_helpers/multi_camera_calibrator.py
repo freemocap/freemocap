@@ -30,7 +30,7 @@ class MultiCameraCalibrator(BaseModel):
     single_camera_calibrators: dict[CameraIdString, SingleCameraCalibrator] | None = None
     multi_camera_calibration_estimate: MultiCameraCalibrationEstimate | None = None
     sparse_bundle_optimizer: SparseBundleOptimizer | None = None
-    minimum_views_to_reconstruct: int | None = 20
+    minimum_views_to_reconstruct: int | None = 300
 
     @property
     def has_calibration(self) -> bool:
@@ -44,6 +44,12 @@ class MultiCameraCalibrator(BaseModel):
         return {camera_id: single_camera_calibrator.camera_intrinsics_estimate for camera_id, single_camera_calibrator
                 in
                 self.single_camera_calibrators.items()}
+
+    @property
+    def ready_to_calibrate(self) -> bool:
+        if not self.single_camera_calibrators:
+            return False
+        return self.all_cameras_have_min_shared_views()
 
     @classmethod
     def from_camera_ids(cls, camera_ids: list[CameraIdString], principal_camera_id: CameraIdString|None = None):
@@ -99,9 +105,7 @@ class MultiCameraCalibrator(BaseModel):
         [calibrator.update_calibration_estimate() for calibrator in self.single_camera_calibrators.values()]
 
         return self.run_multi_camera_optimization()
-        # logger.success(
-        #     f"Multi-camera calibration complete! \n {self.multi_camera_calibration_estimate.model_dump_json(indent=2)}")
-        # return self.multi_camera_calibration_estimate
+
 
     def run_multi_camera_optimization(self) -> MultiCameraCalibrationEstimate:
         # Step 1: Calculate secondary camera transforms for each camera pair
@@ -205,7 +209,7 @@ if __name__ == "__main__":
     loaded: MultiCameraCalibrator = pickle.load(open(pickle_path, "rb"))
     loaded.run_multi_camera_optimization()
 
-    ## save out state in debug console to re-run w/o camera streams
+    ## use snippet below to save out state in debug console to re-run w/o camera streams
     # import pickle
     # from pathlib import Path
     #

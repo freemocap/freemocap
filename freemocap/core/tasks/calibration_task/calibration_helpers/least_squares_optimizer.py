@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from pydantic import model_validator
 from scipy import optimize
 from scipy.sparse import dok_matrix
-from skellycam import CameraId
+from skellycam.core.types.type_overloads import CameraIdString
 from typing_extensions import Self
 
 from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_numpy_types import \
@@ -18,21 +18,21 @@ from freemocap.core.tasks.calibration_task.shared_view_accumulator import MultiC
 
 
 class SparseBundleOptimizer(BaseModel):
-    principal_camera_id: CameraId
-    initial_guess: dict[CameraId, CameraExtrinsicsMatrix]
-    image_points_by_camera: dict[CameraId, list[ImagePoint2D]]
-    camera_intrinsics: dict[CameraId, CameraIntrinsicsEstimate]
-    image_sizes: dict[CameraId, tuple[int, int]]
+    principal_camera_id: CameraIdString
+    initial_guess: dict[CameraIdString, CameraExtrinsicsMatrix]
+    image_points_by_camera: dict[CameraIdString, list[ImagePoint2D]]
+    camera_intrinsics: dict[CameraIdString, CameraIntrinsicsEstimate]
+    image_sizes: dict[CameraIdString, tuple[int, int]]
 
     @classmethod
     def create(cls,
-               principal_camera_id: CameraId,
-               camera_extrinsics_by_camera_id: dict[CameraId, CameraExtrinsicsMatrix],
+               principal_camera_id: CameraIdString,
+               camera_extrinsics_by_camera_id: dict[CameraIdString, CameraExtrinsicsMatrix],
                multi_camera_target_views: dict[MultiFrameNumber, MultiCameraTargetView],
-               camera_intrinsics: dict[CameraId, CameraIntrinsicsEstimate],
-               image_sizes: dict[CameraId, tuple[int, int]]
+               camera_intrinsics: dict[CameraIdString, CameraIntrinsicsEstimate],
+               image_sizes: dict[CameraIdString, tuple[int, int]]
                ) -> "SparseBundleOptimizer":
-        image_points_by_camera: dict[CameraId, list[ImagePoint2D]] = {camera_id: [] for camera_id in
+        image_points_by_camera: dict[CameraIdString, list[ImagePoint2D]] = {camera_id: [] for camera_id in
                                                                       camera_intrinsics.keys()}
         for frame_number, target_view in multi_camera_target_views.items():
             for camera_id, image_points in target_view.image_points_by_camera.items():
@@ -108,17 +108,17 @@ class SparseBundleOptimizer(BaseModel):
 
     def error_function(self,
                        current_guess: list[float],
-                       camera_intrinsics: dict[CameraId, CameraIntrinsicsEstimate],
-                       image_points_by_camera: dict[CameraId, ImagePoints2D],
-                       principal_camera_id: CameraId,
-                       image_sizes: dict[CameraId, tuple[int, int]]
+                       camera_intrinsics: dict[CameraIdString, CameraIntrinsicsEstimate],
+                       image_points_by_camera: dict[CameraIdString, ImagePoints2D],
+                       principal_camera_id: CameraIdString,
+                       image_sizes: dict[CameraIdString, tuple[int, int]]
                        ) -> list[float]:
 
         # reform 'current_guess' into camera extrinsics matricies
         camera_ids = list(self.camera_intrinsics.keys())
-        camera_transforms: dict[CameraId, TransformationMatrix] = {}
-        camera_extrinsics: dict[CameraId, CameraExtrinsicsMatrix] = {}
-        undistored_image_points: dict[CameraId, ImagePoints2D] = {}
+        camera_transforms: dict[CameraIdString, TransformationMatrix] = {}
+        camera_extrinsics: dict[CameraIdString, CameraExtrinsicsMatrix] = {}
+        undistored_image_points: dict[CameraIdString, ImagePoints2D] = {}
         for camera_index, camera_id in enumerate(camera_ids):
             # split the 1d vector by camera based on `self.number_of_parameters_per_camera`
             starting_index = camera_index * self.number_of_parameters_per_camera

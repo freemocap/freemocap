@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from pydantic import Field
-from skellycam import CameraId
+from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_numpy_types import \
     TransformationMatrixArray, CameraMatrixArray, CameraDistortionCoefficientsArray

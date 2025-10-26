@@ -3,7 +3,7 @@ import logging
 import cv2
 import numpy as np
 from pydantic import BaseModel, Field
-from skellycam import CameraId
+from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservations, CharucoObservation, \
     AllCharucoCorners3DByIdInObjectCoordinates, AllArucoCorners3DByIdInObjectCoordinates
 
@@ -20,7 +20,7 @@ MIN_CHARUCO_CORNERS = 6
 
 
 class CameraIntrinsicsEstimate(BaseModel):
-    camera_id: CameraId
+    camera_id: CameraIdString
     camera_matrix: CameraMatrix
     distortion_coefficients: CameraDistortionCoefficients
 
@@ -32,7 +32,7 @@ class SingleCameraCalibrator(BaseModel):
     cv2.calibrateCamera docs: https://docs.opencv.org/4.10.0/d9/d0c/group__calib3d.html#ga687a1ab946686f0d85ae0363b5af1d7b
     """
 
-    camera_id: CameraId
+    camera_id: CameraIdString
     image_size: tuple[int, ...]
 
     all_charuco_corner_ids: list[int]
@@ -75,12 +75,12 @@ class SingleCameraCalibrator(BaseModel):
 
     @classmethod
     def create_initial(cls,
-                       camera_id: CameraId,
+                       camera_id: CameraIdString,
                        image_size: tuple[int, ...],
                        all_aruco_marker_ids: list[int],
-                       all_aruco_corners_in_object_coordinates: list[np.ndarray[..., 3]],
+                       all_aruco_corners_in_object_coordinates: AllArucoCorners3DByIdInObjectCoordinates,
                        all_charuco_corner_ids: list[int],
-                       all_charuco_corners_in_object_coordinates: np.ndarray[..., 3],
+                       all_charuco_corners_in_object_coordinates: AllCharucoCorners3DByIdInObjectCoordinates,
                        number_of_distortion_coefficients: int = DEFAULT_INTRINSICS_COEFFICIENTS_COUNT):
 
         if len(all_charuco_corner_ids) != all_charuco_corners_in_object_coordinates.shape[0]:

@@ -20,7 +20,18 @@ class ColorFormatter(CustomFormatter):
 
     def format(self, record: logging.LogRecord) -> str:
         # Apply PID/TID colors
-        record = deepcopy(record)
+        # Don't deepcopy if record contains exception info (tracebacks can't be pickled)
+        # This is especially important in multiprocessing contexts
+        if record.exc_info:
+            # Just use the record directly - formatting doesn't need to modify it
+            record = record
+        else:
+            # Safe to deepcopy when no exception info
+            try:
+                record = deepcopy(record)
+            except TypeError as e:
+                # Fallback: if deepcopy fails for any reason, use original
+                record = record
         record.pid_color = get_hashed_color(record.process)
         record.tid_color = get_hashed_color(record.thread)
 

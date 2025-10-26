@@ -52,7 +52,7 @@ ARUCO_DICTS = {
 }
 
 
-@jit(nopython=True, parallel=False)
+# @jit(nopython=True, parallel=False)
 def triangulate_simple(points, camera_mats):
     num_cams = len(camera_mats)
     A = np.zeros((num_cams * 2, 4))
@@ -211,12 +211,15 @@ def transform_points(points, rvecs, tvecs):
     return rotated + tvecs
 
 
-def get_connections(xs, cam_names=None, both=True):
+def get_connections(xs: np.ndarray, cam_names: list | None = None, both: bool = True) -> dict[tuple, int]:
+    """Get connection counts between camera pairs."""
+    from collections import defaultdict
+
     n_cams = xs.shape[0]
     n_points = xs.shape[1]
 
     if cam_names is None:
-        cam_names = np.arange(n_cams)
+        cam_names = [str(i) for i in range(n_cams)]
 
     connections = defaultdict(int)
 
@@ -232,8 +235,6 @@ def get_connections(xs, cam_names=None, both=True):
                     connections[(b, a)] += 1
 
     return connections
-
-
 def get_calibration_graph(rtvecs, cam_names=None):
     n_cams = rtvecs.shape[0]
     n_points = rtvecs.shape[1]
@@ -302,34 +303,104 @@ def find_calibration_pairs(graph, source=None):
     return pairs
 
 
-def compute_camera_matrices(rtvecs, pairs):
+def compute_camera_matrices(rtvecs: np.ndarray, pairs: list[tuple[int, int]]) -> dict[int, np.ndarray]:
+    """
+    Compute camera extrinsics from calibration pairs.
+
+    Args:
+        rtvecs: Rotation/translation vectors
+        pairs: List of (source, target) camera pairs
+
+    Returns:
+        Dictionary mapping camera index to 4x4 transformation matrix
+    """
+    logger.debug(f"Computing camera matrices for {len(pairs)} pairs")
+
     extrinsics = dict()
     source = pairs[0][0]
     extrinsics[source] = np.identity(4)
-    for a, b in pairs:
-        ext = get_transform(rtvecs, b, a)
-        extrinsics[b] = np.matmul(ext, extrinsics[a])
+    logger.debug(f"Camera {source} set as origin (identity transform)")
+
+    for i, (a, b) in enumerate(pairs):
+        logger.debug(f"Pair {i + 1}/{len(pairs)}: Computing transform from {a} to {b}")
+
+        if a not in extrinsics:
+            logger.error(f"Camera {a} not yet in extrinsics! Pairs may be ordered incorrectly.")
+            raise ValueError(f"Camera {a} must be computed before camera {b}")
+
+        try:
+            ext = get_transform(rtvecs, b, a)
+            extrinsics[b] = np.matmul(ext, extrinsics[a])
+            logger.debug(f"Camera {b} extrinsics computed successfully")
+        except Exception as e:
+            logger.error(f"Failed to compute transform from {a} to {b}: {e}")
+            raise
+
+    logger.info(f"Computed extrinsics for {len(extrinsics)} cameras")
     return extrinsics
 
 
-def get_transform(rtvecs, left, right):
+def get_transform(rtvecs: np.ndarray, left: int, right: int) -> np.ndarray:
+    """
+    Calculate transform between two cameras with improved convergence.
+    """
+    logger.debug(f"Computing transform between camera {left} and camera {right}")
+
     L = []
+    valid_frames = 0
+
     for dix in range(rtvecs.shape[1]):
         d = rtvecs[:, dix]
         good = ~np.isnan(d[:, 0])
 
         if good[left] and good[right]:
+            valid_frames += 1
             M_left = make_M(d[left, 0:3], d[left, 3:6])
             M_right = make_M(d[right, 0:3], d[right, 3:6])
             M = np.matmul(M_left, inverse(M_right))
             L.append(M)
-    L_best = select_matrices(L)
-    M_mean = mean_transform(L_best)
-    # M_mean = mean_transform_robust(L, M_mean, error=0.5)
-    # M_mean = mean_transform_robust(L, M_mean, error=0.2)
-    M_mean = mean_transform_robust(L, M_mean, error=0.1)
-    return M_mean
 
+    logger.info(f"Camera pair ({left}, {right}): Found {valid_frames} frames with valid observations")
+
+    if len(L) == 0:
+        raise ValueError(f"No valid transformation matrices found between cameras {left} and {right}")
+
+    logger.debug(f"Selecting best matrices from {len(L)} candidates")
+    L_best = select_matrices(L)
+    logger.info(f"Selected {len(L_best)} matrices after clustering (removed {len(L) - len(L_best)} outliers)")
+
+    logger.debug("Computing initial mean transform")
+    M_mean = mean_transform(L_best)
+
+    # Progressive refinement with decreasing thresholds
+    # Start more permissive and gradually tighten
+    thresholds = [0.5, 0.3, 0.15, 0.1]
+
+    for i, error_threshold in enumerate(thresholds):
+        logger.debug(f"Robust refinement {i + 1}/{len(thresholds)} with error threshold {error_threshold}")
+
+        M_mean_new = mean_transform_robust(
+            L,
+            M_mean,
+            error=error_threshold,
+            max_iterations=3,
+            convergence_threshold=0.001
+        )
+
+        # Check if transform changed significantly
+        diff = np.max(np.abs(M_mean_new - M_mean))
+        logger.debug(f"Transform difference after refinement: {diff:.6f}")
+
+        # If change is too large, refinement may be unstable - use previous result
+        if diff > 10.0:  # ~10 radians or 10mm is likely unstable
+            logger.warning(f"Large transform change ({diff:.2f}) detected, refinement may be unstable")
+            logger.warning(f"Stopping refinement and using previous result")
+            break
+
+        M_mean = M_mean_new
+
+    logger.info(f"Final transform computed for camera pair ({left}, {right})")
+    return M_mean
 
 def get_most_common(vals):
     Z = linkage(whiten(vals), "ward")
@@ -351,43 +422,209 @@ def select_matrices(Ms):
     return Ms_best
 
 
-def mean_transform(M_list):
-    rvecs = [cv2.Rodrigues(M[:3, :3])[0][:, 0] for M in M_list]
-    tvecs = [M[:3, 3] for M in M_list]
+def mean_transform(M_list: list[np.ndarray]) -> np.ndarray:
+    """
+    Compute mean transformation from list of transformation matrices.
+
+    Args:
+        M_list: List of 4x4 transformation matrices
+
+    Returns:
+        Mean transformation matrix
+    """
+    if len(M_list) == 0:
+        raise ValueError("Cannot compute mean transform from empty matrix list")
+
+    logger.debug(f"Computing mean of {len(M_list)} transformation matrices")
+
+    rvecs = []
+    tvecs = []
+
+    for i, M in enumerate(M_list):
+        try:
+            rvec = cv2.Rodrigues(M[:3, :3])[0][:, 0]
+            tvec = M[:3, 3]
+
+            # Validate shapes
+            if rvec.shape != (3,):
+                logger.error(f"Matrix {i}: Invalid rvec shape {rvec.shape}, expected (3,)")
+                continue
+            if tvec.shape != (3,):
+                logger.error(f"Matrix {i}: Invalid tvec shape {tvec.shape}, expected (3,)")
+                continue
+
+            rvecs.append(rvec)
+            tvecs.append(tvec)
+
+        except Exception as e:
+            logger.warning(f"Matrix {i}: Failed to extract rvec/tvec - {e}")
+            continue
+
+    if len(rvecs) == 0:
+        raise ValueError("No valid rvecs could be extracted from transformation matrices")
 
     rvec = np.mean(rvecs, axis=0)
     tvec = np.mean(tvecs, axis=0)
 
+    # Final validation
+    if rvec.shape != (3,):
+        raise ValueError(f"Invalid mean rvec shape {rvec.shape}, expected (3,). Input had {len(rvecs)} valid vectors")
+    if tvec.shape != (3,):
+        raise ValueError(f"Invalid mean tvec shape {tvec.shape}, expected (3,). Input had {len(tvecs)} valid vectors")
+
+    # Check for NaN
+    if np.any(np.isnan(rvec)):
+        logger.error(f"NaN in mean rvec: {rvec}")
+        raise ValueError("Mean rvec contains NaN values")
+    if np.any(np.isnan(tvec)):
+        logger.error(f"NaN in mean tvec: {tvec}")
+        raise ValueError("Mean tvec contains NaN values")
+
+    logger.debug(f"Mean rvec: {rvec}, mean tvec: {tvec}")
+
     return make_M(rvec, tvec)
 
 
-def mean_transform_robust(M_list, approx=None, error=0.3):
+def mean_transform_robust(
+        M_list: list[np.ndarray],
+        approx: np.ndarray | None = None,
+        error: float = 0.3,
+        max_iterations: int = 5,
+        convergence_threshold: float = 0.01
+) -> np.ndarray:
+    """
+    Compute robust mean by iteratively filtering outliers.
+
+    Args:
+        M_list: List of transformation matrices
+        approx: Initial approximation for comparison
+        error: Maximum acceptable rotation error
+        max_iterations: Maximum refinement iterations
+        convergence_threshold: Stop if change is below this threshold
+
+    Returns:
+        Robust mean transformation
+    """
+    if len(M_list) == 0:
+        raise ValueError("Cannot compute robust mean from empty matrix list")
+
     if approx is None:
-        M_list_robust = M_list
-    else:
+        logger.debug("No approximation provided, using all matrices")
+        return mean_transform(M_list)
+
+    logger.debug(f"Filtering matrices with error threshold {error}")
+    M_current = approx
+
+    for iteration in range(max_iterations):
         M_list_robust = []
-        for M in M_list:
-            rot_error = (M - approx)[:3, :3]
+        errors = []
+
+        for i, M in enumerate(M_list):
+            rot_error = (M - M_current)[:3, :3]
             m = np.max(np.abs(rot_error))
+            errors.append(m)
+
             if m < error:
                 M_list_robust.append(M)
-    return mean_transform(M_list_robust)
 
 
-def get_initial_extrinsics(rtvecs, cam_names=None):
+        logger.info(f"Iteration {iteration + 1}: Kept {len(M_list_robust)}/{len(M_list)} matrices")
+
+        if len(errors) > 0:
+            logger.debug(f"Error statistics: min={min(errors):.6f}, max={max(errors):.6f}, mean={np.mean(errors):.6f}")
+
+        # CRITICAL: If all matrices filtered out, use relaxed threshold
+        if len(M_list_robust) == 0:
+            logger.warning(f"All matrices filtered with threshold {error}. Relaxing to use best 50%")
+            # Use top 50% of matrices by error
+            sorted_indices = np.argsort(errors)
+            n_keep = max(len(M_list) // 2, 3)  # Keep at least 3 or 50%
+            M_list_robust = [M_list[i] for i in sorted_indices[:n_keep]]
+            logger.info(f"Using {len(M_list_robust)} best matrices after relaxation")
+
+        # Compute new mean
+        M_new = mean_transform(M_list_robust)
+
+        # Check convergence
+        diff = np.max(np.abs(M_new - M_current))
+        logger.debug(f"Transform difference: {diff:.6f}")
+
+        if diff < convergence_threshold or iteration == max_iterations - 1:
+            logger.info(f"Converged after {iteration + 1} iterations (diff={diff:.6f})")
+            return M_new
+
+        M_current = M_new
+
+    logger.warning(f"Did not converge after {max_iterations} iterations. Using last result.")
+    return M_current
+
+
+def get_initial_extrinsics(rtvecs: np.ndarray, cam_names: list | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Compute initial camera extrinsics from pose observations.
+
+    Args:
+        rtvecs: Array of rotation/translation vectors (n_cams, n_frames, 6)
+        cam_names: Optional camera names for logging
+
+    Returns:
+        Tuple of (rvecs, tvecs) for all cameras
+    """
+    n_cams = rtvecs.shape[0]
+    n_frames = rtvecs.shape[1]
+
+    logger.info(f"Computing initial extrinsics for {n_cams} cameras from {n_frames} frames")
+
+    # Log observation statistics
+    for cam_idx in range(n_cams):
+        valid_obs = np.sum(~np.isnan(rtvecs[cam_idx, :, 0]))
+        cam_name = cam_names[cam_idx] if cam_names else str(cam_idx)
+        logger.info(f"Camera {cam_name}: {valid_obs}/{n_frames} valid observations ({100 * valid_obs / n_frames:.1f}%)")
+
+    logger.debug("Building calibration graph from camera connections")
     graph = get_calibration_graph(rtvecs, cam_names)
+    logger.info(f"Calibration graph: {dict(graph)}")
+
+    logger.debug("Finding calibration pairs")
     pairs = find_calibration_pairs(graph, source=0)
+    logger.info(f"Calibration pairs: {pairs}")
+
+    if len(pairs) != n_cams - 1:
+        logger.error(f"Expected {n_cams - 1} pairs, got {len(pairs)}. Graph may be disconnected!")
+
+    logger.debug("Computing camera transformation matrices")
     extrinsics = compute_camera_matrices(rtvecs, pairs)
 
-    n_cams = rtvecs.shape[0]
+    # Extract rvecs and tvecs
     rvecs = []
     tvecs = []
     for cnum in range(n_cams):
-        rvec, tvec = get_rtvec(extrinsics[cnum])
-        rvecs.append(rvec)
-        tvecs.append(tvec)
+        cam_name = cam_names[cnum] if cam_names else str(cnum)
+
+        if cnum not in extrinsics:
+            logger.error(f"Camera {cam_name} (index {cnum}) not in extrinsics dict!")
+            raise ValueError(f"Missing extrinsics for camera {cnum}")
+
+        try:
+            rvec, tvec = get_rtvec(extrinsics[cnum])
+            logger.debug(f"Camera {cam_name}: rvec={rvec}, tvec={tvec}")
+            rvecs.append(rvec)
+            tvecs.append(tvec)
+        except Exception as e:
+            logger.error(f"Camera {cam_name}: Failed to extract rvec/tvec - {e}")
+            raise
+
     rvecs = np.array(rvecs)
     tvecs = np.array(tvecs)
+
+    logger.info(f"Successfully computed extrinsics: rvecs shape={rvecs.shape}, tvecs shape={tvecs.shape}")
+
+    # Log summary statistics
+    rvec_norms = np.linalg.norm(rvecs, axis=1)
+    tvec_norms = np.linalg.norm(tvecs, axis=1)
+    logger.info(f"Rotation magnitudes: {rvec_norms}")
+    logger.info(f"Translation magnitudes: {tvec_norms}")
+
     return rvecs, tvecs
 
 
@@ -1856,46 +2093,144 @@ class AniposeCameraGroup:
 
     def calibrate_rows(
             self,
-            all_rows,
+            all_rows: list[list[dict]],
             board,
-            init_intrinsics=True,
-            init_extrinsics=True,
-            verbose=True,
-    ):
-        assert len(all_rows) == len(self.cameras), "Number of camera detections does not match number of cameras"
+            init_intrinsics: bool = True,
+            init_extrinsics: bool = True,
+            verbose: bool = True,
+    ) -> tuple[float, list, list]:
+        """
+        Calibrate cameras from charuco board observations.
 
-        for rows, camera in zip(all_rows, self.cameras):
+        Args:
+            all_rows: List of observation rows per camera
+            board: Charuco board definition
+            init_intrinsics: Whether to initialize camera intrinsics
+            init_extrinsics: Whether to initialize camera extrinsics
+            verbose: Enable verbose logging
+
+        Returns:
+            Tuple of (error, merged_rows, charuco_frame_numbers)
+        """
+        n_cameras = len(self.cameras)
+        n_rows_list = len(all_rows)
+
+        logger.info("=" * 80)
+        logger.info("STARTING CAMERA CALIBRATION")
+        logger.info("=" * 80)
+
+        assert n_rows_list == n_cameras, \
+            f"Number of camera detections ({n_rows_list}) does not match number of cameras ({n_cameras})"
+
+        # Log observation statistics per camera
+        logger.info(f"Calibrating {n_cameras} cameras")
+        for cam_idx, (rows, camera) in enumerate(zip(all_rows, self.cameras)):
+            logger.info(f"Camera {cam_idx} ({camera.get_name()}): {len(rows)} frames with detections")
+
             size = camera.get_size()
+            assert size is not None, \
+                f"Camera with name {camera.get_name()} has no specified frame size"
+            logger.debug(f"  Camera size: {size}")
 
-            assert size is not None, "Camera with name {} has no specified frame size".format(camera.get_name())
-
-            if init_intrinsics:
+        # Initialize intrinsics
+        if init_intrinsics:
+            logger.info("Initializing camera intrinsics...")
+            for cam_idx, (rows, camera) in enumerate(zip(all_rows, self.cameras)):
+                logger.debug(f"  Camera {cam_idx}: Extracting calibration points")
                 objp, imgp = board.get_all_calibration_points(rows)
+
+                logger.debug(f"    Found {len(objp)} object point sets and {len(imgp)} image point sets")
+
                 mixed = [(o, i) for (o, i) in zip(objp, imgp) if len(o) >= 7]
-                assert len(objp) != 0 and len(imgp) != 0, "No Charuco board points detected"
+
+                if len(mixed) == 0:
+                    logger.error(f"    Camera {cam_idx}: No valid calibration points (need at least 7 points)")
+                    raise ValueError(f"No valid calibration points for camera {cam_idx}")
+
+                logger.info(f"    Camera {cam_idx}: Using {len(mixed)} frames for intrinsics (min 7 points each)")
+
                 objp, imgp = zip(*mixed)
-                matrix = cv2.initCameraMatrix2D(objp, imgp, tuple(size))
-                camera.set_camera_matrix(matrix)
 
+                try:
+                    matrix = cv2.initCameraMatrix2D(objp, imgp, tuple(camera.get_size()))
+                    camera.set_camera_matrix(matrix)
+                    logger.debug(f"    Camera {cam_idx}: Initialized camera matrix:\n{matrix}")
+                except Exception as e:
+                    logger.error(f"    Camera {cam_idx}: Failed to initialize camera matrix - {e}")
+                    raise
+
+            logger.info("✓ Camera intrinsics initialized successfully")
+
+        # Estimate poses
+        logger.info("Estimating board poses for all cameras...")
         for i, (row, cam) in enumerate(zip(all_rows, self.cameras)):
+            logger.debug(f"  Camera {i}: Estimating poses for {len(row)} frames")
             all_rows[i] = board.estimate_pose_rows(cam, row)
+        logger.info("✓ Board poses estimated")
 
+        # Extract frame numbers
         charuco_frames = [f["framenum"][1] for f in all_rows[0]]
+        logger.debug(f"Frame numbers from camera 0: {charuco_frames[:10]}..." if len(
+            charuco_frames) > 10 else f"Frame numbers: {charuco_frames}")
+
+        # Merge observations across cameras
+        logger.info("Merging observations across cameras...")
         merged = merge_rows(all_rows)
+        logger.info(f"✓ Merged {len(merged)} multi-camera observations")
+
+        # Extract points for calibration
+        logger.info("Extracting calibration points (minimum 2 cameras per point)...")
         imgp, extra = extract_points(merged, board, min_cameras=2)
+        logger.info(f"✓ Extracted points: shape={imgp.shape}")
+        logger.debug(f"  Extra data keys: {extra.keys() if extra else 'None'}")
 
+        # Initialize extrinsics
         if init_extrinsics:
-            rtvecs = extract_rtvecs(merged)
-            if verbose:
-                print(get_connections(rtvecs, self.get_names()))
-            rvecs, tvecs = get_initial_extrinsics(rtvecs)
-            self.set_rotations(rvecs)
-            self.set_translations(tvecs)
+            logger.info("Initializing camera extrinsics...")
 
-        error = self.bundle_adjust_iter(imgp, extra, verbose=verbose, error_threshold=1)
+            logger.debug("Extracting rotation/translation vectors from observations")
+            rtvecs = extract_rtvecs(merged)
+            logger.info(f"  Extracted rtvecs: shape={rtvecs.shape}")
+
+            # Log connections between cameras
+            if verbose:
+                logger.info("Camera pair connections (shared observations):")
+                connections = get_connections(rtvecs, self.get_names())
+
+                # Sort by camera pair for readable output
+                for (cam_a, cam_b), count in sorted(connections.items()):
+                    if cam_a < cam_b:  # Only show each pair once
+                        logger.info(f"    {cam_a} <-> {cam_b}: {count} frames")
+
+            logger.debug("Computing initial extrinsics from observations")
+            try:
+                rvecs, tvecs = get_initial_extrinsics(rtvecs, cam_names=self.get_names())
+                self.set_rotations(rvecs)
+                self.set_translations(tvecs)
+                logger.info("✓ Initial extrinsics computed successfully")
+            except Exception as e:
+                logger.error(f"Failed to compute initial extrinsics: {e}")
+                logger.error("This usually means insufficient shared observations between cameras")
+                raise
+
+        # Bundle adjustment
+        logger.info("Starting iterative bundle adjustment...")
+        logger.info(f"  Input points shape: {imgp.shape}")
+        logger.info(f"  Error threshold: 1.0")
+
+        try:
+            error = self.bundle_adjust_iter(imgp, extra, verbose=verbose, error_threshold=1)
+            logger.info(f"✓ Bundle adjustment completed successfully")
+            logger.info(f"  Final reprojection error: {error:.4f}")
+        except Exception as e:
+            logger.error(f"Bundle adjustment failed: {e}")
+            raise
+
+        logger.info("=" * 80)
+        logger.info(f"CALIBRATION COMPLETE - Final error: {error:.4f}")
+        logger.info("=" * 80)
 
         return error, merged, charuco_frames
-
     def get_rows_videos(self, videos: List[List[str]], board: "AniposeCharucoBoard", verbose: bool = True):
         num_corners = board.total_size
         self._get_charuco_2d_data(videos=videos, board=board)
@@ -1992,10 +2327,10 @@ class AniposeCameraGroup:
         for cam in self.cameras:
             out.append(cam.get_dict())
         return out
-
-    def from_dicts(arr):
+    @staticmethod
+    def from_dicts(cameras_dicts):
         cameras = []
-        for d in arr:
+        for d in cameras_dicts:
             if "fisheye" in d and d["fisheye"]:
                 cam = FisheyeCamera.from_dict(d)
             else:
@@ -2043,7 +2378,7 @@ class AniposeCameraGroup:
             cam.resize_camera(scale)
 
 
-class AniposeCharucoBoard:
+class AniposeCharucoBoard(CharucoBoard):
     def __init__(
             self,
             squaresX:int=5,
@@ -2053,6 +2388,14 @@ class AniposeCharucoBoard:
             marker_bits=4,
             dict_size=250,
     ):
+        super().__init__(
+            squaresX,
+            squaresY,
+            square_length,
+            marker_length,
+            marker_bits,
+            dict_size,
+        )
         self.squaresX = squaresX
         self.squaresY = squaresY
         self.square_length = square_length

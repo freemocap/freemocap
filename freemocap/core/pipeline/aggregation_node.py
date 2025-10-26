@@ -15,7 +15,7 @@ from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, Pipelin
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
 from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import \
-    AniposeCameraGroup, AniposeCharucoBoard
+    AniposeCameraGroup, AniposeCharucoBoard, Camera
 from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.charuco_observation_aggregator import \
     anipose_calibration_from_charuco_observations
 
@@ -114,22 +114,35 @@ class AggregationNode:
 
 
                 # Check if ready to calibrate
-                calibration_observations = shared_view_accumulator.get_calibration_observations_if_ready(min_shared_views=100)
+                calibration_observations = shared_view_accumulator.get_calibration_observations_if_ready(min_shared_views=500)
 
-                if calibration_observations is not None:
-                    logger.info(f"Starting calibration from aggregated charuco observations at frame {latest_requested_frame}, number of frames with shared views: {len(calibration_observations)}")
-                    anipose_camera_group = AniposeCameraGroup.from_names(names=config.camera_ids)
-                    anipose_charuco_board = AniposeCharucoBoard()
-                    logger.info('Performing Anipose calibration from charuco observations...')
-                    calibration_toml_path = get_default_calibration_toml_path()
-                    logger.info(f'Saving calibration to {calibration_toml_path}')
-                    anipose_calibration_from_charuco_observations(
-                        charuco_observations_by_frame=calibration_observations,
-                        charuco_board=anipose_charuco_board,
-                        anipose_camera_group=anipose_camera_group,
-                        calibration_toml_save_path=calibration_toml_path,
-                        # ... other params
-                    )
+                try:
+                    if calibration_observations is not None:
+                        logger.info(f"Starting calibration from aggregated charuco observations at frame {latest_requested_frame}, number of frames with shared views: {len(calibration_observations)}")
+                        anipose_cameras = [
+                            Camera(name=cam_id,
+                                   size=(config.camera_configs[cam_id].resolution.width,
+                                         config.camera_configs[cam_id].resolution.height),
+                                   ) for cam_id in config.camera_ids
+                        ]
+                        anipose_camera_group = AniposeCameraGroup(cameras=anipose_cameras)
+
+                        anipose_charuco_board = AniposeCharucoBoard()
+                        logger.info('Performing Anipose calibration from charuco observations...')
+                        calibration_toml_path = get_default_calibration_toml_path()
+                        logger.info(f'Saving calibration to {calibration_toml_path}')
+                        anipose_calibration_from_charuco_observations(
+                            charuco_observations_by_frame=calibration_observations,
+                            charuco_board=anipose_charuco_board,
+                            anipose_camera_group=anipose_camera_group,
+                            calibration_toml_save_path=calibration_toml_path,
+                            # ... other params
+                        )
+                        logger.info('Anipose calibration completed and saved.')
+                except Exception as e:
+                    logger.error(f"Error during calibration: {e}", exc_info=True)
+                    raise
+
                 aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                     frame_number=latest_requested_frame,
                     camera_group_id=camera_group_id,

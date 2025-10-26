@@ -22,7 +22,7 @@ CharucoObservations = dict[CameraIdString, CharucoObservation | None]
 
 def get_calibrations_folder_path() -> Path:
     """Get the main calibrations folder path."""
-    return get_default_freemocap_base_folder_path() / "calibrations"
+    return Path(get_default_freemocap_base_folder_path()) / "calibrations"
 
 
 def create_camera_calibration_file_name(recording_name: str) -> str:
@@ -82,15 +82,13 @@ def anipose_calibration_from_charuco_observations(
         init_extrinsics: bool = True,
         verbose: bool = True,
 ) -> tuple[Path, GroundPlaneSuccess | None]:
-    logger.info(f"Starting Anipose calibration with {len(charuco_observations_by_frame)} frames of charuco observations")
+    logger.info(
+        f"Starting Anipose calibration with {len(charuco_observations_by_frame)} frames of charuco observations")
     # Aggregate all observations
     charuco_observation_aggregator = CharucoObservationAggregator.from_charuco_observation_payload(
         charuco_observations_by_camera=charuco_observations_by_frame.pop(0),
         anipose_camera_ordering=[camera.name for camera in anipose_camera_group.cameras])
-    fr=-1
     for charuco_observations_by_camera in charuco_observations_by_frame:
-        fr+=1
-        logger.debug(f"Processing charuco observations for frame: {fr} of {len(charuco_observations_by_frame)}")
         charuco_observation_aggregator.add_observations(charuco_observations_by_camera)
 
     if charuco_observation_aggregator is None:
@@ -149,7 +147,6 @@ def anipose_calibration_from_charuco_observations(
     last_successful_calibration_toml_path = get_last_successful_calibration_toml_path()
     anipose_camera_group.dump(last_successful_calibration_toml_path)
     logger.info(f"Saved as last successful calibration: {last_successful_calibration_toml_path}")
-
 
 
 def pin_camera_zero_to_origin(camera_group: AniposeCameraGroup) -> AniposeCameraGroup:

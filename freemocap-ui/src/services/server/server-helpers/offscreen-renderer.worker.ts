@@ -74,6 +74,7 @@ function renderLoop() {
         
         // Fastest possible render path
         ctx.transferFromImageBitmap(pendingFrame);
+        pendingFrame.close();
         pendingFrame = null;
         
         // Update stats

@@ -19,7 +19,7 @@ export interface ParsedFrame {
     bitmap: ImageBitmap;
 }
 
-// Single reusable TextDecoder - created once, used forever
+// Single reusable TextDecoder
 const sharedTextDecoder = new TextDecoder();
 
 // Optimized ImageBitmap options for camera feeds

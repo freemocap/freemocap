@@ -14,6 +14,7 @@ from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigTopic, ProcessFrameNumberTopic, \
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
+from freemocap.core.tasks.calibration_task.point_triangulator import PointTriangulator
 from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import \
     AniposeCameraGroup, AniposeCharucoBoard, Camera
 from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.charuco_observation_aggregator import \
@@ -74,6 +75,7 @@ class AggregationNode:
         camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=camera_group_shm_dto,
                                                                    read_only=True)
         shared_view_accumulator = SharedViewAccumulator.create(camera_ids=config.camera_ids)
+        point_triangulator: PointTriangulator | None = None
         latest_requested_frame: int = -1
         last_received_frame: int = -1
         tik:int|None = None
@@ -110,39 +112,43 @@ class AggregationNode:
                     raise RuntimeError("tok should be None at this point")
                 tok = time.perf_counter_ns()
                 last_received_frame = latest_requested_frame
-                shared_view_accumulator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,multi_frame_number=latest_requested_frame)
+                if not point_triangulator:
+                    shared_view_accumulator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,multi_frame_number=latest_requested_frame)
 
 
-                # Check if ready to calibrate
-                calibration_observations = shared_view_accumulator.get_calibration_observations_if_ready(min_shared_views=500)
+                    # Check if ready to calibrate
+                    calibration_observations = shared_view_accumulator.get_calibration_observations_if_ready(min_shared_views=500)
 
-                try:
-                    if calibration_observations is not None:
-                        logger.info(f"Starting calibration from aggregated charuco observations at frame {latest_requested_frame}, number of frames with shared views: {len(calibration_observations)}")
-                        anipose_cameras = [
-                            Camera(name=cam_id,
-                                   size=(config.camera_configs[cam_id].resolution.width,
-                                         config.camera_configs[cam_id].resolution.height),
-                                   ) for cam_id in config.camera_ids
-                        ]
-                        anipose_camera_group = AniposeCameraGroup(cameras=anipose_cameras)
+                    try:
+                        if calibration_observations is not None:
+                            logger.info(f"Starting calibration from aggregated charuco observations at frame {latest_requested_frame}, number of frames with shared views: {len(calibration_observations)}")
+                            anipose_cameras = [
+                                Camera(name=cam_id,
+                                       size=(config.camera_configs[cam_id].resolution.width,
+                                             config.camera_configs[cam_id].resolution.height),
+                                       ) for cam_id in config.camera_ids
+                            ]
+                            anipose_camera_group = AniposeCameraGroup(cameras=anipose_cameras)
 
-                        anipose_charuco_board = AniposeCharucoBoard()
-                        logger.info('Performing Anipose calibration from charuco observations...')
-                        calibration_toml_path = get_default_calibration_toml_path()
-                        logger.info(f'Saving calibration to {calibration_toml_path}')
-                        anipose_calibration_from_charuco_observations(
-                            charuco_observations_by_frame=calibration_observations,
-                            charuco_board=anipose_charuco_board,
-                            anipose_camera_group=anipose_camera_group,
-                            calibration_toml_save_path=calibration_toml_path,
-                            # ... other params
-                        )
-                        logger.info('Anipose calibration completed and saved.')
-                except Exception as e:
-                    logger.error(f"Error during calibration: {e}", exc_info=True)
-                    raise
-
+                            anipose_charuco_board = AniposeCharucoBoard()
+                            logger.info('Performing Anipose calibration from charuco observations...')
+                            calibration_toml_path = get_default_calibration_toml_path()
+                            logger.info(f'Saving calibration to {calibration_toml_path}')
+                            triangulator = anipose_calibration_from_charuco_observations(
+                                charuco_observations_by_frame=calibration_observations,
+                                charuco_board=anipose_charuco_board,
+                                anipose_camera_group=anipose_camera_group,
+                                calibration_toml_save_path=calibration_toml_path,
+                                # ... other params
+                            )
+                            logger.info('Anipose calibration completed and saved.')
+                    except Exception as e:
+                        logger.error(f"Error during calibration: {e}", exc_info=True)
+                        raise
+                else:
+                    triangulated_points3d = point_triangulator.triangulate_camera_node_outputs(
+                        camera_node_output_by_camera=camera_node_outputs
+                    )
                 aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                     frame_number=latest_requested_frame,
                     camera_group_id=camera_group_id,

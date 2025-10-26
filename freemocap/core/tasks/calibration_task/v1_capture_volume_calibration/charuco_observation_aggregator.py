@@ -6,7 +6,9 @@ import numpy as np
 from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellyforge.freemocap_utils.postprocessing_widgets.postprocessing_functions import interpolate_data
 
+from freemocap.core.tasks.calibration_task.point_triangulator import PointTriangulator
 from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import \
     skellyforge_data, find_good_frame, CharucoVisibilityError, CharucoVelocityError, \
     compute_basis_vectors_of_new_reference
@@ -80,8 +82,7 @@ def anipose_calibration_from_charuco_observations(
         use_charuco_as_groundplane: bool = False,
         init_intrinsics: bool = True,
         init_extrinsics: bool = True,
-        verbose: bool = True,
-) -> tuple[Path, GroundPlaneSuccess | None]:
+        verbose: bool = True,) -> PointTriangulator:
     logger.info(
         f"Starting Anipose calibration with {len(charuco_observations_by_frame)} frames of charuco observations")
     # Aggregate all observations
@@ -147,6 +148,7 @@ def anipose_calibration_from_charuco_observations(
     last_successful_calibration_toml_path = get_last_successful_calibration_toml_path()
     anipose_camera_group.dump(last_successful_calibration_toml_path)
     logger.info(f"Saved as last successful calibration: {last_successful_calibration_toml_path}")
+    return PointTriangulator.from_toml(toml_path=last_successful_calibration_toml_path)
 
 
 def pin_camera_zero_to_origin(camera_group: AniposeCameraGroup) -> AniposeCameraGroup:
@@ -225,7 +227,9 @@ def set_charuco_board_as_groundplane(
     charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
     logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
 
-    charuco_3d_xyz_interpolated = skellyforge_data(raw_charuco_data=charuco_3d_xyz)
+    charuco_3d_xyz_interpolated =    interpolate_data.interpolate_skeleton_data(
+        skeleton_data=charuco_3d_xyz
+    )
 
     try:
         charuco_still_frame_idx = find_good_frame(

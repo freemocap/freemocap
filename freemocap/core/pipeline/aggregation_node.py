@@ -76,6 +76,7 @@ class AggregationNode:
                                                                    read_only=True)
         shared_view_accumulator = SharedViewAccumulator.create(camera_ids=config.camera_ids)
         point_triangulator: PointTriangulator | None = None
+        triangulated_points3d: np.ndarray | None = None
         latest_requested_frame: int = -1
         last_received_frame: int = -1
         tik:int|None = None
@@ -146,9 +147,14 @@ class AggregationNode:
                         logger.error(f"Error during calibration: {e}", exc_info=True)
                         raise
                 else:
+                    tik = time.perf_counter_ns()
                     triangulated_points3d = point_triangulator.triangulate_camera_node_outputs(
-                        camera_node_output_by_camera=camera_node_outputs
+                        camera_node_outputs=camera_node_outputs,
+                        undistort_points=True, # fast enough for the real-time pipeline
+                        compute_reprojection_error=False # too slow for real-time (see diagnostics in PointTriangulator file)
                     )
+                    tok  = time.perf_counter_ns()
+                    logger.api(f"Triangulated {len(triangulated_points3d)} points at frame {latest_requested_frame} in {(tok - tik)/1e6:.3f} ms")
                 aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                     frame_number=latest_requested_frame,
                     camera_group_id=camera_group_id,

@@ -4,8 +4,7 @@ import numpy as np
 from pydantic import BaseModel
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.tasks.calibration_task.calibration_camera_node_output_data import \
-    CalibrationCameraNodeOutputData
+
 from freemocap.core.tasks.calibration_task.calibration_helpers.camera_math_models import TransformationMatrix
 from freemocap.core.tasks.calibration_task.calibration_helpers.least_squares_optimizer import \
     SparseBundleOptimizer
@@ -13,7 +12,7 @@ from freemocap.core.tasks.calibration_task.calibration_helpers.single_camera_cal
     CameraIntrinsicsEstimate, \
     SingleCameraCalibrator
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
-
+from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage
 logger = logging.getLogger(__name__)
 
 
@@ -54,7 +53,7 @@ class MultiCameraCalibrator(BaseModel):
                    )
 
     def receive_camera_node_output(self, multi_frame_number: int,
-                                   camera_node_output_by_camera: dict[CameraIdString, CalibrationCameraNodeOutputData]):
+                                   camera_node_output_by_camera: dict[CameraIdString, CameraNodeOutputMessage]):
 
         if self.single_camera_calibrators is None:
             self.initialize_single_camera_calibrators(camera_node_output_by_camera)
@@ -64,7 +63,7 @@ class MultiCameraCalibrator(BaseModel):
         logger.trace(f"Shared view accumulator: {self.shared_view_accumulator.get_shared_view_count_per_camera()}")
 
     def initialize_single_camera_calibrators(self, camera_node_output_by_camera: dict[
-        CameraIdString, CalibrationCameraNodeOutputData]):
+        CameraIdString, CameraNodeOutputMessage]):
 
         self.single_camera_calibrators: dict[CameraIdString, SingleCameraCalibrator] = {}
         for camera_id, node_output in camera_node_output_by_camera.items():

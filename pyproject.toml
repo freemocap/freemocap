@@ -21,6 +21,7 @@ dependencies = [
     "numpydantic>=1.6.7",
     #    "ltrt"
     "mediapipe>=0.10.21",
+    "scikit-learn>=1.7.2",
 ]
 
 [tool.uv.sources]

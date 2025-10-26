@@ -193,6 +193,7 @@ class CameraDistortionCoefficients(BaseModel):
 
     @model_validator(mode="after")
     def validate(self):
+        self.coefficients = np.square(self.coefficients)
         if len(self.coefficients) not in [4, 5, 8, 12, 14]:
             raise ValueError("Invalid number of distortion coefficients. Must be 4, 5, 8, 12, or 14.")
         return self

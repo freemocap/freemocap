@@ -131,7 +131,7 @@ def frontend_payload_builder_worker(
 ) -> None:
     """Worker function to build frontend payloads."""
 
-    # Setup overlay renderers (NEW - replaces image_annotators)
+    # Setup overlay renderers
     overlay_renderers: dict[CameraIdString, CameraOverlayRenderer] = {}
 
     for camera_node_config in pipeline_config.camera_node_configs.values():
@@ -176,12 +176,14 @@ def frontend_payload_builder_worker(
                             frame_number=msg.frame_number, frames=frames
                         )
                     )
+                    print(f"fe pl blder - got new frame# {msg.frame_number}")
                 except (IndexError, Exception):
                     pass  # Frame overwritten or other error, skip
 
         # Process camera node outputs
         while not camera_node_output_subscription.empty():
             msg: CameraNodeOutputMessage = camera_node_output_subscription.get()
+            print(f"fe pl blder - got new  camera group node outputs from frame# {msg.frame_number}")
             if msg.frame_number not in unpackaged_frames:
                 try:
                     frames = camera_group_shm.get_images_by_frame_number(
@@ -192,17 +194,20 @@ def frontend_payload_builder_worker(
                             frame_number=msg.frame_number, frames=frames
                         )
                     )
+                    print(f"fe pl blder - got new frame# {msg.frame_number} (in cgnoutputs)")
                 except (IndexError, Exception):
                     continue
 
             try:
                 unpackaged_frames[msg.frame_number].add_camera_node_output(msg)
+
             except (KeyError, ValueError, Exception):
                 pass  # Frame disappeared or invalid
 
         # Process aggregation node outputs
         while not aggregation_node_output_subscription.empty():
             msg: AggregationNodeOutputMessage = aggregation_node_output_subscription.get()
+            print(f"fe pl blder - got new frame# {msg.frame_number} aggrgrgegagted node")
             if msg.frame_number not in unpackaged_frames:
                 try:
                     frames = camera_group_shm.get_images_by_frame_number(
@@ -213,6 +218,7 @@ def frontend_payload_builder_worker(
                             aggregation_node_output=msg, frames=frames
                         )
                     )
+                    print(f"fe pl blder - got new frame# {msg.frame_number} (in agggg)")
                 except (IndexError, Exception):
                     continue
 
@@ -227,6 +233,7 @@ def frontend_payload_builder_worker(
         ready_frames: list[UnpackagedFrontendPayload] = []
         for frame_number, unpackaged_frame in list(unpackaged_frames.items()):
             if frame_number in unpackaged_frames and unpackaged_frame.ready_to_package:
+                print(f"fe pl blder - appppppppppending #{frame_number}")
                 ready_frames.append(unpackaged_frame)
 
         if not ready_frames:
@@ -302,12 +309,17 @@ class FrontendPayloadBuilder:
     @property
     def latest_frontend_payload(self) -> tuple[FrontendPayload | None, bytes | None]:
         with self.lock:
+            if self._latest_frontend_payload is not None:
+                print("self._latest_frontend_payload is not noneeeeeeeeeee")
+            if self._latest_frame_bytearray is not None:
+                print("self._latest_frame_bytearray is not noneeeeeeeeee--------------")
             return self._latest_frontend_payload, self._latest_frame_bytearray
 
     def update_latest_frontend_payload(
             self, frontend_payload: FrontendPayload, frame_bytearray: bytes
     ) -> None:
         with self.lock:
+            print(f"Updating latest fe payload with frame# {frontend_payload.frame_number}")
             self._latest_frontend_payload = frontend_payload
             self._latest_frame_bytearray = frame_bytearray
 

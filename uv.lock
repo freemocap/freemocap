@@ -1955,7 +1955,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2023.9.1086"
-source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#6690af2ca942c98c4cebee41c25798124ecb2360" }
+source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#07e31beb331eba0f60543764031cbc3a024095b6" }
 dependencies = [
     { name = "av" },
     { name = "cv2-enumerate-cameras" },
@@ -1999,7 +1999,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#b7e1ff3ed78010df52d6e2c007eee5d74134e340" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#be82bcd6c4c7a7027ac244e56d4fb56066248cbe" }
 dependencies = [
     { name = "numpy" },
     { name = "numpydantic" },

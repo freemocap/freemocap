@@ -101,6 +101,7 @@ class WebsocketServer:
                             if_newer_than=self.last_sent_frame_number)
 
                         for pipeline_id, (frontend_payload, images_bytearray)  in new_frontend_payloads.items():
+                            logger.info(f"Sending frontend image payload frame {frontend_payload.frame_number} for pipeline {pipeline_id}, size {len(images_bytearray)} bytes")
                             await self.websocket.send_bytes(images_bytearray)
                             self.last_sent_frame_number = frontend_payload.frame_number
                             if pipeline_id not in self._frontend_framerate_trackers:

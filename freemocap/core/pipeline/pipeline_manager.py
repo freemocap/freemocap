@@ -35,7 +35,10 @@ class PipelineManager:
     def get_latest_frontend_payloads(self,if_newer_than:FrameNumberInt) -> dict[PipelineIdString, tuple[FrontendPayload, bytes]]:
         payloads = {}
         for pipeline_id, pipeline in self.pipelines.items():
+
             payload, images_bytearray = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
+
             if payload is not None and images_bytearray is not None:
+                print("bbbbbbb")
                 payloads[pipeline_id] = (payload, images_bytearray)
         return payloads

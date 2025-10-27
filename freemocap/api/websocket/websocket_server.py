@@ -180,7 +180,6 @@ class WebsocketServer:
                                 data = json.loads(text_content)
                                 # Handle received_frame acknowledgment
                                 if 'frameNumber' in data:
-                                    logger.trace(f"Received frontend confirmation for frame {data['frameNumber']}")
                                     self.last_received_frontend_confirmation = data['frameNumber']
                                     self._display_image_sizes = data.get('displayImageSizes', None)
 

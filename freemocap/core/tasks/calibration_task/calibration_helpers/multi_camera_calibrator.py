@@ -67,7 +67,7 @@ class MultiCameraCalibrator(BaseModel):
         self.shared_view_accumulator.receive_camera_node_output(multi_frame_number=multi_frame_number,
                                                                 camera_node_output_by_camera=camera_node_output_by_camera)
 
-        # logger.trace(f"Shared view accumulator: {self.shared_view_accumulator.get_shared_view_count_per_camera()}")
+        logger.trace(f"Shared view accumulator: {self.shared_view_accumulator.get_shared_view_count_per_camera()}")
 
     def initialize_single_camera_calibrators(self, camera_node_output_by_camera: dict[
         CameraIdString, CameraNodeOutputMessage]):

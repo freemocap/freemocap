@@ -22,6 +22,7 @@ dependencies = [
     #    "ltrt"
     "mediapipe>=0.10.21",
     "scikit-learn>=1.7.2",
+    "pyceres>=2.5",
 ]
 
 [tool.uv.sources]

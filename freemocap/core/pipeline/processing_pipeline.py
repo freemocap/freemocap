@@ -3,13 +3,13 @@ import uuid
 from dataclasses import dataclass
 
 from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.types.type_overloads import CameraIdString, FrameNumberInt
+from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputMessage, AggregationNodeOutputTopic
+from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputTopic
 from freemocap.core.tasks.frontend_payload_builder.frontend_payload_builder import FrontendPayloadBuilder
 from freemocap.core.types.type_overloads import PipelineIdString
 
@@ -62,7 +62,6 @@ class ProcessingPipeline:
                    id=str(uuid.uuid4())[:6],
                    config=pipeline_config,
                    frontend_payload_builder=frontend_payload_builder,
-                   camera_group=camera_group,
                    )
 
     def start(self) -> None:

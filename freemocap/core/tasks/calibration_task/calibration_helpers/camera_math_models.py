@@ -187,13 +187,13 @@ class CameraDistortionCoefficients(BaseModel):
     `s` values refer to thin prism distortion coefficients
     `τ` values refer to x/y values of the 'tilted sensor' model
 
-    NOTE - RECOMMEND USING 5 VALUES, things get weird with more than 5
+    NOTE - RECOMMEND USING 4 or 5 VALUES, things get weird with more than 5
     """
     coefficients: CameraDistortionCoefficientsArray
 
     @model_validator(mode="after")
     def validate(self):
-        self.coefficients = np.square(self.coefficients)
+        self.coefficients = np.squeeze(self.coefficients)
         if len(self.coefficients) not in [4, 5, 8, 12, 14]:
             raise ValueError("Invalid number of distortion coefficients. Must be 4, 5, 8, 12, or 14.")
         return self

@@ -525,6 +525,7 @@ dependencies = [
     { name = "mediapipe" },
     { name = "numpydantic" },
     { name = "opencv-contrib-python" },
+    { name = "pyceres" },
     { name = "pydantic" },
     { name = "pyinstaller" },
     { name = "requests" },
@@ -548,6 +549,7 @@ requires-dist = [
     { name = "mediapipe", specifier = ">=0.10.21" },
     { name = "numpydantic", specifier = ">=1.6.7" },
     { name = "opencv-contrib-python", specifier = ">=4.8.1.78" },
+    { name = "pyceres", specifier = ">=2.5" },
     { name = "pydantic", specifier = ">=2.10.4" },
     { name = "pyinstaller", specifier = ">=6.11.0" },
     { name = "requests", specifier = ">=2.32.3" },
@@ -1280,6 +1282,32 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b0/6a/d25812e5f79f06285767ec607b39149d02aa3b31d50c2269768f48768930/PyAudio-0.2.14-cp312-cp312-win_amd64.whl", hash = "sha256:12f2f1ba04e06ff95d80700a78967897a489c05e093e3bffa05a84ed9c0a7fa3", size = 164126 },
     { url = "https://files.pythonhosted.org/packages/3a/77/66cd37111a87c1589b63524f3d3c848011d21ca97828422c7fde7665ff0d/PyAudio-0.2.14-cp313-cp313-win32.whl", hash = "sha256:95328285b4dab57ea8c52a4a996cb52be6d629353315be5bfda403d15932a497", size = 150982 },
     { url = "https://files.pythonhosted.org/packages/a5/8b/7f9a061c1cc2b230f9ac02a6003fcd14c85ce1828013aecbaf45aa988d20/PyAudio-0.2.14-cp313-cp313-win_amd64.whl", hash = "sha256:692d8c1446f52ed2662120bcd9ddcb5aa2b71f38bda31e58b19fb4672fffba69", size = 173655 },
+]
+
+[[package]]
+name = "pyceres"
+version = "2.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1d/3a/2de6586be67f0169b195efa319772f3b876d79df060cb4efa79caf10ef4f/pyceres-2.5-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:44f00b6f07b23f45fdd690b96e782dbdc35b4bfcdb49de1ed47f808b71fe338e", size = 2165465 },
+    { url = "https://files.pythonhosted.org/packages/df/8c/d83a0916808ae0725c92319d1f41e57c9bc163552cde6fed2fac109177d6/pyceres-2.5-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:2334de3d0d26ef64352fb57e4a76840c2b2da62fb430eba5b6403424f3b4b668", size = 1762220 },
+    { url = "https://files.pythonhosted.org/packages/6c/8c/5f127d1fe62fb569048cc19ca0742f83ff28962a9ed5d47e1ea59b4ed93b/pyceres-2.5-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5d7c17e0ecae3122279d6ba96f30385e0d3906276efb0cf5e6d38292d8e2b423", size = 3779280 },
+    { url = "https://files.pythonhosted.org/packages/80/1c/4394f5f228595123325ba3f9585b0821c6aaaa5475e539feba07461be7bf/pyceres-2.5-cp311-cp311-win_amd64.whl", hash = "sha256:bc79ed92658860d7440f4a7a29a62689b21200744543e56ee200cf936d007475", size = 8009327 },
+    { url = "https://files.pythonhosted.org/packages/2a/ac/0b6fabbdba5b8165ee35a00508780b0051968d6e9ad1cbb3ad0cc86b7a4a/pyceres-2.5-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:48ac74af3eddb4180683c0c7f4f03b2449ffe3ec2f86780a7d90b7e2e497bf89", size = 2177838 },
+    { url = "https://files.pythonhosted.org/packages/a4/de/5615c79e53f9cd78a4fb66eca6e34c95ee7df9ff89b356be23461f05326e/pyceres-2.5-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:460ec9fb471968a3951a8891abfb7f90aff8b3058950b8cde7ad2f8d5c0f58a3", size = 1765698 },
+    { url = "https://files.pythonhosted.org/packages/11/f5/3d32f780247436a7b53dd51aa0098f493621c05661972820df65cc7e5487/pyceres-2.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c0dd6c040593da37bcb22af982008f986730157ea2169a4faa296d0108058f18", size = 3778915 },
+    { url = "https://files.pythonhosted.org/packages/a9/b9/e0430116cddddead82f5e9e6cd2243204ff2278f84b9e22a5eaeb0818330/pyceres-2.5-cp312-cp312-win_amd64.whl", hash = "sha256:f041334100820988ba5751538b8bddd81946ca61439df9f33760d992a44a20de", size = 8014612 },
+    { url = "https://files.pythonhosted.org/packages/ba/61/2f5f660225234c4c81e911f9694fcf6567735aa9833fa7e2a6df2349ff15/pyceres-2.5-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:aceaac764a3e04f549936873fce3417f20a88ca54eeaaedf79e6c8c606905dea", size = 2177909 },
+    { url = "https://files.pythonhosted.org/packages/98/6f/b570da0fbfda7a2249b1c4cd4e1f8418f5ff873f5851c8a476c8c55bed23/pyceres-2.5-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:1a31ea184d5bd292be77e6538fb788259114fa177d8c80c8ab74365645104b43", size = 1765749 },
+    { url = "https://files.pythonhosted.org/packages/d9/7c/3b35907e37b51e880b7392346aade51eacb3f1b94f37c96d9167d671980c/pyceres-2.5-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e3566606b6cef566f914d7a64ef32f69f6043e9946716d22b2ba9d255f03b6ac", size = 3778831 },
+    { url = "https://files.pythonhosted.org/packages/fd/d5/71211fb30ea3fd8d66156e9d3befe0a6f3f00e58a1e9546d9f694d3e23c6/pyceres-2.5-cp313-cp313-win_amd64.whl", hash = "sha256:9cee8a9939b95e8f999775f743f9498c50525b912101ea6fac5544b6108e8400", size = 8014565 },
+    { url = "https://files.pythonhosted.org/packages/00/25/1014ff5e6dbaea115c4026783a3bcf423886b00de88de3e78e749cd7278d/pyceres-2.5-cp314-cp314-macosx_10_13_x86_64.whl", hash = "sha256:9ef276b0b1b1005ccb8dc2cc5d48ae110aa600142321e2eecdcae7b5f90f0210", size = 2177405 },
+    { url = "https://files.pythonhosted.org/packages/41/02/8d8680260208eef162dac2e66c6e7a6c1014f9fe0abb91c850e95edefccb/pyceres-2.5-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:e69f3e91d60f1476318216052fecdf002ff763d09d86dffa376d0b43473ac78f", size = 1766558 },
+    { url = "https://files.pythonhosted.org/packages/56/c6/3f36290804daa714cee84949ae7b0a5560dcca784474b7088529faecf478/pyceres-2.5-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:26df6d3249251450d4a322515a604faec121c49bad67343c28cf77dada639141", size = 3779913 },
+    { url = "https://files.pythonhosted.org/packages/a7/5d/0744b9416862f13c320919377530342f81f34066c7baf5e629f5ff0f9a91/pyceres-2.5-cp314-cp314-win_amd64.whl", hash = "sha256:9eb84d2ad8a490def8eb2305566fe08b82ed96c8207356a964b70b9bd2b5eacd", size = 8176034 },
 ]
 
 [[package]]

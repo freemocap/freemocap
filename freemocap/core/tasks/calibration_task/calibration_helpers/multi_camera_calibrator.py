@@ -6,13 +6,11 @@ from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage
 from freemocap.core.tasks.calibration_task.calibration_helpers.camera_math_models import TransformationMatrix
-from freemocap.core.tasks.calibration_task.calibration_helpers.least_squares_optimizer import (
-    SparseBundleOptimizer
-)
 from freemocap.core.tasks.calibration_task.calibration_helpers.single_camera_calibrator import (
     CameraIntrinsicsEstimate,
     SingleCameraCalibrator
 )
+from freemocap.core.tasks.calibration_task.pyceres_bundle_adjuster import PyCeresBundleAdjuster, BundleAdjustmentConfig
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
 
 logger = logging.getLogger(__name__)
@@ -30,7 +28,7 @@ class MultiCameraCalibrator(BaseModel):
 
     single_camera_calibrators: dict[CameraIdString, SingleCameraCalibrator] | None = None
     multi_camera_calibration_estimate: MultiCameraCalibrationEstimate | None = None
-    sparse_bundle_optimizer: SparseBundleOptimizer | None = None
+    pyceres_bundle_adjuster: PyCeresBundleAdjuster | None = None
     minimum_views_to_reconstruct: int | None = 300
 
     @property
@@ -132,48 +130,104 @@ class MultiCameraCalibrator(BaseModel):
 
         return self.multi_camera_calibration_estimate
 
-    def run_bundle_adjustment(self) -> MultiCameraCalibrationEstimate:
+    def run_bundle_adjustment(
+            self,
+            config: BundleAdjustmentConfig | None = None
+    ) -> MultiCameraCalibrationEstimate:
         """
-        Optional: Refine calibration estimate using sparse bundle adjustment.
-        Must call calibrate() first.
+        Refine calibration using PyCeres bundle adjustment.
+
+        Must call calibrate() first to get initial estimate.
+
+        Args:
+            config: Optional bundle adjustment configuration
+
+        Returns:
+            Refined multi-camera calibration estimate
+
+        Raises:
+            ValueError: If calibrate() has not been called yet
         """
         if self.multi_camera_calibration_estimate is None:
             raise ValueError("Must run calibrate() first before bundle adjustment")
 
-        logger.info("Running sparse bundle adjustment optimization...")
+        if self.single_camera_calibrators is None:
+            raise ValueError("No single camera calibrators available")
 
-        self.sparse_bundle_optimizer = SparseBundleOptimizer.create(
-            principal_camera_id=self.principal_camera_id,
-            camera_extrinsics_by_camera_id={
-                camera_id: transform.extrinsics_matrix
-                for camera_id, transform in
-                self.multi_camera_calibration_estimate.camera_transforms_by_camera_id.items()
-            },
-            camera_intrinsics=self.camera_intrinsics,
-            multi_camera_target_views=self.shared_view_accumulator.multi_camera_target_views,
-            image_sizes={
-                camera_id: calibrator.image_size
-                for camera_id, calibrator in self.single_camera_calibrators.items()
-            }
-        )
+        logger.info("Running PyCeres bundle adjustment optimization...")
 
-        optimization_result = self.sparse_bundle_optimizer.optimize()
-
-        camera_transforms = {}
-        for camera_index, camera_id in enumerate(self.single_camera_calibrators.keys()):
-            starting_index = camera_index * self.sparse_bundle_optimizer.number_of_parameters_per_camera
-            ending_index = (camera_index + 1) * self.sparse_bundle_optimizer.number_of_parameters_per_camera
-            camera_transforms[camera_id] = TransformationMatrix.from_extrinsics(
-                extrinsics_matrix=np.array(optimization_result.x[starting_index:ending_index]).reshape(3, 4),
-                reference_frame=f"camera-{self.principal_camera_id}"
+        # Set up default config if not provided
+        if config is None:
+            config = BundleAdjustmentConfig(
+                optimize_intrinsics=False,  # Keep intrinsics fixed
+                fix_principal_camera=True,  # Fix principal camera at origin
+                max_iterations=100,
+                use_robust_loss=True,
+                robust_loss_scale=1.0,
+                num_threads=4
             )
 
-        self.multi_camera_calibration_estimate = MultiCameraCalibrationEstimate(
+        # Get camera intrinsics
+        camera_intrinsics = {}
+        for camera_id, calibrator in self.single_camera_calibrators.items():
+            camera_intrinsics[camera_id] = (
+                calibrator.camera_matrix,
+                calibrator.distortion_coefficients
+            )
+
+        # Get charuco corners in world coordinates
+        first_calibrator = next(iter(self.single_camera_calibrators.values()))
+        charuco_corners_3d = first_calibrator.all_charuco_corners_in_object_coordinates
+
+        # Create bundle adjuster
+        self.pyceres_bundle_adjuster = PyCeresBundleAdjuster.create(
             principal_camera_id=self.principal_camera_id,
-            camera_transforms_by_camera_id=camera_transforms
+            camera_transforms=self.multi_camera_calibration_estimate.camera_transforms_by_camera_id,
+            camera_intrinsics=camera_intrinsics,
+            charuco_corners_3d=charuco_corners_3d,
+            config=config
         )
 
-        logger.info("Bundle adjustment optimization complete.")
+        # Get multi-camera views
+        multi_camera_views = self.shared_view_accumulator.multi_camera_target_views
+
+        # Compute initial statistics
+        logger.info("Initial reprojection errors:")
+        initial_stats = self.pyceres_bundle_adjuster.compute_reprojection_statistics(
+            multi_camera_views
+        )
+        for key, value in initial_stats.items():
+            if key == "count":
+                logger.info(f"  {key}: {value}")
+            else:
+                logger.info(f"  {key}: {value:.4f} pixels")
+
+        # Run optimization
+        optimized_transforms = self.pyceres_bundle_adjuster.optimize(multi_camera_views)
+
+        # Compute final statistics
+        logger.info("Final reprojection errors:")
+        final_stats = self.pyceres_bundle_adjuster.compute_reprojection_statistics(
+            multi_camera_views
+        )
+        for key, value in final_stats.items():
+            if key == "count":
+                logger.info(f"  {key}: {value}")
+            else:
+                logger.info(f"  {key}: {value:.4f} pixels")
+
+        # Update estimate
+        self.multi_camera_calibration_estimate = MultiCameraCalibrationEstimate(
+            principal_camera_id=self.principal_camera_id,
+            camera_transforms_by_camera_id=optimized_transforms
+        )
+
+        improvement_pct = (
+                (initial_stats["mean"] - final_stats["mean"]) / initial_stats["mean"] * 100
+        )
+        logger.success(
+            f"Bundle adjustment improved mean reprojection error by {improvement_pct:.1f}%"
+        )
 
         return self.multi_camera_calibration_estimate
 
@@ -238,14 +292,14 @@ if __name__ == "__main__":
     import pickle
     from pathlib import Path
 
-    pickle_path = r"C:\Users\jonma\github_repos\freemocap_organization\freemocap\freemocap\saved_mc_calib.pkl"
+    pickle_path = r"C:\Users\jonma\github_repos\freemocap_organization\freemocap\freemocap\test_calibration_data.pkl"
     if not Path(pickle_path).exists():
         raise FileNotFoundError(f"File not found: {pickle_path}")
     loaded: MultiCameraCalibrator = pickle.load(open(pickle_path, "rb"))
 
     # Now you can choose: use initial estimate or run bundle adjustment
-    initial_estimate = loaded.calibrate()  # Good enough for triangulation
-    # refined_estimate = loaded.run_bundle_adjustment()  # Optional refinement
+    initial_estimate = loaded.calibrate()
+    refined_estimate = loaded.run_bundle_adjustment()
     # ## use snippet below to save out state in debug console to re-run w/o camera streams
     # import pickle
     # from pathlib import Path

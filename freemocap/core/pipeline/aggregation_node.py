@@ -100,28 +100,32 @@ class AggregationNode:
                     logger.warning(
                         f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
                 last_received_frame = latest_requested_frame
+
                 if not triangulator:
+                    print(f'gathering calibration data for frame {latest_requested_frame}...')
                     calibrator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
                                                           multi_frame_number=latest_requested_frame)
                     if calibrator.ready_to_calibrate and not calibrator.has_calibration:
                         try:
+                            print('calibrating...')
                             calibrator.calibrate()
                             triangulator = create_triangulator_from_calibrator(calibrator)
-                            for _ in range(20):
-                                logger.success(f"Calibration successful!")
+                            logger.success(f"Calibration successful!")
                         except Exception as e:
                             logger.error(f"Error during calibration: {e}", exc_info=True)
                             raise
                 else:
+                    print("triangulating points...")
                     tik = time.perf_counter_ns()
                     triangulated_points3d = triangulator.triangulate_camera_node_outputs(
                         camera_node_outputs=camera_node_outputs,
-                        undistort_points=True,  # fast enough for the real-time pipeline
+                        undistort_points=False,  # fast enough for the real-time pipeline
                         compute_reprojection_error=False
                         # too slow for real-time (see diagnostics in PointTriangulator file)
                     )
                     tok = time.perf_counter_ns()
-                    logger.api(
+                    if triangulated_points3d:
+                        logger.api(
                         f"Triangulated {len(triangulated_points3d)} points at frame {latest_requested_frame} in {(tok - tik) / 1e6:.3f} ms")
                 aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                     frame_number=latest_requested_frame,

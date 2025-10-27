@@ -69,7 +69,7 @@ class MultiCameraTargetView(BaseModel):
         if not all([output.frame_number == self.multi_frame_number for output in
                     self.camera_node_output_by_camera.values()]):
             raise ValueError(
-                f"multi_frame_number {self.multi_frame_number} does not match all camera_node_output_by_camera multi_frame_numbers")
+                f"multi_frame_number {self.multi_frame_number} does not match all camera_node_output_by_camera multi_frame_numbers: {[output.frame_number for output in self.camera_node_output_by_camera.values()]}")
         return self
 
     @property

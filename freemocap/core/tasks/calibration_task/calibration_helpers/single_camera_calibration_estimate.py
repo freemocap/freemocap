@@ -8,7 +8,7 @@ from freemocap.core.tasks.calibration_task.calibration_helpers.positional_6dof i
 
 
 class SingleCameraCalibrationEstimate(BaseModel):
-    camera_id: CameraId
+    camera_id: CameraIdString
 
     camera_matrix: CameraMatrixArray
     distortion_coefficients: CameraDistortionCoefficientsArray

@@ -1,3 +1,5 @@
+import logging
+
 from pydantic import Field, model_validator
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointIdString
@@ -7,6 +9,7 @@ from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 from freemocap.core.types.type_overloads import TrackerTypeString, FrameNumberInt, Point3d
 
+logger = logging.getLogger(__name__)
 
 class ProcessFrameNumberMessage(TopicMessageABC):
     frame_number: int = Field(ge=0, description="Frame number to process")
@@ -41,7 +44,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
         # make sure camera_node_outputs all have the same frame_number as this message
         for cam_output in self.camera_node_outputs.values():
             if cam_output.frame_number != self.frame_number:
-                raise ValueError(
+                logger.warning(
                     f"CameraNodeOutputMessage for camera {cam_output.camera_id} has frame number {cam_output.frame_number} which does not match AggregationNodeOutputMessage frame number {self.frame_number}")
         return self
 

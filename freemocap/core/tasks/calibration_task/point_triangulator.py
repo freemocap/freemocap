@@ -6,51 +6,13 @@ import numpy as np
 
 from skellycam.core.types.type_overloads import CameraIdString
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage
-
-
-class PreallocatedArrays:
-    """
-    Container for pre-allocated arrays that auto-resizes when needed.
-
-    Arrays never shrink (to avoid allocations), but grow by 50% when needed.
-    This gives you flexibility while maintaining performance when sizes are stable.
-    """
-
-    def __init__(self, num_cameras: int ):
-        self.num_cameras = num_cameras
-        self._allocate()
-
-    def _allocate(self, max_points: int|None=None) -> None:
-        """Allocate or reallocate arrays."""
-        if max_points is None:
-            max_points = 100  # Default initial size, will auto-resize on use
-        self.points3d = np.empty((max_points, 3), dtype=np.float64)
-        self.A_matrices = np.zeros((max_points, self.num_cameras * 2, 4), dtype=np.float64)
-
-    @property
-    def max_points(self) -> int:
-        return self.points3d.shape[0]
-
-    def ensure_capacity(self, num_points: int) -> bool:
-        """
-        Ensure arrays can hold at least num_points.
-
-        Returns True if reallocation occurred, False otherwise.
-        Grows by 50% to amortize reallocation cost.
-        """
-        if num_points <= self.max_points:
-            return False
-
-        # Grow by 50% to avoid frequent reallocations
-        new_capacity = max(num_points, int(self.max_points * 1.5))
-        self._allocate(new_capacity)
-        return True
+from freemocap.core.tasks.calibration_task.calibration_helpers.camera_math_models import CameraDistortionCoefficients, \
+    CameraMatrix
 
 
 def _triangulate_batch(
         points2d: np.ndarray,
         projection_matrices: np.ndarray,
-        preallocated_arrays: PreallocatedArrays | None = None
 ) -> np.ndarray:
     """
     Vectorized triangulation using Direct Linear Transform (DLT) method.
@@ -80,27 +42,8 @@ def _triangulate_batch(
     num_points = points2d.shape[0]
     num_cameras = projection_matrices.shape[0]
 
-    # Use pre-allocated arrays if provided, auto-resize if needed
-    if preallocated_arrays is not None:
-        old_capacity = preallocated_arrays.max_points
-        resized = preallocated_arrays.ensure_capacity(num_points)
-
-        if resized:
-            # Reallocation occurred - this is rare, so warn about it
-            import warnings
-            warnings.warn(
-                f"PreallocatedArrays resized from {old_capacity} to "
-                f"{preallocated_arrays.max_points} points. Consider initializing "
-                f"with larger capacity.",
-                RuntimeWarning,
-                stacklevel=2
-            )
-
-        A_matrices = preallocated_arrays.A_matrices[:num_points]
-        points3d_output = preallocated_arrays.points3d[:num_points]
-    else:
-        A_matrices = np.zeros((num_points, num_cameras * 2, 4), dtype=np.float64)
-        points3d_output = np.empty((num_points, 3), dtype=np.float64)
+    A_matrices = np.zeros((num_points, num_cameras * 2, 4), dtype=np.float64)
+    points3d_output = np.empty((num_points, 3), dtype=np.float64)
 
     # Zero out A_matrices in case we're reusing pre-allocated array
     A_matrices.fill(0.0)
@@ -133,8 +76,8 @@ class CameraCalibrationData:
 
     name: str
     image_size: tuple[int, int]  # (width, height)
-    matrix: np.ndarray  # 3x3 intrinsic matrix K
-    distortion: np.ndarray  # 1x5 distortion coefficients
+    matrix: CameraMatrix
+    distortion: CameraDistortionCoefficients
     rotation_vector: np.ndarray  # 3x1 Rodrigues rotation vector
     translation: np.ndarray  # 3x1 XYZ translation vector
     world_position: np.ndarray = field(init=False)
@@ -156,18 +99,18 @@ class CameraCalibrationData:
         return cls(
             name=camera_id,
             image_size=(int(image_size_list[0]), int(image_size_list[1])),
-            matrix=np.array(data["matrix"], dtype=np.float64),
-            distortion=np.array(data["distortions"], dtype=np.float64),
+            matrix=CameraMatrix(**data["matrix"]),
+            distortion=CameraDistortionCoefficients(**data["distortions"]),
             rotation_vector=np.array(data["rotation"], dtype=np.float64),
             translation=np.array(data["translation"], dtype=np.float64),
         )
 
     def __post_init__(self) -> None:
         """Validate shapes and compute world coordinates after initialization."""
-        if self.matrix.shape != (3, 3):
-            raise ValueError(f"Expected matrix shape (3, 3), got {self.matrix.shape}")
-        if self.distortion.shape != (5,):
-            raise ValueError(f"Expected distortion shape (5,), got {self.distortion.shape}")
+        if self.matrix.matrix.shape != (3, 3):
+            raise ValueError(f"Expected matrix shape (3, 3), got {self.matrix.matrix.shape}")
+        if self.distortion.coefficients.shape != (5,):
+            raise ValueError(f"Expected distortion shape (5,), got {self.distortion.coefficients.shape}")
         if self.rotation_vector.shape != (3,):
             raise ValueError(f"Expected rotation_vector shape (3,), got {self.rotation_vector.shape}")
         if self.translation.shape != (3,):
@@ -193,7 +136,7 @@ class CameraCalibrationData:
     @property
     def projection_matrix(self) -> np.ndarray:
         """Full projection matrix P = K[R|t] of shape (3, 4)."""
-        return self.matrix @ self.extrinsics_matrix
+        return self.matrix.matrix @ self.extrinsics_matrix
 
     def undistort_points(self, points: np.ndarray) -> np.ndarray:
         """
@@ -206,8 +149,8 @@ class CameraCalibrationData:
         points = points.reshape(-1, 1, 2)
         undistorted = cv2.undistortPoints(
             points,
-            self.matrix.astype(np.float64),
-            self.distortion.astype(np.float64)
+            self.matrix.matrix.astype(np.float64),
+            self.distortion.coefficients.astype(np.float64)
         )
         return undistorted.reshape(original_shape)
 
@@ -223,8 +166,8 @@ class CameraCalibrationData:
             points3d,
             self.rotation_vector,
             self.translation,
-            self.matrix,
-            self.distortion
+            self.matrix.matrix,
+            self.distortion.coefficients
         )
         return np.squeeze(projected, axis=1)
 
@@ -241,7 +184,6 @@ class PointTriangulator:
     projection_matrices: np.ndarray = field(init=False)
     camera_names: list[str] = field(init=False)
     num_cameras: int = field(init=False)
-    preallocated_arrays: PreallocatedArrays = field(init=False)
 
     @classmethod
     def from_toml(cls, toml_path: str | Path) -> "PointTriangulator":
@@ -290,12 +232,6 @@ class PointTriangulator:
             np.ascontiguousarray(projection_matrices, dtype=np.float64)
         )
 
-        object.__setattr__(
-            self,
-            'preallocated_arrays',
-            PreallocatedArrays(num_cameras=self.num_cameras) # max points will update with use
-        )
-
 
 
     def triangulate_camera_node_outputs(
@@ -340,7 +276,6 @@ class PointTriangulator:
     def triangulate_points(
             self,
             points2d: np.ndarray,
-            use_preallocated: bool = True,
             undistort_points: bool = False,
             compute_reprojection_error: bool = True
     ) -> tuple[np.ndarray, np.ndarray | None]:
@@ -373,7 +308,6 @@ class PointTriangulator:
         points3d = _triangulate_batch(
             points2d,
             self.projection_matrices,
-            self.preallocated_arrays if use_preallocated else None
         )
 
         mean_errors = None
@@ -483,105 +417,8 @@ class PointTriangulator:
 
 
 def benchmark_triangulator() -> None:
-    """Run comprehensive performance benchmarks."""
-    import time
-    import warnings
-
-    print("=" * 80)
-    print("TRIANGULATOR PERFORMANCE BENCHMARK (WITH AUTO-RESIZING)")
-    print("=" * 80)
-
-    num_cameras: int = 4
-    camera_calibrations: dict[str, CameraCalibrationData] = {}
-
-    for i in range(num_cameras):
-        distortion = np.array([
-            -0.2 + np.random.randn() * 0.05,
-            0.1 + np.random.randn() * 0.02,
-            np.random.randn() * 0.001,
-            np.random.randn() * 0.001,
-            np.random.randn() * 0.01
-        ], dtype=np.float64)
-
-        camera_calibrations[f"cam_{i}"] = CameraCalibrationData(
-            name=f"cam_{i}",
-            image_size=(1920, 1080),
-            matrix=np.eye(3, dtype=np.float64) * 1000,
-            distortion=distortion,
-            rotation_vector=np.random.randn(3).astype(np.float64) * 0.1,
-            translation=np.random.randn(3).astype(np.float64) * 0.5,
-        )
-
-    triangulator = PointTriangulator(camera_calibrations=camera_calibrations)
-    print(f"\nTriangulator initialized with {num_cameras} cameras\n")
-
-    num_test_points: int = 100
-    test_points_2d = np.random.rand(num_test_points, num_cameras, 2).astype(np.float64) * 1000
-
-
-    print("=" * 80)
-    print("PRE-ALLOCATION IMPACT TEST")
-    print("=" * 80)
-    print(f"Points: {num_test_points}, Cameras: {num_cameras}\n")
-
-    num_iterations: int = 1000
-
-    # Test without pre-allocation
-    start = time.perf_counter()
-    for _ in range(num_iterations):
-        _, _ = triangulator.triangulate_points(
-            points2d=test_points_2d,
-            use_preallocated=False,
-            undistort_points=False,
-            compute_reprojection_error=False
-        )
-    time_without = (time.perf_counter() - start) / num_iterations
-
-    # Test with pre-allocation
-    start = time.perf_counter()
-    for _ in range(num_iterations):
-        _, _ = triangulator.triangulate_points(
-            points2d=test_points_2d,
-            use_preallocated=True,
-            undistort_points=False,
-            compute_reprojection_error=False
-        )
-    time_with = (time.perf_counter() - start) / num_iterations
-
-    speedup = time_without / time_with
-    time_saved = (time_without - time_with) * 1000
-
-    print(f"Without pre-allocation: {time_without * 1000:7.3f} ms")
-    print(f"With pre-allocation:    {time_with * 1000:7.3f} ms")
-    print(f"Speedup:                {speedup:.2f}x")
-    print(f"Time saved per frame:   {time_saved:.3f} ms")
-
-    print(f"\nAt 60 fps ({16.67:.2f}ms budget):")
-    print(f"  Saved: {time_saved:.3f} ms ({time_saved / 16.67 * 100:.1f}% of frame budget)")
-
-    print(f"\nAt 120 fps ({8.33:.2f}ms budget):")
-    print(f"  Saved: {time_saved:.3f} ms ({time_saved / 8.33 * 100:.1f}% of frame budget)")
-
-    # Memory allocation test
-    print("\n" + "=" * 80)
-    print("MEMORY ALLOCATION ANALYSIS")
-    print("=" * 80)
-
-    a_matrix_size = num_test_points * num_cameras * 2 * 4 * 8  # bytes
-    output_size = num_test_points * 3 * 8  # bytes
-    total_per_frame = a_matrix_size + output_size
-
-    print(f"Per-frame allocations without pre-allocation:")
-    print(f"  A_matrices: {a_matrix_size / 1024:.1f} KB")
-    print(f"  Output:     {output_size / 1024:.1f} KB")
-    print(f"  Total:      {total_per_frame / 1024:.1f} KB")
-    print(f"\nAt 60 fps:  {total_per_frame * 60 / 1024 / 1024:.1f} MB/sec")
-    print(f"At 120 fps: {total_per_frame * 120 / 1024 / 1024:.1f} MB/sec")
-
-
-    print("\n" + "=" * 80)
-    print("BENCHMARK COMPLETE")
-    print("=" * 80)
+    #TODO : implement benchmark
+    pass
 
 
 if __name__ == "__main__":

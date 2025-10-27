@@ -14,6 +14,8 @@ from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigTopic, ProcessFrameNumberTopic, \
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic
 from freemocap.core.tasks.calibration_task.calibration_helpers.multi_camera_calibrator import MultiCameraCalibrator
+from freemocap.core.tasks.calibration_task.create_triangulator_from_multicam_calibrator import \
+    create_triangulator_from_calibrator
 from freemocap.core.tasks.calibration_task.point_triangulator import PointTriangulator
 from freemocap.core.types.type_overloads import Point3d
 
@@ -72,7 +74,7 @@ class AggregationNode:
                                                             read_only=True)
         calibrator = MultiCameraCalibrator.from_camera_ids(camera_ids=config.camera_ids,
                                                            principal_camera_id=config.camera_ids[0])
-        point_triangulator: PointTriangulator | None = None
+        triangulator: PointTriangulator | None = None
         latest_requested_frame: int = -1
         last_received_frame: int = -1
         while ipc.should_continue and not shutdown_self_flag.value:
@@ -99,12 +101,13 @@ class AggregationNode:
                     logger.warning(
                         f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
                 last_received_frame = latest_requested_frame
-                if not point_triangulator:
+                if not triangulator:
                     calibrator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
                                                           multi_frame_number=latest_requested_frame)
                     if calibrator.ready_to_calibrate and not calibrator.has_calibration:
                         try:
                             calibrator.calibrate()
+                            triangulator = create_triangulator_from_calibrator(calibrator)
                             for _ in range(20):
                                 logger.success(f"Calibration successful!")
                         except Exception as e:
@@ -112,7 +115,7 @@ class AggregationNode:
                             raise
                 else:
                     tik = time.perf_counter_ns()
-                    triangulated_points3d = point_triangulator.triangulate_camera_node_outputs(
+                    triangulated_points3d = triangulator.triangulate_camera_node_outputs(
                         camera_node_outputs=camera_node_outputs,
                         undistort_points=True,  # fast enough for the real-time pipeline
                         compute_reprojection_error=False

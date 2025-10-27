@@ -6,11 +6,13 @@ from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage
 from freemocap.core.tasks.calibration_task.calibration_helpers.camera_math_models import TransformationMatrix
-from freemocap.core.tasks.calibration_task.calibration_helpers.least_squares_optimizer import \
+from freemocap.core.tasks.calibration_task.calibration_helpers.least_squares_optimizer import (
     SparseBundleOptimizer
-from freemocap.core.tasks.calibration_task.calibration_helpers.single_camera_calibrator import \
-    CameraIntrinsicsEstimate, \
+)
+from freemocap.core.tasks.calibration_task.calibration_helpers.single_camera_calibrator import (
+    CameraIntrinsicsEstimate,
     SingleCameraCalibrator
+)
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
 
 logger = logging.getLogger(__name__)
@@ -85,7 +87,11 @@ class MultiCameraCalibrator(BaseModel):
         return self.shared_view_accumulator.all_cameras_have_min_shared_views(
             min_shared_views=self.minimum_views_to_reconstruct if min_shared_views is None else min_shared_views)
 
-    def calibrate(self):
+    def calibrate(self) -> MultiCameraCalibrationEstimate:
+        """
+        Calibrate multi-camera system using direct stereo pair analysis.
+        Returns initial estimate suitable for triangulation.
+        """
         logger.debug(
             f"Calibrating multi-camera system for cameras: {self.single_camera_calibrators.keys()}"
             f" with principal camera: {self.principal_camera_id} and "
@@ -107,43 +113,69 @@ class MultiCameraCalibrator(BaseModel):
             logger.info(f"Calibrating single camera: {calibrator.camera_id}...")
             calibrator.calibrate()
 
-        return self.run_multi_camera_optimization()
+        return self._create_initial_multi_camera_estimate()
 
-    def run_multi_camera_optimization(self) -> MultiCameraCalibrationEstimate:
-        # Step 1: Calculate secondary camera transforms for each camera pair
-        camera_pair_secondary_camera_transform_estimates = self._calculate_camera_pair_transforms()
+    def _create_initial_multi_camera_estimate(self) -> MultiCameraCalibrationEstimate:
+        """Create initial multi-camera calibration estimate from stereo pair analysis."""
+        camera_pair_transforms = self._calculate_camera_pair_transforms()
+        camera_transforms = self._calculate_camera_to_principal_camera_transforms(camera_pair_transforms)
 
-        logger.debug(
-            f"Camera pair secondary camera transform estimates: {camera_pair_secondary_camera_transform_estimates}")
-
-        # Step 2: Calculate each camera's transform relative to the principal camera
-        transform_to_principal_camera_by_camera = self._calculate_camera_to_principal_camera_transforms(
-            camera_pair_secondary_camera_transform_estimates)
-
-        self.sparse_bundle_optimizer = SparseBundleOptimizer.create(principal_camera_id=self.principal_camera_id,
-                                                                    camera_extrinsics_by_camera_id={
-                                                                        camera_id: transform.extrinsics_matrix
-                                                                        for camera_id, transform in
-                                                                        transform_to_principal_camera_by_camera.items()},
-                                                                    camera_intrinsics=self.camera_intrinsics,
-                                                                    multi_camera_target_views=self.shared_view_accumulator.multi_camera_target_views,
-                                                                    image_sizes={camera_id: calibrator.image_size for
-                                                                                 camera_id, calibrator in
-                                                                                 self.single_camera_calibrators.items()}
-                                                                    )
-        optimization_result = self.sparse_bundle_optimizer.optimize()
-        camera_transforms = {}
-        for camera_index, camera_id in enumerate(self.single_camera_calibrators.keys()):
-            # split the 1d vector by camera based on `self.number_of_parameters_per_camera`
-            starting_index = camera_index * self.sparse_bundle_optimizer.number_of_parameters_per_camera
-            ending_index = (camera_index + 1) * self.number_of_parameters_per_camera
-            camera_transforms[camera_id] = TransformationMatrix.from_extrinsics(
-                extrinsics_matrix=np.array(optimization_result[starting_index:ending_index]).reshape(3, 4),
-                reference_frame=f"camera-{self.principal_camera_id}")
         self.multi_camera_calibration_estimate = MultiCameraCalibrationEstimate(
             principal_camera_id=self.principal_camera_id,
             camera_transforms_by_camera_id=camera_transforms
         )
+
+        logger.info(
+            f"Initial multi-camera calibration complete. "
+            f"Use run_bundle_adjustment() for optional refinement."
+        )
+
+        return self.multi_camera_calibration_estimate
+
+    def run_bundle_adjustment(self) -> MultiCameraCalibrationEstimate:
+        """
+        Optional: Refine calibration estimate using sparse bundle adjustment.
+        Must call calibrate() first.
+        """
+        if self.multi_camera_calibration_estimate is None:
+            raise ValueError("Must run calibrate() first before bundle adjustment")
+
+        logger.info("Running sparse bundle adjustment optimization...")
+
+        self.sparse_bundle_optimizer = SparseBundleOptimizer.create(
+            principal_camera_id=self.principal_camera_id,
+            camera_extrinsics_by_camera_id={
+                camera_id: transform.extrinsics_matrix
+                for camera_id, transform in
+                self.multi_camera_calibration_estimate.camera_transforms_by_camera_id.items()
+            },
+            camera_intrinsics=self.camera_intrinsics,
+            multi_camera_target_views=self.shared_view_accumulator.multi_camera_target_views,
+            image_sizes={
+                camera_id: calibrator.image_size
+                for camera_id, calibrator in self.single_camera_calibrators.items()
+            }
+        )
+
+        optimization_result = self.sparse_bundle_optimizer.optimize()
+
+        camera_transforms = {}
+        for camera_index, camera_id in enumerate(self.single_camera_calibrators.keys()):
+            starting_index = camera_index * self.sparse_bundle_optimizer.number_of_parameters_per_camera
+            ending_index = (camera_index + 1) * self.sparse_bundle_optimizer.number_of_parameters_per_camera
+            camera_transforms[camera_id] = TransformationMatrix.from_extrinsics(
+                extrinsics_matrix=np.array(optimization_result.x[starting_index:ending_index]).reshape(3, 4),
+                reference_frame=f"camera-{self.principal_camera_id}"
+            )
+
+        self.multi_camera_calibration_estimate = MultiCameraCalibrationEstimate(
+            principal_camera_id=self.principal_camera_id,
+            camera_transforms_by_camera_id=camera_transforms
+        )
+
+        logger.info("Bundle adjustment optimization complete.")
+
+        return self.multi_camera_calibration_estimate
 
     def _calculate_camera_to_principal_camera_transforms(self, camera_pair_secondary_camera_transform_estimates) -> \
             dict[CameraIdString, TransformationMatrix]:
@@ -210,8 +242,10 @@ if __name__ == "__main__":
     if not Path(pickle_path).exists():
         raise FileNotFoundError(f"File not found: {pickle_path}")
     loaded: MultiCameraCalibrator = pickle.load(open(pickle_path, "rb"))
-    loaded.run_multi_camera_optimization()
 
+    # Now you can choose: use initial estimate or run bundle adjustment
+    initial_estimate = loaded.calibrate()  # Good enough for triangulation
+    # refined_estimate = loaded.run_bundle_adjustment()  # Optional refinement
     # ## use snippet below to save out state in debug console to re-run w/o camera streams
     # import pickle
     # from pathlib import Path

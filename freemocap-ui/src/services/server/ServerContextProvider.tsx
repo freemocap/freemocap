@@ -159,6 +159,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                     // Acknowledge the highest frame number
                     if (frameNumbers.size > 0) {
                         const maxFrameNumber = Math.max(...Array.from(frameNumbers));
+                        console.log(`Acknowledging frame number: ${maxFrameNumber}`);
                         ws.send({ type: 'frameAcknowledgment', frameNumber: maxFrameNumber });
                     }
                 } catch (error) {

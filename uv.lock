@@ -1955,7 +1955,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2023.9.1086"
-source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#07e31beb331eba0f60543764031cbc3a024095b6" }
+source = { git = "https://github.com/freemocap/skellycam?branch=jon%2Fdevelopment#02a3cadd3d697ce6d84d45464850fc686e192733" }
 dependencies = [
     { name = "av" },
     { name = "cv2-enumerate-cameras" },

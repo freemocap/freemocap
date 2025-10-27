@@ -3,7 +3,7 @@ import multiprocessing
 from dataclasses import dataclass
 
 from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.types.type_overloads import CameraGroupIdString
+from skellycam.core.types.type_overloads import CameraGroupIdString, MultiframeTimestampFloat
 from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_skellycam_app
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
@@ -48,8 +48,9 @@ class FreemocApp:
     def disconnect_pipeline(self):
         self.pipeline_manager.close_all_pipelines()
 
-    def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[PipelineIdString, tuple[FrontendPayload, bytes]]:
-        return self.pipeline_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)
+    def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[
+        CameraGroupIdString, tuple[FrameNumberInt, MultiframeTimestampFloat, bytes]]:
+        return self.camera_group_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than,display_image_sizes=None)
 
     def close(self):
         self.global_kill_flag.value = True

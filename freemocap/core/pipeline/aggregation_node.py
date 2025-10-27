@@ -86,7 +86,6 @@ class AggregationNode:
             # Check for Camera Node Output
             if not camera_node_subscription.empty():
                 camera_node_output_message: CameraNodeOutputMessage = camera_node_subscription.get()
-                # Process the camera node output and aggregate it
                 camera_id = camera_node_output_message.camera_id
                 if not camera_id in config.camera_configs.keys():
                     raise ValueError(
@@ -135,6 +134,7 @@ class AggregationNode:
                                                             )}  # Placeholder for actual aggregation logic
                 )
                 ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
+                logger.debug(f"Published AggregationNodeOutputMessage for frame {latest_requested_frame} of camera group {camera_group_id}")
                 camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
 
     def start(self):

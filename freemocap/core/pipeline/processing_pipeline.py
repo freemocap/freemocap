@@ -9,29 +9,25 @@ from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.tasks.frontend_payload_builder.frontend_payload import FrontendPayload
+from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputMessage, AggregationNodeOutputTopic
 from freemocap.core.tasks.frontend_payload_builder.frontend_payload_builder import FrontendPayloadBuilder
 from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)
 
 
-
 @dataclass
 class ProcessingPipeline:
     id: PipelineIdString
-    camera_group_id: CameraIdString
+    camera_group: CameraGroup
     config: PipelineConfig
     camera_nodes: dict[CameraIdString, CameraNode]
     aggregation_node: AggregationNode
     frontend_payload_builder: FrontendPayloadBuilder
     ipc: PipelineIPC
 
-    def get_latest_frontend_payload(self, if_newer_than:FrameNumberInt) -> tuple[FrontendPayload|None, bytes|None]:
-        payload, images_bytearray =  self.frontend_payload_builder.latest_frontend_payload
-        if payload and images_bytearray and payload.frame_number > if_newer_than:
-            return payload, images_bytearray
-        return None, None
+    def get_latest_frontend_payload(self, if_newer_than: FrameNumberInt) -> tuple[AggregationNodeOutputMessage|None,bytes|None] :
+        return self.frontend_payload_builder.build_latest_frontend_payload(if_newer_than=if_newer_than)
 
     @property
     def alive(self) -> bool:
@@ -53,34 +49,26 @@ class ProcessingPipeline:
                                                      ipc=ipc)
                         for camera_id, config in camera_group.configs.items()}
         aggregation_node = AggregationNode.create(camera_group_id=camera_group.id,
-                                                  config=pipeline_config.aggregation_node_config,
+                                                  config=pipeline_config,
                                                   camera_group_shm_dto=camera_group_shm_dto,
                                                   ipc=ipc,
                                                   )
-        frontend_payload_builder = FrontendPayloadBuilder.create(camera_group_shm_dto=camera_group_shm_dto,
-                                                                pipeline_config=pipeline_config,
-                                                                ipc=ipc,
-                                                                )
+        frontend_payload_builder = FrontendPayloadBuilder(camera_group_shm=camera_group.shm,
+                                                          aggregation_node_output_subscription=ipc.pubsub.topics[
+                                                              AggregationNodeOutputTopic].get_subscription(),
+                                                          )
+
         return cls(camera_nodes=camera_nodes,
                    aggregation_node=aggregation_node,
                    ipc=ipc,
                    id=str(uuid.uuid4())[:6],
-                   camera_group_id=camera_group.id,
                    config=pipeline_config,
-                   frontend_payload_builder=frontend_payload_builder
+                   frontend_payload_builder=frontend_payload_builder,
+                     camera_group=camera_group,
                    )
 
     def start(self) -> None:
         logger.debug(f"Starting {self.__class__.__name__} with camera processes {list(self.camera_nodes.keys())}...")
-
-        try:
-            logger.debug(f"Starting frontend payload builder...")
-            self.frontend_payload_builder.start()
-            logger.debug(f"Frontend payload builder worker started: alive={self.frontend_payload_builder.worker.is_alive()}")
-        except Exception as e:
-            logger.error(f"Failed to start frontend payload builder: {type(e).__name__} - {e}")
-            logger.exception(e)
-            raise
 
         try:
             logger.debug("Starting aggregation node...")
@@ -107,7 +95,6 @@ class ProcessingPipeline:
         logger.debug(f"Shutting down {self.__class__.__name__}...")
 
         self.ipc.shutdown_pipeline()
-        self.frontend_payload_builder.shutdown()
         self.aggregation_node.shutdown()
         for camera_id, camera_process in self.camera_nodes.items():
             camera_process.shutdown()

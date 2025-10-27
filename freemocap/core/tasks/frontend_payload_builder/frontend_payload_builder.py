@@ -1,8 +1,5 @@
 import logging
-import multiprocessing
-import threading
-import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 import numpy as np
@@ -17,9 +14,6 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import (
-    ProcessFrameNumberTopic,
-    CameraNodeOutputTopic,
-    AggregationNodeOutputTopic,
     AggregationNodeOutputMessage,
     CameraNodeOutputMessage,
     ProcessFrameNumberMessage,
@@ -31,7 +25,6 @@ from freemocap.core.tasks.calibration_task.charuco_python_converter import (
 from freemocap.core.tasks.calibration_task.charuco_topology_python import (
     create_charuco_topology,
 )
-# NEW: Import overlay system
 from freemocap.core.tasks.calibration_task.image_overlay_system import (
     OverlayRenderer,
 )
@@ -54,14 +47,15 @@ class CameraOverlayRenderer:
             camera_id: CameraIdString,
             image_width: int,
             image_height: int,
-            pipeline_config: PipelineConfig,
     ):
         self.camera_id = camera_id
+        self.image_width = image_width
+        self.image_height = image_height
 
         # Create topology based on pipeline config
         self.topology = create_charuco_topology(
-            width=image_width,
-            height=image_height,
+            width=self.image_width,
+            height=self.image_height,
             show_charuco_corners=True,
             show_charuco_ids=True,
             show_aruco_markers=True,
@@ -143,7 +137,6 @@ def frontend_payload_builder_worker(
             camera_id=camera_node_config.camera_id,
             image_width=image_width,
             image_height=image_height,
-            pipeline_config=pipeline_config,
         )
 
     camera_group_shm = CameraGroupSharedMemory.recreate(
@@ -300,85 +293,55 @@ def frontend_payload_builder_worker(
 
 @dataclass
 class FrontendPayloadBuilder:
-    lock: multiprocessing.Lock
-    ipc: PipelineIPC
-    worker: threading.Thread | None = None
-    _latest_frontend_payload: FrontendPayload | None = None
-    _latest_frame_bytearray: bytes | None = None
+    aggregation_node_output_subscription: TopicSubscriptionQueue
+    camera_group_shm: CameraGroupSharedMemory
+    latest_frames: dict[CameraIdString, np.recarray] | None = None
+    overlay_renderers: dict[CameraIdString, CameraOverlayRenderer] = field(default_factory=dict)
 
-    @property
-    def latest_frontend_payload(self) -> tuple[FrontendPayload | None, bytes | None]:
-        with self.lock:
-            if self._latest_frontend_payload is not None:
-                print("self._latest_frontend_payload is not noneeeeeeeeeee")
-            if self._latest_frame_bytearray is not None:
-                print("self._latest_frame_bytearray is not noneeeeeeeeee--------------")
-            return self._latest_frontend_payload, self._latest_frame_bytearray
+    def build_latest_frontend_payload(self, if_newer_than: FrameNumberInt) -> tuple[
+        AggregationNodeOutputMessage | None, bytes | None]:
 
-    def update_latest_frontend_payload(
-            self, frontend_payload: FrontendPayload, frame_bytearray: bytes
-    ) -> None:
-        with self.lock:
-            print(f"Updating latest fe payload with frame# {frontend_payload.frame_number}")
-            self._latest_frontend_payload = frontend_payload
-            self._latest_frame_bytearray = frame_bytearray
+        aggregation_node_output_message: AggregationNodeOutputMessage | None = None
+        while not self.aggregation_node_output_subscription.empty():
+            aggregation_node_output_message = self.aggregation_node_output_subscription.get_nowait()
 
-    @property
-    def is_alive(self) -> bool:
-        """Check if worker thread is alive."""
-        return self.worker is not None and self.worker.is_alive()
+        if aggregation_node_output_message is not None:
+            for camera_config in aggregation_node_output_message.pipeline_config.camera_configs.values():
 
-    def start(self) -> None:
-        if self.worker is None:
-            raise RuntimeError("Worker thread not initialized")
-        self.worker.start()
-        time.sleep(0.1)
-        if not self.is_alive:
-            raise RuntimeError("Worker thread failed to start")
+                if camera_config.camera_id not in self.overlay_renderers.keys():
+                    self.overlay_renderers[camera_config.camera_id] = CameraOverlayRenderer(
+                        camera_id=camera_config.camera_id,
+                        image_width=camera_config.resolution.width,
+                        image_height=camera_config.resolution.height
+                    )
+                if any([camera_config.resolution.width != self.overlay_renderers[camera_config.camera_id].image_width,
+                        camera_config.resolution.height != self.overlay_renderers[camera_config.camera_id].image_height]):
+                    self.overlay_renderers[camera_config.camera_id].image_width = camera_config.resolution.width
+                    self.overlay_renderers[camera_config.camera_id].image_height = camera_config.resolution.height
+            to_remove = []
+            for camera_id in self.overlay_renderers.keys():
+                if camera_id not in aggregation_node_output_message.pipeline_config.camera_ids:
+                    to_remove.append(camera_id)
+            for rm_cam in to_remove:
+                del self.overlay_renderers[rm_cam]
 
-    def shutdown(self) -> None:
-        if self.worker is None:
-            raise RuntimeError("Worker thread not initialized")
-        self.ipc.pipeline_shutdown_flag.value = True
+            if not self.camera_group_shm.valid:
+                logger.warning("Camera group shared memory is not valid.")
+                return None, None
 
-        # Wait for graceful shutdown
-        for _ in range(50):
-            if not self.is_alive:
-                break
-            time.sleep(0.01)
+            self.latest_frames = self.camera_group_shm.get_images_by_frame_number(
+                frame_number=aggregation_node_output_message.frame_number,
+                frame_recarrays=self.latest_frames
+            )
 
-        self.worker.join(timeout=5.0)
+            for camera_id, camera_node_output in aggregation_node_output_message.camera_node_outputs.items():
+                overlay_renderer = self.overlay_renderers[camera_id]
 
-        if self.is_alive:
-            raise RuntimeError("Worker thread did not stop")
+                self.latest_frames[camera_id].image[0] = overlay_renderer.annotate_image(
+                    image=self.latest_frames[camera_id].image[0],
+                    charuco_observation=camera_node_output.charuco_observation,
+                )
+            _, _, images_bytearray = create_frontend_payload(self.latest_frames)
+            return aggregation_node_output_message, images_bytearray
 
-    @classmethod
-    def create(
-            cls,
-            camera_group_shm_dto: CameraGroupSharedMemoryDTO,
-            pipeline_config: PipelineConfig,
-            ipc: PipelineIPC,
-    ) -> "FrontendPayloadBuilder":
-        lock = multiprocessing.Lock()
-        instance = cls(lock=lock, ipc=ipc)
-        instance.worker = threading.Thread(
-            target=frontend_payload_builder_worker,
-            name="FrontendPayloadBuilderWorker",
-            kwargs=dict(
-                pipeline_config=pipeline_config,
-                camera_group_shm_dto=camera_group_shm_dto,
-                update_latest_frontend_payload_callback=instance.update_latest_frontend_payload,
-                process_frame_number_subscription=ipc.pubsub.get_subscription(
-                    ProcessFrameNumberTopic
-                ),
-                camera_node_output_subscription=ipc.pubsub.get_subscription(
-                    CameraNodeOutputTopic
-                ),
-                aggregation_node_output_subscription=ipc.pubsub.get_subscription(
-                    AggregationNodeOutputTopic
-                ),
-                ipc=ipc,
-            ),
-            daemon=True,
-        )
-        return instance
+        return None, None

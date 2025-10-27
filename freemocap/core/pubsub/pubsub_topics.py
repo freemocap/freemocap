@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, model_validator
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
@@ -18,16 +18,33 @@ class PipelineConfigMessage(TopicMessageABC):
 
 class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString
-    frame_number: FrameNumberInt
+    frame_number: FrameNumberInt = Field(ge=0)
     tracker_name: TrackerTypeString
-    charuco_observation: CharucoObservation|None = None
-
+    charuco_observation: CharucoObservation | None = None
 
 
 class AggregationNodeOutputMessage(TopicMessageABC):
-    frame_number: FrameNumberInt
+    frame_number: FrameNumberInt = Field(ge=0)
     camera_group_id: CameraGroupIdString
-    tracked_points3d: dict[TrackedPointIdString,Point3d] = Field(default_factory=dict)
+    pipeline_config: PipelineConfig
+    camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage]
+    tracked_points3d: dict[TrackedPointIdString, Point3d] = Field(default_factory=dict)
+
+    @model_validator(mode='after')
+    def validate(self) -> 'AggregationNodeOutputMessage':
+        # ensure that camera_node_outputs keys match camera IDs in pipeline_config
+        expected_camera_ids = set(self.pipeline_config.camera_node_configs.keys())
+        actual_camera_ids = set(self.camera_node_outputs.keys())
+        if sorted(expected_camera_ids) != sorted(actual_camera_ids):
+            raise ValueError(
+                f"Camera IDs in camera_node_outputs {actual_camera_ids} do not match expected camera IDs from pipeline_config {expected_camera_ids}")
+        # make sure camera_node_outputs all have the same frame_number as this message
+        for cam_output in self.camera_node_outputs.values():
+            if cam_output.frame_number != self.frame_number:
+                raise ValueError(
+                    f"CameraNodeOutputMessage for camera {cam_output.camera_id} has frame number {cam_output.frame_number} which does not match AggregationNodeOutputMessage frame number {self.frame_number}")
+        return self
+
 
 ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 PipelineConfigTopic = create_topic(PipelineConfigMessage)

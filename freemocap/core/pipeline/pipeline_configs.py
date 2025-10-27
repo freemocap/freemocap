@@ -8,26 +8,33 @@ from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoAnno
 class CameraNodeTaskConfig(BaseModel):
     camera_config: CameraConfig
 
+
 class AggregationTaskConfig(BaseModel):
     camera_configs: CameraConfigs
 
+
 class CalibrationCameraNodeConfig(CameraNodeTaskConfig):
     tracker_config: CharucoTrackerConfig
-    annotator_config:CharucoAnnotatorConfig
+    annotator_config: CharucoAnnotatorConfig
+
 
 class CalibrationAggregationNodeConfig(AggregationTaskConfig):
     pass
 
+
 class MocapCameraNodeConfig(CameraNodeTaskConfig):
     pass
 
+
 class MocapAggregationNodeConfig(AggregationTaskConfig):
     pass
+
 
 class AggregationNodeConfig(BaseModel):
     camera_configs: CameraConfigs
     calibration_aggregation_node_config: CalibrationAggregationNodeConfig
     mocap_aggregation_node_config: MocapAggregationNodeConfig
+
     @property
     def camera_ids(self) -> list[CameraIdString]:
         return list(self.camera_configs.keys())
@@ -45,14 +52,21 @@ class CameraNodeConfig(BaseModel):
     def create_image_annotater(self):
         raise NotImplementedError("Method create_image_annotator is not implemented yet.")
 
+
 class PipelineConfig(BaseModel):
     camera_node_configs: dict[CameraIdString, CameraNodeConfig]
     aggregation_node_config: AggregationNodeConfig
+
     @property
     def camera_configs(self) -> CameraConfigs:
         return self.aggregation_node_config.camera_configs
+
+    @property
+    def camera_ids(self) -> list[CameraIdString]:
+        return list(self.camera_configs.keys())
+
     @model_validator(mode="after")
-    def validate(self   ):
+    def validate(self):
         if set(self.camera_node_configs.keys()) != set(self.aggregation_node_config.camera_configs.keys()):
             raise ValueError("Camera IDs in camera_node_configs and aggregation_node_config.camera_configs must match")
         return self
@@ -89,5 +103,3 @@ class PipelineConfig(BaseModel):
             camera_node_configs=camera_node_configs,
             aggregation_node_config=aggregation_node_config
         )
-
-

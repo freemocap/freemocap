@@ -261,24 +261,27 @@ class MultiCameraCalibrator(BaseModel):
 
     def _calculate_camera_pair_transforms(self):
         camera_pair_secondary_camera_transform_estimates = {}
-        for camera_pair in self.multi_cam_output_accumulator.camera_shared_views.items():
-            base_camera_id = camera_pair.base_camera_id
-            other_camera_id = camera_pair.other_camera_id
+        for base_camera_id, shared_views in self.multi_cam_output_accumulator.camera_shared_views.items():
+            for camera_pair in shared_views.keys():
+                if camera_pair in camera_pair_secondary_camera_transform_estimates:
+                    continue  # Already calculated
+                base_camera_id = camera_pair.base_camera_id
+                other_camera_id = camera_pair.other_camera_id
 
-            charuco_transforms_in_base_camera_coordinates = self.single_camera_calibrators[
-                base_camera_id].charuco_transformation_matrices
-            charuco_transforms_in_other_camera_coordinates = self.single_camera_calibrators[
-                other_camera_id].charuco_transformation_matrices
+                charuco_transforms_in_base_camera_coordinates = self.single_camera_calibrators[
+                    base_camera_id].charuco_transformation_matrices
+                charuco_transforms_in_other_camera_coordinates = self.single_camera_calibrators[
+                    other_camera_id].charuco_transformation_matrices
 
-            other_camera_to_base_camera_transforms = []
-            for base_camera_transform, other_camera_transform in zip(charuco_transforms_in_base_camera_coordinates,
-                                                                     charuco_transforms_in_other_camera_coordinates):
-                base_camera_to_board_transform = base_camera_transform.get_inverse()
-                other_camera_to_base_camera_transforms.append(base_camera_to_board_transform @ other_camera_transform)
+                other_camera_to_base_camera_transforms = []
+                for base_camera_transform, other_camera_transform in zip(charuco_transforms_in_base_camera_coordinates,
+                                                                         charuco_transforms_in_other_camera_coordinates):
+                    base_camera_to_board_transform = base_camera_transform.get_inverse()
+                    other_camera_to_base_camera_transforms.append(base_camera_to_board_transform @ other_camera_transform)
 
-            mean_transform = TransformationMatrix.mean_from_transformation_matrices(
-                other_camera_to_base_camera_transforms)
-            camera_pair_secondary_camera_transform_estimates[camera_pair] = mean_transform
+                mean_transform = TransformationMatrix.mean_from_transformation_matrices(
+                    other_camera_to_base_camera_transforms)
+                camera_pair_secondary_camera_transform_estimates[camera_pair] = mean_transform
         return camera_pair_secondary_camera_transform_estimates
 
 

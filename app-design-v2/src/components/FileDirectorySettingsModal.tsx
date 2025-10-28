@@ -8,12 +8,10 @@ declare global {
   }
 }
 
-import {
-  ToggleComponent,
-  ValueSelector,
-  SubactionHeader,
-  TextSelector,
-} from "./uicomponents";
+import ToggleComponent from "./uicomponents/ToggleComponent";
+import ValueSelector from "./uicomponents/ValueSelector";
+import SubactionHeader from "./uicomponents/SubactionHeader";
+import TextSelector from "./uicomponents/TextSelector";
 import clsx from "clsx";
 
 interface FileDirectorySettingsModalProps {

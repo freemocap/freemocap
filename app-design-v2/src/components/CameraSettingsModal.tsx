@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from "react";
 import clsx from "clsx";
-import {
-  ValueSelector,
-  SubactionHeader,
-  NameDropdownSelector,
-} from "./uicomponents";
+import ValueSelector from "./uicomponents/ValueSelector";
+import SubactionHeader from "./uicomponents/SubactionHeader";
+import NameDropdownSelector from "./uicomponents/NameDropdownSelector";
 import useDraggableTooltips from "./useDraggableTooltips";
 
 interface CameraSettingsModalProps {
@@ -129,15 +127,14 @@ const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({
               <span className="icon icon-size-16 subcat-icon"></span>
               <p className="text text-nowrap text-left md">Change exposure</p>
             </div>
-            <ValueSelector
-              unit=""
-              min={-17}
-              max={17}
-              initialValue={autoIncrementValue}
-              value={autoIncrementValue}
-              onChange={setAutoIncrementValue}
-              disabled={selectedExposure === "Auto"}
-            />
+              <ValueSelector
+                unit=""
+                min={-17}
+                max={17}
+                initialValue={autoIncrementValue}
+                value={autoIncrementValue}
+                onChange={setAutoIncrementValue}
+              />
           </div>
 
           {/* Optional close button */}

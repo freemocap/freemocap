@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { DropdownButton, ToggleButtonComponent } from "./uicomponents";
+import DropdownButton from "./uicomponents/DropdownButton";
+import ToggleButtonComponent from "./uicomponents/ToggleButtonComponent";
 
 const STATES = {
   DISCONNECTED: "disconnected",
@@ -87,7 +88,6 @@ export function ConnectionDropdown() {
 
               <ToggleButtonComponent
                 state={connections[key]}
-                STATES={STATES}
                 connectConfig={getToggleConfig(STATES.DISCONNECTED)}
                 connectingConfig={getToggleConfig(STATES.CONNECTING)}
                 connectedConfig={getToggleConfig(STATES.CONNECTED)}

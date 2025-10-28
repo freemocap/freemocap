@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import CaptureLive from "../modes/CaptureLive";
 import PostProcess from "../modes/PostProcess";
-import { SegmentedControl } from "../uicomponents";
+import SegmentedControl from "../uicomponents/SegmentedControl";
 
 const ModePanel = () => {
   const [mode, setMode] = useState("Capture Live");

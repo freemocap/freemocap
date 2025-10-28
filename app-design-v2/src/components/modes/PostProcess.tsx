@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import clsx from "clsx";
 
-// ---- Combined imports from uicomponents (avoid duplicate imports) ----
-import {
-  ButtonSm,
-  ToggleComponent,
-  ToggleButtonComponent,
-  ValueSelector,
-  SubactionHeader,
-  Checkbox,
-  NameDropdownSelector, // added — component was referenced but not imported
-  STATES, // if your uicomponents exports STATES, keep this; otherwise remove
-} from "../uicomponents";
+import NameDropdownSelector from "../uicomponents/NameDropdownSelector";
+import ButtonSm from "../uicomponents/ButtonSm";
+import Checkbox from "../uicomponents/Checkbox";
+import ToggleComponent from "../uicomponents/ToggleComponent";
+import ValueSelector from "../uicomponents/ValueSelector";
+import SubactionHeader from "../uicomponents/SubactionHeader";
+import TextSelector from "../uicomponents/TextSelector";
+import { STATES } from "../uicomponents/states";
 
 import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
 import ThreeDScene from "../ThreeDScene";

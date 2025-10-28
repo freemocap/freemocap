@@ -109,6 +109,9 @@ class AggregationNode:
                             try:
                                 print('calibrating...')
                                 calibrator.calibrate()
+                                print('running bundle adjustment...')
+                                calibrator.run_bundle_adjustment()
+                                print('creating triangulator...')
                                 triangulator = create_triangulator_from_calibrator(calibrator)
                                 logger.success(f"Calibration successful!")
                             except Exception as e:

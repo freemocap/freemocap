@@ -92,7 +92,7 @@ class MultiCameraTargetView(BaseModel):
 
 class MultiCameraNodeOutputAccumulator(BaseModel):
     camera_ids: list[CameraIdString]
-    camera_node_outputs_by_frame:dict[FrameNumberInt,MultiCameraTargetView] = Field(default_factory=dict)
+    multi_camera_views_by_frame:dict[FrameNumberInt,MultiCameraTargetView] = Field(default_factory=dict)
     camera_shared_views: dict[CameraIdString, dict[CameraPair, list[CameraPairTargetView]]]
 
     @classmethod
@@ -116,14 +116,14 @@ class MultiCameraNodeOutputAccumulator(BaseModel):
             multi_frame_number: int,
             camera_node_output_by_camera: dict[CameraIdString, CameraNodeOutputMessage]
     ):
-        if multi_frame_number in self.camera_node_outputs_by_frame:
+        if multi_frame_number in self.multi_camera_views_by_frame:
             raise RuntimeError(f"Received duplicate camera node outputs for frame {multi_frame_number}")
 
         if set(camera_node_output_by_camera.keys()) != set(self.camera_ids):
             raise ValueError(
                 f"camera_node_output_by_camera keys {camera_node_output_by_camera.keys()} do not match expected camera ids {self.camera_ids}")
 
-        self.camera_node_outputs_by_frame[multi_frame_number] = MultiCameraTargetView(
+        self.multi_camera_views_by_frame[multi_frame_number] = MultiCameraTargetView(
             multi_frame_number=multi_frame_number,
             camera_node_output_by_camera=camera_node_output_by_camera
         )
@@ -176,7 +176,7 @@ class MultiCameraNodeOutputAccumulator(BaseModel):
         Get the charuco observations for a given camera id across all frames
         """
         observations_by_frame = {}
-        for multi_frame_number, multi_camera_view in self.camera_node_outputs_by_frame.items():
+        for multi_frame_number, multi_camera_view in self.multi_camera_views_by_frame.items():
             camera_node_output = multi_camera_view.camera_node_output_by_camera[camera_id]
             observations_by_frame[multi_frame_number] = camera_node_output.charuco_observation
         return observations_by_frame

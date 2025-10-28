@@ -67,79 +67,85 @@ class AggregationNode:
             from freemocap.system.logging_configuration.configure_logging import configure_logging
             from freemocap import LOG_LEVEL
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
-        logger.debug(f"Starting aggregation process for camera group {camera_group_id}")
-        camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {camera_id: None for camera_id in
-                                                                                     config.camera_configs.keys()}
-        camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=camera_group_shm_dto,
-                                                            read_only=True)
-        calibrator = MultiCameraCalibrator.from_camera_ids(camera_ids=config.camera_ids,
-                                                           principal_camera_id=config.camera_ids[0])
-        triangulator: PointTriangulator | None = None
-        latest_requested_frame: int = -1
-        last_received_frame: int = -1
-        while ipc.should_continue and not shutdown_self_flag.value:
-            wait_1ms()
-            if camera_group_shm.latest_multiframe_number > latest_requested_frame and last_received_frame >= latest_requested_frame:
-                ipc.pubsub.topics[ProcessFrameNumberTopic].publish(
-                    ProcessFrameNumberMessage(frame_number=camera_group_shm.latest_multiframe_number))
-                latest_requested_frame = camera_group_shm.latest_multiframe_number
-            # Check for Camera Node Output
-            if not camera_node_subscription.empty():
-                camera_node_output_message: CameraNodeOutputMessage = camera_node_subscription.get()
-                camera_id = camera_node_output_message.camera_id
-                if not camera_id in config.camera_configs.keys():
-                    raise ValueError(
-                        f"Camera ID {camera_id} not in camera IDs {list(config.camera_configs.keys())}")
-                camera_node_outputs[camera_id] = camera_node_output_message
+        try:
+            logger.debug(f"Starting aggregation process for camera group {camera_group_id}")
+            camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {camera_id: None for camera_id in
+                                                                                         config.camera_configs.keys()}
+            camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=camera_group_shm_dto,
+                                                                read_only=True)
+            calibrator = MultiCameraCalibrator.from_camera_ids(camera_ids=config.camera_ids,
+                                                               principal_camera_id=config.camera_ids[0])
+            triangulator: PointTriangulator | None = None
+            latest_requested_frame: int = -1
+            last_received_frame: int = -1
+            while ipc.should_continue and not shutdown_self_flag.value:
+                wait_1ms()
+                if camera_group_shm.latest_multiframe_number > latest_requested_frame and last_received_frame >= latest_requested_frame:
+                    ipc.pubsub.topics[ProcessFrameNumberTopic].publish(
+                        ProcessFrameNumberMessage(frame_number=camera_group_shm.latest_multiframe_number))
+                    latest_requested_frame = camera_group_shm.latest_multiframe_number
+                # Check for Camera Node Output
+                if not camera_node_subscription.empty():
+                    camera_node_output_message: CameraNodeOutputMessage = camera_node_subscription.get()
+                    camera_id = camera_node_output_message.camera_id
+                    if not camera_id in config.camera_configs.keys():
+                        raise ValueError(
+                            f"Camera ID {camera_id} not in camera IDs {list(config.camera_configs.keys())}")
+                    camera_node_outputs[camera_id] = camera_node_output_message
 
-            # Check if ready to process a frame output
-            if all([isinstance(camera_node_output_message, CameraNodeOutputMessage) for camera_node_output_message in
-                    camera_node_outputs.values()]):
-                if not all([camera_node_output_message.frame_number == latest_requested_frame for
-                            camera_node_output_message in camera_node_outputs.values()]):
-                    logger.warning(
-                        f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
-                last_received_frame = latest_requested_frame
+                # Check if ready to process a frame output
+                if all([isinstance(camera_node_output_message, CameraNodeOutputMessage) for camera_node_output_message in
+                        camera_node_outputs.values()]):
+                    if not all([camera_node_output_message.frame_number == latest_requested_frame for
+                                camera_node_output_message in camera_node_outputs.values()]):
+                        logger.warning(
+                            f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
+                    last_received_frame = latest_requested_frame
 
-                if not triangulator:
-                    print(f'gathering calibration data for frame {latest_requested_frame}...')
-                    calibrator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
-                                                          multi_frame_number=latest_requested_frame)
-                    if calibrator.ready_to_calibrate and not calibrator.has_calibration:
-                        try:
-                            print('calibrating...')
-                            calibrator.calibrate()
-                            triangulator = create_triangulator_from_calibrator(calibrator)
-                            logger.success(f"Calibration successful!")
-                        except Exception as e:
-                            logger.error(f"Error during calibration: {e}", exc_info=True)
-                            raise
-                else:
-                    print("triangulating points...")
-                    tik = time.perf_counter_ns()
-                    triangulated_points3d = triangulator.triangulate_camera_node_outputs(
+                    if not triangulator:
+                        calibrator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
+                                                              multi_frame_number=latest_requested_frame)
+                        if calibrator.ready_to_calibrate and not calibrator.has_calibration:
+                            try:
+                                print('calibrating...')
+                                calibrator.calibrate()
+                                triangulator = create_triangulator_from_calibrator(calibrator)
+                                logger.success(f"Calibration successful!")
+                            except Exception as e:
+                                logger.error(f"Error during calibration: {e}", exc_info=True)
+                                raise
+                    else:
+                        print("triangulating points...")
+                        tik = time.perf_counter_ns()
+                        triangulated_points3d = triangulator.triangulate_camera_node_outputs(
+                            camera_node_outputs=camera_node_outputs,
+                            undistort_points=False,  # fast enough for the real-time pipeline
+                            compute_reprojection_error=False
+                            # too slow for real-time (see diagnostics in PointTriangulator file)
+                        )
+                        tok = time.perf_counter_ns()
+                        if triangulated_points3d:
+                            logger.api(
+                            f"Triangulated {len(triangulated_points3d)} points at frame {latest_requested_frame} in {(tok - tik) / 1e6:.3f} ms")
+                    aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
+                        frame_number=latest_requested_frame,
+                        camera_group_id=camera_group_id,
+                        pipeline_config=config,
                         camera_node_outputs=camera_node_outputs,
-                        undistort_points=False,  # fast enough for the real-time pipeline
-                        compute_reprojection_error=False
-                        # too slow for real-time (see diagnostics in PointTriangulator file)
+                        tracked_points3d={'fake_point': Point3d(x=np.sin(last_received_frame),
+                                                                y=np.cos(last_received_frame),
+                                                                z=np.cos(last_received_frame)
+                                                                )}  # Placeholder for actual aggregation logic
                     )
-                    tok = time.perf_counter_ns()
-                    if triangulated_points3d:
-                        logger.api(
-                        f"Triangulated {len(triangulated_points3d)} points at frame {latest_requested_frame} in {(tok - tik) / 1e6:.3f} ms")
-                aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
-                    frame_number=latest_requested_frame,
-                    camera_group_id=camera_group_id,
-                    pipeline_config=config,
-                    camera_node_outputs=camera_node_outputs,
-                    tracked_points3d={'fake_point': Point3d(x=np.sin(last_received_frame),
-                                                            y=np.cos(last_received_frame),
-                                                            z=np.cos(last_received_frame)
-                                                            )}  # Placeholder for actual aggregation logic
-                )
-                ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
-                logger.debug(f"Published AggregationNodeOutputMessage for frame {latest_requested_frame} of camera group {camera_group_id}")
-                camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
+                    ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
+                    logger.debug(f"Published AggregationNodeOutputMessage for frame {latest_requested_frame} of camera group {camera_group_id}")
+                    camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
+        except Exception as e:
+            logger.error(f"Exception in AggregationNode for camera group {camera_group_id}: {e}", exc_info=True)
+            ipc.kill_everything()
+            raise
+        finally:
+            logger.debug(f"Shutting down aggregation process for camera group {camera_group_id}")
 
     def start(self):
         logger.debug(f"Starting AggregationNode worker")

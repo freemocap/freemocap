@@ -95,57 +95,64 @@ class CameraNode:
             from freemocap.system.logging_configuration.configure_logging import configure_logging
             from freemocap import LOG_LEVEL
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
-        logger.trace(f"Starting camera processing node for camera {camera_id}")
-        camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
-                                                           read_only=False)
+        try:
+            logger.trace(f"Starting camera processing node for camera {camera_id}")
+            camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
+                                                               read_only=False)
 
-        calibration_task = CalibrationCameraNodeTask.create(config=camera_node_config.calibration_camera_node_config)
-        # mocap_task: BaseCameraNodeTask|None = None # TODO - this
+            calibration_task = CalibrationCameraNodeTask.create(config=camera_node_config.calibration_camera_node_config)
+            # mocap_task: BaseCameraNodeTask|None = None # TODO - this
 
-        frame_rec_array: np.recarray | None = None
-        while ipc.should_continue and not shutdown_self_flag.value:
-            wait_1ms()
-            # Check trackers config updates
-            if not pipeline_config_subscription.empty():
-                new_pipeline_config_message: PipelineConfigMessage = pipeline_config_subscription.get()
-                logger.debug(f"Received new skelly trackers for camera {camera_id}: {new_pipeline_config_message}")
+            frame_rec_array: np.recarray | None = None
+            while ipc.should_continue and not shutdown_self_flag.value:
+                wait_1ms()
+                # Check trackers config updates
+                if not pipeline_config_subscription.empty():
+                    new_pipeline_config_message: PipelineConfigMessage = pipeline_config_subscription.get()
+                    logger.debug(f"Received new skelly trackers for camera {camera_id}: {new_pipeline_config_message}")
 
-                camera_node_config = new_pipeline_config_message.pipeline_config.camera_node_configs[
-                    camera_node_config.camera_id]
-                calibration_task = CalibrationCameraNodeTask.create(
-                    config=camera_node_config.calibration_camera_node_config)
-                # mocap_task = None  # TODO - this
+                    camera_node_config = new_pipeline_config_message.pipeline_config.camera_node_configs[
+                        camera_node_config.camera_id]
+                    calibration_task = CalibrationCameraNodeTask.create(
+                        config=camera_node_config.calibration_camera_node_config)
+                    # mocap_task = None  # TODO - this
 
-            # Check for new frame to process
-            if not process_frame_number_subscription.empty():
-                process_frame_number_message: ProcessFrameNumberMessage = process_frame_number_subscription.get()
-                #
-                # logger.trace(
-                #     f"Camera {camera_id} received request to process frame number {process_frame_number_message.frame_number}")
+                # Check for new frame to process
+                if not process_frame_number_subscription.empty():
+                    process_frame_number_message: ProcessFrameNumberMessage = process_frame_number_subscription.get()
+                    #
+                    # logger.trace(
+                    #     f"Camera {camera_id} received request to process frame number {process_frame_number_message.frame_number}")
 
-                # Process the frame
-                tik = time.perf_counter_ns()
-                frame_rec_array = camera_shm.get_data_by_index(index=process_frame_number_message.frame_number,
-                                                               rec_array=frame_rec_array)
-                charuco_observation = calibration_task.process_image(
-                    frame_number=frame_rec_array.frame_metadata.frame_number[0],
-                    image=frame_rec_array.image[0], )
-                tok = time.perf_counter_ns()
-                if charuco_observation is not None:
-                    # Publish the observation to the IPC
-                    ipc.pubsub.publish(
-                        topic_type=CameraNodeOutputTopic,
-                        message=CameraNodeOutputMessage(
-                            camera_id=frame_rec_array.frame_metadata.camera_config.camera_id[0],
-                            frame_number=frame_rec_array.frame_metadata.frame_number[0],
-                            tracker_name=calibration_task.__class__.__name__,
-                            charuco_observation=charuco_observation,
-                        ),
-                    )
-                    tok2 = time.perf_counter_ns()
-                    # logger.debug(
-                    #     f"Camera {camera_id} processed frame {frame_rec_array.frame_metadata.frame_number[0]} in "
-                    #     f"{(tok - tik) / 1e6:.2f} ms, published observation in {(tok2 - tok) / 1e6:.2f} ms")
+                    # Process the frame
+                    tik = time.perf_counter_ns()
+                    frame_rec_array = camera_shm.get_data_by_index(index=process_frame_number_message.frame_number,
+                                                                   rec_array=frame_rec_array)
+                    charuco_observation = calibration_task.process_image(
+                        frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                        image=frame_rec_array.image[0], )
+                    tok = time.perf_counter_ns()
+                    if charuco_observation is not None:
+                        # Publish the observation to the IPC
+                        ipc.pubsub.publish(
+                            topic_type=CameraNodeOutputTopic,
+                            message=CameraNodeOutputMessage(
+                                camera_id=frame_rec_array.frame_metadata.camera_config.camera_id[0],
+                                frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                                tracker_name=calibration_task.__class__.__name__,
+                                charuco_observation=charuco_observation,
+                            ),
+                        )
+                        tok2 = time.perf_counter_ns()
+                        # logger.debug(
+                        #     f"Camera {camera_id} processed frame {frame_rec_array.frame_metadata.frame_number[0]} in "
+                        #     f"{(tok - tik) / 1e6:.2f} ms, published observation in {(tok2 - tok) / 1e6:.2f} ms")
+        except Exception as e:
+            logger.exception(f"Exception in camera node for camera {camera_id}: {e}")
+            ipc.kill_everything()
+            raise e
+        finally:
+            logger.debug(f"Shutting down camera processing node for camera {camera_id}")
 
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__} for camera {self.camera_id}")

@@ -7,10 +7,10 @@ import ToggleButtonComponent from "../uicomponents/ToggleButtonComponent";
 import ValueSelector from "../uicomponents/ValueSelector";
 import SubactionHeader from "../uicomponents/SubactionHeader";
 import Checkbox from "../uicomponents/Checkbox";
-import ExcludedCameraTooltip from "../ExcludedCameraTooltip";
+import ExcludedCameraTooltip from "../tooltips/ExcludedCameraTooltip";
 import clsx from "clsx";
-import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
-import CameraSettingsModal from "../CameraSettingsModal";
+import FileDirectorySettingsModal from "../modals/FileDirectorySettingsModal";
+import CameraSettingsModal from "../modals/CameraSettingsModal";
 
 const CaptureLive = () => {
   const [cameraChecked, setCameraChecked] = useState<boolean[]>([]);

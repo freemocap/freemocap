@@ -1,7 +1,7 @@
 import React from "react";
 import ButtonSm from "../uicomponents/ButtonSm";
 import DropdownButton from "../uicomponents/DropdownButton";
-import { ConnectionDropdown } from "../ConnectionDropdown";
+import { ConnectionDropdown } from "../composites/ConnectionDropdown";
 
 /**
  * HeaderPanel Component

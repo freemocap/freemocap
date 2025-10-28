@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import DropdownButton from "./uicomponents/DropdownButton";
-import ToggleButtonComponent from "./uicomponents/ToggleButtonComponent";
+import DropdownButton from "../uicomponents/DropdownButton";
+import ToggleButtonComponent from "../uicomponents/ToggleButtonComponent";
 
 const STATES = {
   DISCONNECTED: "disconnected",

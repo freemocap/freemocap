@@ -10,8 +10,8 @@ import SubactionHeader from "../uicomponents/SubactionHeader";
 import TextSelector from "../uicomponents/TextSelector";
 import { STATES } from "../uicomponents/states";
 
-import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
-import ThreeDScene from "../ThreeDScene";
+import FileDirectorySettingsModal from "../modals/FileDirectorySettingsModal";
+import ThreeDScene from "../ThreeD/ThreeDScene";
 
 // ------------------ PostProcess UI ------------------
 const PostProcess: React.FC = () => {

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import clsx from "clsx";
-import ValueSelector from "./uicomponents/ValueSelector";
-import SubactionHeader from "./uicomponents/SubactionHeader";
-import NameDropdownSelector from "./uicomponents/NameDropdownSelector";
-import useDraggableTooltips from "./useDraggableTooltips";
+import ValueSelector from "../uicomponents/ValueSelector";
+import SubactionHeader from "../uicomponents/SubactionHeader";
+import NameDropdownSelector from "../uicomponents/NameDropdownSelector";
+import useDraggableTooltips from "../hooks/useDraggableTooltips";
 
 interface CameraSettingsModalProps {
   onRotate?: () => void;

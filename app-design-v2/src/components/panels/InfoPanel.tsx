@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Provider } from "react-redux";
-import {
-  ButtonSm,
-  // SegmentedControl,
-  ToggleComponent,
-  DropdownButton,
-  ToggleButtonComponent,
-  ConnectionDropdown,
-  SegmentedControl,
-  // StandaloneToggleExample,
-} from "../uicomponents";
+import SegmentedControl from "../uicomponents/SegmentedControl";
 
 /**
  * InfoPanel Component

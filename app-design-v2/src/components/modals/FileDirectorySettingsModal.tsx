@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import useDraggableTooltips from "./useDraggableTooltips";
+import useDraggableTooltips from "../hooks/useDraggableTooltips";
 
 // Extend the Window interface to include showDirectoryPicker
 declare global {
@@ -8,12 +8,10 @@ declare global {
   }
 }
 
-import {
-  ToggleComponent,
-  ValueSelector,
-  SubactionHeader,
-  TextSelector,
-} from "./uicomponents";
+import ToggleComponent from "../uicomponents/ToggleComponent";
+import ValueSelector from "../uicomponents/ValueSelector";
+import SubactionHeader from "../uicomponents/SubactionHeader";
+import TextSelector from "../uicomponents/TextSelector";
 import clsx from "clsx";
 
 interface FileDirectorySettingsModalProps {

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import "./App.css";
 
 import Header from "./components/panels/HeaderPanel";
-import SplashModal from "./components/SplashModal";
+import SplashModal from "./components/modals/SplashModal";
 import InfoPanel from "./components/panels/InfoPanel";
 import ModePanel from "./components/panels/ModePanel";
 

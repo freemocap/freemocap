@@ -1,18 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
-import { STATES } from "../uicomponents"; // <--- ENSURE YOU IMPORT STATES HERE
+import { STATES } from "../uicomponents/states";
 import IconSegmentedControl from "../uicomponents/IconSegmentedControl";
-import {
-  ButtonSm,
-  ToggleComponent,
-  ToggleButtonComponent,
-  ValueSelector,
-  SubactionHeader,
-  Checkbox,
-} from "../uicomponents";
-import ExcludedCameraTooltip from "../ExcludedCameraTooltip";
+import ButtonSm from "../uicomponents/ButtonSm";
+import ToggleComponent from "../uicomponents/ToggleComponent";
+import ToggleButtonComponent from "../uicomponents/ToggleButtonComponent";
+import ValueSelector from "../uicomponents/ValueSelector";
+import SubactionHeader from "../uicomponents/SubactionHeader";
+import Checkbox from "../uicomponents/Checkbox";
+import ExcludedCameraTooltip from "../tooltips/ExcludedCameraTooltip";
 import clsx from "clsx";
-import FileDirectorySettingsModal from "../FileDirectorySettingsModal";
-import CameraSettingsModal from "../CameraSettingsModal";
+import FileDirectorySettingsModal from "../modals/FileDirectorySettingsModal";
+import CameraSettingsModal from "../modals/CameraSettingsModal";
 
 const CaptureLive = () => {
   const [cameraChecked, setCameraChecked] = useState<boolean[]>([]);
@@ -71,9 +69,7 @@ const CaptureLive = () => {
   };
 
   // -------------------- Stream state --------------------
-  const [streamState, setStreamState] = useState<
-    "disconnected" | "connecting" | "connected"
-  >(STATES.DISCONNECTED);
+  const [streamState, setStreamState] = useState(STATES.DISCONNECTED);
   const [skipCalibration, setSkipCalibration] = useState(true);
   const [selectedValue, setSelectedValue] = useState(10);
 
@@ -127,7 +123,7 @@ const CaptureLive = () => {
           }
         } catch (err) {
           console.error(
-            `Failed to start stream for ${camera.originalLabel}:`,
+            `Failed to start stream for ${camera.label}:`,
             err
           );
         }
@@ -298,7 +294,9 @@ const CaptureLive = () => {
                       <div className="settings-button-wrapper- pos-rel">
                         <button
                           className="button icon-button settings-button"
-                          ref={(el) => (cameraButtonRefs.current[idx] = el)}
+                          ref={(el) => {
+                            if (el) cameraButtonRefs.current[idx] = el;
+                          }}
                           onClick={() => toggleCameraSettings(idx)}
                         >
                           <span className="icon settings-icon icon-size-16"></span>
@@ -307,7 +305,9 @@ const CaptureLive = () => {
                         {cameraSettingsOpen[idx] && (
                           <div
                             className="camera-settings-modal-wrapper pos-rel"
-                            ref={(el) => (cameraModalRefs.current[idx] = el)}
+                            ref={(el) => {
+                              if (el) cameraModalRefs.current[idx] = el;
+                            }}
                           >
                             <CameraSettingsModal
                               onRotate={() => handleRotateCamera(idx)}

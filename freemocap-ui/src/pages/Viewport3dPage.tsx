@@ -4,7 +4,9 @@ import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 
 export const Viewport3dPage = () => {
     return (
-        <Box sx={{display: "flex", flexDirection: "column", height: "81vh"}}>
+        <Box sx={{width: '100%',
+            height: '100%',
+        }}>
             <ThreeJsCanvas/>
         </Box>
     );

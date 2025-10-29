@@ -102,9 +102,10 @@ class AggregationNode:
                     last_received_frame = latest_requested_frame
 
                     if not triangulator:
-                        calibrator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
+                        if False:
+                            calibrator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
                                                               multi_frame_number=latest_requested_frame)
-                        if calibrator.ready_to_calibrate and not calibrator.has_calibration:
+                        if calibrator.ready_to_calibrate and not calibrator.has_calibration and False:
                             try:
                                 print('calibrating...')
                                 calibrator.calibrate()

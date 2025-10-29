@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, memo } from 'react';
 import { useServer } from '@/services/server/ServerContextProvider';
-import {CharucoOverlayRenderer} from "@/services/server/server-helpers/overlay_renderer";
 
 interface CameraViewProps {
     cameraId: string;
@@ -9,53 +8,24 @@ interface CameraViewProps {
 }
 
 /**
- * CameraView component - renders a canvas for a single camera feed with overlay.
- * Uses two stacked canvases:
- * - Bottom layer: Image canvas (managed by OffscreenCanvas worker)
- * - Top layer: Overlay canvas (for Charuco/ArUco detection visualization)
+ * CameraView component - renders a canvas for a single camera feed.
+ * The overlay is now composited directly into the frame before rendering.
  */
 export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, maxWidth }) => {
-    const imageCanvasRef = useRef<HTMLCanvasElement>(null);
-    const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const fpsDisplayRef = useRef<HTMLSpanElement>(null);
-    const overlayRendererRef = useRef<CharucoOverlayRenderer | null>(null);
 
-    const { setCanvasForCamera, getFps, registerOverlayRenderer } = useServer();
+    const { setCanvasForCamera, getFps } = useServer();
     const animationFrameRef = useRef<number | null>(null);
 
-    // Set up image canvas (existing functionality)
+    // Set up canvas
     useEffect(() => {
-        const canvas = imageCanvasRef.current;
+        const canvas = canvasRef.current;
         if (canvas && cameraId) {
-            console.log(`Setting up image canvas for camera: ${cameraId}`);
+            console.log(`Setting up canvas for camera: ${cameraId}`);
             setCanvasForCamera(cameraId, canvas);
         }
     }, [cameraId, setCanvasForCamera]);
-
-    // Set up overlay canvas and renderer
-    useEffect(() => {
-        const overlayCanvas = overlayCanvasRef.current;
-        if (!overlayCanvas || !cameraId) return;
-
-        console.log(`Setting up overlay renderer for camera: ${cameraId}`);
-
-        try {
-            const renderer = new CharucoOverlayRenderer(overlayCanvas);
-            overlayRendererRef.current = renderer;
-
-            // Register renderer with server context so it can receive updates
-            registerOverlayRenderer(cameraId, renderer);
-
-            return () => {
-                console.log(`Cleaning up overlay renderer for camera: ${cameraId}`);
-                renderer.destroy();
-                overlayRendererRef.current = null;
-            };
-        } catch (error) {
-            console.error(`Failed to create overlay renderer for camera ${cameraId}:`, error);
-            throw error;
-        }
-    }, [cameraId, registerOverlayRenderer]);
 
     // Update FPS display using direct DOM manipulation to avoid React re-renders
     useEffect(() => {
@@ -79,18 +49,13 @@ export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, ma
     // Calculate canvas styles based on scale and maxWidth settings
     const getCanvasStyle = (): React.CSSProperties => {
         const baseStyle: React.CSSProperties = {
-            position: 'absolute',
-            top: 0,
-            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
         };
 
         if (maxWidth) {
-            return {
-                ...baseStyle,
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-            };
+            return baseStyle;
         }
 
         if (scale !== undefined && scale !== 1.0) {
@@ -98,17 +63,10 @@ export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, ma
                 ...baseStyle,
                 width: `${scale * 100}%`,
                 height: `${scale * 100}%`,
-                objectFit: 'contain',
             };
         }
 
-        // Default
-        return {
-            ...baseStyle,
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-        };
+        return baseStyle;
     };
 
     const canvasStyle = getCanvasStyle();
@@ -127,19 +85,10 @@ export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, ma
                 overflow: 'hidden',
             }}
         >
-            {/* Image canvas (bottom layer) */}
+            {/* Single canvas with composited image + overlay */}
             <canvas
-                ref={imageCanvasRef}
+                ref={canvasRef}
                 style={canvasStyle}
-            />
-
-            {/* Overlay canvas (top layer) */}
-            <canvas
-                ref={overlayCanvasRef}
-                style={{
-                    ...canvasStyle,
-                    pointerEvents: 'none', // Allow clicks to pass through
-                }}
             />
 
             {/* Info display */}

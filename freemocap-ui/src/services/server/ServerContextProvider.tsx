@@ -7,11 +7,12 @@ import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/f
 import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {serverUrls} from "@/services";
 import {backendFramerateUpdated, DetailedFramerate, frontendFramerateUpdated, logAdded, LogRecord} from '@/store';
-import {CharucoOverlayRenderer} from "@/services/server/server-helpers/overlay_renderer";
 import {
+    CharucoObservation,
     CharucoOverlayDataMessage,
     CharucoOverlayDataMessageSchema
 } from "@/services/server/server-helpers/charuco_types";
+import {FrameCompositor} from "@/services/server/server-helpers/frame_compositor";
 
 interface ServerContextValue {
     isConnected: boolean;
@@ -19,7 +20,6 @@ interface ServerContextValue {
     disconnect: () => void;
     send: (data: string | object) => void;
     setCanvasForCamera: (cameraId: string, canvas: HTMLCanvasElement) => void;
-    registerOverlayRenderer: (cameraId: string, renderer: CharucoOverlayRenderer) => void;
     getFps: (cameraId: string) => number | null;
     connectedCameraIds: string[];
 }
@@ -84,9 +84,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const wsConnectionRef = useRef<WebSocketConnection | null>(null);
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
+    const frameCompositorRef = useRef<FrameCompositor | null>(null);
 
-    // Overlay renderers map (camera_id -> renderer)
-    const overlayRenderersRef = useRef<Map<string, CharucoOverlayRenderer>>(new Map());
+    // Store latest observation for each camera
+    const latestObservationsRef = useRef<Map<string, CharucoObservation>>(new Map());
 
     // Initialize services once
     useEffect(() => {
@@ -98,6 +99,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         });
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
+        frameCompositorRef.current = new FrameCompositor();
 
         return () => {
             if (wsConnectionRef.current) {
@@ -109,9 +111,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (frameProcessorRef.current) {
                 frameProcessorRef.current.reset();
             }
-            // Clean up overlay renderers
-            overlayRenderersRef.current.forEach(renderer => renderer.destroy());
-            overlayRenderersRef.current.clear();
+            if (frameCompositorRef.current) {
+                frameCompositorRef.current.destroy();
+            }
+            latestObservationsRef.current.clear();
         };
     }, []);
 
@@ -127,6 +130,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (newState === ConnectionState.DISCONNECTED || newState === ConnectionState.FAILED) {
                 canvasManagerRef.current?.terminateAllWorkers();
                 frameProcessorRef.current?.reset();
+                latestObservationsRef.current.clear();
                 setConnectedCameraIds([]);
             }
         };
@@ -152,13 +156,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             for (const cameraId of removedCameras) {
                                 console.log(`Removing camera ${cameraId} - not in latest payload`);
                                 canvasManagerRef.current?.terminateWorker(cameraId);
-
-                                // Clean up overlay renderer
-                                const renderer = overlayRenderersRef.current.get(cameraId);
-                                if (renderer) {
-                                    renderer.destroy();
-                                    overlayRenderersRef.current.delete(cameraId);
-                                }
+                                latestObservationsRef.current.delete(cameraId);
                             }
 
                             return currentCameraIds;
@@ -166,11 +164,21 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         return prevIds;
                     });
 
-                    // Send frames to canvas workers
+                    // Composite frames with overlays and send to canvas workers
+                    const compositor = frameCompositorRef.current!;
                     for (const frameData of frames) {
+                        const observation = latestObservationsRef.current.get(frameData.cameraId) || null;
+
+                        // Composite the frame with overlay
+                        const compositeBitmap = await compositor.compositeFrame(
+                            frameData.bitmap,
+                            observation
+                        );
+
+                        // Send composited frame to worker
                         canvasManagerRef.current!.sendFrameToWorker(
                             frameData.cameraId,
-                            frameData.bitmap
+                            compositeBitmap
                         );
                     }
 
@@ -191,16 +199,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
                     // Handle CharucoOverlayDataMessage (dictionary of camera_id -> observation)
                     if (isCharucoOverlayDataMessage(jsonData)) {
-                        // Iterate over each camera's observation in the dictionary
+                        // Store observations for each camera
                         for (const [cameraId, observation] of Object.entries(jsonData)) {
-                            const renderer = overlayRenderersRef.current.get(cameraId);
-                            if (renderer) {
-                                renderer.updateObservation(observation);
-                            } else {
-                                // Renderer not ready yet - this is normal during initialization
-                                // The renderer will be created when the component mounts
-                                console.debug(`Renderer for camera ${cameraId} not ready yet`);
-                            }
+                            latestObservationsRef.current.set(cameraId, observation);
                         }
                     }
                     // Handle log records
@@ -252,11 +253,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         canvasManagerRef.current?.setCanvasForCamera(cameraId, canvas);
     }, []);
 
-    const registerOverlayRenderer = useCallback((cameraId: string, renderer: CharucoOverlayRenderer): void => {
-        console.log(`Registering overlay renderer for camera: ${cameraId}`);
-        overlayRenderersRef.current.set(cameraId, renderer);
-    }, []);
-
     const getFps = useCallback((cameraId: string): number | null => {
         return frameProcessorRef.current?.getFps(cameraId) ?? null;
     }, []);
@@ -268,7 +264,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             disconnect,
             send,
             setCanvasForCamera,
-            registerOverlayRenderer,
             getFps,
             connectedCameraIds
         }}>

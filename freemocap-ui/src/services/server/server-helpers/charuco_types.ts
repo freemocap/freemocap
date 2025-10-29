@@ -39,6 +39,5 @@ export const CharucoOverlayDataMessageSchema = z.record(z.string(), CharucoOverl
 // Type exports
 export type CharucoPoint = z.infer<typeof CharucoPointSchema>;
 export type ArucoMarker = z.infer<typeof ArucoMarkerSchema>;
-export type CharucoMetadata = z.infer<typeof CharucoMetadataSchema>;
 export type CharucoObservation = z.infer<typeof CharucoOverlaySchema>;
 export type CharucoOverlayDataMessage = z.infer<typeof CharucoOverlayDataMessageSchema>;

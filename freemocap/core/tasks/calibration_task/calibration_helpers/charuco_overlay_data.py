@@ -20,7 +20,6 @@ class ArucoMarkerModel(BaseModel):
     """A single detected ArUco marker with 4 corners."""
     id: int = Field(description="ArUco marker ID")
     corners: list[tuple[float, float]] = Field(
-        description="Four corners of the marker [(x,y), (x,y), (x,y), (x,y)]",
         min_length=4,
         max_length=4
     )
@@ -57,7 +56,8 @@ class CharucoOverlayData(BaseModel):
         cls,
         *,
         camera_id: CameraIdString,
-        observation: CharucoObservation):
+        observation: CharucoObservation,
+        scale: float = .5,):
         """
         Convert CharucoObservation to Pydantic message model for websocket transmission.
 
@@ -76,8 +76,8 @@ class CharucoOverlayData(BaseModel):
                 charuco_corners.append(
                     CharucoPointModel(
                         id=int(corner_id),
-                        x=float(corner_coords[1]),
-                        y=float(corner_coords[0]),
+                        x=float(corner_coords[0]) * scale,
+                        y=float(corner_coords[1]) * scale,
                     )
                 )
 
@@ -89,7 +89,8 @@ class CharucoOverlayData(BaseModel):
                     ArucoMarkerModel(
                         id=int(marker_id),
                         corners=[
-                            (float(marker_corners[i][1]), float(marker_corners[i][0]))
+                            (float(marker_corners[i][0] * scale),
+                             float(marker_corners[i][1] * scale))
                             for i in range(4)
                         ],
                     )

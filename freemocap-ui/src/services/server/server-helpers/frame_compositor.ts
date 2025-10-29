@@ -1,94 +1,74 @@
 import {ArucoMarker, CharucoObservation, CharucoPoint} from "@/services/server/server-helpers/charuco_types";
 
-interface RenderStats {
-    lastRenderTime: number;
-    frameCount: number;
-    avgRenderTime: number;
-}
+/**
+ * Composites overlay graphics directly onto an ImageBitmap.
+ * Returns a new ImageBitmap with the overlay drawn on top.
+ */
+export class FrameCompositor {
+    private offscreenCanvas: OffscreenCanvas;
+    private ctx: OffscreenCanvasRenderingContext2D;
 
-export class CharucoOverlayRenderer {
-    private canvas: HTMLCanvasElement;
-    private ctx: CanvasRenderingContext2D;
-    private latestObservation: CharucoObservation | null = null;
-    private animationFrameId: number | null = null;
-    private stats: RenderStats = {
-        lastRenderTime: 0,
-        frameCount: 0,
-        avgRenderTime: 0,
-    };
-
-    // Style constants (cache for performance)
-    private readonly CHARUCO_COLOR = '#00FF00'; // Green
+    // Style constants
+    private readonly CHARUCO_COLOR = '#00FF00';
     private readonly CHARUCO_STROKE = '#009600';
-    private readonly ARUCO_COLOR = '#FF6400'; // Orange
+    private readonly ARUCO_COLOR = '#FF6400';
     private readonly ARUCO_STROKE = '#C85000';
     private readonly TEXT_COLOR = '#ccc';
     private readonly TEXT_STROKE = '#111';
     private readonly INFO_BG = 'rgba(0, 0, 0, 0.7)';
+    private readonly SCALE: number = 1.0;
 
-
-    constructor(canvas: HTMLCanvasElement) {
-        const ctx = canvas.getContext('2d', {
+    constructor() {
+        // Create a reusable offscreen canvas for compositing
+        this.offscreenCanvas = new OffscreenCanvas(1, 1);
+        const ctx = this.offscreenCanvas.getContext('2d', {
             alpha: true,
-            desynchronized: true, // Performance hint for faster rendering
+            desynchronized: true,
         });
 
         if (!ctx) {
-            throw new Error('Failed to get 2D context for overlay canvas');
+            throw new Error('Failed to get 2D context for compositor');
         }
 
-        this.canvas = canvas;
         this.ctx = ctx;
-
-        // Start render loop
-        this.startRenderLoop();
     }
 
-    public updateObservation(observation: CharucoObservation): void {
-        this.latestObservation = observation;
+    /**
+     * Composite overlay onto an ImageBitmap and return a new ImageBitmap
+     */
+    public async compositeFrame(
+        sourceBitmap: ImageBitmap,
+        observation: CharucoObservation | null,
+    ): Promise<ImageBitmap> {
+        const { width, height } = sourceBitmap;
 
-        // Resize canvas to match image dimensions if needed
-        // This ensures overlay coordinates match the actual image coordinates
-        const { image_width, image_height } = observation.metadata;
-        if (this.canvas.width !== image_width || this.canvas.height !== image_height) {
-            this.canvas.width = image_width;
-            this.canvas.height = image_height;
-            console.log(`Resized overlay canvas to ${image_width}x${image_height}`);
+        // Resize canvas if needed
+        if (this.offscreenCanvas.width !== width || this.offscreenCanvas.height !== height) {
+            this.offscreenCanvas.width = width;
+            this.offscreenCanvas.height = height;
         }
+
+        // Draw source image
+        this.ctx.clearRect(0, 0, width, height);
+        this.ctx.drawImage(sourceBitmap, 0, 0);
+
+        // Draw overlay if we have observation data
+        if (observation) {
+            this.drawOverlay(observation);
+        }
+
+        // Create new bitmap from composited result
+        const compositeBitmap = await createImageBitmap(this.offscreenCanvas);
+
+        // Close the source bitmap since we're done with it
+        sourceBitmap.close();
+
+        return compositeBitmap;
     }
 
-    private startRenderLoop(): void {
-        const render = (): void => {
-            if (this.latestObservation) {
-                const startTime = performance.now();
-                this.renderOverlay(this.latestObservation);
-                const renderTime = performance.now() - startTime;
-
-                // Update stats
-                this.stats.frameCount++;
-                this.stats.lastRenderTime = renderTime;
-                this.stats.avgRenderTime =
-                    (this.stats.avgRenderTime * (this.stats.frameCount - 1) + renderTime) /
-                    this.stats.frameCount;
-
-                // Warn if slow
-                if (renderTime > 16.67) {
-                    console.warn(`Slow overlay render: ${renderTime.toFixed(2)}ms`);
-                }
-            }
-
-            this.animationFrameId = requestAnimationFrame(render);
-        };
-
-        this.animationFrameId = requestAnimationFrame(render);
-    }
-
-    private renderOverlay(observation: CharucoObservation): void {
-        // Clear canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // No need to apply scale transform - canvas dimensions now match image dimensions
+    private drawOverlay(observation: CharucoObservation): void {
         this.ctx.save();
+        this.ctx.scale(this.SCALE, this.SCALE);
 
         // Draw ArUco markers (behind Charuco corners)
         this.drawArucoMarkers(observation.aruco_markers);
@@ -104,8 +84,6 @@ export class CharucoOverlayRenderer {
 
     private drawCharucoCorners(corners: CharucoPoint[]): void {
         if (corners.length === 0) return;
-
-        this.ctx.save();
 
         for (const corner of corners) {
             // Draw filled circle
@@ -130,14 +108,10 @@ export class CharucoOverlayRenderer {
                 2
             );
         }
-
-        this.ctx.restore();
     }
 
     private drawArucoMarkers(markers: ArucoMarker[]): void {
         if (markers.length === 0) return;
-
-        this.ctx.save();
 
         for (const marker of markers) {
             // Draw marker outline
@@ -162,10 +136,8 @@ export class CharucoOverlayRenderer {
             }
 
             // Draw marker ID at center
-            const centerX =
-                marker.corners.reduce((sum, c) => sum + c[0], 0) / marker.corners.length;
-            const centerY =
-                marker.corners.reduce((sum, c) => sum + c[1], 0) / marker.corners.length;
+            const centerX = marker.corners.reduce((sum, c) => sum + c[0], 0) / marker.corners.length;
+            const centerY = marker.corners.reduce((sum, c) => sum + c[1], 0) / marker.corners.length;
 
             this.drawText(
                 marker.id.toString(),
@@ -178,8 +150,6 @@ export class CharucoOverlayRenderer {
                 'bold'
             );
         }
-
-        this.ctx.restore();
     }
 
     private drawInfoOverlay(observation: CharucoObservation): void {
@@ -241,14 +211,6 @@ export class CharucoOverlayRenderer {
     }
 
     public destroy(): void {
-        if (this.animationFrameId !== null) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
-        this.latestObservation = null;
-    }
-
-    public getStats(): RenderStats {
-        return { ...this.stats };
+        // Cleanup if needed
     }
 }

@@ -1,0 +1,186 @@
+  /* ANIMATION SPEED AND OTHER ANIMATION RELATED PROPS */
+ 
+ :root {
+  --speed-0: 50ms;
+  --speed-1: 120ms;
+  --speed-2: 220ms;
+}
+
+
+/* ---- Animations ---- */
+
+/* loader */
+@keyframes spin-ramp {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  /* 20%  { transform: rotate(90deg); }
+  40%  { transform: rotate(180deg); }
+  60%  { transform: rotate(300deg); }
+  80%  { transform: rotate(420deg); } */
+  100% {
+    transform: rotate(1080deg);
+  }
+}
+
+/* ui components animation setup  */
+
+/* =========================
+   Keyframes
+========================= */
+
+/* Slide Up */
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide Down */
+@keyframes slide-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fadein */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    /* transform: scale(0.75); */
+  }
+
+  100% {
+    opacity: 1;
+    /* transform: scale(1); */
+  }
+}
+
+/* scaleIn */
+@keyframes scaleIn {
+  0% {
+    /* opacity: 0; */
+    transform: scale(0.75);
+  }
+
+  100% {
+    /* opacity: 1; */
+    transform: scale(1);
+  }
+}
+
+/* =========================
+   Base Animation Class
+========================= */
+
+.reveal {
+  animation-duration: var(--speed-2);
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  transition-property: opacity;
+  transition-duration: var(--speed-2);
+}
+
+.anim-delay-1 {
+  animation-delay: 100ms;
+}
+
+.anim-delay-2 {
+  animation-delay: 200ms;
+}
+
+/* Specific animations */
+.slide-up {
+  animation-name: slide-up;
+}
+
+.slide-down {
+  animation-name: slide-down;
+}
+
+.fadeIn {
+  /* include scale as well */
+  animation-name: fadeIn;
+}
+
+.scaleIn {
+  /* include scale as well */
+  animation-name: scaleIn;
+}
+
+/* =========================
+   Reduced Motion Support
+========================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    animation: none;
+    /* skip animation, show element instantly */
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* @keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+} */
+
+
+.skeleton-loader-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+      #1b1b1b 25%,
+      #2a2a2a 50%,
+      #1b1b1b 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loader 1.5s infinite;
+  z-index: 10;
+  transition: opacity 0.5s;
+  pointer-events: none;
+  opacity: 1;
+}
+
+@keyframes skeleton-loader {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}

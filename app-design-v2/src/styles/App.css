@@ -1,195 +1,9 @@
-/* =========================
-   RESET + GLOBAL
-   ========================= */
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
-
-:root {
-  /* Gray Shades */
-  --gray-900: #060606;
-  --gray-800: #1b1b1b;
-  --gray-700: #272727;
-  --gray-600: #323232;
-  --gray-500: #4f4f4f;
-  --gray-400: #9b9b9b;
-  --gray-100: #e4e4e4;
-
-  --overlay: rgba(6, 6, 6, 0.6);
-
-  /* Green Shades */
-  --green-100: #16dd12;
-  --green-900: #022701;
-
-  /* Red Shades */
-  --red-500: #d7184b;
-  --red-600: #a01238;
-  --red-800: #720925;
-
-  /* Warning/Orange */
-  --warning-500: #e64900;
-
-  /* Blue Shades */
-  --blue-100: #aed9f7;
-  --blue-800: #0898ff;
-  --blue-900: #083f66;
-
-  /* icons vars */
-  --plus-icon: url("./assets/icons/plus_icon.svg");
-  --minus-icon: url("./assets/icons/minus_icon.svg");
-  --close-icon: url("./assets/icons/close_icon.svg");
-  --rotate-icon: url("./assets/icons/rotate_icon.svg");
-  --live-icon: url("./assets/icons/live_icon.svg");
-  --import-icon: url("./assets/icons/import_icon.svg");
-  --externallink-icon: url("./assets/icons/externallink_icon.svg");
-  --dropdown-icon: url("./assets/icons/dropdown_icon.svg");
-  --stream-icon: url("./assets/icons/stream_icon.svg");
-  --streaming-icon: url("./assets/icons/streaming_icon.svg");
-  --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
-  --calibrated-icon: url("./assets/icons/calibrated_icon.svg");
-  --camera-icon: url("./assets/icons/camera_icon.svg");
-  --explainer-icon: url("./assets/icons/explainer_icon.svg");
-
-  --processmocap-icon: url("./assets/icons/processmocap_icon.svg");
-  --video-icon: url("./assets/icons/video_icon.svg");
-  --record-icon: url("./assets/icons/record_icon.svg");
-  --calibrate-icon: url("./assets/icons/calibrate_icon.svg");
-
-  --learn-icon: url("./assets/icons/learn_icon.svg");
-  --discord-icon: url("./assets/icons/discord_icon.svg");
-  --connected-icon: url("./assets/icons/connected_icon.svg");
-  --warning-icon: url("./assets/icons/warning_icon.svg");
-  --loader-icon: url("./assets/icons/loader_icon.svg");
-  --donate-icon: url("./assets/icons/donate_icon.svg");
-  --subcat-icon: url("./assets/icons/subcat_icon.svg");
-  --download-icon: url("./assets/icons/download_icon.svg");
-
-  --settings-icon: url("./assets/icons/settings_icon.svg");
-  --subfolder_icon: url("./assets/icons/subfolder_icon.svg");
-  --addsubfolder_icon: url("./assets/icons/addsubfolder_icon.svg");
-  --file_icon: url("./assets/icons/file_icon.svg");
-
-  --importproject_icon: url("./assets/icons/importproject_icon.svg");
-  --settings_icon: url("./assets/icons/settings_icon.svg");
-
-    --grid4_icon: url("./assets/icons/grid4_icon.svg");
-    --grid3_icon: url("./assets/icons/grid3_icon.svg");
-    --grid2_icon: url("./assets/icons/grid2_icon.svg");
-
-  /* ANIMATION SPEED AND OTHER ANIMATION RELATED PROPS */
-  --speed-0: 50ms;
-  --speed-1: 120ms;
-  --speed-2: 220ms;
-}
-
+@import './reset.css';
+@import './font.css';
+@import './icons.css';
+@import './color.css';
+@import './animation.css';
 /* base / reset */
-html,
-body,
-#root {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  font-size: 11px;
-  /* base font size */
-  line-height: 14px;
-  /* base line height */
-  letter-spacing: -0px;
-  /* letter spacing base*/
-  font-weight: 500;
-  color: var(--gray-400);
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: var(--gray-100);
-  -webkit-text-size-adjust: 100%;
-  /* iOS Safari */
-  -ms-text-size-adjust: 100%;
-  /* old IE */
-  text-size-adjust: 100%;
-  /* Modern browsers */
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-/* element resets */
-ul,
-ol {
-  list-style: none;
-}
-
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-img,
-picture,
-video,
-canvas,
-svg {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  background: none;
-  border: none;
-  outline: none;
-}
-
-button,
-.button {
-  cursor: pointer;
-  transform-origin: center center;
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-size: inherit;
-  font-weight: inherit;
-}
-
-/* Remove arrows in Chrome, Safari, Edge, Opera */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* Remove arrows in Firefox */
-input[type="number"] {
-  -moz-appearance: textfield;
-}
-
-strong,
-b {
-  font-weight: bold;
-}
-
-blockquote,
-q {
-  quotes: none;
-}
-
-blockquote::before,
-blockquote::after,
-q::before,
-q::after {
-  content: "";
-}
 
 /* TOGGLE STYLES AND SHAPES */
 .icon.toggle-container {
@@ -366,13 +180,14 @@ button.rotate-button {
   /* flex: 1 0 25%; */
   height: auto;
   aspect-ratio: 1 / 1;
-  
+
 }
 
 .video-tile.size-2 {
   flex: 1 0 calc(50% - 8px);
   max-width: calc(50% - 8px);
 }
+
 .video-tile.size-3 {
   flex: 1 0 calc(33.33% - 8px);
   max-width: calc(33.33% - 8px);
@@ -445,43 +260,7 @@ button.rotate-button {
   transition: color var(--speed-1) ease-in-out;
 }
 
-/* typepography */
 
-.title,
-h1 {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 14px;
-  /* letter-spacing: -0.43px; */
-}
-
-.text.bg {
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 17px;
-  letter-spacing: -0.43px;
-}
-
-.text.bg-md {
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 15px;
-  letter-spacing: -0.43px;
-}
-
-.text.md {
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 14px;
-  /* letter-spacing: -0.43px; */
-}
-
-.text.sm {
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 14px;
-  /* letter-spacing: -0.43px; */
-}
 
 /* text colors */
 /* .color-gray-400 {
@@ -803,10 +582,12 @@ a:after {
 .mb-4 {
   margin-bottom: 16px;
 }
+
 /* margin top */
 .mt-1 {
   margin-top: 4px;
 }
+
 /* widths/heights */
 .w-full {
   width: 100%;
@@ -1010,12 +791,15 @@ a:after {
 .grid4-icon {
   background-image: var(--grid4_icon);
 }
+
 .grid3-icon {
   background-image: var(--grid3_icon);
 }
+
 .grid2-icon {
   background-image: var(--grid2_icon);
 }
+
 .settings-icon {
   background-image: var(--settings_icon);
 }
@@ -1366,188 +1150,6 @@ input[type="checkbox"]:disabled {
   cursor: not-allowed;
 }
 
-/* ---- Animations ---- */
-
-/* loader */
-@keyframes spin-ramp {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  /* 20%  { transform: rotate(90deg); }
-  40%  { transform: rotate(180deg); }
-  60%  { transform: rotate(300deg); }
-  80%  { transform: rotate(420deg); } */
-  100% {
-    transform: rotate(1080deg);
-  }
-}
-
-/* ui components animation setup  */
-
-/* =========================
-   Keyframes
-========================= */
-
-/* Slide Up */
-@keyframes slide-up {
-  0% {
-    opacity: 0;
-    transform: translateY(40px);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Slide Down */
-@keyframes slide-down {
-  0% {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Fadein */
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-    /* transform: scale(0.75); */
-  }
-
-  100% {
-    opacity: 1;
-    /* transform: scale(1); */
-  }
-}
-
-/* scaleIn */
-@keyframes scaleIn {
-  0% {
-    /* opacity: 0; */
-    transform: scale(0.75);
-  }
-
-  100% {
-    /* opacity: 1; */
-    transform: scale(1);
-  }
-}
-
-/* =========================
-   Base Animation Class
-========================= */
-
-.reveal {
-  animation-duration: var(--speed-2);
-  animation-iteration-count: 1;
-  animation-fill-mode: forwards;
-  transition-property: opacity;
-  transition-duration: var(--speed-2);
-}
-
-.anim-delay-1 {
-  animation-delay: 100ms;
-}
-
-.anim-delay-2 {
-  animation-delay: 200ms;
-}
-
-/* Specific animations */
-.slide-up {
-  animation-name: slide-up;
-}
-
-.slide-down {
-  animation-name: slide-down;
-}
-
-.fadeIn {
-  /* include scale as well */
-  animation-name: fadeIn;
-}
-
-.scaleIn {
-  /* include scale as well */
-  animation-name: scaleIn;
-}
-
-/* =========================
-   Reduced Motion Support
-========================= */
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal {
-    animation: none;
-    /* skip animation, show element instantly */
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-} */
-
-
-.skeleton-loader-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-      #1b1b1b 25%,
-      #2a2a2a 50%,
-      #1b1b1b 75%);
-  background-size: 200% 100%;
-  animation: skeleton-loader 1.5s infinite;
-  z-index: 10;
-  transition: opacity 0.5s;
-  pointer-events: none;
-  opacity: 1;
-}
-
-@keyframes skeleton-loader {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-
-
-
-
 
 /* Example CSS */
 /* Style the container */
@@ -1651,19 +1253,21 @@ input[type="checkbox"]:disabled {
   min-width: 225px;
   /* max-width: 300px; */
 }
+
 .selected-camera-feed::before {
 
-    outline: 1.5px solid var(--gray-500);
-    content: "";
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    border-radius: 9px;
-    padding: 2px;
+  outline: 1.5px solid var(--gray-500);
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  border-radius: 9px;
+  padding: 2px;
 
-    } 
+}
+
 .excluded-camera-tooltip {
   top: 21px;
   left: 0px;

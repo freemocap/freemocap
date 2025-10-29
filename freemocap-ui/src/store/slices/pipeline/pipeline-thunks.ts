@@ -1,5 +1,5 @@
 import {createAsyncThunk} from "@reduxjs/toolkit";
-import {RootState} from "@/store";
+import {RootState, selectSelectedCameraConfigs} from "@/store";
 import {serverUrls} from "@/services";
 import {
     PipelineConnectResponse,
@@ -14,15 +14,11 @@ export const connectPipeline = createAsyncThunk<
     async (request={}, {getState}) => {
         const state = getState();
 
-        // if no camera IDs provided, use all selected cameras
-        const cameraIds = request.camera_ids || state.cameras.cameras
-            .filter(cam => cam.selected)
-            .map(cam => cam.id);
-
+        const cameraConfigs = selectSelectedCameraConfigs(state);
         const response = await fetch(serverUrls.endpoints.pipelineConnect, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ camera_ids: cameraIds }),
+            body: JSON.stringify({ camera_configs: cameraConfigs, ...request }),
         });
 
         if (!response.ok) {

@@ -7,15 +7,23 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.freemocap_app.freemocap_application import get_freemocap_app
 
+from skellycam.core.camera_group.camera_group import  CameraConfigs
+from skellycam.core.camera.config.camera_config import CameraConfig
+
 logger = logging.getLogger(__name__)
 
 pipeline_router = APIRouter(prefix=f"/pipeline",
                             tags=["Processing Pipelines"], )
 
 class PipelineConnectRequest(BaseModel):
-    camera_ids: list[CameraIdString] = Field(default=list,
-                                             description="List of camera IDs comprising the CameraGroup we're attaching a pipeline to")
+    camera_configs: CameraConfigs=Field(...,description="List of camera IDs comprising the CameraGroup we're attaching a pipeline to")
     pipeline_config: PipelineConfig|None = None
+
+    @property
+    def camera_ids(self) -> list[CameraIdString]|None:
+        if self.camera_configs:
+            return list(self.camera_configs.keys())
+        return None
 
 class PipelineCreateResponse(BaseModel):
     camera_group_id: CameraGroupIdString = Field(..., description="ID of the camera group attached to the pipeline")
@@ -28,31 +36,16 @@ def pipeline_connect_post_endpoint(
         request: PipelineConnectRequest = Body(...,
                                                description="Request body containing desired camera configuration",
                                                examples=[
-                                                   PipelineConnectRequest(
-                                                       camera_ids=['0'])]), ) -> PipelineCreateResponse:
+                                                   PipelineConnectRequest(camera_configs={'0':CameraConfig(camera_id='0')})])) -> PipelineCreateResponse:
     logger.api(f"Received `pipeline/connect` POST request - \n {request.model_dump_json(indent=2)}")
     try:
-        cgm = get_freemocap_app().skellycam_app.camera_group_manager
-        if request.camera_ids is None or len(request.camera_ids) == 0:
-            cg = list(cgm.camera_groups.values())[0] if len(cgm.camera_groups) > 0 else None
-            camera_ids = cg.camera_ids
-            logger.api(
-                f"No camera IDs specified in request; defaulting to first available camera group (id:{cg.id}) with camera IDs: {camera_ids}")
-        else:
-            cg = get_freemocap_app().skellycam_app.camera_group_manager.find_camera_group_by_camera_ids(
-                camera_ids=request.camera_ids)
-        if not cg:
-            raise HTTPException(status_code=400,
-                                detail=f"No camera group found with specified camera IDs: {request.camera_ids}. Create a camera group first.")
-        else:
-            pipeline_config = request.pipeline_config or PipelineConfig.from_camera_configs(camera_configs=cg.configs)
-            camera_group_id, pipeline_id = get_freemocap_app().connect_pipeline(camera_group=cg,
-                                                                                pipeline_config=pipeline_config)
-            response = PipelineCreateResponse(camera_group_id=camera_group_id,
-                                              pipeline_id=pipeline_id)
-            logger.api(
-                f"`pipeline/connect` POST request handled successfully - \n {response.model_dump_json(indent=2)}")
-            return response
+        pipeline_config = request.pipeline_config or PipelineConfig.from_camera_configs(camera_configs=request.camera_configs)
+        camera_group_id, pipeline_id = get_freemocap_app().connect_pipeline(pipeline_config=pipeline_config)
+        response = PipelineCreateResponse(camera_group_id=camera_group_id,
+                                          pipeline_id=pipeline_id)
+        logger.api(
+            f"`pipeline/connect` POST request handled successfully - \n {response.model_dump_json(indent=2)}")
+        return response
     except Exception as e:
         logger.error(f"Error when processing `pipeline/connect` request: {type(e).__name__} - {e}")
         logger.exception(e)

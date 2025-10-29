@@ -97,29 +97,16 @@ class WebsocketServer:
                     if skipped_previous:  # skip an extra frame if there was backpressure from frontend
                         skipped_previous = False
                     else:
-                        camera_group_bytearrays, pipeline_overlay_data = self._app.get_latest_frontend_payloads(
+                        frontend_payloads = self._app.get_latest_frontend_payloads(
                             if_newer_than=self.last_sent_frame_number)
 
-                        for camera_group_id, (frame_number,
-                                              payload_bytes) in camera_group_bytearrays.items():
+                        for pipeline_id, (payload_bytes, frontend_payload) in frontend_payloads.items():
                             if not isinstance(payload_bytes, (bytes, bytearray)):
-                                logger.warning(f"Invalid payload bytes for camera group {camera_group_id} - got type {type(payload_bytes)}")
+                                logger.warning(f"Invalid payload bytes on frame{frontend_payload.frame_number} - got type {type(payload_bytes)}")
                                 continue
                             await self.websocket.send_bytes(payload_bytes)
-                            self.last_sent_frame_number = frame_number
-                            # if camera_group_id not in self._frontend_framerate_trackers:
-                            #     self._frontend_framerate_trackers[camera_group_id] = FramerateTracker.create(
-                            #         framerate_source=f"Frontend-{camera_group_id}")
-                            # self._frontend_framerate_trackers[camera_group_id].update(multiframe_timestamp)
-                        for pipeline_id, overlay_data in pipeline_overlay_data.items():
-                            if not isinstance(overlay_data, dict):
-                                logger.warning(f"Invalid overlay data for pipeline {pipeline_id} - got type {type(overlay_data)}")
-                                continue
-                            if any([not isinstance(camera_overlay_data, CharucoOverlayData) for camera_overlay_data in overlay_data.values()]):
-                                logger.warning(f"Invalid overlay data for pipeline {pipeline_id} - expected CharucoOverlayData, got: {[type(camera_overlay_data) for camera_overlay_data in overlay_data.values()]}")
-                                continue
-                            overlay_message = {camera_id: camera_overlay_data.model_dump() for camera_id, camera_overlay_data in overlay_data.items()}
-                            await self.websocket.send_json(overlay_message)
+                            await self.websocket.send_json(frontend_payload.chaurco_overlays)
+                            self.last_sent_frame_number = frontend_payload.frame_number
                 else:
                     skipped_previous = True
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation

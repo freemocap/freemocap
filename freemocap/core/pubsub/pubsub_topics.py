@@ -7,6 +7,7 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pubsub.pubsub_abcs import TopicMessageABC, create_topic
+from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import TrackerTypeString, FrameNumberInt, Point3d, PipelineIdString
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,17 @@ class AggregationNodeOutputMessage(TopicMessageABC):
                 logger.warning(
                     f"CameraNodeOutputMessage for camera {cam_output.camera_id} has frame number {cam_output.frame_number} which does not match AggregationNodeOutputMessage frame number {self.frame_number}")
         return self
+
+    @property
+    def charuco_overlay_data(self) -> dict[CameraIdString, CharucoOverlayData]:
+        overlay_data: dict[CameraIdString, CharucoOverlayData] = {}
+        for camera_id, cam_output in self.camera_node_outputs.items():
+            if cam_output.charuco_observation is not None:
+                overlay_data[camera_id] = CharucoOverlayData.from_charuco_observation(
+                    camera_id=camera_id,
+                    observation=cam_output.charuco_observation,
+                )
+        return overlay_data
 
 
 ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // ==================== API Request/Response Types ====================
 export interface PipelineConnectRequest {
-    camera_ids?: string[];
+    camera_configs?: string[];
 }
 
 export interface PipelineConnectResponse {

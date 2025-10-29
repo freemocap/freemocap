@@ -7,14 +7,13 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import YoutubeSearchedForIcon from "@mui/icons-material/YoutubeSearchedFor";
 import SystemUpdateAltIcon from "@mui/icons-material/SystemUpdateAlt";
 
-import {useAppDispatch, useAppSelector} from "@/store";
+import {connectPipeline, disconnectPipeline, useAppDispatch, useAppSelector} from "@/store";
 import {selectSelectedCameras} from "@/store/slices/cameras/cameras-selectors";
 import {
-    closeCameras,
-    camerasConnectOrUpdate,
     detectCameras,
     pauseUnpauseCameras,
 } from "@/store/slices/cameras/cameras-thunks";
+
 
 interface CameraConfigTreeViewHeaderProps {
     cameraCount: number;
@@ -55,7 +54,7 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
 
         setIsActionInProgress(true);
         try {
-            await dispatch(camerasConnectOrUpdate()).unwrap();
+            await dispatch(connectPipeline()).unwrap();
         } catch (error) {
             console.error('Error with camera operation:', error);
         } finally {
@@ -68,7 +67,7 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
 
         setIsActionInProgress(true);
         try {
-            await dispatch(closeCameras()).unwrap();
+            await dispatch(disconnectPipeline()).unwrap();
             console.log('Closed all cameras');
         } catch (error) {
             console.error('Error closing cameras:', error);

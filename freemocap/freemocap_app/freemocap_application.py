@@ -8,6 +8,7 @@ from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_s
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_manager import PipelineManager
+from freemocap.core.pipeline.processing_pipeline import FrontendPayload
 from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputMessage
 from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
@@ -41,46 +42,19 @@ class FreemocApp:
         return self.skellycam_app.camera_group_manager
 
     def connect_pipeline(self,
-                         camera_group: CameraGroup,
                          pipeline_config: PipelineConfig) -> tuple[CameraGroupIdString, PipelineIdString]:
-        pipeline = self.pipeline_manager.create_pipeline(camera_group=camera_group, pipeline_config=pipeline_config)
-        return camera_group.id, pipeline.id
+        pipeline = self.pipeline_manager.create_pipeline(pipeline_config=pipeline_config)
+        return pipeline.camera_group_id, pipeline.id
 
     def disconnect_pipeline(self):
         self.pipeline_manager.close_all_pipelines()
 
-    def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> tuple[
-        dict[CameraGroupIdString, tuple[FrameNumberInt, bytes]], dict[PipelineIdString, dict[CameraIdString, CharucoOverlayData]]]:
-        # TODO - this is a mess, needs clean up
+    def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[PipelineIdString, tuple[bytes,FrontendPayload]]:
         if len(self.pipeline_manager.pipelines) == 0:
-            camera_group_frame_bytearrays: dict[CameraGroupIdString, tuple[FrameNumberInt,bytes]] = {}
-            for camera_group_id, camera_group in self.camera_group_manager.camera_groups.items():
-                out = camera_group.get_latest_frontend_payload(if_newer_than=if_newer_than)
-                if out is not None:
-                    frame_number,_, frames_bytearray = out
-                    camera_group_frame_bytearrays[camera_group_id] = (frame_number,frames_bytearray)
-            return camera_group_frame_bytearrays, {}
+            return {}
 
-        pipeline_outputs: dict[
-            PipelineIdString, AggregationNodeOutputMessage] = self.pipeline_manager.get_latest_output()
-        camera_group_frame_bytearrays: dict[CameraGroupIdString, tuple[FrameNumberInt,bytes]] = {}
-        for pipeline_id, agg_node_output in pipeline_outputs.items():
-            camera_group = self.camera_group_manager.camera_groups.get(agg_node_output.camera_group_id, None)
-            if camera_group is None:
-                logger.error(f"Camera group (id:{agg_node_output.camera_group_id})for pipeline ID {agg_node_output.pipeline_id} not found!!")
-                #might should fail on this, but for now just shout and skip
-                continue
-            frames_bytearray  = camera_group.get_frontend_payload_by_frame_number(frame_number=agg_node_output.frame_number)
-            camera_group_frame_bytearrays[agg_node_output.camera_group_id] = (agg_node_output.frame_number,frames_bytearray)
+        return self.pipeline_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)
 
-        pipeline_overlays: dict[PipelineIdString, dict[CameraIdString, CharucoOverlayData]] = {pipeline_id: {} for
-                                                                                               pipeline_id in
-                                                                                               pipeline_outputs.keys()}
-        for p_id, agg_node_output in pipeline_outputs.items():
-            pipeline_overlays[p_id] = {camera_id: CharucoOverlayData.from_charuco_observation(camera_id=camera_id,
-                                                                                              observation=camera_node_output.charuco_observation)
-                                       for camera_id, camera_node_output in agg_node_output.camera_node_outputs.items()}
-        return camera_group_frame_bytearrays, pipeline_overlays
 
     def close(self):
         self.global_kill_flag.value = True

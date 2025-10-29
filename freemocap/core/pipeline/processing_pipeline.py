@@ -1,7 +1,9 @@
 import logging
+import multiprocessing
 import uuid
 from dataclasses import dataclass
 
+from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
@@ -9,16 +11,26 @@ from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputTopic
+from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage
+from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue
 
 logger = logging.getLogger(__name__)
 
 
+class FrontendPayload(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=False
+    )
+    frame_number: int
+    chaurco_overlays: dict[CameraIdString, CharucoOverlayData]
+
+
 @dataclass
 class ProcessingPipeline:
     id: PipelineIdString
-    camera_group_id: CameraGroupIdString
+    camera_group: CameraGroup
     config: PipelineConfig
     camera_nodes: dict[CameraIdString, CameraNode]
     aggregation_node: AggregationNode
@@ -30,12 +42,18 @@ class ProcessingPipeline:
         return all([camera_node.worker.is_alive() for camera_node in
                     self.camera_nodes.values()]) and self.aggregation_node.worker.is_alive()
 
-    @classmethod
-    def from_camera_group(cls,
-                          camera_group: CameraGroup,
-                          pipeline_config: PipelineConfig,
-                          ):
+    @property
+    def camera_group_id(self) -> CameraGroupIdString:
+        return self.camera_group.id
 
+    @classmethod
+    def from_config(cls,
+                    global_kill_flag: multiprocessing.Value,
+                    pipeline_config: PipelineConfig,
+                    ):
+        camera_group = CameraGroup.create(camera_configs=pipeline_config.camera_configs,
+                                          global_kill_flag=global_kill_flag,
+                                          )
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
                                  )
         camera_group_shm_dto = camera_group.shm.to_dto()
@@ -56,12 +74,21 @@ class ProcessingPipeline:
                    config=pipeline_config,
                    aggregation_node_subscription=ipc.pubsub.topics[
                        AggregationNodeOutputTopic].get_subscription(),
-                   camera_group_id=camera_group.id,
+                   camera_group=camera_group,
                    id=str(uuid.uuid4())[:6],
                    )
 
     def start(self) -> None:
-        logger.debug(f"Starting {self.__class__.__name__} with camera processes {list(self.camera_nodes.keys())}...")
+        logger.debug(
+            f"Starting Pipeline (id:{self.id} with camera group (id:{self.camera_group_id} for camera ids: {list(self.camera_nodes.keys())}...")
+        try:
+            logger.debug("Starting camera group...")
+            self.camera_group.start()
+        except Exception as e:
+            logger.error(f"Failed to start camera group: {type(e).__name__} - {e}")
+            logger.exception(e)
+            raise
+
         try:
             logger.debug("Starting aggregation node...")
             self.aggregation_node.start()
@@ -90,3 +117,19 @@ class ProcessingPipeline:
         for camera_id, camera_process in self.camera_nodes.items():
             camera_process.shutdown()
         self.aggregation_node.shutdown()
+
+    def get_latest_frontend_payload(self, if_newer_than: int) -> tuple[ bytes,FrontendPayload] | None:
+        if self.camera_group.shm.latest_multiframe_number <= if_newer_than:
+            return None
+        aggregation_output = None
+        while not self.aggregation_node_subscription.empty():
+            aggregation_output:AggregationNodeOutputMessage = self.aggregation_node_subscription.get()
+        if aggregation_output is None:
+            return None
+        frames_bytearray = self.camera_group.get_frontend_payload_by_frame_number(
+            frame_number=aggregation_output.frame_number,
+        )
+
+        return  (frames_bytearray,
+                 FrontendPayload(frame_number=aggregation_output.frame_number,
+                                 chaurco_overlays=aggregation_output.charuco_overlay_data))

@@ -24,7 +24,7 @@ from freemocap.api.middleware.cors import cors
 from freemocap.api.routers import SKELLYCAM_ROUTERS, FREEMOCAP_ROUTERS
 from freemocap.api.server_constants import APP_URL
 from freemocap.api.websocket.websocket_connect import websocket_router
-from freemocap.freemocap_app.freemocap_application import create_freemocap_app
+from freemocap.freemocap_app.freemocap_application import create_freemocap_app, get_freemocap_app
 from freemocap.system.default_paths import (
     get_default_freemocap_base_folder_path, FREEMOCAP_FAVICON_ICO_PATH
 )
@@ -83,6 +83,7 @@ async def app_lifespan(
 
     # Cleanup FreeMoCap application
     app.state.global_kill_flag.value = True
+    get_freemocap_app().close()
 
     logger.success("FreeMoCap API shutdown complete - Goodbye! 👋")
 

@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 pipeline_router = APIRouter(prefix=f"/pipeline",
                             tags=["Processing Pipelines"], )
 
-
 class PipelineConnectRequest(BaseModel):
     camera_ids: list[CameraIdString] = Field(default=list,
                                              description="List of camera IDs comprising the CameraGroup we're attaching a pipeline to")
@@ -21,7 +20,6 @@ class PipelineConnectRequest(BaseModel):
 class PipelineCreateResponse(BaseModel):
     camera_group_id: CameraGroupIdString = Field(..., description="ID of the camera group attached to the pipeline")
     pipeline_id: str = Field(..., description="ID of the processing pipeline to which the camera group is attached")
-
 
 @pipeline_router.post("/connect",
                       summary="Create a processing pipeline and attach it to a camera group"

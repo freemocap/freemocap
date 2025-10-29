@@ -3,7 +3,7 @@ import multiprocessing
 from dataclasses import dataclass
 
 from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.types.type_overloads import CameraGroupIdString, MultiframeTimestampFloat, CameraIdString
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_skellycam_app
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig

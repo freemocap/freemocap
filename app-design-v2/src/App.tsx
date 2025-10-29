@@ -1,7 +1,7 @@
 import { Provider } from "react-redux";
 import { store } from "./store";
 import React, { useState } from "react";
-import "./App.css";
+import "./index.css";
 
 import Header from "./components/panels/HeaderPanel";
 import SplashModal from "./components/modals/SplashModal";

@@ -1,0 +1,30 @@
+:root {
+  /* Gray Shades */
+  --gray-900: #060606;
+  --gray-800: #1b1b1b;
+  --gray-700: #272727;
+  --gray-600: #323232;
+  --gray-500: #4f4f4f;
+  --gray-400: #9b9b9b;
+  --gray-100: #e4e4e4;
+
+  --overlay: rgba(6, 6, 6, 0.6);
+
+  /* Green Shades */
+  --green-100: #16dd12;
+  --green-900: #022701;
+
+  /* Red Shades */
+  --red-500: #d7184b;
+  --red-600: #a01238;
+  --red-800: #720925;
+
+  /* Warning/Orange */
+  --warning-500: #e64900;
+
+  /* Blue Shades */
+  --blue-100: #aed9f7;
+  --blue-800: #0898ff;
+  --blue-900: #083f66;
+
+}

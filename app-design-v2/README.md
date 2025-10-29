@@ -12,12 +12,12 @@ app-design-v2/
 │      └── 📄splashmodal_art.webp
 │      └── 📄vite.svg
 └── 📁 src/
-     ├── 📄App.css
-     ├── 📄App.tsx
-     ├── 📄electron.d.ts
-     ├── 📄index.css
-     ├── 📄main.tsx
-     ├── 📄vite-env.d.ts
+│    ├── 📄App.css
+│    ├── 📄App.tsx
+│    ├── 📄electron.d.ts
+│    ├── 📄index.css
+│    ├── 📄main.tsx
+│    ├── 📄vite-env.d.ts
 ├── 📁 assets/
 │    ├── 📄react.svg
 │    └── icons/
@@ -57,6 +57,15 @@ app-design-v2/
 │      ├── 📄ToggleButtonComponent.tsx # Multi-state toggle button – supports states like “Connect / Connecting / Connected”
 │      ├── 📄ToggleComponent.tsx # Simple on/off toggle – commonly used in mobile-style UIs
 │      └── 📄ValueSelector.tsx # Numeric value selector – used for numeric inputs (percentage, FPS, etc.); supports min/max and button adjustments
+├── 📁 styles/
+│    ├── 📄animation.css # animation speed and keyframe CSS setup
+│    ├── 📄App.css # main design system; imports all CSS files to create the overall design system
+│    ├── 📄color.css # color variables
+│    ├── 📄font.css # font setup and font sizes
+│    ├── 📄icons.css # icon setup; used in App.css
+│    ├── 📄reset.css # resets the browser’s default styles
+├── 📄index.css # imports App.css and applies it across the app
+├── 📄main.tsx
 ```
 
 ---

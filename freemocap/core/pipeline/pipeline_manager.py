@@ -6,7 +6,6 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.processing_pipeline import ProcessingPipeline
 from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputMessage
-from freemocap.core.tasks.frontend_payload_builder.frontend_payload import FrontendPayload
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 import logging

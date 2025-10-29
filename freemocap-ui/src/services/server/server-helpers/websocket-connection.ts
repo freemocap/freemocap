@@ -35,7 +35,6 @@ export class WebSocketConnection {
         };
     }
 
-    // Simple event emitter methods
     public on(event: string, callback: EventCallback): void {
         if (!this.listeners.has(event)) {
             this.listeners.set(event, new Set());

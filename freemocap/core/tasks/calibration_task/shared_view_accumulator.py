@@ -64,9 +64,6 @@ class MultiCameraTargetView(BaseModel):
 
     @model_validator(mode='after')
     def validate(self):
-        if len(self.camera_node_output_by_camera) < 2:
-            raise ValueError(
-                f"camera_node_output_by_camera must have at least 2 cameras, got {len(self.camera_node_output_by_camera)}")
         if not all([output.frame_number == self.multi_frame_number for output in
                     self.camera_node_output_by_camera.values()]):
             logger.warning(

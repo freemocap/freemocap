@@ -76,8 +76,8 @@ class CharucoOverlayData(BaseModel):
                 charuco_corners.append(
                     CharucoPointModel(
                         id=int(corner_id),
-                        x=float(corner_coords[0]),
-                        y=float(corner_coords[1]),
+                        x=float(corner_coords[1]),
+                        y=float(corner_coords[0]),
                     )
                 )
 
@@ -89,7 +89,7 @@ class CharucoOverlayData(BaseModel):
                     ArucoMarkerModel(
                         id=int(marker_id),
                         corners=[
-                            (float(marker_corners[i][0]), float(marker_corners[i][1]))
+                            (float(marker_corners[i][1]), float(marker_corners[i][0]))
                             for i in range(4)
                         ],
                     )

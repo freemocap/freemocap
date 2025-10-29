@@ -9,7 +9,7 @@ from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_s
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_manager import PipelineManager
 from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputMessage
-from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_serializer import CharucoOverlayData
+from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 logger = logging.getLogger(__name__)

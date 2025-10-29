@@ -1,20 +1,17 @@
-import React, { createContext, ReactNode, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/store/types';
+import React, {createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState} from 'react';
+import {useDispatch} from 'react-redux';
+import {AppDispatch} from '@/store/types';
 
-import { ConnectionState, WebSocketConnection } from "@/services/server/server-helpers/websocket-connection";
-import { FrameProcessor } from "@/services/server/server-helpers/frame-processor/frame-processor";
-import { CanvasManager } from "@/services/server/server-helpers/canvas-manager";
-import { serverUrls } from "@/services";
-import {
-    logAdded,
-    LogRecord,
-    backendFramerateUpdated,
-    frontendFramerateUpdated,
-    DetailedFramerate
-} from '@/store';
+import {ConnectionState, WebSocketConnection} from "@/services/server/server-helpers/websocket-connection";
+import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/frame-processor";
+import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
+import {serverUrls} from "@/services";
+import {backendFramerateUpdated, DetailedFramerate, frontendFramerateUpdated, logAdded, LogRecord} from '@/store';
 import {CharucoOverlayRenderer} from "@/services/server/server-helpers/overlay_renderer";
-import {CharucoObservation, CharucoObservationSchema} from "@/services/server/server-helpers/charuco_types";
+import {
+    CharucoOverlayDataMessage,
+    CharucoOverlayDataMessageSchema
+} from "@/services/server/server-helpers/charuco_types";
 
 interface ServerContextValue {
     isConnected: boolean;
@@ -70,13 +67,13 @@ function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
     );
 }
 
-// Type guard for CharucoObservation using Zod
-function isCharucoObservation(data: any): data is CharucoObservation {
-    const result = CharucoObservationSchema.safeParse(data);
+// Type guard for CharucoOverlayDataMessage using Zod
+function isCharucoOverlayDataMessage(data: any): data is CharucoOverlayDataMessage {
+    const result = CharucoOverlayDataMessageSchema.safeParse(data);
     return result.success;
 }
 
-export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({children}) => {
     const dispatch = useDispatch<AppDispatch>();
 
     // Reactive state - only updates when camera list actually changes
@@ -87,7 +84,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
     const wsConnectionRef = useRef<WebSocketConnection | null>(null);
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
-    
+
     // Overlay renderers map (camera_id -> renderer)
     const overlayRenderersRef = useRef<Map<string, CharucoOverlayRenderer>>(new Map());
 
@@ -141,7 +138,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                     const result = await frameProcessorRef.current!.processFramePayload(event.data);
                     if (!result) return;
 
-                    const { frames, cameraIds, frameNumbers } = result;
+                    const {frames, cameraIds, frameNumbers} = result;
 
                     // Convert Set to sorted array for comparison
                     const currentCameraIds = Array.from(cameraIds).sort();
@@ -155,7 +152,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                             for (const cameraId of removedCameras) {
                                 console.log(`Removing camera ${cameraId} - not in latest payload`);
                                 canvasManagerRef.current?.terminateWorker(cameraId);
-                                
+
                                 // Clean up overlay renderer
                                 const renderer = overlayRenderersRef.current.get(cameraId);
                                 if (renderer) {
@@ -180,7 +177,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                     // Acknowledge the highest frame number
                     if (frameNumbers.size > 0) {
                         const maxFrameNumber = Math.max(...Array.from(frameNumbers));
-                        ws.send({ type: 'frameAcknowledgment', frameNumber: maxFrameNumber });
+                        ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
                     }
                 } catch (error) {
                     console.error('Error processing frame:', error);
@@ -192,14 +189,18 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                 try {
                     const jsonData = JSON.parse(event.data);
 
-                    // Handle CharucoObservation
-                    if (isCharucoObservation(jsonData)) {
-                        const renderer = overlayRenderersRef.current.get(jsonData.camera_id);
-                        if (renderer) {
-                            renderer.updateObservation(jsonData);
-                        } else {
-                            // Renderer not ready yet - this is normal during initialization
-                            // The renderer will be created when the component mounts
+                    // Handle CharucoOverlayDataMessage (dictionary of camera_id -> observation)
+                    if (isCharucoOverlayDataMessage(jsonData)) {
+                        // Iterate over each camera's observation in the dictionary
+                        for (const [cameraId, observation] of Object.entries(jsonData)) {
+                            const renderer = overlayRenderersRef.current.get(cameraId);
+                            if (renderer) {
+                                renderer.updateObservation(observation);
+                            } else {
+                                // Renderer not ready yet - this is normal during initialization
+                                // The renderer will be created when the component mounts
+                                console.debug(`Renderer for camera ${cameraId} not ready yet`);
+                            }
                         }
                     }
                     // Handle log records

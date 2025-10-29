@@ -8,7 +8,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumber
     CameraIdString
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
-from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_serializer import CharucoOverlayData
+from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.freemocap_app.freemocap_application import FreemocApp, get_freemocap_app
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue, \

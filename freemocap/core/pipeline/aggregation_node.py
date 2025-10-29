@@ -22,7 +22,6 @@ from freemocap.core.types.type_overloads import Point3d
 logger = logging.getLogger(__name__)
 
 
-# de1a5cf5ae359c62883219d29db988f7cd34f50f
 
 @dataclass
 class AggregationNode:
@@ -142,7 +141,6 @@ class AggregationNode:
                                                                 )}  # Placeholder for actual aggregation logic
                     )
                     ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
-                    logger.debug(f"Published AggregationNodeOutputMessage for frame {latest_requested_frame} of camera group {camera_group_id}")
                     camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
         except Exception as e:
             logger.error(f"Exception in AggregationNode for camera group {camera_group_id}: {e}", exc_info=True)

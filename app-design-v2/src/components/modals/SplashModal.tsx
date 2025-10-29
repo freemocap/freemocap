@@ -32,7 +32,7 @@ const SplashModal: React.FC<SplashModalProps> = ({ onClose }) => {
     >
       {/* modal container */}
       <div
-        className="splash-modal fade reveal main-container br-2 flex flex-col p-1 bg-dark border-1 border-black"
+        className="pos-rel splash-modal fade reveal main-container br-2 flex flex-col p-1 bg-dark border-1 border-black"
         onClick={(e) => e.stopPropagation()} // prevent overlay click from closing when clicking inside
       >
         <div className="visualize-container overflow-hidden flex-1 bg-middark splash-modal-inner-container br-1 gap-3 flex flex-row p-2">

@@ -14,6 +14,9 @@ import {
 } from "@/services/server/server-helpers/charuco_types";
 import {FrameCompositor} from "@/services/server/server-helpers/frame_compositor";
 
+type FrameSubscriber = (cameraId: string, bitmap: ImageBitmap) => void;
+
+
 interface ServerContextValue {
     isConnected: boolean;
     connect: () => void;
@@ -22,11 +25,12 @@ interface ServerContextValue {
     setCanvasForCamera: (cameraId: string, canvas: HTMLCanvasElement) => void;
     getFps: (cameraId: string) => number | null;
     connectedCameraIds: string[];
+    subscribeToFrames: (callback: FrameSubscriber) => () => void;
 }
 
 const ServerContext = createContext<ServerContextValue | null>(null);
 
-// Helper to compare arrays efficiently
+
 function arraysEqual(a: string[], b: string[]): boolean {
     if (a.length !== b.length) return false;
     const sortedA = [...a].sort();
@@ -85,6 +89,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const frameCompositorRef = useRef<FrameCompositor | null>(null);
+    const frameSubscribersRef = useRef<Set<FrameSubscriber>>(new Set());
 
     // Store latest observation for each camera
     const latestObservationsRef = useRef<Map<string, CharucoObservation>>(new Map());
@@ -174,7 +179,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             frameData.bitmap,
                             observation
                         );
-
+                        if (frameSubscribersRef.current.size > 0) {
+                            const clonedBitmap = await createImageBitmap(compositeBitmap);
+                            frameSubscribersRef.current.forEach(callback => {
+                                callback(frameData.cameraId, clonedBitmap);
+                            });
+                        }
                         // Send composited frame to worker
                         canvasManagerRef.current!.sendFrameToWorker(
                             frameData.cameraId,
@@ -256,7 +266,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const getFps = useCallback((cameraId: string): number | null => {
         return frameProcessorRef.current?.getFps(cameraId) ?? null;
     }, []);
-
+    const subscribeToFrames = useCallback((callback: FrameSubscriber): (() => void) => {
+        frameSubscribersRef.current.add(callback);
+        return () => {
+            frameSubscribersRef.current.delete(callback);
+        };
+    }, []);
     return (
         <ServerContext.Provider value={{
             isConnected,
@@ -265,7 +280,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             send,
             setCanvasForCamera,
             getFps,
-            connectedCameraIds
+            connectedCameraIds,
+            subscribeToFrames
         }}>
             {children}
         </ServerContext.Provider>

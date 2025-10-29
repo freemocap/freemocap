@@ -4,15 +4,15 @@ Create Charuco board overlay topology with configurable visualization options.
 
 import numpy as np
 
-from freemocap.core.tasks.calibration_task.image_overlay_system import (OverlayTopology,
-                                                                        ComputedPoint,
-                                                                        PointElement,
-                                                                        LineElement,
-                                                                        TextElement,
-                                                                        PointStyle,
-                                                                        LineStyle,
-                                                                        TextStyle,
-                                                                        )
+from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_image_overlay.image_overlay_system import (OverlayTopology,
+                                                                                                                      ComputedPoint,
+                                                                                                                      PointElement,
+                                                                                                                      LineElement,
+                                                                                                                      TextElement,
+                                                                                                                      PointStyle,
+                                                                                                                      LineStyle,
+                                                                                                                      TextStyle,
+                                                                                                                      )
 
 
 def create_charuco_topology(

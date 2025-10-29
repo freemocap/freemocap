@@ -1,4 +1,3 @@
-// ServerContextProvider.tsx
 import React, { createContext, ReactNode, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store/types';
@@ -14,6 +13,8 @@ import {
     frontendFramerateUpdated,
     DetailedFramerate
 } from '@/store';
+import {CharucoOverlayRenderer} from "@/services/server/server-helpers/overlay_renderer";
+import {CharucoObservation, CharucoObservationSchema} from "@/services/server/server-helpers/charuco_types";
 
 interface ServerContextValue {
     isConnected: boolean;
@@ -21,6 +22,7 @@ interface ServerContextValue {
     disconnect: () => void;
     send: (data: string | object) => void;
     setCanvasForCamera: (cameraId: string, canvas: HTMLCanvasElement) => void;
+    registerOverlayRenderer: (cameraId: string, renderer: CharucoOverlayRenderer) => void;
     getFps: (cameraId: string) => number | null;
     connectedCameraIds: string[];
 }
@@ -68,6 +70,12 @@ function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
     );
 }
 
+// Type guard for CharucoObservation using Zod
+function isCharucoObservation(data: any): data is CharucoObservation {
+    const result = CharucoObservationSchema.safeParse(data);
+    return result.success;
+}
+
 export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const dispatch = useDispatch<AppDispatch>();
 
@@ -79,6 +87,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
     const wsConnectionRef = useRef<WebSocketConnection | null>(null);
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
+    
+    // Overlay renderers map (camera_id -> renderer)
+    const overlayRenderersRef = useRef<Map<string, CharucoOverlayRenderer>>(new Map());
 
     // Initialize services once
     useEffect(() => {
@@ -101,6 +112,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
             if (frameProcessorRef.current) {
                 frameProcessorRef.current.reset();
             }
+            // Clean up overlay renderers
+            overlayRenderersRef.current.forEach(renderer => renderer.destroy());
+            overlayRenderersRef.current.clear();
         };
     }, []);
 
@@ -141,11 +155,18 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                             for (const cameraId of removedCameras) {
                                 console.log(`Removing camera ${cameraId} - not in latest payload`);
                                 canvasManagerRef.current?.terminateWorker(cameraId);
+                                
+                                // Clean up overlay renderer
+                                const renderer = overlayRenderersRef.current.get(cameraId);
+                                if (renderer) {
+                                    renderer.destroy();
+                                    overlayRenderersRef.current.delete(cameraId);
+                                }
                             }
 
                             return currentCameraIds;
                         }
-                        return prevIds; // Return same reference to prevent re-render
+                        return prevIds;
                     });
 
                     // Send frames to canvas workers
@@ -159,25 +180,34 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                     // Acknowledge the highest frame number
                     if (frameNumbers.size > 0) {
                         const maxFrameNumber = Math.max(...Array.from(frameNumbers));
-                        console.log(`Acknowledging frame number: ${maxFrameNumber}`);
                         ws.send({ type: 'frameAcknowledgment', frameNumber: maxFrameNumber });
                     }
                 } catch (error) {
                     console.error('Error processing frame:', error);
+                    throw error;
                 }
             }
-            // Handle text/JSON messages (logs, framerate updates, etc.)
+            // Handle text/JSON messages (logs, framerate updates, charuco observations, etc.)
             else if (typeof event.data === 'string') {
                 try {
                     const jsonData = JSON.parse(event.data);
 
+                    // Handle CharucoObservation
+                    if (isCharucoObservation(jsonData)) {
+                        const renderer = overlayRenderersRef.current.get(jsonData.camera_id);
+                        if (renderer) {
+                            renderer.updateObservation(jsonData);
+                        } else {
+                            // Renderer not ready yet - this is normal during initialization
+                            // The renderer will be created when the component mounts
+                        }
+                    }
                     // Handle log records
-                    if (isLogRecord(jsonData)) {
+                    else if (isLogRecord(jsonData)) {
                         dispatch(logAdded(jsonData));
                     }
                     // Handle framerate updates
                     else if (isFramerateUpdate(jsonData)) {
-                        // Dispatch full detailed framerate data to Redux store
                         dispatch(backendFramerateUpdated(jsonData.backend_framerate));
                         dispatch(frontendFramerateUpdated(jsonData.frontend_framerate));
                     }
@@ -187,6 +217,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                     }
                 } catch (error) {
                     console.error('Error parsing JSON message:', error);
+                    throw error;
                 }
             }
         };
@@ -220,6 +251,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
         canvasManagerRef.current?.setCanvasForCamera(cameraId, canvas);
     }, []);
 
+    const registerOverlayRenderer = useCallback((cameraId: string, renderer: CharucoOverlayRenderer): void => {
+        console.log(`Registering overlay renderer for camera: ${cameraId}`);
+        overlayRenderersRef.current.set(cameraId, renderer);
+    }, []);
+
     const getFps = useCallback((cameraId: string): number | null => {
         return frameProcessorRef.current?.getFps(cameraId) ?? null;
     }, []);
@@ -231,6 +267,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
             disconnect,
             send,
             setCanvasForCamera,
+            registerOverlayRenderer,
             getFps,
             connectedCameraIds
         }}>
@@ -241,6 +278,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
 
 export const useServer = (): ServerContextValue => {
     const context = useContext(ServerContext);
-    if (!context) throw new Error('useServer must be used within ServerContextProvider');
+    if (!context) {
+        throw new Error('useServer must be used within ServerContextProvider');
+    }
     return context;
 };

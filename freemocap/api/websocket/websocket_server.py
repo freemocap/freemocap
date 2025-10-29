@@ -102,6 +102,9 @@ class WebsocketServer:
 
                         for camera_group_id, (frame_number,
                                               payload_bytes) in camera_group_bytearrays.items():
+                            if not isinstance(payload_bytes, (bytes, bytearray)):
+                                logger.warning(f"Invalid payload bytes for camera group {camera_group_id} - got type {type(payload_bytes)}")
+                                continue
                             await self.websocket.send_bytes(payload_bytes)
                             self.last_sent_frame_number = frame_number
                             # if camera_group_id not in self._frontend_framerate_trackers:
@@ -109,9 +112,14 @@ class WebsocketServer:
                             #         framerate_source=f"Frontend-{camera_group_id}")
                             # self._frontend_framerate_trackers[camera_group_id].update(multiframe_timestamp)
                         for pipeline_id, overlay_data in pipeline_overlay_data.items():
-                            if not isinstance(overlay_data, CharucoOverlayData):
+                            if not isinstance(overlay_data, dict):
+                                logger.warning(f"Invalid overlay data for pipeline {pipeline_id} - got type {type(overlay_data)}")
                                 continue
-                            await self.websocket.send_json(overlay_data.model_dump())
+                            if any([not isinstance(camera_overlay_data, CharucoOverlayData) for camera_overlay_data in overlay_data.values()]):
+                                logger.warning(f"Invalid overlay data for pipeline {pipeline_id} - expected CharucoOverlayData, got: {[type(camera_overlay_data) for camera_overlay_data in overlay_data.values()]}")
+                                continue
+                            overlay_message = {camera_id: camera_overlay_data.model_dump() for camera_id, camera_overlay_data in overlay_data.items()}
+                            await self.websocket.send_json(overlay_message)
                 else:
                     skipped_previous = True
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation

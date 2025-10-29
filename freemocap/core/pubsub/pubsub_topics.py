@@ -7,7 +7,7 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pubsub.pubsub_abcs import TopicMessageABC, create_topic
-from freemocap.core.types.type_overloads import TrackerTypeString, FrameNumberInt, Point3d
+from freemocap.core.types.type_overloads import TrackerTypeString, FrameNumberInt, Point3d, PipelineIdString
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ class CameraNodeOutputMessage(TopicMessageABC):
 
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = Field(ge=0)
+    pipeline_id: PipelineIdString
     camera_group_id: CameraGroupIdString
     pipeline_config: PipelineConfig
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage]

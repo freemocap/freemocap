@@ -3,15 +3,14 @@ import uuid
 from dataclasses import dataclass
 
 from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.types.type_overloads import CameraIdString
+from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
 from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputTopic
-from freemocap.core.tasks.frontend_payload_builder.frontend_payload_builder import FrontendPayloadBuilder
-from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +18,12 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ProcessingPipeline:
     id: PipelineIdString
+    camera_group_id: CameraGroupIdString
     config: PipelineConfig
     camera_nodes: dict[CameraIdString, CameraNode]
     aggregation_node: AggregationNode
-    frontend_payload_builder: FrontendPayloadBuilder
+    aggregation_node_subscription: TopicSubscriptionQueue
     ipc: PipelineIPC
-
 
     @property
     def alive(self) -> bool:
@@ -50,31 +49,19 @@ class ProcessingPipeline:
                                                   camera_group_shm_dto=camera_group_shm_dto,
                                                   ipc=ipc,
                                                   )
-        frontend_payload_builder = FrontendPayloadBuilder.create(camera_group_shm=camera_group.shm,
-                                                                 aggregation_node_output_subscription=ipc.pubsub.topics[
-                                                                     AggregationNodeOutputTopic].get_subscription(),
-                                                                 ipc=ipc
-                                                                 )
 
         return cls(camera_nodes=camera_nodes,
                    aggregation_node=aggregation_node,
                    ipc=ipc,
-                   id=str(uuid.uuid4())[:6],
                    config=pipeline_config,
-                   frontend_payload_builder=frontend_payload_builder,
+                   aggregation_node_subscription=ipc.pubsub.topics[
+                       AggregationNodeOutputTopic].get_subscription(),
+                   camera_group_id=camera_group.id,
+                   id=str(uuid.uuid4())[:6],
                    )
 
     def start(self) -> None:
         logger.debug(f"Starting {self.__class__.__name__} with camera processes {list(self.camera_nodes.keys())}...")
-        #
-        # try:
-        #     logger.debug("Starting frontend payload builder ...")
-        #     self.frontend_payload_builder.start()
-        #     logger.debug(f"Frontend payload builder worker started: alive={self.frontend_payload_builder.worker.is_alive()}")
-        # except Exception as e:
-        #     logger.error(f"Failed to start frontend payload builder: {type(e).__name__} - {e}")
-        #     logger.exception(e)
-        #     raise
         try:
             logger.debug("Starting aggregation node...")
             self.aggregation_node.start()
@@ -103,4 +90,3 @@ class ProcessingPipeline:
         for camera_id, camera_process in self.camera_nodes.items():
             camera_process.shutdown()
         self.aggregation_node.shutdown()
-        # self.frontend_payload_builder.shutdown()

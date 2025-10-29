@@ -4,9 +4,12 @@ import logging
 
 from fastapi import FastAPI
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
-from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt, MultiframeTimestampFloat
+from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt, MultiframeTimestampFloat, \
+    CameraIdString
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
+from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_serializer import CharucoOverlayData
+from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.freemocap_app.freemocap_application import FreemocApp, get_freemocap_app
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue, \
     MIN_LOG_LEVEL_FOR_WEBSOCKET
@@ -94,20 +97,21 @@ class WebsocketServer:
                     if skipped_previous:  # skip an extra frame if there was backpressure from frontend
                         skipped_previous = False
                     else:
-                        new_frontend_payloads: dict[
-                            CameraGroupIdString, tuple[
-                                FrameNumberInt, MultiframeTimestampFloat, bytes]] = self._app.get_latest_frontend_payloads(
+                        camera_group_bytearrays, pipeline_overlay_data = self._app.get_latest_frontend_payloads(
                             if_newer_than=self.last_sent_frame_number)
 
                         for camera_group_id, (frame_number,
-                                              multiframe_timestamp,
-                                              payload_bytes) in new_frontend_payloads.items():
+                                              payload_bytes) in camera_group_bytearrays.items():
                             await self.websocket.send_bytes(payload_bytes)
                             self.last_sent_frame_number = frame_number
-                            if camera_group_id not in self._frontend_framerate_trackers:
-                                self._frontend_framerate_trackers[camera_group_id] = FramerateTracker.create(
-                                    framerate_source=f"Frontend-{camera_group_id}")
-                            self._frontend_framerate_trackers[camera_group_id].update(multiframe_timestamp)
+                            # if camera_group_id not in self._frontend_framerate_trackers:
+                            #     self._frontend_framerate_trackers[camera_group_id] = FramerateTracker.create(
+                            #         framerate_source=f"Frontend-{camera_group_id}")
+                            # self._frontend_framerate_trackers[camera_group_id].update(multiframe_timestamp)
+                        for pipeline_id, overlay_data in pipeline_overlay_data.items():
+                            if not isinstance(overlay_data, CharucoOverlayData):
+                                continue
+                            await self.websocket.send_json(overlay_data.model_dump())
                 else:
                     skipped_previous = True
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation

@@ -1,4 +1,4 @@
-import { CharucoObservation, CharucoPoint, ArucoMarker } from './charuco-observation-types';
+import {ArucoMarker, CharucoObservation, CharucoPoint} from "@/services/server/server-helpers/charuco_types";
 
 interface RenderStats {
     lastRenderTime: number;
@@ -22,8 +22,8 @@ export class CharucoOverlayRenderer {
     private readonly CHARUCO_STROKE = '#009600';
     private readonly ARUCO_COLOR = '#FF6400'; // Orange
     private readonly ARUCO_STROKE = '#C85000';
-    private readonly TEXT_COLOR = '#FFFFFF';
-    private readonly TEXT_STROKE = '#000000';
+    private readonly TEXT_COLOR = '#ccc';
+    private readonly TEXT_STROKE = '#111';
     private readonly INFO_BG = 'rgba(0, 0, 0, 0.7)';
 
     constructor(canvas: HTMLCanvasElement) {
@@ -158,9 +158,9 @@ export class CharucoOverlayRenderer {
 
             // Draw marker ID at center
             const centerX =
-                marker.corners.reduce((sum, c) => sum + c[0], 0) / marker.corners.length;
+                marker.corners.reduce((sum: any, c: any[]) => sum + c[0], 0) / marker.corners.length;
             const centerY =
-                marker.corners.reduce((sum, c) => sum + c[1], 0) / marker.corners.length;
+                marker.corners.reduce((sum: any, c: any[]) => sum + c[1], 0) / marker.corners.length;
 
             this.drawText(
                 marker.id.toString(),

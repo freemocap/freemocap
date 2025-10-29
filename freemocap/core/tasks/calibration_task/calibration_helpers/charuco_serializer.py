@@ -37,9 +37,9 @@ class CharucoMetadataModel(BaseModel):
     image_height: int = Field(description="Height of the image in pixels")
 
 
-class CharucoObservationMessage(BaseModel):
+class CharucoOverlayData(BaseModel):
     """Complete message for transmitting charuco observation over websocket."""
-    message_type: Literal["charuco_observation"] = "charuco_observation"
+    message_type: Literal["charuco_overlay"] = "charuco_overlay"
     camera_id: CameraIdString = Field(description="ID of the camera that produced this observation")
     frame_number: int = Field(description="Frame number of this observation")
     charuco_corners: list[CharucoPointModel] = Field(
@@ -52,87 +52,67 @@ class CharucoObservationMessage(BaseModel):
     )
     metadata: CharucoMetadataModel = Field(description="Detection metadata and statistics")
 
+    @classmethod
+    def from_charuco_observation(
+        cls,
+        *,
+        camera_id: CameraIdString,
+        observation: CharucoObservation):
+        """
+        Convert CharucoObservation to Pydantic message model for websocket transmission.
 
-def charuco_observation_to_message(
-    *,
-    camera_id: CameraIdString,
-    observation: CharucoObservation,
-) -> CharucoObservationMessage:
-    """
-    Convert CharucoObservation to Pydantic message model for websocket transmission.
-    
-    Args:
-        camera_id: ID of the camera that produced this observation
-        observation: The CharucoObservation to serialize
-        
-    Returns:
-        CharucoObservationMessage ready for JSON serialization
-    """
-    
-    # Build Charuco corner models
-    charuco_corners: list[CharucoPointModel] = []
-    if not observation.charuco_empty:
-        for corner_id, corner_coords in observation.charuco_corners_dict.items():
-            charuco_corners.append(
-                CharucoPointModel(
-                    id=int(corner_id),
-                    x=float(corner_coords[0]),
-                    y=float(corner_coords[1]),
+        Args:
+            camera_id: ID of the camera that produced this observation
+            observation: The CharucoObservation to serialize
+
+        Returns:
+            CharucoObservationMessage ready for JSON serialization
+        """
+
+        # Build Charuco corner models
+        charuco_corners: list[CharucoPointModel] = []
+        if not observation.charuco_empty:
+            for corner_id, corner_coords in observation.charuco_corners_dict.items():
+                charuco_corners.append(
+                    CharucoPointModel(
+                        id=int(corner_id),
+                        x=float(corner_coords[0]),
+                        y=float(corner_coords[1]),
+                    )
                 )
-            )
-    
-    # Build ArUco marker models
-    aruco_markers: list[ArucoMarkerModel] = []
-    if not observation.aruco_empty:
-        for marker_id, marker_corners in observation.aruco_corners_dict.items():
-            aruco_markers.append(
-                ArucoMarkerModel(
-                    id=int(marker_id),
-                    corners=[
-                        (float(marker_corners[i][0]), float(marker_corners[i][1]))
-                        for i in range(4)
-                    ],
+
+        # Build ArUco marker models
+        aruco_markers: list[ArucoMarkerModel] = []
+        if not observation.aruco_empty:
+            for marker_id, marker_corners in observation.aruco_corners_dict.items():
+                aruco_markers.append(
+                    ArucoMarkerModel(
+                        id=int(marker_id),
+                        corners=[
+                            (float(marker_corners[i][0]), float(marker_corners[i][1]))
+                            for i in range(4)
+                        ],
+                    )
                 )
-            )
-    
-    # Build metadata model
-    metadata = CharucoMetadataModel(
-        n_charuco_detected=0 if observation.charuco_empty else len(observation.detected_charuco_corner_ids),
-        n_charuco_total=len(observation.all_charuco_ids),
-        n_aruco_detected=0 if observation.aruco_empty else len(observation.detected_aruco_marker_ids),
-        n_aruco_total=len(observation.all_aruco_ids),
-        has_pose=observation.charuco_board_translation_vector is not None,
-        image_width=observation.image_size[0],
-        image_height=observation.image_size[1],
-    )
-    
-    # Build complete message
-    return CharucoObservationMessage(
-        camera_id=camera_id,
-        frame_number=observation.frame_number,
-        charuco_corners=charuco_corners,
-        aruco_markers=aruco_markers,
-        metadata=metadata,
-    )
+
+        # Build metadata model
+        metadata = CharucoMetadataModel(
+            n_charuco_detected=0 if observation.charuco_empty else len(observation.detected_charuco_corner_ids),
+            n_charuco_total=len(observation.all_charuco_ids),
+            n_aruco_detected=0 if observation.aruco_empty else len(observation.detected_aruco_marker_ids),
+            n_aruco_total=len(observation.all_aruco_ids),
+            has_pose=observation.charuco_board_translation_vector is not None,
+            image_width=observation.image_size[0],
+            image_height=observation.image_size[1],
+        )
+
+        # Build complete message
+        return CharucoOverlayData(
+            camera_id=camera_id,
+            frame_number=observation.frame_number,
+            charuco_corners=charuco_corners,
+            aruco_markers=aruco_markers,
+            metadata=metadata,
+        )
 
 
-def serialize_charuco_observation(
-    *,
-    camera_id: CameraIdString,
-    observation: CharucoObservation,
-) -> dict[str, object]:
-    """
-    Convert CharucoObservation to JSON-serializable dict for websocket transmission.
-    
-    Args:
-        camera_id: ID of the camera that produced this observation
-        observation: The CharucoObservation to serialize
-        
-    Returns:
-        Dictionary ready for JSON serialization via websocket.send_json()
-    """
-    message = charuco_observation_to_message(
-        camera_id=camera_id,
-        observation=observation,
-    )
-    return message.model_dump()

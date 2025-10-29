@@ -132,6 +132,7 @@ class AggregationNode:
                             f"Triangulated {len(triangulated_points3d)} points at frame {latest_requested_frame} in {(tok - tik) / 1e6:.3f} ms")
                     aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                         frame_number=latest_requested_frame,
+                        pipeline_id=ipc.pipeline_id,
                         camera_group_id=camera_group_id,
                         pipeline_config=config,
                         camera_node_outputs=camera_node_outputs,

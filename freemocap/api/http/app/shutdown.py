@@ -7,7 +7,6 @@ import signal
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
-
 from skellycam.utilities.wait_functions import await_100ms
 
 logger = logging.getLogger(__name__)

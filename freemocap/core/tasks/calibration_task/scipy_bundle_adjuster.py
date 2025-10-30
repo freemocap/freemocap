@@ -1,8 +1,9 @@
 import logging
-import numpy as np
+
 import cv2
-from scipy.optimize import least_squares
+import numpy as np
 from pydantic import BaseModel, Field
+from scipy.optimize import least_squares
 from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.tasks.calibration_task.calibration_helpers.camera_math_models import (

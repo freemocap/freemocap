@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Union, Dict
 
 import numpy as np
-
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     CENTER_OF_MASS_FOLDER_NAME,
     DATA_2D_NPY_FILE_NAME,
@@ -22,6 +21,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
 )
 from freemocap.system.paths_and_filenames.path_getters import create_camera_calibration_file_name, get_blender_file_path
+
 from freemocap.tests.test_image_tracking_data_shape import (
     test_image_tracking_data_exists,
     test_image_tracking_data_shape,

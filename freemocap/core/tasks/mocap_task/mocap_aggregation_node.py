@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from multiprocessing import Queue, Process
 from typing import Dict
 
-from skellycam.core.types.type_overloads import CameraIdString
-
 from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BasePipelineOutputData

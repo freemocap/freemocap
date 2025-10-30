@@ -3,14 +3,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel, Field
+from skellycam.core.camera.config.camera_config import CameraConfig
+from skellycam.core.camera_group.camera_group import CameraConfigs
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.freemocap_app.freemocap_application import get_freemocap_app
-
-from skellycam.core.camera_group.camera_group import  CameraConfigs
-from skellycam.core.camera.config.camera_config import CameraConfig
-from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from freemocap.system.default_paths import default_recording_name, get_default_recording_folder_path
 
 logger = logging.getLogger(__name__)
@@ -80,16 +79,16 @@ def pipeline_connect_post_endpoint(
                             detail=f"Error when processing `pipeline/connect` request: {type(e).__name__} - {e}")
 
 
-@pipeline_router.get("/all/close",
+@pipeline_router.delete("/all/close",
                      summary="Disconnect/shutdown all processing pipelines"
                      )
 def pipeline_close_post_endpoint():
-    logger.api(f"Received `pipeline/close` GET request")
+    logger.api(f"Received `pipeline/close` DELETE request")
     try:
 
         get_freemocap_app().close_pipelines()
         logger.api(
-            f"`pipeline/disconnect` GET request handled successfully ")
+            f"`pipeline/disconnect` DELETE request handled successfully ")
     except Exception as e:
         logger.error(f"Error when processing `pipeline/disconnect` request: {type(e).__name__} - {e}")
         logger.exception(e)

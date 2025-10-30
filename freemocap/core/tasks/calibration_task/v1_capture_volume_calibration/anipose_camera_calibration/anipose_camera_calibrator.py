@@ -6,7 +6,6 @@ from typing import Callable, Union
 
 import cv2
 import numpy as np
-
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration import (
     freemocap_anipose,
 )
@@ -25,6 +24,7 @@ from freemocap.system.paths_and_filenames.path_getters import (
     get_calibrations_folder_path,
     get_last_successful_calibration_toml_path,
 )
+
 from freemocap.utilities.get_video_paths import get_video_paths
 
 logger = logging.getLogger(__name__)

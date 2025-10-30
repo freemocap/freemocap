@@ -4,6 +4,9 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+# from freemocap.system.logging.queue_logger import DirectQueueHandler
+# from freemocap.system.logging.configure_logging import log_view_logging_format_string
+from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
 
 from freemocap.old.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
@@ -19,9 +22,6 @@ from freemocap.old.core_processes.post_process_skeleton_data.process_single_came
     process_single_camera_skeleton_data,
 )
 from freemocap.old.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
-# from freemocap.system.logging.queue_logger import DirectQueueHandler
-# from freemocap.system.logging.configure_logging import log_view_logging_format_string
-from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING
 
 logger = logging.getLogger(__name__)
 

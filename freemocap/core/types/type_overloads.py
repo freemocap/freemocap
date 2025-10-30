@@ -1,7 +1,7 @@
 import multiprocessing
 
-from numpydantic import NDArray, Shape
 from pydantic import BaseModel
+
 PointIndex = int
 PipelineIdString = str
 

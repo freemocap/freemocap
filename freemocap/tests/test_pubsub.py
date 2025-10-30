@@ -1,8 +1,8 @@
-import pytest
-from typing import Any
-from multiprocessing import Queue, Process, parent_process
+from multiprocessing import Queue
 from queue import Empty
+from typing import Any
 
+import pytest
 from pydantic import Field
 
 from freemocap.core.pubsub.pubsub_abcs import (

@@ -3,13 +3,12 @@
 # PubSubTopicManager - Auto-discovers and manages all registered topics
 # ============================================================================
 
-from pydantic import BaseModel, Field, ConfigDict
+import logging
 from multiprocessing import parent_process
 
-from freemocap.core.pubsub.pubsub_abcs import PubSubTopicABC, TopicMessageABC, MessageType
+from pydantic import BaseModel, Field, ConfigDict
 
-import logging
-
+from freemocap.core.pubsub.pubsub_abcs import PubSubTopicABC, MessageType
 from freemocap.core.types.type_overloads import TopicSubscriptionQueue, PipelineIdString
 
 logger = logging.getLogger(__name__)

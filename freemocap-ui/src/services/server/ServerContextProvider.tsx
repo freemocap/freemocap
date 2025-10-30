@@ -148,7 +148,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     if (!result) return;
 
                     const {frames, cameraIds, frameNumbers} = result;
-
+                    console.log(`received frame #${Array.from(frameNumbers).join(', ')} from cameras: ${Array.from(cameraIds).join(', ')}`);
                     // Convert Set to sorted array for comparison
                     const currentCameraIds = Array.from(cameraIds).sort();
                     // Update state only if camera list has changed

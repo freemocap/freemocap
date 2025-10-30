@@ -4,11 +4,12 @@
 import itertools
 import logging
 import multiprocessing
-from pathlib import Path
 import queue
 import time
 from collections import defaultdict, Counter
 from copy import copy
+from pathlib import Path
+from typing import List
 
 import cv2
 import numpy as np
@@ -22,11 +23,9 @@ from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
-from tqdm import trange
-from typing import List
-
-from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
 from skellytracker.process_folder_of_videos import process_list_of_videos
+from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
+from tqdm import trange
 
 numba_logger = logging.getLogger("numba")
 numba_logger.setLevel(logging.WARNING)

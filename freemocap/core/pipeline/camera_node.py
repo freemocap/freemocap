@@ -5,8 +5,8 @@ from dataclasses import dataclass
 
 import numpy as np
 from pydantic import BaseModel
+from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
-from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.types.type_overloads import CameraIdString, WorkerType, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoImageAnnotator
@@ -18,7 +18,6 @@ from freemocap.core.pubsub.pubsub_topics import ProcessFrameNumberTopic, Pipelin
     PipelineConfigMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage
 from freemocap.core.tasks.calibration_task.calibration_pipeline_task import CalibrationCameraNodeTask
 
-from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
 logger = logging.getLogger(__name__)
 
 

@@ -2,11 +2,11 @@
 Serialize CharucoObservation to JSON format for websocket transmission using Pydantic models.
 """
 
-import numpy as np
-from pydantic import BaseModel, Field
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
-from skellycam.core.types.type_overloads import CameraIdString
 from typing import Literal
+
+from pydantic import BaseModel, Field
+from skellycam.core.types.type_overloads import CameraIdString
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 
 class CharucoPointModel(BaseModel):

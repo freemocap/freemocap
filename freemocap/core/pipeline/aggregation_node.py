@@ -4,12 +4,12 @@ import time
 from dataclasses import dataclass
 
 import numpy as np
-from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemoryDTO, \
-    CameraGroupSharedMemory
+from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
+from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemory
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
 
-from freemocap.core.pipeline.pipeline_configs import AggregationNodeConfig, PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigTopic, ProcessFrameNumberTopic, \
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic
@@ -18,7 +18,6 @@ from freemocap.core.tasks.calibration_task.create_triangulator_from_multicam_cal
     create_triangulator_from_calibrator
 from freemocap.core.tasks.calibration_task.point_triangulator import PointTriangulator
 from freemocap.core.types.type_overloads import Point3d
-from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
 
 logger = logging.getLogger(__name__)
 

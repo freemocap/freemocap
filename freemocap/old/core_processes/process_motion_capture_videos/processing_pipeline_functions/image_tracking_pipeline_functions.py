@@ -3,6 +3,10 @@ import multiprocessing
 from pathlib import Path
 
 import numpy as np
+# from freemocap.system.logging.configure_logging import log_view_logging_format_string
+# from freemocap.system.logging.queue_logger import DirectQueueHandler
+from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING, \
+    RAW_DATA_FOLDER_NAME
 from skellytracker.process_folder_of_videos import process_folder_of_videos
 from skellytracker.trackers.base_tracker.base_tracking_params import (
     BaseTrackingParams,
@@ -12,10 +16,6 @@ from skellytracker.trackers.base_tracker.model_info import ModelInfo
 from freemocap.old.data_layer.recording_models.post_processing_parameter_models import (
     ProcessingParameterModel,
 )
-# from freemocap.system.logging.configure_logging import log_view_logging_format_string
-# from freemocap.system.logging.queue_logger import DirectQueueHandler
-from freemocap.system.paths_and_filenames.file_and_folder_names import LOG_VIEW_PROGRESS_BAR_STRING, \
-    RAW_DATA_FOLDER_NAME
 from freemocap.tests.test_image_tracking_data_shape import test_image_tracking_data_shape
 
 logger = logging.getLogger(__name__)

@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     RAW_3D_NPY_FILE_NAME,
     FULL_REPROJECTION_ERROR_NPY_FILE_NAME,

@@ -5,11 +5,11 @@ import time
 
 import psutil
 import uvicorn
+from freemocap.freemocap_app.freemocap_app_lifespan.freemocap_app_setup import create_freemocap_fastapi_app
 from uvicorn import Server
 
 from freemocap.api.server.server_constants import HOSTNAME, PORT
-from freemocap.freemocap_app.freemocap_app_lifespan.freemocap_app_setup import create_freemocap_fastapi_app
-from freemocap.freemocap_app.freemocap_application import  get_freemocap_app
+from freemocap.freemocap_app.freemocap_application import get_freemocap_app
 from freemocap.utilities.kill_process_on_port import kill_process_on_port
 
 logger = logging.getLogger(__name__)

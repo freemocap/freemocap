@@ -3,6 +3,7 @@ Convert CharucoObservation to overlay-compatible data format.
 """
 
 from typing import Any
+
 import numpy as np
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 

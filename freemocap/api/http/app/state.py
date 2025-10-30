@@ -1,7 +1,6 @@
 import logging
 
 from fastapi import APIRouter
-
 from skellycam.skellycam_app.skellycam_app import get_skellycam_app
 
 logger = logging.getLogger(__name__)

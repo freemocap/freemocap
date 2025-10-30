@@ -2,6 +2,9 @@ import logging
 from pathlib import Path
 from typing import Optional, Union
 
+from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
+from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
+
 from freemocap.old.core_processes.export_data.blender_stuff.export_to_blender.export_to_blender import export_to_blender
 from freemocap.old.core_processes.export_data.blender_stuff.get_best_guess_of_blender_path import (
     get_best_guess_of_blender_path,
@@ -10,8 +13,6 @@ from freemocap.old.core_processes.process_motion_capture_videos.process_recordin
 from freemocap.old.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import generate_jupyter_notebook
 from freemocap.old.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 from freemocap.old.data_layer.recording_models.recording_info_model import RecordingInfoModel
-from freemocap.system.paths_and_filenames.file_and_folder_names import RECORDING_PARAMETERS_JSON_FILE_NAME
-from freemocap.system.paths_and_filenames.path_getters import get_blender_file_path
 from freemocap.utilities.download_sample_data import get_sample_data_path
 from freemocap.utilities.get_video_paths import get_video_paths
 from freemocap.utilities.save_dictionary_to_json import save_dictionary_to_json

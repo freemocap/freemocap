@@ -1,10 +1,11 @@
 import logging
+
+import cv2
 import numpy as np
 import pyceres
-import cv2
 from pydantic import BaseModel, Field
-from skellycam.core.types.type_overloads import CameraIdString
 from scipy.spatial.transform import Rotation
+from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.tasks.calibration_task.calibration_helpers.camera_math_models import (
     CameraMatrix,

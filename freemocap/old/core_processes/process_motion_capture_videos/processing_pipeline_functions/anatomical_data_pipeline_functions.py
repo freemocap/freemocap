@@ -8,7 +8,8 @@ from freemocap.old.core_processes.post_process_skeleton_data.calculate_center_of
     calculate_center_of_mass_from_skeleton,
 )
 from freemocap.old.core_processes.post_process_skeleton_data.create_skeleton import create_skeleton_model
-from freemocap.old.core_processes.post_process_skeleton_data.enforce_rigid_bones import enforce_rigid_bones_from_skeleton
+from freemocap.old.core_processes.post_process_skeleton_data.enforce_rigid_bones import \
+    enforce_rigid_bones_from_skeleton
 from freemocap.old.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 
 # from freemocap.system.logging.queue_logger import DirectQueueHandler

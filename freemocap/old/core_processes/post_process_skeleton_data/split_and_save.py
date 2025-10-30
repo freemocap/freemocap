@@ -4,14 +4,13 @@ from typing import Dict, List
 
 import numpy as np
 import pandas as pd
-from skellytracker.trackers.base_tracker.model_info import ModelInfo
-
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     BODY_3D_DATAFRAME_CSV_FILE_NAME,
     FACE_3D_DATAFRAME_CSV_FILE_NAME,
     LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
     RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME,
 )
+from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 logger = logging.getLogger(__name__)
 

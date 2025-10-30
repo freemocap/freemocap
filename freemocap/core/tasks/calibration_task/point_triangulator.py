@@ -3,8 +3,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-
 from skellycam.core.types.type_overloads import CameraIdString
+
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage
 from freemocap.core.tasks.calibration_task.calibration_helpers.camera_math_models import CameraDistortionCoefficients, \
     CameraMatrix

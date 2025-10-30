@@ -1,14 +1,14 @@
 import multiprocessing
 import uuid
 from dataclasses import dataclass, field
-from typing import Callable
+
+from skellycam.core.ipc.pubsub.pubsub_topics import SetShmTopic
 
 from freemocap.core.pubsub.pubsub_manager import PubSubTopicManager, create_pipeline_pubsub_manager
-from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue
+from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue
 
-from skellycam.core.camera_group.camera_group_ipc import CameraGroupIPC
-from skellycam.core.ipc.pubsub.pubsub_topics import SetShmTopic
+
 @dataclass
 class PipelineIPC:
     pipeline_id: PipelineIdString

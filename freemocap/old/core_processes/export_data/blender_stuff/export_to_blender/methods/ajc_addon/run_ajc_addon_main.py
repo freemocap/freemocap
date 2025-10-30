@@ -4,13 +4,6 @@ import subprocess
 from pathlib import Path
 from typing import Union, List
 
-from freemocap.old.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.get_numpy_path import (
-    get_numpy_path,
-)
-from freemocap.old.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.install.install_ajc_addon import (
-    install_ajc_addon,
-)
-from freemocap.old.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.run_simple import run_simple
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
     OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
@@ -19,6 +12,15 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
 )
+
+from freemocap.old.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.get_numpy_path import (
+    get_numpy_path,
+)
+from freemocap.old.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.install.install_ajc_addon import (
+    install_ajc_addon,
+)
+from freemocap.old.core_processes.export_data.blender_stuff.export_to_blender.methods.ajc_addon.run_simple import \
+    run_simple
 
 logger = logging.getLogger(__name__)
 

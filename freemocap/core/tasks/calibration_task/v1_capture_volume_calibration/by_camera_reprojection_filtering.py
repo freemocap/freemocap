@@ -3,13 +3,12 @@ from pathlib import Path
 from typing import Tuple, Union
 
 import numpy as np
-from matplotlib import pyplot as plt
-
 from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
     save_3d_data_to_npy,
 )
 from freemocap.core_processes.capture_volume_calibration.triangulate_3d_data import triangulate_3d_data
 from freemocap.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
+from matplotlib import pyplot as plt
 
 logger = logging.getLogger(__name__)
 

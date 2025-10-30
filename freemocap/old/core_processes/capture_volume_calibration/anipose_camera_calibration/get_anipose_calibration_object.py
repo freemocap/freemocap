@@ -4,9 +4,10 @@ import shutil
 from pathlib import Path
 from typing import Union
 
+from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
+
 from freemocap.old.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
     AniposeCameraGroup
-from freemocap.system.paths_and_filenames.path_getters import get_last_successful_calibration_toml_path
 
 logger = logging.getLogger(__name__)
 

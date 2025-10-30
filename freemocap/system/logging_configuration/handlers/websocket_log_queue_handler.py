@@ -4,9 +4,8 @@ from logging.handlers import QueueHandler
 from multiprocessing import Queue
 from typing import Optional
 
-from pydantic import BaseModel
-
 from skellycam.system.logging_configuration.log_levels import LogLevels
+
 from ..filters.delta_time import DeltaTimeFilter
 from ..formatters.custom_formatter import CustomFormatter
 from ..log_format_string import LOG_FORMAT_STRING

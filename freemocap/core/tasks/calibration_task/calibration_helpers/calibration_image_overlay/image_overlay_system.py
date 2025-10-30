@@ -7,12 +7,13 @@ Key optimizations:
 - Vectorized operations where possible
 """
 
+import json
 from abc import ABC, abstractmethod
 from typing import Any, Callable
+
+import cv2
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict
-import cv2
-import json
 
 
 # ============================================================================

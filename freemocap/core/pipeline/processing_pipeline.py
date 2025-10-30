@@ -4,11 +4,10 @@ import uuid
 from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
-
-from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
-from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
 from skellycam.core.camera.config.camera_config import CameraConfigs
+from skellycam.core.camera_group.camera_group import CameraGroup
+from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
+from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
 from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
@@ -136,9 +135,11 @@ class ProcessingPipeline:
     def get_latest_frontend_payload(self, if_newer_than: int) -> tuple[ bytes,FrontendPayload] | None:
         if self.camera_group.shm.latest_multiframe_number <= if_newer_than:
             return None
-        aggregation_output = None
+        if not self.alive:
+            return None
+        aggregation_output:AggregationNodeOutputMessage|None = None
         while not self.aggregation_node_subscription.empty():
-            aggregation_output:AggregationNodeOutputMessage = self.aggregation_node_subscription.get()
+            aggregation_output = self.aggregation_node_subscription.get()
         if aggregation_output is None:
             return None
         frames_bytearray = self.camera_group.get_frontend_payload_by_frame_number(

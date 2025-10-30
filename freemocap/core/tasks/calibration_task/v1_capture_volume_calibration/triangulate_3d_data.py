@@ -3,7 +3,6 @@ import multiprocessing
 from pathlib import Path
 
 import numpy as np
-
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import CameraGroup
 from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
     save_3d_data_to_npy,

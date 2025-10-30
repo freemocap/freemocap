@@ -5,11 +5,11 @@ import signal
 import sys
 
 import uvicorn
+from skellycam.utilities.kill_process_on_port import kill_process_on_port
+from skellycam.utilities.wait_functions import await_1s
 
 from freemocap.api.server_constants import HOSTNAME, PORT
 from freemocap.app import create_fastapi_app
-from skellycam.utilities.kill_process_on_port import kill_process_on_port
-from skellycam.utilities.wait_functions import await_1s
 
 logger = logging.getLogger(__name__)
 

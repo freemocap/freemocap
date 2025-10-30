@@ -1,5 +1,4 @@
 import logging
-from copy import deepcopy
 
 from .custom_formatter import CustomFormatter
 from ..log_format_string import LOG_POINTER_STRING

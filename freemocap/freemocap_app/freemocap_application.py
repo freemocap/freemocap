@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_skellycam_app
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
@@ -9,7 +10,6 @@ from freemocap.core.pipeline.pipeline_manager import PipelineManager
 from freemocap.core.pipeline.processing_pipeline import FrontendPayload, ProcessingPipeline
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
-from skellycam.core.recorders.videos.recording_info import RecordingInfo
 logger = logging.getLogger(__name__)
 
 

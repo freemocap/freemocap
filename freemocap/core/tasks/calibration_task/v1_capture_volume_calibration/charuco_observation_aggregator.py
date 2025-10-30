@@ -5,8 +5,8 @@ import cv2
 import numpy as np
 from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 from skellyforge.freemocap_utils.postprocessing_widgets.postprocessing_functions import interpolate_data
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.tasks.calibration_task.point_triangulator import PointTriangulator
 from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import \

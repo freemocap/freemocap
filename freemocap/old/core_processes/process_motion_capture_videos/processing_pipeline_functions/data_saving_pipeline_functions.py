@@ -4,10 +4,6 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-
-from freemocap.old.core_processes.post_process_skeleton_data.post_process_skeleton import save_numpy_array_to_disk
-from freemocap.old.core_processes.post_process_skeleton_data.split_and_save import split_and_save
-from freemocap.old.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 # from freemocap.system.logging.queue_logger import DirectQueueHandler
 # from freemocap.system.logging.configure_logging import log_view_logging_format_string
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -17,6 +13,10 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME,
     TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME,
 )
+
+from freemocap.old.core_processes.post_process_skeleton_data.post_process_skeleton import save_numpy_array_to_disk
+from freemocap.old.core_processes.post_process_skeleton_data.split_and_save import split_and_save
+from freemocap.old.data_layer.recording_models.post_processing_parameter_models import ProcessingParameterModel
 
 logger = logging.getLogger(__name__)
 

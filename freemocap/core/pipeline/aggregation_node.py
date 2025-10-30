@@ -18,6 +18,7 @@ from freemocap.core.tasks.calibration_task.create_triangulator_from_multicam_cal
     create_triangulator_from_calibrator
 from freemocap.core.tasks.calibration_task.point_triangulator import PointTriangulator
 from freemocap.core.types.type_overloads import Point3d
+from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,6 @@ class AggregationNode:
     def create(cls,
                config:PipelineConfig,
                camera_group_id: CameraGroupIdString,
-               camera_group_shm_dto: CameraGroupSharedMemoryDTO,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         return cls(shutdown_self_flag=shutdown_self_flag,
@@ -46,7 +46,7 @@ class AggregationNode:
                                                                   CameraNodeOutputTopic].get_subscription(),
                                                               pipeline_config_subscription=ipc.pubsub.topics[
                                                                   PipelineConfigTopic].get_subscription(),
-                                                              camera_group_shm_dto=camera_group_shm_dto,
+                                                              shm_subscription=ipc.shm_topic.get_subscription()
                                                               ),
                                                   daemon=True
                                                   ),
@@ -59,18 +59,22 @@ class AggregationNode:
              shutdown_self_flag: multiprocessing.Value,
              camera_node_subscription: TopicSubscriptionQueue,
              pipeline_config_subscription: TopicSubscriptionQueue,
-             camera_group_shm_dto: CameraGroupSharedMemoryDTO
+             shm_subscription: TopicSubscriptionQueue,
              ):
         if multiprocessing.parent_process():
             # Configure logging if multiprocessing (i.e. if there is a parent process)
             from freemocap.system.logging_configuration.configure_logging import configure_logging
             from freemocap import LOG_LEVEL
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
+
+        logger.debug("AggregationNode process started - waiting for SHM message")
+        shm_message:SetShmMessage = shm_subscription.get(block=True)
+        logger.debug("AggregationNode - received SHM message - starting main loop")
         try:
             logger.debug(f"Starting aggregation process for camera group {camera_group_id}")
             camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {camera_id: None for camera_id in
                                                                                          config.camera_configs.keys()}
-            camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=camera_group_shm_dto,
+            camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=shm_message.camera_group_shm_dto,
                                                                 read_only=True)
             calibrator = MultiCameraCalibrator.from_camera_ids(camera_ids=config.camera_ids,
                                                                principal_camera_id=config.camera_ids[0])

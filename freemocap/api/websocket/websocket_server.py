@@ -105,7 +105,7 @@ class WebsocketServer:
                                 logger.warning(f"Invalid payload bytes on frame{frontend_payload.frame_number} - got type {type(payload_bytes)}")
                                 continue
                             await self.websocket.send_bytes(payload_bytes)
-                            await self.websocket.send_json(frontend_payload.chaurco_overlays)
+                            await self.websocket.send_json({camera_id: overlay_data.model_dump() for camera_id, overlay_data in frontend_payload.chaurco_overlays.items()})
                             self.last_sent_frame_number = frontend_payload.frame_number
                 else:
                     skipped_previous = True

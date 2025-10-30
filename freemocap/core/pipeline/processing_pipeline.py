@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
-
+from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
 from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
@@ -55,16 +55,14 @@ class ProcessingPipeline:
                                           global_kill_flag=global_kill_flag,
                                           )
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
+                                 shm_topic=camera_group.ipc.pubsub.topics[TopicTypes.SHM_UPDATES]
                                  )
-        camera_group_shm_dto = camera_group.shm.to_dto()
         camera_nodes = {camera_id: CameraNode.create(camera_id=camera_id,
-                                                     camera_shm_dto=camera_group_shm_dto.camera_shm_dtos[camera_id],
                                                      config=pipeline_config.camera_node_configs[camera_id],
                                                      ipc=ipc)
                         for camera_id, config in camera_group.configs.items()}
         aggregation_node = AggregationNode.create(camera_group_id=camera_group.id,
                                                   config=pipeline_config,
-                                                  camera_group_shm_dto=camera_group_shm_dto,
                                                   ipc=ipc,
                                                   )
 

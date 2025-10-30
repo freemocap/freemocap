@@ -18,6 +18,7 @@ from freemocap.core.pubsub.pubsub_topics import ProcessFrameNumberTopic, Pipelin
     PipelineConfigMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage
 from freemocap.core.tasks.calibration_task.calibration_pipeline_task import CalibrationCameraNodeTask
 
+from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
 logger = logging.getLogger(__name__)
 
 
@@ -60,7 +61,6 @@ class CameraNode:
     def create(cls,
                camera_id: CameraIdString,
                config: CameraNodeConfig,
-               camera_shm_dto: SharedMemoryRingBufferDTO,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         return cls(camera_id=camera_id,
@@ -68,7 +68,6 @@ class CameraNode:
                    worker=multiprocessing.Process(target=cls._run,
                                                   name=f"CameraProcessingNode-{camera_id}",
                                                   kwargs=dict(camera_id=camera_id,
-                                                              camera_shm_dto=camera_shm_dto,
                                                               ipc=ipc,
                                                               camera_node_config=config,
                                                               shutdown_self_flag=shutdown_self_flag,
@@ -76,6 +75,7 @@ class CameraNode:
                                                                   ProcessFrameNumberTopic),
                                                               pipeline_config_subscription=ipc.pubsub.get_subscription(
                                                                   PipelineConfigTopic),
+                                                              shm_subscription=ipc.shm_topic.get_subscription()
                                                               ),
                                                   daemon=True
                                                   ),
@@ -83,23 +83,26 @@ class CameraNode:
 
     @staticmethod
     def _run(camera_id: CameraIdString,
-             camera_shm_dto: SharedMemoryRingBufferDTO,
              ipc: PipelineIPC,
              camera_node_config: CameraNodeConfig,
              process_frame_number_subscription: TopicSubscriptionQueue,
              pipeline_config_subscription: TopicSubscriptionQueue,
              shutdown_self_flag: multiprocessing.Value,
+                shm_subscription: TopicSubscriptionQueue,
              ):
         if multiprocessing.parent_process():
             # Configure logging if multiprocessing (i.e. if there is a parent process)
             from freemocap.system.logging_configuration.configure_logging import configure_logging
             from freemocap import LOG_LEVEL
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
+
+        logger.debug(f"Initializing camera processing node for camera {camera_id} - awaiting SHM setup...")
+        shm_update_message: SetShmMessage = shm_subscription.get(block=True)
+        logger.debug(f"Received SHM setup message - recreating shared memory rig buffer for camera {camera_id}")
+        camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=shm_update_message.get_shm_dto_by_camera_id(camera_id),
+                                                               read_only=False)
         try:
             logger.trace(f"Starting camera processing node for camera {camera_id}")
-            camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
-                                                               read_only=False)
-
             calibration_task = CalibrationCameraNodeTask.create(config=camera_node_config.calibration_camera_node_config)
             # mocap_task: BaseCameraNodeTask|None = None # TODO - this
 

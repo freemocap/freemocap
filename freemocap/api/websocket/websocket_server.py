@@ -101,6 +101,8 @@ class WebsocketServer:
                             if_newer_than=self.last_sent_frame_number)
 
                         for pipeline_id, (payload_bytes, frontend_payload) in frontend_payloads.items():
+                            if not payload_bytes or not frontend_payload:
+                                continue
                             if not isinstance(payload_bytes, (bytes, bytearray)):
                                 logger.warning(f"Invalid payload bytes on frame{frontend_payload.frame_number} - got type {type(payload_bytes)}")
                                 continue

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import {CameraConfig} from "@/store";
 
 // ==================== API Request/Response Types ====================
 export interface PipelineConnectRequest {
@@ -8,6 +9,7 @@ export interface PipelineConnectRequest {
 export interface PipelineConnectResponse {
     camera_group_id: string;
     pipeline_id: string;
+    camera_configs: Record<string, CameraConfig>;
 }
 
 // ==================== Pipeline State ====================

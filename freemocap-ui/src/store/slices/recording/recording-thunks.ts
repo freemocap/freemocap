@@ -30,7 +30,7 @@ export const startRecording = createAsyncThunk<
             mic_device_index: micDeviceIndex,
         });
 
-        const response = await fetch(serverUrls.endpoints.startRecording, {
+        const response = await fetch(serverUrls.endpoints.pipelineRecordStart, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -51,7 +51,7 @@ export const stopRecording = createAsyncThunk<
     async (_, { getState }) => {
         const state = getState();
 
-        const response = await fetch(serverUrls.endpoints.stopRecording, {
+        const response = await fetch(serverUrls.endpoints.pipelineRecordStop, {
             method: 'GET',
         });
 

@@ -1,17 +1,8 @@
 // cameras-thunks.ts
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import { RootState } from '../../types';
-import { serverUrls } from '@/services';
-import {
-    Camera,
-    CameraConfig,
-    DetectCamerasRequest,
-    DetectCamerasResponse,
-    CamerasConnectOrUpdateRequest,
-    ConnectCamerasResponse,
-    createDefaultCameraConfig,
-} from './cameras-types';
-import { selectSelectedCameraConfigs } from './cameras-selectors';
+import {createAsyncThunk} from '@reduxjs/toolkit';
+import {RootState} from '../../types';
+import {serverUrls} from '@/services';
+import {Camera, createDefaultCameraConfig, DetectCamerasRequest, DetectCamerasResponse,} from './cameras-types';
 
 export const detectCameras = createAsyncThunk<
     Camera[],
@@ -65,60 +56,60 @@ export const detectCameras = createAsyncThunk<
     }
 );
 
-export const camerasConnectOrUpdate = createAsyncThunk<
-    ConnectCamerasResponse,
-    void,
-    { state: RootState }
->(
-    'cameras/connect',
-    async (_, { getState }) => {
-        const state = getState();
-        const cameraConfigs = selectSelectedCameraConfigs(state);
-
-        if (Object.keys(cameraConfigs).length === 0) {
-            throw new Error('No cameras selected for connection');
-        }
-
-        const request: CamerasConnectOrUpdateRequest = { camera_configs: cameraConfigs };
-
-        const response = await fetch(serverUrls.endpoints.camerasConnectOrUpdate, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Failed to connect to cameras');
-        }
-
-        return response.json() as Promise<ConnectCamerasResponse>;
-    }
-);
-
-
-export const closeCameras = createAsyncThunk<void, void, { state: RootState }>(
-    'cameras/close',
-    async () => {
-        const response = await fetch(serverUrls.endpoints.closeAll, {
-            method: 'DELETE',
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to close cameras: ${response.statusText}`);
-        }
-    }
-);
-
-export const pauseUnpauseCameras = createAsyncThunk<void, void, { state: RootState }>(
-    'cameras/pause',
-    async () => {
-        const response = await fetch(serverUrls.endpoints.pauseUnpauseCameras, {
-            method: 'GET',
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to pause/unpause cameras: ${response.statusText}`);
-        }
-    }
-);
+// export const camerasConnectOrUpdate = createAsyncThunk<
+//     ConnectCamerasResponse,
+//     void,
+//     { state: RootState }
+// >(
+//     'cameras/connect',
+//     async (_, { getState }) => {
+//         const state = getState();
+//         const cameraConfigs = selectSelectedCameraConfigs(state);
+//
+//         if (Object.keys(cameraConfigs).length === 0) {
+//             throw new Error('No cameras selected for connection');
+//         }
+//
+//         const request: CamerasConnectOrUpdateRequest = { camera_configs: cameraConfigs };
+//
+//         const response = await fetch(serverUrls.endpoints.camerasConnectOrUpdate, {
+//             method: 'POST',
+//             headers: { 'Content-Type': 'application/json' },
+//             body: JSON.stringify(request),
+//         });
+//
+//         if (!response.ok) {
+//             const error = await response.json();
+//             throw new Error(error.detail || 'Failed to connect to cameras');
+//         }
+//
+//         return response.json() as Promise<ConnectCamerasResponse>;
+//     }
+// );
+//
+//
+// export const closeCameras = createAsyncThunk<void, void, { state: RootState }>(
+//     'cameras/close',
+//     async () => {
+//         const response = await fetch(serverUrls.endpoints.closeAll, {
+//             method: 'DELETE',
+//         });
+//
+//         if (!response.ok) {
+//             throw new Error(`Failed to close cameras: ${response.statusText}`);
+//         }
+//     }
+// );
+//
+// export const pauseUnpauseCameras = createAsyncThunk<void, void, { state: RootState }>(
+//     'cameras/pause',
+//     async () => {
+//         const response = await fetch(serverUrls.endpoints.pauseUnpauseCameras, {
+//             method: 'GET',
+//         });
+//
+//         if (!response.ok) {
+//             throw new Error(`Failed to pause/unpause cameras: ${response.statusText}`);
+//         }
+//     }
+// );

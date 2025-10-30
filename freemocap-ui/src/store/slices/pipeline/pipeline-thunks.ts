@@ -15,7 +15,7 @@ export const connectPipeline = createAsyncThunk<
         const state = getState();
 
         const cameraConfigs = selectSelectedCameraConfigs(state);
-        const response = await fetch(serverUrls.endpoints.pipelineConnect, {
+        const response = await fetch(serverUrls.endpoints.pipelineConnectOrUpdate, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ camera_configs: cameraConfigs, ...request }),
@@ -29,15 +29,31 @@ export const connectPipeline = createAsyncThunk<
     })
 
 
-export const disconnectPipeline = createAsyncThunk<void, void, { state: RootState }>(
-    'pipeline/disconnect',
+export const closePipeline = createAsyncThunk<void, void, { state: RootState }>(
+    'pipeline/close',
     async () => {
-        const response = await fetch(serverUrls.endpoints.pipelineDisconnect, {
+        const response = await fetch(serverUrls.endpoints.pipelineClose, {
             method: 'DELETE',
         });
 
         if (!response.ok) {
-            console.error(`Failed to disconnect pipeline: ${response.statusText}`);
+            console.error(`Failed to close pipeline: ${response.statusText}`);
+        }
+    }
+);
+
+
+
+
+export const pauseUnpausePipeline = createAsyncThunk<void, void, { state: RootState }>(
+    'cameras/pause',
+    async () => {
+        const response = await fetch(serverUrls.endpoints.pipelinePauseUnpause, {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to pause/unpause cameras: ${response.statusText}`);
         }
     }
 );

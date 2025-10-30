@@ -1,14 +1,9 @@
 // cameras-slice.ts
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import {
-    CamerasState,
-    CameraConfig, extractConfigSettings, areConfigsEqual,
-} from './cameras-types';
-import {
-    detectCameras,
-    camerasConnectOrUpdate,
-    closeCameras,
-} from './cameras-thunks';
+import {createSlice, PayloadAction} from '@reduxjs/toolkit';
+import {areConfigsEqual, CameraConfig, CamerasState, extractConfigSettings,} from './cameras-types';
+import {detectCameras,} from './cameras-thunks';
+import {closePipeline, connectPipeline} from '../pipeline/pipeline-thunks';
+
 
 const initialState: CamerasState = {
     cameras: [],
@@ -42,12 +37,11 @@ export const cameraSlice = createSlice({
                 cam => cam.id === action.payload.cameraId
             );
             if (camera) {
-                camera.desiredConfig = { ...camera.desiredConfig, ...action.payload.config };
+                camera.desiredConfig = {...camera.desiredConfig, ...action.payload.config};
                 // Check if there's now a mismatch
                 camera.hasConfigMismatch = !areConfigsEqual(camera.actualConfig, camera.desiredConfig);
             }
         },
-
 
         configCopiedToAll: (state, action: PayloadAction<string>) => {
             const sourceCamera = state.cameras.find(cam => cam.id === action.payload);
@@ -66,8 +60,6 @@ export const cameraSlice = createSlice({
                 }
             });
         },
-
-
     },
 
     extraReducers: (builder) => {
@@ -86,34 +78,32 @@ export const cameraSlice = createSlice({
                 state.error = action.error.message || 'Failed to detect cameras';
             })
 
-            // ========== Connect Cameras ==========
-            .addCase(camerasConnectOrUpdate.pending, (state) => {
+            // ========== Connect Pipeline ==========
+            .addCase(connectPipeline.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
             })
-            .addCase(camerasConnectOrUpdate.fulfilled, (state, action) => {
+            .addCase(connectPipeline.fulfilled, (state, action) => {
                 state.isLoading = false;
-                // Update both actual and desired configs from server response
+                // Update camera actual configs from server response
                 Object.entries(action.payload.camera_configs).forEach(
                     ([cameraId, config]) => {
                         const camera = state.cameras.find(cam => cam.id === cameraId);
                         if (camera) {
                             camera.actualConfig = config as CameraConfig;
-                            camera.desiredConfig = { ...config as CameraConfig };
-                            camera.hasConfigMismatch = false;
+                            camera.hasConfigMismatch = !areConfigsEqual(camera.actualConfig, camera.desiredConfig);
                             camera.connectionStatus = 'connected';
                         }
                     }
                 );
             })
-            .addCase(camerasConnectOrUpdate.rejected, (state, action) => {
+            .addCase(connectPipeline.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.error.message || 'Failed to connect to cameras';
             })
 
-
-            // ========== Close Cameras ==========
-            .addCase(closeCameras.fulfilled, (state) => {
+            // ========== Close Pipeline ==========
+            .addCase(closePipeline.fulfilled, (state) => {
                 state.cameras.forEach(camera => {
                     camera.connectionStatus = 'available';
                     camera.metrics = undefined;

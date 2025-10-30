@@ -4,9 +4,12 @@ import uuid
 from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
+
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
+from skellycam.core.camera.config.camera_config import CameraConfigs
+
 from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
@@ -45,6 +48,15 @@ class ProcessingPipeline:
     @property
     def camera_group_id(self) -> CameraGroupIdString:
         return self.camera_group.id
+
+    @property
+    def camera_ids(self) -> list[CameraIdString]:
+        return list(self.camera_nodes.keys())
+
+    @property
+    def camera_configs(self) -> CameraConfigs:
+        return self.camera_group.configs
+
 
     @classmethod
     def from_config(cls,
@@ -112,9 +124,14 @@ class ProcessingPipeline:
         logger.debug(f"Shutting down {self.__class__.__name__}...")
 
         self.ipc.shutdown_pipeline()
-        for camera_id, camera_process in self.camera_nodes.items():
-            camera_process.shutdown()
+        for camera_id, camera_node in self.camera_nodes.items():
+            camera_node.shutdown()
         self.aggregation_node.shutdown()
+        self.camera_group.close()
+
+    def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
+        return self.camera_group.update_camera_settings(requested_configs=camera_configs)
+
 
     def get_latest_frontend_payload(self, if_newer_than: int) -> tuple[ bytes,FrontendPayload] | None:
         if self.camera_group.shm.latest_multiframe_number <= if_newer_than:

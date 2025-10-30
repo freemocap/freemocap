@@ -1,14 +1,12 @@
+import logging
 import multiprocessing
 from dataclasses import dataclass, field
 
-from skellycam.core.camera_group.camera_group import CameraGroup
-
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.processing_pipeline import ProcessingPipeline, FrontendPayload
-from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputMessage
-from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
+from freemocap.core.types.type_overloads import PipelineIdString
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
-import logging
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -16,8 +14,15 @@ class PipelineManager:
     global_kill_flag: multiprocessing.Value
     pipelines: dict[PipelineIdString, ProcessingPipeline] = field(default_factory=dict)
 
-    def create_pipeline(self,
-                        pipeline_config:PipelineConfig ) -> ProcessingPipeline:
+    def create_or_update_pipeline(self,
+                                  pipeline_config:PipelineConfig) -> ProcessingPipeline:
+
+        # get existing pipeline for the provided camera configs, if it exists
+        for pipeline in self.pipelines.values():
+            if set(pipeline.camera_ids) == set(pipeline_config.camera_ids):
+                logger.info(f"Found existing pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
+                pipeline.update_camera_configs(camera_configs=pipeline_config.camera_configs)
+                return pipeline
         pipeline =  ProcessingPipeline.from_config(pipeline_config=pipeline_config,
                                                     global_kill_flag=self.global_kill_flag)
         pipeline.start()
@@ -38,3 +43,15 @@ class PipelineManager:
             if not output is None:
                 latest_outputs[pipeline_id] = output
         return latest_outputs
+
+    def pause_unpause_pipelines(self):
+        for pipeline in self.pipelines.values():
+            pipeline.camera_group.pause_unpause()
+
+    def start_recording_all(self, recording_info: RecordingInfo):
+        for pipeline in self.pipelines.values():
+            pipeline.camera_group.start_recording(recording_info=recording_info)
+
+    def stop_recording_all(self):
+        for pipeline in self.pipelines.values():
+            pipeline.camera_group.stop_recording()

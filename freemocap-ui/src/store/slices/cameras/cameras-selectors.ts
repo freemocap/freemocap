@@ -38,19 +38,7 @@ export const selectSelectedCameraConfigs = createSelector(
     }
 );
 
-// Get actual configs for all cameras
-export const selectActualCameraConfigs = createSelector(
-    [selectCameras],
-    (cameras): Record<string, CameraConfig> => {
-        return cameras.reduce(
-            (configs, camera) => ({
-                ...configs,
-                [camera.id]: camera.actualConfig,
-            }),
-            {} as Record<string, CameraConfig>
-        );
-    }
-);
+
 
 // ========== Mismatch Selectors ==========
 export const selectCamerasWithConfigMismatch = createSelector(

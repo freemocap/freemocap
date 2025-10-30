@@ -1,6 +1,6 @@
 import {createSlice} from "@reduxjs/toolkit";
 import {PipelineState} from "@/store/slices/pipeline/pipeline-types";
-import {connectPipeline, disconnectPipeline} from "@/store/slices/pipeline/pipeline-thunks";
+import {connectPipeline, closePipeline} from "@/store/slices/pipeline/pipeline-thunks";
 
 const initialState: PipelineState = {
     cameraGroupId: null,
@@ -42,17 +42,17 @@ export const pipelineSlice = createSlice({
             })
 
         // disconnect pipeline
-         .addCase(disconnectPipeline.pending, (state) => {
+         .addCase(closePipeline.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
             })
-            .addCase(disconnectPipeline.fulfilled, (state) => {
+            .addCase(closePipeline.fulfilled, (state) => {
                 state.cameraGroupId = null;
                 state.pipelineId = null;
                 state.isConnected = false;
                 state.isLoading = false;
             })
-            .addCase(disconnectPipeline.rejected, (state, action) => {
+            .addCase(closePipeline.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.error.message || 'Failed to disconnect pipeline';
             });

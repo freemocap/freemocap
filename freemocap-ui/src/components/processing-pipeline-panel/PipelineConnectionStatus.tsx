@@ -4,7 +4,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {
     connectPipeline,
-    disconnectPipeline,
+    closePipeline,
     selectCanConnectPipeline,
     selectCanDisconnectPipeline,
     selectIsPipelineConnected,
@@ -30,7 +30,7 @@ export const PipelineConnectionStatus = () => {
 
         if (isConnected) {
             console.log('Disconnecting from pipeline');
-            await dispatch(disconnectPipeline());
+            await dispatch(closePipeline());
         } else {
             console.log('Connecting to pipeline');
             await dispatch(connectPipeline(undefined));

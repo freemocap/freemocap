@@ -2,17 +2,14 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 
-from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_skellycam_app
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_manager import PipelineManager
-from freemocap.core.pipeline.processing_pipeline import FrontendPayload
-from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputMessage
-from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_overlay_data import CharucoOverlayData
+from freemocap.core.pipeline.processing_pipeline import FrontendPayload, ProcessingPipeline
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 logger = logging.getLogger(__name__)
 
 
@@ -41,13 +38,22 @@ class FreemocApp:
     def camera_group_manager(self):
         return self.skellycam_app.camera_group_manager
 
-    def connect_pipeline(self,
-                         pipeline_config: PipelineConfig) -> tuple[CameraGroupIdString, PipelineIdString]:
-        pipeline = self.pipeline_manager.create_pipeline(pipeline_config=pipeline_config)
-        return pipeline.camera_group_id, pipeline.id
+    def connect_or_update_pipeline(self,
+                                   pipeline_config: PipelineConfig) -> ProcessingPipeline:
+        pipeline = self.pipeline_manager.create_or_update_pipeline(pipeline_config=pipeline_config)
+        return pipeline
 
-    def disconnect_pipeline(self):
+    def close_pipelines(self):
         self.pipeline_manager.close_all_pipelines()
+
+    def pause_unpause_pipelines(self):
+        self.pipeline_manager.pause_unpause_pipelines()
+
+    def start_recording_all(self,recording_info:RecordingInfo):
+        self.pipeline_manager.start_recording_all(recording_info=recording_info)
+
+    def stop_recording_all(self):
+        self.pipeline_manager.stop_recording_all()
 
     def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[PipelineIdString, tuple[bytes,FrontendPayload]]:
         if len(self.pipeline_manager.pipelines) == 0:

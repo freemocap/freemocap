@@ -11,14 +11,13 @@ interface ImageMeshProps {
 export function ImageMesh({ cameraId, position }: ImageMeshProps) {
     const { subscribeToFrames } = useServer();
 
-    // Store the current bitmap (don't null it out - keep it alive for texture)
     const currentBitmapRef = useRef<ImageBitmap | null>(null);
     const textureRef = useRef<THREE.Texture | null>(null);
     const hasNewFrameRef = useRef<boolean>(false);
 
-    // Create texture once - use regular Texture, not CanvasTexture
+    // FIX 1: Change from CanvasTexture to Texture
     const texture = useMemo(() => {
-        const tex = new THREE.CanvasTexture();
+        const tex = new THREE.Texture(); // ← Changed from CanvasTexture
         tex.minFilter = THREE.LinearFilter;
         tex.magFilter = THREE.LinearFilter;
         tex.format = THREE.RGBAFormat;
@@ -27,7 +26,6 @@ export function ImageMesh({ cameraId, position }: ImageMeshProps) {
         return tex;
     }, []);
 
-    // Create material once
     const material = useMemo(() => {
         return new THREE.MeshBasicMaterial({
             map: texture,
@@ -35,20 +33,15 @@ export function ImageMesh({ cameraId, position }: ImageMeshProps) {
         });
     }, [texture]);
 
-    // Subscribe to frame updates
+    // FIX 2: Subscribe with cameraId parameter
     useEffect(() => {
-        const unsubscribe = subscribeToFrames((camId, bitmap) => {
-            if (camId === cameraId) {
-                // Close previous bitmap to free memory
-                if (currentBitmapRef.current) {
-                    currentBitmapRef.current.close();
-                }
-                currentBitmapRef.current = bitmap;
-                hasNewFrameRef.current = true;
-            } else {
-                // CRITICAL: Close bitmaps that aren't for this camera to prevent memory leak
-                bitmap.close();
+        const unsubscribe = subscribeToFrames(cameraId, (bitmap) => {
+            // Close previous bitmap to free memory
+            if (currentBitmapRef.current) {
+                currentBitmapRef.current.close();
             }
+            currentBitmapRef.current = bitmap;
+            hasNewFrameRef.current = true;
         });
 
         return () => {
@@ -60,20 +53,15 @@ export function ImageMesh({ cameraId, position }: ImageMeshProps) {
         };
     }, [cameraId, subscribeToFrames]);
 
-    // Update texture in render loop (efficient, only when new frame arrives)
+    // Update texture in render loop
     useFrame(() => {
         if (hasNewFrameRef.current && currentBitmapRef.current && textureRef.current) {
-            // Update texture source to ImageBitmap
             textureRef.current.image = currentBitmapRef.current;
             textureRef.current.needsUpdate = true;
-
-            // Clear the flag, but DON'T null out the bitmap - keep it for rendering
             hasNewFrameRef.current = false;
         }
     });
 
-    // Calculate mesh size based on image aspect ratio
-    // Will dynamically resize when first frame arrives
     const meshGeometry = useMemo(() => {
         const height = 2.0;
         const width = height * (16 / 9);

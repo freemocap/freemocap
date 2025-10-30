@@ -14,7 +14,7 @@ import {
 } from "@/services/server/server-helpers/charuco_types";
 import {FrameCompositor} from "@/services/server/server-helpers/frame_compositor";
 
-type FrameSubscriber = (cameraId: string, bitmap: ImageBitmap) => void;
+type FrameSubscriber = (bitmap: ImageBitmap) => void;
 
 interface ServerContextValue {
     isConnected: boolean;
@@ -24,7 +24,7 @@ interface ServerContextValue {
     setCanvasForCamera: (cameraId: string, canvas: HTMLCanvasElement) => void;
     getFps: (cameraId: string) => number | null;
     connectedCameraIds: string[];
-    subscribeToFrames: (callback: FrameSubscriber) => () => void;
+    subscribeToFrames: (cameraId:string,callback: FrameSubscriber) => () => void;
 }
 
 const ServerContext = createContext<ServerContextValue | null>(null);
@@ -81,7 +81,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const frameCompositorRef = useRef<FrameCompositor | null>(null);
-    const frameSubscribersRef = useRef<Set<FrameSubscriber>>(new Set());
+    const frameSubscribersRef = useRef<Map<string, Set<FrameSubscriber>>>(new Map());
     const latestObservationsRef = useRef<Map<string, CharucoObservation>>(new Map());
 
     useEffect(() => {
@@ -177,10 +177,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         );
 
                         if (frameSubscribersRef.current.size > 0) {
-                            const clonedBitmap = await createImageBitmap(compositeBitmap);
-                            frameSubscribersRef.current.forEach(callback => {
-                                callback(frameData.cameraId, clonedBitmap);
-                            });
+                            const subscribers = frameSubscribersRef.current.get(frameData.cameraId);
+                            if (subscribers && subscribers.size > 0) {
+                                // Create one clone per subscriber for THIS camera only
+                                for (const callback of subscribers) {
+                                    const clonedBitmap = await createImageBitmap(compositeBitmap);
+                                    callback(clonedBitmap);
+                                }
+                            }
                         }
 
                         // Send composited frame to worker - ACK only when rendered
@@ -255,10 +259,18 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return frameProcessorRef.current?.getFps(cameraId) ?? null;
     }, []);
 
-    const subscribeToFrames = useCallback((callback: FrameSubscriber): (() => void) => {
-        frameSubscribersRef.current.add(callback);
+    const subscribeToFrames = useCallback((cameraId: string, callback: FrameSubscriber): (() => void) => {
+        if (!frameSubscribersRef.current.has(cameraId)) {
+            frameSubscribersRef.current.set(cameraId, new Set());
+        }
+        frameSubscribersRef.current.get(cameraId)!.add(callback);
+
         return () => {
-            frameSubscribersRef.current.delete(callback);
+            const subscribers = frameSubscribersRef.current.get(cameraId);
+            subscribers?.delete(callback);
+            if (subscribers?.size === 0) {
+                frameSubscribersRef.current.delete(cameraId);
+            }
         };
     }, []);
 

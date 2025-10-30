@@ -79,14 +79,14 @@ export function ThreeJsScene() {
 
             <axesHelper/>
 
-            {/* Render ImageMesh for each connected camera */}
-            {connectedCameraIds.map((cameraId, index) => (
-                <ImageMesh
-                    key={cameraId}
-                    cameraId={cameraId}
-                    position={cameraPositions[index] || [0, 0, 0]}
-                />
-            ))}
+            {/*/!* Render ImageMesh for each connected camera *!/*/}
+            {/*{connectedCameraIds.map((cameraId, index) => (*/}
+            {/*    <ImageMesh*/}
+            {/*        key={cameraId}*/}
+            {/*        cameraId={cameraId}*/}
+            {/*        position={cameraPositions[index] || [0, 0, 0]}*/}
+            {/*    />*/}
+            {/*))}*/}
 
             {numPoints > 0 && (
                 <instancedMesh ref={sphereRef} args={[sphereGeometry, sphereMaterial, numPoints]}/>

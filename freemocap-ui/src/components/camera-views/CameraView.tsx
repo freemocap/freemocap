@@ -32,7 +32,7 @@ export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, ma
         const updateFps = (): void => {
             const fps = getFps(cameraId);
             if (fpsDisplayRef.current && fps !== null) {
-                fpsDisplayRef.current.textContent = `${fps.toFixed(1)} FPS`;
+                fpsDisplayRef.current.textContent = `Display FPS ${fps.toFixed(1)}`;
             }
             animationFrameRef.current = requestAnimationFrame(updateFps);
         };

@@ -1,25 +1,31 @@
 import React, { useState } from 'react';
-import { Box, IconButton, Paper, TextField, Checkbox, FormControlLabel, Tooltip } from '@mui/material';
+import { Box, IconButton, Paper, TextField, Checkbox, FormControlLabel, Tooltip, Button } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
 import GridViewIcon from '@mui/icons-material/GridView';
+import ViewInArIcon from '@mui/icons-material/ViewInAr';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { useServer } from '@/services/server/ServerContextProvider';
 
 interface CameraSettings {
     columns: number | null;
+    show3dView: boolean;
 }
 
 interface CamerasViewSettingsOverlayProps {
     onSettingsChange: (settings: CameraSettings) => void;
+    onResetViews: () => void;
 }
 
 export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProps> = ({
-                                                                                          onSettingsChange
+                                                                                          onSettingsChange,
+                                                                                          onResetViews
                                                                                       }) => {
     const { connectedCameraIds } = useServer();
     const [isOpen, setIsOpen] = useState<boolean>(false);
     const [isAuto, setIsAuto] = useState<boolean>(true);
     const [manualColumns, setManualColumns] = useState<number>(2);
+    const [show3dView, setShow3dView] = useState<boolean>(true);
 
     const getAutoColumns = (total: number): number => {
         if (total <= 1) return 1;
@@ -33,7 +39,10 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
     const handleAutoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const checked = event.target.checked;
         setIsAuto(checked);
-        onSettingsChange({ columns: checked ? null : manualColumns });
+        onSettingsChange({
+            columns: checked ? null : manualColumns,
+            show3dView
+        });
     };
 
     const handleColumnsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,8 +53,24 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
                 // User is adjusting input while Auto is checked, so uncheck Auto
                 setIsAuto(false);
             }
-            onSettingsChange({ columns: value });
+            onSettingsChange({
+                columns: value,
+                show3dView
+            });
         }
+    };
+
+    const handle3dViewChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const checked = event.target.checked;
+        setShow3dView(checked);
+        onSettingsChange({
+            columns: isAuto ? null : manualColumns,
+            show3dView: checked
+        });
+    };
+
+    const handleResetViews = () => {
+        onResetViews();
     };
 
     return (
@@ -93,7 +118,7 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
                         <Box sx={{ fontWeight: 600 }}>Grid Columns</Box>
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 3 }}>
                         <FormControlLabel
                             control={
                                 <Checkbox
@@ -122,6 +147,47 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
                             helperText={isAuto ? `Auto-detected: ${autoColumns}` : "Enter any positive number"}
                         />
                     </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <ViewInArIcon fontSize="small" />
+                        <Box sx={{ fontWeight: 600 }}>3D View</Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 3 }}>
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={show3dView}
+                                    onChange={handle3dViewChange}
+                                    sx={{
+                                        '&.Mui-checked': {
+                                            color: 'text.primary',
+                                        },
+                                    }}
+                                />
+                            }
+                            label="Show 3D View"
+                        />
+                    </Box>
+
+                    <Button
+                        variant="outlined"
+                        startIcon={<RestartAltIcon />}
+                        onClick={handleResetViews}
+                        fullWidth
+                        sx={{
+                            mt: 1,
+                            textTransform: 'none',
+                            color: 'text.primary',
+                            borderColor: 'text.primary',
+                            '&:hover': {
+                                borderColor: 'text.primary',
+                                backgroundColor: 'action.hover',
+                            },
+                        }}
+                    >
+                        Reset Panel Sizes
+                    </Button>
                 </Paper>
             )}
         </>

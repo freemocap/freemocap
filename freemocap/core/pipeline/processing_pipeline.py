@@ -132,9 +132,7 @@ class ProcessingPipeline:
         return self.camera_group.update_camera_settings(requested_configs=camera_configs)
 
 
-    def get_latest_frontend_payload(self, if_newer_than: int) -> tuple[ bytes,FrontendPayload] | None:
-        if self.camera_group.shm.latest_multiframe_number <= if_newer_than:
-            return None
+    def get_latest_frontend_payload(self) -> tuple[ bytes,FrontendPayload] | None:
         if not self.alive:
             return None
         aggregation_output:AggregationNodeOutputMessage|None = None

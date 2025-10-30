@@ -16,26 +16,20 @@ export class CanvasManager {
     private workers: Map<string, CanvasWorker> = new Map();
     private workerErrors: Map<string, number> = new Map();
     private pendingCanvases: Map<string, HTMLCanvasElement> = new Map();
+    private renderCallbacks: Map<string, () => void> = new Map(); // cameraId -> callback
     private readonly maxWorkerErrors: number = 3;
 
-    /**
-     * Set or update the canvas for a camera.
-     * Only creates a new worker if one doesn't exist or if the canvas has changed.
-     */
     public setCanvasForCamera(cameraId: string, canvas: HTMLCanvasElement): boolean {
-        // Check if this exact canvas is already set up
         const existing = this.workers.get(cameraId);
         if (existing?.canvas === canvas && existing.initialized) {
             return true;
         }
 
-        // Check if this is a different canvas for the same camera
         if (existing && existing.canvas !== canvas) {
             console.log(`Canvas changed for camera ${cameraId}, recreating worker`);
             this.terminateWorker(cameraId);
         }
 
-        // Store pending canvas in case we need to retry
         this.pendingCanvases.set(cameraId, canvas);
 
         try {
@@ -53,7 +47,6 @@ export class CanvasManager {
                 initialized: true
             });
 
-            // Reset error count on successful creation
             this.workerErrors.delete(cameraId);
             this.pendingCanvases.delete(cameraId);
 
@@ -67,29 +60,34 @@ export class CanvasManager {
         }
     }
 
-    /**
-     * Send a frame to a worker. Creates the worker if it doesn't exist yet.
-     */
-    public sendFrameToWorker(cameraId: string, bitmap: ImageBitmap): boolean {
+    public sendFrameToWorker(
+        cameraId: string,
+        bitmap: ImageBitmap,
+        onRendered?: () => void
+    ): boolean {
         const workerInfo = this.workers.get(cameraId);
 
         if (!workerInfo?.initialized) {
-            // Check if we have a pending canvas we can use
             const pendingCanvas = this.pendingCanvases.get(cameraId);
             if (pendingCanvas) {
                 console.log(`Worker not ready for ${cameraId}, attempting to create from pending canvas`);
                 if (this.setCanvasForCamera(cameraId, pendingCanvas)) {
-                    // Try sending again after creation
-                    return this.sendFrameToWorker(cameraId, bitmap);
+                    return this.sendFrameToWorker(cameraId, bitmap, onRendered);
                 }
             }
 
             console.warn(`No initialized worker for camera ${cameraId}, dropping frame`);
             bitmap.close();
+            onRendered?.();
             return false;
         }
 
         try {
+            // Store callback for this camera
+            if (onRendered) {
+                this.renderCallbacks.set(cameraId, onRendered);
+            }
+
             workerInfo.worker.postMessage(
                 { type: 'frame', bitmap },
                 [bitmap]
@@ -98,14 +96,12 @@ export class CanvasManager {
         } catch (error) {
             console.error(`Failed to send frame to worker ${cameraId}:`, error);
             bitmap.close();
+            onRendered?.();
             this.recordWorkerError(cameraId);
             return false;
         }
     }
 
-    /**
-     * Terminate a worker for a specific camera
-     */
     public terminateWorker(cameraId: string): void {
         const workerInfo = this.workers.get(cameraId);
         if (workerInfo) {
@@ -118,13 +114,11 @@ export class CanvasManager {
             this.workers.delete(cameraId);
         }
 
-        // Also clean up any pending canvas
+        // Clean up callback
+        this.renderCallbacks.delete(cameraId);
         this.pendingCanvases.delete(cameraId);
     }
 
-    /**
-     * Terminate all workers
-     */
     public terminateAllWorkers(): void {
         console.log(`Terminating all workers (${this.workers.size} active)`);
         for (const [cameraId] of this.workers) {
@@ -132,18 +126,13 @@ export class CanvasManager {
         }
         this.workerErrors.clear();
         this.pendingCanvases.clear();
+        this.renderCallbacks.clear();
     }
 
-    /**
-     * Get list of active camera IDs
-     */
     public getActiveCameraIds(): string[] {
         return Array.from(this.workers.keys());
     }
 
-    /**
-     * Check if a worker exists and is initialized for a camera
-     */
     public hasWorker(cameraId: string): boolean {
         const worker = this.workers.get(cameraId);
         return worker?.initialized ?? false;
@@ -156,7 +145,6 @@ export class CanvasManager {
         try {
             const worker = new Worker(workerUrl);
 
-            // Set up error handling
             worker.onerror = (error) => {
                 console.error(`Worker error for camera ${cameraId}:`, error);
                 this.recordWorkerError(cameraId);
@@ -164,6 +152,16 @@ export class CanvasManager {
 
             worker.onmessageerror = (error) => {
                 console.error(`Worker message error for camera ${cameraId}:`, error);
+            };
+
+            worker.onmessage = (e) => {
+                if (e.data.type === 'frameRendered') {
+                    const callback = this.renderCallbacks.get(cameraId);
+                    if (callback) {
+                        callback();
+                        this.renderCallbacks.delete(cameraId);
+                    }
+                }
             };
 
             return worker;

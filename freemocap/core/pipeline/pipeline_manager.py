@@ -39,11 +39,11 @@ class PipelineManager:
             self.pipelines.clear()
         logger.info("All pipelines closed successfully")
 
-    def get_latest_frontend_payloads(self, if_newer_than:int) -> dict[PipelineIdString,  tuple[bytes | None, FrontendPayload | None]]:
+    def get_latest_frontend_payloads(self) -> dict[PipelineIdString,  tuple[bytes | None, FrontendPayload | None]]:
         latest_outputs = {}
         with self.lock:
             for pipeline_id, pipeline in self.pipelines.items():
-                output = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
+                output = pipeline.get_latest_frontend_payload()
                 if not output is None:
                     latest_outputs[pipeline_id] = output
         return latest_outputs

@@ -55,11 +55,11 @@ class FreemocApp:
     def stop_recording_all(self):
         self.pipeline_manager.stop_recording_all()
 
-    def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[PipelineIdString, tuple[bytes,FrontendPayload]]:
+    def get_latest_frontend_payloads(self) -> dict[PipelineIdString, tuple[bytes,FrontendPayload]]:
         if len(self.pipeline_manager.pipelines) == 0:
             return {}
 
-        return self.pipeline_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)
+        return self.pipeline_manager.get_latest_frontend_payloads()
 
 
     def close(self):

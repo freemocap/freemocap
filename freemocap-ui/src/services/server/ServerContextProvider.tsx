@@ -16,7 +16,6 @@ import {FrameCompositor} from "@/services/server/server-helpers/frame_compositor
 
 type FrameSubscriber = (cameraId: string, bitmap: ImageBitmap) => void;
 
-
 interface ServerContextValue {
     isConnected: boolean;
     connect: () => void;
@@ -30,7 +29,6 @@ interface ServerContextValue {
 
 const ServerContext = createContext<ServerContextValue | null>(null);
 
-
 function arraysEqual(a: string[], b: string[]): boolean {
     if (a.length !== b.length) return false;
     const sortedA = [...a].sort();
@@ -38,7 +36,6 @@ function arraysEqual(a: string[], b: string[]): boolean {
     return sortedA.every((val, idx) => val === sortedB[idx]);
 }
 
-// Type guard to check if a message is a log record
 function isLogRecord(data: any): data is LogRecord {
     return (
         data &&
@@ -49,7 +46,6 @@ function isLogRecord(data: any): data is LogRecord {
     );
 }
 
-// Type for framerate update message from backend
 interface FramerateUpdateMessage {
     message_type: 'framerate_update';
     camera_group_id: string;
@@ -57,7 +53,6 @@ interface FramerateUpdateMessage {
     frontend_framerate: DetailedFramerate;
 }
 
-// Type guard to check if a message is a framerate update
 function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
     return (
         data &&
@@ -71,7 +66,6 @@ function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
     );
 }
 
-// Type guard for CharucoOverlayDataMessage using Zod
 function isCharucoOverlayDataMessage(data: any): data is CharucoOverlayDataMessage {
     const result = CharucoOverlayDataMessageSchema.safeParse(data);
     return result.success;
@@ -80,21 +74,16 @@ function isCharucoOverlayDataMessage(data: any): data is CharucoOverlayDataMessa
 export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({children}) => {
     const dispatch = useDispatch<AppDispatch>();
 
-    // Reactive state - only updates when camera list actually changes
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [connectedCameraIds, setConnectedCameraIds] = useState<string[]>([]);
 
-    // Service instances
     const wsConnectionRef = useRef<WebSocketConnection | null>(null);
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const frameCompositorRef = useRef<FrameCompositor | null>(null);
     const frameSubscribersRef = useRef<Set<FrameSubscriber>>(new Set());
-
-    // Store latest observation for each camera
     const latestObservationsRef = useRef<Map<string, CharucoObservation>>(new Map());
 
-    // Initialize services once
     useEffect(() => {
         wsConnectionRef.current = new WebSocketConnection({
             url: serverUrls.getWebSocketUrl(),
@@ -123,7 +112,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
     }, []);
 
-    // Set up WebSocket connection and handlers
     useEffect(() => {
         const ws = wsConnectionRef.current;
         if (!ws) return;
@@ -141,22 +129,18 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
 
         const handleMessage = async (event: MessageEvent): Promise<void> => {
-            // Handle binary frame data
             if (event.data instanceof ArrayBuffer) {
                 try {
                     const result = await frameProcessorRef.current!.processFramePayload(event.data);
                     if (!result) return;
 
                     const {frames, cameraIds, frameNumbers} = result;
-                    console.log(`received frame #${Array.from(frameNumbers).join(', ')} from cameras: ${Array.from(cameraIds).join(', ')}`);
-                    // Convert Set to sorted array for comparison
+
                     const currentCameraIds = Array.from(cameraIds).sort();
-                    // Update state only if camera list has changed
                     setConnectedCameraIds(prevIds => {
                         if (!arraysEqual(prevIds, currentCameraIds)) {
                             console.log(`Camera list updated: ${currentCameraIds.join(', ')}`);
 
-                            // Clean up workers for cameras that are no longer in the payload
                             const removedCameras = prevIds.filter(id => !cameraIds.has(id));
                             for (const cameraId of removedCameras) {
                                 console.log(`Removing camera ${cameraId} - not in latest payload`);
@@ -169,6 +153,18 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         return prevIds;
                     });
 
+                    // Track remaining frames to render (simple counter - most efficient)
+                    let remainingFrames = frames.length;
+                    const maxFrameNumber = Math.max(...Array.from(frameNumbers));
+
+                    const onFrameRendered = (): void => {
+                        remainingFrames--;
+                        if (remainingFrames === 0) {
+                            // ALL frames rendered - now we can ACK
+                            ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
+                        }
+                    };
+
                     // Composite frames with overlays and send to canvas workers
                     const compositor = frameCompositorRef.current!;
                     for (const frameData of frames) {
@@ -179,51 +175,44 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             frameData.bitmap,
                             observation
                         );
+
                         if (frameSubscribersRef.current.size > 0) {
                             const clonedBitmap = await createImageBitmap(compositeBitmap);
                             frameSubscribersRef.current.forEach(callback => {
                                 callback(frameData.cameraId, clonedBitmap);
                             });
                         }
-                        // Send composited frame to worker
+
+                        // Send composited frame to worker - ACK only when rendered
                         canvasManagerRef.current!.sendFrameToWorker(
                             frameData.cameraId,
-                            compositeBitmap
+                            compositeBitmap,
+                            onFrameRendered
                         );
                     }
 
-                    // Acknowledge the highest frame number
-                    if (frameNumbers.size > 0) {
-                        const maxFrameNumber = Math.max(...Array.from(frameNumbers));
-                        ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
-                    }
+                    // Note: ACK is sent by onFrameRendered callback after ALL frames are done
                 } catch (error) {
                     console.error('Error processing frame:', error);
                     throw error;
                 }
             }
-            // Handle text/JSON messages (logs, framerate updates, charuco observations, etc.)
             else if (typeof event.data === 'string') {
                 try {
                     const jsonData = JSON.parse(event.data);
 
-                    // Handle CharucoOverlayDataMessage (dictionary of camera_id -> observation)
                     if (isCharucoOverlayDataMessage(jsonData)) {
-                        // Store observations for each camera
                         for (const [cameraId, observation] of Object.entries(jsonData)) {
                             latestObservationsRef.current.set(cameraId, observation);
                         }
                     }
-                    // Handle log records
                     else if (isLogRecord(jsonData)) {
                         dispatch(logAdded(jsonData));
                     }
-                    // Handle framerate updates
                     else if (isFramerateUpdate(jsonData)) {
                         dispatch(backendFramerateUpdated(jsonData.backend_framerate));
                         dispatch(frontendFramerateUpdated(jsonData.frontend_framerate));
                     }
-                    // Handle other message types
                     else {
                         console.debug('Received unhandled JSON message:', jsonData);
                     }
@@ -237,7 +226,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         ws.on('state-change', handleStateChange);
         ws.on('message', handleMessage);
 
-        // Auto-connect
         ws.connect();
 
         return () => {
@@ -266,12 +254,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const getFps = useCallback((cameraId: string): number | null => {
         return frameProcessorRef.current?.getFps(cameraId) ?? null;
     }, []);
+
     const subscribeToFrames = useCallback((callback: FrameSubscriber): (() => void) => {
         frameSubscribersRef.current.add(callback);
         return () => {
             frameSubscribersRef.current.delete(callback);
         };
     }, []);
+
     return (
         <ServerContext.Provider value={{
             isConnected,

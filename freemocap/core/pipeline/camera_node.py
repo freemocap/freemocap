@@ -17,7 +17,7 @@ from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigTopic, CameraNodeOutputTopic, \
     PipelineConfigMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage
 from freemocap.core.tasks.calibration_task.calibration_pipeline_task import CalibrationCameraNodeTask
-
+import cv2
 logger = logging.getLogger(__name__)
 
 
@@ -130,9 +130,16 @@ class CameraNode:
                     tik = time.perf_counter_ns()
                     frame_rec_array = camera_shm.get_data_by_index(index=process_frame_number_message.frame_number,
                                                                    rec_array=frame_rec_array)
+                    if frame_rec_array.frame_metadata.camera_config.rotation != -1:
+                        rotated_image = cv2.rotate(
+                            src=frame_rec_array.image[0],
+                            rotateCode=frame_rec_array.frame_metadata.camera_config.rotation[0]
+                        )
+                    else:
+                        rotated_image = frame_rec_array.image[0]
                     charuco_observation = calibration_task.process_image(
                         frame_number=frame_rec_array.frame_metadata.frame_number[0],
-                        image=frame_rec_array.image[0], )
+                        image=rotated_image, )
                     tok = time.perf_counter_ns()
                     if charuco_observation is not None:
                         # Publish the observation to the IPC

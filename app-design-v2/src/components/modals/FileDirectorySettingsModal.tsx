@@ -1,3 +1,63 @@
+/*
+ * ::::: by  Pooya Deperson 2025  <pooyadeperson@gmail.com> :::::
+ *
+ *  React Component: FileDirectorySettingsModal
+ *
+ *  PURPOSE:
+ *     A draggable modal that allows users to configure and manage file
+ *     recording directories, subfolders, and recording name settings.
+ *     It supports directory selection (via Electron, File System Access API,
+ *     or fallback file input), subfolder creation/removal, and filename
+ *     customization with timestamp or auto-increment options.
+ *
+ *  HOW TO USE (React):
+ *     1. Import and render this modal in any component that manages
+ *        recording or file storage configuration.
+ *
+ *        ```jsx
+ *        import FileDirectorySettingsModal from "@/components/modals/FileDirectorySettingsModal";
+ *
+ *        function RecordingConfigPanel() {
+ *          const [open, setOpen] = useState(false);
+ *
+ *          return (
+ *            <>
+ *              <button onClick={() => setOpen(true)}>Open File Settings</button>
+ *              <FileDirectorySettingsModal
+ *                isOpen={open}
+ *                onClose={() => setOpen(false)}
+ *                directoryPath="C:/Recordings"
+ *                onSelectDirectory={(path) => console.log("Selected:", path)}
+ *                onAddSubfolder={() => console.log("Add subfolder")}
+ *                subfolderName=""
+ *                hasSubfolder={false}
+ *                onSelectSubfolder={(name) => console.log("Subfolder:", name)}
+ *                onRemoveSubfolder={() => console.log("Remove subfolder")}
+ *                recordingName="session"
+ *                onSelectRecordingName={(name) => console.log("Recording name:", name)}
+ *                timeStampPrefix={true}
+ *                setTimeStampPrefix={(v) => console.log("Timestamp:", v)}
+ *                autoIncrement={true}
+ *                setAutoIncrement={(v) => console.log("Auto increment:", v)}
+ *                autoIncrementValue={1}
+ *                setAutoIncrementValue={(v) => console.log("Increment value:", v)}
+ *              />
+ *            </>
+ *          );
+ *        }
+ *        ```
+ *
+ *  FEATURES:
+ *     -  Directory Selection — Choose a folder via Electron, native picker,
+ *       or fallback file input.
+ *     -  Subfolder Management — Add, rename, or remove a subfolder.
+ *     -  Recording Name Editor — Customize the base filename for recordings.
+ *     -  Timestamp Prefix — Automatically updates every second when enabled.
+ *     - Auto Increment — Add sequential numbering to filenames.
+ *     - Draggable Modal — Uses `useDraggableTooltips()` to allow repositioning.
+ 
+ */
+
 import React, { useState, useEffect } from "react";
 import useDraggableTooltips from "../hooks/useDraggableTooltips";
 

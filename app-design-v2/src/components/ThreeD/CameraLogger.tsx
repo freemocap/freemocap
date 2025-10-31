@@ -1,3 +1,37 @@
+/*
+ * ::::: by  Pooya Deperson 2025  <pooyadeperson@gmail.com> :::::
+ *
+ * 📁 React Component: CameraLogger
+ *
+ * 📘 PURPOSE:
+ *     A lightweight debug tool that logs the camera’s position and rotation
+ *     values in real-time within a Three.js (React Three Fiber) scene.
+ *
+ * ⚙️ HOW TO USE (React Three Fiber):
+ *     1. Import and add this component *inside your R3F Canvas*.
+ *
+ *        ```jsx
+ *        import { Canvas } from "@react-three/fiber";
+ *        import CameraLogger from "@/components/debug/CameraLogger";
+ *
+ *        function Scene() {
+ *          return (
+ *            <Canvas>
+ *              { Your 3D scene objects here }
+ *              <CameraLogger /> { Logs camera movement }
+ *            </Canvas>
+ *          );
+ *        }
+ *       
+ *
+ *       FEATURES:
+ *      Tracks camera position (`x, y, z`) and rotation (`x, y, z`).
+ *      Logs only when camera values change — avoids console spam.
+ *      Lightweight and non-intrusive (returns `null` – no visual output).
+ *
+ */
+
+
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 

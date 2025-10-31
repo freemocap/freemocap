@@ -1,3 +1,51 @@
+/*
+ *     ::::: by  Pooya Deperson 2025  <pooyadeperson@gmail.com> :::::
+ *
+ * 🔧 React Hook: useDraggableTooltips
+ *
+ * 📘 PURPOSE:
+ *     This hook enables draggable behavior for any DOM element
+ *     that has the CSS class `.draggable`.
+ *     It supports both mouse and touch input, prevents jumpy movement,
+ *     and disables text selection while dragging for a smooth UX.
+ *
+ * 🚀 HOW TO USE (React):
+ *     1. Save this file as: `src/hooks/useDraggableTooltips.ts` (or .js)
+ *     2. Import and call the hook once in a component that mounts globally,
+ *        such as App.tsx or a Layout component:
+ *
+ *        ```jsx
+ *        import useDraggableTooltips from "@/hooks/useDraggableTooltips";
+ *
+ *        export default function App() {
+ *          useDraggableTooltips(); // Activates draggable behavior globally
+ *
+ *          return (
+ *            <div>
+ *              <div className="draggable" style={{ position: "absolute", top: "100px", right: "100px" }}>
+ *                Drag me around!
+ *              </div>
+ *            </div>
+ *          );
+ *        }
+ *        ```
+ *
+ *     3. Any element with the `.draggable` class will automatically
+ *        become movable on the screen.
+ *
+ * 🧩 NOTES:
+ *     - The hook automatically observes newly added `.draggable` elements.
+ *     - Elements with `position: static` are changed to `absolute` for proper movement.
+ *     - Cursor changes between "grab" and "grabbing" while dragging.
+ *     - For accessibility, avoid attaching `.draggable` to buttons or inputs directly.
+ *
+ * ✅ Example Styles (optional):
+ *     .draggable {
+ *       cursor: grab;
+ *       user-select: none;
+ *       touch-action: none;
+ *     }
+ */
 import { useEffect } from "react";
 
 export default function useDraggableTooltips(): void {

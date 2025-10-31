@@ -1,3 +1,26 @@
+/*
+ * ::::: by  Pooya Deperson 2025  <pooyadeperson@gmail.com> :::::
+ *
+ *  React Component: ThreeDScene
+ *
+ *  PURPOSE:
+ *     Renders an interactive 3D scene using React Three Fiber (R3F),
+ *     displaying the "freemocap-skelly.glb" model with lighting,
+ *     grid reference, and camera orbit controls.
+ *
+ *  FUNCTIONAL DETAILS:
+ *     - Uses React `Suspense` for async model loading.
+ *     - Displays a temporary loader overlay (`.skeleton-loader-overlay`)
+ *       while the 3D model is being fetched and initialized.
+ *     - Initializes a perspective camera positioned at `[2.17, 0.97, 2.91]`
+ *       and rotated slightly for a natural viewing angle.
+ *     - `OrbitControls` allows intuitive mouse-based orbiting around the model.
+ *     - `Grid` adds visual reference lines to orient the 3D space.
+ *     - Prevents SSR (Server-Side Rendering) errors by rendering only
+ *       after the component has mounted (`isClient` check).
+ *
+ */
+
 import React, { useState, useEffect, Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid, useGLTF } from "@react-three/drei";

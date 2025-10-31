@@ -1,3 +1,56 @@
+/*
+ * ::::: by  Pooya Deperson 2025  <pooyadeperson@gmail.com> :::::
+ *
+ * 🧩 React Component: ConnectionDropdown
+ *
+ * 📘 PURPOSE:
+ *     Provides a dropdown interface for managing multiple connection states
+ *     (e.g., Python server, WebSocket). Each connection can be toggled
+ *     between “Connect”, “Connecting…”, and “Connected” states.
+ *
+ * ⚙️ HOW TO USE (React):
+ *     1. Import and render this component anywhere in your app where
+ *        you need to monitor or control connection statuses.
+ *
+ *        ```jsx
+ *        import { ConnectionDropdown } from "@/components/ConnectionDropdown";
+ *
+ *        function HeaderBar() {
+ *          return (
+ *            <div className="flex justify-end p-2">
+ *              <ConnectionDropdown />
+ *            </div>
+ *          );
+ *        }
+ *        ```
+ *
+ *     2. The component internally simulates a connection flow:
+ *        - When you click “Connect”, it shows “Connecting…” for 2 seconds,
+ *          then changes to “Connected”.
+ *        - Clicking “Disconnect” resets the state to “Disconnected”.
+ *
+ * 🧠 BEHAVIOR:
+ *     - The dropdown button text and icon reflect the overall system status:
+ *         ✅ "Connected" if all are connected
+ *         ⚙️ "Connecting..." if any are connecting
+ *         ⚠️ "Not Connected" if all are disconnected
+ *     - Each connection type (e.g., Python / WebSocket) is listed inside
+ *       the dropdown with its current status and toggle button.
+ *     - You can customize or extend supported connection types by editing
+ *       the `connectionTypes` array or the `initialConnections` object.
+ *
+ * 🧩 DEPENDENCIES:
+ *     - `DropdownButton` — UI wrapper for the dropdown trigger and content.
+ *     - `ToggleButtonComponent` — Button component handling connect/disconnect logic.
+ *
+ * 💡 CUSTOMIZATION:
+ *     - Adjust connection simulation timing in `handleConnect()`.
+ *     - Replace icons (`connected-icon`, `loader-icon`, `warning-icon`) with
+ *       your preferred icon classes or components.
+ *     - Integrate with real connection APIs by replacing the `setTimeout`
+ *       logic with actual async connection calls.
+ */
+
 import React, { useState } from "react";
 import DropdownButton from "../uicomponents/DropdownButton";
 import ToggleButtonComponent from "../uicomponents/ToggleButtonComponent";

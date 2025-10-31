@@ -1,3 +1,41 @@
+/*
+ * ::::: by  Pooya Deperson 2025  <pooyadeperson@gmail.com> :::::
+ *
+ *  React Component: SplashModal
+ *
+ *  PURPOSE:
+ *     Displays the startup “splash” modal shown when FreeMocap launches.
+ *     It introduces users to key actions (Live Capture, Import Videos)
+ *     and quick links (tutorial, community, privacy policy).
+ *
+ *  HOW TO USE (React):
+ *     1. Import and render inside your app’s main entry screen.
+ *     2. Control visibility via a parent component’s state.
+ *
+ *        ```jsx
+ *        import SplashModal from "@/components/modals/SplashModal";
+ *
+ *        function HomeScreen() {
+ *          const [showSplash, setShowSplash] = useState(true);
+ *
+ *          return (
+ *            <>
+ *              {showSplash && <SplashModal onClose={() => setShowSplash(false)} />}
+ *            </>
+ *          );
+ *        }
+ *        ```
+ *
+ *  FEATURES:
+ *     -  Splash Intro — Launch screen shown at app startup.
+ *     -  Action Buttons — “Capture Live” and “Import Videos” shortcuts.
+ *     -  Checkbox — Allows opt-in for sending anonymous usage info.
+ *     -  Footer Links — Buttons for learning resources and community.
+ *     - ⌨ Keyboard Shortcut — Press `Esc` to close the modal.
+ *     -  Overlay Click — Clicking outside modal closes it safely.
+ *
+ */
+
 import React, { useState } from "react";
 import ButtonSm from "../uicomponents/ButtonSm";
 import Checkbox from "../uicomponents/Checkbox";

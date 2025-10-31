@@ -1,3 +1,44 @@
+/*
+ * ::::: by  Pooya Deperson 2025  <pooyadeperson@gmail.com> :::::
+ *
+ *  React Component: CameraSettingsModal
+ *
+ *  PURPOSE:
+ *     A draggable modal window for controlling camera parameters such as
+ *     resolution, exposure mode, and manual exposure adjustment.
+ *     It integrates with the custom `useDraggableTooltips` hook to allow
+ *     users to reposition the modal freely on the screen.
+ *
+ * HOW TO USE (React):
+ *     1. Import and render the modal anywhere in your app where camera
+ *        configuration is needed.
+ *
+ *        ```jsx
+ *        import CameraSettingsModal from "@/components/modals/CameraSettingsModal";
+ *
+ *        export default function CameraPage() {
+ *          return (
+ *            <CameraSettingsModal
+ *              onRotate={() => console.log("Rotate camera")}
+ *              onClose={() => console.log("Close modal")}
+ *            />
+ *          );
+ *        }
+ *        ```
+ *
+ *     2. The modal automatically becomes draggable via `useDraggableTooltips()`.
+ *        You can click and drag the modal by grabbing anywhere on it.
+ *
+ *  FEATURES:
+ *     -  Resolution Selector — choose from predefined resolutions.
+ *     -  Exposure Selector — toggle between “Auto”, “Manual”, or “Recommended”.
+ *     -  Manual Exposure Adjustment — numeric selector (only active when exposure = Manual).
+ *     -  Rotate Button — triggers the optional `onRotate` callback.
+ *     -  Close Button — triggers the optional `onClose` callback.
+ *
+ */
+
+
 import React, { useState, useEffect } from "react";
 import clsx from "clsx";
 import ValueSelector from "../uicomponents/ValueSelector";

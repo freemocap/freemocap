@@ -3,6 +3,7 @@ import multiprocessing
 import time
 from dataclasses import dataclass
 
+import cv2
 import numpy as np
 from pydantic import BaseModel
 from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
@@ -15,9 +16,11 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 from freemocap.core.pipeline.pipeline_configs import CameraNodeConfig, PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigTopic, CameraNodeOutputTopic, \
-    PipelineConfigMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage
+    PipelineConfigMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage, ShouldCalibrateTopic, \
+    ShouldCalibrateMessage
+from freemocap.core.tasks.calibration_task.calibration_helpers.single_camera_calibrator import SingleCameraCalibrator
 from freemocap.core.tasks.calibration_task.calibration_pipeline_task import CalibrationCameraNodeTask
-import cv2
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,6 +77,8 @@ class CameraNode:
                                                                   ProcessFrameNumberTopic),
                                                               pipeline_config_subscription=ipc.pubsub.get_subscription(
                                                                   PipelineConfigTopic),
+                                                              should_calibrate_subscription=ipc.pubsub.get_subscription(
+                                                                  ShouldCalibrateTopic),
                                                               shm_subscription=ipc.shm_topic.get_subscription()
                                                               ),
                                                   daemon=True
@@ -86,8 +91,9 @@ class CameraNode:
              camera_node_config: CameraNodeConfig,
              process_frame_number_subscription: TopicSubscriptionQueue,
              pipeline_config_subscription: TopicSubscriptionQueue,
+             should_calibrate_subscription: TopicSubscriptionQueue,
              shutdown_self_flag: multiprocessing.Value,
-                shm_subscription: TopicSubscriptionQueue,
+             shm_subscription: TopicSubscriptionQueue,
              ):
         if multiprocessing.parent_process():
             # Configure logging if multiprocessing (i.e. if there is a parent process)
@@ -99,10 +105,12 @@ class CameraNode:
         shm_update_message: SetShmMessage = shm_subscription.get(block=True)
         logger.debug(f"Received SHM setup message - recreating shared memory rig buffer for camera {camera_id}")
         camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=shm_update_message.get_shm_dto_by_camera_id(camera_id),
-                                                               read_only=False)
+                                                           read_only=False)
+        camera_calibrator: SingleCameraCalibrator | None = None
         try:
             logger.trace(f"Starting camera processing node for camera {camera_id}")
-            calibration_task = CalibrationCameraNodeTask.create(config=camera_node_config.calibration_camera_node_config)
+            calibration_task = CalibrationCameraNodeTask.create(
+                config=camera_node_config.calibration_camera_node_config)
             # mocap_task: BaseCameraNodeTask|None = None # TODO - this
 
             frame_rec_array: np.recarray | None = None
@@ -118,6 +126,12 @@ class CameraNode:
                     calibration_task = CalibrationCameraNodeTask.create(
                         config=camera_node_config.calibration_camera_node_config)
                     # mocap_task = None  # TODO - this
+
+                if not should_calibrate_subscription.empty():
+                    _ : ShouldCalibrateMessage = should_calibrate_subscription.get() #dummy message triggers calibration
+                    if camera_calibrator is None:
+                        raise RuntimeError("Received should calibrate message but camera calibrator is None")
+                    camera_calibrator.calibrate()
 
                 # Check for new frame to process
                 if not process_frame_number_subscription.empty():
@@ -140,22 +154,35 @@ class CameraNode:
                     charuco_observation = calibration_task.process_image(
                         frame_number=frame_rec_array.frame_metadata.frame_number[0],
                         image=rotated_image, )
+
                     tok = time.perf_counter_ns()
-                    if charuco_observation is not None:
+                    if charuco_observation is not None and charuco_observation.detected_charuco_corners_in_object_coordinates is not None:
                         # Publish the observation to the IPC
-                        ipc.pubsub.publish(
-                            topic_type=CameraNodeOutputTopic,
-                            message=CameraNodeOutputMessage(
-                                camera_id=frame_rec_array.frame_metadata.camera_config.camera_id[0],
-                                frame_number=frame_rec_array.frame_metadata.frame_number[0],
-                                tracker_name=calibration_task.__class__.__name__,
-                                charuco_observation=charuco_observation,
-                            ),
-                        )
-                        tok2 = time.perf_counter_ns()
-                        # logger.debug(
-                        #     f"Camera {camera_id} processed frame {frame_rec_array.frame_metadata.frame_number[0]} in "
-                        #     f"{(tok - tik) / 1e6:.2f} ms, published observation in {(tok2 - tok) / 1e6:.2f} ms")
+                        if camera_calibrator is None:
+                            camera_calibrator = SingleCameraCalibrator.from_charuco_observation(
+                                camera_id=camera_id,
+                                charuco_observation=charuco_observation
+                            )
+                        else:
+                            camera_calibrator.add_observation(observation=charuco_observation)
+                            charuco_observation.compute_board_pose_and_camera_coordinates(
+                                camera_matrix=camera_calibrator.camera_matrix.matrix,
+                                distortion_coefficients=camera_calibrator.distortion_coefficients.coefficients
+                            )
+
+                    ipc.pubsub.publish(
+                        topic_type=CameraNodeOutputTopic,
+                        message=CameraNodeOutputMessage(
+                            camera_id=frame_rec_array.frame_metadata.camera_config.camera_id[0],
+                            frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                            tracker_name=calibration_task.__class__.__name__,
+                            charuco_observation=charuco_observation,
+                        ),
+                    )
+                    tok2 = time.perf_counter_ns()
+                    # logger.debug(
+                    #     f"Camera {camera_id} processed frame {frame_rec_array.frame_metadata.frame_number[0]} in "
+                    #     f"{(tok - tik) / 1e6:.2f} ms, published observation in {(tok2 - tok) / 1e6:.2f} ms")
         except Exception as e:
             logger.exception(f"Exception in camera node for camera {camera_id}: {e}")
             ipc.kill_everything()

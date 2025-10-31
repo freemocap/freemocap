@@ -152,12 +152,17 @@ class MultiCameraNodeOutputAccumulator(BaseModel):
         """
         Get the number of shared views for each camera id, i.e. the number of frames where the camera can see the target and at least one other camera can also see the target
         """
+        #special case for single camera - all views with target visible are shared views
+        if len(self.camera_ids) == 1:
+            single_camera_id = self.camera_ids[0]
+            visible_view_count = sum(1 for multi_camera_view in self.multi_camera_views_by_frame.values()
+                                      if multi_camera_view.target_visibility_by_camera[single_camera_id])
+            return {single_camera_id: visible_view_count}
         camera_shared_view_count = {camera_id: 0 for camera_id in self.camera_ids}
         for camera_id, pair_dict in self.camera_shared_views.items():
             for pair, target_views in pair_dict.items():
                 camera_shared_view_count[camera_id] += len(target_views)
 
-        print(f"camera_shared_view_count: {camera_shared_view_count}")
         return camera_shared_view_count
 
     def all_cameras_have_min_shared_views(self, min_shared_views: int = 500) -> bool:

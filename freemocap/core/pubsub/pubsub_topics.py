@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 class ProcessFrameNumberMessage(TopicMessageABC):
     frame_number: int = Field(ge=0, description="Frame number to process")
 
+class ShouldCalibrateMessage(TopicMessageABC):
+    """Dummy message to signal that calibration should be performed."""
+    pass
+
 
 class PipelineConfigMessage(TopicMessageABC):
     pipeline_config: PipelineConfig
@@ -61,8 +65,13 @@ class AggregationNodeOutputMessage(TopicMessageABC):
                 )
         return overlay_data
 
+    @property
+    def camera_ids(self) -> list[CameraIdString]:
+        return list(self.camera_node_outputs.keys())
+
 
 ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
+ShouldCalibrateTopic = create_topic(ShouldCalibrateMessage)
 PipelineConfigTopic = create_topic(PipelineConfigMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)

@@ -4,11 +4,11 @@ import numpy as np
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_image_overlay.charuco_python_converter import \
+from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_display_helpers.charuco_python_converter import \
     charuco_observation_to_overlay_data, charuco_observation_to_metadata
-from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_image_overlay.charuco_topology_python import \
+from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_display_helpers.charuco_topology_python import \
     create_charuco_topology
-from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_image_overlay.image_overlay_system import \
+from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_display_helpers.image_overlay_system import \
     OverlayRenderer
 
 logger = logging.getLogger(__name__)

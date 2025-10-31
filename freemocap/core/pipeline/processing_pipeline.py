@@ -11,22 +11,14 @@ from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdStr
 
 from freemocap.core.pipeline.aggregation_node import AggregationNode
 from freemocap.core.pipeline.camera_node import CameraNode
+from freemocap.core.pipeline.frontend_payload import FrontendPayload
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage
-from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue
 
 logger = logging.getLogger(__name__)
 
-
-class FrontendPayload(BaseModel):
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=False
-    )
-    frame_number: int
-    chaurco_overlays: dict[CameraIdString, CharucoOverlayData]
 
 
 @dataclass
@@ -55,7 +47,6 @@ class ProcessingPipeline:
     @property
     def camera_configs(self) -> CameraConfigs:
         return self.camera_group.configs
-
 
     @classmethod
     def from_config(cls,
@@ -131,11 +122,10 @@ class ProcessingPipeline:
     def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
         return self.camera_group.update_camera_settings(requested_configs=camera_configs)
 
-
-    def get_latest_frontend_payload(self) -> tuple[ bytes,FrontendPayload] | None:
+    def get_latest_frontend_payload(self) -> tuple[bytes, FrontendPayload] | None:
         if not self.alive:
             return None
-        aggregation_output:AggregationNodeOutputMessage|None = None
+        aggregation_output: AggregationNodeOutputMessage | None = None
         while not self.aggregation_node_subscription.empty():
             aggregation_output = self.aggregation_node_subscription.get()
         if aggregation_output is None:
@@ -144,6 +134,5 @@ class ProcessingPipeline:
             frame_number=aggregation_output.frame_number,
         )
 
-        return  (frames_bytearray,
-                 FrontendPayload(frame_number=aggregation_output.frame_number,
-                                 chaurco_overlays=aggregation_output.charuco_overlay_data))
+        return (frames_bytearray,
+                FrontendPayload.from_aggregation_output(aggregation_output=aggregation_output))

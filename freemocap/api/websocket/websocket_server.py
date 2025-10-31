@@ -101,17 +101,22 @@ class WebsocketServer:
                             if not payload_bytes or not frontend_payload:
                                 continue
                             if not isinstance(payload_bytes, (bytes, bytearray)):
-                                logger.warning(f"Invalid payload bytes on frame{frontend_payload.frame_number} - got type {type(payload_bytes)}")
+                                logger.warning(f"Invalid payload bytes on frame{frontend_payload.frame_number} -"
+                                               f" got type {type(payload_bytes)}")
                                 continue
                             await self.websocket.send_bytes(payload_bytes)
-                            await self.websocket.send_json({camera_id: overlay_data.model_dump() for camera_id, overlay_data in frontend_payload.chaurco_overlays.items()})
+                            await self.websocket.send_json({camera_id: overlay_data.model_dump() for camera_id, overlay_data in frontend_payload.charuco_overlays.items()})
+                            # await self.websocket.send_json(frontend_payload.to_websocket_dict())
                             self.last_sent_frame_number = frontend_payload.frame_number
                 else:
                     skipped_previous = True
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
-                    if backpressure > BACKPRESSURE_WARNING_THRESHOLD and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0:
+                    if (backpressure > BACKPRESSURE_WARNING_THRESHOLD and
+                            backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0):
                         logger.trace(
-                            f"Backpressure detected: {backpressure} frames not acknowledged by frontend! Last sent frame: {self.last_sent_frame_number}, last received confirmation: {self.last_received_frontend_confirmation}")
+                            f"Backpressure detected: {backpressure} frames not acknowledged by frontend! "
+                            f"Last sent frame: {self.last_sent_frame_number}, last received confirmation: "
+                            f"{self.last_received_frontend_confirmation}")
 
                 # backend_framerate_updates:dict[CameraGroupIdString,CurrentFramerate] = self._cgm.get_backend_framerate_updates()
                 # if backend_framerate_updates:

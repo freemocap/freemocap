@@ -1,6 +1,5 @@
 import logging
 import multiprocessing
-import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -12,10 +11,9 @@ from skellycam.utilities.wait_functions import wait_1ms
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigTopic, ProcessFrameNumberTopic, \
-    ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic
+    ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic, \
+    ShouldCalibrateTopic, ShouldCalibrateMessage
 from freemocap.core.tasks.calibration_task.calibration_helpers.multi_camera_calibrator import MultiCameraCalibrator
-from freemocap.core.tasks.calibration_task.create_triangulator_from_multicam_calibrator import \
-    create_triangulator_from_calibrator
 from freemocap.core.tasks.calibration_task.point_triangulator import PointTriangulator
 from freemocap.core.types.type_overloads import Point3d
 
@@ -80,12 +78,18 @@ class AggregationNode:
             triangulator: PointTriangulator | None = None
             latest_requested_frame: int = -1
             last_received_frame: int = -1
+            should_gather_observations: bool = True
             while ipc.should_continue and not shutdown_self_flag.value:
                 wait_1ms()
                 if camera_group_shm.latest_multiframe_number > latest_requested_frame and last_received_frame >= latest_requested_frame:
                     ipc.pubsub.topics[ProcessFrameNumberTopic].publish(
                         ProcessFrameNumberMessage(frame_number=camera_group_shm.latest_multiframe_number))
                     latest_requested_frame = camera_group_shm.latest_multiframe_number
+
+                if should_gather_observations and calibrator.ready_to_calibrate:
+                    logger.debug("Calibrator is ready to calibrate - triggering single-camera calibration")
+                    should_gather_observations = False
+                    ipc.pubsub.topics[ShouldCalibrateTopic].publish(ShouldCalibrateMessage())
                 # Check for Camera Node Output
                 if not camera_node_subscription.empty():
                     camera_node_output_message: CameraNodeOutputMessage = camera_node_subscription.get()
@@ -104,35 +108,34 @@ class AggregationNode:
                             f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
                     last_received_frame = latest_requested_frame
 
-                    if not triangulator:
-                        if False:
-                            calibrator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
+                    if not triangulator and should_gather_observations:
+                        calibrator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
                                                               multi_frame_number=latest_requested_frame)
-                        if calibrator.ready_to_calibrate and not calibrator.has_calibration and False:
-                            try:
-                                print('calibrating...')
-                                calibrator.calibrate()
-                                print('running bundle adjustment...')
-                                calibrator.run_bundle_adjustment()
-                                print('creating triangulator...')
-                                triangulator = create_triangulator_from_calibrator(calibrator)
-                                logger.success(f"Calibration successful!")
-                            except Exception as e:
-                                logger.error(f"Error during calibration: {e}", exc_info=True)
-                                raise
-                    else:
-                        print("triangulating points...")
-                        tik = time.perf_counter_ns()
-                        triangulated_points3d = triangulator.triangulate_camera_node_outputs(
-                            camera_node_outputs=camera_node_outputs,
-                            undistort_points=False,  # fast enough for the real-time pipeline
-                            compute_reprojection_error=False
-                            # too slow for real-time (see diagnostics in PointTriangulator file)
-                        )
-                        tok = time.perf_counter_ns()
-                        if triangulated_points3d:
-                            logger.api(
-                            f"Triangulated {len(triangulated_points3d)} points at frame {latest_requested_frame} in {(tok - tik) / 1e6:.3f} ms")
+                        # if calibrator.ready_to_calibrate and not calibrator.has_calibration and False:
+                        #     try:
+                        #         print('calibrating...')
+                        #         calibrator.calibrate()
+                        #         print('running bundle adjustment...')
+                        #         calibrator.run_bundle_adjustment()
+                        #         print('creating triangulator...')
+                        #         triangulator = create_triangulator_from_calibrator(calibrator)
+                        #         logger.success(f"Calibration successful!")
+                        #     except Exception as e:
+                        #         logger.error(f"Error during calibration: {e}", exc_info=True)
+                        #         raise
+                    # else:
+                    #     print("triangulating points...")
+                    #     tik = time.perf_counter_ns()
+                    #     triangulated_points3d = triangulator.triangulate_camera_node_outputs(
+                    #         camera_node_outputs=camera_node_outputs,
+                    #         undistort_points=False,  # fast enough for the real-time pipeline
+                    #         compute_reprojection_error=False
+                    #         # too slow for real-time (see diagnostics in PointTriangulator file)
+                    #     )
+                    #     tok = time.perf_counter_ns()
+                    #     if triangulated_points3d:
+                    #         logger.api(
+                    #         f"Triangulated {len(triangulated_points3d)} points at frame {latest_requested_frame} in {(tok - tik) / 1e6:.3f} ms")
                     aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                         frame_number=latest_requested_frame,
                         pipeline_id=ipc.pipeline_id,

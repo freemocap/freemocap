@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INTRINSICS_COEFFICIENTS_COUNT = 4
 MIN_CHARUCO_CORNERS = 6
+MIN_OBSERVATIONS_TO_CALIBRATE = 100
 DEFAULT_TARGET_VIEW_COUNT = 25
 INITIAL_VIEW_COUNT = 25
 
@@ -88,6 +89,10 @@ class SingleCameraCalibrator(BaseModel):
         return self.mean_reprojection_error is not None
 
     @property
+    def ready_to_calibrate(self) -> bool:
+        return len(self.charuco_observations) >= MIN_OBSERVATIONS_TO_CALIBRATE
+
+    @property
     def charuco_transformation_matrices(self) -> list[TransformationMatrix]:
         return [
             TransformationMatrix.from_rotation_translation(
@@ -99,6 +104,31 @@ class SingleCameraCalibrator(BaseModel):
             )
         ]
 
+    @classmethod
+    def from_charuco_observations(
+            cls,
+            camera_id: CameraIdString,
+            charuco_observations: CharucoObservations):
+        calibrator = cls.from_charuco_observation(camera_id=camera_id,
+                                                  charuco_observation=charuco_observations[0])
+        for observation in charuco_observations[1:]:
+            calibrator.add_observation(observation=observation)
+        return calibrator
+
+    @classmethod
+    def from_charuco_observation(
+            cls,
+            camera_id: CameraIdString,
+            charuco_observation: CharucoObservation):
+
+        return cls.create_initial(
+            camera_id=camera_id,
+            image_size=charuco_observation.image_size,
+            all_aruco_marker_ids=charuco_observation.all_aruco_ids,
+            all_aruco_corners_in_object_coordinates=charuco_observation.all_aruco_corners_in_object_coordinates,
+            all_charuco_corner_ids=charuco_observation.all_charuco_ids,
+            all_charuco_corners_in_object_coordinates=charuco_observation.all_charuco_corners_in_object_coordinates,
+        )
     @classmethod
     def create_initial(
             cls,
@@ -149,10 +179,10 @@ class SingleCameraCalibrator(BaseModel):
         """
         logger.info(f"Calibrating camera {self.camera_id} with {len(self.charuco_observations)} observations...")
 
-        optimal_frame_numbers = self.select_optimal_frame_numbers()
+        self.selected_frame_numbers = self.select_optimal_frame_numbers()
 
-        logger.info(f"Calibrating camera {self.camera_id} with {len(optimal_frame_numbers)} optimized views...")
-        self.update_calibration_estimate(frame_numbers=optimal_frame_numbers,
+        logger.info(f"Calibrating camera {self.camera_id} with {len(self.selected_frame_numbers)} optimized views...")
+        self.update_calibration_estimate(frame_numbers=self.selected_frame_numbers,
                                             store_results_in_state=True)
 
         logger.success(

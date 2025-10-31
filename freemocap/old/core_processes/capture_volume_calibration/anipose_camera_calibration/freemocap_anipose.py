@@ -9,6 +9,8 @@ import queue
 import time
 from collections import defaultdict, Counter
 from copy import copy
+from pathlib import Path
+from typing import List
 
 import cv2
 import numpy as np
@@ -22,6 +24,8 @@ from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
+from skellytracker.process_folder_of_videos import process_list_of_videos
+from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
 from tqdm import trange
 from typing import List
 
@@ -32,6 +36,25 @@ numba_logger = logging.getLogger("numba")
 numba_logger.setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
+
+ARUCO_DICTS = {
+    (4, 50): cv2.aruco.DICT_4X4_50,
+    (5, 50): cv2.aruco.DICT_5X5_50,
+    (6, 50): cv2.aruco.DICT_6X6_50,
+    (7, 50): cv2.aruco.DICT_7X7_50,
+    (4, 100): cv2.aruco.DICT_4X4_100,
+    (5, 100): cv2.aruco.DICT_5X5_100,
+    (6, 100): cv2.aruco.DICT_6X6_100,
+    (7, 100): cv2.aruco.DICT_7X7_100,
+    (4, 250): cv2.aruco.DICT_4X4_250,
+    (5, 250): cv2.aruco.DICT_5X5_250,
+    (6, 250): cv2.aruco.DICT_6X6_250,
+    (7, 250): cv2.aruco.DICT_7X7_250,
+    (4, 1000): cv2.aruco.DICT_4X4_1000,
+    (5, 1000): cv2.aruco.DICT_5X5_1000,
+    (6, 1000): cv2.aruco.DICT_6X6_1000,
+    (7, 1000): cv2.aruco.DICT_7X7_1000,
+}
 
 
 @jit(nopython=True, parallel=False)
@@ -381,6 +404,11 @@ class Camera:
             size=None,
             rvec=np.zeros(3),
             tvec=np.zeros(3),
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
+=======
+            world_orientation=np.eye(3),
+            world_position=np.zeros(3),
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
             name=None,
             extra_dist=False,
     ):
@@ -389,6 +417,8 @@ class Camera:
         self.set_size(size)
         self.set_rotation(rvec)
         self.set_translation(tvec)
+        self.set_world_orientation(world_orientation)
+        self.set_world_position(world_position)
         self.set_name(name)
         self.extra_dist = extra_dist
 
@@ -400,6 +430,8 @@ class Camera:
             "distortions": self.get_distortions().tolist(),
             "rotation": self.get_rotation().tolist(),
             "translation": self.get_translation().tolist(),
+            "world_orientation": self.get_world_orientation().tolist(),
+            "world_position": self.get_world_position().tolist()
         }
 
     def load_dict(self, d):
@@ -409,6 +441,9 @@ class Camera:
         self.set_distortions(d["distortions"])
         self.set_name(d["name"])
         self.set_size(d["size"])
+
+        self.set_world_orientation(d.get("world_orientation", np.eye(3)))
+        self.set_world_position(d.get("world_position", np.zeros(3)))
 
     def from_dict(d):
         cam = Camera()
@@ -452,6 +487,18 @@ class Camera:
 
     def get_translation(self):
         return self.tvec
+
+    def set_world_orientation(self, world_orientation):
+        self.world_orientation = np.asarray(world_orientation, dtype="float64").reshape(3, 3)
+
+    def get_world_orientation(self):
+        return self.world_orientation
+
+    def set_world_position(self, world_position):
+        self.world_position = np.array(world_position, dtype="float64").ravel()
+
+    def get_world_position(self):
+        return self.world_position
 
     def get_extrinsics_mat(self):
         return make_M(self.rvec, self.tvec)
@@ -546,6 +593,8 @@ class Camera:
             tvec=self.get_translation().copy(),
             name=self.get_name(),
             extra_dist=self.extra_dist,
+            world_orientation=self.get_world_orientation().copy(),
+            world_position=self.get_world_position().copy()
         )
 
 
@@ -1770,6 +1819,20 @@ class CameraGroup:
         for cam, tvec in zip(self.cameras, tvecs):
             cam.set_translation(tvec)
 
+    def set_world_positions(self, positions):
+        for cam, position, in zip(self.cameras, positions):
+            cam.set_world_position(position)
+
+    def set_world_orientations(self, orientations):
+        for cam, orientation in zip(self.cameras, orientations):
+            cam.set_world_orientation(orientation)
+
+    def get_world_positions(self):
+        return np.stack([cam.get_world_position() for cam in self.cameras])
+
+    def get_world_orientations(self):
+        return np.stack([cam.get_world_orientation() for cam in self.cameras])
+
     def get_rotations(self):
         rvecs = []
         for cam in self.cameras:
@@ -1842,6 +1905,7 @@ class CameraGroup:
 
         return error, merged, charuco_frames
 
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
     def get_rows_videos(self, videos: List[List[str]], board: "AniposeCharucoBoard", verbose=True):
         num_corners = board.total_size
         if board.total_size != 24: 
@@ -1850,6 +1914,15 @@ class CameraGroup:
 
         if self.charuco_2d_data is None:
             raise ValueError("Charuco 2D data has not been initialized. Call _get_charuco_2d_data() first, or check for errors in the video processing.")
+=======
+    def get_rows_videos(self, videos: List[List[str]], board: "AniposeCharucoBoard", verbose: bool = True):
+        num_corners = board.total_size
+        self._get_charuco_2d_data(videos=videos, board=board)
+
+        if self.charuco_2d_data is None:
+            raise ValueError(
+                "Charuco 2D data has not been initialized. Call _get_charuco_2d_data() first, or check for errors in the video processing.")
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
 
         all_rows = []
 
@@ -1857,14 +1930,21 @@ class CameraGroup:
         for camera_number in range(num_cameras):
             camera_rows = []
             for frame in range(num_frames):
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
                 # TODO: check each frame based on anipose's conditions
+=======
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
                 filled = self.charuco_2d_data[camera_number, frame, :, :]
                 filled = filled.astype(np.float32)
                 filled = np.reshape(filled, (num_corners, 1, 2))  # Add empty column anipose expects
                 mask = (~np.isnan(filled[:, :, 0])) & (~np.isnan(filled[:, :, 1]))
                 non_empty_ids = np.where(mask)[0]
                 corners = filled[non_empty_ids, :, :]
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
                 non_empty_ids = non_empty_ids.reshape(-1, 1) # Add empty column anipose expects
+=======
+                non_empty_ids = non_empty_ids.reshape(-1, 1)  # Add empty column anipose expects
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
                 if corners.shape[0] != 0:
                     row = {
                         "framenum": (0, frame),
@@ -1878,11 +1958,18 @@ class CameraGroup:
             print(f"Charuco detection results:")
             for i, rows in enumerate(all_rows):
                 print(f"\tCamera {i} has {len(rows)} frames with detected corners.")
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
 
 
         return all_rows
 
     def _get_charuco_2d_data(self, videos: List[List[str]]):
+=======
+
+        return all_rows
+
+    def _get_charuco_2d_data(self, videos: List[List[str]], board: "AniposeCharucoBoard"):
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
         """
         Processes a list of a list of videos to extract Charuco 2D data.
         
@@ -1891,14 +1978,25 @@ class CameraGroup:
         video_paths = [Path(video[0]) for video in videos]
         charuco_2d_data = process_list_of_videos(
             model_info=CharucoModelInfo(),
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
             tracking_params=CharucoTrackingParams(),
+=======
+            tracking_params=CharucoTrackingParams(
+                charuco_squares_x_in=board.squaresX,
+                charuco_squares_y_in=board.squaresY,
+                charuco_dict_id=ARUCO_DICTS[(board.marker_bits, board.dict_size)]
+            ),
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
             video_paths=video_paths,
             num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
         )
 
         self.charuco_2d_data = charuco_2d_data
 
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
 
+=======
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
     def set_camera_sizes_videos(self, videos):
         for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):
             rows_cam = []
@@ -1908,6 +2006,7 @@ class CameraGroup:
                 cam.set_size(size)
 
     def calibrate_videos(
+<<<<<<< HEAD:freemocap/old/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
         self,
         videos: List[List[str]],
         board: "AniposeCharucoBoard",
@@ -1915,6 +2014,15 @@ class CameraGroup:
         init_extrinsics=True,
         verbose=True,
         **kwargs,
+=======
+            self,
+            videos,
+            board: "AniposeCharucoBoard",
+            init_intrinsics=True,
+            init_extrinsics=True,
+            verbose=True,
+            **kwargs,
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d:freemocap/core_processes/capture_volume_calibration/anipose_camera_calibration/freemocap_anipose.py
     ):
         """Takes as input a list of list of video filenames, one list of each camera.
         Also takes a board which specifies what should be detected in the videos"""
@@ -2004,25 +2112,8 @@ class AniposeCharucoBoard(CharucoBoard):
         self.square_length = square_length
         self.marker_length = marker_length
         self.manually_verify = manually_verify
-
-        ARUCO_DICTS = {
-            (4, 50): cv2.aruco.DICT_4X4_50,
-            (5, 50): cv2.aruco.DICT_5X5_50,
-            (6, 50): cv2.aruco.DICT_6X6_50,
-            (7, 50): cv2.aruco.DICT_7X7_50,
-            (4, 100): cv2.aruco.DICT_4X4_100,
-            (5, 100): cv2.aruco.DICT_5X5_100,
-            (6, 100): cv2.aruco.DICT_6X6_100,
-            (7, 100): cv2.aruco.DICT_7X7_100,
-            (4, 250): cv2.aruco.DICT_4X4_250,
-            (5, 250): cv2.aruco.DICT_5X5_250,
-            (6, 250): cv2.aruco.DICT_6X6_250,
-            (7, 250): cv2.aruco.DICT_7X7_250,
-            (4, 1000): cv2.aruco.DICT_4X4_1000,
-            (5, 1000): cv2.aruco.DICT_5X5_1000,
-            (6, 1000): cv2.aruco.DICT_6X6_1000,
-            (7, 1000): cv2.aruco.DICT_7X7_1000,
-        }
+        self.marker_bits = marker_bits
+        self.dict_size = dict_size
 
         dkey = (marker_bits, dict_size)
         self.dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICTS[dkey])

@@ -38,9 +38,9 @@ def run_subprocess(command_list: List[str], append_to_python_path: List[str] = N
 
 
 def run_ajc_blender_addon_subprocess(
-    recording_folder_path: Union[str, Path],
-    blender_file_path: Union[str, Path],
-    blender_exe_path: Union[str, Path],
+        recording_folder_path: Union[str, Path],
+        blender_file_path: Union[str, Path],
+        blender_exe_path: Union[str, Path],
 ):
     try:
         # TODO: pass active tracker into here
@@ -154,8 +154,8 @@ def ajc_blender_addon_validator(recording_folder_path: Union[str, Path], active_
 
     if not (output_data_path / "center_of_mass" / (active_tracker + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)).exists():
         if (
-            active_tracker != "mediapipe_"
-            or not (output_data_path / "center_of_mass" / OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME).exists()
+                active_tracker != "mediapipe_"
+                or not (output_data_path / "center_of_mass" / OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME).exists()
         ):
             raise FileNotFoundError(
                 f"Could not find required file: {output_data_path / 'center_of_mass' / (active_tracker + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)}"
@@ -163,8 +163,8 @@ def ajc_blender_addon_validator(recording_folder_path: Union[str, Path], active_
 
     if not (output_data_path / "center_of_mass" / (active_tracker + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)).exists():
         if (
-            active_tracker != "mediapipe_"
-            or not (output_data_path / "center_of_mass" / OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME).exists()
+                active_tracker != "mediapipe_"
+                or not (output_data_path / "center_of_mass" / OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME).exists()
         ):
             raise FileNotFoundError(
                 f"Could not find required file: {output_data_path / 'center_of_mass' / (active_tracker + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)}"
@@ -172,8 +172,8 @@ def ajc_blender_addon_validator(recording_folder_path: Union[str, Path], active_
 
     if not (output_data_path / "raw_data" / (active_tracker + REPROJECTION_ERROR_NPY_FILE_NAME)).exists():
         if (
-            active_tracker != "mediapipe_"
-            or not (output_data_path / "raw_data" / OLD_REPROJECTION_ERROR_NPY_FILE_NAME).exists()
+                active_tracker != "mediapipe_"
+                or not (output_data_path / "raw_data" / OLD_REPROJECTION_ERROR_NPY_FILE_NAME).exists()
         ):
             raise FileNotFoundError(
                 f"Could not find required file: {output_data_path / 'raw_data' / (active_tracker + REPROJECTION_ERROR_NPY_FILE_NAME)}"

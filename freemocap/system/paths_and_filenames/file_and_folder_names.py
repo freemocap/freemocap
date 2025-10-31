@@ -48,10 +48,17 @@ OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
 RECORDING_PARAMETERS_JSON_FILE_NAME = "recording_parameters.json"
 
 # Figshare info
-FIGSHARE_SAMPLE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/45797067"
-FIGSHARE_TEST_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/45797073"
+FIGSHARE_SAMPLE_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/53681960"
+FIGSHARE_TEST_ZIP_FILE_URL = "https://figshare.com/ndownloader/files/53682050"
 FREEMOCAP_TEST_DATA_RECORDING_NAME = "freemocap_test_data"
 FREEMOCAP_SAMPLE_DATA_RECORDING_NAME = "freemocap_sample_data"
+
+# documentation links
+DOCUMENTATION_HOME = "https://freemocap.github.io/documentation/index_md.html"
+DOCUMENTATION_WELCOME_URL = "https://freemocap.github.io/documentation/getting-started-index.html"
+DOCUMENTATION_SINGLE_CAMERA_URL = "https://freemocap.github.io/documentation/single-camera-recording.html"
+DOCUMENTATION_MULTI_CAMERA_URL = "https://freemocap.github.io/documentation/multi-camera-calibration.html"
+DOCUMENTATION_PRIVACY_POLICY_URL = "https://freemocap.github.io/documentation/privacy-policy.html"
 
 # logo
 PATH_TO_FREEMOCAP_LOGO_SVG = str(Path(freemocap.__file__).parent / "assets/logo/freemocap-logo-black-border.svg")

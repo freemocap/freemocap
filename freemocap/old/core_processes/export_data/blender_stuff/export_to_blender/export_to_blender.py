@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 def export_to_blender(
-    recording_folder_path: Union[str, Path],
-    blender_file_path: Union[str, Path],
-    blender_exe_path: Union[str, Path],
-    method: str = "ajc27_blender_addon",
+        recording_folder_path: Union[str, Path],
+        blender_file_path: Union[str, Path],
+        blender_exe_path: Union[str, Path],
+        method: str = "ajc27_blender_addon",
 ):
     logger.info(
         f"Exporting session data to a Blender scene at: {str(blender_file_path)} using Blender executable at {str(blender_exe_path)}"

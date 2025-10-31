@@ -3,6 +3,7 @@ name = "freemocap"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+<<<<<<< HEAD
 requires-python = ">=3.11"
 dependencies = [
     "aniposelib>=0.7.0",
@@ -31,6 +32,84 @@ skellyforge = { git = "https://github.com/freemocap/skellyforge" }
 #freemocap-blender-addon = { git = "https://github.com/freemocap/freemocap_blender_addon"}#, branch = "jon/development" }
 #skelly-synchronize = { git = "https://github.com/freemocap/skelly_synchronize", branch = "jon/development" }
 #ltrt = { git = "https://github.com/freemocap/LTRT" }
+=======
+authors = [
+    { name = "Skelly FreeMoCap", email = "info@freemocap.org" },
+    { name = "Endurance Idehen" },
+    { name = "Aaron Cherian" },
+    { name = "Jonathan Samir Matthis" },
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Other Audience",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Video :: Capture",
+    "Topic :: Multimedia :: Video :: Display",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Scientific/Engineering :: Human Machine Interfaces",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB)",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Video (UVC)",
+]
+keywords = [
+    "camera",
+    "stream",
+    "video",
+    "image",
+    "opencv",
+    "skelly",
+    "freemocap",
+    "motion capture",
+    "markerless motion capture",
+    "mocap",
+    "markerless mocap",
+    "markerless",
+    "kinematic",
+    "animation",
+    "3d animation",
+    "Blender",
+    "Blender3d",
+    "synchronization",
+    "computer vision"
+]
+
+dependencies = [
+    "skellycam==2025.09.1097",
+    "skelly_viewer==2025.04.1028",
+    "skellyforge==2024.12.1009",
+    "skelly_synchronize==2025.04.1037",
+    "skellytracker[all]==2025.6.1023",
+    "ajc27_freemocap_blender_addon==v2025.8.1037",
+    "opencv-contrib-python==4.8.*",
+    "toml==0.10.2",
+    "aniposelib==0.4.3",
+    "libsass==0.21.0",
+    "ipykernel==6.23.1",
+    "plotly==5.14.1",
+    "pydantic==2.*",
+    "PySide6>=6.6, <6.8",
+    "packaging===23.2",
+]
+
+requires-python = ">=3.10,<3.13"
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d
 
 [project.scripts]
 freemocap = "freemocap.__main__:main"
@@ -44,8 +123,11 @@ dev-dependencies = [
 ]
 
 
+[tool.uv]
+override-dependencies = ["opencv-python; sys_platform == 'never'"]
+
 [tool.bumpver]
-current_version = "v1.4.7"
+current_version = "v1.7.0"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
@@ -56,3 +138,30 @@ push = true
 #"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
 "freemocap/__init__.py" = ["{version}"]
 ".github/workflows/*_installer.yml" = ['export PYAPP_PROJECT_VERSION={version}']
+<<<<<<< HEAD
+=======
+
+#[tool.setuptools.dynamic]
+#dependencies = {file = "requirements.txt"}
+
+[project.scripts]
+freemocap = "freemocap.__main__:main"
+
+[tool.setuptools]
+py-modules = ["freemocap"]
+
+[tool.black]
+line-length = 120
+
+[tool.taskipy.tasks]
+setup = "pre-commit install"
+#test = "python -m unittest freemocap/tests/**/test_*"
+installer = "./bin/installer.sh"
+# This command ensures that your code is formatted appropriately
+format = "black freemocap"
+
+[dependency-groups]
+dev = [
+    "bumpver>=2024.1130",
+]
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d

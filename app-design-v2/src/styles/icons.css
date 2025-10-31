@@ -1,0 +1,43 @@
+/* icons vars */
+  :root { 
+    --plus-icon: url("../assets/icons/plus_icon.svg");
+  --minus-icon: url("../assets/icons/minus_icon.svg");
+  --close-icon: url("../assets/icons/close_icon.svg");
+  --rotate-icon: url("../assets/icons/rotate_icon.svg");
+  --live-icon: url("../assets/icons/live_icon.svg");
+  --import-icon: url("../assets/icons/import_icon.svg");
+  --externallink-icon: url("../assets/icons/externallink_icon.svg");
+  --dropdown-icon: url("../assets/icons/dropdown_icon.svg");
+  --stream-icon: url("../assets/icons/stream_icon.svg");
+  --streaming-icon: url("../assets/icons/streaming_icon.svg");
+  --calibrate-icon: url("../assets/icons/calibrate_icon.svg");
+  --calibrated-icon: url("../assets/icons/calibrated_icon.svg");
+  --camera-icon: url("../assets/icons/camera_icon.svg");
+  --explainer-icon: url("../assets/icons/explainer_icon.svg");
+
+  --processmocap-icon: url("../assets/icons/processmocap_icon.svg");
+  --video-icon: url("../assets/icons/video_icon.svg");
+  --record-icon: url("../assets/icons/record_icon.svg");
+  --calibrate-icon: url("../assets/icons/calibrate_icon.svg");
+
+  --learn-icon: url("../assets/icons/learn_icon.svg");
+  --discord-icon: url("../assets/icons/discord_icon.svg");
+  --connected-icon: url("../assets/icons/connected_icon.svg");
+  --warning-icon: url("../assets/icons/warning_icon.svg");
+  --loader-icon: url("../assets/icons/loader_icon.svg");
+  --donate-icon: url("../assets/icons/donate_icon.svg");
+  --subcat-icon: url("./assets/icons/subcat_icon.svg");
+  --download-icon: url("../assets/icons/download_icon.svg");
+
+  --settings-icon: url("../assets/icons/settings_icon.svg");
+  --subfolder_icon: url("../assets/icons/subfolder_icon.svg");
+  --addsubfolder_icon: url("../assets/icons/addsubfolder_icon.svg");
+  --file_icon: url("../assets/icons/file_icon.svg");
+
+  --importproject_icon: url("../assets/icons/importproject_icon.svg");
+  --settings_icon: url("../assets/icons/settings_icon.svg");
+
+    --grid4_icon: url("../assets/icons/grid4_icon.svg");
+    --grid3_icon: url("../assets/icons/grid3_icon.svg");
+    --grid2_icon: url("../assets/icons/grid2_icon.svg");
+  }

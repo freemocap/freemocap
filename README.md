@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 # SPECIAL INSTRUCTIONS FOR THE `jon/development` BRANCH 
 
@@ -200,3 +201,6 @@ If the AGPL does not work for your needs, we are happy to discuss terms to licen
 agreement at a price point that increases exponentially as you
 move [spiritually](https://www.gnu.org/philosophy/open-source-misses-the-point.en.html) away from the `AGPL`
 
+=======
+Freemocap app design v2
+>>>>>>> f3362cc9874f38211c409a713329bc71bf11115d

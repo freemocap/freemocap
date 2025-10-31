@@ -8,15 +8,16 @@ from freemocap.old.core_processes.capture_volume_calibration.save_3d_data_to_npy
     save_3d_data_to_npy,
 )
 from freemocap.utilities.geometry.project_3d_data_to_z_plane import project_3d_data_to_z_plane
+from freemocap.utilities.geometry.rotate_by_90_degrees_around_x_axis import rotate_by_90_degrees_around_x_axis
 
 logger = logging.getLogger(__name__)
 
 
 def process_single_camera_skeleton_data(
-    input_image_data_frame_marker_xyz: np.ndarray,
-    raw_data_folder_path: Union[str, Path],
-    file_prefix: str = "",
-    project_to_z_plane: bool = True,
+        input_image_data_frame_marker_xyz: np.ndarray,
+        raw_data_folder_path: Union[str, Path],
+        file_prefix: str = "",
+        project_to_z_plane: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray]:
     skeleton_reprojection_error_fr_mar = np.zeros(input_image_data_frame_marker_xyz.shape[0:2])
     skeleton_reprojection_error_cam_fr_mar = np.zeros(
@@ -39,5 +40,6 @@ def process_single_camera_skeleton_data(
         processing_level="raw",
         file_prefix=file_prefix,
     )
+    rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
 
-    return raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar
+    return rotated_raw_skel3d_frame_marker_xyz, skeleton_reprojection_error_fr_mar

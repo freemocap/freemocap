@@ -236,8 +236,8 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                             variant="contained"
                             color="primary"
                             startIcon={<PlayArrowIcon />}
-                            onClick={calibration.startCalibrationRecording()}
-                            disabled={!calibration.canStartCalibrationRecording || calibration.isLoading}
+                            onClick={calibration.startCalibrationRecording}
+                            disabled={!calibration.canCalibrateRecording || calibration.isLoading}
                             fullWidth
                         >
                             Start Recording

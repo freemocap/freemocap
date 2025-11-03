@@ -34,6 +34,7 @@ from tqdm import tqdm
 # - save out intermediate data (2D data from pose estimation, raw 3D triangulated data) - can easily add an np.save, but unsure of the format we want the 2d data saved as
 # - multiprocessing on the pose estimation step
 # - load from disk 
+# - annotated video saving out 
 
 
 def process_video(tracker:MediapipeTracker, path_to_video:str|Path):

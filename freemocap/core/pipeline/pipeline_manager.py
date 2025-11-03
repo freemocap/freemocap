@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PipelineManager:
     global_kill_flag: multiprocessing.Value
+    subprocess_registry: list[multiprocessing.Process]
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, ProcessingPipeline] = field(default_factory=dict)
 
@@ -26,6 +27,7 @@ class PipelineManager:
                     pipeline.update_camera_configs(camera_configs=pipeline_config.camera_configs)
                     return pipeline
             pipeline =  ProcessingPipeline.from_config(pipeline_config=pipeline_config,
+                                                       subprocess_registry=self.subprocess_registry,
                                                         global_kill_flag=self.global_kill_flag)
             pipeline.start()
             self.pipelines[pipeline.id] = pipeline

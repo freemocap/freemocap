@@ -18,7 +18,7 @@ from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_numpy
     RotationVectorsByCamera, TranslationVectorsByCamera
 from freemocap.core.tasks.calibration_task.calibration_helpers.single_camera_calibrator import \
     SingleCameraCalibrator
-from freemocap.old.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
+from freemocap.zzold.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
     anipose_triangulate_simple, remap_ids
 
 logger = logging.getLogger(__name__)

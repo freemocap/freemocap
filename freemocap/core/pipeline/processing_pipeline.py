@@ -3,22 +3,33 @@ import multiprocessing
 import uuid
 from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
 from freemocap.core.pipeline.aggregation_node import AggregationNode
-from freemocap.core.pipeline.camera_node import CameraNode
+from freemocap.core.pipeline.camera_node import CameraNode, CameraNodeState
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage
+from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue
+from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
 
+class PipelineState(BaseModel):
+    """Serializable representation of a processing pipeline state."""
+    model_config = ConfigDict(
+        validate_assignment=True,
+        frozen=True
+    )
+    id: PipelineIdString
+    camera_group_id: CameraGroupIdString
+    camera_node_states: dict[CameraIdString, CameraNodeState]
+    aggregation_node_state: AggregationNodeState
+    alive: bool
 
 
 @dataclass
@@ -51,19 +62,23 @@ class ProcessingPipeline:
     @classmethod
     def from_config(cls,
                     global_kill_flag: multiprocessing.Value,
+                    subprocess_registry: list[multiprocessing.Process],
                     pipeline_config: PipelineConfig,
                     ):
         camera_group = CameraGroup.create(camera_configs=pipeline_config.camera_configs,
+                                            subprocess_registry=subprocess_registry,
                                           global_kill_flag=global_kill_flag,
                                           )
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
                                  shm_topic=camera_group.ipc.pubsub.topics[TopicTypes.SHM_UPDATES]
                                  )
         camera_nodes = {camera_id: CameraNode.create(camera_id=camera_id,
+                                                     subprocess_registry=subprocess_registry,
                                                      config=pipeline_config.camera_node_configs[camera_id],
                                                      ipc=ipc)
                         for camera_id, config in camera_group.configs.items()}
         aggregation_node = AggregationNode.create(camera_group_id=camera_group.id,
+                                                    subprocess_registry=subprocess_registry,
                                                   config=pipeline_config,
                                                   ipc=ipc,
                                                   )

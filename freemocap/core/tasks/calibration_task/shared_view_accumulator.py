@@ -5,7 +5,7 @@ from pydantic import model_validator
 from skellycam.core.types.type_overloads import CameraIdString, FrameNumberInt
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.pubsub.pubsub_topics import CameraNodeOutputMessage
+from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
 from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_numpy_types import ImagePoint2D
 
 CharucoObservations = dict[CameraIdString, CharucoObservation | None]

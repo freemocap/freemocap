@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import cv2
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.types.type_overloads import CameraIdString, WorkerType, TopicSubscriptionQueue
@@ -15,13 +15,27 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 
 from freemocap.core.pipeline.pipeline_configs import CameraNodeConfig, PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigTopic, CameraNodeOutputTopic, \
-    PipelineConfigMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage, ShouldCalibrateTopic, \
-    ShouldCalibrateMessage
 from freemocap.core.tasks.calibration_task.calibration_helpers.single_camera_calibrator import SingleCameraCalibrator
 from freemocap.core.tasks.calibration_task.calibration_pipeline_task import CalibrationCameraNodeTask
+from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigTopic, CameraNodeOutputTopic, \
+    PipelineConfigMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage, ShouldCalibrateTopic, \
+    ShouldCalibrateMessage
 
 logger = logging.getLogger(__name__)
+
+
+class CameraNodeState(BaseModel):
+    model_config = ConfigDict(
+        validate_assignment=True,
+        frozen=True
+    )
+    pipeline_id: PipelineIdString
+    alive: bool
+    config: CameraNodeConfig
+    last_seen_frame_number: int | None = None
+    calibration_task_state: object | None = None
+    mocap_task_state: object = None  # TODO - this
 
 
 class CameraNodeImageAnnotater(BaseModel):
@@ -62,27 +76,30 @@ class CameraNode:
     @classmethod
     def create(cls,
                camera_id: CameraIdString,
+               subprocess_registry: list[multiprocessing.Process],
                config: CameraNodeConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
+        worker = multiprocessing.Process(target=cls._run,
+                                         name=f"CameraProcessingNode-{camera_id}",
+                                         kwargs=dict(camera_id=camera_id,
+                                                     ipc=ipc,
+                                                     camera_node_config=config,
+                                                     shutdown_self_flag=shutdown_self_flag,
+                                                     process_frame_number_subscription=ipc.pubsub.get_subscription(
+                                                         ProcessFrameNumberTopic),
+                                                     pipeline_config_subscription=ipc.pubsub.get_subscription(
+                                                         PipelineConfigTopic),
+                                                     should_calibrate_subscription=ipc.pubsub.get_subscription(
+                                                         ShouldCalibrateTopic),
+                                                     shm_subscription=ipc.shm_topic.get_subscription()
+                                                     ),
+                                         daemon=True
+                                         )
+        subprocess_registry.append(worker)
         return cls(camera_id=camera_id,
                    shutdown_self_flag=shutdown_self_flag,
-                   worker=multiprocessing.Process(target=cls._run,
-                                                  name=f"CameraProcessingNode-{camera_id}",
-                                                  kwargs=dict(camera_id=camera_id,
-                                                              ipc=ipc,
-                                                              camera_node_config=config,
-                                                              shutdown_self_flag=shutdown_self_flag,
-                                                              process_frame_number_subscription=ipc.pubsub.get_subscription(
-                                                                  ProcessFrameNumberTopic),
-                                                              pipeline_config_subscription=ipc.pubsub.get_subscription(
-                                                                  PipelineConfigTopic),
-                                                              should_calibrate_subscription=ipc.pubsub.get_subscription(
-                                                                  ShouldCalibrateTopic),
-                                                              shm_subscription=ipc.shm_topic.get_subscription()
-                                                              ),
-                                                  daemon=True
-                                                  ),
+                   worker=worker
                    )
 
     @staticmethod
@@ -128,7 +145,7 @@ class CameraNode:
                     # mocap_task = None  # TODO - this
 
                 if not should_calibrate_subscription.empty():
-                    _ : ShouldCalibrateMessage = should_calibrate_subscription.get() #dummy message triggers calibration
+                    _: ShouldCalibrateMessage = should_calibrate_subscription.get()  # dummy message triggers calibration
                     if camera_calibrator is None:
                         raise RuntimeError("Received should calibrate message but camera calibrator is None")
                     camera_calibrator.calibrate()

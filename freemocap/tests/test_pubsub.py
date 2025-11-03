@@ -5,12 +5,12 @@ from typing import Any
 import pytest
 from pydantic import Field
 
-from freemocap.core.pubsub.pubsub_abcs import (
+from freemocap.pubsub.pubsub_abcs import (
     TopicMessageABC,
     PubSubTopicABC,
     create_topic,
 )
-from freemocap.core.pubsub.pubsub_manager import (
+from freemocap.pubsub.pubsub_manager import (
     PubSubTopicManager,
     create_pipeline_pubsub_manager,
     PIPELINE_PUB_SUB_MANAGERS,

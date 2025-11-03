@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pubsub.pubsub_topics import AggregationNodeOutputMessage
+from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_display_helpers.charuco_3d_models import (
     MultiCameraCharuco3dData, 
     Charuco3dData, 

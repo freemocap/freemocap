@@ -7,7 +7,7 @@ from skellycam.core.recorders.framerate_tracker import FramerateTracker
 from skellycam.core.types.type_overloads import CameraGroupIdString
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
-from freemocap.freemocap_app.freemocap_application import FreemocApp, get_freemocap_app
+from freemocap.app.freemocap_application import FreemocApplication, get_freemocap_app
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue, \
     MIN_LOG_LEVEL_FOR_WEBSOCKET
 from freemocap.utilities.wait_functions import await_10ms
@@ -24,7 +24,7 @@ class WebsocketServer:
         if not hasattr(fast_api_app, "state") or not hasattr(fast_api_app.state, "global_kill_flag"):
             raise RuntimeError("FastAPI app does not have a global_kill_flag in its state - define those fields when creating fastapi app")
         self._global_kill_flag = fast_api_app.state.global_kill_flag
-        self._app: FreemocApp = get_freemocap_app()
+        self._app: FreemocApplication = get_freemocap_app()
 
         self._websocket_should_continue = True
         self.ws_tasks: list[asyncio.Task] = []

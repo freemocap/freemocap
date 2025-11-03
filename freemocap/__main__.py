@@ -9,14 +9,15 @@ from skellycam.utilities.kill_process_on_port import kill_process_on_port
 from skellycam.utilities.wait_functions import await_1s
 
 from freemocap.api.server_constants import HOSTNAME, PORT
-from freemocap.app import create_fastapi_app
+from freemocap.app.app import create_fastapi_app
 
 logger = logging.getLogger(__name__)
 
 
 async def main() -> None:
     # Create shared kill flag for subprocesses
-    global_kill_flag = multiprocessing.Value("b", False)
+    global_kill_flag:multiprocessing.Value = multiprocessing.Value("b", False)
+    subprocess_registry: list[multiprocessing.Process] = []
     server: uvicorn.Server | None = None
 
     def handle_signal(signum: int, frame: object) -> None:
@@ -35,7 +36,8 @@ async def main() -> None:
         kill_process_on_port(port=PORT)
 
         # Create FastAPI app
-        app = create_fastapi_app(global_kill_flag=global_kill_flag)
+        app = create_fastapi_app(global_kill_flag=global_kill_flag,
+                                        subprocess_registry=subprocess_registry)
 
         # Configure and create Uvicorn server
         config = uvicorn.Config(
@@ -65,7 +67,17 @@ async def main() -> None:
             server.should_exit = True
             await await_1s()  # Give it time to shut down gracefully
 
+        for process in subprocess_registry:
+            if process.is_alive():
+                logger.info(f"Terminating subprocess {process.name} (PID: {process.pid})")
+                process.terminate()
+                process.join(timeout=2)
+                if process.is_alive():
+                    logger.warning(f"Force killing subprocess {process.name} (PID: {process.pid})")
+                    process.kill()
+                    process.join()
         logger.success("Done! Thank you for using SkellyCam 💀📸✨")
+
 
 
 if __name__ == "__main__":

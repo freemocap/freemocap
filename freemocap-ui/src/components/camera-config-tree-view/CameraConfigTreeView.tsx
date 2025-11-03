@@ -18,7 +18,7 @@ import {
     useAppDispatch,
     useAppSelector,
     selectCameras,
-    selectIsLoading,
+    selectCalibrationIsLoading,
     selectConnectedCameras,
     selectSelectedCameras,
     detectCameras,
@@ -33,7 +33,7 @@ export const CameraConfigTreeView: React.FC = () => {
     const {isConnected} = useServer()
     // Redux state
     const cameras = useAppSelector(selectCameras);
-    const isLoading = useAppSelector(selectIsLoading);
+    const isLoading = useAppSelector(selectCalibrationIsLoading);
     const connectedCameras = useAppSelector(selectConnectedCameras);
     const selectedCameras = useAppSelector(selectSelectedCameras);
 

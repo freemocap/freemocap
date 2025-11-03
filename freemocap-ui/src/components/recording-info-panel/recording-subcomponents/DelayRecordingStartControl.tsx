@@ -22,7 +22,12 @@ export const DelayRecordingStartControl: React.FC<DelayStartControlProps> = ({
                     <Checkbox
                         checked={useDelay}
                         onChange={(e) => onDelayToggle(e.target.checked)}
-                        color="primary"
+                        sx={{
+                            color: theme.palette.text.primary,
+                            '&.Mui-checked': {
+                                color: theme.palette.text.primary,
+                            },
+                        }}
                     />
                 }
                 label="Delay Start"

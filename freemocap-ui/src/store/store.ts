@@ -6,6 +6,7 @@ import {themeSlice} from "./slices/theme/theme-slice";
 import {videosSlice} from "./slices/videos/videos-slice";
 import {logRecordsSlice} from "./slices/log-records/log-records-slice";
 import {pipelineSlice} from "./slices/pipeline/pipeline-slice";
+import {calibrationSlice} from "@/store/slices/calibration";
 
 export const store = configureStore({
     reducer: {
@@ -15,7 +16,8 @@ export const store = configureStore({
         logs: logRecordsSlice.reducer,
         theme: themeSlice.reducer,
         videos: videosSlice.reducer,
-        pipeline: pipelineSlice.reducer
+        pipeline: pipelineSlice.reducer,
+        calibration: calibrationSlice.reducer
     }
 });
 

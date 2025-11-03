@@ -49,7 +49,12 @@ export const RecordingSettingsSection: React.FC<RecordingSettingsProps> = ({
                     <FormControlLabel
                         control={
                             <Checkbox
-                                color="primary"
+                                sx={{
+                                    color: theme.palette.text.primary,
+                                    '&.Mui-checked': {
+                                        color: theme.palette.text.primary,
+                                    },
+                                }}
                                 checked={useTimestamp}
                                 onChange={(e) => onUseTimestampChange(e.target.checked)}
                             />
@@ -73,7 +78,12 @@ export const RecordingSettingsSection: React.FC<RecordingSettingsProps> = ({
                     <FormControlLabel
                         control={
                             <Checkbox
-                                color="primary"
+                                sx={{
+                                    color: theme.palette.text.primary,
+                                    '&.Mui-checked': {
+                                        color: theme.palette.text.primary,
+                                    },
+                                }}
 
                                 checked={createSubfolder}
                                 onChange={(e) => onCreateSubfolderChange(e.target.checked)}
@@ -101,6 +111,12 @@ export const RecordingSettingsSection: React.FC<RecordingSettingsProps> = ({
                             <Checkbox
                                 checked={useIncrement}
                                 onChange={(e) => onUseIncrementChange(e.target.checked)}
+                                sx={{
+                                    color: theme.palette.text.primary,
+                                    '&.Mui-checked': {
+                                        color: theme.palette.text.primary,
+                                    },
+                                }}
                             />
                         }
                         label="Auto Increment"

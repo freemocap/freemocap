@@ -25,6 +25,17 @@ import logging
 from tqdm import tqdm
 
 
+### WHAT THIS PIPELINE CAN DO:
+# - take in a folder of synchronized videos, run skellytracker's mediapipe tracker, triangulate, post-process, and save out the final data in various formats
+# - currently hardcoded for the MediaPipe tracker and MediaPipeModelInfo for this run
+# - has a Pydantic config for each major step (pose estimation, triangulation, interpolation, filtering) that can be modified when calling the pipeline
+
+### WHAT IT CANT DO CURRENTLY:
+# - save out intermediate data (2D data from pose estimation, raw 3D triangulated data) - can easily add an np.save, but unsure of the format we want the 2d data saved as
+# - multiprocessing on the pose estimation step
+# - load from disk 
+
+
 def process_video(tracker:MediapipeTracker, path_to_video:str|Path):
     cap = cv2.VideoCapture(str(path_to_video))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -38,7 +49,7 @@ def process_video(tracker:MediapipeTracker, path_to_video:str|Path):
 
             tracker.process_image(frame_number=frame_number, image=frame)
             frame_number += 1
-            pbar.update(1)   # advance progress bar
+            pbar.update(1)  
 
     cap.release()
  
@@ -68,7 +79,7 @@ def run_pipeline(path_to_synchronized_video_folder: Path|str,
         tracker_output[video_path.stem] = data_2d_xyc[..., :2] 
 
     print(f"2D data shape: {data_2d_xyc.shape}") 
-    
+
     camera_group:CameraGroup = load_camera_group_from_toml(path_to_calibration_toml)
 
     raw_trajectory_3d: Trajectory3d = triangulate_dict(

@@ -5,7 +5,7 @@ import { Footer } from "@/components/ui-components/Footer";
 import { useTheme } from "@mui/material/styles";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { CameraViewsGrid } from "@/components/camera-views/CameraViewsGrid";
-import { CamerasViewSettingsOverlay } from "@/components/camera-view-settings-overlay/CamerasViewSettingsOverlay";
+import { CamerasViewSettingsOverlay } from "@/components/camera-views/camera-view-settings-overlay/CamerasViewSettingsOverlay";
 import { ThreeJsCanvas } from "@/components/viewport3d/ThreeJsCanvas";
 
 interface CameraSettings {

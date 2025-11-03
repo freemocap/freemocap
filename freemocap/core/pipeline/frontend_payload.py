@@ -33,7 +33,6 @@ class FrontendPayload(BaseModel):
     ) -> "FrontendPayload":
         """Create frontend payload from aggregation node output"""
         charuco_overlays = aggregation_output.charuco_overlay_data
-
         camera_3d_data: dict[CameraIdString, Charuco3dData] = {}
 
         for camera_id, camera_output in aggregation_output.camera_node_outputs.items():

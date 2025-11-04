@@ -8,26 +8,26 @@ from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemory
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig, AggregationNodeConfig
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.tasks.calibration_task.calibration_helpers.multi_camera_calibrator import MultiCameraCalibrator
-from freemocap.core.tasks.calibration_task.point_triangulator import PointTriangulator
+from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator, CharucoObservations
 from freemocap.core.types.type_overloads import Point3d, PipelineIdString
-from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigTopic, ProcessFrameNumberTopic, \
+from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigUpdateTopic, ProcessFrameNumberTopic, \
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic, \
-    ShouldCalibrateTopic, ShouldCalibrateMessage
+    ShouldCalibrateTopic, ShouldCalibrateMessage, PipelineConfigUpdateMessage
 
 logger = logging.getLogger(__name__)
 
 
-class CameraNodeState(BaseModel):
+class AggregationNodeState(BaseModel):
     model_config = ConfigDict(
         validate_assignment=True,
         frozen=True
     )
     pipeline_id: PipelineIdString
-    config: AggregationNodeConfig
+    config: PipelineConfig
     alive: bool
     last_seen_frame_number: int | None = None
     calibration_task_state: object | None = None
@@ -55,7 +55,7 @@ class AggregationNode:
                                                      camera_node_subscription=ipc.pubsub.topics[
                                                          CameraNodeOutputTopic].get_subscription(),
                                                      pipeline_config_subscription=ipc.pubsub.topics[
-                                                         PipelineConfigTopic].get_subscription(),
+                                                         PipelineConfigUpdateTopic].get_subscription(),
                                                      shm_subscription=ipc.shm_topic.get_subscription()
                                                      ),
                                          daemon=True
@@ -90,23 +90,25 @@ class AggregationNode:
                                                                                          config.camera_configs.keys()}
             camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=shm_message.camera_group_shm_dto,
                                                                 read_only=True)
-            calibrator = MultiCameraCalibrator.from_camera_ids(camera_ids=config.camera_ids,
-                                                               principal_camera_id=config.camera_ids[0])
-            triangulator: PointTriangulator | None = None
+            shared_view_accumulator= SharedViewAccumulator.create(camera_ids=config.camera_ids)
+
             latest_requested_frame: int = -1
             last_received_frame: int = -1
-            should_gather_observations: bool = True
             while ipc.should_continue and not shutdown_self_flag.value:
                 wait_1ms()
+
+                # Check for updated Pipeline Config
+                while not pipeline_config_subscription.empty():
+                    pipeline_config_message: PipelineConfigUpdateMessage = pipeline_config_subscription.get()
+                    config = pipeline_config_message.pipeline_config
+                    logger.info(f"AggregationNode for camera group {camera_group_id} received updated config")
+
+                # Check if we should request a new frame to process
                 if camera_group_shm.latest_multiframe_number > latest_requested_frame and last_received_frame >= latest_requested_frame:
                     ipc.pubsub.topics[ProcessFrameNumberTopic].publish(
                         ProcessFrameNumberMessage(frame_number=camera_group_shm.latest_multiframe_number))
                     latest_requested_frame = camera_group_shm.latest_multiframe_number
 
-                if should_gather_observations and calibrator.ready_to_calibrate:
-                    logger.debug("Calibrator is ready to calibrate - triggering single-camera calibration")
-                    should_gather_observations = False
-                    ipc.pubsub.topics[ShouldCalibrateTopic].publish(ShouldCalibrateMessage())
                 # Check for Camera Node Output
                 if not camera_node_subscription.empty():
                     camera_node_output_message: CameraNodeOutputMessage = camera_node_subscription.get()
@@ -125,35 +127,9 @@ class AggregationNode:
                         logger.warning(
                             f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
                     last_received_frame = latest_requested_frame
-
-                    if not triangulator and should_gather_observations:
-                        calibrator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
-                                                              multi_frame_number=latest_requested_frame)
-                        # if calibrator.ready_to_calibrate and not calibrator.has_calibration and False:
-                        #     try:
-                        #         print('calibrating...')
-                        #         calibrator.calibrate()
-                        #         print('running bundle adjustment...')
-                        #         calibrator.run_bundle_adjustment()
-                        #         print('creating triangulator...')
-                        #         triangulator = create_triangulator_from_calibrator(calibrator)
-                        #         logger.success(f"Calibration successful!")
-                        #     except Exception as e:
-                        #         logger.error(f"Error during calibration: {e}", exc_info=True)
-                        #         raise
-                    # else:
-                    #     print("triangulating points...")
-                    #     tik = time.perf_counter_ns()
-                    #     triangulated_points3d = triangulator.triangulate_camera_node_outputs(
-                    #         camera_node_outputs=camera_node_outputs,
-                    #         undistort_points=False,  # fast enough for the real-time pipeline
-                    #         compute_reprojection_error=False
-                    #         # too slow for real-time (see diagnostics in PointTriangulator file)
-                    #     )
-                    #     tok = time.perf_counter_ns()
-                    #     if triangulated_points3d:
-                    #         logger.api(
-                    #         f"Triangulated {len(triangulated_points3d)} points at frame {latest_requested_frame} in {(tok - tik) / 1e6:.3f} ms")
+                    if any([node.charuco_observation.charuco_board_visible for node in camera_node_outputs.values()]):
+                        shared_view_accumulator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
+                                                                  multi_frame_number=latest_requested_frame)
                     aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                         frame_number=latest_requested_frame,
                         pipeline_id=ipc.pipeline_id,

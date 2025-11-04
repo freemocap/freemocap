@@ -5,11 +5,10 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
-from skellycam.skellycam_app.skellycam_app import SkellycamApplication, create_skellycam_app
-
+from skellycam.core.camera_group.camera_group import CameraGroupState
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_manager import PipelineManager
-from freemocap.core.pipeline.processing_pipeline import FrontendPayload, ProcessingPipeline
+from freemocap.core.pipeline.processing_pipeline import FrontendPayload, ProcessingPipeline, PipelineState
 from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)
@@ -42,20 +41,15 @@ class AppState(BaseModel):
 class FreemocApplication:
     global_kill_flag: multiprocessing.Value
     pipeline_shutdown_event: multiprocessing.Event
-    skellycam_app: SkellycamApplication
     pipeline_manager: PipelineManager
 
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value,
                subprocess_registry: list[multiprocessing.Process]) -> 'FreemocApplication':
-        skellycam_app = create_skellycam_app(global_kill_flag=global_kill_flag,
-                                             subprocess_registry=subprocess_registry)
         pipeline_manager = PipelineManager(global_kill_flag=global_kill_flag,
-                                           subprocess_registry=subprocess_registry,
-                                           skellycam_app=skellycam_app)
+                                           subprocess_registry=subprocess_registry,)
         return cls(global_kill_flag=global_kill_flag,
                    pipeline_shutdown_event=multiprocessing.Event(),
-                   skellycam_app=skellycam_app,
                    pipeline_manager=pipeline_manager,
                    )
 

@@ -6,19 +6,19 @@ from pydantic import BaseModel
 from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
-from freemocap.core.tasks.calibration_task.calibration_helpers.camera_math_models import (
+from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.camera_math_models import (
     TransformationMatrix,
     RotationVector,
     TranslationVector,
 )
-from freemocap.core.tasks.calibration_task.calibration_helpers.single_camera_calibrator import (
+from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.single_camera_calibrator import (
     CameraIntrinsicsEstimate,
     SingleCameraCalibrator,
 )
-from freemocap.core.tasks.calibration_task.pyceres_bundle_adjuster import PyCeresBundleAdjuster
-from freemocap.core.tasks.calibration_task.scipy_bundle_adjuster import ScipyBundleAdjuster
+from freemocap.core.tasks.calibration_task.ooooold.pyceres_bundle_adjuster import PyCeresBundleAdjuster
+from freemocap.core.tasks.calibration_task.ooooold.scipy_bundle_adjuster import ScipyBundleAdjuster
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import (
-    MultiCameraNodeOutputAccumulator,
+    SharedViewAccumulator,
     CameraPair,
 )
 
@@ -33,7 +33,7 @@ class MultiCameraCalibrationEstimate(BaseModel):
 class MultiCameraCalibrator(BaseModel):
     principal_camera_id: CameraIdString
     camera_id_to_index: dict[CameraIdString, int]
-    multi_cam_output_accumulator: MultiCameraNodeOutputAccumulator
+    multi_cam_output_accumulator: SharedViewAccumulator
 
     single_camera_calibrators: dict[CameraIdString, SingleCameraCalibrator] | None = None
     multi_camera_calibration_estimate: MultiCameraCalibrationEstimate | None = None
@@ -49,7 +49,7 @@ class MultiCameraCalibrator(BaseModel):
         return cls(
             principal_camera_id=principal_camera_id if principal_camera_id is not None else min(camera_ids),
             camera_id_to_index={camera_id: index for index, camera_id in enumerate(camera_ids)},
-            multi_cam_output_accumulator=MultiCameraNodeOutputAccumulator.create(camera_ids=camera_ids),
+            multi_cam_output_accumulator=SharedViewAccumulator.create(camera_ids=camera_ids),
         )
 
     @property

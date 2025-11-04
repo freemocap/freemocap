@@ -7,7 +7,7 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
-from freemocap.core.tasks.calibration_task.calibration_helpers.charuco_overlay_data import CharucoOverlayData
+from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import TrackerTypeString, FrameNumberInt, Point3d, PipelineIdString
 
 logger = logging.getLogger(__name__)
@@ -20,14 +20,13 @@ class ShouldCalibrateMessage(TopicMessageABC):
     pass
 
 
-class PipelineConfigMessage(TopicMessageABC):
+class PipelineConfigUpdateMessage(TopicMessageABC):
     pipeline_config: PipelineConfig
 
 
 class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString
     frame_number: FrameNumberInt = Field(ge=0)
-    tracker_name: TrackerTypeString
     charuco_observation: CharucoObservation | None = None
 
 
@@ -42,7 +41,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     @model_validator(mode='after')
     def validate(self) -> 'AggregationNodeOutputMessage':
         # ensure that camera_node_outputs keys match camera IDs in pipeline_config
-        expected_camera_ids = set(self.pipeline_config.camera_node_configs.keys())
+        expected_camera_ids = set(self.pipeline_config.camera_configs.keys())
         actual_camera_ids = set(self.camera_node_outputs.keys())
         if sorted(expected_camera_ids) != sorted(actual_camera_ids):
             raise ValueError(
@@ -69,9 +68,13 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     def camera_ids(self) -> list[CameraIdString]:
         return list(self.camera_node_outputs.keys())
 
+class StartRealtimeCalibrationTrackingMessage(TopicMessageABC):
+    """Message to signal that realtime calibration tracking should start."""
+    pass
 
 ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 ShouldCalibrateTopic = create_topic(ShouldCalibrateMessage)
-PipelineConfigTopic = create_topic(PipelineConfigMessage)
+PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
+StartRealtimeCalibrationTrackingTopic = create_topic(StartRealtimeCalibrationTrackingMessage)

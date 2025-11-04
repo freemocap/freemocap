@@ -8,12 +8,14 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
-from freemocap.core.pipeline.aggregation_node import AggregationNode
+from freemocap.core.pipeline.aggregation_node import AggregationNode, AggregationNodeState
 from freemocap.core.pipeline.camera_node import CameraNode, CameraNodeState
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage
+from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \
+    StartRealtimeCalibrationTrackingTopic, StartRealtimeCalibrationTrackingMessage, PipelineConfigUpdateMessage, \
+    PipelineConfigUpdateTopic
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue
 from pydantic import BaseModel, ConfigDict
 
@@ -74,7 +76,7 @@ class ProcessingPipeline:
                                  )
         camera_nodes = {camera_id: CameraNode.create(camera_id=camera_id,
                                                      subprocess_registry=subprocess_registry,
-                                                     config=pipeline_config.camera_node_configs[camera_id],
+                                                     config=pipeline_config,
                                                      ipc=ipc)
                         for camera_id, config in camera_group.configs.items()}
         aggregation_node = AggregationNode.create(camera_group_id=camera_group.id,
@@ -151,3 +153,9 @@ class ProcessingPipeline:
 
         return (frames_bytearray,
                 FrontendPayload.from_aggregation_output(aggregation_output=aggregation_output))
+
+    def update_pipeline_config(self, new_config: PipelineConfig) -> None:
+        self.config = new_config
+        self.ipc.pubsub.topics[PipelineConfigUpdateTopic].publish(
+            PipelineConfigUpdateMessage(pipeline_config=self.config)
+        )

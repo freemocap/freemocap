@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+from copy import deepcopy
 from dataclasses import dataclass, field
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -64,3 +65,10 @@ class PipelineManager:
         with self.lock:
             for pipeline in self.pipelines.values():
                 pipeline.camera_group.stop_recording()
+
+    def start_realtime_calibration_tracking(self):
+        with self.lock:
+            for pipeline in self.pipelines.values():
+                config = deepcopy(pipeline.config)
+                config.realtime_tracking_enabled = True
+                pipeline.update_pipeline_config(new_config=config)

@@ -4,7 +4,7 @@ Create Charuco board overlay topology with configurable visualization options.
 
 import numpy as np
 
-from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_display_helpers.image_overlay_system import (
+from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.calibration_display_helpers.image_overlay_system import (
     OverlayTopology,
     ComputedPoint,
     PointElement,

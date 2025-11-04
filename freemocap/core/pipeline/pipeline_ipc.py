@@ -14,7 +14,6 @@ class PipelineIPC:
     pipeline_id: PipelineIdString
     pubsub: PubSubTopicManager
     ws_queue: multiprocessing.Queue
-    process_state_queue: multiprocessing.Queue
     shm_topic: SetShmTopic
     global_kill_flag: multiprocessing.Value
     pipeline_shutdown_flag: multiprocessing.Value = field(default_factory=lambda: multiprocessing.Value('b', False))
@@ -33,7 +32,6 @@ class PipelineIPC:
             shm_topic=shm_topic,
             global_kill_flag=global_kill_flag,
             ws_queue=get_websocket_log_queue(),
-            process_state_queue=get_process_state_queue(),
         )
 
     @property

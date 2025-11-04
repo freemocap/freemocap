@@ -14,7 +14,7 @@ from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
 from tqdm import trange
 
-from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_numpy_types import \
+from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.calibration_numpy_types import \
     ImagePoints2DByCamera, CameraExtrinsicsMatrixByCamera
 
 logger = logging.getLogger(__name__)

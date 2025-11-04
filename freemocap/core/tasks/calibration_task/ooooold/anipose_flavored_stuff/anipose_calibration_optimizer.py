@@ -9,14 +9,14 @@ from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
 from tqdm import trange
 
-from freemocap.core.tasks.calibration_task.anipose_flavored_stuff.calibration_utilities import \
+from freemocap.core.tasks.calibration_task.ooooold.anipose_flavored_stuff.calibration_utilities import \
     calculate_error_bounds, transform_points, construct_camera_extrinsics_matrix, \
     get_rotation_and_translation_vector_from_extrinsics_matrix, get_error_dict
-from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_numpy_types import ImagePoints2D, \
+from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.calibration_numpy_types import ImagePoints2D, \
     ObjectPoints3D, ExtrinsicsParameters, IntrinsicsParameters, ReprojectionErrorByPoint, ImagePoints2DByCamera, \
     PointIds, \
     RotationVectorsByCamera, TranslationVectorsByCamera
-from freemocap.core.tasks.calibration_task.calibration_helpers.single_camera_calibrator import \
+from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.single_camera_calibrator import \
     SingleCameraCalibrator
 from freemocap.zzold.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
     anipose_triangulate_simple, remap_ids

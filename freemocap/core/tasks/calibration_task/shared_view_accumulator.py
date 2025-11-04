@@ -6,7 +6,7 @@ from skellycam.core.types.type_overloads import CameraIdString, FrameNumberInt
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
-from freemocap.core.tasks.calibration_task.calibration_helpers.calibration_numpy_types import ImagePoint2D
+from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.calibration_numpy_types import ImagePoint2D
 
 CharucoObservations = dict[CameraIdString, CharucoObservation | None]
 
@@ -87,7 +87,7 @@ class MultiCameraTargetView(BaseModel):
         return image_points_by_camera
 
 
-class MultiCameraNodeOutputAccumulator(BaseModel):
+class SharedViewAccumulator(BaseModel):
     camera_ids: list[CameraIdString]
     multi_camera_views_by_frame:dict[FrameNumberInt,MultiCameraTargetView] = Field(default_factory=dict)
     camera_shared_views: dict[CameraIdString, dict[CameraPair, list[CameraPairTargetView]]]
@@ -186,5 +186,5 @@ class MultiCameraNodeOutputAccumulator(BaseModel):
 
 
 if __name__ == "__main__":
-    mca =MultiCameraNodeOutputAccumulator.create(["CamA","CamB","CamC","CamD"])
+    mca =SharedViewAccumulator.create(["CamA", "CamB", "CamC", "CamD"])
     print(mca.model_dump_json(indent=2))

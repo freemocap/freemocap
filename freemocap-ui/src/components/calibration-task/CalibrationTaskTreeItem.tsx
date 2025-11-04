@@ -1,5 +1,5 @@
 // components/CalibrationTaskTreeItem.tsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import {
     Box,
     Typography,
@@ -12,6 +12,10 @@ import {
     IconButton,
     InputAdornment,
     useTheme,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel,
 } from '@mui/material';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
@@ -20,7 +24,18 @@ import StopIcon from '@mui/icons-material/Stop';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import { useCalibration } from '@/hooks/useCalibration';
 import { useFileSystem } from '@/hooks/useFileSystem';
-import { CharucoBoardSettings } from './CharucoBoardSettings';
+
+type BoardPreset = '5x3' | '7x5' ;
+
+interface BoardPresetConfig {
+    xSquares: number;
+    ySquares: number;
+}
+
+const BOARD_PRESETS: Record<Exclude<BoardPreset, 'custom'>, BoardPresetConfig> = {
+    '5x3': { xSquares: 5, ySquares: 3 },
+    '7x5': { xSquares: 7, ySquares: 5 },
+};
 
 export const CalibrationTaskTreeItem: React.FC = () => {
     const theme = useTheme();
@@ -42,6 +57,19 @@ export const CalibrationTaskTreeItem: React.FC = () => {
         clearError,
     } = useCalibration();
 
+    // Determine current board preset based on config values
+    const currentPreset = useMemo<BoardPreset>(() => {
+        for (const [preset, presetConfig] of Object.entries(BOARD_PRESETS)) {
+            if (
+                presetConfig.xSquares === config.charucoBoardXSquares &&
+                presetConfig.ySquares === config.charucoBoardYSquares
+            ) {
+                return preset as BoardPreset;
+            }
+        }
+        throw new Error('Current board size does not match any preset');
+    }, [config.charucoBoardXSquares, config.charucoBoardYSquares]);
+
     const handleClearError = useCallback((): void => {
         clearError();
         setLocalError(null);
@@ -51,12 +79,20 @@ export const CalibrationTaskTreeItem: React.FC = () => {
         try {
             const result = await selectDirectory();
             if (result) {
-                updateCalibrationConfig({ calibrationRecordingPath: result });
+                // updateCalibrationConfig({ calibrationRecordingInfo: result });
             }
         } catch (err) {
             setLocalError(`Failed to select directory: ${err instanceof Error ? err.message : String(err)}`);
         }
-    }, [selectDirectory, updateCalibrationConfig]);
+    }, [selectDirectory]);
+
+    const handlePresetChange = useCallback((preset: BoardPreset): void => {
+            const presetConfig = BOARD_PRESETS[preset];
+            updateCalibrationConfig({
+                charucoBoardXSquares: presetConfig.xSquares,
+                charucoBoardYSquares: presetConfig.ySquares,
+            });
+    }, [updateCalibrationConfig]);
 
     const displayError = error || localError;
 
@@ -88,17 +124,40 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                                 checked={config.liveTrackCharuco}
                                 onChange={(e) => updateCalibrationConfig({ liveTrackCharuco: e.target.checked })}
                                 disabled={isLoading}
-                                sx ={{ '&.Mui-checked': { color: theme.palette.text.primary } }}
+                                sx={{ '&.Mui-checked': { color: theme.palette.text.primary } }}
                             />
                         }
-                        label="Enable realtime tracker"
+                        label="Live Track Charuco Board"
                     />
 
-                    {/* Board Settings */}
-                    <CharucoBoardSettings
-                        config={config}
+                    {/* Board Size Preset Selector */}
+                    <FormControl fullWidth size="small">
+                        <InputLabel id="board-preset-label">Board Size Preset</InputLabel>
+                        <Select
+                            labelId="board-preset-label"
+                            value={currentPreset}
+                            label="Board Size Preset"
+                            onChange={(e) => handlePresetChange(e.target.value as BoardPreset)}
+                            disabled={isLoading}
+                        >
+                            <MenuItem value="5x3">5×3 Charuco </MenuItem>
+                            <MenuItem value="7x5">7×5 Charuco</MenuItem>
+                        </Select>
+                    </FormControl>
+
+
+                    {/* Square Length */}
+                    <TextField
+                        label="Square Length (mm)"
+                        type="number"
+                        value={config.charucoSquareLength}
+                        onChange={(e) => updateCalibrationConfig({
+                            charucoSquareLength: parseFloat(e.target.value) || 0
+                        })}
                         disabled={isLoading}
-                        onConfigUpdate={updateCalibrationConfig}
+                        size="small"
+                        fullWidth
+                        inputProps={{ min: 1, step: 0.1 }}
                     />
 
                     {/* Recording Controls */}
@@ -111,7 +170,7 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                             disabled={!canStartRecording || isLoading}
                             fullWidth
                         >
-                            Start Recording
+                            Start Calibration Recording
                         </Button>
                         {isRecording && (
                             <Button
@@ -158,8 +217,8 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                     <FormControlLabel
                         control={
                             <Checkbox
-                                checked={config.autoProcess}
-                                onChange={(e) => updateCalibrationConfig({ autoProcess: e.target.checked })}
+                                checked={config.autoProcessRecording}
+                                onChange={(e) => updateCalibrationConfig({ autoProcessRecording: e.target.checked })}
                                 disabled={isLoading}
                             />
                         }
@@ -170,7 +229,7 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                     <TextField
                         label="Calibration Recording Path"
                         value={config.calibrationRecordingPath}
-                        onChange={(e) => updateCalibrationConfig({ calibrationRecordingPath: e.target.value })}
+                        onChange={(e) => updateCalibrationConfig({ calibrationRecordingFolder: e.target.value })}
                         disabled={isLoading}
                         fullWidth
                         size="small"

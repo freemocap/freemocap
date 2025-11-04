@@ -7,24 +7,21 @@ import {
     stopCalibrationRecording,
     updateCalibrationConfigOnServer,
 } from "@/store/slices/calibration/calibration-thunks";
+import {RecordingInfo} from "@/store";
 
 // ==================== Types ====================
 
-export type BoardType = '5x3' | '7x5' | 'custom';
 
-export interface BoardSize {
-    rows: number;
-    cols: number;
-}
 
 export interface CalibrationConfig {
-    boardType: BoardType;
-    boardSize: BoardSize;
-    squareSize: number;
-    minSharedViews: number;
-    autoProcess: boolean;
-    liveTrackCharuco: boolean;
-    calibrationRecordingPath: string;
+    liveTrackCharuco : boolean
+    charucoBoardXSquares : number
+    charucoBoardYSquares : number
+    charucoSquareLength : number
+    minSharedViewsPerCamera : number
+    autoStopOnMinViewCount : boolean
+    autoProcessRecording : boolean
+    calibrationRecordingFolder?: string;
 }
 
 export interface CalibrationState {
@@ -39,13 +36,14 @@ export interface CalibrationState {
 
 const initialState: CalibrationState = {
     config: {
-        boardType: '5x3',
-        boardSize: { rows: 5, cols: 3 },
-        squareSize: 54.0,
-        minSharedViews: 200,
-        autoProcess: true,
         liveTrackCharuco: true,
-        calibrationRecordingPath: '',
+        charucoBoardXSquares: 5,
+        charucoBoardYSquares: 3,
+        charucoSquareLength: 56,
+        minSharedViewsPerCamera: 200,
+        autoStopOnMinViewCount: true,
+        autoProcessRecording: true,
+        calibrationRecordingFolder: '',
     },
     isRecording: false,
     recordingProgress: 0,
@@ -146,7 +144,7 @@ export const selectCanStartCalibrationRecording = createSelector(
 export const selectCanCalibrate = createSelector(
     [selectCalibrationConfig, selectCalibrationIsLoading, selectCalibrationIsRecording],
     (config, isLoading, isRecording) =>
-        config.calibrationRecordingPath.length > 0 && !isLoading && !isRecording
+        config.calibrationRecordingPath && !isLoading && !isRecording
 );
 
 // ==================== Actions Export ====================
@@ -162,15 +160,3 @@ export const {
 
 export default calibrationSlice.reducer;
 
-// ==================== Helper Functions ====================
-
-export function getBoardSizeForType(boardType: BoardType): BoardSize {
-    switch (boardType) {
-        case '5x3':
-            return { rows: 5, cols: 3 };
-        case '7x5':
-            return { rows: 7, cols: 5 };
-        case 'custom':
-            return { rows: 7, cols: 5 };
-    }
-}

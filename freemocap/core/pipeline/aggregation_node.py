@@ -127,7 +127,7 @@ class AggregationNode:
                         logger.warning(
                             f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
                     last_received_frame = latest_requested_frame
-                    if any([node.charuco_observation.charuco_board_visible for node in camera_node_outputs.values()]):
+                    if any([node.charuco_observation and node.charuco_observation.charuco_board_visible for node in camera_node_outputs.values()]):
                         shared_view_accumulator.receive_camera_node_output(camera_node_output_by_camera=camera_node_outputs,
                                                                   multi_frame_number=latest_requested_frame)
                     aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(

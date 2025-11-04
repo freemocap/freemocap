@@ -101,9 +101,10 @@ class CameraNode:
             while ipc.should_continue and not shutdown_self_flag.value:
                 wait_1ms()
                 # Check trackers config updates
-                if not pipeline_config_subscription.empty():
+                while not pipeline_config_subscription.empty():
                     new_pipeline_config_message: PipelineConfigUpdateMessage = pipeline_config_subscription.get()
                     logger.debug(f"Received new skelly trackers for camera {camera_id}: {new_pipeline_config_message}")
+                    config = new_pipeline_config_message.pipeline_config
 
                 # Check for new frame to process
                 if not process_frame_number_subscription.empty():

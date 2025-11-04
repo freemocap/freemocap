@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.pipeline_configs import CalibrationTaskConfig
 
+
 logger = logging.getLogger(__name__)
 
 calibration_router = APIRouter(prefix="/calibration", tags=["Calibration"])
@@ -14,9 +15,7 @@ calibration_router = APIRouter(prefix="/calibration", tags=["Calibration"])
 
 # ==================== Request/Response Models ====================
 
-class BoardSize(BaseModel):
-    rows: int = Field(gt=0)
-    cols: int = Field(gt=0)
+
 
 
 class CalibrationConfigRequest(BaseModel):
@@ -56,7 +55,7 @@ def update_all_calibration_config(request: CalibrationConfigRequest) -> Calibrat
         app.pipeline_manager.update_calibration_task_config(request.config)
         return CalibrationConfigResponse(success=True, message="Configuration updated")
     except Exception as e:
-        logger.error(f"Error updating calibration config: {e}")
+        logger.exception(f"Error updating calibration config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

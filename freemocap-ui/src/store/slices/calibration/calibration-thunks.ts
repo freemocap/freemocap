@@ -2,6 +2,38 @@ import {createAsyncThunk} from "@reduxjs/toolkit";
 import {RootState} from "@/store";
 import {serverUrls} from "@/hooks/server-urls";
 
+// Helper function to extract detailed error info from failed responses
+async function getDetailedErrorMessage(response: Response): Promise<string> {
+    let errorDetails: unknown;
+
+    try {
+        // Try to parse JSON error response
+        errorDetails = await response.json();
+        console.error('❌ Server returned validation/error details:', errorDetails);
+    } catch {
+        // If not JSON, try to get text
+        try {
+            errorDetails = await response.text();
+            console.error('❌ Server returned error text:', errorDetails);
+        } catch {
+            console.error('❌ Could not read error response body');
+        }
+    }
+
+    // Build comprehensive error message
+    const baseError = `HTTP ${response.status}: ${response.statusText}`;
+
+    if (errorDetails) {
+        // Pretty print the error details
+        const detailsStr = typeof errorDetails === 'string'
+            ? errorDetails
+            : JSON.stringify(errorDetails, null, 2);
+        return `${baseError}\n\nValidation/Error Details:\n${detailsStr}`;
+    }
+
+    return baseError;
+}
+
 export const startCalibrationRecording = createAsyncThunk<
     { success: boolean; message?: string },
     void,
@@ -11,19 +43,28 @@ export const startCalibrationRecording = createAsyncThunk<
     async (_, {getState, rejectWithValue}) => {
         try {
             const state = getState();
+            const config = state.calibration.config;
+
+            console.log('🎬 Starting calibration recording with config:', config);
+
             const response = await fetch(serverUrls.endpoints.calibrationStartRecording, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({config: state.calibration.config}),
+                body: JSON.stringify({config}),
             });
 
             if (!response.ok) {
-                return rejectWithValue(`HTTP ${response.status}: ${response.statusText}`);
+                const errorMessage = await getDetailedErrorMessage(response);
+                return rejectWithValue(errorMessage);
             }
 
-            return await response.json();
+            const result = await response.json();
+            console.log('✅ Started calibration recording:', result);
+            return result;
         } catch (error) {
-            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ Failed to start calibration recording:', errorMessage);
+            return rejectWithValue(errorMessage);
         }
     }
 );
@@ -36,18 +77,25 @@ export const stopCalibrationRecording = createAsyncThunk<
     'calibration/stopRecording',
     async (_, {rejectWithValue}) => {
         try {
+            console.log('⏹️ Stopping calibration recording...');
+
             const response = await fetch(serverUrls.endpoints.calibrationStopRecording, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
             });
 
             if (!response.ok) {
-                return rejectWithValue(`HTTP ${response.status}: ${response.statusText}`);
+                const errorMessage = await getDetailedErrorMessage(response);
+                return rejectWithValue(errorMessage);
             }
 
-            return await response.json();
+            const result = await response.json();
+            console.log('✅ Stopped calibration recording:', result);
+            return result;
         } catch (error) {
-            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ Failed to stop calibration recording:', errorMessage);
+            return rejectWithValue(errorMessage);
         }
     }
 );
@@ -63,6 +111,11 @@ export const calibrateRecording = createAsyncThunk<
             const state = getState();
             const {calibrationRecordingPath, ...config} = state.calibration.config;
 
+            console.log('🔧 Calibrating recording:', {
+                calibrationRecordingPath,
+                config
+            });
+
             const response = await fetch(serverUrls.endpoints.calibrateRecording, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -73,12 +126,17 @@ export const calibrateRecording = createAsyncThunk<
             });
 
             if (!response.ok) {
-                return rejectWithValue(`HTTP ${response.status}: ${response.statusText}`);
+                const errorMessage = await getDetailedErrorMessage(response);
+                return rejectWithValue(errorMessage);
             }
 
-            return await response.json();
+            const result = await response.json();
+            console.log('✅ Calibration completed:', result);
+            return result;
         } catch (error) {
-            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ Failed to calibrate recording:', errorMessage);
+            return rejectWithValue(errorMessage);
         }
     }
 );
@@ -92,19 +150,28 @@ export const updateCalibrationConfigOnServer = createAsyncThunk<
     async (_, {getState, rejectWithValue}) => {
         try {
             const state = getState();
+            const config = state.calibration.config;
+
+            console.log('⚙️ Updating calibration config on server:', config);
+
             const response = await fetch(serverUrls.endpoints.updateCalibrationConfig, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({config: state.calibration.config}),
+                body: JSON.stringify({config}),
             });
 
             if (!response.ok) {
-                return rejectWithValue(`HTTP ${response.status}: ${response.statusText}`);
+                const errorMessage = await getDetailedErrorMessage(response);
+                return rejectWithValue(errorMessage);
             }
 
-            return await response.json();
+            const result = await response.json();
+            console.log('✅ Config updated on server:', result);
+            return result;
         } catch (error) {
-            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ Failed to update config on server:', errorMessage);
+            return rejectWithValue(errorMessage);
         }
     }
 );

@@ -88,7 +88,6 @@ class FreemocApplication:
         self.global_kill_flag.value = True
         self.pipeline_shutdown_event.set()
         self.pipeline_manager.close_all_pipelines()
-        self.skellycam_app.shutdown_skellycam() if self.skellycam_app else None
 
     def to_app_state(self):
         return AppState.from_app(self)

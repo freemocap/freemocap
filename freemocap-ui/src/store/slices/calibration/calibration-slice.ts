@@ -1,19 +1,59 @@
-// calibration-slice.ts
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+// store/slices/calibration/calibration-slice.ts
+import { createSlice, PayloadAction, createSelector } from '@reduxjs/toolkit';
+import { RootState } from '../../types';
 import {
-    CalibrationConfig,
-    CalibrationState,
-    createDefaultCalibrationConfig,
-} from './calibration-types';
-import { startCalibrationRecording, stopCalibrationRecording, calibrateRecording } from './calibration-thunks';
+    calibrateRecording,
+    startCalibrationRecording,
+    stopCalibrationRecording,
+    updateCalibrationConfigOnServer,
+} from "@/store/slices/calibration/calibration-thunks";
+
+// ==================== Types ====================
+
+export type BoardType = '5x3' | '7x5' | 'custom';
+
+export interface BoardSize {
+    rows: number;
+    cols: number;
+}
+
+export interface CalibrationConfig {
+    boardType: BoardType;
+    boardSize: BoardSize;
+    squareSize: number;
+    minSharedViews: number;
+    autoProcess: boolean;
+    liveTrackCharuco: boolean;
+    calibrationRecordingPath: string;
+}
+
+export interface CalibrationState {
+    config: CalibrationConfig;
+    isRecording: boolean;
+    recordingProgress: number;
+    isLoading: boolean;
+    error: string | null;
+}
+
+// ==================== Initial State ====================
 
 const initialState: CalibrationState = {
-    config: createDefaultCalibrationConfig(),
+    config: {
+        boardType: '5x3',
+        boardSize: { rows: 5, cols: 3 },
+        squareSize: 54.0,
+        minSharedViews: 200,
+        autoProcess: true,
+        liveTrackCharuco: true,
+        calibrationRecordingPath: '',
+    },
     isRecording: false,
     recordingProgress: 0,
     isLoading: false,
     error: null,
 };
+
+// ==================== Slice ====================
 
 export const calibrationSlice = createSlice({
     name: 'calibration',
@@ -23,25 +63,20 @@ export const calibrationSlice = createSlice({
             state.config = { ...state.config, ...action.payload };
         },
 
-        calibrationRecordingProgressUpdated: (state, action: PayloadAction<number>) => {
+        calibrationProgressUpdated: (state, action: PayloadAction<number>) => {
             state.recordingProgress = action.payload;
-        },
-
-        calibrationConfigReset: (state) => {
-            state.config = createDefaultCalibrationConfig();
-            state.isRecording = false;
-            state.recordingProgress = 0;
-            state.error = null;
         },
 
         calibrationErrorCleared: (state) => {
             state.error = null;
         },
+
+        resetCalibrationState: () => initialState,
     },
 
     extraReducers: (builder) => {
+        // Start Recording
         builder
-            // ========== Start Recording ==========
             .addCase(startCalibrationRecording.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -53,11 +88,11 @@ export const calibrationSlice = createSlice({
             })
             .addCase(startCalibrationRecording.rejected, (state, action) => {
                 state.isLoading = false;
-                state.isRecording = false;
-                state.error = action.payload as string || action.error.message || 'Failed to start recording';
-            })
+                state.error = action.payload || 'Failed to start recording';
+            });
 
-            // ========== Stop Recording ==========
+        // Stop Recording
+        builder
             .addCase(stopCalibrationRecording.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -69,10 +104,11 @@ export const calibrationSlice = createSlice({
             })
             .addCase(stopCalibrationRecording.rejected, (state, action) => {
                 state.isLoading = false;
-                state.error = action.payload as string || action.error.message || 'Failed to stop recording';
-            })
+                state.error = action.payload || 'Failed to stop recording';
+            });
 
-            // ========== Calibrate Recording ==========
+        // Calibrate Recording
+        builder
             .addCase(calibrateRecording.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -82,14 +118,59 @@ export const calibrationSlice = createSlice({
             })
             .addCase(calibrateRecording.rejected, (state, action) => {
                 state.isLoading = false;
-                state.error = action.payload as string || action.error.message || 'Failed to calibrate recording';
+                state.error = action.payload || 'Failed to calibrate recording';
+            });
+
+        // Update Config on Server
+        builder
+            .addCase(updateCalibrationConfigOnServer.rejected, (state, action) => {
+                state.error = action.payload || 'Failed to sync config to server';
             });
     },
 });
 
+// ==================== Selectors ====================
+
+export const selectCalibration = (state: RootState) => state.calibration;
+export const selectCalibrationConfig = (state: RootState) => state.calibration.config;
+export const selectCalibrationIsLoading = (state: RootState) => state.calibration.isLoading;
+export const selectCalibrationIsRecording = (state: RootState) => state.calibration.isRecording;
+export const selectCalibrationProgress = (state: RootState) => state.calibration.recordingProgress;
+export const selectCalibrationError = (state: RootState) => state.calibration.error;
+
+export const selectCanStartCalibrationRecording = createSelector(
+    [selectCalibrationIsRecording, selectCalibrationIsLoading],
+    (isRecording, isLoading) => !isRecording && !isLoading
+);
+
+export const selectCanCalibrate = createSelector(
+    [selectCalibrationConfig, selectCalibrationIsLoading, selectCalibrationIsRecording],
+    (config, isLoading, isRecording) =>
+        config.calibrationRecordingPath.length > 0 && !isLoading && !isRecording
+);
+
+// ==================== Actions Export ====================
+
 export const {
     calibrationConfigUpdated,
-    calibrationRecordingProgressUpdated,
-    calibrationConfigReset,
+    calibrationProgressUpdated,
     calibrationErrorCleared,
+    resetCalibrationState
 } = calibrationSlice.actions;
+
+// ==================== Reducer Export ====================
+
+export default calibrationSlice.reducer;
+
+// ==================== Helper Functions ====================
+
+export function getBoardSizeForType(boardType: BoardType): BoardSize {
+    switch (boardType) {
+        case '5x3':
+            return { rows: 5, cols: 3 };
+        case '7x5':
+            return { rows: 7, cols: 5 };
+        case 'custom':
+            return { rows: 7, cols: 5 };
+    }
+}

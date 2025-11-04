@@ -16,8 +16,8 @@ import { useTheme } from '@mui/material/styles';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import { Footer } from '@/components/ui-components/Footer';
 import { useElectronIPC } from "@/services";
-import { useServer } from "@/services/server/ServerContextProvider";
 import { connectPipeline, useAppDispatch } from "@/store";
+import {useServer} from "@/hooks/useServer";
 
 const WelcomePage: React.FC = () => {
     const theme = useTheme();

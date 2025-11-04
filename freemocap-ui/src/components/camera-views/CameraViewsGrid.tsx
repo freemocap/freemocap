@@ -3,7 +3,8 @@ import { Box } from "@mui/material";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useTheme } from "@mui/material/styles";
 import { CameraView } from "./CameraView";
-import { useServer } from "@/services/server/ServerContextProvider";
+
+import {useServer} from "@/hooks/useServer";
 
 interface CameraSettings {
     columns: number | null;

@@ -5,7 +5,8 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
-import { useServer } from "@/services/server/ServerContextProvider";
+
+import {useServer} from "@/hooks/useServer";
 
 export const ServerConnectionStatus: React.FC = () => {
     const { isConnected, connect, disconnect, connectedCameraIds } = useServer();

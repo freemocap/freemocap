@@ -24,7 +24,8 @@ import {
     detectCameras,
     Camera
 } from "@/store";
-import {useServer} from "@/services/server/ServerContextProvider";
+
+import {useServer} from "@/hooks/useServer";
 
 
 export const CameraConfigTreeView: React.FC = () => {

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
 from freemocap.core.pipeline.processing_pipeline import ProcessingPipeline, FrontendPayload
 from freemocap.core.types.type_overloads import PipelineIdString
 
@@ -66,9 +66,11 @@ class PipelineManager:
             for pipeline in self.pipelines.values():
                 pipeline.camera_group.stop_recording()
 
-    def start_realtime_calibration_tracking(self):
+
+
+    def update_calibration_task_config(self, calibration_task_config:CalibrationTaskConfig):
         with self.lock:
             for pipeline in self.pipelines.values():
-                config = deepcopy(pipeline.config)
-                config.realtime_tracking_enabled = True
-                pipeline.update_pipeline_config(new_config=config)
+                new_config = deepcopy(pipeline.config)
+                new_config.calibration_task_config = calibration_task_config
+                pipeline.update_pipeline_config(new_config=new_config)

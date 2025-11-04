@@ -1,104 +1,110 @@
-// calibration-thunks.ts
-import {createAsyncThunk} from '@reduxjs/toolkit';
-import {
-    CalibrateRecordingRequest,
-    CalibrateRecordingResponse,
-    StartRecordingRequest,
-    StartRecordingResponse,
-} from './calibration-types';
-import {RootState} from '../../types';
+import {createAsyncThunk} from "@reduxjs/toolkit";
+import {RootState} from "@/store";
+import {serverUrls} from "@/hooks/server-urls";
 
-// Base URL helper - could be imported from a config file
-const getApiUrl = (path: string): string => {
-    return `http://localhost:8006${path}`;
-};
-
-// ==================== Start Recording Thunk ====================
 export const startCalibrationRecording = createAsyncThunk<
-    StartRecordingResponse,
+    { success: boolean; message?: string },
     void,
-    { state: RootState }
+    { state: RootState; rejectValue: string }
 >(
     'calibration/startRecording',
-    async (_, { getState, rejectWithValue }) => {
-        const state = getState();
-        const config = state.calibration.config;
+    async (_, {getState, rejectWithValue}) => {
+        try {
+            const state = getState();
+            const response = await fetch(serverUrls.endpoints.calibrationStartRecording, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({config: state.calibration.config}),
+            });
 
-        const request: StartRecordingRequest = { config };
+            if (!response.ok) {
+                return rejectWithValue(`HTTP ${response.status}: ${response.statusText}`);
+            }
 
-        const response = await fetch(getApiUrl('/freemocap/calibration/recording/start'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
-        });
-
-        if (!response.ok) {
-            return rejectWithValue(`Failed to start recording: ${response.statusText}`);
+            return await response.json();
+        } catch (error) {
+            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
         }
-
-        const data: StartRecordingResponse = await response.json();
-
-        if (!data.success) {
-            return rejectWithValue(data.message || 'Failed to start recording');
-        }
-
-        return data;
     }
 );
 
-// ==================== Stop Recording Thunk ====================
 export const stopCalibrationRecording = createAsyncThunk<
     { success: boolean },
     void,
-    { state: RootState }
+    { rejectValue: string }
 >(
     'calibration/stopRecording',
-    async (_, { rejectWithValue }) => {
-        const response = await fetch(getApiUrl('/freemocap/calibration/recording/stop'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        });
+    async (_, {rejectWithValue}) => {
+        try {
+            const response = await fetch(serverUrls.endpoints.calibrationStopRecording, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+            });
 
-        if (!response.ok) {
-            return rejectWithValue(`Failed to stop recording: ${response.statusText}`);
+            if (!response.ok) {
+                return rejectWithValue(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
         }
-
-        return await response.json();
     }
 );
 
-// ==================== Calibrate Recording Thunk ====================
 export const calibrateRecording = createAsyncThunk<
-    CalibrateRecordingResponse,
+    { success: boolean; message?: string; results?: unknown },
     void,
-    { state: RootState }
+    { state: RootState; rejectValue: string }
 >(
     'calibration/calibrateRecording',
-    async (_, { getState, rejectWithValue }) => {
-        const state = getState();
-        const { calibrationPath, ...configWithoutPath } = state.calibration.config;
+    async (_, {getState, rejectWithValue}) => {
+        try {
+            const state = getState();
+            const {calibrationRecordingPath, ...config} = state.calibration.config;
 
-        const request: CalibrateRecordingRequest = {
-            calibrationPath,
-            config: configWithoutPath,
-        };
+            const response = await fetch(serverUrls.endpoints.calibrateRecording, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    calibrationRecordingPath,
+                    config
+                }),
+            });
 
-        const response = await fetch(getApiUrl('/freemocap/calibration/process'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
-        });
+            if (!response.ok) {
+                return rejectWithValue(`HTTP ${response.status}: ${response.statusText}`);
+            }
 
-        if (!response.ok) {
-            return rejectWithValue(`Failed to calibrate recording: ${response.statusText}`);
+            return await response.json();
+        } catch (error) {
+            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
         }
+    }
+);
 
-        const data: CalibrateRecordingResponse = await response.json();
+export const updateCalibrationConfigOnServer = createAsyncThunk<
+    { success: boolean; message?: string },
+    void,
+    { state: RootState; rejectValue: string }
+>(
+    'calibration/updateConfig',
+    async (_, {getState, rejectWithValue}) => {
+        try {
+            const state = getState();
+            const response = await fetch(serverUrls.endpoints.updateCalibrationConfig, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({config: state.calibration.config}),
+            });
 
-        if (!data.success) {
-            return rejectWithValue(data.message || 'Failed to calibrate recording');
+            if (!response.ok) {
+                return rejectWithValue(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
         }
-
-        return data;
     }
 );

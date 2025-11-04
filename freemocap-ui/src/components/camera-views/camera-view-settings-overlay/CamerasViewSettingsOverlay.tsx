@@ -5,7 +5,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import GridViewIcon from '@mui/icons-material/GridView';
 import ViewInArIcon from '@mui/icons-material/ViewInAr';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
-import { useServer } from '@/services/server/ServerContextProvider';
+
+import {useServer} from "@/hooks/useServer";
 
 interface CameraSettings {
     columns: number | null;

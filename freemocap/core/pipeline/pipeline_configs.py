@@ -10,7 +10,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 class CalibrationTaskConfig(BaseModel):
     calibration_recording_info: RecordingInfo|None = None
-    realtime_tracking_enabled: bool = True
+    live_track_charuco: bool = True
     detector_config: CharucoDetectorConfig = Field(default_factory=CharucoDetectorConfig)
     minimum_required_cameras: int = 2
     min_shared_views_per_camera: int = 300

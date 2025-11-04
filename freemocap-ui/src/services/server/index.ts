@@ -3,5 +3,6 @@ export * from '@/services/server/server-helpers/frame-processor/binary-frame-par
 export * from './server-helpers/canvas-manager'
 export * from '@/services/server/server-helpers/frame-processor/frame-processor'
 export * from './server-helpers/offscreen-renderer.worker'
-export * from './server-helpers/server-urls'
+export * from '../../hooks/server-urls'
 export * from './server-helpers/websocket-connection'
+export {useServer} from "@/hooks/useServer";

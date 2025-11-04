@@ -1,11 +1,10 @@
-import React, {createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState} from 'react';
+import React, {createContext, ReactNode, useCallback, useEffect, useRef, useState} from 'react';
 import {useDispatch} from 'react-redux';
 import {AppDispatch} from '@/store/types';
 
 import {ConnectionState, WebSocketConnection} from "@/services/server/server-helpers/websocket-connection";
 import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/frame-processor";
 import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
-import {serverUrls} from "@/services";
 import {backendFramerateUpdated, DetailedFramerate, frontendFramerateUpdated, logAdded, LogRecord} from '@/store';
 import {
     CharucoObservation,
@@ -13,10 +12,11 @@ import {
     CharucoOverlayDataMessageSchema
 } from "@/services/server/server-helpers/charuco_types";
 import {FrameCompositor} from "@/services/server/server-helpers/frame_compositor";
+import {serverUrls} from "@/hooks/server-urls";
 
 type FrameSubscriber = (bitmap: ImageBitmap) => void;
 
-interface ServerContextValue {
+export interface ServerContextValue {
     isConnected: boolean;
     connect: () => void;
     disconnect: () => void;
@@ -27,7 +27,7 @@ interface ServerContextValue {
     subscribeToFrames: (cameraId:string,callback: FrameSubscriber) => () => void;
 }
 
-const ServerContext = createContext<ServerContextValue | null>(null);
+export const ServerContext = createContext<ServerContextValue | null>(null);
 
 function arraysEqual(a: string[], b: string[]): boolean {
     if (a.length !== b.length) return false;
@@ -290,10 +290,3 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     );
 };
 
-export const useServer = (): ServerContextValue => {
-    const context = useContext(ServerContext);
-    if (!context) {
-        throw new Error('useServer must be used within ServerContextProvider');
-    }
-    return context;
-};

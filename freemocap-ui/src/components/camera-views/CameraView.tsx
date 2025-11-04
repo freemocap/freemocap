@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, memo } from 'react';
-import { useServer } from '@/services/server/ServerContextProvider';
+
+import {useServer} from "@/hooks/useServer";
 
 interface CameraViewProps {
     cameraId: string;

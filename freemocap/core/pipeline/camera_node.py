@@ -110,7 +110,7 @@ class CameraNode:
                     process_frame_number_message: ProcessFrameNumberMessage = process_frame_number_subscription.get()
 
                     charuco_observation: CharucoObservation | None = None
-                    if config.calibration_task_config.realtime_tracking_enabled:
+                    if config.calibration_task_config.live_track_charuco:
                         # Process the frame
                         tik = time.perf_counter_ns()
                         frame_rec_array = camera_shm.get_data_by_index(index=process_frame_number_message.frame_number,

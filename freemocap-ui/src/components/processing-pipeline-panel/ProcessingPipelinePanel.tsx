@@ -6,7 +6,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import LanIcon from '@mui/icons-material/Lan';
 import PipelineConnectionStatus from "@/components/processing-pipeline-panel/PipelineConnectionStatus";
-import {CalibrationTaskTreeItem} from "@/components/processing-pipeline-panel/CalibrationTaskTreeItem";
+import {CalibrationTaskTreeItem} from "@/components/calibration-task/CalibrationTaskTreeItem";
 import {MocapTaskTreeItem} from "@/components/processing-pipeline-panel/MocapTaskTreeItem";
 
 export const ProcessingPipelinePanel: React.FC = () => {

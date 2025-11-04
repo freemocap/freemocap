@@ -41,6 +41,13 @@ class ServerUrls {
             pipelineRecordStart: `${baseUrl}/freemocap/pipeline/all/record/start`,
             pipelineRecordStop: `${baseUrl}/freemocap/pipeline/all/record/stop`,
 
+            // Calibration endpoints
+            calibrationStartRecording: `${baseUrl}/freemocap/calibration/recording/start`,
+            calibrationStopRecording: `${baseUrl}/freemocap/calibration/recording/stop`,
+            calibrateRecording: `${baseUrl}/freemocap/calibration/recording/calibrate`,
+            updateCalibrationConfig: `${baseUrl}/freemocap/calibration/config/update/all`,
+
+
             // WebSocket
             websocket: this.getWebSocketUrl(),
         };

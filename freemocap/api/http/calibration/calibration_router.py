@@ -25,11 +25,11 @@ class CalibrationConfigResponse(BaseModel):
     success: bool
     message: str | None = None
 
-class StartRecordingRequest(BaseModel):
+class StartCalibrationRecordingRequest(BaseModel):
     config: CalibrationConfigRequest
 
 
-class StartRecordingResponse(BaseModel):
+class StartCalibrationRecordingResponse(BaseModel):
     success: bool
     message: str | None = None
 
@@ -50,9 +50,8 @@ class CalibrateRecordingResponse(BaseModel):
 @calibration_router.post("/config/update/all")
 def update_all_calibration_config(request: CalibrationConfigRequest) -> CalibrationConfigResponse:
     """Update calibration configuration."""
-    app = get_freemocap_app()
     try:
-        app.pipeline_manager.update_calibration_task_config(request.config)
+        get_freemocap_app().pipeline_manager.update_calibration_task_config(request.config)
         return CalibrationConfigResponse(success=True, message="Configuration updated")
     except Exception as e:
         logger.exception(f"Error updating calibration config: {e}")
@@ -60,26 +59,24 @@ def update_all_calibration_config(request: CalibrationConfigRequest) -> Calibrat
 
 
 @calibration_router.post("/recording/start")
-def start_recording(request: StartRecordingRequest) -> StartRecordingResponse:
+def start_calibration_recording(request: StartCalibrationRecordingRequest) -> StartCalibrationRecordingResponse:
     """Start calibration recording with given config."""
-    app = get_freemocap_app()
     try:
-        # TODO: Implement actual recording start logic
-        # app.pipeline_manager.start_calibration_recording(request.config)
+        get_freemocap_app().pipeline_manager.start_calibration_calibration_recording(request.config)
         logger.info(f"Starting recording with config: {request.config}")
-        return StartRecordingResponse(success=True, message="Recording started")
+        return StartCalibrationRecordingResponse(success=True, message="Recording started")
     except Exception as e:
         logger.error(f"Error starting recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @calibration_router.post("/recording/stop")
-def stop_recording(request: Request) -> dict[str, bool]:
+def stop_calibration_recording(request: Request) -> dict[str, bool]:
     """Stop current calibration recording."""
     app = get_freemocap_app()
     try:
         # TODO: Implement actual recording stop logic
-        # app.pipeline_manager.stop_calibration_recording()
+        app.pipeline_manager.stop_calibration_recording()
         logger.info("Stopping recording")
         return {"success": True}
     except Exception as e:

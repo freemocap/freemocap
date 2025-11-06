@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+import time
 import uuid
 from dataclasses import dataclass
 
@@ -11,7 +12,7 @@ from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdStr
 from freemocap.core.pipeline.aggregation_node import AggregationNode, AggregationNodeState
 from freemocap.core.pipeline.camera_node import CameraNode, CameraNodeState
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \
     StartRealtimeCalibrationTrackingTopic, StartRealtimeCalibrationTrackingMessage, PipelineConfigUpdateMessage, \
@@ -32,6 +33,10 @@ class PipelineState(BaseModel):
     camera_node_states: dict[CameraIdString, CameraNodeState]
     aggregation_node_state: AggregationNodeState
     alive: bool
+
+
+class CaptureVolumeCalibrationResults(BaseModel):
+    pass
 
 
 @dataclass
@@ -164,3 +169,10 @@ class ProcessingPipeline:
         self.ipc.pubsub.topics[PipelineConfigUpdateTopic].publish(
             PipelineConfigUpdateMessage(pipeline_config=self.config)
         )
+
+    def start_calibration_recording(self, config:CalibrationTaskConfig) ->CaptureVolumeCalibrationResults:
+        self.config.calibration_task_config = config
+        self.ipc.pubsub.topics[PipelineConfigUpdateTopic].publish(PipelineConfigUpdateMessage(pipeline_config=self.config))
+        time.sleep(0.5)  # give some time for nodes to process config update
+        logger.info(f"Starting calibration recording for pipeline ID: {self.id} and config: {config}")
+        return CaptureVolumeCalibrationResults()

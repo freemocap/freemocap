@@ -74,3 +74,12 @@ class PipelineManager:
                 new_config = deepcopy(pipeline.config)
                 new_config.calibration_task_config = calibration_task_config
                 pipeline.update_pipeline_config(new_config=new_config)
+
+    def start_calibration_calibration_recording(self, config:CalibrationTaskConfig):
+        if len(self.pipelines) == 0:
+            raise RuntimeError("No pipelines available to start calibration recording.")
+        if len(self.pipelines) > 1:
+            raise NotImplementedError("Multiple pipeline selection for calibration recording not implemented - will use 'pipeline_id' parameter in future.")
+        with self.lock:
+            for pipeline in self.pipelines.values():
+                pipeline.start_calibration_recording(config=config)

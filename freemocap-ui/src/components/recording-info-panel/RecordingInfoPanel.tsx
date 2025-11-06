@@ -1,55 +1,54 @@
-import React, {useEffect, useState} from "react";
-import {Box, Typography, useTheme} from "@mui/material";
-import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
-import {TreeItem} from "@mui/x-tree-view/TreeItem";
+import React, { useEffect, useState } from "react";
+import { Box, Typography, useTheme } from "@mui/material";
+import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
+import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import VideocamIcon from "@mui/icons-material/Videocam";
-import {useAppDispatch, useAppSelector} from "@/store";
+import {
+    recordingInfoUpdated,
+    startRecording,
+    stopRecording,
+    useAppDispatch,
+    useAppSelector,
+    useDelayStartToggled,
+    delaySecondsChanged,
+    useTimestampToggled,
+    useIncrementToggled,
+    currentIncrementChanged,
+    currentIncrementIncremented,
+    baseNameChanged,
+    recordingTagChanged,
+    createSubfolderToggled,
+    customSubfolderNameChanged,
+} from "@/store";
 import {
     StartStopRecordingButton
 } from "@/components/recording-info-panel/recording-subcomponents/StartStopRecordingButton";
-// Updated imports - using the recording thunks from the store barrel export
-import {startRecording, stopRecording, recordingInfoUpdated} from "@/store";
-import {RecordingPathTreeItem} from "@/components/recording-info-panel/RecordingPathTreeItem";
-import {electronIpc, useElectronIPC} from "@/services/electron-ipc/electron-ipc";
-import {electronIpcClient} from "@/services";
+import { RecordingPathTreeItem } from "@/components/recording-info-panel/RecordingPathTreeItem";
+import { useElectronIPC } from "@/services/electron-ipc/electron-ipc";
 
 export const RecordingInfoPanel: React.FC = () => {
     const theme = useTheme();
     const dispatch = useAppDispatch();
-    // Updated selector to match the store structure
-    const recordingInfo = useAppSelector(
-        (state) => state.recording
-    );
+    const recordingInfo = useAppSelector((state) => state.recording);
+    const { config } = recordingInfo;
 
-    // Local UI state
-    const [createSubfolder, setCreateSubfolder] = useState(false);
-    const [useDelayStart, setUseDelayStart] = useState(false);
-    const [delaySeconds, setDelaySeconds] = useState(3);
+    // Only keep countdown as local UI state (ephemeral)
     const [countdown, setCountdown] = useState<number | null>(null);
+    const { isElectron, api } = useElectronIPC();
 
-    // Local recording naming
-    const [useTimestamp, setUseTimestamp] = useState(true);
-    const [useIncrement, setUseIncrement] = useState(false);
-    const [currentIncrement, setCurrentIncrement] = useState(1);
-    const [baseName, setBaseName] = useState("recording");
-    const [customSubfolderName, setCustomSubfolderName] = useState("");
-    const [recordingTag, setRecordingTag] = useState("");
-    const {isElectron, api} = useElectronIPC();
-
-    // replace ~ with user's home directory
+    // Replace ~ with user's home directory
     useEffect(() => {
-        if (recordingInfo?.recordingDirectory?.startsWith("~") && isElectron && api) {
-            api.fileSystem.getHomeDirectory.query().then((homePath: string) => {
-                const updatedDirectory = recordingInfo.recordingDirectory.replace(
-                    "~",
-                    homePath
-                );
-                dispatch(recordingInfoUpdated({recordingDirectory: updatedDirectory}));
-            }).catch((error: any) => {
-                console.error("Failed to get home directory:", error);
-            });
+        if (recordingInfo.recordingDirectory.startsWith("~") && isElectron && api) {
+            api.fileSystem.getHomeDirectory.query()
+                .then((homePath: string) => {
+                    const updatedDirectory = recordingInfo.recordingDirectory.replace("~", homePath);
+                    dispatch(recordingInfoUpdated({ recordingDirectory: updatedDirectory }));
+                })
+                .catch((error: unknown) => {
+                    console.error("Failed to get home directory:", error);
+                });
         }
     }, [recordingInfo.recordingDirectory, isElectron, api, dispatch]);
 
@@ -67,7 +66,6 @@ export const RecordingInfoPanel: React.FC = () => {
     const getTimestampString = (): string => {
         const now = new Date();
 
-        // Format date in local time with timezone info
         const dateOptions: Intl.DateTimeFormatOptions = {
             year: "numeric",
             month: "2-digit",
@@ -79,63 +77,49 @@ export const RecordingInfoPanel: React.FC = () => {
             timeZoneName: "shortOffset",
         };
 
-        // Get formatted parts
         const formatter = new Intl.DateTimeFormat("en-US", dateOptions);
         const parts = formatter.formatToParts(now);
 
-        // Create a map of the parts for easy access
         const partMap: Record<string, string> = {};
         parts.forEach((part) => {
             partMap[part.type] = part.value;
         });
 
-        // Build the timestamp string in a filename-friendly format
-        return `${partMap.year}-${partMap.month}-${partMap.day}_${
-            partMap.hour
-        }-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(
-            ":",
-            ""
-        )}`;
-    };
-
-    const handleRecordingTagChange = (tag: string) => {
-        setRecordingTag(tag);
+        return `${partMap.year}-${partMap.month}-${partMap.day}_${partMap.hour}-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(":", "")}`;
     };
 
     const buildRecordingName = (): string => {
         const parts: string[] = [];
 
-        // Base name component
-        if (useTimestamp) {
+        if (config.useTimestamp) {
             parts.push(getTimestampString());
         } else {
-            parts.push(baseName);
+            parts.push(config.baseName);
         }
 
-        // Add tag if present
-        if (recordingTag) {
-            parts.push(recordingTag);
+        if (config.recordingTag) {
+            parts.push(config.recordingTag);
         }
 
         return parts.join("_");
     };
 
-    const handleStartRecording = () => {
+    const handleStartRecording = (): void => {
         console.log("Starting recording...");
 
         const recordingName = buildRecordingName();
-        const subfolderName = createSubfolder
-            ? customSubfolderName || getTimestampString()
+        const subfolderName = config.createSubfolder
+            ? config.customSubfolderName || getTimestampString()
             : "";
-        const recordingPath = createSubfolder
+        const recordingPath = config.createSubfolder
             ? `${recordingInfo.recordingDirectory}/${subfolderName}`
             : recordingInfo.recordingDirectory;
 
         console.log("Recording path:", recordingPath);
         console.log("Recording name:", recordingName);
 
-        if (useIncrement) {
-            setCurrentIncrement((prev) => prev + 1);
+        if (config.useIncrement) {
+            dispatch(currentIncrementIncremented());
         }
 
         dispatch(
@@ -146,21 +130,21 @@ export const RecordingInfoPanel: React.FC = () => {
         );
     };
 
-    const handleRecordButtonClick = () => {
+    const handleRecordButtonClick = (): void => {
         if (recordingInfo.isRecording) {
             console.log("Stopping recording...");
             dispatch(stopRecording());
-        } else if (useDelayStart) {
-            console.log(`Starting countdown from ${delaySeconds} seconds`);
-            setCountdown(delaySeconds);
+        } else if (config.useDelayStart) {
+            console.log(`Starting countdown from ${config.delaySeconds} seconds`);
+            setCountdown(config.delaySeconds);
         } else {
             handleStartRecording();
         }
     };
 
     const recordingName = buildRecordingName();
-    const subfolderName = createSubfolder
-        ? customSubfolderName || getTimestampString()
+    const subfolderName = config.createSubfolder
+        ? config.customSubfolderName || getTimestampString()
         : undefined;
 
     return (
@@ -200,10 +184,9 @@ export const RecordingInfoPanel: React.FC = () => {
                                 alignItems: "center",
                                 width: "100%",
                                 py: 0.25,
-
                             }}
                         >
-                            <VideocamIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                            <VideocamIcon sx={{ mr: 1, color: theme.palette.secondary.main }} />
                             <Typography sx={{ flexGrow: 1, fontSize: 13, fontWeight: 500 }}>
                                 Record
                             </Typography>
@@ -221,26 +204,25 @@ export const RecordingInfoPanel: React.FC = () => {
                         recordingName={recordingName}
                         subfolder={subfolderName}
                         countdown={countdown}
-                        // Pass down all the control props
-                        recordingTag={recordingTag}
-                        useDelayStart={useDelayStart}
-                        delaySeconds={delaySeconds}
-                        useTimestamp={useTimestamp}
-                        baseName={baseName}
-                        useIncrement={useIncrement}
-                        currentIncrement={currentIncrement}
-                        createSubfolder={createSubfolder}
-                        customSubfolderName={customSubfolderName}
+                        recordingTag={config.recordingTag}
+                        useDelayStart={config.useDelayStart}
+                        delaySeconds={config.delaySeconds}
+                        useTimestamp={config.useTimestamp}
+                        baseName={config.baseName}
+                        useIncrement={config.useIncrement}
+                        currentIncrement={config.currentIncrement}
+                        createSubfolder={config.createSubfolder}
+                        customSubfolderName={config.customSubfolderName}
                         isRecording={recordingInfo.isRecording}
-                        onDelayToggle={setUseDelayStart}
-                        onDelayChange={setDelaySeconds}
-                        onTagChange={handleRecordingTagChange}
-                        onUseTimestampChange={setUseTimestamp}
-                        onBaseNameChange={setBaseName}
-                        onUseIncrementChange={setUseIncrement}
-                        onIncrementChange={setCurrentIncrement}
-                        onCreateSubfolderChange={setCreateSubfolder}
-                        onCustomSubfolderNameChange={setCustomSubfolderName}
+                        onDelayToggle={(value: boolean) => dispatch(useDelayStartToggled(value))}
+                        onDelayChange={(value: number) => dispatch(delaySecondsChanged(value))}
+                        onTagChange={(value: string) => dispatch(recordingTagChanged(value))}
+                        onUseTimestampChange={(value: boolean) => dispatch(useTimestampToggled(value))}
+                        onBaseNameChange={(value: string) => dispatch(baseNameChanged(value))}
+                        onUseIncrementChange={(value: boolean) => dispatch(useIncrementToggled(value))}
+                        onIncrementChange={(value: number) => dispatch(currentIncrementChanged(value))}
+                        onCreateSubfolderChange={(value: boolean) => dispatch(createSubfolderToggled(value))}
+                        onCustomSubfolderNameChange={(value: string) => dispatch(customSubfolderNameChanged(value))}
                     />
                 </TreeItem>
             </SimpleTreeView>

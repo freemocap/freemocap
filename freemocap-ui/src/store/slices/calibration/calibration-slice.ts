@@ -7,21 +7,16 @@ import {
     stopCalibrationRecording,
     updateCalibrationConfigOnServer,
 } from "@/store/slices/calibration/calibration-thunks";
-import {RecordingInfo} from "@/store";
 
 // ==================== Types ====================
 
-
-
 export interface CalibrationConfig {
-    liveTrackCharuco : boolean
-    charucoBoardXSquares : number
-    charucoBoardYSquares : number
-    charucoSquareLength : number
-    minSharedViewsPerCamera : number
-    autoStopOnMinViewCount : boolean
-    autoProcessRecording : boolean
-    calibrationRecordingFolder?: string;
+    liveTrackCharuco: boolean;
+    charucoBoardXSquares: number;
+    charucoBoardYSquares: number;
+    charucoSquareLength: number;
+    minSharedViewsPerCamera: number;
+    autoStopOnMinViewCount: boolean;
 }
 
 export interface CalibrationState {
@@ -30,6 +25,7 @@ export interface CalibrationState {
     recordingProgress: number;
     isLoading: boolean;
     error: string | null;
+    lastCalibrationRecordingPath: string | null; // Store the path of the last calibration recording
 }
 
 // ==================== Initial State ====================
@@ -42,13 +38,12 @@ const initialState: CalibrationState = {
         charucoSquareLength: 56,
         minSharedViewsPerCamera: 200,
         autoStopOnMinViewCount: true,
-        autoProcessRecording: true,
-        calibrationRecordingFolder: '',
     },
     isRecording: false,
     recordingProgress: 0,
     isLoading: false,
     error: null,
+    lastCalibrationRecordingPath: null,
 };
 
 // ==================== Slice ====================
@@ -79,10 +74,14 @@ export const calibrationSlice = createSlice({
                 state.isLoading = true;
                 state.error = null;
             })
-            .addCase(startCalibrationRecording.fulfilled, (state) => {
+            .addCase(startCalibrationRecording.fulfilled, (state, action) => {
                 state.isLoading = false;
                 state.isRecording = true;
                 state.recordingProgress = 0;
+                // Store the path returned from the server
+                if (action.payload.calibrationRecordingPath) {
+                    state.lastCalibrationRecordingPath = action.payload.calibrationRecordingPath;
+                }
             })
             .addCase(startCalibrationRecording.rejected, (state, action) => {
                 state.isLoading = false;
@@ -135,16 +134,17 @@ export const selectCalibrationIsLoading = (state: RootState) => state.calibratio
 export const selectCalibrationIsRecording = (state: RootState) => state.calibration.isRecording;
 export const selectCalibrationProgress = (state: RootState) => state.calibration.recordingProgress;
 export const selectCalibrationError = (state: RootState) => state.calibration.error;
+export const selectLastCalibrationRecordingPath = (state: RootState) => state.calibration.lastCalibrationRecordingPath;
 
 export const selectCanStartCalibrationRecording = createSelector(
-    [selectCalibrationIsRecording, selectCalibrationIsLoading],
-    (isRecording, isLoading) => !isRecording && !isLoading
+    [selectCalibrationIsRecording, selectCalibrationIsLoading, (state: RootState) => state.recording.recordingDirectory],
+    (isRecording, isLoading, recordingDirectory) => !isRecording && !isLoading && !!recordingDirectory
 );
 
 export const selectCanCalibrate = createSelector(
-    [selectCalibrationConfig, selectCalibrationIsLoading, selectCalibrationIsRecording],
-    (config, isLoading, isRecording) =>
-        config.calibrationRecordingPath && !isLoading && !isRecording
+    [selectLastCalibrationRecordingPath, selectCalibrationIsLoading, selectCalibrationIsRecording],
+    (lastRecordingPath, isLoading, isRecording) =>
+        !!lastRecordingPath && !isLoading && !isRecording
 );
 
 // ==================== Actions Export ====================
@@ -159,4 +159,3 @@ export const {
 // ==================== Reducer Export ====================
 
 export default calibrationSlice.reducer;
-

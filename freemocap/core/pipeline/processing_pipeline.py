@@ -16,7 +16,7 @@ from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \
     StartRealtimeCalibrationTrackingTopic, StartRealtimeCalibrationTrackingMessage, PipelineConfigUpdateMessage, \
     PipelineConfigUpdateTopic
-from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue
+from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
@@ -139,8 +139,13 @@ class ProcessingPipeline:
     def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
         return self.camera_group.update_camera_settings(requested_configs=camera_configs)
 
-    def get_latest_frontend_payload(self) -> tuple[bytes, FrontendPayload] | None:
+    def get_latest_frontend_payload(self, if_newer_than:FrameNumberInt) -> tuple[bytes, FrontendPayload|None] | None:
         if not self.alive:
+            if self.camera_group.alive:
+                _,_,frames_bytearray = self.camera_group.get_latest_frontend_payload(if_newer_than=if_newer_than)
+                if frames_bytearray is not None:
+                    return (frames_bytearray,
+                            None)
             return None
         aggregation_output: AggregationNodeOutputMessage | None = None
         while not self.aggregation_node_subscription.empty():

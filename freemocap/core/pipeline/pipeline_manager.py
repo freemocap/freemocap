@@ -7,7 +7,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
 from freemocap.core.pipeline.processing_pipeline import ProcessingPipeline, FrontendPayload
-from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +42,11 @@ class PipelineManager:
             self.pipelines.clear()
         logger.info("All pipelines closed successfully")
 
-    def get_latest_frontend_payloads(self) -> dict[PipelineIdString,  tuple[bytes | None, FrontendPayload | None]]:
+    def get_latest_frontend_payloads(self, if_newer_than:FrameNumberInt) -> dict[PipelineIdString,  tuple[bytes | None, FrontendPayload | None]]:
         latest_outputs = {}
         with self.lock:
             for pipeline_id, pipeline in self.pipelines.items():
-                output = pipeline.get_latest_frontend_payload()
+                output = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
                 if not output is None:
                     latest_outputs[pipeline_id] = output
         return latest_outputs

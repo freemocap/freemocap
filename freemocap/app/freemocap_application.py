@@ -9,7 +9,7 @@ from skellycam.core.camera_group.camera_group import CameraGroupState
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_manager import PipelineManager
 from freemocap.core.pipeline.processing_pipeline import FrontendPayload, ProcessingPipeline, PipelineState
-from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +78,11 @@ class FreemocApplication:
     def stop_recording_all(self):
         self.pipeline_manager.stop_recording_all()
 
-    def get_latest_frontend_payloads(self) -> dict[PipelineIdString, tuple[bytes, FrontendPayload]]:
+    def get_latest_frontend_payloads(self,if_newer_than:FrameNumberInt) -> dict[PipelineIdString, tuple[bytes, FrontendPayload|None]]:
         if len(self.pipeline_manager.pipelines) == 0:
             return {}
 
-        return self.pipeline_manager.get_latest_frontend_payloads()
+        return self.pipeline_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)
 
     def close(self):
         self.global_kill_flag.value = True

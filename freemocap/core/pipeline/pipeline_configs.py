@@ -26,15 +26,12 @@ class CalibrationTaskConfig(BaseModel):
         return CharucoDetectorConfig(
             squares_x=self.charuco_board_x_squares,
             squares_y=self.charuco_board_y_squares,
-            unscaled_square_length=self.charuco_square_length,
+            square_length=self.charuco_square_length,
         )
 
 
 class MocapTaskConfig(BaseModel):
     pass
-
-
-
 
 
 class PipelineConfig(BaseModel):

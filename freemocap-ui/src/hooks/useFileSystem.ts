@@ -16,8 +16,8 @@ export const useFileSystem = (): UseFileSystemReturn => {
             throw new Error('Directory selection is only available in the desktop app');
         }
 
-        const result = await api.fileSystem.selectDirectory.mutate();
-        return result;
+        return await api.fileSystem.selectDirectory.mutate();
+
     }, [isElectron, api]);
 
     const expandHomePath = useCallback(async (path: string): Promise<string> => {
@@ -30,7 +30,7 @@ export const useFileSystem = (): UseFileSystemReturn => {
         }
 
         const home = await api.fileSystem.getHomeDirectory.query();
-        return path.replace(/^~(\/|\\)?/, home ? `${home}$1` : '');
+        return path.replace(/^~([\/\\])?/, home ? `${home}$1` : '');
     }, [isElectron, api]);
 
     return {

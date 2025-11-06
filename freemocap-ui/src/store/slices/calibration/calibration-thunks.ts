@@ -1,6 +1,6 @@
-import {createAsyncThunk} from "@reduxjs/toolkit";
-import {RootState} from "@/store";
-import {serverUrls} from "@/hooks/server-urls";
+import { createAsyncThunk } from "@reduxjs/toolkit";
+import { RootState } from "@/store";
+import { serverUrls } from "@/hooks/server-urls";
 
 // Helper function to extract detailed error info from failed responses
 async function getDetailedErrorMessage(response: Response): Promise<string> {
@@ -34,23 +34,63 @@ async function getDetailedErrorMessage(response: Response): Promise<string> {
     return baseError;
 }
 
+// Helper function to generate calibration recording name based on recording config
+function generateCalibrationRecordingName(state: RootState): string {
+    const recordingConfig = state.recording.config;
+    const parts: string[] = [];
+
+
+    // Add base name if configured
+    if (recordingConfig.baseName && recordingConfig.baseName !== 'recording') {
+        parts.push(recordingConfig.baseName);
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    parts.push(timestamp);
+
+
+    // Add recording tag if provided
+    if (recordingConfig.recordingTag) {
+        parts.push(recordingConfig.recordingTag);
+    }
+
+    parts.push('calibration');
+
+
+    return parts.join('_');
+}
+
 export const startCalibrationRecording = createAsyncThunk<
-    { success: boolean; message?: string },
+    { success: boolean; message?: string; calibrationRecordingPath?: string },
     void,
     { state: RootState; rejectValue: string }
 >(
     'calibration/startRecording',
-    async (_, {getState, rejectWithValue}) => {
+    async (_, { getState, rejectWithValue }) => {
         try {
             const state = getState();
             const config = state.calibration.config;
+            const recordingDirectory = state.recording.recordingDirectory;
+            const calibrationRecordingName = generateCalibrationRecordingName(state);
 
-            console.log('🎬 Starting calibration recording with config:', config);
+            if (!recordingDirectory) {
+                return rejectWithValue('Recording directory is not set');
+            }
+
+            console.log('🎬 Starting calibration recording with:', {
+                recordingDirectory,
+                calibrationRecordingName,
+                config,
+            });
 
             const response = await fetch(serverUrls.endpoints.calibrationStartRecording, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({config}),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    recordingDirectory,
+                    calibrationRecordingName,
+                    config,
+                }),
             });
 
             if (!response.ok) {
@@ -75,13 +115,13 @@ export const stopCalibrationRecording = createAsyncThunk<
     { rejectValue: string }
 >(
     'calibration/stopRecording',
-    async (_, {rejectWithValue}) => {
+    async (_, { rejectWithValue }) => {
         try {
             console.log('⏹️ Stopping calibration recording...');
 
             const response = await fetch(serverUrls.endpoints.calibrationStopRecording, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
             });
 
             if (!response.ok) {
@@ -106,22 +146,27 @@ export const calibrateRecording = createAsyncThunk<
     { state: RootState; rejectValue: string }
 >(
     'calibration/calibrateRecording',
-    async (_, {getState, rejectWithValue}) => {
+    async (_, { getState, rejectWithValue }) => {
         try {
             const state = getState();
-            const {calibrationRecordingPath, ...config} = state.calibration.config;
+            const config = state.calibration.config;
+            const calibrationRecordingPath = state.calibration.lastCalibrationRecordingPath;
+
+            if (!calibrationRecordingPath) {
+                return rejectWithValue('No calibration recording path available. Please record a calibration first.');
+            }
 
             console.log('🔧 Calibrating recording:', {
                 calibrationRecordingPath,
-                config
+                config,
             });
 
             const response = await fetch(serverUrls.endpoints.calibrateRecording, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     calibrationRecordingPath,
-                    config
+                    config,
                 }),
             });
 
@@ -147,7 +192,7 @@ export const updateCalibrationConfigOnServer = createAsyncThunk<
     { state: RootState; rejectValue: string }
 >(
     'calibration/updateConfig',
-    async (_, {getState, rejectWithValue}) => {
+    async (_, { getState, rejectWithValue }) => {
         try {
             const state = getState();
             const config = state.calibration.config;
@@ -156,8 +201,8 @@ export const updateCalibrationConfigOnServer = createAsyncThunk<
 
             const response = await fetch(serverUrls.endpoints.updateCalibrationConfig, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({config}),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ config }),
             });
 
             if (!response.ok) {

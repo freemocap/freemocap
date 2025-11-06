@@ -139,9 +139,9 @@ export const LeftSidePanelContent = () => {
                 pt: 0.5,
                 pb: 2,
             }}>
-                <RecordingInfoPanel/>
                 <CameraConfigTreeView/>
                 <ProcessingPipelinePanel/>
+
             </Box>
         </Box>
     );

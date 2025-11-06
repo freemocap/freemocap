@@ -90,7 +90,7 @@ class WebsocketServer:
             skipped_previous = False
             while self.should_continue:
                 await await_10ms()
-                frontend_payloads = self._app.get_latest_frontend_payloads()
+                frontend_payloads = self._app.get_latest_frontend_payloads(if_newer_than=self.last_sent_frame_number)
 
                 if self.check_frame_acknowledgment_status():
                     if skipped_previous:  # skip an extra frame if there was backpressure from frontend

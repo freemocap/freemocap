@@ -8,6 +8,8 @@ import LanIcon from '@mui/icons-material/Lan';
 import PipelineConnectionStatus from "@/components/processing-pipeline-panel/PipelineConnectionStatus";
 import {CalibrationTaskTreeItem} from "@/components/calibration-task/CalibrationTaskTreeItem";
 import {MocapTaskTreeItem} from "@/components/processing-pipeline-panel/MocapTaskTreeItem";
+import {RecordingControlsSection} from "@/components/recording-info-panel/RecordingControlsTreeSection";
+import {RecordingInfoPanel} from "@/components/recording-info-panel/RecordingInfoPanel";
 
 export const ProcessingPipelinePanel: React.FC = () => {
     const theme = useTheme();
@@ -63,6 +65,7 @@ export const ProcessingPipelinePanel: React.FC = () => {
                         </Box>
                     }
                 >
+                    <RecordingInfoPanel/>
                     <CalibrationTaskTreeItem />
                     <MocapTaskTreeItem />
                 </TreeItem>

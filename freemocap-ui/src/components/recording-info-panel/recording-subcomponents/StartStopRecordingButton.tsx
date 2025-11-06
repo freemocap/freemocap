@@ -49,6 +49,8 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
             variant="contained"
             isRecording={isRecording}
             fullWidth
+            sx={{ml:4}}
+
         >
             <Typography variant="h6">
                 {isRecording ? '🔴 Stop Recording' : '🔴 Start Recording'}

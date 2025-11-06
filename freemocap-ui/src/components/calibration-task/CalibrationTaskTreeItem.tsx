@@ -1,5 +1,5 @@
 // components/CalibrationTaskTreeItem.tsx
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import {
     Box,
     Typography,
@@ -14,17 +14,21 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
-    Chip, InputAdornment, IconButton,
+    Chip,
+    InputAdornment,
+    IconButton,
+    Tooltip,
 } from '@mui/material';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
-import FolderIcon from '@mui/icons-material/Folder';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import ClearIcon from '@mui/icons-material/Clear';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InfoIcon from '@mui/icons-material/Info';
 import { useCalibration } from '@/hooks/useCalibration';
-import { useAppSelector } from '@/store/hooks';
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import {isElectron} from "@/services";
+import { useElectronIPC } from '@/services';
 
 type BoardPreset = '5x3' | '7x5';
 
@@ -41,7 +45,7 @@ const BOARD_PRESETS: Record<BoardPreset, BoardPresetConfig> = {
 export const CalibrationTaskTreeItem: React.FC = () => {
     const theme = useTheme();
     const [localError, setLocalError] = useState<string | null>(null);
-
+    const { api, isElectron } = useElectronIPC();
 
     const {
         config,
@@ -52,12 +56,24 @@ export const CalibrationTaskTreeItem: React.FC = () => {
         canStartRecording,
         canCalibrate,
         calibrationRecordingPath,
+        directoryInfo,
+        isUsingManualPath,
         updateCalibrationConfig,
+        setManualRecordingPath,
+        clearManualRecordingPath,
+        validateDirectory,
         startRecording,
         stopRecording,
         calibrate,
         clearError,
     } = useCalibration();
+
+    // Validate directory whenever path changes
+    useEffect(() => {
+        if (calibrationRecordingPath) {
+            validateDirectory(calibrationRecordingPath);
+        }
+    }, [calibrationRecordingPath, validateDirectory]);
 
     // Determine current board preset based on config values
     const currentPreset = useMemo<BoardPreset>(() => {
@@ -85,7 +101,54 @@ export const CalibrationTaskTreeItem: React.FC = () => {
         });
     }, [updateCalibrationConfig]);
 
-    const displayError = error || localError;
+    const handleSelectDirectory = async (): Promise<void> => {
+        if (!isElectron || !api) {
+            console.warn('Electron API not available');
+            return;
+        }
+
+        try {
+            const result: string | null = await api.fileSystem.selectDirectory.mutate();
+            if (result) {
+                await setManualRecordingPath(result);
+            }
+        } catch (error) {
+            console.error('Failed to select directory:', error);
+            setLocalError('Failed to select directory');
+        }
+    };
+
+    const handlePathInputChange = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+        const newPath: string = e.target.value;
+
+        // Handle tilde expansion for home directory
+        if (newPath.includes('~') && isElectron && api) {
+            try {
+                const home: string = await api.fileSystem.getHomeDirectory.query();
+                const expanded: string = newPath.replace(/^~(\/|\\)?/, home ? `${home}$1` : '');
+                await setManualRecordingPath(expanded);
+            } catch (error) {
+                console.error('Failed to expand home directory:', error);
+                await setManualRecordingPath(newPath);
+            }
+        } else {
+            await setManualRecordingPath(newPath);
+        }
+    };
+
+    const handleClearManualPath = useCallback((): void => {
+        clearManualRecordingPath();
+    }, [clearManualRecordingPath]);
+
+    const displayError = error || localError || directoryInfo?.errorMessage;
+
+    // Helper text for the path input
+    const pathHelperText = useMemo(() => {
+        if (isUsingManualPath) {
+            return 'Using custom path';
+        }
+        return 'Using default recording directory';
+    }, [isUsingManualPath]);
 
     return (
         <TreeItem
@@ -108,43 +171,112 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                         </Alert>
                     )}
 
-
-                    {/* Last Calibration Recording Path */}
-                    {/* Recording Directory Info */}
+                    {/* Calibration Recording Path Input */}
                     <Box>
                         <TextField
                             label="Calibration Recording Path"
                             value={calibrationRecordingPath}
-                            onChange={(e) => {console.log(`New calibration rec path: ${e.target.value}`);}}
+                            onChange={handlePathInputChange}
                             fullWidth
                             size="small"
+                            helperText={pathHelperText}
                             InputProps={{
                                 endAdornment: (
                                     <InputAdornment position="end">
-                                        <IconButton
-                                            onClick={() => {console.log('Select directory clicked');}}
-                                            edge="end"
-                                        >
-                                            <FolderOpenIcon />
-                                        </IconButton>
+                                        {isUsingManualPath && (
+                                            <Tooltip title="Clear manual path (revert to default)">
+                                                <IconButton
+                                                    onClick={handleClearManualPath}
+                                                    edge="end"
+                                                    size="small"
+                                                >
+                                                    <ClearIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        <Tooltip title="Select directory">
+                                            <IconButton
+                                                onClick={handleSelectDirectory}
+                                                edge="end"
+                                                disabled={!isElectron}
+                                            >
+                                                <FolderOpenIcon />
+                                            </IconButton>
+                                        </Tooltip>
                                     </InputAdornment>
                                 ),
                             }}
                         />
                     </Box>
 
-                    {calibrationRecordingPath && (
-                        <Box>
-                            <Typography variant="caption" color="text.secondary" gutterBottom>
-                                Calibration Recording Path
-                            </Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                <Chip
-                                    label={calibrationRecordingPath}
-                                    size="small"
-                                    sx={{ fontFamily: 'monospace', maxWidth: '100%' }}
-                                />
-                            </Box>
+                    {/* Directory Status Info */}
+                    {directoryInfo && (
+                        <Box sx={{
+                            p: 1.5,
+                            bgcolor: 'background.default',
+                            borderRadius: 1,
+                            border: `1px solid ${theme.palette.divider}`
+                        }}>
+                            <Stack spacing={1}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <InfoIcon fontSize="small" color="info" />
+                                    <Typography variant="caption" fontWeight="medium">
+                                        Directory Status
+                                    </Typography>
+                                </Box>
+
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                    {directoryInfo.exists ? (
+                                        <Chip
+                                            label="Exists"
+                                            size="small"
+                                            color="success"
+                                            icon={<CheckCircleIcon />}
+                                        />
+                                    ) : (
+                                        <Chip
+                                            label="Will be created"
+                                            size="small"
+                                            color="info"
+                                        />
+                                    )}
+
+                                    {directoryInfo.hasVideos && (
+                                        <Chip
+                                            label="Has videos"
+                                            size="small"
+                                            color="success"
+                                        />
+                                    )}
+
+                                    {directoryInfo.hasSynchronizedVideos && (
+                                        <Chip
+                                            label="Has synchronized_videos folder"
+                                            size="small"
+                                            color="primary"
+                                        />
+                                    )}
+                                </Box>
+
+                                {directoryInfo.cameraCalibrationTomlPath && (
+                                    <Box sx={{ mt: 1 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Found calibration file:
+                                        </Typography>
+                                        <Typography
+                                            variant="caption"
+                                            sx={{
+                                                fontFamily: 'monospace',
+                                                display: 'block',
+                                                color: 'success.main',
+                                                wordBreak: 'break-all'
+                                            }}
+                                        >
+                                            {directoryInfo.cameraCalibrationTomlPath}
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Stack>
                         </Box>
                     )}
 
@@ -251,7 +383,7 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                         disabled={!canCalibrate || isLoading}
                         fullWidth
                     >
-                        {calibrationRecordingPath ? 'Calibrate Last Recording' : 'Calibrate Recording'}
+                        Calibrate Recording
                     </Button>
                 </Stack>
             </Box>

@@ -1,4 +1,3 @@
-// freemocap-ui/src/components/recording-info-panel/recording-subcomponents/FullRecordingPathPreview.tsx
 import React from 'react';
 import {Box, IconButton, Paper, Tooltip, Typography, useTheme} from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -6,36 +5,30 @@ import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import {useElectronIPC} from "@/services";
+import { useAppSelector } from '@/store';
 
-
-interface FullPathPreviewProps {
-    directory: string;
-    subfolder?: string;
-    filename: string;
-}
-
-export const FullRecordingPathPreview: React.FC<FullPathPreviewProps> = ({
-                                                                             directory,
-                                                                             filename,
-                                                                             subfolder
-                                                                         }) => {
+export const FullRecordingPathPreview: React.FC = () => {
     const theme = useTheme();
-    const { api } = useElectronIPC()
+    const { api } = useElectronIPC();
+
+    // Read directly from RTK store
+    const recordingDirectory = useAppSelector((state) => state.recording.recordingDirectory);
+    const computed = useAppSelector((state) => state.recording.computed);
+
     const parts = [
-        {icon: <FolderIcon/>, text: directory},
-        ...(subfolder ? [{icon: <FolderIcon/>, text: subfolder}] : []),
-        {icon: <FolderSpecialIcon/>, text: filename}
+        {icon: <FolderIcon/>, text: recordingDirectory},
+        ...(computed.subfolderName ? [{icon: <FolderIcon/>, text: computed.subfolderName}] : []),
+        {icon: <FolderSpecialIcon/>, text: computed.recordingName}
     ];
 
     const fullPath: string = parts.map(p => p.text).join('/');
 
     // Get the directory path only (without the filename)
-    const directoryToOpen: string = subfolder
-        ? `${directory}/${subfolder}`
-        : directory;
+    const directoryToOpen: string = computed.subfolderName
+        ? `${recordingDirectory}/${computed.subfolderName}`
+        : recordingDirectory;
 
-
-    const handleOpenFolder = async () => {
+    const handleOpenFolder = async (): Promise<void> => {
         try {
             await api?.fileSystem.openFolder.mutate({ path: directoryToOpen });
         } catch (error) {
@@ -62,8 +55,6 @@ export const FullRecordingPathPreview: React.FC<FullPathPreviewProps> = ({
                 alignItems: 'center',
                 mb: 1
             }}>
-
-
                 {/* Mobile/Narrow view */}
                 <Box sx={{display: {xs: 'block', md: 'none'}}}>
                     <Tooltip title={fullPath} placement="bottom-start">
@@ -95,7 +86,6 @@ export const FullRecordingPathPreview: React.FC<FullPathPreviewProps> = ({
                                 display: 'flex',
                                 alignItems: 'center',
                                 color: 'text.secondary',
-                                // backgroundColor: 'background.paper',
                                 borderRadius: 1,
                                 px: 1,
                                 py: 0.5,
@@ -135,7 +125,6 @@ export const FullRecordingPathPreview: React.FC<FullPathPreviewProps> = ({
                     </IconButton>
                 </Tooltip>
             </Box>
-
         </Paper>
     );
 };

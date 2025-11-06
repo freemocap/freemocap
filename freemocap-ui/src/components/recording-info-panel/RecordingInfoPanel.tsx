@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
@@ -21,6 +21,7 @@ import {
     recordingTagChanged,
     createSubfolderToggled,
     customSubfolderNameChanged,
+    pathRecomputed,
 } from "@/store";
 import {
     StartStopRecordingButton
@@ -32,7 +33,7 @@ export const RecordingInfoPanel: React.FC = () => {
     const theme = useTheme();
     const dispatch = useAppDispatch();
     const recordingInfo = useAppSelector((state) => state.recording);
-    const { config } = recordingInfo;
+    const { config, computed } = recordingInfo;
 
     // Only keep countdown as local UI state (ephemeral)
     const [countdown, setCountdown] = useState<number | null>(null);
@@ -52,6 +53,23 @@ export const RecordingInfoPanel: React.FC = () => {
         }
     }, [recordingInfo.recordingDirectory, isElectron, api, dispatch]);
 
+    const handleStartRecording = useCallback((): void => {
+        console.log("Starting recording...");
+        console.log("Recording path:", computed.fullRecordingPath);
+        console.log("Recording name:", computed.recordingName);
+
+        if (config.useIncrement) {
+            dispatch(currentIncrementIncremented());
+        }
+
+        dispatch(
+            startRecording({
+                recordingName: computed.recordingName,
+                recordingDirectory: computed.fullRecordingPath,
+            })
+        );
+    }, [computed.fullRecordingPath, computed.recordingName, config.useIncrement, dispatch]);
+
     // Handle countdown timer
     useEffect(() => {
         if (countdown !== null && countdown > 0) {
@@ -61,74 +79,22 @@ export const RecordingInfoPanel: React.FC = () => {
             handleStartRecording();
             setCountdown(null);
         }
-    }, [countdown]);
+    }, [countdown, handleStartRecording]);
 
-    const getTimestampString = (): string => {
-        const now = new Date();
+    // Update timestamp every second when timestamps are being used
+    useEffect(() => {
+        const shouldUpdateTimestamp =
+            config.useTimestamp ||
+            (config.createSubfolder && !config.customSubfolderName);
 
-        const dateOptions: Intl.DateTimeFormatOptions = {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-            timeZoneName: "shortOffset",
-        };
+        if (shouldUpdateTimestamp && !recordingInfo.isRecording) {
+            const interval = setInterval(() => {
+                dispatch(pathRecomputed());
+            }, 1000);
 
-        const formatter = new Intl.DateTimeFormat("en-US", dateOptions);
-        const parts = formatter.formatToParts(now);
-
-        const partMap: Record<string, string> = {};
-        parts.forEach((part) => {
-            partMap[part.type] = part.value;
-        });
-
-        return `${partMap.year}-${partMap.month}-${partMap.day}_${partMap.hour}-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(":", "")}`;
-    };
-
-    const buildRecordingName = (): string => {
-        const parts: string[] = [];
-
-        if (config.useTimestamp) {
-            parts.push(getTimestampString());
-        } else {
-            parts.push(config.baseName);
+            return () => clearInterval(interval);
         }
-
-        if (config.recordingTag) {
-            parts.push(config.recordingTag);
-        }
-
-        return parts.join("_");
-    };
-
-    const handleStartRecording = (): void => {
-        console.log("Starting recording...");
-
-        const recordingName = buildRecordingName();
-        const subfolderName = config.createSubfolder
-            ? config.customSubfolderName || getTimestampString()
-            : "";
-        const recordingPath = config.createSubfolder
-            ? `${recordingInfo.recordingDirectory}/${subfolderName}`
-            : recordingInfo.recordingDirectory;
-
-        console.log("Recording path:", recordingPath);
-        console.log("Recording name:", recordingName);
-
-        if (config.useIncrement) {
-            dispatch(currentIncrementIncremented());
-        }
-
-        dispatch(
-            startRecording({
-                recordingName,
-                recordingDirectory: recordingPath,
-            })
-        );
-    };
+    }, [config.useTimestamp, config.createSubfolder, config.customSubfolderName, recordingInfo.isRecording, dispatch]);
 
     const handleRecordButtonClick = (): void => {
         if (recordingInfo.isRecording) {
@@ -141,11 +107,6 @@ export const RecordingInfoPanel: React.FC = () => {
             handleStartRecording();
         }
     };
-
-    const recordingName = buildRecordingName();
-    const subfolderName = config.createSubfolder
-        ? config.customSubfolderName || getTimestampString()
-        : undefined;
 
     return (
         <Box
@@ -200,9 +161,6 @@ export const RecordingInfoPanel: React.FC = () => {
                     }
                 >
                     <RecordingPathTreeItem
-                        recordingDirectory={recordingInfo.recordingDirectory}
-                        recordingName={recordingName}
-                        subfolder={subfolderName}
                         countdown={countdown}
                         recordingTag={config.recordingTag}
                         useDelayStart={config.useDelayStart}

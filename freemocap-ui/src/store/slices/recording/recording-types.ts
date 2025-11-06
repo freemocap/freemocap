@@ -17,6 +17,12 @@ export const RecordingConfigSchema = z.object({
     customSubfolderName: z.string(),
 });
 
+export const ComputedRecordingPathSchema = z.object({
+    recordingName: z.string(),
+    subfolderName: z.string(),
+    fullRecordingPath: z.string(),
+});
+
 export const RecordingInfoSchema = z.object({
     isRecording: z.boolean(),
     recordingDirectory: z.string(),
@@ -24,7 +30,9 @@ export const RecordingInfoSchema = z.object({
     startedAt: z.string().nullable(),
     duration: z.number().nullable(),
     config: RecordingConfigSchema,
+    computed: ComputedRecordingPathSchema,
 });
 
 export type RecordingConfig = z.infer<typeof RecordingConfigSchema>;
+export type ComputedRecordingPath = z.infer<typeof ComputedRecordingPathSchema>;
 export type RecordingInfo = z.infer<typeof RecordingInfoSchema>;

@@ -19,13 +19,25 @@ export interface CalibrationConfig {
     autoStopOnMinViewCount: boolean;
 }
 
+export interface CalibrationDirectoryInfo {
+    exists: boolean;
+    canRecord: boolean; // true if directory doesn't exist OR exists but is empty
+    canCalibrate: boolean; // true if has videos (either in synchronized_videos or root)
+    cameraCalibrationTomlPath: string | null;
+    hasSynchronizedVideos: boolean;
+    hasVideos: boolean;
+    errorMessage: string | null;
+}
+
 export interface CalibrationState {
     config: CalibrationConfig;
     isRecording: boolean;
     recordingProgress: number;
     isLoading: boolean;
     error: string | null;
-    calibrationRecordingPath: string | null; // Store the path of the last calibration recording
+    lastCalibrationRecordingPath: string | null; // Path from last recording
+    manualCalibrationRecordingPath: string | null; // User-selected override path
+    directoryInfo: CalibrationDirectoryInfo | null; // Info about the current calibration directory
 }
 
 // ==================== Initial State ====================
@@ -43,7 +55,9 @@ const initialState: CalibrationState = {
     recordingProgress: 0,
     isLoading: false,
     error: null,
-    calibrationRecordingPath: null,
+    lastCalibrationRecordingPath: null,
+    manualCalibrationRecordingPath: null,
+    directoryInfo: null,
 };
 
 // ==================== Slice ====================
@@ -64,6 +78,21 @@ export const calibrationSlice = createSlice({
             state.error = null;
         },
 
+        // New action to set manual path
+        manualCalibrationRecordingPathChanged: (state, action: PayloadAction<string>) => {
+            state.manualCalibrationRecordingPath = action.payload;
+        },
+
+        // New action to clear manual path (revert to default)
+        manualCalibrationRecordingPathCleared: (state) => {
+            state.manualCalibrationRecordingPath = null;
+        },
+
+        // New action to update directory info
+        calibrationDirectoryInfoUpdated: (state, action: PayloadAction<CalibrationDirectoryInfo>) => {
+            state.directoryInfo = action.payload;
+        },
+
         resetCalibrationState: () => initialState,
     },
 
@@ -80,7 +109,7 @@ export const calibrationSlice = createSlice({
                 state.recordingProgress = 0;
                 // Store the path returned from the server
                 if (action.payload.calibrationRecordingPath) {
-                    state.calibrationRecordingPath = action.payload.calibrationRecordingPath;
+                    state.lastCalibrationRecordingPath = action.payload.calibrationRecordingPath;
                 }
             })
             .addCase(startCalibrationRecording.rejected, (state, action) => {
@@ -134,17 +163,54 @@ export const selectCalibrationIsLoading = (state: RootState) => state.calibratio
 export const selectCalibrationIsRecording = (state: RootState) => state.calibration.isRecording;
 export const selectCalibrationProgress = (state: RootState) => state.calibration.recordingProgress;
 export const selectCalibrationError = (state: RootState) => state.calibration.error;
-export const selectCalibrationRecordingPath = (state: RootState) => state.calibration.calibrationRecordingPath;
+export const selectCalibrationDirectoryInfo = (state: RootState) => state.calibration.directoryInfo;
+
+export const selectCalibrationRecordingPath = createSelector(
+    [
+        (state: RootState) => state.calibration.manualCalibrationRecordingPath,
+        (state: RootState) => state.calibration.lastCalibrationRecordingPath,
+        (state: RootState) => state.recording.computed,
+    ],
+    (manualPath, lastPath, recordingComputed) => {
+        if (manualPath) return manualPath;
+        if (lastPath) return lastPath;
+
+        // Build calibration path from recording computed values
+        const calibrationFolderName = `${recordingComputed.recordingName}_calibration`;
+        return `${recordingComputed.fullRecordingPath}/${calibrationFolderName}`;
+    }
+);
+
+// Selector to check if using manual path
+export const selectIsUsingManualCalibrationPath = createSelector(
+    [(state: RootState) => state.calibration.manualCalibrationRecordingPath],
+    (manualPath) => manualPath !== null
+);
 
 export const selectCanStartCalibrationRecording = createSelector(
-    [selectCalibrationIsRecording, selectCalibrationIsLoading, (state: RootState) => state.recording.recordingDirectory],
-    (isRecording, isLoading, recordingDirectory) => !isRecording && !isLoading && !!recordingDirectory
+    [
+        selectCalibrationIsRecording,
+        selectCalibrationIsLoading,
+        selectCalibrationRecordingPath,
+        selectCalibrationDirectoryInfo
+    ],
+    (isRecording, isLoading, recordingPath, directoryInfo) => {
+        // Can start if: not recording, not loading, have a path, and directory can be recorded to
+        return !isRecording && !isLoading && !!recordingPath && (directoryInfo?.canRecord ?? true);
+    }
 );
 
 export const selectCanCalibrate = createSelector(
-    [selectCalibrationRecordingPath, selectCalibrationIsLoading, selectCalibrationIsRecording],
-    (lastRecordingPath, isLoading, isRecording) =>
-        !!lastRecordingPath && !isLoading && !isRecording
+    [
+        selectCalibrationRecordingPath,
+        selectCalibrationIsLoading,
+        selectCalibrationIsRecording,
+        selectCalibrationDirectoryInfo
+    ],
+    (calibrationPath, isLoading, isRecording, directoryInfo) => {
+        // Can calibrate if: have path, not loading, not recording, and directory has videos
+        return !!calibrationPath && !isLoading && !isRecording && (directoryInfo?.canCalibrate ?? false);
+    }
 );
 
 // ==================== Actions Export ====================
@@ -153,6 +219,9 @@ export const {
     calibrationConfigUpdated,
     calibrationProgressUpdated,
     calibrationErrorCleared,
+    manualCalibrationRecordingPathChanged,
+    manualCalibrationRecordingPathCleared,
+    calibrationDirectoryInfoUpdated,
     resetCalibrationState
 } = calibrationSlice.actions;
 

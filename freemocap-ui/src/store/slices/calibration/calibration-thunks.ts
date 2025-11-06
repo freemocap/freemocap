@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { RootState } from "@/store";
 import { serverUrls } from "@/hooks/server-urls";
+import { selectCalibrationRecordingPath } from "./calibration-slice";
 
 // Helper function to extract detailed error info from failed responses
 async function getDetailedErrorMessage(response: Response): Promise<string> {
@@ -39,7 +40,6 @@ function generateCalibrationRecordingName(state: RootState): string {
     const recordingConfig = state.recording.config;
     const parts: string[] = [];
 
-
     // Add base name if configured
     if (recordingConfig.baseName && recordingConfig.baseName !== 'recording') {
         parts.push(recordingConfig.baseName);
@@ -48,14 +48,12 @@ function generateCalibrationRecordingName(state: RootState): string {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
     parts.push(timestamp);
 
-
     // Add recording tag if provided
     if (recordingConfig.recordingTag) {
         parts.push(recordingConfig.recordingTag);
     }
 
     parts.push('calibration');
-
 
     return parts.join('_');
 }
@@ -70,7 +68,7 @@ export const startCalibrationRecording = createAsyncThunk<
         try {
             const state = getState();
             const config = state.calibration.config;
-            const recordingDirectory = state.recording.recordingDirectory;
+            const recordingDirectory = selectCalibrationRecordingPath(state);
             const calibrationRecordingName = generateCalibrationRecordingName(state);
 
             if (!recordingDirectory) {
@@ -150,10 +148,10 @@ export const calibrateRecording = createAsyncThunk<
         try {
             const state = getState();
             const config = state.calibration.config;
-            const calibrationRecordingPath = state.calibration.lastCalibrationRecordingPath;
+            const calibrationRecordingPath = selectCalibrationRecordingPath(state);
 
             if (!calibrationRecordingPath) {
-                return rejectWithValue('No calibration recording path available. Please record a calibration first.');
+                return rejectWithValue('No calibration recording path available. Please set a recording directory or record a calibration first.');
             }
 
             console.log('🔧 Calibrating recording:', {

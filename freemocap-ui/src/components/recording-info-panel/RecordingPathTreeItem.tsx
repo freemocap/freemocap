@@ -5,13 +5,11 @@ import {
     FullRecordingPathPreview
 } from "@/components/recording-info-panel/recording-subcomponents/FullRecordingPathPreview";
 import {RecordingControlsSection} from "@/components/recording-info-panel/RecordingControlsTreeSection";
+import { useAppSelector } from '@/store';
 
 interface RecordingPathTreeItemProps {
-    recordingDirectory: string;
-    recordingName: string;
-    subfolder?: string;
     countdown: number | null;
-    // Add all the control props
+    // Config props
     recordingTag: string;
     useDelayStart: boolean;
     delaySeconds: number;
@@ -34,9 +32,6 @@ interface RecordingPathTreeItemProps {
 }
 
 export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
-                                                                                recordingDirectory,
-                                                                                recordingName,
-                                                                                subfolder,
                                                                                 countdown,
                                                                                 // Control props
                                                                                 recordingTag,
@@ -59,16 +54,16 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
                                                                                 onCreateSubfolderChange,
                                                                                 onCustomSubfolderNameChange
                                                                             }) => {
+    // Read computed values directly from store
+    const recordingDirectory = useAppSelector((state) => state.recording.recordingDirectory);
+    const computed = useAppSelector((state) => state.recording.computed);
+
     return (
         <TreeItem
             itemId="recording-path"
             label={
                 <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-                    <FullRecordingPathPreview
-                        directory={recordingDirectory}
-                        filename={recordingName}
-                        subfolder={subfolder}
-                    />
+                    <FullRecordingPathPreview />
                 </Box>
             }
         >
@@ -82,7 +77,6 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
 
                 <RecordingControlsSection
                     recordingDirectory={recordingDirectory}
-                    recordingName={recordingName}
                     recordingTag={recordingTag}
                     useDelayStart={useDelayStart}
                     delaySeconds={delaySeconds}

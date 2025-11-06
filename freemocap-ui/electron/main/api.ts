@@ -1,4 +1,3 @@
-
 import { initTRPC } from '@trpc/server';
 import { z } from 'zod';
 import superjson from 'superjson';
@@ -14,6 +13,57 @@ import { APP_PATHS } from './app-paths';
 const t = initTRPC.create({
     transformer: superjson, // Handles Date/undefined/etc serialization
 });
+
+// Helper function to check if a directory contains video files
+function hasVideoFiles(dirPath: string): boolean {
+    if (!fs.existsSync(dirPath)) {
+        return false;
+    }
+
+    try {
+        const entries = fs.readdirSync(dirPath);
+        const videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm'];
+
+        return entries.some(entry => {
+            const fullPath = path.join(dirPath, entry);
+            const stats = fs.statSync(fullPath);
+
+            if (stats.isFile()) {
+                const ext = path.extname(entry).toLowerCase();
+                return videoExtensions.includes(ext);
+            }
+            return false;
+        });
+    } catch (error) {
+        console.error('Error checking for video files:', error);
+        return false;
+    }
+}
+
+// Helper function to find camera calibration TOML file
+function findCameraCalibrationToml(dirPath: string): string | null {
+    if (!fs.existsSync(dirPath)) {
+        return null;
+    }
+
+    try {
+        const entries = fs.readdirSync(dirPath);
+
+        // Look for files matching pattern: *_camera_calibration.toml
+        const calibrationFile = entries.find(entry => {
+            const fullPath = path.join(dirPath, entry);
+            const stats = fs.statSync(fullPath);
+
+            return stats.isFile() &&
+                entry.endsWith('_camera_calibration.toml');
+        });
+
+        return calibrationFile ? path.join(dirPath, calibrationFile) : null;
+    } catch (error) {
+        console.error('Error finding calibration TOML:', error);
+        return null;
+    }
+}
 
 // Create the main API router
 export const api = t.router({
@@ -44,7 +94,7 @@ export const api = t.router({
 
     // File System Operations
     fileSystem: t.router({
-        openSelectDirectoryDialog: t.procedure
+        selectDirectory: t.procedure
             .mutation(async () => {
                 const result = await dialog.showOpenDialog({
                     properties: ['openDirectory'],
@@ -94,6 +144,73 @@ export const api = t.router({
                     ],
                 });
                 return result.canceled ? null : result.filePaths[0];
+            }),
+
+        validateCalibrationDirectory: t.procedure
+            .input(z.object({ directoryPath: z.string() }))
+            .query(({ input }) => {
+                const result = {
+                    exists: false,
+                    canRecord: false,
+                    canCalibrate: false,
+                    cameraCalibrationTomlPath: null as string | null,
+                    hasSynchronizedVideos: false,
+                    hasVideos: false,
+                    errorMessage: null as string | null,
+                };
+
+                try {
+                    // Check if directory exists
+                    result.exists = fs.existsSync(input.directoryPath);
+
+                    if (!result.exists) {
+                        // Directory doesn't exist - can record here (will be created)
+                        result.canRecord = true;
+                        result.canCalibrate = false;
+                        return result;
+                    }
+
+                    // Directory exists - check its contents
+                    const stats = fs.statSync(input.directoryPath);
+
+                    if (!stats.isDirectory()) {
+                        result.errorMessage = 'Path exists but is not a directory';
+                        return result;
+                    }
+
+                    // Check for synchronized_videos folder
+                    const synchronizedVideosPath = path.join(input.directoryPath, 'synchronized_videos');
+                    result.hasSynchronizedVideos = fs.existsSync(synchronizedVideosPath) &&
+                        fs.statSync(synchronizedVideosPath).isDirectory();
+
+                    // Check for videos in synchronized_videos folder
+                    if (result.hasSynchronizedVideos) {
+                        result.hasVideos = hasVideoFiles(synchronizedVideosPath);
+                    }
+
+                    // If no synchronized_videos, check for videos in root directory
+                    if (!result.hasVideos) {
+                        result.hasVideos = hasVideoFiles(input.directoryPath);
+                    }
+
+                    // Determine if we can record
+                    // Can record if directory is empty or only has non-video files
+                    const entries = fs.readdirSync(input.directoryPath);
+                    result.canRecord = entries.length === 0 || !result.hasVideos;
+
+                    // Can calibrate if we have videos
+                    result.canCalibrate = result.hasVideos;
+
+                    // Look for camera calibration TOML file
+                    result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
+
+                    return result;
+
+                } catch (error) {
+                    console.error('Error validating calibration directory:', error);
+                    result.errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                    return result;
+                }
             }),
     }),
 

@@ -14,7 +14,7 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
-    Chip,
+    Chip, InputAdornment, IconButton,
 } from '@mui/material';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
@@ -23,6 +23,8 @@ import StopIcon from '@mui/icons-material/Stop';
 import FolderIcon from '@mui/icons-material/Folder';
 import { useCalibration } from '@/hooks/useCalibration';
 import { useAppSelector } from '@/store/hooks';
+import FolderOpenIcon from "@mui/icons-material/FolderOpen";
+import {isElectron} from "@/services";
 
 type BoardPreset = '5x3' | '7x5';
 
@@ -40,8 +42,6 @@ export const CalibrationTaskTreeItem: React.FC = () => {
     const theme = useTheme();
     const [localError, setLocalError] = useState<string | null>(null);
 
-    // Get recording directory from recording state
-    const recordingDirectory = useAppSelector((state) => state.recording.recordingDirectory);
 
     const {
         config,
@@ -51,7 +51,7 @@ export const CalibrationTaskTreeItem: React.FC = () => {
         recordingProgress,
         canStartRecording,
         canCalibrate,
-        lastCalibrationRecordingPath,
+        calibrationRecordingPath,
         updateCalibrationConfig,
         startRecording,
         stopRecording,
@@ -108,28 +108,39 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                         </Alert>
                     )}
 
-                    {/* Recording Directory Info */}
-                    <Box>
-                        <Typography variant="caption" color="text.secondary" gutterBottom>
-                            Recording Directory (from Recording Settings)
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                            <FolderIcon fontSize="small" color="action" />
-                            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                                {recordingDirectory || 'Not set'}
-                            </Typography>
-                        </Box>
-                    </Box>
 
                     {/* Last Calibration Recording Path */}
-                    {lastCalibrationRecordingPath && (
+                    {/* Recording Directory Info */}
+                    <Box>
+                        <TextField
+                            label="Calibration Recording Path"
+                            value={calibrationRecordingPath}
+                            onChange={(e) => {console.log(`New calibration rec path: ${e.target.value}`);}}
+                            fullWidth
+                            size="small"
+                            InputProps={{
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            onClick={() => {console.log('Select directory clicked');}}
+                                            edge="end"
+                                        >
+                                            <FolderOpenIcon />
+                                        </IconButton>
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    </Box>
+
+                    {calibrationRecordingPath && (
                         <Box>
                             <Typography variant="caption" color="text.secondary" gutterBottom>
-                                Last Calibration Recording
+                                Calibration Recording Path
                             </Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                                 <Chip
-                                    label={lastCalibrationRecordingPath}
+                                    label={calibrationRecordingPath}
                                     size="small"
                                     sx={{ fontFamily: 'monospace', maxWidth: '100%' }}
                                 />
@@ -240,7 +251,7 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                         disabled={!canCalibrate || isLoading}
                         fullWidth
                     >
-                        {lastCalibrationRecordingPath ? 'Calibrate Last Recording' : 'Calibrate Recording'}
+                        {calibrationRecordingPath ? 'Calibrate Last Recording' : 'Calibrate Recording'}
                     </Button>
                 </Stack>
             </Box>

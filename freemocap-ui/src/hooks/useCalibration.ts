@@ -9,7 +9,7 @@ import {
     selectCalibration,
     selectCanCalibrate,
     selectCanStartCalibrationRecording,
-    selectLastCalibrationRecordingPath,
+    selectCalibrationRecordingPath,
     startCalibrationRecording,
     stopCalibrationRecording,
     updateCalibrationConfigOnServer,
@@ -20,9 +20,9 @@ export function useCalibration() {
     const calibrationState = useAppSelector(selectCalibration);
     const canStartRecording = useAppSelector(selectCanStartCalibrationRecording);
     const canCalibrate = useAppSelector(selectCanCalibrate);
-    const lastCalibrationRecordingPath = useAppSelector(selectLastCalibrationRecordingPath);
+    const calibrationRecordingPath = useAppSelector(selectCalibrationRecordingPath);
 
-    const updateConfig = useCallback(
+    const updateCalibrationConfig = useCallback(
         (updates: Partial<CalibrationConfig>) => {
             // Update local state first
             dispatch(calibrationConfigUpdated(updates));
@@ -55,11 +55,11 @@ export function useCalibration() {
         isLoading: calibrationState.isLoading,
         isRecording: calibrationState.isRecording,
         recordingProgress: calibrationState.recordingProgress,
-        lastCalibrationRecordingPath,
+        calibrationRecordingPath,
         canStartRecording,
         canCalibrate,
         // Actions
-        updateCalibrationConfig: updateConfig,
+        updateCalibrationConfig,
         startRecording,
         stopRecording,
         calibrate,

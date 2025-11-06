@@ -68,7 +68,7 @@ export const RecordingControlsSection: React.FC<RecordingControlsSectionProps> =
             />
 
             <BaseRecordingDirectoryInput
-                value={recordingDirectory}
+                baseRecordingFolder={recordingDirectory}
             />
 
             <RecordingNamePreview

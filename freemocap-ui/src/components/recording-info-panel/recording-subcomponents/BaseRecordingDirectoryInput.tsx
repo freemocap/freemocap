@@ -6,10 +6,10 @@ import { recordingDirectoryChanged } from '@/store/slices/recording/recording-sl
 import { useElectronIPC } from '@/services';
 
 interface DirectoryInputProps {
-    value: string;
+    baseRecordingFolder: string;
 }
 
-export const BaseRecordingDirectoryInput: React.FC<DirectoryInputProps> = ({ value }) => {
+export const BaseRecordingDirectoryInput: React.FC<DirectoryInputProps> = ({ baseRecordingFolder }) => {
     const dispatch = useAppDispatch();
     const { api, isElectron } = useElectronIPC();
 
@@ -54,7 +54,7 @@ export const BaseRecordingDirectoryInput: React.FC<DirectoryInputProps> = ({ val
     return (
         <TextField
             label="Recording Directory"
-            value={value}
+            value={baseRecordingFolder}
             onChange={handleInputChange}
             fullWidth
             size="small"

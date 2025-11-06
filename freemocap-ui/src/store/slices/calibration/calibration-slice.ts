@@ -25,7 +25,7 @@ export interface CalibrationState {
     recordingProgress: number;
     isLoading: boolean;
     error: string | null;
-    lastCalibrationRecordingPath: string | null; // Store the path of the last calibration recording
+    calibrationRecordingPath: string | null; // Store the path of the last calibration recording
 }
 
 // ==================== Initial State ====================
@@ -43,7 +43,7 @@ const initialState: CalibrationState = {
     recordingProgress: 0,
     isLoading: false,
     error: null,
-    lastCalibrationRecordingPath: null,
+    calibrationRecordingPath: null,
 };
 
 // ==================== Slice ====================
@@ -80,7 +80,7 @@ export const calibrationSlice = createSlice({
                 state.recordingProgress = 0;
                 // Store the path returned from the server
                 if (action.payload.calibrationRecordingPath) {
-                    state.lastCalibrationRecordingPath = action.payload.calibrationRecordingPath;
+                    state.calibrationRecordingPath = action.payload.calibrationRecordingPath;
                 }
             })
             .addCase(startCalibrationRecording.rejected, (state, action) => {
@@ -134,7 +134,7 @@ export const selectCalibrationIsLoading = (state: RootState) => state.calibratio
 export const selectCalibrationIsRecording = (state: RootState) => state.calibration.isRecording;
 export const selectCalibrationProgress = (state: RootState) => state.calibration.recordingProgress;
 export const selectCalibrationError = (state: RootState) => state.calibration.error;
-export const selectLastCalibrationRecordingPath = (state: RootState) => state.calibration.lastCalibrationRecordingPath;
+export const selectCalibrationRecordingPath = (state: RootState) => state.calibration.calibrationRecordingPath;
 
 export const selectCanStartCalibrationRecording = createSelector(
     [selectCalibrationIsRecording, selectCalibrationIsLoading, (state: RootState) => state.recording.recordingDirectory],
@@ -142,7 +142,7 @@ export const selectCanStartCalibrationRecording = createSelector(
 );
 
 export const selectCanCalibrate = createSelector(
-    [selectLastCalibrationRecordingPath, selectCalibrationIsLoading, selectCalibrationIsRecording],
+    [selectCalibrationRecordingPath, selectCalibrationIsLoading, selectCalibrationIsRecording],
     (lastRecordingPath, isLoading, isRecording) =>
         !!lastRecordingPath && !isLoading && !isRecording
 );

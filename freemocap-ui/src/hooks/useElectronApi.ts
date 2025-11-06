@@ -1,6 +1,6 @@
 // src/hooks/useElectronAPI.ts
 import { useEffect, useState, useMemo } from 'react';
-import {electronIpcClient, isElectron} from "@/hooks/electron-service/electron-ipc-client";
+import {electronIpcClient, isElectron} from "@/services";
 
 interface UseElectronAPIReturn {
     isElectron: boolean;
@@ -18,7 +18,7 @@ interface UseElectronAPIReturn {
         }>;
     } | null;
     fileSystem: {
-        selectDirectory: () => Promise<string | null>;
+        openSelectDirectoryDialog: () => Promise<string | null>;
         selectExecutable: () => Promise<string | null>;
         openFolder: (path: string) => Promise<boolean>;
         getHomeDirectory: () => Promise<string>;
@@ -88,9 +88,9 @@ export function useElectronAPI(): UseElectronAPIReturn {
         if (!isElectronEnv) return null;
 
         return {
-            selectDirectory: async () => {
+            openSelectDirectoryDialog: async () => {
                 try {
-                    return await electronIpcClient.fileSystem.selectDirectory.mutate();
+                    return await electronIpcClient.fileSystem.openSelectDirectoryDialog.mutate();
                 } catch (error) {
                     console.error('Failed to select directory:', error);
                     return null;

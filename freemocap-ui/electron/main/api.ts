@@ -44,7 +44,7 @@ export const api = t.router({
 
     // File System Operations
     fileSystem: t.router({
-        selectDirectory: t.procedure
+        openSelectDirectoryDialog: t.procedure
             .mutation(async () => {
                 const result = await dialog.showOpenDialog({
                     properties: ['openDirectory'],

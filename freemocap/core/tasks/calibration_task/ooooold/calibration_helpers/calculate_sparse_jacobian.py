@@ -1,10 +1,11 @@
 import numpy as np
 from scipy.sparse import dok_matrix, csr_matrix
 
+
 def calculate_jacobian_sparsity(
-    pixel_points2d: np.ndarray,
-    ids: np.ndarray,
-    num_camera_params: int
+        pixel_points2d: np.ndarray,
+        ids: np.ndarray,
+        num_camera_params: int
 ) -> csr_matrix:
     """
     Calculate the sparsity pattern of the Jacobian matrix for bundle adjustment.
@@ -55,7 +56,8 @@ def calculate_jacobian_sparsity(
 
     # Update point positions based on reprojection error
     for coord_index in range(3):
-        jacobian_sparsity[np.arange(num_valid_points), num_cameras * num_camera_params + valid_point_indices * 3 + coord_index] = True
+        jacobian_sparsity[
+            np.arange(num_valid_points), num_cameras * num_camera_params + valid_point_indices * 3 + coord_index] = True
 
     # Update board parameters based on object points error
     for coord_index in range(3):

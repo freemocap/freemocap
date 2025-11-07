@@ -129,6 +129,7 @@ class SingleCameraCalibrator(BaseModel):
             all_charuco_corner_ids=charuco_observation.all_charuco_ids,
             all_charuco_corners_in_object_coordinates=charuco_observation.all_charuco_corners_in_object_coordinates,
         )
+
     @classmethod
     def create_initial(
             cls,
@@ -183,7 +184,7 @@ class SingleCameraCalibrator(BaseModel):
 
         logger.info(f"Calibrating camera {self.camera_id} with {len(self.selected_frame_numbers)} optimized views...")
         self.update_calibration_estimate(frame_numbers=self.selected_frame_numbers,
-                                            store_results_in_state=True)
+                                         store_results_in_state=True)
 
         logger.success(
             f"Camera {self.camera_id} calibration complete! "
@@ -241,11 +242,11 @@ class SingleCameraCalibrator(BaseModel):
 
         # Quick calibration for pose estimation
         (residual,
-            camera_matrix,
-            distortion_coefficients,
-            rotation_vectors,
-            translation_vectors
-         )= self.update_calibration_estimate(frame_numbers=initial_frame_numbers, store_results_in_state=False)
+         camera_matrix,
+         distortion_coefficients,
+         rotation_vectors,
+         translation_vectors
+         ) = self.update_calibration_estimate(frame_numbers=initial_frame_numbers, store_results_in_state=False)
 
         # STAGE 2: Estimate poses for ALL observations
         logger.info(f"Camera {self.camera_id}: Estimating poses for all {original_count} observations...")
@@ -298,8 +299,8 @@ class SingleCameraCalibrator(BaseModel):
     def update_calibration_estimate(
             self,
             frame_numbers: list[int] | None = None,
-            store_results_in_state: bool = True #if false, don't update internal state
-    ) -> tuple[ float, np.ndarray, np.ndarray, list[RotationVector], list[TranslationVector]]:
+            store_results_in_state: bool = True  # if false, don't update internal state
+    ) -> tuple[float, np.ndarray, np.ndarray, list[RotationVector], list[TranslationVector]]:
         """
         Update calibration estimate using specified frame numbers.
 
@@ -387,8 +388,6 @@ class SingleCameraCalibrator(BaseModel):
             )
             for translation_vector in translation_vectors_output
         ]
-
-
 
         logger.debug(
             f"Camera {self.camera_id} calibration complete! "

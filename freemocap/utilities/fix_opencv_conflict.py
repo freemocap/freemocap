@@ -4,6 +4,7 @@ from importlib.metadata import distributions
 
 logger = logging.getLogger(__name__)
 
+
 def fix_opencv_conflict():
     installed_packages = {dist.metadata["Name"] for dist in distributions()}
     if "opencv-python" in installed_packages and "opencv-contrib-python" in installed_packages:

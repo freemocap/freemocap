@@ -15,7 +15,6 @@ class SingleCameraCalibrationEstimate(BaseModel):
 
     positional_6dof: Positional6DoF = Field(default_factory=Positional6DoF)
 
-
     @property
     def focal_length(self):
         fx = self.camera_matrix[0, 0]
@@ -31,4 +30,3 @@ class SingleCameraCalibrationEstimate(BaseModel):
 
     def extrinsic_matrix(self) -> TransformationMatrixArray:
         return self.positional_6dof.transformation_matrix
-

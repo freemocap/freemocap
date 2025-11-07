@@ -8,8 +8,8 @@ from skellycam.core.camera_group.camera_group import CameraConfigs
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.app.freemocap_application import get_freemocap_app
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.system.default_paths import default_recording_name, get_default_recording_folder_path
 
 logger = logging.getLogger(__name__)
@@ -17,20 +17,24 @@ logger = logging.getLogger(__name__)
 pipeline_router = APIRouter(prefix=f"/pipeline",
                             tags=["Processing Pipelines"], )
 
+
 class PipelineConnectRequest(BaseModel):
-    camera_configs: CameraConfigs=Field(...,description="List of camera IDs comprising the CameraGroup we're attaching a pipeline to")
-    pipeline_config: PipelineConfig|None = None
+    camera_configs: CameraConfigs = Field(...,
+                                          description="List of camera IDs comprising the CameraGroup we're attaching a pipeline to")
+    pipeline_config: PipelineConfig | None = None
 
     @property
-    def camera_ids(self) -> list[CameraIdString]|None:
+    def camera_ids(self) -> list[CameraIdString] | None:
         if self.camera_configs:
             return list(self.camera_configs.keys())
         return None
+
 
 class PipelineCreateResponse(BaseModel):
     camera_group_id: CameraGroupIdString = Field(..., description="ID of the camera group attached to the pipeline")
     pipeline_id: str = Field(..., description="ID of the processing pipeline to which the camera group is attached")
     camera_configs: CameraConfigs = Field(..., description="Camera configurations for the cameras in the camera group")
+
     @classmethod
     def from_pipeline(cls, pipeline) -> "PipelineCreateResponse":
         return cls(
@@ -38,6 +42,8 @@ class PipelineCreateResponse(BaseModel):
             pipeline_id=pipeline.id,
             camera_configs=pipeline.camera_configs,
         )
+
+
 class StartRecordingRequest(BaseModel):
     recording_name: str = Field(
         default_factory=default_recording_name,
@@ -63,10 +69,12 @@ def pipeline_connect_post_endpoint(
         request: PipelineConnectRequest = Body(...,
                                                description="Request body containing desired camera configuration",
                                                examples=[
-                                                   PipelineConnectRequest(camera_configs={'0':CameraConfig(camera_id='0')})])) -> PipelineCreateResponse:
+                                                   PipelineConnectRequest(camera_configs={
+                                                       '0': CameraConfig(camera_id='0')})])) -> PipelineCreateResponse:
     logger.api(f"Received `pipeline/connect` POST request - \n {request.model_dump_json(indent=2)}")
     try:
-        pipeline_config = request.pipeline_config or PipelineConfig.from_camera_configs(camera_configs=request.camera_configs)
+        pipeline_config = request.pipeline_config or PipelineConfig.from_camera_configs(
+            camera_configs=request.camera_configs)
         pipeline = get_freemocap_app().connect_or_update_pipeline(pipeline_config=pipeline_config)
         response = PipelineCreateResponse.from_pipeline(pipeline=pipeline)
         logger.api(
@@ -80,8 +88,8 @@ def pipeline_connect_post_endpoint(
 
 
 @pipeline_router.delete("/all/close",
-                     summary="Disconnect/shutdown all processing pipelines"
-                     )
+                        summary="Disconnect/shutdown all processing pipelines"
+                        )
 def pipeline_close_post_endpoint():
     logger.api(f"Received `pipeline/close` DELETE request")
     try:
@@ -95,6 +103,7 @@ def pipeline_close_post_endpoint():
         raise HTTPException(status_code=500,
                             detail=f"Error when processing `pipeline/disconnect` request: {type(e).__name__} - {e}")
 
+
 @pipeline_router.get("/all/pause_unpause", summary="Pause/unpause cameras")
 def pause_camera_groups(request: Request) -> bool:
     try:
@@ -103,6 +112,7 @@ def pause_camera_groups(request: Request) -> bool:
     except Exception as e:
         logger.error(f"Error in {request.url}: {type(e).__name__} - {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @pipeline_router.post("/all/record/start", summary="Start recording")
 def start_recording(
@@ -132,5 +142,3 @@ def stop_recording(request: Request) -> bool:
     except Exception as e:
         logger.error(f"Error in {request.url}: {type(e).__name__} - {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
-

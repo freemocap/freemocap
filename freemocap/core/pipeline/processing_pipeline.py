@@ -4,9 +4,11 @@ import time
 import uuid
 from dataclasses import dataclass
 
+from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
 from freemocap.core.pipeline.aggregation_node import AggregationNode, AggregationNodeState
@@ -14,13 +16,13 @@ from freemocap.core.pipeline.camera_node import CameraNode, CameraNodeState
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \
-    StartRealtimeCalibrationTrackingTopic, StartRealtimeCalibrationTrackingMessage, PipelineConfigUpdateMessage, \
-    PipelineConfigUpdateTopic
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
-from pydantic import BaseModel, ConfigDict
+from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \
+    PipelineConfigUpdateMessage, \
+    PipelineConfigUpdateTopic, ShouldCalibrateMessage, ShouldCalibrateTopic
 
 logger = logging.getLogger(__name__)
+
 
 class PipelineState(BaseModel):
     """Serializable representation of a processing pipeline state."""
@@ -73,7 +75,7 @@ class ProcessingPipeline:
                     pipeline_config: PipelineConfig,
                     ):
         camera_group = CameraGroup.create(camera_configs=pipeline_config.camera_configs,
-                                            subprocess_registry=subprocess_registry,
+                                          subprocess_registry=subprocess_registry,
                                           global_kill_flag=global_kill_flag,
                                           )
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
@@ -85,7 +87,7 @@ class ProcessingPipeline:
                                                      ipc=ipc)
                         for camera_id, config in camera_group.configs.items()}
         aggregation_node = AggregationNode.create(camera_group_id=camera_group.id,
-                                                    subprocess_registry=subprocess_registry,
+                                                  subprocess_registry=subprocess_registry,
                                                   config=pipeline_config,
                                                   ipc=ipc,
                                                   )
@@ -144,10 +146,10 @@ class ProcessingPipeline:
     def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
         return self.camera_group.update_camera_settings(requested_configs=camera_configs)
 
-    def get_latest_frontend_payload(self, if_newer_than:FrameNumberInt) -> tuple[bytes, FrontendPayload|None] | None:
+    def get_latest_frontend_payload(self, if_newer_than: FrameNumberInt) -> tuple[bytes, FrontendPayload | None] | None:
         if not self.alive:
             if self.camera_group.alive:
-                _,_,frames_bytearray = self.camera_group.get_latest_frontend_payload(if_newer_than=if_newer_than)
+                _, _, frames_bytearray = self.camera_group.get_latest_frontend_payload(if_newer_than=if_newer_than)
                 if frames_bytearray is not None:
                     return (frames_bytearray,
                             None)
@@ -170,9 +172,20 @@ class ProcessingPipeline:
             PipelineConfigUpdateMessage(pipeline_config=self.config)
         )
 
-    def start_calibration_recording(self, config:CalibrationTaskConfig) ->CaptureVolumeCalibrationResults:
+    def start_calibration_recording(self, recording_info: RecordingInfo, config: CalibrationTaskConfig):
+        # TODO - I don't love this method of getting the config and path here, wanna fix it later
+        config.calibration_recording_folder = recording_info.full_recording_path
+        logger.info(f"Starting calibration recording: {recording_info.full_recording_path} with config: {config.model_dump_json(indent=2)}")
         self.config.calibration_task_config = config
-        self.ipc.pubsub.topics[PipelineConfigUpdateTopic].publish(PipelineConfigUpdateMessage(pipeline_config=self.config))
-        time.sleep(0.5)  # give some time for nodes to process config update
-        logger.info(f"Starting calibration recording for pipeline ID: {self.id} and config: {config}")
-        return CaptureVolumeCalibrationResults()
+        self.ipc.pubsub.topics[PipelineConfigUpdateTopic].publish(
+            PipelineConfigUpdateMessage(pipeline_config=self.config))
+        self.camera_group.start_recording(recording_info=recording_info)
+        logger.info("Calibration recording started.")
+
+    def stop_calibration_recording(self):
+        logger.info("Stopping calibration recording...")
+        # TODO - I don't love this method of getting the config and path here, wanna fix it later
+        self.camera_group.stop_recording()
+        time.sleep(1)  # give it a sec to wrap up
+        logger.info(f"Calibration recording stopped - sending calibration start message - config: {self.config.calibration_task_config.model_dump_json(indent=2)}")
+        self.ipc.pubsub.topics[ShouldCalibrateTopic].publish(ShouldCalibrateMessage())

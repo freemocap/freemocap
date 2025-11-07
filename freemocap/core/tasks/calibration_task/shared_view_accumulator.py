@@ -5,23 +5,24 @@ from pydantic import model_validator
 from skellycam.core.types.type_overloads import CameraIdString, FrameNumberInt
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.calibration_numpy_types import ImagePoint2D
+from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
 
 CharucoObservations = dict[CameraIdString, CharucoObservation | None]
 
 MultiFrameNumber = int
-MINIMUM_CHARUCO_CORNERS_FOR_VISIBILITY:int=6
+MINIMUM_CHARUCO_CORNERS_FOR_VISIBILITY: int = 6
 logger = logging.getLogger(__name__)
+
 
 class CameraPair(BaseModel):
     base_camera_id: CameraIdString
     other_camera_id: CameraIdString
 
     @classmethod
-    def from_ids(cls,*, base_camera_id: CameraIdString, other_camera_id: CameraIdString):
+    def from_ids(cls, *, base_camera_id: CameraIdString, other_camera_id: CameraIdString):
         return cls(base_camera_id=base_camera_id,
-                   other_camera_id= other_camera_id)
+                   other_camera_id=other_camera_id)
 
     @model_validator(mode='after')
     def validate(self):
@@ -74,7 +75,8 @@ class MultiCameraTargetView(BaseModel):
     def target_visibility_by_camera(self) -> dict[CameraIdString, bool]:
         visibility_by_camera = {}
         for camera_id, camera_node_output in self.camera_node_output_by_camera.items():
-            visibility_by_camera[camera_id] = len(camera_node_output.charuco_observation.charuco_corners_dict) > MINIMUM_CHARUCO_CORNERS_FOR_VISIBILITY
+            visibility_by_camera[camera_id] = len(
+                camera_node_output.charuco_observation.charuco_corners_dict) > MINIMUM_CHARUCO_CORNERS_FOR_VISIBILITY
         return visibility_by_camera
 
     @property
@@ -89,7 +91,7 @@ class MultiCameraTargetView(BaseModel):
 
 class SharedViewAccumulator(BaseModel):
     camera_ids: list[CameraIdString]
-    multi_camera_views_by_frame:dict[FrameNumberInt,MultiCameraTargetView] = Field(default_factory=dict)
+    multi_camera_views_by_frame: dict[FrameNumberInt, MultiCameraTargetView] = Field(default_factory=dict)
     camera_shared_views: dict[CameraIdString, dict[CameraPair, list[CameraPairTargetView]]]
 
     @classmethod
@@ -106,7 +108,6 @@ class SharedViewAccumulator(BaseModel):
                 camera_shared_views[camera_id][pair] = []
         return cls(camera_ids=camera_ids,
                    camera_shared_views=camera_shared_views)
-
 
     def receive_camera_node_output(
             self,
@@ -147,16 +148,15 @@ class SharedViewAccumulator(BaseModel):
                 )
                 self.camera_shared_views[camera_id][pair].append(target_view)
 
-
     def get_shared_view_count_per_camera(self) -> dict[CameraIdString, int]:
         """
         Get the number of shared views for each camera id, i.e. the number of frames where the camera can see the target and at least one other camera can also see the target
         """
-        #special case for single camera - all views with target visible are shared views
+        # special case for single camera - all views with target visible are shared views
         if len(self.camera_ids) == 1:
             single_camera_id = self.camera_ids[0]
             visible_view_count = sum(1 for multi_camera_view in self.multi_camera_views_by_frame.values()
-                                      if multi_camera_view.target_visibility_by_camera[single_camera_id])
+                                     if multi_camera_view.target_visibility_by_camera[single_camera_id])
             return {single_camera_id: visible_view_count}
         camera_shared_view_count = {camera_id: 0 for camera_id in self.camera_ids}
         for camera_id, pair_dict in self.camera_shared_views.items():
@@ -172,8 +172,7 @@ class SharedViewAccumulator(BaseModel):
         """
         return all([count >= min_shared_views for count in self.get_shared_view_count_per_camera().values()])
 
-
-    def get_observations_by_camera(self, camera_id:CameraIdString) -> dict[FrameNumberInt, CharucoObservation]:
+    def get_observations_by_camera(self, camera_id: CameraIdString) -> dict[FrameNumberInt, CharucoObservation]:
         """
         Get the charuco observations for a given camera id across all frames
         """
@@ -184,7 +183,6 @@ class SharedViewAccumulator(BaseModel):
         return observations_by_frame
 
 
-
 if __name__ == "__main__":
-    mca =SharedViewAccumulator.create(["CamA", "CamB", "CamC", "CamD"])
+    mca = SharedViewAccumulator.create(["CamA", "CamB", "CamC", "CamD"])
     print(mca.model_dump_json(indent=2))

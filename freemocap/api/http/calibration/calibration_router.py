@@ -2,6 +2,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from pydantic import Field
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
@@ -15,19 +16,20 @@ calibration_router = APIRouter(prefix="/calibration", tags=["Calibration"])
 # ==================== Request/Response Models ====================
 
 
-
-
 class CalibrationConfigRequest(BaseModel):
     config: CalibrationTaskConfig
+
 
 class CalibrationConfigResponse(BaseModel):
     success: bool
     message: str | None = None
 
+
 class StartCalibrationRecordingRequest(CalibrationTaskConfig):
-    calibration_recording_directory: str
-    calibration_recording_name: str
+    calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory")
+    calibration_recording_name: str = Field(alias="calibrationRecordingName")
     config: CalibrationTaskConfig
+
     def to_recording_info(self) -> RecordingInfo:
         if not self.calibration_recording_name.endswith('_calibration'):
             self.calibration_recording_name += '_calibration'
@@ -36,6 +38,7 @@ class StartCalibrationRecordingRequest(CalibrationTaskConfig):
             recording_name=self.calibration_recording_name,
             mic_device_index=-1
         )
+
 
 class StartCalibrationRecordingResponse(BaseModel):
     success: bool
@@ -66,8 +69,9 @@ def start_calibration_recording(request: StartCalibrationRecordingRequest) -> St
     """Start calibration recording with given config."""
     try:
 
-        get_freemocap_app().pipeline_manager.start_calibration_calibration_recording(recording_info=request.to_recording_info(),
-                                                                                        config=request.config)
+        get_freemocap_app().pipeline_manager.start_calibration_calibration_recording(
+            recording_info=request.to_recording_info(),
+            config=request.config)
         logger.info(f"Starting recording with config: {request.config}")
         return StartCalibrationRecordingResponse(success=True, message="Recording started")
     except Exception as e:

@@ -4,13 +4,13 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.calibration_display_helpers.charuco_3d_models import (
-    MultiCameraCharuco3dData, 
-    Charuco3dData, 
+    MultiCameraCharuco3dData,
+    Charuco3dData,
     Color
 )
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
+from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +21,15 @@ class FrontendPayload(BaseModel):
         arbitrary_types_allowed=True,
         validate_assignment=False
     )
-    
+
     frame_number: int
     charuco_overlays: dict[CameraIdString, CharucoOverlayData]
     charuco_3d_data: MultiCameraCharuco3dData | None = None
-    
+
     @classmethod
     def from_aggregation_output(
-        cls,
-        aggregation_output: AggregationNodeOutputMessage,
+            cls,
+            aggregation_output: AggregationNodeOutputMessage,
     ) -> "FrontendPayload":
         """Create frontend payload from aggregation node output"""
         charuco_overlays = aggregation_output.charuco_overlay_data
@@ -52,14 +52,14 @@ class FrontendPayload(BaseModel):
                                                             camera_ids=aggregation_output.camera_ids,
                                                             element_type="charuco"),
                             aruco_color=_get_camera_color(camera_id=camera_id,
-                                                            camera_ids=aggregation_output.camera_ids,
+                                                          camera_ids=aggregation_output.camera_ids,
                                                           element_type="aruco"),
                         )
                     except Exception as e:
                         logger.warning(
                             f"Failed to create 3D data for camera {camera_id}: {e}"
                         )
-            
+
         # TODO: Add this after triangulation is implemented
         world_data = None
 
@@ -68,13 +68,13 @@ class FrontendPayload(BaseModel):
             camera_data=camera_3d_data,
             world_data=world_data
         )
-        
+
         return cls(
             frame_number=aggregation_output.frame_number,
             charuco_overlays=charuco_overlays,
             charuco_3d_data=charuco_3d_data
         )
-    
+
     def to_websocket_dict(self) -> dict:
         """
         Convert to dictionary suitable for JSON serialization over websocket.
@@ -82,17 +82,16 @@ class FrontendPayload(BaseModel):
         payload = {
             "frame_number": self.frame_number,
             "charuco_overlays": {
-                camera_id: overlay.model_dump() 
+                camera_id: overlay.model_dump()
                 for camera_id, overlay in self.charuco_overlays.items()
             }
         }
-        
+
         if self.charuco_3d_data:
             # The MultiCameraCharuco3dData model serializes itself perfectly!
             payload["charuco_3d"] = self.charuco_3d_data.model_dump()
-        
-        return payload
 
+        return payload
 
 
 def _get_camera_color(

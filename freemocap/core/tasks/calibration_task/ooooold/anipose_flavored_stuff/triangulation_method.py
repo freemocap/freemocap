@@ -4,7 +4,7 @@ from numba import jit
 
 @jit(nopython=True, parallel=False)
 def triangulate_simple(points2d: np.ndarray,
-                               camera_matrices: np.ndarray) -> np.ndarray:
+                       camera_matrices: np.ndarray) -> np.ndarray:
     """
     Triangulate 3D point from 2D points and camera matrices using the Direct Linear Transform (DLT) method.
 

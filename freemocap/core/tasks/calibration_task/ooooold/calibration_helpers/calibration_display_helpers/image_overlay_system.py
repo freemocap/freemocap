@@ -98,12 +98,12 @@ class OverlayElement(BaseModel, ABC):
 
     @abstractmethod
     def render_cv2(
-        self,
-        *,
-        image: np.ndarray,
-        points: dict[str, dict[str, np.ndarray]],
-        metadata: dict[str, Any],
-        parse_rgb: Callable[[str], tuple[int, int, int]]
+            self,
+            *,
+            image: np.ndarray,
+            points: dict[str, dict[str, np.ndarray]],
+            metadata: dict[str, Any],
+            parse_rgb: Callable[[str], tuple[int, int, int]]
     ) -> None:
         """Render directly on OpenCV image (in-place)."""
         pass
@@ -122,12 +122,12 @@ class PointElement(OverlayElement):
         super().__init__(point_ref=point_ref, **kwargs)
 
     def render_cv2(
-        self,
-        *,
-        image: np.ndarray,
-        points: dict[str, dict[str, np.ndarray]],
-        metadata: dict[str, Any],
-        parse_rgb: Callable[[str], tuple[int, int, int]]
+            self,
+            *,
+            image: np.ndarray,
+            points: dict[str, dict[str, np.ndarray]],
+            metadata: dict[str, Any],
+            parse_rgb: Callable[[str], tuple[int, int, int]]
     ) -> None:
         point = self.point_ref.get_point(points=points)
         if not is_valid_point(point=point):
@@ -144,7 +144,7 @@ class PointElement(OverlayElement):
         if self.style.stroke and self.style.stroke_width:
             stroke_color = parse_rgb(self.style.stroke)
             cv2.circle(img=image, center=(x, y), radius=r, color=stroke_color,
-                      thickness=self.style.stroke_width)
+                       thickness=self.style.stroke_width)
 
         # Draw label
         if self.label:
@@ -159,14 +159,14 @@ class PointElement(OverlayElement):
             if self.label_style.stroke:
                 stroke_color = parse_rgb(self.label_style.stroke)
                 cv2.putText(img=image, text=self.label, org=(label_x, label_y),
-                           fontFace=font, fontScale=font_scale, color=stroke_color,
-                           thickness=thickness + 2, lineType=cv2.LINE_AA)
+                            fontFace=font, fontScale=font_scale, color=stroke_color,
+                            thickness=thickness + 2, lineType=cv2.LINE_AA)
 
             # Draw text
             fill_color = parse_rgb(self.label_style.fill)
             cv2.putText(img=image, text=self.label, org=(label_x, label_y),
-                       fontFace=font, fontScale=font_scale, color=fill_color,
-                       thickness=thickness, lineType=cv2.LINE_AA)
+                        fontFace=font, fontScale=font_scale, color=fill_color,
+                        thickness=thickness, lineType=cv2.LINE_AA)
 
 
 class LineElement(OverlayElement):
@@ -176,23 +176,23 @@ class LineElement(OverlayElement):
     style: LineStyle = Field(default_factory=LineStyle)
 
     def __init__(
-        self,
-        *,
-        point_a: str | tuple[str, str] | PointReference,
-        point_b: str | tuple[str, str] | PointReference,
-        **kwargs: Any
+            self,
+            *,
+            point_a: str | tuple[str, str] | PointReference,
+            point_b: str | tuple[str, str] | PointReference,
+            **kwargs: Any
     ):
         point_a_ref = PointReference.parse(reference=point_a)
         point_b_ref = PointReference.parse(reference=point_b)
         super().__init__(point_a_ref=point_a_ref, point_b_ref=point_b_ref, **kwargs)
 
     def render_cv2(
-        self,
-        *,
-        image: np.ndarray,
-        points: dict[str, dict[str, np.ndarray]],
-        metadata: dict[str, Any],
-        parse_rgb: Callable[[str], tuple[int, int, int]]
+            self,
+            *,
+            image: np.ndarray,
+            points: dict[str, dict[str, np.ndarray]],
+            metadata: dict[str, Any],
+            parse_rgb: Callable[[str], tuple[int, int, int]]
     ) -> None:
         pt_a = self.point_a_ref.get_point(points=points)
         pt_b = self.point_b_ref.get_point(points=points)
@@ -205,7 +205,7 @@ class LineElement(OverlayElement):
         color = parse_rgb(self.style.stroke)
 
         cv2.line(img=image, pt1=p1, pt2=p2, color=color,
-                thickness=self.style.stroke_width, lineType=cv2.LINE_AA)
+                 thickness=self.style.stroke_width, lineType=cv2.LINE_AA)
 
 
 class CircleElement(OverlayElement):
@@ -219,12 +219,12 @@ class CircleElement(OverlayElement):
         super().__init__(center_ref=center_ref, **kwargs)
 
     def render_cv2(
-        self,
-        *,
-        image: np.ndarray,
-        points: dict[str, dict[str, np.ndarray]],
-        metadata: dict[str, Any],
-        parse_rgb: Callable[[str], tuple[int, int, int]]
+            self,
+            *,
+            image: np.ndarray,
+            points: dict[str, dict[str, np.ndarray]],
+            metadata: dict[str, Any],
+            parse_rgb: Callable[[str], tuple[int, int, int]]
     ) -> None:
         center = self.center_ref.get_point(points=points)
         if not is_valid_point(point=center):
@@ -239,7 +239,7 @@ class CircleElement(OverlayElement):
         if self.style.stroke and self.style.stroke_width:
             stroke_color = parse_rgb(self.style.stroke)
             cv2.circle(img=image, center=(cx, cy), radius=r, color=stroke_color,
-                      thickness=self.style.stroke_width)
+                       thickness=self.style.stroke_width)
 
 
 class CrosshairElement(OverlayElement):
@@ -253,12 +253,12 @@ class CrosshairElement(OverlayElement):
         super().__init__(center_ref=center_ref, **kwargs)
 
     def render_cv2(
-        self,
-        *,
-        image: np.ndarray,
-        points: dict[str, dict[str, np.ndarray]],
-        metadata: dict[str, Any],
-        parse_rgb: Callable[[str], tuple[int, int, int]]
+            self,
+            *,
+            image: np.ndarray,
+            points: dict[str, dict[str, np.ndarray]],
+            metadata: dict[str, Any],
+            parse_rgb: Callable[[str], tuple[int, int, int]]
     ) -> None:
         center = self.center_ref.get_point(points=points)
         if not is_valid_point(point=center):
@@ -269,9 +269,9 @@ class CrosshairElement(OverlayElement):
         color = parse_rgb(self.style.stroke)
 
         cv2.line(img=image, pt1=(cx - size, cy), pt2=(cx + size, cy),
-                color=color, thickness=self.style.stroke_width, lineType=cv2.LINE_AA)
+                 color=color, thickness=self.style.stroke_width, lineType=cv2.LINE_AA)
         cv2.line(img=image, pt1=(cx, cy - size), pt2=(cx, cy + size),
-                color=color, thickness=self.style.stroke_width, lineType=cv2.LINE_AA)
+                 color=color, thickness=self.style.stroke_width, lineType=cv2.LINE_AA)
 
 
 class TextElement(OverlayElement):
@@ -286,12 +286,12 @@ class TextElement(OverlayElement):
         super().__init__(point_ref=point_ref, **kwargs)
 
     def render_cv2(
-        self,
-        *,
-        image: np.ndarray,
-        points: dict[str, dict[str, np.ndarray]],
-        metadata: dict[str, Any],
-        parse_rgb: Callable[[str], tuple[int, int, int]]
+            self,
+            *,
+            image: np.ndarray,
+            points: dict[str, dict[str, np.ndarray]],
+            metadata: dict[str, Any],
+            parse_rgb: Callable[[str], tuple[int, int, int]]
     ) -> None:
         point = self.point_ref.get_point(points=points)
         if not is_valid_point(point=point):
@@ -314,14 +314,14 @@ class TextElement(OverlayElement):
         if self.style.stroke:
             stroke_color = parse_rgb(self.style.stroke)
             cv2.putText(img=image, text=text_to_render, org=(x, y),
-                       fontFace=font, fontScale=font_scale, color=stroke_color,
-                       thickness=thickness + 2, lineType=cv2.LINE_AA)
+                        fontFace=font, fontScale=font_scale, color=stroke_color,
+                        thickness=thickness + 2, lineType=cv2.LINE_AA)
 
         # Draw text
         fill_color = parse_rgb(self.style.fill)
         cv2.putText(img=image, text=text_to_render, org=(x, y),
-                   fontFace=font, fontScale=font_scale, color=fill_color,
-                   thickness=thickness, lineType=cv2.LINE_AA)
+                    fontFace=font, fontScale=font_scale, color=fill_color,
+                    thickness=thickness, lineType=cv2.LINE_AA)
 
 
 class EllipseElement(OverlayElement):
@@ -336,12 +336,12 @@ class EllipseElement(OverlayElement):
         super().__init__(params_ref=params_ref, **kwargs)
 
     def render_cv2(
-        self,
-        *,
-        image: np.ndarray,
-        points: dict[str, dict[str, np.ndarray]],
-        metadata: dict[str, Any],
-        parse_rgb: Callable[[str], tuple[int, int, int]]
+            self,
+            *,
+            image: np.ndarray,
+            points: dict[str, dict[str, np.ndarray]],
+            metadata: dict[str, Any],
+            parse_rgb: Callable[[str], tuple[int, int, int]]
     ) -> None:
         params = self.params_ref.get_point(points=points)
         if params is None or len(params) != 5 or np.isnan(params).any():
@@ -354,8 +354,8 @@ class EllipseElement(OverlayElement):
         color = parse_rgb(self.style.stroke)
 
         cv2.ellipse(img=image, center=center, axes=axes, angle=angle,
-                   startAngle=0, endAngle=360, color=color,
-                   thickness=self.style.stroke_width, lineType=cv2.LINE_AA)
+                    startAngle=0, endAngle=360, color=color,
+                    thickness=self.style.stroke_width, lineType=cv2.LINE_AA)
 
 
 # ============================================================================
@@ -433,9 +433,9 @@ class OverlayRenderer(BaseModel):
         return self.color_map.get(color, (255, 255, 255))
 
     def _compute_all_points(
-        self,
-        *,
-        points: dict[str, dict[str, np.ndarray]]
+            self,
+            *,
+            points: dict[str, dict[str, np.ndarray]]
     ) -> dict[str, dict[str, np.ndarray]]:
         """Compute derived points WITHOUT deep copy."""
         # OPTIMIZED: Share dictionaries when possible
@@ -457,11 +457,11 @@ class OverlayRenderer(BaseModel):
         return all_points
 
     def composite_on_image(
-        self,
-        *,
-        image: np.ndarray,
-        points: dict[str, dict[str, np.ndarray]],
-        metadata: dict[str, Any] | None = None
+            self,
+            *,
+            image: np.ndarray,
+            points: dict[str, dict[str, np.ndarray]],
+            metadata: dict[str, Any] | None = None
     ) -> np.ndarray:
         """
         OPTIMIZED: Draw directly on image copy using OpenCV.
@@ -500,11 +500,11 @@ class OverlayRenderer(BaseModel):
 # ============================================================================
 
 def overlay_image(
-    *,
-    image: np.ndarray,
-    topology: OverlayTopology,
-    points: dict[str, dict[str, np.ndarray]],
-    metadata: dict[str, Any] | None = None
+        *,
+        image: np.ndarray,
+        topology: OverlayTopology,
+        points: dict[str, dict[str, np.ndarray]],
+        metadata: dict[str, Any] | None = None
 ) -> np.ndarray:
     """Convenience function to render overlay on image."""
     return OverlayRenderer(topology=topology).composite_on_image(

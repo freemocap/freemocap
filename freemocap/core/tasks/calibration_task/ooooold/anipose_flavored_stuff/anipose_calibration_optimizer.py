@@ -2,6 +2,8 @@ import logging
 
 import cv2
 import numpy as np
+from freemocap.zzold.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
+    anipose_triangulate_simple, remap_ids
 from numba import jit
 from pydantic import BaseModel
 from scipy import optimize
@@ -18,8 +20,6 @@ from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.calibrati
     RotationVectorsByCamera, TranslationVectorsByCamera
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.single_camera_calibrator import \
     SingleCameraCalibrator
-from freemocap.zzold.core_processes.capture_volume_calibration.anipose_camera_calibration.run_anipose_calibration_algorithm import \
-    anipose_triangulate_simple, remap_ids
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,8 @@ class SingleCameraCalibrationHelper(BaseModel):
 
         return projected_2d_points
 
-    def single_camera_reprojection_error(self, points3d: ObjectPoints3D, points2d: ImagePoints2D) -> ReprojectionErrorByPoint:
+    def single_camera_reprojection_error(self, points3d: ObjectPoints3D,
+                                         points2d: ImagePoints2D) -> ReprojectionErrorByPoint:
         projected_points3d = self.project_3d_to_2d(points3d)
         projecting_3d_points_onto_2d_image_plane = projected_points3d.reshape(points2d.shape)
         return points2d - projecting_3d_points_onto_2d_image_plane
@@ -113,13 +114,16 @@ class MultiCameraCalibrationInputData(BaseModel):
     def from_single_camera_helpers(cls, camera_helpers: dict[CameraId, SingleCameraCalibrationHelper]):
         pixel_points2d = [camera_helper.calibrator.image_points_views for camera_helper in camera_helpers.values()]
         object_points3d = [camera_helper.calibrator.object_points_views for camera_helper in camera_helpers.values()]
-        rotation_vectors = np.array([camera_helper.calibrator.rotation_vector for camera_helper in camera_helpers.values()])
-        translation_vectors = np.array([camera_helper.calibrator.translation_vector for camera_helper in camera_helpers.values()])
+        rotation_vectors = np.array(
+            [camera_helper.calibrator.rotation_vector for camera_helper in camera_helpers.values()])
+        translation_vectors = np.array(
+            [camera_helper.calibrator.translation_vector for camera_helper in camera_helpers.values()])
         return cls(pixel_points2d=pixel_points2d,
                    object_points3d=object_points3d,
                    points_ids=points_ids,
                    rotation_vectors=rotation_vectors,
                    translation_vectors=translation_vectors)
+
 
 class MultiCameraCalibrationOptimizer(BaseModel):
     camera_helpers: dict[CameraId, SingleCameraCalibrationHelper]
@@ -152,8 +156,6 @@ class MultiCameraCalibrationOptimizer(BaseModel):
             function_tolerance=self.function_tolerance,
             maximum_number_function_evals=self.max_number_function_evals,
         )
-
-
 
         # Initialize
         error_list = []
@@ -507,8 +509,6 @@ class MultiCameraCalibrationOptimizer(BaseModel):
             return remapped_ids
 
         ids = remap_ids(calibration_input_data.ids)
-
-
 
         n_boards = int(np.max(ids)) + 1
         total_board_params = n_boards * (3 + 3)  # rotation_vectors + translation_vectors

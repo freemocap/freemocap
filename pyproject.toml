@@ -28,7 +28,7 @@ dependencies = [
 [tool.uv.sources]
 skellycam = { git = "https://github.com/freemocap/skellycam", branch = "jon/development" }
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "jon/development" }
-skellyforge = { git = "https://github.com/freemocap/skellyforge" }
+skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "jon/development" }
 
 [project.scripts]
 freemocap = "freemocap.__main__:main"

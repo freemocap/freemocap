@@ -5,7 +5,6 @@ import numpy as np
 from pydantic import BaseModel
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.camera_math_models import (
     TransformationMatrix,
     RotationVector,
@@ -21,6 +20,7 @@ from freemocap.core.tasks.calibration_task.shared_view_accumulator import (
     SharedViewAccumulator,
     CameraPair,
 )
+from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
 
 logger = logging.getLogger(__name__)
 

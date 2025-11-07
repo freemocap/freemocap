@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 websocket_router = APIRouter(tags=["Websocket"], prefix="/websocket")
 
 
-
 @websocket_router.websocket("/connect")
 async def websocket_server_connect(websocket: WebSocket):
     await websocket.accept()

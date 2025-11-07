@@ -24,8 +24,6 @@ class MocapPipelineCameraNodeConfig(BasePipelineStageConfig):
     param1: int = 1
 
 
-
-
 @dataclass
 class MocapCameraNodeOutputData(BaseCameraNodeOutputData):
     frame_metadata: FrameMetadata
@@ -36,6 +34,7 @@ class MocapCameraNodeOutputData(BaseCameraNodeOutputData):
             frame_metadata=self.frame_metadata.model_dump(),
             mediapipe_observation=self.mediapipe_observation.to_serializable_dict(),
         )
+
 
 @dataclass
 class MocapCameraNode(BaseCameraNode):

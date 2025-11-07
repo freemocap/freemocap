@@ -22,7 +22,8 @@ class WebsocketServer:
 
         self.websocket = websocket
         if not hasattr(fast_api_app, "state") or not hasattr(fast_api_app.state, "global_kill_flag"):
-            raise RuntimeError("FastAPI app does not have a global_kill_flag in its state - define those fields when creating fastapi app")
+            raise RuntimeError(
+                "FastAPI app does not have a global_kill_flag in its state - define those fields when creating fastapi app")
         self._global_kill_flag = fast_api_app.state.global_kill_flag
         self._app: FreemocApplication = get_freemocap_app()
 
@@ -105,7 +106,9 @@ class WebsocketServer:
                                                f" got type {type(payload_bytes)}")
                                 continue
                             await self.websocket.send_bytes(payload_bytes)
-                            await self.websocket.send_json({camera_id: overlay_data.model_dump() for camera_id, overlay_data in frontend_payload.charuco_overlays.items()})
+                            await self.websocket.send_json(
+                                {camera_id: overlay_data.model_dump() for camera_id, overlay_data in
+                                 frontend_payload.charuco_overlays.items()})
                             # await self.websocket.send_json(frontend_payload.to_websocket_dict())
                             self.last_sent_frame_number = frontend_payload.frame_number
                 else:

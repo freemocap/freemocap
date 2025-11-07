@@ -8,7 +8,7 @@ PipelineIdString = str
 TopicPublicationQueue = multiprocessing.Queue
 TopicSubscriptionQueue = multiprocessing.Queue
 
-TrackerTypeString = str #TODO - move this to `skellytracker.types` or something
+TrackerTypeString = str  # TODO - move this to `skellytracker.types` or something
 
 FrameNumberInt = int
 

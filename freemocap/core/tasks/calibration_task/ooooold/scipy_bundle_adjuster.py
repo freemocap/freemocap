@@ -103,7 +103,8 @@ class ScipyBundleAdjuster(BaseModel):
             point_3d_coords=point_3d_coords,
         )
 
-    def _pack_parameters(self, camera_ids: list[CameraIdString], extrinsics_by_id: dict[CameraIdString, np.ndarray]) -> np.ndarray:
+    def _pack_parameters(self, camera_ids: list[CameraIdString],
+                         extrinsics_by_id: dict[CameraIdString, np.ndarray]) -> np.ndarray:
         """Pack all camera extrinsics into a single parameter vector."""
         params = []
         for camera_id in camera_ids:
@@ -111,7 +112,8 @@ class ScipyBundleAdjuster(BaseModel):
                 params.append(extrinsics_by_id[camera_id])
         return np.concatenate(params) if params else np.array([])
 
-    def _unpack_parameters(self, params: np.ndarray, camera_ids: list[CameraIdString]) -> dict[CameraIdString, np.ndarray]:
+    def _unpack_parameters(self, params: np.ndarray, camera_ids: list[CameraIdString]) -> dict[
+        CameraIdString, np.ndarray]:
         """Unpack parameter vector into camera extrinsics."""
         extrinsics_by_id = {}
         idx = 0
@@ -120,7 +122,7 @@ class ScipyBundleAdjuster(BaseModel):
                 # Principal camera is fixed
                 extrinsics_by_id[camera_id] = self.camera_parameters[camera_id].extrinsics.copy()
             else:
-                extrinsics_by_id[camera_id] = params[idx:idx+6]
+                extrinsics_by_id[camera_id] = params[idx:idx + 6]
                 idx += 6
         return extrinsics_by_id
 
@@ -189,9 +191,9 @@ class ScipyBundleAdjuster(BaseModel):
 
         # Compute initial residuals
         initial_residuals = self._compute_residuals(x0, camera_ids, intrinsics_by_id, multi_camera_views)
-        initial_cost = 0.5 * np.sum(initial_residuals**2)
+        initial_cost = 0.5 * np.sum(initial_residuals ** 2)
         num_residuals = len(initial_residuals)
-        
+
         logger.info(f"Initial cost: {initial_cost:.2f} ({num_residuals} residuals)")
 
         # Run optimization
@@ -206,7 +208,7 @@ class ScipyBundleAdjuster(BaseModel):
             xtol=1e-8,
         )
 
-        final_cost = 0.5 * np.sum(result.fun**2)
+        final_cost = 0.5 * np.sum(result.fun ** 2)
         logger.info(f"Optimization complete: Cost {initial_cost:.2f} -> {final_cost:.2f}")
         logger.info(f"Success: {result.success}, Message: {result.message}")
         logger.info(f"Function evaluations: {result.nfev}")

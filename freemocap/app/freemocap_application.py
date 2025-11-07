@@ -3,9 +3,10 @@ import multiprocessing
 from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
+from skellycam.core.camera_group.camera_group import CameraGroupState
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
-from skellycam.core.camera_group.camera_group import CameraGroupState
+
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_manager import PipelineManager
 from freemocap.core.pipeline.processing_pipeline import FrontendPayload, ProcessingPipeline, PipelineState
@@ -47,7 +48,7 @@ class FreemocApplication:
     def create(cls, global_kill_flag: multiprocessing.Value,
                subprocess_registry: list[multiprocessing.Process]) -> 'FreemocApplication':
         pipeline_manager = PipelineManager(global_kill_flag=global_kill_flag,
-                                           subprocess_registry=subprocess_registry,)
+                                           subprocess_registry=subprocess_registry, )
         return cls(global_kill_flag=global_kill_flag,
                    pipeline_shutdown_event=multiprocessing.Event(),
                    pipeline_manager=pipeline_manager,
@@ -78,7 +79,8 @@ class FreemocApplication:
     def stop_recording_all(self):
         self.pipeline_manager.stop_recording_all()
 
-    def get_latest_frontend_payloads(self,if_newer_than:FrameNumberInt) -> dict[PipelineIdString, tuple[bytes, FrontendPayload|None]]:
+    def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[
+        PipelineIdString, tuple[bytes, FrontendPayload | None]]:
         if len(self.pipeline_manager.pipelines) == 0:
             return {}
 

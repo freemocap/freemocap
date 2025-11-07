@@ -1,4 +1,3 @@
-
 # ============================================================================
 # PubSubTopicManager - Auto-discovers and manages all registered topics
 # ============================================================================
@@ -8,10 +7,11 @@ from multiprocessing import parent_process
 
 from pydantic import BaseModel, Field, ConfigDict
 
-from freemocap.pubsub.pubsub_abcs import PubSubTopicABC, MessageType
 from freemocap.core.types.type_overloads import TopicSubscriptionQueue, PipelineIdString
+from freemocap.pubsub.pubsub_abcs import PubSubTopicABC, MessageType
 
 logger = logging.getLogger(__name__)
+
 
 class PubSubTopicManager(BaseModel):
     """
@@ -61,9 +61,9 @@ class PubSubTopicManager(BaseModel):
         return sub
 
     def publish(
-        self,
-        topic_type: type[PubSubTopicABC[MessageType]],
-        message: MessageType
+            self,
+            topic_type: type[PubSubTopicABC[MessageType]],
+            message: MessageType
     ) -> None:
         """
         Publish a message to a topic.

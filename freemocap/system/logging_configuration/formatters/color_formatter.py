@@ -14,6 +14,8 @@ LOG_COLOR_CODES = {
     "WARNING": "\033[33m",  # Yellow
     "ERROR": "\033[41m",  # Red background
 }
+
+
 class ColorFormatter(CustomFormatter):
     """Adds ANSI colors to PID, TID, and log messages"""
 

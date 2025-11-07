@@ -33,7 +33,7 @@ class SparseBundleOptimizer(BaseModel):
                image_sizes: dict[CameraIdString, tuple[int, int]]
                ) -> "SparseBundleOptimizer":
         image_points_by_camera: dict[CameraIdString, list[ImagePoint2D]] = {camera_id: [] for camera_id in
-                                                                      camera_intrinsics.keys()}
+                                                                            camera_intrinsics.keys()}
         for frame_number, target_view in multi_camera_target_views.items():
             for camera_id, image_points in target_view.image_points_by_camera.items():
                 image_points_by_camera[camera_id].extend(image_points)
@@ -93,7 +93,7 @@ class SparseBundleOptimizer(BaseModel):
             jac="3-point",  # TODO- could prob use `callable` and calc the jacobian dynamically
             f_scale=50.0,  # TODO - Not sure where this number comes from
             x_scale="jac",
-            loss="cauchy",#"linear",  # TODO - try `soft_l1` or `cauchy`
+            loss="cauchy",  # "linear",  # TODO - try `soft_l1` or `cauchy`
             # ftol=1e-4,
             method="trf",
             verbose=2,

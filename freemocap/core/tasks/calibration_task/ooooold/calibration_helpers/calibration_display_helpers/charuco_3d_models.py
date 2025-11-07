@@ -1,8 +1,8 @@
 from typing import Literal, Any
-import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_serializer
-from numpydantic import NDArray, Shape
 
+import numpy as np
+from numpydantic import NDArray, Shape
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_serializer
 from skellycam.core.types.type_overloads import CameraIdString
 
 
@@ -201,7 +201,6 @@ class Charuco3dData(BaseModel):
             connection_color: Color | None = None,
     ) -> "Charuco3dData":
         """Create visualization data from CharucoObservation"""
-        from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
         if charuco_color is None:
             charuco_color = Color.from_hex("#00FF00")

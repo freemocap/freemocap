@@ -5,9 +5,10 @@ import cv2
 import numpy as np
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
-from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.camera_math_models import CameraDistortionCoefficients, \
+from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.camera_math_models import \
+    CameraDistortionCoefficients, \
     CameraMatrix
+from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
 
 
 def _triangulate_batch(
@@ -203,9 +204,7 @@ class PointTriangulator:
             for camera_id, data in calibration_data.items()
         }
 
-
         return cls(camera_calibrations=camera_calibrations)
-
 
     def __post_init__(self) -> None:
         """Validate and prepare projection matrices after initialization."""
@@ -231,8 +230,6 @@ class PointTriangulator:
             'projection_matrices',
             np.ascontiguousarray(projection_matrices, dtype=np.float64)
         )
-
-
 
     def triangulate_camera_node_outputs(
             self,
@@ -417,7 +414,7 @@ class PointTriangulator:
 
 
 def benchmark_triangulator() -> None:
-    #TODO : implement benchmark
+    # TODO : implement benchmark
     pass
 
 

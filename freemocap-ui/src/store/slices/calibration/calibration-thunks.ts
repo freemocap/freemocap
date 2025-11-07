@@ -68,15 +68,15 @@ export const startCalibrationRecording = createAsyncThunk<
         try {
             const state = getState();
             const config = state.calibration.config;
-            const recordingDirectory = selectCalibrationRecordingPath(state);
+            const calibrationRecordingDirectory = selectCalibrationRecordingPath(state);
             const calibrationRecordingName = generateCalibrationRecordingName(state);
 
-            if (!recordingDirectory) {
+            if (!calibrationRecordingDirectory) {
                 return rejectWithValue('Recording directory is not set');
             }
 
             console.log('🎬 Starting calibration recording with:', {
-                recordingDirectory,
+                calibrationRecordingDirectory,
                 calibrationRecordingName,
                 config,
             });
@@ -85,7 +85,7 @@ export const startCalibrationRecording = createAsyncThunk<
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    recordingDirectory,
+                    calibrationRecordingDirectory,
                     calibrationRecordingName,
                     config,
                 }),

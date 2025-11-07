@@ -19,7 +19,7 @@ class CharucoViewSelectionConfig(BaseModel):
     """Configuration for view selection optimization."""
     target_view_count: int = Field(default=30, ge=1, le=200)
     initial_view_count: int = Field(default=15, ge=5, le=50)
-    grid_size: tuple[int, int] = Field(default=(3,3))
+    grid_size: tuple[int, int] = Field(default=(3, 3))
     min_coverage_per_cell: float = Field(default=0.5, ge=0.0, le=1.0)
     coverage_weight: float = Field(default=0.6, ge=0.0, le=1.0)
     diversity_weight: float = Field(default=0.4, ge=0.0, le=1.0)

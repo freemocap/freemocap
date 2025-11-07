@@ -707,5 +707,6 @@ class TestCameraCalibrationData:
         assert undistorted_flat.shape == (10, 2)
         assert undistorted_opencv.shape == (10, 1, 2)
 
+
 if __name__ == "__main__":
     pytest.main([__file__])

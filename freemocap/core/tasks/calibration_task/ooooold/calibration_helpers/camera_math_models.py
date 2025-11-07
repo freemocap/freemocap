@@ -94,10 +94,11 @@ class TransformationMatrix(BaseModel):
     def from_extrinsics(cls, extrinsics_matrix: CameraExtrinsicsMatrix, reference_frame: str):
         rotation_matrix = np.squeeze(extrinsics_matrix[:3, :3])
         translation_vector = np.squeeze(extrinsics_matrix[:3, 3])
-        return cls.from_rotation_translation(rotation_vector=RotationVector(vector=np.squeeze(cv2.Rodrigues(rotation_matrix)[0]),
-                                                                            reference_frame=reference_frame),
-                                                 translation_vector=TranslationVector(vector=translation_vector,
-                                                                                    reference_frame=reference_frame))
+        return cls.from_rotation_translation(
+            rotation_vector=RotationVector(vector=np.squeeze(cv2.Rodrigues(rotation_matrix)[0]),
+                                           reference_frame=reference_frame),
+            translation_vector=TranslationVector(vector=translation_vector,
+                                                 reference_frame=reference_frame))
 
     @classmethod
     def from_rotation_translation(cls,
@@ -137,12 +138,12 @@ class TransformationMatrix(BaseModel):
 
     @property
     def rotation_vector(self) -> RotationVector:
-        return RotationVector(vector=np.squeeze(cv2.Rodrigues(self.rotation_matrix)[0]), reference_frame=self.reference_frame)
+        return RotationVector(vector=np.squeeze(cv2.Rodrigues(self.rotation_matrix)[0]),
+                              reference_frame=self.reference_frame)
 
     @property
     def extrinsics_matrix(self) -> CameraExtrinsicsMatrix:
         return self.matrix[:3, :]
-
 
     def get_inverse(self):
         inverse_rotation_matrix = self.rotation_matrix.T
@@ -160,7 +161,6 @@ class TransformationMatrix(BaseModel):
                 "Unsupported operand type(s) for @: 'TransformationMatrix' and '{}'".format(type(other).__name__))
         # Perform matrix multiplication and use self's reference frame
         return TransformationMatrix(matrix=self.matrix @ other.matrix, reference_frame=self.reference_frame)
-
 
     def __str__(self) -> str:
         return (f"\treference_frame={self.reference_frame},\n"

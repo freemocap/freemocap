@@ -9,7 +9,7 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 
 
 def charuco_observation_to_overlay_data(
-    observation: CharucoObservation
+        observation: CharucoObservation
 ) -> dict[str, dict[str, np.ndarray]]:
     """
     Convert CharucoObservation to overlay points format.
@@ -24,12 +24,12 @@ def charuco_observation_to_overlay_data(
         'charuco': {},
         'aruco': {}
     }
-    
+
     # Add detected Charuco corners
     if not observation.charuco_empty:
         for corner_id, corner_coords in observation.charuco_corners_dict.items():
             points['charuco'][f'charuco_{corner_id}'] = corner_coords
-    
+
     # Add detected ArUco marker corners
     if not observation.aruco_empty:
         for marker_id, marker_corners in observation.aruco_corners_dict.items():
@@ -37,13 +37,13 @@ def charuco_observation_to_overlay_data(
             for corner_idx in range(4):
                 corner_name = f'aruco_{marker_id}_corner_{corner_idx}'
                 points['aruco'][corner_name] = marker_corners[corner_idx]
-    
+
     return points
 
 
 def charuco_observation_to_metadata(
-    observation: CharucoObservation,
-    total_frames: int | None = None
+        observation: CharucoObservation,
+        total_frames: int | None = None
 ) -> dict[str, Any]:
     """
     Extract metadata from CharucoObservation for display.
@@ -58,7 +58,7 @@ def charuco_observation_to_metadata(
         'image_width': observation.image_size[0],
         'image_height': observation.image_size[1],
     }
-    
+
     # Add pose info if available
     if observation.charuco_board_translation_vector is not None:
         metadata['has_pose'] = True
@@ -66,12 +66,12 @@ def charuco_observation_to_metadata(
         metadata['rotation'] = observation.charuco_board_rotation_vector.tolist()
     else:
         metadata['has_pose'] = False
-    
+
     return metadata
 
 
 def stream_charuco_observations(
-    observations: list[CharucoObservation]
+        observations: list[CharucoObservation]
 ) -> tuple[list[dict[str, dict[str, np.ndarray]]], list[dict[str, Any]]]:
     """
     Convert a list of observations to overlay format for batch processing.
@@ -81,16 +81,16 @@ def stream_charuco_observations(
     """
     points_list = []
     metadata_list = []
-    
+
     total_frames = len(observations)
-    
+
     for obs in observations:
         points = charuco_observation_to_overlay_data(obs)
         metadata = charuco_observation_to_metadata(obs, total_frames)
-        
+
         points_list.append(points)
         metadata_list.append(metadata)
-    
+
     return points_list, metadata_list
 
 

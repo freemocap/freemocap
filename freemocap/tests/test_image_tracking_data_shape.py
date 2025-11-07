@@ -12,8 +12,8 @@ from freemocap.utilities.get_video_paths import get_video_paths
 
 @pytest.mark.usefixtures("synchronized_video_folder_path", "image_tracking_data")
 def test_image_tracking_data_exists(
-    synchronized_video_folder_path: Union[str, Path],
-    image_tracking_data: Union[str, Path],
+        synchronized_video_folder_path: Union[str, Path],
+        image_tracking_data: Union[str, Path],
 ):
     """
     test that the `2d detection` process worked correctly by checking that there is an `.npy` file containing the 2d data in the `output_data_folder`
@@ -24,8 +24,8 @@ def test_image_tracking_data_exists(
 
 @pytest.mark.usefixtures("synchronized_video_folder_path", "image_tracking_data")
 def test_image_tracking_data_shape(
-    synchronized_video_folder_path: Union[str, Path],
-    image_tracking_data: Union[str, Path, np.ndarray],
+        synchronized_video_folder_path: Union[str, Path],
+        image_tracking_data: Union[str, Path, np.ndarray],
 ):
     """
     test that the `2d detection` process worked correctly by checking:
@@ -42,20 +42,20 @@ def test_image_tracking_data_shape(
     list_of_video_paths = get_video_paths(Path(synchronized_video_folder_path))
     number_of_videos = len(list_of_video_paths)
     assert (
-        image2d_camera_frame_marker_xyz.shape[0] == number_of_videos
+            image2d_camera_frame_marker_xyz.shape[0] == number_of_videos
     ), f"Number of videos in image_tracking_data does not match number of videos in synchronized videos folder"
 
     frame_counts = list(get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path).values())
 
     assert (
-        len(set(frame_counts)) == 1
+            len(set(frame_counts)) == 1
     ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_counts}"
     assert (
-        image2d_camera_frame_marker_xyz.shape[1] == frame_counts[0]
+            image2d_camera_frame_marker_xyz.shape[1] == frame_counts[0]
     ), f"Number of frames in image_tracking_data does not match number of frames of videos in {synchronized_video_folder_path}"
 
     # TODO - check number of tracked points vs 'expected' number of tracked points
 
     assert (
-        image2d_camera_frame_marker_xyz.shape[3] == 3
+            image2d_camera_frame_marker_xyz.shape[3] == 3
     ), f"Data has {image2d_camera_frame_marker_xyz.shape[3]} dimensions, expected 3 dimensions"

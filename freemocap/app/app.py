@@ -60,7 +60,7 @@ async def app_lifespan(
     base_path.mkdir(parents=True, exist_ok=True)
     logger.info(f"Base folder: {base_path}")
     create_freemocap_app(global_kill_flag=app.state.global_kill_flag,
-                            subprocess_registry=app.state.subprocess_registry)
+                         subprocess_registry=app.state.subprocess_registry)
     # Start background task to monitor kill flag
     monitor_task = asyncio.create_task(monitor_kill_flag(app=app))
 
@@ -90,7 +90,7 @@ async def app_lifespan(
 
 
 def create_fastapi_app(global_kill_flag: multiprocessing.Value,
-                       subprocess_registry:list[multiprocessing.Process]) -> FastAPI:
+                       subprocess_registry: list[multiprocessing.Process]) -> FastAPI:
     """
     Create and configure the FastAPI application.
 
@@ -135,6 +135,7 @@ def _register_routes(app: FastAPI) -> None:
     @app.get("/favicon.ico", include_in_schema=False)
     async def favicon():
         return FileResponse(FREEMOCAP_FAVICON_ICO_PATH)
+
     logger.api(f"\nRegistering WebSocket routes:")
     app.include_router(websocket_router)
     for route in websocket_router.routes:
@@ -150,15 +151,15 @@ def _register_routes(app: FastAPI) -> None:
     for router in FREEMOCAP_ROUTERS:
         app.include_router(router, prefix=f"/{freemocap.__package_name__}")
         for route in router.routes:
-            logger.api(f"\tRegistering route: `/{freemocap.__package_name__}{route.path}` with methods: [{', '.join(route.methods)}]")
+            logger.api(
+                f"\tRegistering route: `/{freemocap.__package_name__}{route.path}` with methods: [{', '.join(route.methods)}]")
 
     logger.api("\nRegistering SkellyCam endpoints:")
     for router in SKELLYCAM_ROUTERS:
         for route in router.routes:
-            logger.api(f"\tRegistering route: `/{skellycam.__package_name__}{route.path}` with methods: [{', '.join(route.methods)}]")
+            logger.api(
+                f"\tRegistering route: `/{skellycam.__package_name__}{route.path}` with methods: [{', '.join(route.methods)}]")
         app.include_router(router, prefix=f"/{skellycam.__package_name__}")
-
-
 
 
 def _customize_openapi(app: FastAPI) -> None:

@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 
 from skellycam.core.ipc.pubsub.pubsub_topics import SetShmTopic
 
-from freemocap.pubsub.pubsub_manager import PubSubTopicManager, create_pipeline_pubsub_manager
 from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.pubsub.pubsub_manager import PubSubTopicManager, create_pipeline_pubsub_manager
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue
 
 
@@ -21,7 +21,7 @@ class PipelineIPC:
     @classmethod
     def create(cls,
                global_kill_flag: multiprocessing.Value,
-               shm_topic:SetShmTopic,
+               shm_topic: SetShmTopic,
                pipeline_id: PipelineIdString | None = None):
         if pipeline_id is None:
             pipeline_id = str(uuid.uuid4())[:6]

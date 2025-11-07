@@ -53,11 +53,11 @@ class CharucoOverlayData(BaseModel):
 
     @classmethod
     def from_charuco_observation(
-        cls,
-        *,
-        camera_id: CameraIdString,
-        observation: CharucoObservation,
-        scale: float = .5,):
+            cls,
+            *,
+            camera_id: CameraIdString,
+            observation: CharucoObservation,
+            scale: float = .5, ):
         """
         Convert CharucoObservation to Pydantic message model for websocket transmission.
 
@@ -115,5 +115,3 @@ class CharucoOverlayData(BaseModel):
             aruco_markers=aruco_markers,
             metadata=metadata,
         )
-
-

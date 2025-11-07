@@ -1,19 +1,16 @@
-from pydantic import BaseModel, model_validator, Field, ConfigDict
-from skellycam.core.camera.config.camera_config import CameraConfigs, CameraConfig
+from pydantic import BaseModel, Field, ConfigDict
+from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
-
-
-from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 
 class CalibrationTaskConfig(BaseModel):
     model_config = ConfigDict(
         extra="forbid"
     )
-    calibration_recording_folder: str|None = Field(default=None, alias="calibrationRecordingFolder")
-    live_track_charuco: bool = Field(default=True,alias="liveTrackCharuco")
+    calibration_recording_folder: str | None = Field(default=None, alias="calibrationRecordingFolder")
+    live_track_charuco: bool = Field(default=True, alias="liveTrackCharuco")
     charuco_board_x_squares: int = Field(gt=0, default=3, alias="charucoBoardXSquares")
     charuco_board_y_squares: int = Field(gt=0, default=5, alias="charucoBoardYSquares")
     charuco_square_length: float = Field(gt=0, default=56, alias="charucoSquareLength")
@@ -39,11 +36,9 @@ class PipelineConfig(BaseModel):
     calibration_task_config: CalibrationTaskConfig = Field(default_factory=CalibrationTaskConfig)
     mocap_task_config: MocapTaskConfig = Field(default_factory=MocapTaskConfig)
 
-
     @property
     def camera_ids(self) -> list[CameraIdString]:
         return list(self.camera_configs.keys())
-
 
     @classmethod
     def from_camera_configs(cls, *, camera_configs: CameraConfigs) -> "PipelineConfig":

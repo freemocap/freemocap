@@ -6,18 +6,15 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointId
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
-from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
-from freemocap.core.types.type_overloads import TrackerTypeString, FrameNumberInt, Point3d, PipelineIdString
+from freemocap.core.types.type_overloads import FrameNumberInt, Point3d, PipelineIdString
+from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 
 logger = logging.getLogger(__name__)
 
+
 class ProcessFrameNumberMessage(TopicMessageABC):
     frame_number: int = Field(ge=0, description="Frame number to process")
-
-class ShouldCalibrateMessage(TopicMessageABC):
-    """Dummy message to signal that calibration should be performed."""
-    pass
 
 
 class PipelineConfigUpdateMessage(TopicMessageABC):
@@ -68,9 +65,16 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     def camera_ids(self) -> list[CameraIdString]:
         return list(self.camera_node_outputs.keys())
 
+
 class StartRealtimeCalibrationTrackingMessage(TopicMessageABC):
     """Message to signal that realtime calibration tracking should start."""
     pass
+
+
+class ShouldCalibrateMessage(TopicMessageABC):
+    """Dummy message to signal that calibration should be performed."""
+    pass
+
 
 ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 ShouldCalibrateTopic = create_topic(ShouldCalibrateMessage)

@@ -14,7 +14,7 @@ from ..default_paths import get_log_file_path
 class LoggerBuilder:
 
     def __init__(self,
-                 level: LogLevels ,
+                 level: LogLevels,
                  queue: Optional[Queue]):
         self.level = level
         self.queue = queue
@@ -36,7 +36,6 @@ class LoggerBuilder:
 
         root.addHandler(self._build_console_handler())
 
-
     def _build_console_handler(self):
         handler = ColoredConsoleHandler()
         handler.setLevel(self.level.value)
@@ -57,4 +56,3 @@ class LoggerBuilder:
     def configure(self):
         if len(logging.getLogger().handlers) == 0:
             self._configure_root_logger()
-

@@ -3,18 +3,18 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from pydantic import BaseModel, Field
-from skellycam.core.types.type_overloads import CameraIdString
-from skellyforge.freemocap_utils.postprocessing_widgets.postprocessing_functions import interpolate_data
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
-
-from freemocap.core.tasks.calibration_task.ooooold.point_triangulator import PointTriangulator
 from freemocap.core.tasks.calibration_task.ooooold.v1_capture_volume_calibration.anipose_camera_calibration.charuco_groundplane_utils import \
     skellyforge_data, find_good_frame, CharucoVisibilityError, CharucoVelocityError, \
     compute_basis_vectors_of_new_reference
 from freemocap.core.tasks.calibration_task.ooooold.v1_capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import (
     AniposeCameraGroup, AniposeCharucoBoard
 )
+from pydantic import BaseModel, Field
+from skellycam.core.types.type_overloads import CameraIdString
+from skellyforge.freemocap_utils.postprocessing_widgets.postprocessing_functions import interpolate_data
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+
+from freemocap.core.tasks.calibration_task.ooooold.point_triangulator import PointTriangulator
 from freemocap.system.default_paths import get_default_freemocap_base_folder_path
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ def anipose_calibration_from_charuco_observations(
         use_charuco_as_groundplane: bool = False,
         init_intrinsics: bool = True,
         init_extrinsics: bool = True,
-        verbose: bool = True,) -> PointTriangulator:
+        verbose: bool = True, ) -> PointTriangulator:
     logger.info(
         f"Starting Anipose calibration with {len(charuco_observations_by_frame)} frames of charuco observations")
     # Aggregate all observations
@@ -227,7 +227,7 @@ def set_charuco_board_as_groundplane(
     charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
     logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
 
-    charuco_3d_xyz_interpolated =    interpolate_data.interpolate_skeleton_data(
+    charuco_3d_xyz_interpolated = interpolate_data.interpolate_skeleton_data(
         skeleton_data=charuco_3d_xyz
     )
 

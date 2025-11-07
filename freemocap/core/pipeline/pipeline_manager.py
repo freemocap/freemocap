@@ -11,6 +11,7 @@ from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class PipelineManager:
     global_kill_flag: multiprocessing.Value
@@ -19,17 +20,18 @@ class PipelineManager:
     pipelines: dict[PipelineIdString, ProcessingPipeline] = field(default_factory=dict)
 
     def create_or_update_pipeline(self,
-                                  pipeline_config:PipelineConfig) -> ProcessingPipeline:
+                                  pipeline_config: PipelineConfig) -> ProcessingPipeline:
         with self.lock:
             # get existing pipeline for the provided camera configs, if it exists
             for pipeline in self.pipelines.values():
                 if set(pipeline.camera_ids) == set(pipeline_config.camera_ids):
-                    logger.info(f"Found existing pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
+                    logger.info(
+                        f"Found existing pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
                     pipeline.update_camera_configs(camera_configs=pipeline_config.camera_configs)
                     return pipeline
-            pipeline =  ProcessingPipeline.from_config(pipeline_config=pipeline_config,
-                                                       subprocess_registry=self.subprocess_registry,
-                                                        global_kill_flag=self.global_kill_flag)
+            pipeline = ProcessingPipeline.from_config(pipeline_config=pipeline_config,
+                                                      subprocess_registry=self.subprocess_registry,
+                                                      global_kill_flag=self.global_kill_flag)
             pipeline.start()
             self.pipelines[pipeline.id] = pipeline
             logger.info(f"Created pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
@@ -42,7 +44,8 @@ class PipelineManager:
             self.pipelines.clear()
         logger.info("All pipelines closed successfully")
 
-    def get_latest_frontend_payloads(self, if_newer_than:FrameNumberInt) -> dict[PipelineIdString,  tuple[bytes | None, FrontendPayload | None]]:
+    def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[
+        PipelineIdString, tuple[bytes | None, FrontendPayload | None]]:
         latest_outputs = {}
         with self.lock:
             for pipeline_id, pipeline in self.pipelines.items():
@@ -66,20 +69,30 @@ class PipelineManager:
             for pipeline in self.pipelines.values():
                 pipeline.camera_group.stop_recording()
 
-
-
-    def update_calibration_task_config(self, calibration_task_config:CalibrationTaskConfig):
+    def update_calibration_task_config(self, calibration_task_config: CalibrationTaskConfig):
         with self.lock:
             for pipeline in self.pipelines.values():
                 new_config = deepcopy(pipeline.config)
                 new_config.calibration_task_config = calibration_task_config
                 pipeline.update_pipeline_config(new_config=new_config)
 
-    def start_calibration_calibration_recording(self, recording_info:RecordingInfo, config:CalibrationTaskConfig):
+    def start_calibration_calibration_recording(self, recording_info: RecordingInfo, config: CalibrationTaskConfig):
         if len(self.pipelines) == 0:
             raise RuntimeError("No pipelines available to start calibration recording.")
         if len(self.pipelines) > 1:
-            raise NotImplementedError("Multiple pipeline selection for calibration recording not implemented - will use 'pipeline_id' parameter in future.")
+            raise NotImplementedError(
+                "Multiple pipeline selection for calibration recording not implemented - will use 'pipeline_id' parameter in future.")
         with self.lock:
             for pipeline in self.pipelines.values():
-                pipeline.start_calibration_recording(config=config)
+                pipeline.start_calibration_recording(config=config,
+                                                     recording_info=recording_info)
+
+    def stop_calibration_recording(self):
+        if len(self.pipelines) == 0:
+            raise RuntimeError("No pipelines available to stop calibration recording.")
+        if len(self.pipelines) > 1:
+            raise NotImplementedError(
+                "Multiple pipeline selection for calibration recording not implemented - will use 'pipeline_id' parameter in future.")
+        with self.lock:
+            for pipeline in self.pipelines.values():
+                pipeline.stop_calibration_recording()

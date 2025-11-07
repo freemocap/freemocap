@@ -27,6 +27,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ClearIcon from '@mui/icons-material/Clear';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info';
+import CloseIcon from '@mui/icons-material/Close';
 import { useCalibration } from '@/hooks/useCalibration';
 import { useElectronIPC } from '@/services';
 
@@ -59,12 +60,12 @@ export const CalibrationTaskTreeItem: React.FC = () => {
         directoryInfo,
         isUsingManualPath,
         updateCalibrationConfig,
+        dispatchStopCalibrationRecording,
+        dispatchStartCalibrationRecording,
         setManualRecordingPath,
         clearManualRecordingPath,
         validateDirectory,
-        startRecording,
-        stopRecording,
-        calibrate,
+        calibrateSelectedRecording,
         clearError,
     } = useCalibration();
 
@@ -125,7 +126,7 @@ export const CalibrationTaskTreeItem: React.FC = () => {
         if (newPath.includes('~') && isElectron && api) {
             try {
                 const home: string = await api.fileSystem.getHomeDirectory.query();
-                const expanded: string = newPath.replace(/^~(\/|\\)?/, home ? `${home}$1` : '');
+                const expanded: string = newPath.replace(/^~([\/\\])?/, home ? `${home}$1` : '');
                 await setManualRecordingPath(expanded);
             } catch (error) {
                 console.error('Failed to expand home directory:', error);
@@ -173,6 +174,44 @@ export const CalibrationTaskTreeItem: React.FC = () => {
 
                     {/* Calibration Recording Path Input */}
                     <Box>
+
+                        {/* Live Tracker Toggle */}
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={config.liveTrackCharuco}
+                                    onChange={(e) => updateCalibrationConfig({ liveTrackCharuco: e.target.checked })}
+                                    disabled={isLoading}
+                                    sx={{ '&.Mui-checked': { color: theme.palette.text.primary } }}
+                                />
+                            }
+                            label="Live Track Charuco Board"
+                        />
+                        {/* Recording Controls */}
+                        <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<PlayArrowIcon />}
+                                onClick={dispatchStartCalibrationRecording}
+                                disabled={!canStartRecording || isLoading}
+                                fullWidth
+                            >
+                                Start Calibration Recording
+                            </Button>
+                            {isRecording && (
+                                <Button
+                                    variant="contained"
+                                    color="error"
+                                    startIcon={<StopIcon />}
+                                    onClick={dispatchStopCalibrationRecording}
+                                    disabled={isLoading}
+                                    fullWidth
+                                >
+                                    Stop Recording
+                                </Button>
+                            )}
+                        </Stack>
                         <TextField
                             label="Calibration Recording Path"
                             value={calibrationRecordingPath}
@@ -213,49 +252,65 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                     {directoryInfo && (
                         <Box sx={{
                             p: 1.5,
-                            bgcolor: 'background.default',
                             borderRadius: 1,
-                            border: `1px solid ${theme.palette.divider}`
+                            border: `2px solid ${theme.palette.divider}`
                         }}>
                             <Stack spacing={1}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <InfoIcon fontSize="small" color="info" />
                                     <Typography variant="caption" fontWeight="medium">
-                                        Directory Status
+                                        Calibration Folder Status
                                     </Typography>
                                 </Box>
 
                                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                    {directoryInfo.exists ? (
-                                        <Chip
-                                            label="Exists"
-                                            size="small"
-                                            color="success"
-                                            icon={<CheckCircleIcon />}
-                                        />
-                                    ) : (
-                                        <Chip
-                                            label="Will be created"
-                                            size="small"
-                                            color="info"
-                                        />
-                                    )}
+                                    <Chip
+                                        label={directoryInfo.exists ? "Directory exists" : "Directory will be created"}
+                                        size="small"
+                                        color={directoryInfo.exists ? "success" : "default"}
+                                        icon={directoryInfo.exists ? <CheckCircleIcon /> : <CloseIcon />}
+                                        variant={directoryInfo.exists ? "filled" : "outlined"}
+                                        sx={!directoryInfo.exists ? {
+                                            borderColor: theme.palette.grey[400],
+                                            '& .MuiChip-icon': { color: theme.palette.grey[600] }
+                                        } : {}}
+                                    />
 
-                                    {directoryInfo.hasVideos && (
-                                        <Chip
-                                            label="Has videos"
-                                            size="small"
-                                            color="success"
-                                        />
-                                    )}
+                                    <Chip
+                                        label="Has videos"
+                                        size="small"
+                                        color={directoryInfo.hasVideos ? "success" : "default"}
+                                        icon={directoryInfo.hasVideos ? <CheckCircleIcon /> : <CloseIcon />}
+                                        variant={directoryInfo.hasVideos ? "filled" : "outlined"}
+                                        sx={!directoryInfo.hasVideos ? {
+                                            borderColor: theme.palette.grey[400],
+                                            '& .MuiChip-icon': { color: theme.palette.grey[600] }
+                                        } : {}}
+                                    />
 
-                                    {directoryInfo.hasSynchronizedVideos && (
-                                        <Chip
-                                            label="Has synchronized_videos folder"
-                                            size="small"
-                                            color="primary"
-                                        />
-                                    )}
+                                    <Chip
+                                        label="Has synchronized_videos"
+                                        size="small"
+                                        color={directoryInfo.hasSynchronizedVideos ? "success" : "default"}
+                                        icon={directoryInfo.hasSynchronizedVideos ? <CheckCircleIcon /> : <CloseIcon />}
+                                        variant={directoryInfo.hasSynchronizedVideos ? "filled" : "outlined"}
+                                        sx={!directoryInfo.hasSynchronizedVideos ? {
+                                            borderColor: theme.palette.grey[400],
+                                            '& .MuiChip-icon': { color: theme.palette.grey[600] }
+                                        } : {}}
+                                    />
+
+                                    <Chip
+                                        label="Has calibration TOML"
+                                        size="small"
+                                        color={directoryInfo.cameraCalibrationTomlPath ? "success" : "default"}
+                                        icon={directoryInfo.cameraCalibrationTomlPath ? <CheckCircleIcon /> : <CloseIcon />}
+                                        variant={directoryInfo.cameraCalibrationTomlPath ? "filled" : "outlined"}
+                                        sx={!directoryInfo.cameraCalibrationTomlPath ? {
+                                            borderColor: theme.palette.grey[400],
+                                            '& .MuiChip-icon': { color: theme.palette.grey[600] }
+                                        } : {}}
+                                    />
                                 </Box>
 
                                 {directoryInfo.cameraCalibrationTomlPath && (
@@ -279,19 +334,6 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                             </Stack>
                         </Box>
                     )}
-
-                    {/* Live Tracker Toggle */}
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                checked={config.liveTrackCharuco}
-                                onChange={(e) => updateCalibrationConfig({ liveTrackCharuco: e.target.checked })}
-                                disabled={isLoading}
-                                sx={{ '&.Mui-checked': { color: theme.palette.text.primary } }}
-                            />
-                        }
-                        label="Live Track Charuco Board"
-                    />
 
                     {/* Board Size Preset Selector */}
                     <FormControl fullWidth size="small">
@@ -322,31 +364,7 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                         inputProps={{ min: 1, step: 0.1 }}
                     />
 
-                    {/* Recording Controls */}
-                    <Stack direction="row" spacing={2}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<PlayArrowIcon />}
-                            onClick={startRecording}
-                            disabled={!canStartRecording || isLoading}
-                            fullWidth
-                        >
-                            Start Calibration Recording
-                        </Button>
-                        {isRecording && (
-                            <Button
-                                variant="contained"
-                                color="error"
-                                startIcon={<StopIcon />}
-                                onClick={stopRecording}
-                                disabled={isLoading}
-                                fullWidth
-                            >
-                                Stop Recording
-                            </Button>
-                        )}
-                    </Stack>
+
 
                     {/* Recording Progress */}
                     {isRecording && (
@@ -379,11 +397,11 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                     <Button
                         variant="contained"
                         color="secondary"
-                        onClick={calibrate}
+                        onClick={calibrateSelectedRecording}
                         disabled={!canCalibrate || isLoading}
                         fullWidth
                     >
-                        Calibrate Recording
+                        Calibrate Selected Recording
                     </Button>
                 </Stack>
             </Box>

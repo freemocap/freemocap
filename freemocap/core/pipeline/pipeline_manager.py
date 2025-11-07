@@ -75,7 +75,7 @@ class PipelineManager:
                 new_config.calibration_task_config = calibration_task_config
                 pipeline.update_pipeline_config(new_config=new_config)
 
-    def start_calibration_calibration_recording(self, config:CalibrationTaskConfig):
+    def start_calibration_calibration_recording(self, recording_info:RecordingInfo, config:CalibrationTaskConfig):
         if len(self.pipelines) == 0:
             raise RuntimeError("No pipelines available to start calibration recording.")
         if len(self.pipelines) > 1:

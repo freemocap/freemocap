@@ -1,12 +1,11 @@
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.pipeline_configs import CalibrationTaskConfig
-
 
 logger = logging.getLogger(__name__)
 
@@ -25,18 +24,22 @@ class CalibrationConfigResponse(BaseModel):
     success: bool
     message: str | None = None
 
-class StartCalibrationRecordingRequest(BaseModel):
-    config: CalibrationConfigRequest
-
+class StartCalibrationRecordingRequest(CalibrationTaskConfig):
+    calibration_recording_directory: str
+    calibration_recording_name: str
+    config: CalibrationTaskConfig
+    def to_recording_info(self) -> RecordingInfo:
+        if not self.calibration_recording_name.endswith('_calibration'):
+            self.calibration_recording_name += '_calibration'
+        return RecordingInfo(
+            recording_directory=self.calibration_recording_directory,
+            recording_name=self.calibration_recording_name,
+            mic_device_index=-1
+        )
 
 class StartCalibrationRecordingResponse(BaseModel):
     success: bool
     message: str | None = None
-
-
-class CalibrateRecordingRequest(BaseModel):
-    calibration_recording_path: str
-    config: CalibrationConfigRequest
 
 
 class CalibrateRecordingResponse(BaseModel):
@@ -62,7 +65,9 @@ def update_all_calibration_config(request: CalibrationConfigRequest) -> Calibrat
 def start_calibration_recording(request: StartCalibrationRecordingRequest) -> StartCalibrationRecordingResponse:
     """Start calibration recording with given config."""
     try:
-        get_freemocap_app().pipeline_manager.start_calibration_calibration_recording(request.config)
+
+        get_freemocap_app().pipeline_manager.start_calibration_calibration_recording(recording_info=request.to_recording_info(),
+                                                                                        config=request.config)
         logger.info(f"Starting recording with config: {request.config}")
         return StartCalibrationRecordingResponse(success=True, message="Recording started")
     except Exception as e:
@@ -85,7 +90,7 @@ def stop_calibration_recording(request: Request) -> dict[str, bool]:
 
 
 @calibration_router.post("/recording/calibrate")
-def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRecordingResponse:
+def calibrate_recording(request: StartCalibrationRecordingRequest) -> CalibrateRecordingResponse:
     """Process and calibrate a recorded session."""
     app = get_freemocap_app()
     try:

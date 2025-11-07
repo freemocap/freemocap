@@ -72,11 +72,11 @@ export function useCalibration() {
         dispatch(manualCalibrationRecordingPathCleared());
     }, [dispatch]);
 
-    const startRecording = useCallback(() => {
+    const dispatchStartCalibrationRecording = useCallback(() => {
         dispatch(startCalibrationRecording());
     }, [dispatch]);
 
-    const stopRecording = useCallback(() => {
+    const dispatchStopCalibrationRecording = useCallback(() => {
         dispatch(stopCalibrationRecording());
     }, [dispatch]);
 
@@ -105,9 +105,9 @@ export function useCalibration() {
         setManualRecordingPath,
         clearManualRecordingPath,
         validateDirectory,
-        startRecording,
-        stopRecording,
-        calibrate,
+        dispatchStartCalibrationRecording,
+        dispatchStopCalibrationRecording,
+        calibrateSelectedRecording: calibrate,
         clearError,
     };
 }

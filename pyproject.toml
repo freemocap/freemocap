@@ -112,7 +112,10 @@ push = true
 [tool.bumpver.file_patterns]
 #"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
 "freemocap/__init__.py" = ["{version}"]
-".github/workflows/*_installer.yml" = ['export PYAPP_PROJECT_VERSION={version}']
+".github/workflows/*_installer.yml" = [
+    'freemocap=={version}',
+    'export PYAPP_PROJECT_VERSION={version}'
+]
 
 #[tool.setuptools.dynamic]
 #dependencies = {file = "requirements.txt"}

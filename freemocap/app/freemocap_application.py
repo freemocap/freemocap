@@ -91,7 +91,7 @@ class FreemocApplication:
 
     def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[
         PipelineIdString | CameraGroupIdString, tuple[bytes, FrontendPayload | None]]:
-        if len(self.pipeline_manager.pipelines) == 0 or all([not p.alive for p in self.pipeline_manager.pipelines.values()]):
+        if len(self.pipeline_manager.realtime_pipelines) == 0 or all([not p.alive for p in self.pipeline_manager.realtime_pipelines.values()]):
             # if there are no pipelines, return the latest payloads from the camera groups instead
             cg_payloads = self.camera_group_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)
             cg_payloads = {camera_group_id: (payload[-1], None) for camera_group_id, payload in cg_payloads.items()}

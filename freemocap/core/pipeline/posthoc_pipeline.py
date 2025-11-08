@@ -5,17 +5,17 @@ import uuid
 from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
-from skellycam.core.camera.config.camera_config import CameraConfigs
-from skellycam.core.camera_group.camera_group import CameraGroup
+from skellycam.core.video.config.video_config import VideoConfigs
+from skellycam.core.video_group.video_group import VideoGroup
 from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
+from skellycam.core.types.type_overloads import VideoIdString, VideoGroupIdString
 
-from freemocap.core.pipeline.aggregation_node import AggregationNode, AggregationNodeState
-from freemocap.core.pipeline.camera_node import CameraNode, CameraNodeState
-from freemocap.core.pipeline.og.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.og.pipeline_configs import PipelineConfig, CalibrationTaskConfig
-from freemocap.core.pipeline.og.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.nodes.aggregation_node import AggregationNode, AggregationNodeState
+from freemocap.core.pipeline.nodes.video_node import VideoNode, VideoNodeState
+from freemocap.core.pipeline.frontend_payload import FrontendPayload
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
+from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \
     PipelineConfigUpdateMessage, \
@@ -24,29 +24,27 @@ from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, Aggregati
 logger = logging.getLogger(__name__)
 
 
-class PipelineState(BaseModel):
+class PosthocPipelineState(BaseModel):
     """Serializable representation of a processing pipeline state."""
     model_config = ConfigDict(
         validate_assignment=True,
         frozen=True
     )
     id: PipelineIdString
-    camera_group_id: CameraGroupIdString
-    camera_node_states: dict[CameraIdString, CameraNodeState]
+    video_group_id: VideoGroupIdString
+    video_node_states: dict[VideoIdString, VideoNodeState]
     aggregation_node_state: AggregationNodeState
     alive: bool
 
 
-class CaptureVolumeCalibrationResults(BaseModel):
-    pass
 
 
 @dataclass
-class ProcessingPipeline:
+class PosthocProcessingPipeline:
     id: PipelineIdString
-    camera_group: CameraGroup
+    video_group: VideoGroup
     config: PipelineConfig
-    camera_nodes: dict[CameraIdString, CameraNode]
+    video_nodes: dict[VideoIdString, VideoNode]
     aggregation_node: AggregationNode
     aggregation_node_subscription: TopicSubscriptionQueue
     ipc: PipelineIPC
@@ -54,65 +52,65 @@ class ProcessingPipeline:
 
     @property
     def alive(self) -> bool:
-        return all([camera_node.worker.is_alive() for camera_node in
-                    self.camera_nodes.values()]) and self.aggregation_node.worker.is_alive()
+        return all([video_node.worker.is_alive() for video_node in
+                    self.video_nodes.values()]) and self.aggregation_node.worker.is_alive()
 
     @property
-    def camera_group_id(self) -> CameraGroupIdString:
-        return self.camera_group.id
+    def video_group_id(self) -> VideoGroupIdString:
+        return self.video_group.id
 
     @property
-    def camera_ids(self) -> list[CameraIdString]:
-        return list(self.camera_nodes.keys())
+    def video_ids(self) -> list[VideoIdString]:
+        return list(self.video_nodes.keys())
 
     @property
-    def camera_configs(self) -> CameraConfigs:
-        return self.camera_group.configs
+    def video_configs(self) -> VideoConfigs:
+        return self.video_group.configs
 
     @classmethod
     def from_config(cls,
-                    camera_group: CameraGroup,
+                    video_group: VideoGroup,
                     heartbeat_timestamp: multiprocessing.Value,
                     subprocess_registry: list[multiprocessing.Process],
                     pipeline_config: PipelineConfig,
                     ):
 
-        ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
-                                 shm_topic=camera_group.ipc.pubsub.topics[TopicTypes.SHM_UPDATES],
+        ipc = PipelineIPC.create(global_kill_flag=video_group.ipc.global_kill_flag,
+                                 shm_topic=video_group.ipc.pubsub.topics[TopicTypes.SHM_UPDATES],
                                  heartbeat_timestamp=heartbeat_timestamp
         )
-        camera_nodes = {camera_id: CameraNode.create(camera_id=camera_id,
+        video_nodes = {video_id: VideoNode.create(video_id=video_id,
                                                      subprocess_registry=subprocess_registry,
-                                                     camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
+                                                     video_shm_dto=video_group.shm.to_dto().video_shm_dtos[video_id],
                                                      config=pipeline_config,
                                                      ipc=ipc)
-                        for camera_id, config in camera_group.configs.items()}
-        aggregation_node = AggregationNode.create(camera_group_id=camera_group.id,
+                        for video_id, config in video_group.configs.items()}
+        aggregation_node = AggregationNode.create(video_group_id=video_group.id,
                                                   subprocess_registry=subprocess_registry,
                                                   config=pipeline_config,
                                                   ipc=ipc,
                                                   )
 
-        return cls(camera_nodes=camera_nodes,
+        return cls(video_nodes=video_nodes,
                    aggregation_node=aggregation_node,
                    ipc=ipc,
                    config=pipeline_config,
                    aggregation_node_subscription=ipc.pubsub.topics[
                        AggregationNodeOutputTopic].get_subscription(),
-                   camera_group=camera_group,
+                   video_group=video_group,
                    id=str(uuid.uuid4())[:6],
                    )
 
     def start(self) -> None:
         self.started = True
         logger.debug(
-            f"Starting Pipeline (id:{self.id} with camera group (id:{self.camera_group_id} for camera ids: {list(self.camera_nodes.keys())}...")
-        if not self.camera_group.started:
+            f"Starting Pipeline (id:{self.id} with video group (id:{self.video_group_id} for video ids: {list(self.video_nodes.keys())}...")
+        if not self.video_group.started:
             try:
-                logger.debug("Starting camera group...")
-                self.camera_group.start()
+                logger.debug("Starting video group...")
+                self.video_group.start()
             except Exception as e:
-                logger.error(f"Failed to start camera group: {type(e).__name__} - {e}")
+                logger.error(f"Failed to start video group: {type(e).__name__} - {e}")
                 logger.exception(e)
                 raise
 
@@ -125,13 +123,13 @@ class ProcessingPipeline:
             logger.exception(e)
             raise
 
-        for camera_id, camera_node in self.camera_nodes.items():
+        for video_id, video_node in self.video_nodes.items():
             try:
-                logger.debug(f"Starting camera node {camera_id}...")
-                camera_node.start()
-                logger.debug(f"Camera node {camera_id} worker started: alive={camera_node.worker.is_alive()}")
+                logger.debug(f"Starting video node {video_id}...")
+                video_node.start()
+                logger.debug(f"Video node {video_id} worker started: alive={video_node.worker.is_alive()}")
             except Exception as e:
-                logger.error(f"Failed to start camera node {camera_id}: {type(e).__name__} - {e}")
+                logger.error(f"Failed to start video node {video_id}: {type(e).__name__} - {e}")
                 logger.exception(e)
                 raise
 
@@ -141,18 +139,18 @@ class ProcessingPipeline:
         logger.debug(f"Shutting down {self.__class__.__name__}...")
 
         self.ipc.shutdown_pipeline()
-        for camera_id, camera_node in self.camera_nodes.items():
-            camera_node.shutdown()
+        for video_id, video_node in self.video_nodes.items():
+            video_node.shutdown()
         self.aggregation_node.shutdown()
-        self.camera_group.close()
+        self.video_group.close()
 
-    async def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
-        return await self.camera_group.update_camera_settings(requested_configs=camera_configs)
+    async def update_video_configs(self, video_configs: VideoConfigs) -> VideoConfigs:
+        return await self.video_group.update_video_settings(requested_configs=video_configs)
 
     def get_latest_frontend_payload(self, if_newer_than: FrameNumberInt) -> tuple[bytes, FrontendPayload | None] | None:
         if not self.alive:
-            if self.camera_group.alive:
-                _, _, frames_bytearray = self.camera_group.get_latest_frontend_payload(if_newer_than=if_newer_than)
+            if self.video_group.alive:
+                _, _, frames_bytearray = self.video_group.get_latest_frontend_payload(if_newer_than=if_newer_than)
                 if frames_bytearray is not None:
                     return (frames_bytearray,
                             None)
@@ -162,7 +160,7 @@ class ProcessingPipeline:
             aggregation_output = self.aggregation_node_subscription.get()
         if aggregation_output is None:
             return None
-        frames_bytearray = self.camera_group.get_frontend_payload_by_frame_number(
+        frames_bytearray = self.video_group.get_frontend_payload_by_frame_number(
             frame_number=aggregation_output.frame_number,
         )
 
@@ -182,13 +180,13 @@ class ProcessingPipeline:
         self.config.calibration_task_config = config
         self.ipc.pubsub.topics[PipelineConfigUpdateTopic].publish(
             PipelineConfigUpdateMessage(pipeline_config=self.config))
-        self.camera_group.start_recording(recording_info=recording_info)
+        self.video_group.start_recording(recording_info=recording_info)
         logger.info("Calibration recording started.")
 
     def stop_calibration_recording(self):
         logger.info("Stopping calibration recording...")
         # TODO - I don't love this method of getting the config and path here, wanna fix it later
-        self.camera_group.stop_recording()
+        self.video_group.stop_recording()
         time.sleep(1)  # give it a sec to wrap up
         logger.info(f"Calibration recording stopped - sending calibration start message - config: {self.config.calibration_task_config.model_dump_json(indent=2)}")
         self.ipc.pubsub.topics[ShouldCalibrateTopic].publish(ShouldCalibrateMessage())

@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -19,6 +20,7 @@ from freemocap.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConf
     PipelineConfigUpdateMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage, ShouldCalibrateTopic
 
 logger = logging.getLogger(__name__)
+
 
 
 class VideoNodeState(BaseModel):

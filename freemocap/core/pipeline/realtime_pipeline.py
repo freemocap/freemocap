@@ -76,7 +76,6 @@ class RealtimeProcessingPipeline:
                     ):
 
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
-                                 shm_topic=camera_group.ipc.pubsub.topics[TopicTypes.SHM_UPDATES],
                                  heartbeat_timestamp=heartbeat_timestamp
         )
         camera_nodes = {camera_id: CameraNode.create(camera_id=camera_id,

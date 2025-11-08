@@ -15,7 +15,6 @@ class PipelineIPC:
     pipeline_id: PipelineIdString
     pubsub: PubSubTopicManager
     ws_queue: multiprocessing.Queue
-    shm_topic: SetShmTopic
     global_kill_flag: multiprocessing.Value
     heartbeat_timestamp: multiprocessing.Value
     pipeline_shutdown_flag: multiprocessing.Value = field(default_factory=lambda: multiprocessing.Value('b', False))
@@ -24,7 +23,6 @@ class PipelineIPC:
     def create(cls,
                global_kill_flag: multiprocessing.Value,
                heartbeat_timestamp: multiprocessing.Value,
-               shm_topic: SetShmTopic,
                pipeline_id: PipelineIdString | None = None):
         if pipeline_id is None:
             pipeline_id = str(uuid.uuid4())[:6]
@@ -32,7 +30,6 @@ class PipelineIPC:
         return cls(
             pipeline_id=pipeline_id,
             pubsub=pubsub,
-            shm_topic=shm_topic,
             global_kill_flag=global_kill_flag,
             heartbeat_timestamp=heartbeat_timestamp,
             ws_queue=get_websocket_log_queue(),
@@ -53,5 +50,3 @@ class PipelineIPC:
         self.shutdown_pipeline()
         self.global_kill_flag.value = True
 
-    def pause_unpause(self):
-        self.pause_unpause_cameras()

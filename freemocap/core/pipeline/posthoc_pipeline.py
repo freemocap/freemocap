@@ -5,21 +5,21 @@ import uuid
 from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
-from skellycam.core.video.config.video_config import VideoConfigs
-from skellycam.core.video_group.video_group import VideoGroup
 from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellycam.core.types.type_overloads import VideoIdString, VideoGroupIdString
 
-from freemocap.core.pipeline.nodes.aggregation_node import AggregationNode, AggregationNodeState
-from freemocap.core.pipeline.nodes.video_node import VideoNode, VideoNodeState
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
+from freemocap.core.pipeline.nodes.aggregation_node import AggregationNode, AggregationNodeState
+from freemocap.core.pipeline.nodes.video_node.video_group import VideoGroup
+from freemocap.core.pipeline.nodes.video_node.video_node import VideoNode, VideoNodeState
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \
     PipelineConfigUpdateMessage, \
     PipelineConfigUpdateTopic, ShouldCalibrateMessage, ShouldCalibrateTopic
+
+VideoIdString = str
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +31,14 @@ class PosthocPipelineState(BaseModel):
         frozen=True
     )
     id: PipelineIdString
-    video_group_id: VideoGroupIdString
     video_node_states: dict[VideoIdString, VideoNodeState]
     aggregation_node_state: AggregationNodeState
     alive: bool
 
 
-
-
 @dataclass
 class PosthocProcessingPipeline:
     id: PipelineIdString
-    video_group: VideoGroup
     config: PipelineConfig
     video_nodes: dict[VideoIdString, VideoNode]
     aggregation_node: AggregationNode
@@ -56,35 +52,26 @@ class PosthocProcessingPipeline:
                     self.video_nodes.values()]) and self.aggregation_node.worker.is_alive()
 
     @property
-    def video_group_id(self) -> VideoGroupIdString:
-        return self.video_group.id
-
-    @property
     def video_ids(self) -> list[VideoIdString]:
         return list(self.video_nodes.keys())
 
-    @property
-    def video_configs(self) -> VideoConfigs:
-        return self.video_group.configs
-
     @classmethod
     def from_config(cls,
-                    video_group: VideoGroup,
+                    recording_folder_path: str,
                     heartbeat_timestamp: multiprocessing.Value,
                     subprocess_registry: list[multiprocessing.Process],
                     pipeline_config: PipelineConfig,
+                    global_kill_flag: multiprocessing.Value,
                     ):
-
-        ipc = PipelineIPC.create(global_kill_flag=video_group.ipc.global_kill_flag,
-                                 shm_topic=video_group.ipc.pubsub.topics[TopicTypes.SHM_UPDATES],
+        video_group = VideoGroup.from_recording_path(recording_path=recording_folder_path)
+        ipc = PipelineIPC.create(global_kill_flag=global_kill_flag,
                                  heartbeat_timestamp=heartbeat_timestamp
-        )
+                                 )
         video_nodes = {video_id: VideoNode.create(video_id=video_id,
-                                                     subprocess_registry=subprocess_registry,
-                                                     video_shm_dto=video_group.shm.to_dto().video_shm_dtos[video_id],
-                                                     config=pipeline_config,
-                                                     ipc=ipc)
-                        for video_id, config in video_group.configs.items()}
+                                                  subprocess_registry=subprocess_registry,
+                                                  config=pipeline_config,
+                                                  ipc=ipc)
+                       for video_id, config in video_group.configs.items()}
         aggregation_node = AggregationNode.create(video_group_id=video_group.id,
                                                   subprocess_registry=subprocess_registry,
                                                   config=pipeline_config,
@@ -176,7 +163,8 @@ class PosthocProcessingPipeline:
     def start_calibration_recording(self, recording_info: RecordingInfo, config: CalibrationTaskConfig):
         # TODO - I don't love this method of getting the config and path here, wanna fix it later
         config.calibration_recording_folder = recording_info.full_recording_path
-        logger.info(f"Starting calibration recording: {recording_info.full_recording_path} with config: {config.model_dump_json(indent=2)}")
+        logger.info(
+            f"Starting calibration recording: {recording_info.full_recording_path} with config: {config.model_dump_json(indent=2)}")
         self.config.calibration_task_config = config
         self.ipc.pubsub.topics[PipelineConfigUpdateTopic].publish(
             PipelineConfigUpdateMessage(pipeline_config=self.config))
@@ -188,5 +176,6 @@ class PosthocProcessingPipeline:
         # TODO - I don't love this method of getting the config and path here, wanna fix it later
         self.video_group.stop_recording()
         time.sleep(1)  # give it a sec to wrap up
-        logger.info(f"Calibration recording stopped - sending calibration start message - config: {self.config.calibration_task_config.model_dump_json(indent=2)}")
+        logger.info(
+            f"Calibration recording stopped - sending calibration start message - config: {self.config.calibration_task_config.model_dump_json(indent=2)}")
         self.ipc.pubsub.topics[ShouldCalibrateTopic].publish(ShouldCalibrateMessage())

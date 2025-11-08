@@ -5,7 +5,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.og.pipeline_configs import PipelineConfig
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import FrameNumberInt, Point3d, PipelineIdString
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic

@@ -9,9 +9,9 @@ from skellycam.core.camera_group.camera_group_manager import CameraGroupManager,
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.og.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_manager import PipelineManager
-from freemocap.core.pipeline.processing_pipeline import FrontendPayload, ProcessingPipeline, PipelineState
+from freemocap.core.pipeline.og.processing_pipeline import FrontendPayload, ProcessingPipeline, PipelineState
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 logger = logging.getLogger(__name__)

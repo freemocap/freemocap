@@ -9,7 +9,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.og.pipeline_configs import PipelineConfig
 from freemocap.system.default_paths import default_recording_name, get_default_recording_folder_path
 
 logger = logging.getLogger(__name__)

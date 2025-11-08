@@ -6,7 +6,7 @@ from multiprocessing import Queue, Process
 from typing import Dict
 
 from freemocap.core.pipeline.aggregation_node import AggregationNode
-from freemocap.core.pipeline.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
+from freemocap.core.pipeline.og.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BasePipelineOutputData
 from freemocap.core.tasks.mocap_task.mocap_camera_node import MocapCameraNodeOutputData
 from freemocap.core.tasks.mocap_task.old_point_trangulator import PointTriangulator

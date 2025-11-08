@@ -6,7 +6,7 @@ from pydantic import Field
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.pipeline.pipeline_configs import CalibrationTaskConfig
+from freemocap.core.pipeline.og.pipeline_configs import CalibrationTaskConfig
 
 logger = logging.getLogger(__name__)
 

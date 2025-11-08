@@ -1,199 +1,303 @@
+"""
+Updated aggregation node implementation using the new base abstractions.
+"""
 import logging
 import multiprocessing
 import threading
-from dataclasses import dataclass
+from typing import Any, ClassVar
 
+from pydantic import Field
 import numpy as np
-from pydantic import BaseModel, ConfigDict
-from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
+from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage, SetShmTopic
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemory
-from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
+from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 from skellycam.utilities.wait_functions import wait_1ms
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.base_node_abcs import ProcessNodeABC, ProcessNodeParams
+from freemocap.core.pipeline.og.pipeline_configs import PipelineConfig, CalibrationTaskConfig, MocapTaskConfig
+from freemocap.core.pipeline.og.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.pipeline_launch_configs import AggregationNodeParams
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
-from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.charuco_stuff.charuco_board_definition import \
-    CharucoBoardDefinition
-from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.run_anipose_capture_volume_calibration import \
-    run_anipose_capture_volume_calibration
-from freemocap.core.types.type_overloads import Point3d, PipelineIdString
-from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigUpdateTopic, ProcessFrameNumberTopic, \
-    ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic, \
-    PipelineConfigUpdateMessage, ShouldCalibrateTopic, ShouldCalibrateMessage
+from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.charuco_stuff.charuco_board_definition import (
+    CharucoBoardDefinition,
+)
+from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.run_anipose_capture_volume_calibration import (
+    run_anipose_capture_volume_calibration,
+)
+from freemocap.core.types.type_overloads import Point3d, TopicSubscriptionQueue
+from freemocap.pubsub.pubsub_abcs import PubSubTopicABC
+from freemocap.pubsub.pubsub_manager import PubSubTopicManager
+from freemocap.pubsub.pubsub_topics import (
+    AggregationNodeOutputMessage,
+    AggregationNodeOutputTopic,
+    CameraNodeOutputMessage,
+    CameraNodeOutputTopic,
+    PipelineConfigUpdateMessage,
+    PipelineConfigUpdateTopic,
+    ProcessFrameNumberMessage,
+    ProcessFrameNumberTopic,
+    ShouldCalibrateMessage,
+    ShouldCalibrateTopic,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class AggregationNodeState(BaseModel):
-    model_config = ConfigDict(
-        validate_assignment=True,
-        frozen=True
-    )
-    pipeline_id: PipelineIdString
-    config: PipelineConfig
-    alive: bool
-    last_seen_frame_number: int | None = None
-    calibration_task_state: object | None = None
-    mocap_task_state: object = None  # TODO - this
+
+class AggregationNodeParams(ProcessNodeParams):
+    """Parameters for aggregation node (used by both realtime and posthoc)."""
+
+    # Declare subscription requirements
+    subscribed_topics: ClassVar[list[type[PubSubTopicABC]]] = [
+        CameraNodeOutputTopic,
+        PipelineConfigUpdateTopic,
+        ShouldCalibrateTopic,
+    ]
+    published_topics: ClassVar[list[type[PubSubTopicABC]]] = [
+        ProcessFrameNumberTopic,
+        AggregationNodeOutputTopic,
+    ]
+
+    camera_group_id: CameraGroupIdString
+    camera_ids: list[CameraIdString]
+    calibration_task_config: CalibrationTaskConfig = Field(default_factory=CalibrationTaskConfig)
+    mocap_task_config: MocapTaskConfig = Field(default_factory=MocapTaskConfig)
 
 
-@dataclass
-class AggregationNode:
-    shutdown_self_flag: multiprocessing.Value
-    worker: multiprocessing.Process
+class AggregationNode(ProcessNodeABC):
+    """
+    Aggregation node using new base abstractions.
+    Collects outputs from camera nodes and produces aggregated results.
+    """
 
     @classmethod
-    def create(cls,
-               config: PipelineConfig,
-               camera_group_id: CameraGroupIdString,
-               subprocess_registry: list[multiprocessing.Process],
-               ipc: PipelineIPC):
-        shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = multiprocessing.Process(target=cls._run,
-                                         name=f"CameraGroup-{camera_group_id}-AggregationNode",
-                                         kwargs=dict(config=config,
-                                                     camera_group_id=camera_group_id,
-                                                     ipc=ipc,
-                                                     shutdown_self_flag=shutdown_self_flag,
-                                                     camera_node_subscription=ipc.pubsub.topics[
-                                                         CameraNodeOutputTopic].get_subscription(),
-                                                     pipeline_config_subscription=ipc.pubsub.topics[
-                                                         PipelineConfigUpdateTopic].get_subscription(),
-                                                     shm_subscription=ipc.shm_topic.get_subscription(),
-                                                     should_calibrate_subscription=ipc.pubsub.topics[
-                                                         ShouldCalibrateTopic].get_subscription(),
-                                                     ),
+    def create(
+            cls,
+            *,
+            node_id: str,
+            params: AggregationNodeParams,
+            subscriptions: dict[type[PubSubTopicABC], TopicSubscriptionQueue],
+            pubsub: PubSubTopicManager,
+            subprocess_registry: list[multiprocessing.Process],
+            pipeline_config: PipelineConfig,
+            ipc: PipelineIPC,
+            **kwargs: Any
+    ) -> "AggregationNode":
+        """
+        Create aggregation node with pre-allocated subscriptions.
 
-                                         daemon=True
-                                         )
+        CRITICAL: Called from parent process with pre-created subscriptions!
+        """
+        shutdown_flag = multiprocessing.Value('b', False)
+
+        # Verify we have the required subscriptions
+        required_topics = params.get_subscription_requirements()
+        for topic in required_topics:
+            if topic not in subscriptions:
+                raise ValueError(f"Missing required subscription for {topic.__name__}")
+
+        # Also need SHM subscription (special case)
+        if SetShmTopic not in subscriptions:
+            subscriptions[SetShmTopic] = ipc.shm_topic.get_subscription()
+
+        # Create worker process with all pre-allocated resources
+        worker = multiprocessing.Process(
+            target=cls._run,
+            name=f"AggregationNode-{params.camera_group_id}",
+            kwargs=dict(
+                node_id=node_id,
+                params=params,
+                subscriptions=subscriptions,
+                pubsub=pubsub,
+                shutdown_flag=shutdown_flag,
+                pipeline_config=pipeline_config,
+                ipc=ipc,
+            ),
+            daemon=True,
+        )
+
         subprocess_registry.append(worker)
-        return cls(shutdown_self_flag=shutdown_self_flag,
-                   worker=worker
-                   )
+
+        return cls(
+            node_id=node_id,
+            params=params,
+            subscriptions=subscriptions,
+            pubsub=pubsub,
+            shutdown_flag=shutdown_flag,
+            worker=worker,
+        )
 
     @staticmethod
-    def _run(config: PipelineConfig,
-             camera_group_id: CameraGroupIdString,
-             ipc: PipelineIPC,
-             shutdown_self_flag: multiprocessing.Value,
-             camera_node_subscription: TopicSubscriptionQueue,
-             pipeline_config_subscription: TopicSubscriptionQueue,
-             shm_subscription: TopicSubscriptionQueue,
-             should_calibrate_subscription: TopicSubscriptionQueue
-             ):
+    def _run(
+            *,
+            node_id: str,
+            params: AggregationNodeParams,
+            subscriptions: dict[type[PubSubTopicABC], TopicSubscriptionQueue],
+            pubsub: PubSubTopicManager,
+            shutdown_flag: multiprocessing.Value,
+            pipeline_config: PipelineConfig,
+            ipc: PipelineIPC,
+            **kwargs: Any
+    ) -> None:
+        """
+        Main process loop for aggregation node.
+        Runs in child process with pre-allocated subscriptions.
+        """
+        # Configure logging for child process
         if multiprocessing.parent_process():
-            # Configure logging if multiprocessing (i.e. if there is a parent process)
             from freemocap.system.logging_configuration.configure_logging import configure_logging
             from freemocap import LOG_LEVEL
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
-        logger.debug("AggregationNode process started - waiting for SHM message")
-        shm_message: SetShmMessage = shm_subscription.get(block=True)
-        logger.debug("AggregationNode - received SHM message - starting main loop")
+        logger.debug(f"Starting aggregation node {node_id} for camera group {params.camera_group_id}")
+
+        # Get pre-allocated subscriptions
+        camera_output_sub = subscriptions[CameraNodeOutputTopic]
+        config_update_sub = subscriptions[PipelineConfigUpdateTopic]
+        should_calibrate_sub = subscriptions[ShouldCalibrateTopic]
+        shm_sub = subscriptions.get(SetShmTopic)
+
+        # Wait for shared memory setup
+        logger.debug("Waiting for SHM message...")
+        shm_message: SetShmMessage = shm_sub.get(block=True)
+        logger.debug("Received SHM message")
+
+        # Initialize shared memory
+        camera_group_shm = CameraGroupSharedMemory.recreate(
+            shm_dto=shm_message.camera_group_shm_dto,
+            read_only=True
+        )
+
+        # Initialize state
+        current_config = pipeline_config
+        camera_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {
+            camera_id: None for camera_id in params.camera_ids
+        }
+        shared_view_accumulator = SharedViewAccumulator.create(camera_ids=params.camera_ids)
+        calibrate_thread: threading.Thread | None = None
+        calibrate_kill_event = threading.Event()
+
+        latest_requested_frame = -1
+        last_received_frame = -1
+
         try:
-            logger.debug(f"Starting aggregation process for camera group {camera_group_id}")
-            camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {camera_id: None for camera_id
-                                                                                         in
-                                                                                         config.camera_configs.keys()}
-            camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=shm_message.camera_group_shm_dto,
-                                                                read_only=True)
-            shared_view_accumulator = SharedViewAccumulator.create(camera_ids=config.camera_ids)
-            calibrate_recording_thread: threading.Thread | None = None
-            calibration_thread_kill_event = threading.Event()
-            latest_requested_frame: int = -1
-            last_received_frame: int = -1
-            while ipc.should_continue and not shutdown_self_flag.value:
+            while ipc.should_continue and not shutdown_flag.value:
                 wait_1ms()
 
-                # Check for updated Pipeline Config
-                while not pipeline_config_subscription.empty():
-                    pipeline_config_message: PipelineConfigUpdateMessage = pipeline_config_subscription.get()
-                    config = pipeline_config_message.pipeline_config
-                    logger.info(f"AggregationNode for camera group {camera_group_id} received updated config")
+                # Check for config updates
+                while not config_update_sub.empty():
+                    msg: PipelineConfigUpdateMessage = config_update_sub.get()
+                    current_config = msg.pipeline_config
+                    logger.info(f"Aggregation node received config update")
 
-                # Check if we should request a new frame to process
-                if camera_group_shm.latest_multiframe_number > latest_requested_frame and last_received_frame >= latest_requested_frame:
-                    ipc.pubsub.topics[ProcessFrameNumberTopic].publish(
-                        ProcessFrameNumberMessage(frame_number=camera_group_shm.latest_multiframe_number))
+                # Request new frame if available
+                if (camera_group_shm.latest_multiframe_number > latest_requested_frame
+                        and last_received_frame >= latest_requested_frame):
                     latest_requested_frame = camera_group_shm.latest_multiframe_number
+                    pubsub.publish(
+                        topic_type=ProcessFrameNumberTopic,
+                        message=ProcessFrameNumberMessage(frame_number=latest_requested_frame)
+                    )
 
-                # Check for Camera Node Output
-                if not camera_node_subscription.empty():
-                    camera_node_output_message: CameraNodeOutputMessage = camera_node_subscription.get()
-                    camera_id = camera_node_output_message.camera_id
-                    if not camera_id in config.camera_configs.keys():
-                        raise ValueError(
-                            f"Camera ID {camera_id} not in camera IDs {list(config.camera_configs.keys())}")
-                    camera_node_outputs[camera_id] = camera_node_output_message
+                # Collect camera outputs
+                while not camera_output_sub.empty():
+                    camera_msg: CameraNodeOutputMessage = camera_output_sub.get()
 
-                # Check if ready to process a frame output
-                if all([isinstance(camera_node_output_message, CameraNodeOutputMessage) for camera_node_output_message
-                        in
-                        camera_node_outputs.values()]):
-                    if not all([camera_node_output_message.frame_number == latest_requested_frame for
-                                camera_node_output_message in camera_node_outputs.values()]):
+                    if camera_msg.camera_id not in params.camera_ids:
+                        logger.warning(f"Unexpected camera ID: {camera_msg.camera_id}")
+                        continue
+
+                    camera_outputs[camera_msg.camera_id] = camera_msg
+
+                # Check if we have all camera outputs for this frame
+                if all(output is not None for output in camera_outputs.values()):
+                    # Verify frame numbers match
+                    frame_numbers = [output.frame_number for output in camera_outputs.values()]
+                    if not all(fn == latest_requested_frame for fn in frame_numbers):
                         logger.warning(
-                            f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
+                            f"Frame number mismatch: expected {latest_requested_frame}, "
+                            f"got {frame_numbers}"
+                        )
+
                     last_received_frame = latest_requested_frame
-                    if any([node.charuco_observation and node.charuco_observation.charuco_board_visible for node in
-                            camera_node_outputs.values()]):
+
+                    # Update shared view accumulator
+                    if any(node.charuco_observation and node.charuco_observation.charuco_board_visible
+                           for node in camera_outputs.values()):
                         shared_view_accumulator.receive_camera_node_output(
-                            camera_node_output_by_camera=camera_node_outputs,
-                            multi_frame_number=latest_requested_frame)
-                    aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
+                            camera_node_output_by_camera=camera_outputs,
+                            multi_frame_number=latest_requested_frame
+                        )
+
+                    # Create aggregated output
+                    aggregation_output = AggregationNodeOutputMessage(
                         frame_number=latest_requested_frame,
                         pipeline_id=ipc.pipeline_id,
-                        camera_group_id=camera_group_id,
-                        pipeline_config=config,
-                        camera_node_outputs=camera_node_outputs,
-                        tracked_points3d={'fake_point': Point3d(x=np.sin(last_received_frame),
-                                                                y=np.cos(last_received_frame),
-                                                                z=np.cos(last_received_frame)
-                                                                )}  # Placeholder for actual aggregation logic
+                        camera_group_id=params.camera_group_id,
+                        pipeline_config=current_config,
+                        camera_node_outputs=camera_outputs,
+                        tracked_points3d={
+                            'fake_point': Point3d(
+                                x=np.sin(last_received_frame),
+                                y=np.cos(last_received_frame),
+                                z=np.cos(last_received_frame)
+                            )
+                        }  # Placeholder for actual aggregation
                     )
-                    logger.info(f'Publishing aggregation output for frame {latest_requested_frame} in camera group {camera_group_id}')
-                    ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
-                    camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
 
-                if not should_calibrate_subscription.empty():
-                    should_calibrate_message = should_calibrate_subscription.get()
-                    if isinstance(should_calibrate_message, ShouldCalibrateMessage) and calibrate_recording_thread is None:
-                        logger.info(
-                            f"Starting calibration recording thread for camera group {camera_group_id} in pipeline {ipc.pipeline_id}")
-                        # TODO - Shoehorning v2 models into v1 calibration function - v excited to put v1 in the ground sooooooon
-                        if calibrate_recording_thread is not None and calibrate_recording_thread.is_alive():
-                            calibration_thread_kill_event.set()
-                            calibrate_recording_thread.join(timeout=5)
-                            if calibrate_recording_thread.is_alive():
-                                raise RuntimeError('Failed to stop existing calibration recording thread....')
-                        calibration_thread_kill_event.clear()
-                        calibrate_recording_thread = threading.Thread(
+                    # Publish aggregated output
+                    pubsub.publish(
+                        topic_type=AggregationNodeOutputTopic,
+                        message=aggregation_output
+                    )
+
+                    logger.trace(f"Published aggregation for frame {latest_requested_frame}")
+
+                    # Reset for next frame
+                    camera_outputs = {camera_id: None for camera_id in params.camera_ids}
+
+                # Check for calibration request
+                if not should_calibrate_sub.empty():
+                    calibrate_msg = should_calibrate_sub.get()
+                    if isinstance(calibrate_msg, ShouldCalibrateMessage) and calibrate_thread is None:
+                        logger.info(f"Starting calibration for camera group {params.camera_group_id}")
+
+                        # Stop existing thread if running
+                        if calibrate_thread is not None and calibrate_thread.is_alive():
+                            calibrate_kill_event.set()
+                            calibrate_thread.join(timeout=5)
+                            if calibrate_thread.is_alive():
+                                raise RuntimeError("Failed to stop calibration thread")
+
+                        calibrate_kill_event.clear()
+
+                        # Start new calibration thread
+                        calibrate_thread = threading.Thread(
                             target=run_anipose_capture_volume_calibration,
-                            name=f"CameraGroup-{camera_group_id}-CalibrationRecordingThread",
+                            name=f"Calibration-{params.camera_group_id}",
                             kwargs=dict(
                                 charuco_board_definition=CharucoBoardDefinition(
-                                    name=f"charuco_{camera_group_id}",
-                                    number_of_squares_width=config.calibration_task_config.charuco_board_x_squares,
-                                    number_of_squares_height=config.calibration_task_config.charuco_board_y_squares),
-                                charuco_square_size=config.calibration_task_config.charuco_square_length,
-                                kill_event=calibration_thread_kill_event,
-                                calibration_recording_folder=config.calibration_task_config.calibration_recording_folder,
-                                use_charuco_as_groundplane=True)
+                                    name=f"charuco_{params.camera_group_id}",
+                                    number_of_squares_width=current_config.calibration_task_config.charuco_board_x_squares,
+                                    number_of_squares_height=current_config.calibration_task_config.charuco_board_y_squares,
+                                ),
+                                charuco_square_size=current_config.calibration_task_config.charuco_square_length,
+                                kill_event=calibrate_kill_event,
+                                calibration_recording_folder=current_config.calibration_task_config.calibration_recording_folder,
+                                use_charuco_as_groundplane=True,
+                            )
                         )
-                        calibrate_recording_thread.start()
+                        calibrate_thread.start()
+
         except Exception as e:
-            logger.error(f"Exception in AggregationNode for camera group {camera_group_id}: {e}", exc_info=True)
+            logger.error(f"Error in aggregation node {node_id}: {e}", exc_info=True)
             ipc.kill_everything()
             raise
+
         finally:
-            logger.debug(f"Shutting down aggregation process for camera group {camera_group_id}")
+            # Clean up calibration thread if running
+            if calibrate_thread is not None and calibrate_thread.is_alive():
+                calibrate_kill_event.set()
+                calibrate_thread.join(timeout=2.0)
 
-    def start(self):
-        logger.debug(f"Starting AggregationNode worker")
-        self.worker.start()
-
-    def shutdown(self):
-        logger.debug(f"Stopping AggregationNode worker")
-        self.shutdown_self_flag.value = True
-        self.worker.join()
+            logger.debug(f"Shutting down aggregation node {node_id}")

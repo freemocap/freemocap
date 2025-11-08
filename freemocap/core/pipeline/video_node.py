@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+from pathlib import Path
 from typing import Any
 from typing import ClassVar
 
@@ -12,25 +13,29 @@ from skellycam.core.types.type_overloads import CameraIdString
 from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
 
-from freemocap.core.pipeline.base_node_abcs import ProcessNodeABC, ProcessNodeParams
-from freemocap.core.pipeline.og.pipeline_configs import PipelineConfig, CalibrationTaskConfig, MocapTaskConfig
+from freemocap.core.pipeline.base_node_abcs import ProcessNodeABC
+from freemocap.core.pipeline.base_node_abcs import ProcessNodeParams
+from freemocap.core.pipeline.og.pipeline_configs import CalibrationTaskConfig, MocapTaskConfig
+from freemocap.core.pipeline.og.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.og.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import TopicSubscriptionQueue
 from freemocap.pubsub.pubsub_abcs import PubSubTopicABC
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     CameraNodeOutputMessage,
-    CameraNodeOutputTopic,
     PipelineConfigUpdateMessage,
-    PipelineConfigUpdateTopic,
     ProcessFrameNumberMessage,
+)
+from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberTopic,
+    PipelineConfigUpdateTopic,
+    CameraNodeOutputTopic,
 )
 
 logger = logging.getLogger(__name__)
 
-class CameraNodeParams(ProcessNodeParams):
-    """Parameters for camera processing nodes (realtime)."""
+class VideoNodeParams(ProcessNodeParams):
+    """Parameters for video processing nodes (posthoc)."""
 
     # Declare subscription requirements
     subscribed_topics: ClassVar[list[type[PubSubTopicABC]]] = [
@@ -38,25 +43,25 @@ class CameraNodeParams(ProcessNodeParams):
         PipelineConfigUpdateTopic,
     ]
     published_topics: ClassVar[list[type[PubSubTopicABC]]] = [
-        CameraNodeOutputTopic,
+        CameraNodeOutputTopic,  # Same output as camera nodes
     ]
 
-    camera_id: CameraIdString
+    video_path: Path
+    camera_id: CameraIdString  # Still need camera ID for aggregation
+    start_frame: int = Field(default=0, ge=0)
+    end_frame: int | None = Field(default=None, ge=0)
     calibration_task_config: CalibrationTaskConfig = Field(default_factory=CalibrationTaskConfig)
     mocap_task_config: MocapTaskConfig = Field(default_factory=MocapTaskConfig)
 
-class CameraNode(ProcessNodeABC):
-    """
-    Camera processing node using new base abstractions.
-    Processes frames and detects charuco boards.
-    """
+
+class VideoNode(ProcessNodeABC):
 
     @classmethod
     def create(
             cls,
             *,
             node_id: str,
-            params: CameraNodeParams,
+            params: VideoNodeParams,
             subscriptions: dict[type[PubSubTopicABC], TopicSubscriptionQueue],
             pubsub: PubSubTopicManager,
             subprocess_registry: list[multiprocessing.Process],
@@ -65,11 +70,6 @@ class CameraNode(ProcessNodeABC):
             ipc: PipelineIPC,
             **kwargs: Any
     ) -> "CameraNode":
-        """
-        Create camera node with pre-allocated subscriptions.
-
-        CRITICAL: Called from parent process with pre-created subscriptions!
-        """
         shutdown_flag = multiprocessing.Value('b', False)
 
         # Verify we have the required subscriptions
@@ -110,7 +110,7 @@ class CameraNode(ProcessNodeABC):
     def _run(
             *,
             node_id: str,
-            params: CameraNodeParams,
+            params: VideoNodeParams,
             subscriptions: dict[type[PubSubTopicABC], TopicSubscriptionQueue],
             pubsub: PubSubTopicManager,
             shutdown_flag: multiprocessing.Value,

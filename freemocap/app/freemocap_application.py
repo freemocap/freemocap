@@ -9,9 +9,10 @@ from skellycam.core.camera_group.camera_group_manager import CameraGroupManager,
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
 
-from freemocap.core.pipeline.og.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.frontend_payload import FrontendPayload
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_manager import PipelineManager
-from freemocap.core.pipeline.og.processing_pipeline import FrontendPayload, ProcessingPipeline, PipelineState
+from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline import RealtimeProcessingPipeline
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ class AppState(BaseModel):
         validate_assignment=True,
         frozen=True
     )
-    pipelines: dict[PipelineIdString, PipelineState]
+    # pipelines: dict[PipelineIdString, PipelineState]
     camera_groups: dict[CameraGroupIdString, CameraGroupState]
     workers: dict[str, WorkerState]
 
@@ -62,8 +63,8 @@ class FreemocApplication:
     def should_continue(self) -> bool:
         return not self.global_kill_flag.value
 
-    async def create_or_update_pipeline(self,
-                                  pipeline_config: PipelineConfig) -> ProcessingPipeline:
+    async def create_or_update_realtime_pipeline(self,
+                                                 pipeline_config: PipelineConfig) -> RealtimeProcessingPipeline:
         pipeline = self.pipeline_manager.get_pipeline_by_camera_ids(
             camera_ids=pipeline_config.camera_ids)
         if pipeline is not None:

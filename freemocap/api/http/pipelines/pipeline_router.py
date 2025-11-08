@@ -9,7 +9,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.pipeline.og.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.system.default_paths import default_recording_name, get_default_recording_folder_path
 
 logger = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ async def pipeline_connect_post_endpoint(
     try:
         pipeline_config = request.pipeline_config or PipelineConfig.from_camera_configs(
             camera_configs=request.camera_configs)
-        pipeline = await get_freemocap_app().create_or_update_pipeline(pipeline_config=pipeline_config)
+        pipeline = await get_freemocap_app().create_or_update_realtime_pipeline(pipeline_config=pipeline_config)
         response = PipelineCreateResponse.from_pipeline(pipeline=pipeline)
         logger.api(
             f"`pipeline/connect` POST request handled successfully - \n {response.model_dump_json(indent=2)}")

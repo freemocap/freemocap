@@ -25,7 +25,7 @@ from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConf
 logger = logging.getLogger(__name__)
 
 
-class AggregationNodeState(BaseModel):
+class RealtimeAggregationNodeState(BaseModel):
     model_config = ConfigDict(
         validate_assignment=True,
         frozen=True

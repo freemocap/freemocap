@@ -82,6 +82,10 @@ class VideoHelper(BaseModel):
     # Reading optimization state
     last_read_frame: int = Field(default=-1)
     sequential_threshold: int = Field(default=SEQUENTIAL_READ_THRESHOLD)
+    @property
+    def has_frames(self) -> bool:
+        """Check if video has frames."""
+        return self.metadata.frame_count > 0 and self.last_read_frame < self.metadata.frame_count - 1
 
     @classmethod
     def from_video_path(
@@ -137,7 +141,19 @@ class VideoHelper(BaseModel):
             cache=cache
         )
 
-    def read_frame(self, frame_number: int) -> np.ndarray:
+    def read_next_frame(self) -> np.ndarray| None:
+        """
+        Read the next frame in sequence. If the last read frame is -1, reads frame 0. If the last read frame is the last frame, returns None.
+
+
+        Returns:
+            Frame as numpy array
+        """
+        next_frame_number = self.last_read_frame + 1
+        if next_frame_number >= self.metadata.frame_count:
+            return None
+        return self.read_frame_number(next_frame_number)
+    def read_frame_number(self, frame_number: int) -> np.ndarray:
         """
         Read a specific frame with caching and access pattern optimization.
 
@@ -235,7 +251,7 @@ class VideoHelper(BaseModel):
 
             # Read missing frames
             for fn in frames_to_read:
-                frame = self.read_frame(fn)
+                frame = self.read_frame_number(fn)
                 results[fn] = frame
 
         # Return in original order
@@ -252,7 +268,7 @@ class VideoHelper(BaseModel):
         if self.metadata.fps <= 0:
             raise RuntimeError("Invalid FPS value")
         frame_number = int(timestamp_seconds * self.metadata.fps)
-        return self.read_frame(frame_number)
+        return self.read_frame_number(frame_number)
 
     def extract_frames_interval(
         self,
@@ -298,7 +314,7 @@ if __name__ == "__main__":
         cache_size_mb=1000
     ) as vh:
         # Read single frame
-        frame = vh.read_frame(100)
+        frame = vh.read_frame_number(100)
         print(f"Frame shape: {frame.shape}")
 
         # Read batch of frames efficiently

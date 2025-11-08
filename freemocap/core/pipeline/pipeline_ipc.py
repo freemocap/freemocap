@@ -7,6 +7,7 @@ from skellycam.core.ipc.pubsub.pubsub_topics import SetShmTopic
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager, create_pipeline_pubsub_manager
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue
+from freemocap.utilities.check_main_processs_heartbeat import check_main_process_heartbeat
 
 
 @dataclass
@@ -16,11 +17,13 @@ class PipelineIPC:
     ws_queue: multiprocessing.Queue
     shm_topic: SetShmTopic
     global_kill_flag: multiprocessing.Value
+    heartbeat_timestamp: multiprocessing.Value
     pipeline_shutdown_flag: multiprocessing.Value = field(default_factory=lambda: multiprocessing.Value('b', False))
 
     @classmethod
     def create(cls,
                global_kill_flag: multiprocessing.Value,
+               heartbeat_timestamp: multiprocessing.Value,
                shm_topic: SetShmTopic,
                pipeline_id: PipelineIdString | None = None):
         if pipeline_id is None:
@@ -31,12 +34,16 @@ class PipelineIPC:
             pubsub=pubsub,
             shm_topic=shm_topic,
             global_kill_flag=global_kill_flag,
+            heartbeat_timestamp=heartbeat_timestamp,
             ws_queue=get_websocket_log_queue(),
         )
 
     @property
     def should_continue(self) -> bool:
-        return not self.global_kill_flag.value and not self.pipeline_shutdown_flag.value
+        return (not self.global_kill_flag.value
+                and not self.pipeline_shutdown_flag.value
+                and check_main_process_heartbeat(global_kill_flag=self.global_kill_flag,
+                                                 heartbeat_timestamp=self.heartbeat_timestamp, ))
 
     def shutdown_pipeline(self):
         self.pipeline_shutdown_flag.value = True

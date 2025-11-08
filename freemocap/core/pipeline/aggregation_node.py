@@ -152,6 +152,7 @@ class AggregationNode:
                                                                 z=np.cos(last_received_frame)
                                                                 )}  # Placeholder for actual aggregation logic
                     )
+                    logger.info(f'Publishing aggregation output for frame {latest_requested_frame} in camera group {camera_group_id}')
                     ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
                     camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
 

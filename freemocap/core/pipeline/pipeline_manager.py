@@ -18,12 +18,32 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PipelineManager:
     global_kill_flag: multiprocessing.Value
+    heartbeat_timestamp: multiprocessing.Value
     subprocess_registry: list[multiprocessing.Process]
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, ProcessingPipeline] = field(default_factory=dict)
 
-    def create_pipeline(self,
-                        camera_group:CameraGroup,
+    async def create_pipeline(self,
+                              camera_group: CameraGroup,
+                              pipeline_config: PipelineConfig) -> ProcessingPipeline:
+        with self.lock:
+            # get existing pipeline for the provided camera configs, if it exists
+            for pipeline in self.pipelines.values():
+                if set(pipeline.camera_ids) == set(pipeline_config.camera_ids):
+                    logger.info(
+                        f"Found existing pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
+                    await pipeline.update_camera_configs(camera_configs=pipeline_config.camera_configs)
+                    return pipeline
+            pipeline = ProcessingPipeline.from_config(pipeline_config=pipeline_config,
+                                                      heartbeat_timestamp=self.heartbeat_timestamp,
+                                                      camera_group=camera_group,
+                                                      subprocess_registry=self.subprocess_registry)
+            pipeline.start()
+            self.pipelines[pipeline.id] = pipeline
+            logger.info(f"Created pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
+            return pipeline
+
+    async def update_pipeline(self,
                         pipeline_config: PipelineConfig) -> ProcessingPipeline:
         with self.lock:
             # get existing pipeline for the provided camera configs, if it exists
@@ -31,24 +51,7 @@ class PipelineManager:
                 if set(pipeline.camera_ids) == set(pipeline_config.camera_ids):
                     logger.info(
                         f"Found existing pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
-                    pipeline.update_camera_configs(camera_configs=pipeline_config.camera_configs)
-                    return pipeline
-            pipeline = ProcessingPipeline.from_config(pipeline_config=pipeline_config,
-                                                        camera_group=camera_group,
-                                                      subprocess_registry=self.subprocess_registry)
-            pipeline.start()
-            self.pipelines[pipeline.id] = pipeline
-            logger.info(f"Created pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
-            return pipeline
-    def update_pipeline(self,
-                                  pipeline_config: PipelineConfig) -> ProcessingPipeline:
-        with self.lock:
-            # get existing pipeline for the provided camera configs, if it exists
-            for pipeline in self.pipelines.values():
-                if set(pipeline.camera_ids) == set(pipeline_config.camera_ids):
-                    logger.info(
-                        f"Found existing pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
-                    pipeline.update_camera_configs(camera_configs=pipeline_config.camera_configs)
+                    await pipeline.update_camera_configs(camera_configs=pipeline_config.camera_configs)
                     return pipeline
         raise RuntimeError("No existing pipeline found for the provided camera configs.")
 
@@ -66,6 +69,7 @@ class PipelineManager:
             for pipeline_id, pipeline in self.pipelines.items():
                 output = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
                 if not output is None:
+                    logger.info(f"Retrieved latest frontend payload for pipeline ID: {pipeline_id}")
                     latest_outputs[pipeline_id] = output
         return latest_outputs
 
@@ -118,4 +122,3 @@ class PipelineManager:
                 if set(pipeline.camera_ids) == set(camera_ids):
                     return pipeline
         return None
-

@@ -6,6 +6,7 @@ import logging
 import multiprocessing
 import os
 import signal
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
@@ -32,6 +33,16 @@ from freemocap.utilities.wait_functions import await_1s
 
 logger = logging.getLogger(__name__)
 
+async def keep_alive_task(*,
+                         heartbeat_timestamp: multiprocessing.Value,
+                         global_kill_flag: multiprocessing.Value) -> None:
+    """A simple task that increments a counter every second to indicate the main process is alive."""
+    logger.debug("Starting heartbeat task...")
+    while not global_kill_flag.value:
+        with heartbeat_timestamp.get_lock():
+            heartbeat_timestamp.value = time.perf_counter()
+        await asyncio.sleep(1.0)
+    logger.debug("Heartbeat task ended")
 
 async def monitor_kill_flag(app: FastAPI) -> None:
     """
@@ -59,8 +70,19 @@ async def app_lifespan(
     base_path = Path(get_default_freemocap_base_folder_path())
     base_path.mkdir(parents=True, exist_ok=True)
     logger.info(f"Base folder: {base_path}")
-    create_freemocap_app(global_kill_flag=app.state.global_kill_flag,
-                         subprocess_registry=app.state.subprocess_registry)
+    create_freemocap_app(fastapi_app=app)
+
+    # Initialize heartbeat timestamp with current time
+    with app.state.heartbeat_timestamp.get_lock():
+        app.state.heartbeat_timestamp.value = time.perf_counter()
+
+    # Start heartbeat task IN THE APP CONTEXT
+    heartbeat_task = asyncio.create_task(
+        keep_alive_task(
+            heartbeat_timestamp=app.state.heartbeat_timestamp,
+            global_kill_flag=app.state.global_kill_flag
+        )
+    )
     # Start background task to monitor kill flag
     monitor_task = asyncio.create_task(monitor_kill_flag(app=app))
 
@@ -75,14 +97,21 @@ async def app_lifespan(
     # ===== SHUTDOWN =====
     logger.api("FreeMoCap API shutting down...")
 
-    # Cancel the monitor task
+    # Cancel the background tasks
+    heartbeat_task.cancel()
     monitor_task.cancel()
+
+    try:
+        await heartbeat_task
+    except asyncio.CancelledError:
+        pass
+
     try:
         await monitor_task
     except asyncio.CancelledError:
         pass
 
-    # Cleanup FreeMoCap application
+    # Cleanup SkellyCam application
     app.state.global_kill_flag.value = True
     get_freemocap_app().close()
 
@@ -90,12 +119,14 @@ async def app_lifespan(
 
 
 def create_fastapi_app(global_kill_flag: multiprocessing.Value,
+                       heartbeat_timestamp: multiprocessing.Value,
                        subprocess_registry: list[multiprocessing.Process]) -> FastAPI:
     """
     Create and configure the FastAPI application.
 
     Args:
         global_kill_flag: Shared flag for coordinated shutdown
+        heartbeat_timestamp: Shared heartbeat timestamp value
         subprocess_registry: List to track subprocesses
 
     Returns:
@@ -107,6 +138,8 @@ def create_fastapi_app(global_kill_flag: multiprocessing.Value,
     # Store dependencies in app state
     app.state.global_kill_flag = global_kill_flag
     app.state.subprocess_registry = subprocess_registry
+    app.state.heartbeat_timestamp = heartbeat_timestamp
+
 
     # Configure CORS
     cors(app)

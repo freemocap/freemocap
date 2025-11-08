@@ -72,13 +72,15 @@ class ProcessingPipeline:
     @classmethod
     def from_config(cls,
                     camera_group: CameraGroup,
+                    heartbeat_timestamp: multiprocessing.Value,
                     subprocess_registry: list[multiprocessing.Process],
                     pipeline_config: PipelineConfig,
                     ):
 
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
-                                 shm_topic=camera_group.ipc.pubsub.topics[TopicTypes.SHM_UPDATES]
-                                 )
+                                 shm_topic=camera_group.ipc.pubsub.topics[TopicTypes.SHM_UPDATES],
+                                 heartbeat_timestamp=heartbeat_timestamp
+        )
         camera_nodes = {camera_id: CameraNode.create(camera_id=camera_id,
                                                      subprocess_registry=subprocess_registry,
                                                      camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
@@ -144,8 +146,8 @@ class ProcessingPipeline:
         self.aggregation_node.shutdown()
         self.camera_group.close()
 
-    def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
-        return self.camera_group.update_camera_settings(requested_configs=camera_configs)
+    async def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
+        return await self.camera_group.update_camera_settings(requested_configs=camera_configs)
 
     def get_latest_frontend_payload(self, if_newer_than: FrameNumberInt) -> tuple[bytes, FrontendPayload | None] | None:
         if not self.alive:

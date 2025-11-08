@@ -65,7 +65,7 @@ class StartRecordingRequest(BaseModel):
 @pipeline_router.post("/connect",
                       summary="Create a processing pipeline and attach it to a camera group"
                       )
-def pipeline_connect_post_endpoint(
+async def pipeline_connect_post_endpoint(
         request: PipelineConnectRequest = Body(...,
                                                description="Request body containing desired camera configuration",
                                                examples=[
@@ -75,7 +75,7 @@ def pipeline_connect_post_endpoint(
     try:
         pipeline_config = request.pipeline_config or PipelineConfig.from_camera_configs(
             camera_configs=request.camera_configs)
-        pipeline = get_freemocap_app().create_or_update_pipeline(pipeline_config=pipeline_config)
+        pipeline = await get_freemocap_app().create_or_update_pipeline(pipeline_config=pipeline_config)
         response = PipelineCreateResponse.from_pipeline(pipeline=pipeline)
         logger.api(
             f"`pipeline/connect` POST request handled successfully - \n {response.model_dump_json(indent=2)}")
@@ -90,7 +90,7 @@ def pipeline_connect_post_endpoint(
 @pipeline_router.delete("/all/close",
                         summary="Disconnect/shutdown all processing pipelines"
                         )
-def pipeline_close_post_endpoint():
+async def pipeline_close_post_endpoint():
     logger.api(f"Received `pipeline/close` DELETE request")
     try:
 

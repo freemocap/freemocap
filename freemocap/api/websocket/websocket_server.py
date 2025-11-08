@@ -18,13 +18,13 @@ BACKPRESSURE_WARNING_THRESHOLD: int = 100  # Number of frames before we warn abo
 
 
 class WebsocketServer:
-    def __init__(self, fast_api_app: FastAPI, websocket: WebSocket):
+    def __init__(self, fastapi_app: FastAPI, websocket: WebSocket):
 
         self.websocket = websocket
-        if not hasattr(fast_api_app, "state") or not hasattr(fast_api_app.state, "global_kill_flag"):
+        if not hasattr(fastapi_app, "state") or not hasattr(fastapi_app.state, "global_kill_flag"):
             raise RuntimeError(
                 "FastAPI app does not have a global_kill_flag in its state - define those fields when creating fastapi app")
-        self._global_kill_flag = fast_api_app.state.global_kill_flag
+        self._global_kill_flag = fastapi_app.state.global_kill_flag
         self._app: FreemocApplication = get_freemocap_app()
 
         self._websocket_should_continue = True

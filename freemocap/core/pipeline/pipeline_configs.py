@@ -6,9 +6,7 @@ from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetec
 
 
 class CalibrationTaskConfig(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid"
-    )
+    model_config = ConfigDict(extra="forbid")
     calibration_recording_folder: str | None = Field(default=None, alias="calibrationRecordingFolder")
     live_track_charuco: bool = Field(default=True, alias="liveTrackCharuco")
     charuco_board_x_squares: int = Field(gt=0, default=3, alias="charucoBoardXSquares")

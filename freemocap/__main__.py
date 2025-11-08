@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 async def main() -> None:
     # Create shared kill flag for subprocesses
     global_kill_flag: multiprocessing.Value = multiprocessing.Value("b", False)
+    heartbeat_timestamp:multiprocessing.Value = multiprocessing.Value("d", 0)
     subprocess_registry: list[multiprocessing.Process] = []
     server: uvicorn.Server | None = None
 
@@ -37,6 +38,7 @@ async def main() -> None:
 
         # Create FastAPI app
         app = create_fastapi_app(global_kill_flag=global_kill_flag,
+                                 heartbeat_timestamp=heartbeat_timestamp,
                                  subprocess_registry=subprocess_registry)
 
         # Configure and create Uvicorn server

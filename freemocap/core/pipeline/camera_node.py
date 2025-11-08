@@ -8,6 +8,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
+from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.types.type_overloads import CameraIdString, WorkerType, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
@@ -45,6 +46,7 @@ class CameraNode:
     @classmethod
     def create(cls,
                camera_id: CameraIdString,
+               camera_shm_dto: SharedMemoryRingBufferDTO,
                subprocess_registry: list[multiprocessing.Process],
                config: PipelineConfig,
                ipc: PipelineIPC):
@@ -55,13 +57,11 @@ class CameraNode:
                                                      ipc=ipc,
                                                      config=config,
                                                      shutdown_self_flag=shutdown_self_flag,
+                                                     camera_shm_dto=camera_shm_dto,
                                                      process_frame_number_subscription=ipc.pubsub.get_subscription(
                                                          ProcessFrameNumberTopic),
                                                      pipeline_config_subscription=ipc.pubsub.get_subscription(
                                                          PipelineConfigUpdateTopic),
-                                                     should_calibrate_subscription=ipc.pubsub.get_subscription(
-                                                         ShouldCalibrateTopic),
-                                                     shm_subscription=ipc.shm_topic.get_subscription()
                                                      ),
                                          daemon=True
                                          )
@@ -77,9 +77,8 @@ class CameraNode:
              config: PipelineConfig,
              process_frame_number_subscription: TopicSubscriptionQueue,
              pipeline_config_subscription: TopicSubscriptionQueue,
-             should_calibrate_subscription: TopicSubscriptionQueue,
              shutdown_self_flag: multiprocessing.Value,
-             shm_subscription: TopicSubscriptionQueue,
+                camera_shm_dto: SharedMemoryRingBufferDTO,
              ):
         if multiprocessing.parent_process():
             # Configure logging if multiprocessing (i.e. if there is a parent process)
@@ -87,10 +86,8 @@ class CameraNode:
             from freemocap import LOG_LEVEL
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
-        logger.debug(f"Initializing camera processing node for camera {camera_id} - awaiting SHM setup...")
-        shm_update_message: SetShmMessage = shm_subscription.get(block=True)
-        logger.debug(f"Received SHM setup message - recreating shared memory rig buffer for camera {camera_id}")
-        camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=shm_update_message.get_shm_dto_by_camera_id(camera_id),
+        logger.debug(f"Initializing camera processing node for camera {camera_id} - creating shared memory ring buffer")
+        camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
                                                            read_only=False)
         camera_calibrator: SingleCameraCalibrator | None = None
         charuco_detector = CharucoDetector.create(config=config.calibration_task_config.detector_config)

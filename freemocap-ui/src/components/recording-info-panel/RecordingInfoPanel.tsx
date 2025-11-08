@@ -1,74 +1,102 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Box, Typography, useTheme } from "@mui/material";
-import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
-import { TreeItem } from "@mui/x-tree-view/TreeItem";
+import React, {useEffect, useState} from "react";
+import {Box, Typography, useTheme} from "@mui/material";
+import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
+import {TreeItem} from "@mui/x-tree-view/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import VideocamIcon from "@mui/icons-material/Videocam";
-import {
-    recordingInfoUpdated,
-    startRecording,
-    stopRecording,
-    useAppDispatch,
-    useAppSelector,
-    useDelayStartToggled,
-    delaySecondsChanged,
-    useTimestampToggled,
-    useIncrementToggled,
-    currentIncrementChanged,
-    currentIncrementIncremented,
-    baseNameChanged,
-    recordingTagChanged,
-    createSubfolderToggled,
-    customSubfolderNameChanged,
-    pathRecomputed,
-} from "@/store";
+import {useAppDispatch, useAppSelector} from "../../../../../skellycam/skellycam-ui/src/store";
 import {
     StartStopRecordingButton
-} from "@/components/recording-info-panel/recording-subcomponents/StartStopRecordingButton";
-import { RecordingPathTreeItem } from "@/components/recording-info-panel/RecordingPathTreeItem";
-import { useElectronIPC } from "@/services/electron-ipc/electron-ipc";
+} from "../../../../../skellycam/skellycam-ui/src/components/recording-info-panel/recording-subcomponents/StartStopRecordingButton";
+import {startRecording, stopRecording, recordingInfoUpdated} from "../../../../../skellycam/skellycam-ui/src/store";
+import {RecordingPathTreeItem} from "../../../../../skellycam/skellycam-ui/src/components/recording-info-panel/RecordingPathTreeItem";
+import {electronIpc, useElectronIPC} from "../../../../../skellycam/skellycam-ui/src/services/electron-ipc/electron-ipc";
+
+interface RecordingOperation {
+    type: 'start' | 'stop';
+    timestamp: number;
+}
 
 export const RecordingInfoPanel: React.FC = () => {
     const theme = useTheme();
     const dispatch = useAppDispatch();
-    const recordingInfo = useAppSelector((state) => state.recording);
-    const { config, computed } = recordingInfo;
+    const recordingInfo = useAppSelector(
+        (state) => state.recording
+    );
 
-    // Only keep countdown as local UI state (ephemeral)
+    // Local UI state
+    const [createSubfolder, setCreateSubfolder] = useState<boolean>(false);
+    const [useDelayStart, setUseDelayStart] = useState<boolean>(false);
+    const [delaySeconds, setDelaySeconds] = useState<number>(3);
     const [countdown, setCountdown] = useState<number | null>(null);
-    const { isElectron, api } = useElectronIPC();
 
-    // Replace ~ with user's home directory
+    // Track pending operation and recording start time
+    const [pendingOperation, setPendingOperation] = useState<RecordingOperation | null>(null);
+    const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+
+    // Local recording naming
+    const [useTimestamp, setUseTimestamp] = useState<boolean>(true);
+    const [useIncrement, setUseIncrement] = useState<boolean>(false);
+    const [currentIncrement, setCurrentIncrement] = useState<number>(1);
+    const [baseName, setBaseName] = useState<string>("recording");
+    const [customSubfolderName, setCustomSubfolderName] = useState<string>("");
+    const [recordingTag, setRecordingTag] = useState<string>("");
+    const {isElectron, api} = useElectronIPC();
+
+    // Track when recording state changes to clear pending state
     useEffect(() => {
-        if (recordingInfo.recordingDirectory.startsWith("~") && isElectron && api) {
+        if (pendingOperation) {
+            const isNowRecording = recordingInfo.isRecording;
+            const wasStarting = pendingOperation.type === 'start';
+            const wasStopping = pendingOperation.type === 'stop';
+
+            // Clear pending if state changed as expected
+            if ((wasStarting && isNowRecording) || (wasStopping && !isNowRecording)) {
+                setPendingOperation(null);
+
+                // Set or clear recording start time
+                if (wasStarting && isNowRecording) {
+                    setRecordingStartTime(Date.now());
+                } else if (wasStopping && !isNowRecording) {
+                    setRecordingStartTime(null);
+                }
+            }
+
+            // Timeout fallback - clear pending after 5 seconds if thunk hasn't responded
+            const timeoutMs = 5000;
+            const elapsed = Date.now() - pendingOperation.timestamp;
+            if (elapsed > timeoutMs) {
+                console.error(`Recording ${pendingOperation.type} operation timed out after ${timeoutMs}ms`);
+                setPendingOperation(null);
+            }
+        }
+    }, [recordingInfo.isRecording, pendingOperation]);
+
+    // Set initial recording start time if already recording on mount
+    useEffect(() => {
+        if (recordingInfo.isRecording && !recordingStartTime) {
+            setRecordingStartTime(Date.now());
+        }
+    }, []);
+
+    // replace ~ with user's home directory
+    useEffect(() => {
+        if (recordingInfo?.recordingDirectory?.startsWith("~") && isElectron && api) {
             api.fileSystem.getHomeDirectory.query()
                 .then((homePath: string) => {
-                    const updatedDirectory = recordingInfo.recordingDirectory.replace("~", homePath);
-                    dispatch(recordingInfoUpdated({ recordingDirectory: updatedDirectory }));
+                    const updatedDirectory = recordingInfo.recordingDirectory.replace(
+                        "~",
+                        homePath
+                    );
+                    dispatch(recordingInfoUpdated({recordingDirectory: updatedDirectory}));
                 })
                 .catch((error: unknown) => {
                     console.error("Failed to get home directory:", error);
+                    throw error; // Fail loudly as per preferences
                 });
         }
     }, [recordingInfo.recordingDirectory, isElectron, api, dispatch]);
-
-    const handleStartRecording = useCallback((): void => {
-        console.log("Starting recording...");
-        console.log("Recording path:", computed.fullRecordingPath);
-        console.log("Recording name:", computed.recordingName);
-
-        if (config.useIncrement) {
-            dispatch(currentIncrementIncremented());
-        }
-
-        dispatch(
-            startRecording({
-                recordingName: computed.recordingName,
-                recordingDirectory: computed.fullRecordingPath,
-            })
-        );
-    }, [computed.fullRecordingPath, computed.recordingName, config.useIncrement, dispatch]);
 
     // Handle countdown timer
     useEffect(() => {
@@ -79,34 +107,122 @@ export const RecordingInfoPanel: React.FC = () => {
             handleStartRecording();
             setCountdown(null);
         }
-    }, [countdown, handleStartRecording]);
+    }, [countdown]);
 
-    // Update timestamp every second when timestamps are being used
-    useEffect(() => {
-        const shouldUpdateTimestamp =
-            config.useTimestamp ||
-            (config.createSubfolder && !config.customSubfolderName);
+    const getTimestampString = (): string => {
+        const now = new Date();
 
-        if (shouldUpdateTimestamp && !recordingInfo.isRecording) {
-            const interval = setInterval(() => {
-                dispatch(pathRecomputed());
-            }, 1000);
+        const dateOptions: Intl.DateTimeFormatOptions = {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+            timeZoneName: "shortOffset",
+        };
 
-            return () => clearInterval(interval);
-        }
-    }, [config.useTimestamp, config.createSubfolder, config.customSubfolderName, recordingInfo.isRecording, dispatch]);
+        const formatter = new Intl.DateTimeFormat("en-US", dateOptions);
+        const parts = formatter.formatToParts(now);
 
-    const handleRecordButtonClick = (): void => {
-        if (recordingInfo.isRecording) {
-            console.log("Stopping recording...");
-            dispatch(stopRecording());
-        } else if (config.useDelayStart) {
-            console.log(`Starting countdown from ${config.delaySeconds} seconds`);
-            setCountdown(config.delaySeconds);
+        const partMap: Record<string, string> = {};
+        parts.forEach((part) => {
+            partMap[part.type] = part.value;
+        });
+
+        return `${partMap.year}-${partMap.month}-${partMap.day}_${
+            partMap.hour
+        }-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(
+            ":",
+            ""
+        )}`;
+    };
+
+    const handleRecordingTagChange = (tag: string): void => {
+        setRecordingTag(tag);
+    };
+
+    const buildRecordingName = (): string => {
+        const parts: string[] = [];
+
+        if (useTimestamp) {
+            parts.push(getTimestampString());
         } else {
-            handleStartRecording();
+            parts.push(baseName);
+        }
+
+        if (recordingTag) {
+            parts.push(recordingTag);
+        }
+
+        return parts.join("_");
+    };
+
+    const handleStartRecording = async (): Promise<void> => {
+        console.log("Starting recording...");
+
+        const recordingName = buildRecordingName();
+        const subfolderName = createSubfolder
+            ? customSubfolderName || getTimestampString()
+            : "";
+        const recordingPath = createSubfolder
+            ? `${recordingInfo.recordingDirectory}/${subfolderName}`
+            : recordingInfo.recordingDirectory;
+
+        console.log("Recording path:", recordingPath);
+        console.log("Recording name:", recordingName);
+
+        if (useIncrement) {
+            setCurrentIncrement((prev) => prev + 1);
+        }
+
+        // Set pending state before dispatching
+        setPendingOperation({ type: 'start', timestamp: Date.now() });
+
+        try {
+            await dispatch(
+                startRecording({
+                    recordingName,
+                    recordingDirectory: recordingPath,
+                })
+            ).unwrap();
+        } catch (error) {
+            console.error("Failed to start recording:", error);
+            setPendingOperation(null);
+            throw error; // Fail loudly as per preferences
         }
     };
+
+    const handleRecordButtonClick = async (): Promise<void> => {
+        // Don't allow clicking while pending
+        if (pendingOperation) {
+            return;
+        }
+
+        if (recordingInfo.isRecording) {
+            console.log("Stopping recording...");
+            setPendingOperation({ type: 'stop', timestamp: Date.now() });
+
+            try {
+                await dispatch(stopRecording()).unwrap();
+            } catch (error) {
+                console.error("Failed to stop recording:", error);
+                setPendingOperation(null);
+                throw error; // Fail loudly as per preferences
+            }
+        } else if (useDelayStart) {
+            console.log(`Starting countdown from ${delaySeconds} seconds`);
+            setCountdown(delaySeconds);
+        } else {
+            await handleStartRecording();
+        }
+    };
+
+    const recordingName = buildRecordingName();
+    const subfolderName = createSubfolder
+        ? customSubfolderName || getTimestampString()
+        : undefined;
 
     return (
         <Box
@@ -147,40 +263,45 @@ export const RecordingInfoPanel: React.FC = () => {
                                 py: 0.25,
                             }}
                         >
-                            <VideocamIcon sx={{ mr: 1, color: theme.palette.secondary.main }} />
+                            <VideocamIcon sx={{ fontSize: 16, mr: 0.5 }} />
                             <Typography sx={{ flexGrow: 1, fontSize: 13, fontWeight: 500 }}>
                                 Record
                             </Typography>
 
                             <StartStopRecordingButton
                                 isRecording={recordingInfo.isRecording}
+                                isPending={pendingOperation !== null}
                                 countdown={countdown}
+                                recordingStartTime={recordingStartTime}
                                 onClick={handleRecordButtonClick}
                             />
                         </Box>
                     }
                 >
                     <RecordingPathTreeItem
+                        recordingDirectory={recordingInfo.recordingDirectory}
+                        recordingName={recordingName}
+                        subfolder={subfolderName}
                         countdown={countdown}
-                        recordingTag={config.recordingTag}
-                        useDelayStart={config.useDelayStart}
-                        delaySeconds={config.delaySeconds}
-                        useTimestamp={config.useTimestamp}
-                        baseName={config.baseName}
-                        useIncrement={config.useIncrement}
-                        currentIncrement={config.currentIncrement}
-                        createSubfolder={config.createSubfolder}
-                        customSubfolderName={config.customSubfolderName}
+                        recordingTag={recordingTag}
+                        useDelayStart={useDelayStart}
+                        delaySeconds={delaySeconds}
+                        useTimestamp={useTimestamp}
+                        baseName={baseName}
+                        useIncrement={useIncrement}
+                        currentIncrement={currentIncrement}
+                        createSubfolder={createSubfolder}
+                        customSubfolderName={customSubfolderName}
                         isRecording={recordingInfo.isRecording}
-                        onDelayToggle={(value: boolean) => dispatch(useDelayStartToggled(value))}
-                        onDelayChange={(value: number) => dispatch(delaySecondsChanged(value))}
-                        onTagChange={(value: string) => dispatch(recordingTagChanged(value))}
-                        onUseTimestampChange={(value: boolean) => dispatch(useTimestampToggled(value))}
-                        onBaseNameChange={(value: string) => dispatch(baseNameChanged(value))}
-                        onUseIncrementChange={(value: boolean) => dispatch(useIncrementToggled(value))}
-                        onIncrementChange={(value: number) => dispatch(currentIncrementChanged(value))}
-                        onCreateSubfolderChange={(value: boolean) => dispatch(createSubfolderToggled(value))}
-                        onCustomSubfolderNameChange={(value: string) => dispatch(customSubfolderNameChanged(value))}
+                        onDelayToggle={setUseDelayStart}
+                        onDelayChange={setDelaySeconds}
+                        onTagChange={handleRecordingTagChange}
+                        onUseTimestampChange={setUseTimestamp}
+                        onBaseNameChange={setBaseName}
+                        onUseIncrementChange={setUseIncrement}
+                        onIncrementChange={setCurrentIncrement}
+                        onCreateSubfolderChange={setCreateSubfolder}
+                        onCustomSubfolderNameChange={setCustomSubfolderName}
                     />
                 </TreeItem>
             </SimpleTreeView>

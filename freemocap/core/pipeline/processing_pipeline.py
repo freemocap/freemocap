@@ -50,6 +50,7 @@ class ProcessingPipeline:
     aggregation_node: AggregationNode
     aggregation_node_subscription: TopicSubscriptionQueue
     ipc: PipelineIPC
+    started: bool = False
 
     @property
     def alive(self) -> bool:
@@ -70,19 +71,17 @@ class ProcessingPipeline:
 
     @classmethod
     def from_config(cls,
-                    global_kill_flag: multiprocessing.Value,
+                    camera_group: CameraGroup,
                     subprocess_registry: list[multiprocessing.Process],
                     pipeline_config: PipelineConfig,
                     ):
-        camera_group = CameraGroup.create(camera_configs=pipeline_config.camera_configs,
-                                          subprocess_registry=subprocess_registry,
-                                          global_kill_flag=global_kill_flag,
-                                          )
+
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
                                  shm_topic=camera_group.ipc.pubsub.topics[TopicTypes.SHM_UPDATES]
                                  )
         camera_nodes = {camera_id: CameraNode.create(camera_id=camera_id,
                                                      subprocess_registry=subprocess_registry,
+                                                     camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
                                                      config=pipeline_config,
                                                      ipc=ipc)
                         for camera_id, config in camera_group.configs.items()}
@@ -103,15 +102,17 @@ class ProcessingPipeline:
                    )
 
     def start(self) -> None:
+        self.started = True
         logger.debug(
             f"Starting Pipeline (id:{self.id} with camera group (id:{self.camera_group_id} for camera ids: {list(self.camera_nodes.keys())}...")
-        try:
-            logger.debug("Starting camera group...")
-            self.camera_group.start()
-        except Exception as e:
-            logger.error(f"Failed to start camera group: {type(e).__name__} - {e}")
-            logger.exception(e)
-            raise
+        if not self.camera_group.started:
+            try:
+                logger.debug("Starting camera group...")
+                self.camera_group.start()
+            except Exception as e:
+                logger.error(f"Failed to start camera group: {type(e).__name__} - {e}")
+                logger.exception(e)
+                raise
 
         try:
             logger.debug("Starting aggregation node...")

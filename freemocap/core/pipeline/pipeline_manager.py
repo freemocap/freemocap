@@ -4,9 +4,12 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
+from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
 from freemocap.core.pipeline.processing_pipeline import ProcessingPipeline, FrontendPayload
+from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import \
+    CameraGroup
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 logger = logging.getLogger(__name__)
@@ -19,8 +22,9 @@ class PipelineManager:
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, ProcessingPipeline] = field(default_factory=dict)
 
-    def create_or_update_pipeline(self,
-                                  pipeline_config: PipelineConfig) -> ProcessingPipeline:
+    def create_pipeline(self,
+                        camera_group:CameraGroup,
+                        pipeline_config: PipelineConfig) -> ProcessingPipeline:
         with self.lock:
             # get existing pipeline for the provided camera configs, if it exists
             for pipeline in self.pipelines.values():
@@ -30,12 +34,23 @@ class PipelineManager:
                     pipeline.update_camera_configs(camera_configs=pipeline_config.camera_configs)
                     return pipeline
             pipeline = ProcessingPipeline.from_config(pipeline_config=pipeline_config,
-                                                      subprocess_registry=self.subprocess_registry,
-                                                      global_kill_flag=self.global_kill_flag)
+                                                        camera_group=camera_group,
+                                                      subprocess_registry=self.subprocess_registry)
             pipeline.start()
             self.pipelines[pipeline.id] = pipeline
             logger.info(f"Created pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
             return pipeline
+    def update_pipeline(self,
+                                  pipeline_config: PipelineConfig) -> ProcessingPipeline:
+        with self.lock:
+            # get existing pipeline for the provided camera configs, if it exists
+            for pipeline in self.pipelines.values():
+                if set(pipeline.camera_ids) == set(pipeline_config.camera_ids):
+                    logger.info(
+                        f"Found existing pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
+                    pipeline.update_camera_configs(camera_configs=pipeline_config.camera_configs)
+                    return pipeline
+        raise RuntimeError("No existing pipeline found for the provided camera configs.")
 
     def close_all_pipelines(self):
         with self.lock:
@@ -96,3 +111,11 @@ class PipelineManager:
         with self.lock:
             for pipeline in self.pipelines.values():
                 pipeline.stop_calibration_recording()
+
+    def get_pipeline_by_camera_ids(self, camera_ids: list[CameraIdString]) -> ProcessingPipeline | None:
+        with self.lock:
+            for pipeline in self.pipelines.values():
+                if set(pipeline.camera_ids) == set(camera_ids):
+                    return pipeline
+        return None
+

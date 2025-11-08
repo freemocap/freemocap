@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera_group.camera_group import CameraGroupState
+from skellycam.core.camera_group.camera_group_manager import CameraGroupManager
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
 
@@ -43,28 +44,37 @@ class FreemocApplication:
     global_kill_flag: multiprocessing.Value
     pipeline_shutdown_event: multiprocessing.Event
     pipeline_manager: PipelineManager
+    camera_group_manager: CameraGroupManager
 
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value,
                subprocess_registry: list[multiprocessing.Process]) -> 'FreemocApplication':
-        pipeline_manager = PipelineManager(global_kill_flag=global_kill_flag,
-                                           subprocess_registry=subprocess_registry, )
+
         return cls(global_kill_flag=global_kill_flag,
                    pipeline_shutdown_event=multiprocessing.Event(),
-                   pipeline_manager=pipeline_manager,
+                   pipeline_manager=PipelineManager(global_kill_flag=global_kill_flag,
+                                                    subprocess_registry=subprocess_registry, ),
+                   camera_group_manager=CameraGroupManager(global_kill_flag=global_kill_flag,
+                                                           subprocess_registry=subprocess_registry, )
                    )
 
     @property
     def should_continue(self) -> bool:
         return not self.global_kill_flag.value
 
-    @property
-    def camera_group_manager(self):
-        return self.skellycam_app.camera_group_manager
-
-    def connect_or_update_pipeline(self,
-                                   pipeline_config: PipelineConfig) -> ProcessingPipeline:
-        pipeline = self.pipeline_manager.create_or_update_pipeline(pipeline_config=pipeline_config)
+    def create_or_update_pipeline(self,
+                                  pipeline_config: PipelineConfig) -> ProcessingPipeline:
+        pipeline = self.pipeline_manager.get_pipeline_by_camera_ids(
+            camera_ids=pipeline_config.camera_ids)
+        if pipeline is not None:
+            pipeline = self.pipeline_manager.update_pipeline(pipeline_config=pipeline_config)
+        else:
+            camera_group = self.camera_group_manager.create_or_update_camera_group(
+                camera_configs=pipeline_config.camera_configs
+            )
+            pipeline = self.pipeline_manager.create_pipeline(
+                camera_group=camera_group,
+                pipeline_config=pipeline_config)
         return pipeline
 
     def close_pipelines(self):
@@ -80,9 +90,11 @@ class FreemocApplication:
         self.pipeline_manager.stop_recording_all()
 
     def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[
-        PipelineIdString, tuple[bytes, FrontendPayload | None]]:
+        PipelineIdString | CameraGroupIdString, tuple[bytes, FrontendPayload | None]]:
         if len(self.pipeline_manager.pipelines) == 0:
-            return {}
+            cg_payloads = self.camera_group_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)
+            cg_payloads = {camera_group_id: (payload[-1], None) for camera_group_id, payload in cg_payloads.items()}
+            return cg_payloads
 
         return self.pipeline_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)
 

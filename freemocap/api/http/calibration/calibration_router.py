@@ -38,6 +38,8 @@ class StartCalibrationRecordingRequest(CalibrationTaskConfig):
             recording_name=self.calibration_recording_name,
             mic_device_index=-1
         )
+class StopCalibrationRecordingRequest(CalibrationTaskConfig):
+    calibration_task_config: CalibrationTaskConfig = Field(alias="calibrationTaskConfig")
 
 
 class StartCalibrationRecordingResponse(BaseModel):
@@ -68,24 +70,27 @@ def update_all_calibration_config(request: CalibrationConfigRequest) -> Calibrat
 async def start_calibration_recording(request: StartCalibrationRecordingRequest) -> StartCalibrationRecordingResponse:
     """Start calibration recording with given config."""
     try:
+        recording_info = request.to_recording_info()
+        if not recording_info.recording_name.endswith('_calibration'):
+            recording_info.recording_name += '_calibration'
 
-        await get_freemocap_app().create_posthoc_calibration_pipeline(
-            recording_info=request.to_recording_info(),
-            calibration_task_config=request.calibration_task_config)
-        logger.info(f"Starting recording with config: {request.calibration_task_config}")
+        await get_freemocap_app().create_or_update_realtime_calibration_pipeline(request.calibration_task_config)
+        await get_freemocap_app().start_recording_all(recording_info=recording_info,)
+        logger.info(f"Starting recording : {recording_info}")
         return StartCalibrationRecordingResponse(success=True, message="Recording started")
     except Exception as e:
-        logger.error(f"Error starting recording: {e}")
+        logger.exception(f"Error starting recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @calibration_router.post("/recording/stop")
-async def stop_calibration_recording(request: Request) -> dict[str, bool]:
+async def stop_calibration_recording(request: StopCalibrationRecordingRequest) -> dict[str, bool]:
     """Stop current calibration recording."""
     app = get_freemocap_app()
     try:
-        # TODO: Implement actual recording stop logic
-        await app.realtime_pipeline_manager.stop_calibration_recording()
+        recording_info = await app.stop_recording_all()
+        await app.posthoc_pipeline_manager.create_posthoc_calibration_pipeline(recording_info=recording_info,
+                                                                               calibration_task_config=request.calibration_task_config)
         logger.info("Stopping recording")
         return {"success": True}
     except Exception as e:

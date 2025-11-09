@@ -95,10 +95,16 @@ class FreemocApplication:
         self.realtime_pipeline_manager.pause_unpause_pipelines()
 
     async def start_recording_all(self, recording_info: RecordingInfo):
-        await self.realtime_pipeline_manager.start_recording_all(recording_info=recording_info)
+        await self.camera_group_manager.start_recording_all_groups(recording_info=recording_info)
 
-    async def stop_recording_all(self):
-        await self.realtime_pipeline_manager.stop_recording_all()
+    async def stop_recording_all(self)-> RecordingInfo| None:
+        recording_infos  = await self.camera_group_manager.stop_recording_all_groups()
+        if len(recording_infos) == 0:
+            logger.warning(f"No recordings were stopped.")
+            return None
+        elif len(recording_infos) >1:
+            raise NotImplementedError("Stopping multiple recordings at once is not supported yet.")
+        return recording_infos[0]
 
     def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[
         PipelineIdString | CameraGroupIdString, tuple[bytes, FrontendPayload | None]]:
@@ -118,6 +124,13 @@ class FreemocApplication:
 
     def to_app_state(self):
         return AppState.from_app(self)
+
+    async def create_or_update_realtime_calibration_pipeline(self, calibration_task_config: CalibrationTaskConfig) -> RealtimeProcessingPipeline:
+        pipeline = await self.realtime_pipeline_manager.create_or_update_realtime_calibration_pipeline(
+            calibration_task_config=calibration_task_config
+        )
+        return pipeline
+
 
 
 FREEMOCAP_APP: FreemocApplication | None = None

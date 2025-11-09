@@ -95,7 +95,7 @@ class CalibrationVideoNode:
                 ipc.kill_everything()
                 raise e
             finally:
-                logger.debug(f"Shutting down video processing node for video: {video.video_path.stem} - {e}")
+                logger.debug(f"Shutting down video processing node for video: {video.video_path.stem}")
                 video.close()
 
     def start(self):

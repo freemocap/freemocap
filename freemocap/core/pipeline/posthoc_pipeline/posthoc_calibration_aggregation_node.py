@@ -9,14 +9,13 @@ from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_pipeline import VideoIdString
 from freemocap.core.pipeline.posthoc_pipeline.video_node.video_helper import VideoMetadata
 from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.charuco_observation_aggregator import \
     anipose_calibration_from_charuco_observations
 from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.freemocap_anipose import \
     AniposeCharucoBoard, AniposeCameraGroup
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import CharucoObservations
-from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
+from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
 
 logger = logging.getLogger(__name__)
@@ -117,10 +116,13 @@ class PosthocCalibrationAggregationNode:
                         video_node_output_message.video_id] = video_node_output_message
 
                 # Check if we have received all video node outputs for each frame
+                all_frames_complete = True  # Assume complete until proven otherwise
                 for frame_outputs in video_outputs_by_frame.values():
-                    if any([output is None for output in frame_outputs.values()]):
+                    if any(output is None for output in frame_outputs.values()):
+                        all_frames_complete = False  # Found incomplete frame
                         break
-                all_frames_complete = True
+                if not all_frames_complete:
+                    continue
             logger.info(f"All video node outputs received for pipeline {pipeline_id}, starting calibration")
             charuco_observations_by_frame: list[CharucoObservations] = []
             for frame_outputs in video_outputs_by_frame.values():

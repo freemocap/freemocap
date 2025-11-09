@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from fastapi import FastAPI
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
-from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_pipeline import PosthocProcessingPipeline
+from freemocap.core.pipeline.pipeline_configs import CalibrationTaskConfig
+from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_pipeline import PosthocCalibrationProcessingPipeline
 from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class PosthocPipelineManager:
     heartbeat_timestamp: multiprocessing.Value
     subprocess_registry: list[multiprocessing.Process]
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
-    posthoc_pipelines: dict[PipelineIdString, PosthocProcessingPipeline] = field(default_factory=dict)
+    posthoc_pipelines: dict[PipelineIdString, PosthocCalibrationProcessingPipeline] = field(default_factory=dict)
 
     @classmethod
     def from_fastapi_app(cls, fastapi_app: FastAPI) -> 'RealtimePipelineManager':
@@ -27,17 +27,21 @@ class PosthocPipelineManager:
                    subprocess_registry=fastapi_app.state.subprocess_registry)
 
     async def create_posthoc_calibration_pipeline(self,
-                                      recording_info: RecordingInfo,
-                                      calibration_task_config: CalibrationTaskConfig) -> PosthocProcessingPipeline:
+                                                  recording_info: RecordingInfo,
+                                                  calibration_task_config: CalibrationTaskConfig) -> PosthocCalibrationProcessingPipeline:
         with self.lock:
-            pipeline = PosthocCalibrationProcessingPipeline.from_config(task_config=calibration_task_config,
-                                                             heartbeat_timestamp=self.heartbeat_timestamp,
-                                                             subprocess_registry=self.subprocess_registry)
+            pipeline = PosthocCalibrationProcessingPipeline.from_task_config(
+                calibration_task_config=calibration_task_config,
+                recording_info=recording_info,
+                heartbeat_timestamp=self.heartbeat_timestamp,
+                subprocess_registry=self.subprocess_registry,
+                global_kill_flag=self.global_kill_flag,
+            )
             pipeline.start()
             self.posthoc_pipelines[pipeline.id] = pipeline
-            logger.info(f"Post-hoc pipeline with ID: {pipeline.id} for recording '{recording_info.recording_name}' created successfully")
+            logger.info(
+                f"Post-hoc pipeline with ID: {pipeline.id} for recording '{recording_info.recording_name}' created successfully")
             return pipeline
-
 
     def close_all_posthoc_pipelines(self):
         with self.lock:
@@ -45,4 +49,3 @@ class PosthocPipelineManager:
                 pipeline.shutdown()
             self.posthoc_pipelines.clear()
         logger.info("All pipelines closed successfully")
-

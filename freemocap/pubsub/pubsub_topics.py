@@ -6,9 +6,8 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointId
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
-from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_pipeline import VideoIdString
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
-from freemocap.core.types.type_overloads import FrameNumberInt, Point3d, PipelineIdString
+from freemocap.core.types.type_overloads import FrameNumberInt, Point3d, PipelineIdString, VideoIdString
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 
 logger = logging.getLogger(__name__)

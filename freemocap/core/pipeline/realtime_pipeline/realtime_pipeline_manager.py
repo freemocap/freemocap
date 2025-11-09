@@ -8,7 +8,6 @@ from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
-from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_pipeline import PosthocProcessingPipeline
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline import RealtimeProcessingPipeline
 from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import \
     CameraGroup
@@ -24,7 +23,6 @@ class RealtimePipelineManager:
     subprocess_registry: list[multiprocessing.Process]
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
     realtime_pipelines: dict[PipelineIdString, RealtimeProcessingPipeline] = field(default_factory=dict)
-    posthoc_pipelines: dict[PipelineIdString, PosthocProcessingPipeline] = field(default_factory=dict)
 
     @classmethod
     def from_fastapi_app(cls, fastapi_app:FastAPI) -> 'RealtimePipelineManager':
@@ -91,10 +89,12 @@ class RealtimePipelineManager:
             for pipeline in self.realtime_pipelines.values():
                 await pipeline.camera_group.start_recording(recording_info=recording_info)
 
-    async def stop_recording_all(self):
+    async def stop_recording_all(self) -> list[RecordingInfo]:
         with self.lock:
+            recording_infos= []
             for pipeline in self.realtime_pipelines.values():
-                await pipeline.camera_group.stop_recording()
+                recording_infos.append( await pipeline.camera_group.stop_recording())
+            return recording_infos
 
     def update_calibration_task_config(self, calibration_task_config: CalibrationTaskConfig):
         with self.lock:
@@ -109,4 +109,18 @@ class RealtimePipelineManager:
                 if set(pipeline.camera_ids) == set(camera_ids):
                     return pipeline
         return None
+
+    async def create_or_update_realtime_calibration_pipeline(self, calibration_task_config: CalibrationTaskConfig) -> RealtimeProcessingPipeline:
+        with self.lock:
+            # TODO - update specific pipelines by id, for now update all pipelines
+            for pipeline in self.realtime_pipelines.values():
+                new_config = deepcopy(pipeline.config)
+                new_config.calibration_task_config = calibration_task_config
+                pipeline.update_pipeline_config(new_config=new_config)
+                return pipeline
+        raise RuntimeError("No existing pipeline found for the provided camera configs.")
+
+    async def stop_calibration_recording(self, calibration_task_config: CalibrationTaskConfig):
+        pass
+
 

@@ -67,7 +67,7 @@ export const startCalibrationRecording = createAsyncThunk<
     async (_, { getState, rejectWithValue }) => {
         try {
             const state = getState();
-            const config = state.calibration.config;
+            const calibrationTaskConfig = state.calibration.config;
             const calibrationRecordingDirectory = selectCalibrationRecordingPath(state);
             const calibrationRecordingName = generateCalibrationRecordingName(state);
 
@@ -78,7 +78,7 @@ export const startCalibrationRecording = createAsyncThunk<
             console.log('🎬 Starting calibration recording with:', {
                 calibrationRecordingDirectory,
                 calibrationRecordingName,
-                config,
+                calibrationTaskConfig,
             });
 
             const response = await fetch(serverUrls.endpoints.calibrationStartRecording, {
@@ -87,7 +87,7 @@ export const startCalibrationRecording = createAsyncThunk<
                 body: JSON.stringify({
                     calibrationRecordingDirectory,
                     calibrationRecordingName,
-                    config,
+                    calibrationTaskConfig,
                 }),
             });
 
@@ -110,16 +110,22 @@ export const startCalibrationRecording = createAsyncThunk<
 export const stopCalibrationRecording = createAsyncThunk<
     { success: boolean },
     void,
-    { rejectValue: string }
+    { state: RootState; rejectValue: string }
 >(
     'calibration/stopRecording',
-    async (_, { rejectWithValue }) => {
+    async (_, { getState, rejectWithValue }) => {
         try {
-            console.log('⏹️ Stopping calibration recording...');
+            const state = getState();
+            const calibrationTaskConfig = state.calibration.config;
+
+
+            console.log(`🎬 Stoping calibration recording and starting calibration with: ${JSON.stringify(calibrationTaskConfig, null, 2)}`);
+
 
             const response = await fetch(serverUrls.endpoints.calibrationStopRecording, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({calibrationTaskConfig}),
             });
 
             if (!response.ok) {

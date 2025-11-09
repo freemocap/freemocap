@@ -1,24 +1,20 @@
 import logging
 import multiprocessing
 import uuid
-from abc import ABC
-from dataclasses import dataclass
-from enum import Enum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SkipValidation
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig, PipelineTaskConfigABC, CalibrationTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.posthoc_pipeline.posthoc_aggregation_node import PosthocCalibrationAggregationNode
+from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_aggregation_node import PosthocCalibrationAggregationNode
 from freemocap.core.pipeline.posthoc_pipeline.video_node.video_group import VideoGroup
 from freemocap.core.pipeline.posthoc_pipeline.video_node.calibration_video_node import VideoNodeState, CalibrationVideoNode
 from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import AggregationNode, \
     RealtimeAggregationNodeState
-from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue
+from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, VideoIdString
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-VideoIdString = str
 
 logger = logging.getLogger(__name__)
 
@@ -35,13 +31,16 @@ class PosthocPipelineState(BaseModel):
     alive: bool
 
 class PosthocCalibrationProcessingPipeline(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="forbid",
+    )
     id: PipelineIdString
     recording_info:RecordingInfo
-    task_config: PipelineTaskConfigABC
+    calibration_task_config: CalibrationTaskConfig
     video_nodes: dict[VideoIdString, CalibrationVideoNode]
-    aggregation_node: AggregationNode
-    video_node_subscriptions: dict[VideoIdString, TopicSubscriptionQueue]
-    aggregation_node_subscription: TopicSubscriptionQueue
+    aggregation_node: PosthocCalibrationAggregationNode
     ipc: PipelineIPC
     started: bool = False
 
@@ -84,10 +83,9 @@ class PosthocCalibrationProcessingPipeline(BaseModel):
         return cls(video_nodes=video_nodes,
                    aggregation_node=aggregation_node,
                    ipc=ipc,
-                   task_config=task_config,
-                   aggregation_node_subscription=ipc.pubsub.topics[
-                       AggregationNodeOutputTopic].get_subscription(),
-                   id=str(uuid.uuid4())[:6],
+                   calibration_task_config=calibration_task_config,
+                   id=pipeline_id,
+                   recording_info=recording_info
                    )
 
     def start(self) -> None:

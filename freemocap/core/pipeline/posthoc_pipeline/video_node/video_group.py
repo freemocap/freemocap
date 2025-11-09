@@ -2,8 +2,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_pipeline import VideoIdString
 from freemocap.core.pipeline.posthoc_pipeline.video_node.video_helper import VideoHelper
+from freemocap.core.types.type_overloads import VideoIdString
 
 
 class VideoGroup(BaseModel):

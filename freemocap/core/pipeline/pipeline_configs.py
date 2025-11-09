@@ -1,9 +1,14 @@
+from abc import ABC
+
 from pydantic import BaseModel, Field, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
 
+
+class PipelineTaskConfigABC(BaseModel,ABC):
+    pass
 
 class CalibrationTaskConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")

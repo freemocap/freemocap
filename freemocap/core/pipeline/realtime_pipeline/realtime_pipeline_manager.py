@@ -8,17 +8,17 @@ from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
-from freemocap.core.pipeline.posthoc_pipeline.posthoc_pipeline import PosthocProcessingPipeline
+from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_pipeline import PosthocProcessingPipeline
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline import RealtimeProcessingPipeline
 from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import \
     CameraGroup
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
-
+from fastapi import FastAPI
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class PipelineManager:
+class RealtimePipelineManager:
     global_kill_flag: multiprocessing.Value
     heartbeat_timestamp: multiprocessing.Value
     subprocess_registry: list[multiprocessing.Process]
@@ -26,9 +26,15 @@ class PipelineManager:
     realtime_pipelines: dict[PipelineIdString, RealtimeProcessingPipeline] = field(default_factory=dict)
     posthoc_pipelines: dict[PipelineIdString, PosthocProcessingPipeline] = field(default_factory=dict)
 
-    async def create_pipeline(self,
-                              camera_group: CameraGroup,
-                              pipeline_config: PipelineConfig) -> RealtimeProcessingPipeline:
+    @classmethod
+    def from_fastapi_app(cls, fastapi_app:FastAPI) -> 'RealtimePipelineManager':
+        return cls(global_kill_flag=fastapi_app.state.global_kill_flag,
+                   heartbeat_timestamp=fastapi_app.state.heartbeat_timestamp,
+                   subprocess_registry=fastapi_app.state.subprocess_registry)
+
+    async def create_realtime_pipeline(self,
+                                       camera_group: CameraGroup,
+                                       pipeline_config: PipelineConfig) -> RealtimeProcessingPipeline:
         with self.lock:
             # get existing pipeline for the provided camera configs, if it exists
             for pipeline in self.realtime_pipelines.values():
@@ -46,8 +52,8 @@ class PipelineManager:
             logger.info(f"Created pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")
             return pipeline
 
-    async def update_pipeline(self,
-                        pipeline_config: PipelineConfig) -> RealtimeProcessingPipeline:
+    async def update_realtime_pipeline(self,
+                                       pipeline_config: PipelineConfig) -> RealtimeProcessingPipeline:
         with self.lock:
             # get existing pipeline for the provided camera configs, if it exists
             for pipeline in self.realtime_pipelines.values():
@@ -58,7 +64,7 @@ class PipelineManager:
                     return pipeline
         raise RuntimeError("No existing pipeline found for the provided camera configs.")
 
-    def close_all_pipelines(self):
+    def close_all_realtime_pipelines(self):
         with self.lock:
             for pipeline in self.realtime_pipelines.values():
                 pipeline.shutdown()
@@ -72,7 +78,6 @@ class PipelineManager:
             for pipeline_id, pipeline in self.realtime_pipelines.items():
                 output = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
                 if not output is None:
-                    logger.info(f"Retrieved latest frontend payload for pipeline ID: {pipeline_id}")
                     latest_outputs[pipeline_id] = output
         return latest_outputs
 
@@ -81,15 +86,15 @@ class PipelineManager:
             for pipeline in self.realtime_pipelines.values():
                 pipeline.camera_group.pause_unpause()
 
-    def start_recording_all(self, recording_info: RecordingInfo):
+    async def start_recording_all(self, recording_info: RecordingInfo):
         with self.lock:
             for pipeline in self.realtime_pipelines.values():
-                pipeline.camera_group.start_recording(recording_info=recording_info)
+                await pipeline.camera_group.start_recording(recording_info=recording_info)
 
-    def stop_recording_all(self):
+    async def stop_recording_all(self):
         with self.lock:
             for pipeline in self.realtime_pipelines.values():
-                pipeline.camera_group.stop_recording()
+                await pipeline.camera_group.stop_recording()
 
     def update_calibration_task_config(self, calibration_task_config: CalibrationTaskConfig):
         with self.lock:
@@ -98,30 +103,10 @@ class PipelineManager:
                 new_config.calibration_task_config = calibration_task_config
                 pipeline.update_pipeline_config(new_config=new_config)
 
-    def start_calibration_calibration_recording(self, recording_info: RecordingInfo, config: CalibrationTaskConfig):
-        if len(self.realtime_pipelines) == 0:
-            raise RuntimeError("No pipelines available to start calibration recording.")
-        if len(self.realtime_pipelines) > 1:
-            raise NotImplementedError(
-                "Multiple pipeline selection for calibration recording not implemented - will use 'pipeline_id' parameter in future.")
-        with self.lock:
-            for pipeline in self.realtime_pipelines.values():
-                pipeline.start_calibration_recording(config=config,
-                                                     recording_info=recording_info)
-
-    def stop_calibration_recording(self):
-        if len(self.realtime_pipelines) == 0:
-            raise RuntimeError("No pipelines available to stop calibration recording.")
-        if len(self.realtime_pipelines) > 1:
-            raise NotImplementedError(
-                "Multiple pipeline selection for calibration recording not implemented - will use 'pipeline_id' parameter in future.")
-        with self.lock:
-            for pipeline in self.realtime_pipelines.values():
-                pipeline.stop_calibration_recording()
-
     def get_pipeline_by_camera_ids(self, camera_ids: list[CameraIdString]) -> RealtimeProcessingPipeline | None:
         with self.lock:
             for pipeline in self.realtime_pipelines.values():
                 if set(pipeline.camera_ids) == set(camera_ids):
                     return pipeline
         return None
+

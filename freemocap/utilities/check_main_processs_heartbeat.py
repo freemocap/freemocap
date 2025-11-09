@@ -1,4 +1,6 @@
 import multiprocessing
+import os
+import signal
 import time
 
 import logging
@@ -6,7 +8,7 @@ from typing import Final
 
 logger = logging.getLogger(__name__)
 HEARTBEAT_INTERVAL_SECONDS: Final[float] = 1.0
-HEARTBEAT_TIMEOUT_SECONDS: Final[float] = 10.0
+HEARTBEAT_TIMEOUT_SECONDS: Final[float] = 30.0
 def check_main_process_heartbeat(*,
                                  heartbeat_timestamp: multiprocessing.Value,
                                  global_kill_flag: multiprocessing.Value) -> bool:
@@ -23,6 +25,7 @@ def check_main_process_heartbeat(*,
             f"(timeout: {HEARTBEAT_TIMEOUT_SECONDS}s)"
         )
         global_kill_flag.value = True
+        os.kill(os.getpid(), signal.SIGTERM)
         return False
 
     return True

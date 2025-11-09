@@ -28,7 +28,7 @@ class CalibrationConfigResponse(BaseModel):
 class StartCalibrationRecordingRequest(CalibrationTaskConfig):
     calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory")
     calibration_recording_name: str = Field(alias="calibrationRecordingName")
-    config: CalibrationTaskConfig
+    calibration_task_config: CalibrationTaskConfig = Field(alias="calibrationTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
         if not self.calibration_recording_name.endswith('_calibration'):
@@ -57,7 +57,7 @@ class CalibrateRecordingResponse(BaseModel):
 def update_all_calibration_config(request: CalibrationConfigRequest) -> CalibrationConfigResponse:
     """Update calibration configuration."""
     try:
-        get_freemocap_app().pipeline_manager.update_calibration_task_config(request.config)
+        get_freemocap_app().realtime_pipeline_manager.update_calibration_task_config(request.config)
         return CalibrationConfigResponse(success=True, message="Configuration updated")
     except Exception as e:
         logger.exception(f"Error updating calibration config: {e}")
@@ -65,14 +65,14 @@ def update_all_calibration_config(request: CalibrationConfigRequest) -> Calibrat
 
 
 @calibration_router.post("/recording/start")
-def start_calibration_recording(request: StartCalibrationRecordingRequest) -> StartCalibrationRecordingResponse:
+async def start_calibration_recording(request: StartCalibrationRecordingRequest) -> StartCalibrationRecordingResponse:
     """Start calibration recording with given config."""
     try:
 
-        get_freemocap_app().pipeline_manager.start_calibration_calibration_recording(
+        await get_freemocap_app().create_posthoc_calibration_pipeline(
             recording_info=request.to_recording_info(),
-            config=request.config)
-        logger.info(f"Starting recording with config: {request.config}")
+            calibration_task_config=request.calibration_task_config)
+        logger.info(f"Starting recording with config: {request.calibration_task_config}")
         return StartCalibrationRecordingResponse(success=True, message="Recording started")
     except Exception as e:
         logger.error(f"Error starting recording: {e}")
@@ -80,12 +80,12 @@ def start_calibration_recording(request: StartCalibrationRecordingRequest) -> St
 
 
 @calibration_router.post("/recording/stop")
-def stop_calibration_recording(request: Request) -> dict[str, bool]:
+async def stop_calibration_recording(request: Request) -> dict[str, bool]:
     """Stop current calibration recording."""
     app = get_freemocap_app()
     try:
         # TODO: Implement actual recording stop logic
-        app.pipeline_manager.stop_calibration_recording()
+        await app.realtime_pipeline_manager.stop_calibration_recording()
         logger.info("Stopping recording")
         return {"success": True}
     except Exception as e:

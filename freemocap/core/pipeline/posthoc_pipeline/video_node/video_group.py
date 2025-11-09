@@ -2,6 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_pipeline import VideoIdString
 from freemocap.core.pipeline.posthoc_pipeline.video_node.video_helper import VideoHelper
 
 
@@ -12,7 +13,16 @@ class VideoGroup(BaseModel):
         extra="forbid",
         frozen=True
     )
-    videos: dict[str,VideoHelper]
+    videos: dict[VideoIdString,VideoHelper]
+
+    @property
+    def video_ids(self) -> list[VideoIdString]:
+        return list(self.videos.keys())
+
+    @property
+    def video_metadata_by_id(self) -> dict[VideoIdString, object]:
+        return {video_id: video.metadata for video_id, video in self.videos.items()}
+
     @model_validator(mode="after")
     def validate_videos(self):
         if len(self.videos) == 0:
@@ -21,8 +31,9 @@ class VideoGroup(BaseModel):
             raise ValueError("All videos in VideoGroup must have the same frame count.")
         return self
 
+
     @classmethod
-    def from_video_paths(cls, video_paths: list[str]) -> "VideoGroup":
+    def from_video_paths(cls, video_paths: list[VideoIdString], close_videos:bool=True) -> "VideoGroup":
 
         return cls(
             videos={video_path: VideoHelper.from_video_path(Path(video_path)) for video_path in video_paths}

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from skellycam.core.types.type_overloads import WorkerType
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipeline.video_node.video_helper import VideoHelper
 from freemocap.core.types.type_overloads import PipelineIdString
@@ -31,8 +31,9 @@ class VideoNodeState(BaseModel):
 
 
 @dataclass
-class VideoNode:
+class CalibrationVideoNode:
     video_path:Path
+    calibration_task_config: CalibrationTaskConfig
     shutdown_self_flag: multiprocessing.Value
     worker: WorkerType
 
@@ -40,14 +41,14 @@ class VideoNode:
     def create(cls,
                video_path:Path,
                subprocess_registry: list[multiprocessing.Process],
-               config: PipelineConfig,
+               calibration_task_config: CalibrationTaskConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
                                          name=f"VideoProcessingNode-{video_path.stem}",
                                          kwargs=dict(video_path=video_path,
                                                      ipc=ipc,
-                                                     config=config,
+                                                     calibration_task_config=calibration_task_config,
                                                      shutdown_self_flag=shutdown_self_flag,
                                                      ),
                                          daemon=True
@@ -55,13 +56,14 @@ class VideoNode:
         subprocess_registry.append(worker)
         return cls(video_path=video_path,
                    shutdown_self_flag=shutdown_self_flag,
+                     calibration_task_config=calibration_task_config,
                    worker=worker
                    )
 
     @staticmethod
     def _run(video_path:Path,
              ipc: PipelineIPC,
-             config: PipelineConfig,
+             calibration_task_config: CalibrationTaskConfig,
              shutdown_self_flag: multiprocessing.Value,
              ):
         if multiprocessing.parent_process():
@@ -72,7 +74,7 @@ class VideoNode:
 
         with VideoHelper.from_video_path(video_path=video_path) as video:
 
-            charuco_detector = CharucoDetector.create(config=config.calibration_task_config.detector_config)
+            charuco_detector = CharucoDetector.create(config=calibration_task_config.detector_config)
             try:
                 while video.has_frames and not shutdown_self_flag.value and ipc.should_continue:
                     image = video.read_next_frame()

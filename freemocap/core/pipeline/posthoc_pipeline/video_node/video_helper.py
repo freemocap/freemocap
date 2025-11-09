@@ -8,7 +8,7 @@ from typing import NamedTuple
 from collections import OrderedDict
 import cv2
 import numpy as np
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 
 # Module level constants
@@ -16,7 +16,7 @@ DEFAULT_CACHE_SIZE_MB = 500
 SEQUENTIAL_READ_THRESHOLD = 5  # If reading within 5 frames ahead, use sequential
 
 
-class VideoMetadata(NamedTuple):
+class VideoMetadata(BaseModel):
     """Video metadata container"""
     width: int
     height: int
@@ -24,6 +24,22 @@ class VideoMetadata(NamedTuple):
     frame_count: int
     fourcc: str
     duration_seconds: float
+    start_frame: int = 0
+    end_frame: int
+
+    @model_validator(mode="before")
+    def validate_frames(cls, values):
+        start_frame = values.get("start_frame", 0)
+        values["end_frame"] = values.get("end_frame", values.get("frame_count"))
+        end_frame = values["end_frame"]
+        frame_count = end_frame - start_frame if end_frame is not None else values.get("frame_count")
+        if end_frame is not None:
+            if not (0 <= start_frame < end_frame <= frame_count):
+                raise ValueError(f"Invalid start_frame or end_frame values: start_frame={start_frame}, end_frame={end_frame}, frame_count={frame_count}")
+            if not (end_frame - start_frame) == frame_count:
+                raise ValueError(f"Subset frame count does not match frame_count: {end_frame - start_frame} != {frame_count}")
+
+        return values
 
 
 class FrameCache(BaseModel):

@@ -6,7 +6,8 @@ from dataclasses import dataclass
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
-from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemory
+from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemory, \
+    CameraGroupSharedMemoryDTO
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
 
@@ -48,6 +49,7 @@ class AggregationNode:
                config: PipelineConfig,
                camera_group_id: CameraGroupIdString,
                subprocess_registry: list[multiprocessing.Process],
+               camera_group_shm_dto:CameraGroupSharedMemoryDTO,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
@@ -56,11 +58,11 @@ class AggregationNode:
                                                      camera_group_id=camera_group_id,
                                                      ipc=ipc,
                                                      shutdown_self_flag=shutdown_self_flag,
+                                                        camera_group_shm_dto=camera_group_shm_dto,
                                                      camera_node_subscription=ipc.pubsub.topics[
                                                          CameraNodeOutputTopic].get_subscription(),
                                                      pipeline_config_subscription=ipc.pubsub.topics[
                                                          PipelineConfigUpdateTopic].get_subscription(),
-                                                     shm_subscription=ipc.shm_topic.get_subscription(),
                                                      should_calibrate_subscription=ipc.pubsub.topics[
                                                          ShouldCalibrateTopic].get_subscription(),
                                                      ),
@@ -77,9 +79,9 @@ class AggregationNode:
              camera_group_id: CameraGroupIdString,
              ipc: PipelineIPC,
              shutdown_self_flag: multiprocessing.Value,
+             camera_group_shm_dto:CameraGroupSharedMemoryDTO,
              camera_node_subscription: TopicSubscriptionQueue,
              pipeline_config_subscription: TopicSubscriptionQueue,
-             shm_subscription: TopicSubscriptionQueue,
              should_calibrate_subscription: TopicSubscriptionQueue
              ):
         if multiprocessing.parent_process():
@@ -88,15 +90,14 @@ class AggregationNode:
             from freemocap import LOG_LEVEL
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
-        logger.debug("AggregationNode process started - waiting for SHM message")
-        shm_message: SetShmMessage = shm_subscription.get(block=True)
-        logger.debug("AggregationNode - received SHM message - starting main loop")
+
+        logger.debug("AggregationNode  - starting main loop")
         try:
             logger.debug(f"Starting aggregation process for camera group {camera_group_id}")
             camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {camera_id: None for camera_id
                                                                                          in
                                                                                          config.camera_configs.keys()}
-            camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=shm_message.camera_group_shm_dto,
+            camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=camera_group_shm_dto,
                                                                 read_only=True)
             shared_view_accumulator = SharedViewAccumulator.create(camera_ids=config.camera_ids)
             calibrate_recording_thread: threading.Thread | None = None
@@ -152,7 +153,6 @@ class AggregationNode:
                                                                 z=np.cos(last_received_frame)
                                                                 )}  # Placeholder for actual aggregation logic
                     )
-                    logger.info(f'Publishing aggregation output for frame {latest_requested_frame} in camera group {camera_group_id}')
                     ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
                     camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
 

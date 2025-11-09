@@ -85,6 +85,7 @@ class RealtimeProcessingPipeline:
                         for camera_id, config in camera_group.configs.items()}
         aggregation_node = AggregationNode.create(camera_group_id=camera_group.id,
                                                   subprocess_registry=subprocess_registry,
+                                                  camera_group_shm_dto=camera_group.shm.to_dto(),
                                                   config=pipeline_config,
                                                   ipc=ipc,
                                                   )
@@ -171,20 +172,20 @@ class RealtimeProcessingPipeline:
             PipelineConfigUpdateMessage(pipeline_config=self.config)
         )
 
-    def start_calibration_recording(self, recording_info: RecordingInfo, config: CalibrationTaskConfig):
+    async def start_calibration_recording(self, recording_info: RecordingInfo, config: CalibrationTaskConfig):
         # TODO - I don't love this method of getting the config and path here, wanna fix it later
         config.calibration_recording_folder = recording_info.full_recording_path
         logger.info(f"Starting calibration recording: {recording_info.full_recording_path} with config: {config.model_dump_json(indent=2)}")
         self.config.calibration_task_config = config
         self.ipc.pubsub.topics[PipelineConfigUpdateTopic].publish(
             PipelineConfigUpdateMessage(pipeline_config=self.config))
-        self.camera_group.start_recording(recording_info=recording_info)
+        await self.camera_group.start_recording(recording_info=recording_info)
         logger.info("Calibration recording started.")
 
-    def stop_calibration_recording(self):
+    async def stop_calibration_recording(self):
         logger.info("Stopping calibration recording...")
         # TODO - I don't love this method of getting the config and path here, wanna fix it later
-        self.camera_group.stop_recording()
+        await self.camera_group.stop_recording()
         time.sleep(1)  # give it a sec to wrap up
         logger.info(f"Calibration recording stopped - sending calibration start message - config: {self.config.calibration_task_config.model_dump_json(indent=2)}")
         self.ipc.pubsub.topics[ShouldCalibrateTopic].publish(ShouldCalibrateMessage())

@@ -6,6 +6,7 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointId
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_pipeline import VideoIdString
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import FrameNumberInt, Point3d, PipelineIdString
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
@@ -26,6 +27,10 @@ class CameraNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = Field(ge=0)
     charuco_observation: CharucoObservation | None = None
 
+class VideoNodeOutputMessage(TopicMessageABC):
+    video_id: VideoIdString
+    frame_number: FrameNumberInt = Field(ge=0)
+    charuco_observation: CharucoObservation | None = None
 
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = Field(ge=0)
@@ -80,5 +85,6 @@ ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 ShouldCalibrateTopic = create_topic(ShouldCalibrateMessage)
 PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
+VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage)
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
 StartRealtimeCalibrationTrackingTopic = create_topic(StartRealtimeCalibrationTrackingMessage)

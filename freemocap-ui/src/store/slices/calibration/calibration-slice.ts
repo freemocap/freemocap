@@ -45,8 +45,8 @@ export interface CalibrationState {
 const initialState: CalibrationState = {
     config: {
         liveTrackCharuco: true,
-        charucoBoardXSquares: 3,
-        charucoBoardYSquares: 5,
+        charucoBoardXSquares: 5,
+        charucoBoardYSquares: 3,
         charucoSquareLength: 56,
         minSharedViewsPerCamera: 200,
         autoStopOnMinViewCount: true,

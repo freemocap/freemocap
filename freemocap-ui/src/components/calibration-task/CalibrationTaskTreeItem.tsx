@@ -39,7 +39,7 @@ interface BoardPresetConfig {
 }
 
 const BOARD_PRESETS: Record<BoardPreset, BoardPresetConfig> = {
-    '5x3': { xSquares: 3, ySquares: 5 },
+    '5x3': { xSquares: 5, ySquares: 3 },
     '7x5': { xSquares: 7, ySquares: 5 },
 };
 

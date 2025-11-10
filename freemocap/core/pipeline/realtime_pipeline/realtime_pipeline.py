@@ -13,7 +13,9 @@ from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdStr
 from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import AggregationNode, RealtimeAggregationNodeState
 from freemocap.core.pipeline.realtime_pipeline.realtime_camera_node import RealtimeCameraNode, CameraNodeState
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
+    CalibrationTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \

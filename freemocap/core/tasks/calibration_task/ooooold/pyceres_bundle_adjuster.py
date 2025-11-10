@@ -209,10 +209,10 @@ class PyCeresBundleAdjuster(BaseModel):
         residual_count = 0
         for mc_view in multi_camera_views.values():
             for camera_id, camera_output in mc_view.camera_node_output_by_camera.items():
-                if not camera_output.charuco_observation or camera_output.charuco_observation.charuco_empty:
+                if not camera_output.observation or camera_output.observation.charuco_empty:
                     continue
 
-                obs = camera_output.charuco_observation
+                obs = camera_output.observation
                 params = self.camera_parameters[camera_id]
                 camera_matrix = params.to_camera_matrix()
 

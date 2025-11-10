@@ -92,7 +92,7 @@ class MultiCameraCalibrator(BaseModel):
             self.initialize_single_camera_calibrators(camera_node_output_by_camera=camera_node_output_by_camera)
 
         for camera_id, calibrator in self.single_camera_calibrators.items():
-            obs = camera_node_output_by_camera[camera_id].charuco_observation
+            obs = camera_node_output_by_camera[camera_id].observation
             if obs and obs.charuco_board_visible:
                 calibrator.add_observation(observation=obs)
 
@@ -107,11 +107,11 @@ class MultiCameraCalibrator(BaseModel):
             logger.debug(f"Creating calibrator for camera {camera_id}")
             self.single_camera_calibrators[camera_id] = SingleCameraCalibrator.create_initial(
                 camera_id=camera_id,
-                image_size=node_output.charuco_observation.image_size,
-                all_aruco_marker_ids=node_output.charuco_observation.all_aruco_ids,
-                all_aruco_corners_in_object_coordinates=node_output.charuco_observation.all_aruco_corners_in_object_coordinates,
-                all_charuco_corner_ids=node_output.charuco_observation.all_charuco_ids,
-                all_charuco_corners_in_object_coordinates=node_output.charuco_observation.all_charuco_corners_in_object_coordinates,
+                image_size=node_output.observation.image_size,
+                all_aruco_marker_ids=node_output.observation.all_aruco_ids,
+                all_aruco_corners_in_object_coordinates=node_output.observation.all_aruco_corners_in_object_coordinates,
+                all_charuco_corner_ids=node_output.observation.all_charuco_ids,
+                all_charuco_corners_in_object_coordinates=node_output.observation.all_charuco_corners_in_object_coordinates,
             )
 
     def all_cameras_have_min_shared_views(self) -> bool:

@@ -212,6 +212,73 @@ export const api = t.router({
                     return result;
                 }
             }),
+
+        validateMocapDirectory: t.procedure
+            .input(z.object({ directoryPath: z.string() }))
+            .query(({ input }) => {
+                const result = {
+                    exists: false,
+                    canRecord: false,
+                    canProcess: false,
+                    cameraCalibrationTomlPath: null as string | null,
+                    hasSynchronizedVideos: false,
+                    hasVideos: false,
+                    errorMessage: null as string | null,
+                };
+
+                try {
+                    // Check if directory exists
+                    result.exists = fs.existsSync(input.directoryPath);
+
+                    if (!result.exists) {
+                        // Directory doesn't exist - can record here (will be created)
+                        result.canRecord = true;
+                        result.canProcess = false;
+                        return result;
+                    }
+
+                    // Directory exists - check its contents
+                    const stats = fs.statSync(input.directoryPath);
+
+                    if (!stats.isDirectory()) {
+                        result.errorMessage = 'Path exists but is not a directory';
+                        return result;
+                    }
+
+                    // Check for synchronized_videos folder
+                    const synchronizedVideosPath = path.join(input.directoryPath, 'synchronized_videos');
+                    result.hasSynchronizedVideos = fs.existsSync(synchronizedVideosPath) &&
+                        fs.statSync(synchronizedVideosPath).isDirectory();
+
+                    // Check for videos in synchronized_videos folder
+                    if (result.hasSynchronizedVideos) {
+                        result.hasVideos = hasVideoFiles(synchronizedVideosPath);
+                    }
+
+                    // If no synchronized_videos, check for videos in root directory
+                    if (!result.hasVideos) {
+                        result.hasVideos = hasVideoFiles(input.directoryPath);
+                    }
+
+                    // Determine if we can record
+                    // Can record if directory is empty or only has non-video files
+                    const entries = fs.readdirSync(input.directoryPath);
+                    result.canRecord =  !result.hasVideos;
+                    // Look for camera calibration TOML file
+                    result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
+
+                    // Can process if we have videos and a calibration file
+                    result.canProcess = result.hasVideos && result.cameraCalibrationTomlPath
+
+
+                    return result;
+
+                } catch (error) {
+                    console.error('Error validating calibration directory:', error);
+                    result.errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                    return result;
+                }
+            }),
     }),
 
     // Asset Management

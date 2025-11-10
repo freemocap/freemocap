@@ -139,10 +139,10 @@ class ScipyBundleAdjuster(BaseModel):
 
         for mc_view in multi_camera_views.values():
             for camera_id, camera_output in mc_view.camera_node_output_by_camera.items():
-                if not camera_output.charuco_observation or camera_output.charuco_observation.charuco_empty:
+                if not camera_output.observation or camera_output.observation.charuco_empty:
                     continue
 
-                obs = camera_output.charuco_observation
+                obs = camera_output.observation
                 camera_matrix, dist_coeffs = intrinsics_by_id[camera_id]
                 rvec = extrinsics_by_id[camera_id][0:3]
                 tvec = extrinsics_by_id[camera_id][3:6]

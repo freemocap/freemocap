@@ -10,8 +10,10 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
 
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
-from freemocap.core.pipeline.posthoc_pipeline.posthoc_pipeline_manager import PosthocPipelineManager
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
+    CalibrationTaskConfig
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline import RealtimeProcessingPipeline
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline_manager import RealtimePipelineManager
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt

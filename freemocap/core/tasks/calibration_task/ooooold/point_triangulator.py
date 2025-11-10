@@ -255,10 +255,10 @@ class PointTriangulator:
 
             camera_output = camera_node_outputs[camera_name]
 
-            if camera_output.charuco_observation is None:
+            if camera_output.observation is None:
                 raise ValueError(f"Camera '{camera_name}' has no charuco_observation")
 
-            points2d_camera = camera_output.charuco_observation.to_2d_array()
+            points2d_camera = camera_output.observation.to_2d_array()
             points2d_list.append(points2d_camera)
 
         points2d_stacked = np.stack(points2d_list, axis=0)

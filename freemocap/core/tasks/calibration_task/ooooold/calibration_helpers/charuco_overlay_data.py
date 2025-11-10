@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import BaseObservation
 
 
 class CharucoPointModel(BaseModel):
@@ -56,7 +56,7 @@ class CharucoOverlayData(BaseModel):
             cls,
             *,
             camera_id: CameraIdString,
-            observation: CharucoObservation,
+            observation: BaseObservation,
             scale: float = .5, ):
         """
         Convert CharucoObservation to Pydantic message model for websocket transmission.

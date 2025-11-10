@@ -11,4 +11,4 @@ export * from './slices/log-records';
 export * from './slices/theme';
 export * from './slices/videos';
 export * from './slices/pipeline';
-export * from './slices/calibration';
+export * from './slices/mocap';

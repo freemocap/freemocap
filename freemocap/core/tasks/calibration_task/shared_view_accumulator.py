@@ -3,12 +3,12 @@ import logging
 from pydantic import BaseModel, Field
 from pydantic import model_validator
 from skellycam.core.types.type_overloads import CameraIdString, FrameNumberInt
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import BaseObservation
 
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.calibration_numpy_types import ImagePoint2D
 from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
 
-CharucoObservations = dict[CameraIdString, CharucoObservation | None]
+CharucoObservations = dict[CameraIdString, BaseObservation | None]
 
 MultiFrameNumber = int
 MINIMUM_CHARUCO_CORNERS_FOR_VISIBILITY: int = 6
@@ -43,8 +43,8 @@ class CameraPairTargetView(BaseModel):
     multi_frame_number: MultiFrameNumber
     base_camera_id: CameraIdString
     other_camera_id: CameraIdString
-    base_camera_observation: CharucoObservation
-    other_camera_observation: CharucoObservation
+    base_camera_observation: BaseObservation
+    other_camera_observation: BaseObservation
 
     @model_validator(mode='after')
     def validate(self):
@@ -76,7 +76,7 @@ class MultiCameraTargetView(BaseModel):
         visibility_by_camera = {}
         for camera_id, camera_node_output in self.camera_node_output_by_camera.items():
             visibility_by_camera[camera_id] = len(
-                camera_node_output.charuco_observation.charuco_corners_dict) > MINIMUM_CHARUCO_CORNERS_FOR_VISIBILITY
+                camera_node_output.observation.charuco_corners_dict) > MINIMUM_CHARUCO_CORNERS_FOR_VISIBILITY
         return visibility_by_camera
 
     @property
@@ -84,7 +84,7 @@ class MultiCameraTargetView(BaseModel):
         image_points_by_camera = {camera_id: [] for camera_id in self.camera_node_output_by_camera.keys()}
         for camera_id, camera_node_output in self.camera_node_output_by_camera.items():
             image_points_by_camera[camera_id].extend(
-                list(camera_node_output.charuco_observation.detected_charuco_corners_in_full_array))
+                list(camera_node_output.observation.detected_charuco_corners_in_full_array))
 
         return image_points_by_camera
 
@@ -128,15 +128,15 @@ class SharedViewAccumulator(BaseModel):
 
         # accumulate shared target views for each camera pair
         for camera_id in self.camera_shared_views.keys():
-            if not camera_node_output_by_camera[camera_id].charuco_observation.charuco_board_visible:
+            if not camera_node_output_by_camera[camera_id].observation.charuco_board_visible:
                 continue
-            this_camera_obs = camera_node_output_by_camera[camera_id].charuco_observation
+            this_camera_obs = camera_node_output_by_camera[camera_id].observation
             for other_camera_id in self.camera_shared_views.keys():
                 if camera_id == other_camera_id:
                     continue
-                if not camera_node_output_by_camera[other_camera_id].charuco_observation.charuco_board_visible:
+                if not camera_node_output_by_camera[other_camera_id].observation.charuco_board_visible:
                     continue
-                other_camera_obs = camera_node_output_by_camera[other_camera_id].charuco_observation
+                other_camera_obs = camera_node_output_by_camera[other_camera_id].observation
                 pair = CameraPair.from_ids(base_camera_id=camera_id,
                                            other_camera_id=other_camera_id)
                 target_view = CameraPairTargetView(
@@ -172,14 +172,14 @@ class SharedViewAccumulator(BaseModel):
         """
         return all([count >= min_shared_views for count in self.get_shared_view_count_per_camera().values()])
 
-    def get_observations_by_camera(self, camera_id: CameraIdString) -> dict[FrameNumberInt, CharucoObservation]:
+    def get_observations_by_camera(self, camera_id: CameraIdString) -> dict[FrameNumberInt, BaseObservation]:
         """
         Get the charuco observations for a given camera id across all frames
         """
         observations_by_frame = {}
         for multi_frame_number, multi_camera_view in self.multi_camera_views_by_frame.items():
             camera_node_output = multi_camera_view.camera_node_output_by_camera[camera_id]
-            observations_by_frame[multi_frame_number] = camera_node_output.charuco_observation
+            observations_by_frame[multi_frame_number] = camera_node_output.observation
         return observations_by_frame
 
 

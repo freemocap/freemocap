@@ -3,36 +3,25 @@ import multiprocessing
 from dataclasses import dataclass
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
 from skellycam.core.types.type_overloads import WorkerType
-from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
+from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
 
-from freemocap.core.pipeline.pipeline_configs import CalibrationTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.posthoc_pipeline.video_node.video_helper import VideoHelper
-from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
+    MocapTaskConfig
+from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoHelper
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
 
 logger = logging.getLogger(__name__)
 
 
 
-class VideoNodeState(BaseModel):
-    model_config = ConfigDict(
-        validate_assignment=True,
-        frozen=True
-    )
-    pipeline_id: PipelineIdString
-    alive: bool
-    last_seen_frame_number: int | None = None
-    calibration_task_state: object | None = None
-    mocap_task_state: object = None  # TODO - this
 
 
 @dataclass
-class CalibrationVideoNode:
+class MocapVideoNode:
     video_path:Path
-    calibration_task_config: CalibrationTaskConfig
+    mocap_task_config: MocapTaskConfig
     shutdown_self_flag: multiprocessing.Value
     worker: WorkerType
 
@@ -40,14 +29,14 @@ class CalibrationVideoNode:
     def create(cls,
                video_path:Path,
                subprocess_registry: list[multiprocessing.Process],
-               calibration_task_config: CalibrationTaskConfig,
+               mocap_task_config: MocapTaskConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
                                          name=f"VideoProcessingNode-{video_path.stem}",
                                          kwargs=dict(video_path=video_path,
                                                      ipc=ipc,
-                                                     calibration_task_config=calibration_task_config,
+                                                     mocap_task_config=mocap_task_config,
                                                      shutdown_self_flag=shutdown_self_flag,
                                                      ),
                                          daemon=True
@@ -55,14 +44,14 @@ class CalibrationVideoNode:
         subprocess_registry.append(worker)
         return cls(video_path=video_path,
                    shutdown_self_flag=shutdown_self_flag,
-                     calibration_task_config=calibration_task_config,
+                     mocap_task_config=mocap_task_config,
                    worker=worker
                    )
 
     @staticmethod
     def _run(video_path:Path,
              ipc: PipelineIPC,
-             calibration_task_config: CalibrationTaskConfig,
+             mocap_task_config: MocapTaskConfig,
              shutdown_self_flag: multiprocessing.Value,
              ):
         if multiprocessing.parent_process():
@@ -74,11 +63,11 @@ class CalibrationVideoNode:
         with VideoHelper.from_video_path(video_path=video_path) as video:
             logger.info(f"Starting video processing node for video: {video.video_path.stem}")
 
-            charuco_detector = CharucoDetector.create(config=calibration_task_config.detector_config)
+            mediapipe_detector = MediapipeDetector.create(config=mocap_task_config.detector_config)
             try:
                 while video.has_frames and not shutdown_self_flag.value and ipc.should_continue:
                     image = video.read_next_frame()
-                    charuco_observation = charuco_detector.detect(
+                    mediapipe_observation = mediapipe_detector.detect(
                         frame_number=video.last_read_frame,
                         image=image)
 
@@ -87,7 +76,7 @@ class CalibrationVideoNode:
                         message=VideoNodeOutputMessage(
                             video_id=str(video.video_path),
                             frame_number=video.last_read_frame,
-                            charuco_observation=charuco_observation,
+                            observation=mediapipe_observation,
                         ),
                     )
             except Exception as e:

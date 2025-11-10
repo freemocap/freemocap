@@ -2,35 +2,24 @@ import logging
 import multiprocessing
 import uuid
 
-from pydantic import BaseModel, ConfigDict, SkipValidation
+from pydantic import BaseModel, ConfigDict
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig, PipelineTaskConfigABC, CalibrationTaskConfig
+from freemocap.core.pipeline.pipeline_configs import MocapTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.posthoc_pipeline.posthoc_calibration_aggregation_node import PosthocCalibrationAggregationNode
-from freemocap.core.pipeline.posthoc_pipeline.video_node.video_group import VideoGroup
-from freemocap.core.pipeline.posthoc_pipeline.video_node.calibration_video_node import VideoNodeState, CalibrationVideoNode
-from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import AggregationNode, \
-    RealtimeAggregationNodeState
-from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, VideoIdString
-from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_aggregation_node import PosthocMocapAggregationNode
+from freemocap.core.pipeline.posthoc_pipelines.video_group import VideoGroup
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_video_node import  MocapVideoNode
+from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 logger = logging.getLogger(__name__)
 
 
-class PosthocPipelineState(BaseModel):
-    """Serializable representation of a processing pipeline state."""
-    model_config = ConfigDict(
-        validate_assignment=True,
-        frozen=True
-    )
-    id: PipelineIdString
-    video_node_states: dict[VideoIdString, VideoNodeState]
-    aggregation_node_state: RealtimeAggregationNodeState
-    alive: bool
 
-class PosthocCalibrationProcessingPipeline(BaseModel):
+
+
+class PosthocMocapProcessingPipeline(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         validate_assignment=True,
@@ -38,9 +27,9 @@ class PosthocCalibrationProcessingPipeline(BaseModel):
     )
     id: PipelineIdString
     recording_info:RecordingInfo
-    calibration_task_config: CalibrationTaskConfig
-    video_nodes: dict[VideoIdString, CalibrationVideoNode]
-    aggregation_node: PosthocCalibrationAggregationNode
+    mocap_task_config: MocapTaskConfig
+    video_nodes: dict[VideoIdString, MocapVideoNode]
+    aggregation_node: PosthocMocapAggregationNode
     ipc: PipelineIPC
     started: bool = False
 
@@ -58,22 +47,22 @@ class PosthocCalibrationProcessingPipeline(BaseModel):
                     recording_info:RecordingInfo,
                     heartbeat_timestamp: multiprocessing.Value,
                     subprocess_registry: list[multiprocessing.Process],
-                    calibration_task_config: CalibrationTaskConfig,
+                    mocap_task_config: MocapTaskConfig,
                     global_kill_flag: multiprocessing.Value,
                     ):
-        #validate with video_group object
+        #validate by creating video_group object
         video_group = VideoGroup.from_recording_path(recording_path=recording_info.full_recording_path)
         pipeline_id = str(uuid.uuid4())[:6]
         ipc = PipelineIPC.create(global_kill_flag=global_kill_flag,
                                  heartbeat_timestamp=heartbeat_timestamp
                                  )
-        video_nodes = {video_id: CalibrationVideoNode.create(video_path=video_helper.video_path,  #recreate in node worker
+        video_nodes = {video_id: MocapVideoNode.create(video_path=video_helper.video_path,  #recreate in node worker
                                                              subprocess_registry=subprocess_registry,
-                                                             calibration_task_config=calibration_task_config,
+                                                             mocap_task_config=mocap_task_config,
                                                              ipc=ipc)
                        for video_id, video_helper in video_group.videos.items()}
-        aggregation_node = PosthocCalibrationAggregationNode.create(subprocess_registry=subprocess_registry,
-                                                                    calibration_task_config=calibration_task_config,
+        aggregation_node = PosthocMocapAggregationNode.create(subprocess_registry=subprocess_registry,
+                                                                    mocap_task_config=mocap_task_config,
                                                                     video_metadata=video_group.video_metadata_by_id,
                                                                     ipc=ipc,
                                                                     recording_info=recording_info,
@@ -83,7 +72,7 @@ class PosthocCalibrationProcessingPipeline(BaseModel):
         return cls(video_nodes=video_nodes,
                    aggregation_node=aggregation_node,
                    ipc=ipc,
-                   calibration_task_config=calibration_task_config,
+                   mocap_task_config=mocap_task_config,
                    id=pipeline_id,
                    recording_info=recording_info
                    )

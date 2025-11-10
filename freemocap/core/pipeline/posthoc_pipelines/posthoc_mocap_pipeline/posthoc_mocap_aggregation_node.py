@@ -1,25 +1,26 @@
 import logging
 import multiprocessing
 from dataclasses import dataclass
-from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
+
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
+from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
+
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.posthoc_pipeline.video_node.video_helper import VideoMetadata
-from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.charuco_observation_aggregator import \
-    anipose_calibration_from_charuco_observations
-from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.freemocap_anipose import \
-    AniposeCharucoBoard, AniposeCameraGroup, AniposeCamera
-from freemocap.core.tasks.calibration_task.shared_view_accumulator import CharucoObservations
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
+    MocapTaskConfig
+from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoMetadata
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
-from freemocap.utilities.wait_functions import wait_10ms, wait_1ms
+from freemocap.utilities.wait_functions import wait_1ms
 
 logger = logging.getLogger(__name__)
+
+MediapipeObservations = dict[VideoIdString, MediapipeObservation]
 
 
 class PosthocAgregationNodeState(BaseModel):
@@ -31,18 +32,18 @@ class PosthocAgregationNodeState(BaseModel):
     config: PipelineConfig
     alive: bool
     last_seen_frame_number: int | None = None
-    calibration_task_state: object | None = None
+    mocap_task_state: object | None = None
     mocap_task_state: object = None  # TODO - this
 
 
 @dataclass
-class PosthocCalibrationAggregationNode:
+class PosthocMocapAggregationNode:
     shutdown_self_flag: multiprocessing.Value
     worker: multiprocessing.Process
 
     @classmethod
     def create(cls,
-               calibration_task_config: CalibrationTaskConfig,
+               mocap_task_config: MocapTaskConfig,
                video_metadata: dict[VideoIdString, VideoMetadata],
                pipeline_id: PipelineIdString,
                recording_info: RecordingInfo,
@@ -51,7 +52,7 @@ class PosthocCalibrationAggregationNode:
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
                                          name=f"Pipeline-{pipeline_id}-PosthocAggregationNode",
-                                         kwargs=dict(calibration_task_config=calibration_task_config,
+                                         kwargs=dict(mocap_task_config=mocap_task_config,
                                                      pipeline_id=pipeline_id,
                                                      recording_info=recording_info,
                                                      video_metadata=video_metadata,
@@ -69,7 +70,7 @@ class PosthocCalibrationAggregationNode:
                    )
 
     @staticmethod
-    def _run(calibration_task_config: CalibrationTaskConfig,
+    def _run(mocap_task_config: MocapTaskConfig,
              recording_info: RecordingInfo,
              pipeline_id: PipelineIdString,
              video_metadata: dict[VideoIdString, VideoMetadata],
@@ -93,7 +94,7 @@ class PosthocCalibrationAggregationNode:
         frame_numbers = set(range(start_frame, end_frame))
         video_ids = list(video_metadata.keys())
 
-        logger.debug(f"PosthocCalibrationAggregationNode for pipeline id: '{pipeline_id}' starting main loop")
+        logger.debug(f"PosthocMocapAggregationNode for pipeline id: '{pipeline_id}' starting main loop")
         try:
 
             video_outputs_by_frame: dict[FrameNumberInt, dict[VideoIdString, VideoNodeOutputMessage | None]] = {
@@ -117,46 +118,31 @@ class PosthocCalibrationAggregationNode:
                     video_outputs_by_frame[video_node_output_message.frame_number][
                         video_node_output_message.video_id] = video_node_output_message
                     if all([isinstance(value, VideoNodeOutputMessage) for value in
-                           video_outputs_by_frame[video_node_output_message.frame_number].values()]):
-                        logger.info(f"Received all video node outputs for frame {video_node_output_message.frame_number} in pipeline {pipeline_id}")
+                            video_outputs_by_frame[video_node_output_message.frame_number].values()]):
+                        logger.info(
+                            f"Received all video node outputs for frame {video_node_output_message.frame_number} in pipeline {pipeline_id}")
                         got_all_outputs_by_frame[video_node_output_message.frame_number] = True
 
                 if all(list(got_all_outputs_by_frame.values())):
                     break
             logger.info(f"All video node outputs received for pipeline {pipeline_id}, starting calibration")
-            charuco_observations_by_frame: list[CharucoObservations] = []
+            mediapipe_observations_by_frame: list[MediapipeObservations] = []
             for frame_outputs in video_outputs_by_frame.values():
                 if not all([isinstance(output, VideoNodeOutputMessage) for output in frame_outputs.values()]):
                     raise ValueError(
                         f"Missing video node outputs for frame in pipeline {pipeline_id}: {frame_outputs}")
-                charuco_observations_by_frame.append({
-                    video_id: output.charuco_observation
+                mediapipe_observations_by_frame.append({
+                    video_id: output.observation
                     for video_id, output in frame_outputs.items()
                 })
 
-            anipose_cameras: list[AniposeCamera] = [
-                AniposeCamera(name=video_id,
-                              size=(video_metadata.height,video_metadata.width)) for video_id, video_metadata in video_metadata.items()
-            ]
-            anipose_camera_group = AniposeCameraGroup(cameras=anipose_cameras)
-
-            triangulator = anipose_calibration_from_charuco_observations(
-                charuco_observations_by_frame=charuco_observations_by_frame,
-                charuco_board=AniposeCharucoBoard(squaresX=calibration_task_config.charuco_board_x_squares,
-                                                  squaresY=calibration_task_config.charuco_board_y_squares,
-                                                  square_length=calibration_task_config.charuco_square_length,
-                                                  marker_length=calibration_task_config.charuco_square_length * .8),
-                anipose_camera_group=anipose_camera_group,
-                recording_info=recording_info,
-                # use_charuco_as_groundplane=True,
-            )
-
             logger.success(
-                f"Posthoc calibration completed for pipeline {pipeline_id}! Calibration file saved to {recording_info.full_recording_path}")
+                f"Posthoc calibration completed for pipeline {pipeline_id}! Mocap file saved to {recording_info.full_recording_path}")
 
 
         except Exception as e:
-            logger.error(f"Exception in PosthocAggregationNode for recording: {recording_info.recording_name}: {e}", exc_info=True)
+            logger.error(f"Exception in PosthocAggregationNode for recording: {recording_info.recording_name}: {e}",
+                         exc_info=True)
             ipc.kill_everything()
             raise
         finally:

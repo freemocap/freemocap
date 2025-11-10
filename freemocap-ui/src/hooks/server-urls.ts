@@ -47,6 +47,11 @@ class ServerUrls {
             calibrateRecording: `${baseUrl}/freemocap/calibration/recording/calibrate`,
             updateCalibrationConfig: `${baseUrl}/freemocap/calibration/config/update/all`,
 
+            // Mocap endpoints
+            mocapStartRecording: `${baseUrl}/freemocap/mocap/recording/start`,
+            mocapStopRecording: `${baseUrl}/freemocap/mocap/recording/stop`,
+            processMocapRecording: `${baseUrl}/freemocap/mocap/recording/process`,
+            updateMocapConfig: `${baseUrl}/freemocap/mocap/config/update/all`,
 
             // WebSocket
             websocket: this.getWebSocketUrl(),

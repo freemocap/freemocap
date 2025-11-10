@@ -7,7 +7,9 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
+from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
+    CalibrationTaskConfig
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline import RealtimeProcessingPipeline
 from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import \
     CameraGroup

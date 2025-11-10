@@ -87,7 +87,7 @@ def triangulate_list(
     # Get number of charuco corners from first valid observation
     first_frame = camera_node_outputs_stream[0]
     first_camera_output = next(iter(first_frame.values()))
-    num_corners = first_camera_output.charuco_observation.to_2d_array().shape[0]
+    num_corners = first_camera_output.observation.to_2d_array().shape[0]
 
     # Pre-allocate output arrays
     all_points3d = np.empty((num_frames, num_corners, 3), dtype=np.float64)

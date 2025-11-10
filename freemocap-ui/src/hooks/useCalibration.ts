@@ -1,25 +1,16 @@
 // hooks/useCalibration.ts
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+
+import { useElectronIPC } from '@/services';
 import {
     calibrateRecording,
-    CalibrationConfig,
-    calibrationConfigUpdated,
-    calibrationErrorCleared,
-    calibrationDirectoryInfoUpdated,
-    manualCalibrationRecordingPathChanged,
-    manualCalibrationRecordingPathCleared,
-    selectCalibration,
-    selectCanCalibrate,
-    selectCanStartCalibrationRecording,
-    selectCalibrationRecordingPath,
-    selectCalibrationDirectoryInfo,
-    selectIsUsingManualCalibrationPath,
-    startCalibrationRecording,
-    stopCalibrationRecording,
-    updateCalibrationConfigOnServer,
-} from "@/store";
-import { useElectronIPC } from '@/services';
+    CalibrationConfig, calibrationConfigUpdated, calibrationDirectoryInfoUpdated,
+    calibrationErrorCleared, manualCalibrationRecordingPathChanged, manualCalibrationRecordingPathCleared,
+    selectCalibration, selectCalibrationDirectoryInfo, selectCalibrationRecordingPath, selectCanCalibrate,
+    selectCanStartCalibrationRecording, selectIsUsingManualCalibrationPath,
+    startCalibrationRecording, stopCalibrationRecording, updateCalibrationConfigOnServer
+} from "@/store/slices/calibration";
 
 export function useCalibration() {
     const dispatch = useAppDispatch();

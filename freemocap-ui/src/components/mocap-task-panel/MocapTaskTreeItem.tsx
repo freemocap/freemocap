@@ -1,264 +1,325 @@
-import React, { useState, useEffect } from "react";
+// components/MocapTaskTreeItem.tsx
+import React, {useCallback, useMemo, useState} from 'react';
 import {
+    Alert,
     Box,
     Button,
+    Chip,
+    IconButton,
+    InputAdornment,
+    Stack,
+    TextField,
+    Tooltip,
     Typography,
     useTheme,
-    Chip,
-    Select,
-    MenuItem,
-    FormControl,
-    InputLabel,
-    Switch,
-    FormControlLabel,
-    Stack,
-    Divider,
-    SelectChangeEvent
-} from "@mui/material";
-import { TreeItem } from "@mui/x-tree-view/TreeItem";
+} from '@mui/material';
+import {TreeItem} from '@mui/x-tree-view/TreeItem';
+import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
-import PersonIcon from '@mui/icons-material/Person';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import ClearIcon from '@mui/icons-material/Clear';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
-import PendingIcon from '@mui/icons-material/Pending';
+import InfoIcon from '@mui/icons-material/Info';
+import CloseIcon from '@mui/icons-material/Close';
+import {useMocap} from '@/hooks/useMocap';
+import {useElectronIPC} from '@/services';
 
-type MocapStatus = 'idle' | 'recording' | 'processing' | 'completed' | 'error';
 
 export const MocapTaskTreeItem: React.FC = () => {
     const theme = useTheme();
-    const [status, setStatus] = useState<MocapStatus>('idle');
-    const [recordingTime, setRecordingTime] = useState(0);
-    const [modelType, setModelType] = useState('full-body');
-    const [outputFormat, setOutputFormat] = useState('bvh');
-    const [smoothing, setSmoothing] = useState(0.5);
-    const [useGpu, setUseGpu] = useState(true);
+    const [localError, setLocalError] = useState<string | null>(null);
+    const { api, isElectron } = useElectronIPC();
 
-    useEffect(() => {
-        let interval: NodeJS.Timeout | undefined;
-        if (status === 'recording') {
-            interval = setInterval(() => {
-                setRecordingTime(prev => prev + 0.1);
-            }, 100);
+    const {
+        config,
+        error,
+        isLoading,
+        isRecording,
+        recordingProgress,
+        canStartRecording,
+        canProcessMocapRecording,
+        mocapRecordingPath,
+        directoryInfo,
+        isUsingManualPath,
+        updateMocapConfig,
+        dispatchStopMocapRecording,
+        dispatchStartMocapRecording,
+        setManualRecordingPath,
+        clearManualRecordingPath,
+        dispatchProcessMocapRecording,
+        clearError,
+    } = useMocap();
+
+
+
+
+    const handleClearError = useCallback((): void => {
+        clearError();
+        setLocalError(null);
+    }, [clearError]);
+
+
+
+    const handleSelectDirectory = async (): Promise<void> => {
+        if (!isElectron || !api) {
+            console.warn('Electron API not available');
+            return;
         }
-        return () => {
-            if (interval) {
-                clearInterval(interval);
+
+        try {
+            const result: string | null = await api.fileSystem.selectDirectory.mutate();
+            if (result) {
+                await setManualRecordingPath(result);
             }
-        };
-    }, [status]);
-
-    const getStatusIcon = (): React.ReactElement => {
-        switch (status) {
-            case 'recording':
-                return <PendingIcon sx={{ color: theme.palette.error.main }} />;
-            case 'processing':
-                return <PendingIcon sx={{ color: theme.palette.warning.main }} />;
-            case 'completed':
-                return <CheckCircleIcon sx={{ color: theme.palette.success.main }} />;
-            case 'error':
-                return <ErrorIcon sx={{ color: theme.palette.error.main }} />;
-            default:
-                return <PersonIcon sx={{ color: theme.palette.info.main }} />;
+        } catch (error) {
+            console.error('Failed to select directory:', error);
+            setLocalError('Failed to select directory');
         }
     };
 
-    const handleStartRecording = (e: React.MouseEvent): void => {
-        e.stopPropagation();
-        setStatus('recording');
-    };
+    const handlePathInputChange = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+        const newPath: string = e.target.value;
 
-    const handleStopRecording = (e: React.MouseEvent): void => {
-        e.stopPropagation();
-        setStatus('processing');
-        setTimeout(() => setStatus('completed'), 2000);
-    };
-
-    const handleReset = (e: React.MouseEvent): void => {
-        e.stopPropagation();
-        setRecordingTime(0);
-        setStatus('idle');
-    };
-
-    const handleModelTypeChange = (e: SelectChangeEvent<string>): void => {
-        setModelType(e.target.value);
-    };
-
-    const handleOutputFormatChange = (e: SelectChangeEvent<string>): void => {
-        setOutputFormat(e.target.value);
-    };
-
-    const handleSmoothingChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-        setSmoothing(parseFloat(e.target.value));
-    };
-
-    const getStatusColor = (): string => {
-        switch (status) {
-            case 'recording':
-                return theme.palette.error.main;
-            case 'processing':
-                return theme.palette.warning.main;
-            case 'completed':
-                return theme.palette.success.main;
-            case 'error':
-                return theme.palette.error.main;
-            default:
-                return theme.palette.grey[600];
+        // Handle tilde expansion for home directory
+        if (newPath.includes('~') && isElectron && api) {
+            try {
+                const home: string = await api.fileSystem.getHomeDirectory.query();
+                const expanded: string = newPath.replace(/^~([\/\\])?/, home ? `${home}$1` : '');
+                await setManualRecordingPath(expanded);
+            } catch (error) {
+                console.error('Failed to expand home directory:', error);
+                await setManualRecordingPath(newPath);
+            }
+        } else {
+            await setManualRecordingPath(newPath);
         }
     };
+
+    const handleClearManualPath = useCallback((): void => {
+        clearManualRecordingPath();
+    }, [clearManualRecordingPath]);
+
+    const displayError = error || localError || directoryInfo?.errorMessage;
+
+    // Helper text for the path input
+    const pathHelperText = useMemo(() => {
+        if (isUsingManualPath) {
+            return 'Using custom path';
+        }
+        return 'Using default recording directory';
+    }, [isUsingManualPath]);
 
     return (
         <TreeItem
             itemId="mocap-task"
             label={
-                <Box
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        py: 1,
-                        pr: 1,
-                    }}
-                >
-                    <PersonIcon sx={{ mr: 1, color: theme.palette.secondary.main }} />
+                <Box sx={{ display: 'flex', alignItems: 'center', py: 1, pr: 1 }}>
+                    <DirectionsRunIcon sx={{ mr: 1, color: theme.palette.secondary.main }} />
                     <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-                        Motion Capture Task
+                        Motion Capture
                     </Typography>
-                    {getStatusIcon()}
-                    <Chip
-                        label={status.toUpperCase()}
-                        size="small"
-                        sx={{
-                            ml: 1,
-                            backgroundColor: getStatusColor(),
-                            color: 'white',
-                            fontSize: 10,
-                            height: 20,
-                        }}
-                    />
                 </Box>
             }
         >
             <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
                 <Stack spacing={2}>
-                    {/* Recording Status */}
-                    {/*<Box>*/}
-                    {/*    <Typography variant="caption" color="text.secondary">*/}
-                    {/*        Recording Time*/}
-                    {/*    </Typography>*/}
-                    {/*    <Typography*/}
-                    {/*        variant="h5"*/}
-                    {/*        sx={{*/}
-                    {/*            color: status === 'recording' ? 'error.main' : 'text.primary'*/}
-                    {/*        }}*/}
-                    {/*    >*/}
-                    {/*        {recordingTime.toFixed(1)}s*/}
-                    {/*    </Typography>*/}
-                    {/*</Box>*/}
+                    {/* Error Display */}
+                    {displayError && (
+                        <Alert severity="error" onClose={handleClearError}>
+                            {displayError}
+                        </Alert>
+                    )}
 
-                    {/*<Divider />*/}
+                    {/* Mocap Recording Path Input */}
+                    <Box>
 
-                    {/*/!* Model Configuration *!/*/}
-                    {/*<Box>*/}
-                    {/*    <Typography variant="subtitle2" gutterBottom>*/}
-                    {/*        Model Configuration*/}
-                    {/*    </Typography>*/}
-                    {/*    <Stack spacing={2}>*/}
-                    {/*        <FormControl size="small" fullWidth>*/}
-                    {/*            <InputLabel>Model Type</InputLabel>*/}
-                    {/*            <Select*/}
-                    {/*                value={modelType}*/}
-                    {/*                label="Model Type"*/}
-                    {/*                onChange={handleModelTypeChange}*/}
-                    {/*            >*/}
-                    {/*                <MenuItem value="full-body">Full Body (26 points)</MenuItem>*/}
-                    {/*                <MenuItem value="upper-body">Upper Body (13 points)</MenuItem>*/}
-                    {/*                <MenuItem value="hands">Hands Only (21 points each)</MenuItem>*/}
-                    {/*                <MenuItem value="face">Face (468 landmarks)</MenuItem>*/}
-                    {/*            </Select>*/}
-                    {/*        </FormControl>*/}
-
-                    {/*        <FormControl size="small" fullWidth>*/}
-                    {/*            <InputLabel>Output Format</InputLabel>*/}
-                    {/*            <Select*/}
-                    {/*                value={outputFormat}*/}
-                    {/*                label="Output Format"*/}
-                    {/*                onChange={handleOutputFormatChange}*/}
-                    {/*            >*/}
-                    {/*                <MenuItem value="bvh">BVH</MenuItem>*/}
-                    {/*                <MenuItem value="fbx">FBX</MenuItem>*/}
-                    {/*                <MenuItem value="json">JSON</MenuItem>*/}
-                    {/*                <MenuItem value="csv">CSV</MenuItem>*/}
-                    {/*            </Select>*/}
-                    {/*        </FormControl>*/}
-                    {/*    </Stack>*/}
-                    {/*</Box>*/}
-
-                    {/*/!* Processing Settings *!/*/}
-                    {/*<Box>*/}
-                    {/*    <Typography variant="subtitle2" gutterBottom>*/}
-                    {/*        Processing Settings*/}
-                    {/*    </Typography>*/}
-                    {/*    <Stack spacing={2}>*/}
-                    {/*        <Box>*/}
-                    {/*            <Typography variant="caption" gutterBottom>*/}
-                    {/*                Smoothing: {smoothing.toFixed(2)}*/}
-                    {/*            </Typography>*/}
-                    {/*            <input*/}
-                    {/*                type="range"*/}
-                    {/*                min="0"*/}
-                    {/*                max="1"*/}
-                    {/*                step="0.01"*/}
-                    {/*                value={smoothing}*/}
-                    {/*                onChange={handleSmoothingChange}*/}
-                    {/*                style={{ width: '100%' }}*/}
-                    {/*            />*/}
-                    {/*        </Box>*/}
-                    {/*        <FormControlLabel*/}
-                    {/*            control={*/}
-                    {/*                <Switch*/}
-                    {/*                    checked={useGpu}*/}
-                    {/*                    onChange={(e) => setUseGpu(e.target.checked)}*/}
-                    {/*                />*/}
-                    {/*            }*/}
-                    {/*            label="Use GPU Acceleration"*/}
-                    {/*        />*/}
-                    {/*    </Stack>*/}
-                    {/*</Box>*/}
-
-                    {/*<Divider />*/}
-
-                    {/* Action Buttons */}
-                    <Stack direction="row" spacing={1}>
-                        {status !== 'recording' ? (
+                        {/* Recording Controls */}
+                        <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
                             <Button
                                 variant="contained"
-                                color="error"
+                                color="primary"
                                 startIcon={<PlayArrowIcon />}
-                                onClick={handleStartRecording}
-                                disabled={status === 'processing'}
+                                onClick={dispatchStartMocapRecording}
+                                disabled={!canStartRecording || isLoading}
+                                fullWidth
                             >
-                                Start Recording
+                                Start Mocap Recording
                             </Button>
-                        ) : (
-                            <Button
-                                variant="contained"
-                                color="warning"
-                                startIcon={<StopIcon />}
-                                onClick={handleStopRecording}
+                            {isRecording && (
+                                <Button
+                                    variant="contained"
+                                    color="error"
+                                    startIcon={<StopIcon />}
+                                    onClick={dispatchStopMocapRecording}
+                                    disabled={isLoading}
+                                    fullWidth
+                                >
+                                    Stop Recording
+                                </Button>
+                            )}
+                        </Stack>
+                        <TextField
+                            label="Mocap Recording Path"
+                            value={mocapRecordingPath}
+                            onChange={handlePathInputChange}
+                            fullWidth
+                            size="small"
+                            helperText={pathHelperText}
+                            InputProps={{
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        {isUsingManualPath && (
+                                            <Tooltip title="Clear manual path (revert to default)">
+                                                <IconButton
+                                                    onClick={handleClearManualPath}
+                                                    edge="end"
+                                                    size="small"
+                                                >
+                                                    <ClearIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        <Tooltip title="Select directory">
+                                            <IconButton
+                                                onClick={handleSelectDirectory}
+                                                edge="end"
+                                                disabled={!isElectron}
+                                            >
+                                                <FolderOpenIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    </Box>
+
+                    {/* Directory Status Info */}
+                    {directoryInfo && (
+                        <Box sx={{
+                            p: 1.5,
+                            borderRadius: 1,
+                            border: `2px solid ${theme.palette.divider}`
+                        }}>
+                            <Stack spacing={1}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <InfoIcon fontSize="small" color="info" />
+                                    <Typography variant="caption" fontWeight="medium">
+                                        Mocap Folder Status
+                                    </Typography>
+                                </Box>
+
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                    <Chip
+                                        label={directoryInfo.exists ? "Directory exists" : "Directory will be created"}
+                                        size="small"
+                                        color={directoryInfo.exists ? "success" : "default"}
+                                        icon={directoryInfo.exists ? <CheckCircleIcon /> : <CloseIcon />}
+                                        variant={directoryInfo.exists ? "filled" : "outlined"}
+                                        sx={!directoryInfo.exists ? {
+                                            borderColor: theme.palette.grey[400],
+                                            '& .MuiChip-icon': { color: theme.palette.grey[600] }
+                                        } : {}}
+                                    />
+
+                                    <Chip
+                                        label="Has videos"
+                                        size="small"
+                                        color={directoryInfo.hasVideos ? "success" : "default"}
+                                        icon={directoryInfo.hasVideos ? <CheckCircleIcon /> : <CloseIcon />}
+                                        variant={directoryInfo.hasVideos ? "filled" : "outlined"}
+                                        sx={!directoryInfo.hasVideos ? {
+                                            borderColor: theme.palette.grey[400],
+                                            '& .MuiChip-icon': { color: theme.palette.grey[600] }
+                                        } : {}}
+                                    />
+
+                                    <Chip
+                                        label="Has synchronized_videos"
+                                        size="small"
+                                        color={directoryInfo.hasSynchronizedVideos ? "success" : "default"}
+                                        icon={directoryInfo.hasSynchronizedVideos ? <CheckCircleIcon /> : <CloseIcon />}
+                                        variant={directoryInfo.hasSynchronizedVideos ? "filled" : "outlined"}
+                                        sx={!directoryInfo.hasSynchronizedVideos ? {
+                                            borderColor: theme.palette.grey[400],
+                                            '& .MuiChip-icon': { color: theme.palette.grey[600] }
+                                        } : {}}
+                                    />
+
+                                    <Chip
+                                        label="Has calibration TOML"
+                                        size="small"
+                                        color={directoryInfo.cameraMocapTomlPath ? "success" : "default"}
+                                        icon={directoryInfo.cameraMocapTomlPath ? <CheckCircleIcon /> : <CloseIcon />}
+                                        variant={directoryInfo.cameraMocapTomlPath ? "filled" : "outlined"}
+                                        sx={!directoryInfo.cameraMocapTomlPath ? {
+                                            borderColor: theme.palette.grey[400],
+                                            '& .MuiChip-icon': { color: theme.palette.grey[600] }
+                                        } : {}}
+                                    />
+                                </Box>
+
+                                {directoryInfo.cameraMocapTomlPath && (
+                                    <Box sx={{ mt: 1 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Found calibration file:
+                                        </Typography>
+                                        <Typography
+                                            variant="caption"
+                                            sx={{
+                                                fontFamily: 'monospace',
+                                                display: 'block',
+                                                color: 'success.main',
+                                                wordBreak: 'break-all'
+                                            }}
+                                        >
+                                            {directoryInfo.cameraMocapTomlPath}
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Stack>
+                        </Box>
+                    )}
+
+
+                    {/* Recording Progress */}
+                    {isRecording && (
+                        <Box sx={{ width: '100%' }}>
+                            <Typography variant="caption" color="text.secondary" gutterBottom>
+                                Recording in Progress: {recordingProgress.toFixed(0)}%
+                            </Typography>
+                            <Box
+                                sx={{
+                                    width: '100%',
+                                    height: 8,
+                                    bgcolor: 'grey.300',
+                                    borderRadius: 1,
+                                    overflow: 'hidden',
+                                }}
                             >
-                                Stop Recording
-                            </Button>
-                        )}
-                        <Button
-                            variant="outlined"
-                            onClick={handleReset}
-                            disabled={status === 'recording' || status === 'processing'}
-                            sx={{color: theme.palette.text.primary,
-                            borderColor: theme.palette.text.primary}}
-                        >
-                            Reset
-                        </Button>
-                    </Stack>
+                                <Box
+                                    sx={{
+                                        width: `${recordingProgress}%`,
+                                        height: '100%',
+                                        bgcolor: theme.palette.primary.main,
+                                        transition: 'width 0.3s',
+                                    }}
+                                />
+                            </Box>
+                        </Box>
+                    )}
+
+                    {/* Process Recording Button */}
+                    <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={dispatchProcessMocapRecording}
+                        // disabled={!canProcessMocapRecording || isLoading}
+                        fullWidth
+                    >
+                        Process Selected Recording
+                    </Button>
                 </Stack>
             </Box>
         </TreeItem>

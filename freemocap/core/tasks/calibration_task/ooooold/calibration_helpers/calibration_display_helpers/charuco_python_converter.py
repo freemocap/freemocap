@@ -5,11 +5,11 @@ Convert CharucoObservation to overlay-compatible data format.
 from typing import Any
 
 import numpy as np
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import BaseObservation
 
 
 def charuco_observation_to_overlay_data(
-        observation: CharucoObservation
+        observation: BaseObservation
 ) -> dict[str, dict[str, np.ndarray]]:
     """
     Convert CharucoObservation to overlay points format.
@@ -42,7 +42,7 @@ def charuco_observation_to_overlay_data(
 
 
 def charuco_observation_to_metadata(
-        observation: CharucoObservation,
+        observation: BaseObservation,
         total_frames: int | None = None
 ) -> dict[str, Any]:
     """
@@ -71,7 +71,7 @@ def charuco_observation_to_metadata(
 
 
 def stream_charuco_observations(
-        observations: list[CharucoObservation]
+        observations: list[BaseObservation]
 ) -> tuple[list[dict[str, dict[str, np.ndarray]]], list[dict[str, Any]]]:
     """
     Convert a list of observations to overlay format for batch processing.

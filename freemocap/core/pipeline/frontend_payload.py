@@ -36,8 +36,8 @@ class FrontendPayload(BaseModel):
         camera_3d_data: dict[CameraIdString, Charuco3dData] = {}
 
         for camera_id, camera_output in aggregation_output.camera_node_outputs.items():
-            if camera_output and camera_output.charuco_observation:
-                obs = camera_output.charuco_observation
+            if camera_output and camera_output.observation:
+                obs = camera_output.observation
 
                 if obs.has_board_pose:
                     try:

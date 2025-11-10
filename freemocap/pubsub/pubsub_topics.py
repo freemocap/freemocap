@@ -2,8 +2,9 @@ import logging
 
 from pydantic import Field, model_validator
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
-from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointIdString
+from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointIdString, BaseObservation
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
@@ -24,12 +25,12 @@ class PipelineConfigUpdateMessage(TopicMessageABC):
 class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString
     frame_number: FrameNumberInt = Field(ge=0)
-    charuco_observation: CharucoObservation | None = None
+    observation: BaseObservation | None = None
 
 class VideoNodeOutputMessage(TopicMessageABC):
     video_id: VideoIdString
     frame_number: FrameNumberInt = Field(ge=0)
-    charuco_observation: CharucoObservation | None = None
+    observation: BaseObservation | None = None
 
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = Field(ge=0)
@@ -58,10 +59,10 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     def charuco_overlay_data(self) -> dict[CameraIdString, CharucoOverlayData]:
         overlay_data: dict[CameraIdString, CharucoOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
-            if cam_output.charuco_observation is not None:
+            if cam_output.observation is not None:
                 overlay_data[camera_id] = CharucoOverlayData.from_charuco_observation(
                     camera_id=camera_id,
-                    observation=cam_output.charuco_observation,
+                    observation=cam_output.observation,
                 )
         return overlay_data
 

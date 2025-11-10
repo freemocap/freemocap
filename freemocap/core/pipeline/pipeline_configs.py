@@ -4,11 +4,14 @@ from pydantic import BaseModel, Field, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 
-from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
+from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetectorConfig
+from skellytracker.trackers.charuco_tracker.charuco_detector import  CharucoDetectorConfig
+
 
 
 class PipelineTaskConfigABC(BaseModel,ABC):
     pass
+
 
 class CalibrationTaskConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -28,11 +31,10 @@ class CalibrationTaskConfig(BaseModel):
             squares_y=self.charuco_board_y_squares,
             square_length=self.charuco_square_length,
         )
-
-
 class MocapTaskConfig(BaseModel):
-    pass
-
+    @property
+    def detector_config(self) -> MediapipeDetectorConfig:
+        return MediapipeDetectorConfig()
 
 class PipelineConfig(BaseModel):
     camera_configs: CameraConfigs

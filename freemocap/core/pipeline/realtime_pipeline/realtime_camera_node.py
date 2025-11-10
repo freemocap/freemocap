@@ -11,7 +11,7 @@ from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMem
 from skellycam.core.types.type_overloads import CameraIdString, WorkerType, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import BaseObservation
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
@@ -102,7 +102,7 @@ class RealtimeCameraNode:
                 if not process_frame_number_subscription.empty():
                     process_frame_number_message: ProcessFrameNumberMessage = process_frame_number_subscription.get()
 
-                    charuco_observation: CharucoObservation | None = None
+                    charuco_observation: BaseObservation | None = None
                     if config.calibration_task_config.live_track_charuco:
                         # Process the frame
                         tik = time.perf_counter_ns()
@@ -126,7 +126,7 @@ class RealtimeCameraNode:
                         message=CameraNodeOutputMessage(
                             camera_id=frame_rec_array.frame_metadata.camera_config.camera_id[0],
                             frame_number=frame_rec_array.frame_metadata.frame_number[0],
-                            charuco_observation=charuco_observation,
+                            observation=charuco_observation,
                         ),
                     )
                     tok2 = time.perf_counter_ns()

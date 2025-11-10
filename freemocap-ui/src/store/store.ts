@@ -6,7 +6,8 @@ import {themeSlice} from "./slices/theme/theme-slice";
 import {videosSlice} from "./slices/videos/videos-slice";
 import {logRecordsSlice} from "./slices/log-records/log-records-slice";
 import {pipelineSlice} from "./slices/pipeline/pipeline-slice";
-import {calibrationSlice} from "./slices/calibration/calibration-slice";
+import {calibrationSlice} from "@/store/slices/calibration/calibration-slice";
+import {mocapSlice} from "@/store/slices/mocap/mocap-slice";
 
 export const store = configureStore({
     reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
         videos: videosSlice.reducer,
         pipeline: pipelineSlice.reducer,
         calibration: calibrationSlice.reducer,
+        mocap: mocapSlice.reducer,
     }
 });
 

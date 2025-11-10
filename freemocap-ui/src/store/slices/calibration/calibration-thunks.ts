@@ -69,7 +69,6 @@ export const startCalibrationRecording = createAsyncThunk<
             const state = getState();
             const calibrationTaskConfig = state.calibration.config;
             const calibrationRecordingDirectory = selectCalibrationRecordingPath(state);
-            const calibrationRecordingName = generateCalibrationRecordingName(state);
 
             if (!calibrationRecordingDirectory) {
                 return rejectWithValue('Recording directory is not set');
@@ -77,7 +76,6 @@ export const startCalibrationRecording = createAsyncThunk<
 
             console.log('🎬 Starting calibration recording with:', {
                 calibrationRecordingDirectory,
-                calibrationRecordingName,
                 calibrationTaskConfig,
             });
 
@@ -86,7 +84,6 @@ export const startCalibrationRecording = createAsyncThunk<
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     calibrationRecordingDirectory,
-                    calibrationRecordingName,
                     calibrationTaskConfig,
                 }),
             });
@@ -153,24 +150,24 @@ export const calibrateRecording = createAsyncThunk<
     async (_, { getState, rejectWithValue }) => {
         try {
             const state = getState();
-            const config = state.calibration.config;
-            const calibrationRecordingPath = selectCalibrationRecordingPath(state);
+            const calibrationTaskConfig = state.calibration.config;
+            const calibrationRecordingDirectory = selectCalibrationRecordingPath(state);
 
-            if (!calibrationRecordingPath) {
+            if (!calibrationRecordingDirectory) {
                 return rejectWithValue('No calibration recording path available. Please set a recording directory or record a calibration first.');
             }
 
             console.log('🔧 Calibrating recording:', {
-                calibrationRecordingPath,
-                config,
+                calibrationRecordingDirectory,
+                calibrationTaskConfig,
             });
 
             const response = await fetch(serverUrls.endpoints.calibrateRecording, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    calibrationRecordingPath,
-                    config,
+                    calibrationRecordingDirectory,
+                    calibrationTaskConfig,
                 }),
             });
 

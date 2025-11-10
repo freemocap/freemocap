@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -25,21 +26,33 @@ class CalibrationConfigResponse(BaseModel):
     message: str | None = None
 
 
-class StartCalibrationRecordingRequest(CalibrationTaskConfig):
+class StartCalibrationRecordingRequest(BaseModel):
     calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory")
-    calibration_recording_name: str = Field(alias="calibrationRecordingName")
     calibration_task_config: CalibrationTaskConfig = Field(alias="calibrationTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
-        if not self.calibration_recording_name.endswith('_calibration'):
-            self.calibration_recording_name += '_calibration'
+        recordings_directory = Path(self.calibration_recording_directory).parent
+        recording_name = Path(self.calibration_recording_directory).stem
+        if not recording_name.endswith('_calibration'):
+            recording_name += '_calibration'
         return RecordingInfo(
-            recording_directory=self.calibration_recording_directory,
-            recording_name=self.calibration_recording_name,
+            recording_directory=str(recordings_directory),
+            recording_name=recording_name,
             mic_device_index=-1
         )
-class StopCalibrationRecordingRequest(CalibrationTaskConfig):
+
+class StopCalibrationRecordingRequest(BaseModel):
     calibration_task_config: CalibrationTaskConfig = Field(alias="calibrationTaskConfig")
+
+class CalibrateRecordingRequest(BaseModel):
+    calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory")
+    calibration_task_config: CalibrationTaskConfig = Field(alias="calibrationTaskConfig")
+    def to_recording_info(self) -> RecordingInfo:
+        return RecordingInfo(
+            recording_directory=str(Path(self.calibration_recording_directory).parent),
+            recording_name=Path(self.calibration_recording_directory).stem,
+            mic_device_index=-1
+        )
 
 
 class StartCalibrationRecordingResponse(BaseModel):
@@ -99,16 +112,14 @@ async def stop_calibration_recording(request: StopCalibrationRecordingRequest) -
 
 
 @calibration_router.post("/recording/calibrate")
-def calibrate_recording(request: StartCalibrationRecordingRequest) -> CalibrateRecordingResponse:
+async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRecordingResponse:
     """Process and calibrate a recorded session."""
     app = get_freemocap_app()
     try:
-        # TODO: Implement actual calibration logic
-        # results = app.pipeline_manager.calibrate_recording(
-        #     request.calibration_recording_path,
-        #     request.config
-        # )
-        logger.info(f"Calibrating recording at: {request.calibration_recording_path}")
+        recording_info = request.to_recording_info()
+        await app.posthoc_pipeline_manager.create_posthoc_calibration_pipeline(recording_info=recording_info,
+                                                                               calibration_task_config=request.calibration_task_config)
+        logger.info(f"Calibrating recording at: {recording_info.full_recording_path}")
         return CalibrateRecordingResponse(
             success=True,
             message="Calibration completed",

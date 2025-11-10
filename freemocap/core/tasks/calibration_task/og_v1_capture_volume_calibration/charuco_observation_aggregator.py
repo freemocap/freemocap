@@ -17,6 +17,8 @@ from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose
     AniposeCharucoBoard
 from freemocap.system.default_paths import get_default_freemocap_base_folder_path
 
+from skellycam.core.recorders.videos.recording_info import  RecordingInfo
+
 logger = logging.getLogger(__name__)
 
 CharucoObservations = dict[CameraIdString, CharucoObservation | None]
@@ -31,10 +33,11 @@ def create_camera_calibration_file_name(recording_name: str) -> str:
     """Create a standardized camera calibration filename."""
     return f"{recording_name}_camera_calibration.toml"
 
-
+LAST_SUCCESSFUL_CAMERA_CALIBRATION_STRING = "last_successful_camera_calibration"
 def get_last_successful_calibration_toml_path() -> Path:
     """Get the path for the last successful calibration TOML file."""
-    return get_calibrations_folder_path() / "last_successful_camera_calibration.toml"
+    return get_calibrations_folder_path() / f"{LAST_SUCCESSFUL_CAMERA_CALIBRATION_STRING}.toml"
+
 
 
 class CharucoObservationAggregator(BaseModel):
@@ -76,8 +79,7 @@ def anipose_calibration_from_charuco_observations(
         charuco_observations_by_frame: list[CharucoObservations],
         charuco_board: AniposeCharucoBoard,
         anipose_camera_group: AniposeCameraGroup,
-        calibration_toml_save_path: Path | str,
-        recording_path: Path | None = None,
+        recording_info: RecordingInfo,
         pin_camera_0_to_origin: bool = True,
         use_charuco_as_groundplane: bool = False,
         init_intrinsics: bool = True,
@@ -123,7 +125,7 @@ def anipose_calibration_from_charuco_observations(
         anipose_camera_group, groundplane_success = set_charuco_board_as_groundplane(
             camera_group=anipose_camera_group,
             charuco_board=charuco_board,
-            recording_folder_path=recording_path
+            recording_folder_path=Path(recording_info.full_recording_path)
         )
         if groundplane_success.success:
             anipose_camera_group.metadata["groundplane_calibration"] = True
@@ -135,20 +137,23 @@ def anipose_calibration_from_charuco_observations(
     get_real_world_matrices(camera_group=anipose_camera_group)
 
     # Create calibration filename
-    anipose_camera_group.dump(calibration_toml_save_path)
-    logger.info(f"Saved calibration to: {calibration_toml_save_path}")
+    calibration_file_name = create_camera_calibration_file_name(recording_name=recording_info.recording_name)
 
-    # Save to recording folder if provided
-    if recording_path is not None:
-        recording_folder_toml_path = Path(recording_path) / calibration_toml_save_path.stem
-        anipose_camera_group.dump(recording_folder_toml_path)
-        logger.info(f"Saved calibration copy to recording folder: {recording_folder_toml_path}")
+    # Save to recording folder
+    recording_folder_calibration_toml_path = Path(recording_info.full_recording_path)/calibration_file_name
+    anipose_camera_group.dump(recording_folder_calibration_toml_path)
+    logger.info(f"Saved calibration to: {recording_folder_calibration_toml_path}")
+
+    # Save to main calibrations folder
+    calibration_folder_calibration_toml_path = Path(get_calibrations_folder_path()) / calibration_file_name
+    anipose_camera_group.dump(calibration_folder_calibration_toml_path)
+    logger.info(f"Saved calibration to: {calibration_folder_calibration_toml_path}")
+
 
     # Save as last successful calibration
-    last_successful_calibration_toml_path = get_last_successful_calibration_toml_path()
-    anipose_camera_group.dump(last_successful_calibration_toml_path)
-    logger.info(f"Saved as last successful calibration: {last_successful_calibration_toml_path}")
-    return PointTriangulator.from_toml(toml_path=last_successful_calibration_toml_path)
+    anipose_camera_group.dump(get_last_successful_calibration_toml_path())
+    logger.info(f"Saved as last successful calibration: {get_last_successful_calibration_toml_path()}")
+    return PointTriangulator.from_toml(toml_path=get_last_successful_calibration_toml_path())
 
 
 def pin_camera_zero_to_origin(camera_group: AniposeCameraGroup) -> AniposeCameraGroup:

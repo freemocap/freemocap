@@ -4,7 +4,6 @@ Includes smart frame reading and caching.
 """
 
 from pathlib import Path
-from typing import NamedTuple
 from collections import OrderedDict
 import cv2
 import numpy as np

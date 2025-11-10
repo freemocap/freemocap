@@ -7,12 +7,11 @@ from pydantic import BaseModel, ConfigDict
 from skellycam.core.types.type_overloads import WorkerType
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
+from freemocap.core.pipeline.pipeline_configs import CalibrationTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipeline.video_node.video_helper import VideoHelper
 from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.pubsub.pubsub_topics import CameraNodeOutputTopic, \
-    CameraNodeOutputMessage, VideoNodeOutputTopic, VideoNodeOutputMessage
+from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
 
 logger = logging.getLogger(__name__)
 

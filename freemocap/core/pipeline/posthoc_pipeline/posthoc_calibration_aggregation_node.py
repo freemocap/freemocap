@@ -17,7 +17,7 @@ from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.free
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import CharucoObservations
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
-from freemocap.utilities.wait_functions import wait_10ms
+from freemocap.utilities.wait_functions import wait_10ms, wait_1ms
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ class PosthocCalibrationAggregationNode:
                                  f"{len(video_outputs_by_frame)} vs {len(frame_numbers)}")
 
             while not shutdown_self_flag.value and ipc.should_continue:
-                wait_10ms()
+                wait_1ms()
                 if not video_node_subscription.empty():
                     video_node_output_message: VideoNodeOutputMessage = video_node_subscription.get()
 
@@ -134,8 +134,6 @@ class PosthocCalibrationAggregationNode:
                     for video_id, output in frame_outputs.items()
                 })
 
-            calibration_toml_save_path = Path(
-                recording_info.full_recording_path) / f"{recording_info.recording_name}_camera_calibration.toml"
             anipose_cameras: list[AniposeCamera] = [
                 AniposeCamera(name=video_id,
                               size=(video_metadata.height,video_metadata.width)) for video_id, video_metadata in video_metadata.items()
@@ -149,8 +147,7 @@ class PosthocCalibrationAggregationNode:
                                                   square_length=calibration_task_config.charuco_square_length,
                                                   marker_length=calibration_task_config.charuco_square_length * .8),
                 anipose_camera_group=anipose_camera_group,
-                recording_path=Path(recording_info.full_recording_path),
-                calibration_toml_save_path=calibration_toml_save_path,
+                recording_info=recording_info,
                 # use_charuco_as_groundplane=True,
             )
 

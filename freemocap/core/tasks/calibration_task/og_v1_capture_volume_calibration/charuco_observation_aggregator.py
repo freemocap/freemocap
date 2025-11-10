@@ -44,7 +44,6 @@ class CharucoObservationAggregator(BaseModel):
     anipose_camera_ordering: list[CameraIdString]
     # anipose handles camera rows by the ordering of cameras in CameraGroup - so we need to use that ordering when we pass the camera rows to anipose
     individual_camera_rows: dict[CameraIdString, list] = Field(default_factory=dict)
-
     @classmethod
     def from_charuco_observation_payload(cls,
                                          charuco_observations_by_camera: CharucoObservations,
@@ -52,9 +51,14 @@ class CharucoObservationAggregator(BaseModel):
         if set(charuco_observations_by_camera.keys()) != set(anipose_camera_ordering):
             raise ValueError("individual_camera_rows and anipose_camera_ordering must have the same camera ids")
         camera_rows = {}
+        nan_row: list = []
         for camera_id, charuco_observation in charuco_observations_by_camera.items():
-            anipose_camera_row = charuco_observation.to_anipose_camera_row() if charuco_observation is not None else None
-            camera_rows[camera_id] = [anipose_camera_row] if anipose_camera_row is not None else []
+            if charuco_observation is None:
+                raise ValueError("Cannot create CharucoObservationAggregator from payload with None observations - should use nan-filled CharucoObservation instead")
+            anipose_camera_row = charuco_observation.to_anipose_camera_row()
+            if anipose_camera_row is None:
+                raise ValueError("Cannot create CharucoObservationAggregator from payload with None observations - should use nan-filled CharucoObservation instead")
+            camera_rows[camera_id] = [anipose_camera_row]
 
         return cls(individual_camera_rows=camera_rows, anipose_camera_ordering=anipose_camera_ordering)
 
@@ -64,9 +68,12 @@ class CharucoObservationAggregator(BaseModel):
 
     def add_observations(self, charuco_observations_by_camera: CharucoObservations):
         for camera_id, charuco_observation in charuco_observations_by_camera.items():
-            anipose_camera_row = charuco_observation.to_anipose_camera_row() if charuco_observation is not None else None
-            if anipose_camera_row is not None:
-                self.individual_camera_rows[camera_id].append(anipose_camera_row)
+            if charuco_observation is None:
+                raise  ValueError("Cannot add None observations to CharucoObservationAggregator - should use nan-filled CharucoObservation instead")
+            anipose_camera_row = charuco_observation.to_anipose_camera_row()
+            if anipose_camera_row is None:
+                raise ValueError("Cannot add None observations to CharucoObservationAggregator - should use nan-filled CharucoObservation instead")
+            self.individual_camera_rows[camera_id].append(anipose_camera_row)
 
 
 class GroundPlaneSuccess:
@@ -88,10 +95,14 @@ def anipose_calibration_from_charuco_observations(
     logger.info(
         f"Starting Anipose calibration with {len(charuco_observations_by_frame)} frames of charuco observations")
     # Aggregate all observations
-    charuco_observation_aggregator = CharucoObservationAggregator.from_charuco_observation_payload(
-        charuco_observations_by_camera=charuco_observations_by_frame.pop(0),
-        anipose_camera_ordering=[camera.name for camera in anipose_camera_group.cameras])
+
+    charuco_observation_aggregator: CharucoObservationAggregator | None = None
     for charuco_observations_by_camera in charuco_observations_by_frame:
+        if charuco_observation_aggregator is None:
+            charuco_observation_aggregator = CharucoObservationAggregator.from_charuco_observation_payload(
+                charuco_observations_by_camera=charuco_observations_by_camera,
+                anipose_camera_ordering=[camera.name for camera in anipose_camera_group.cameras]
+            )
         charuco_observation_aggregator.add_observations(charuco_observations_by_camera)
 
     if charuco_observation_aggregator is None:

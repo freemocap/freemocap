@@ -47,7 +47,7 @@ const initialState: CalibrationState = {
         liveTrackCharuco: true,
         charucoBoardXSquares: 5,
         charucoBoardYSquares: 3,
-        charucoSquareLength: 56,
+        charucoSquareLength: 1,
         minSharedViewsPerCamera: 200,
         autoStopOnMinViewCount: true,
     },

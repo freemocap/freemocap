@@ -31,14 +31,14 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useCalibration } from '@/hooks/useCalibration';
 import { useElectronIPC } from '@/services';
 
-type BoardPreset = '5x3' | '7x5';
+type BoardPreset = '5x3' | '7x5' | 'custom';
 
 interface BoardPresetConfig {
     xSquares: number;
     ySquares: number;
 }
 
-const BOARD_PRESETS: Record<BoardPreset, BoardPresetConfig> = {
+const BOARD_PRESETS: Record<Exclude<BoardPreset, 'custom'>, BoardPresetConfig> = {
     '5x3': { xSquares: 5, ySquares: 3 },
     '7x5': { xSquares: 7, ySquares: 5 },
 };
@@ -86,6 +86,7 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                 return preset as BoardPreset;
             }
         }
+        return 'custom';
     }, [config.charucoBoardXSquares, config.charucoBoardYSquares]);
 
     const handleClearError = useCallback((): void => {
@@ -94,11 +95,33 @@ export const CalibrationTaskTreeItem: React.FC = () => {
     }, [clearError]);
 
     const handlePresetChange = useCallback((preset: BoardPreset): void => {
+        if (preset === 'custom') {
+            // Don't change values when switching to custom
+            return;
+        }
         const presetConfig = BOARD_PRESETS[preset];
         updateCalibrationConfig({
             charucoBoardXSquares: presetConfig.xSquares,
             charucoBoardYSquares: presetConfig.ySquares,
         });
+    }, [updateCalibrationConfig]);
+
+    const handleXSquaresChange = useCallback((value: string): void => {
+        const numValue = parseInt(value, 10);
+        if (!isNaN(numValue) && numValue > 0) {
+            updateCalibrationConfig({
+                charucoBoardXSquares: numValue,
+            });
+        }
+    }, [updateCalibrationConfig]);
+
+    const handleYSquaresChange = useCallback((value: string): void => {
+        const numValue = parseInt(value, 10);
+        if (!isNaN(numValue) && numValue > 0) {
+            updateCalibrationConfig({
+                charucoBoardYSquares: numValue,
+            });
+        }
     }, [updateCalibrationConfig]);
 
     const handleSelectDirectory = async (): Promise<void> => {
@@ -173,7 +196,6 @@ export const CalibrationTaskTreeItem: React.FC = () => {
 
                     {/* Calibration Recording Path Input */}
                     <Box>
-
                         {/* Live Tracker Toggle */}
                         <FormControlLabel
                             control={
@@ -334,20 +356,44 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                         </Box>
                     )}
 
-                    {/* Board Size Preset Selector */}
-                    <FormControl fullWidth size="small">
-                        <InputLabel id="board-preset-label">Board Size Preset</InputLabel>
-                        <Select
-                            labelId="board-preset-label"
-                            value={currentPreset}
-                            label="Board Size Preset"
-                            onChange={(e) => handlePresetChange(e.target.value as BoardPreset)}
+                    {/* Board Size Configuration - All on one row */}
+                    <Stack direction="row" spacing={2}>
+                        <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <InputLabel id="board-preset-label">Preset</InputLabel>
+                            <Select
+                                labelId="board-preset-label"
+                                value={currentPreset}
+                                label="Preset"
+                                onChange={(e) => handlePresetChange(e.target.value as BoardPreset)}
+                                disabled={isLoading}
+                                sx={{color: theme.palette.text.primary}}
+                            >
+                                <MenuItem value="5x3">5×3</MenuItem>
+                                <MenuItem value="7x5">7×5</MenuItem>
+                                <MenuItem value="custom">Custom</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <TextField
+                            label="X Squares"
+                            type="number"
+                            value={config.charucoBoardXSquares}
+                            onChange={(e) => handleXSquaresChange(e.target.value)}
                             disabled={isLoading}
-                        >
-                            <MenuItem value="5x3">5×3 Charuco</MenuItem>
-                            <MenuItem value="7x5">7×5 Charuco</MenuItem>
-                        </Select>
-                    </FormControl>
+                            size="small"
+                            sx={{ flex: 1 }}
+                            inputProps={{ min: 2, max: 20 }}
+                        />
+                        <TextField
+                            label="Y Squares"
+                            type="number"
+                            value={config.charucoBoardYSquares}
+                            onChange={(e) => handleYSquaresChange(e.target.value)}
+                            disabled={isLoading}
+                            size="small"
+                            sx={{ flex: 1 }}
+                            inputProps={{ min: 2, max: 20 }}
+                        />
+                    </Stack>
 
                     {/* Square Length */}
                     <TextField
@@ -362,8 +408,6 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                         fullWidth
                         inputProps={{ min: 1, step: 0.1 }}
                     />
-
-
 
                     {/* Recording Progress */}
                     {isRecording && (

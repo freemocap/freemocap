@@ -6,7 +6,6 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 from pydantic import BaseModel, ConfigDict
-from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.types.type_overloads import CameraIdString, WorkerType, TopicSubscriptionQueue
@@ -16,11 +15,9 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.single_camera_calibrator import \
-    SingleCameraCalibrator
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigUpdateTopic, CameraNodeOutputTopic, \
-    PipelineConfigUpdateMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage, ShouldCalibrateTopic
+    PipelineConfigUpdateMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +35,7 @@ class CameraNodeState(BaseModel):
 
 
 @dataclass
-class CameraNode:
+class RealtimeCameraNode:
     camera_id: CameraIdString
     shutdown_self_flag: multiprocessing.Value
     worker: WorkerType
@@ -89,7 +86,6 @@ class CameraNode:
         logger.debug(f"Initializing camera processing node for camera {camera_id} - creating shared memory ring buffer")
         camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
                                                            read_only=False)
-        camera_calibrator: SingleCameraCalibrator | None = None
         charuco_detector = CharucoDetector.create(config=config.calibration_task_config.detector_config)
         try:
             logger.trace(f"Starting camera processing node for camera {camera_id}")
@@ -124,19 +120,6 @@ class CameraNode:
                             image=rotated_image, )
 
                         # tok = time.perf_counter_ns()
-                        # if charuco_observation is not None and charuco_observation.detected_charuco_corners_in_object_coordinates is not None:
-                        #     # Publish the observation to the IPC
-                        #     if camera_calibrator is None:
-                        #         camera_calibrator = SingleCameraCalibrator.from_charuco_observation(
-                        #             camera_id=camera_id,
-                        #             charuco_observation=charuco_observation
-                        #         )
-                        #     else:
-                        #         camera_calibrator.add_observation(observation=charuco_observation)
-                        #         charuco_observation.compute_board_pose_and_camera_coordinates(
-                        #             camera_matrix=camera_calibrator.camera_matrix.matrix,
-                        #             distortion_coefficients=camera_calibrator.distortion_coefficients.coefficients
-                        #         )
 
                     ipc.pubsub.publish(
                         topic_type=CameraNodeOutputTopic,

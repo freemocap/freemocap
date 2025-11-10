@@ -11,7 +11,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
 from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import AggregationNode, RealtimeAggregationNodeState
-from freemocap.core.pipeline.realtime_pipeline.camera_node import CameraNode, CameraNodeState
+from freemocap.core.pipeline.realtime_pipeline.realtime_camera_node import RealtimeCameraNode, CameraNodeState
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig, CalibrationTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
@@ -43,7 +43,7 @@ class RealtimeProcessingPipeline:
     id: PipelineIdString
     camera_group: CameraGroup
     config: PipelineConfig
-    camera_nodes: dict[CameraIdString, CameraNode]
+    camera_nodes: dict[CameraIdString, RealtimeCameraNode]
     aggregation_node: AggregationNode
     aggregation_node_subscription: TopicSubscriptionQueue
     ipc: PipelineIPC
@@ -77,11 +77,11 @@ class RealtimeProcessingPipeline:
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
                                  heartbeat_timestamp=heartbeat_timestamp
         )
-        camera_nodes = {camera_id: CameraNode.create(camera_id=camera_id,
-                                                     subprocess_registry=subprocess_registry,
-                                                     camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
-                                                     config=pipeline_config,
-                                                     ipc=ipc)
+        camera_nodes = {camera_id: RealtimeCameraNode.create(camera_id=camera_id,
+                                                             subprocess_registry=subprocess_registry,
+                                                             camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
+                                                             config=pipeline_config,
+                                                             ipc=ipc)
                         for camera_id, config in camera_group.configs.items()}
         aggregation_node = AggregationNode.create(camera_group_id=camera_group.id,
                                                   subprocess_registry=subprocess_registry,

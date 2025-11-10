@@ -100,8 +100,8 @@ class CameraCalibrationData:
         return cls(
             name=camera_id,
             image_size=(int(image_size_list[0]), int(image_size_list[1])),
-            matrix=CameraMatrix(**data["matrix"]),
-            distortion=CameraDistortionCoefficients(**data["distortions"]),
+            matrix=CameraMatrix(matrix=np.asarray(data["matrix"])),
+            distortion=CameraDistortionCoefficients(coefficients=data["distortions"]),
             rotation_vector=np.array(data["rotation"], dtype=np.float64),
             translation=np.array(data["translation"], dtype=np.float64),
         )

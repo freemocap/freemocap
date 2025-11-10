@@ -8,6 +8,8 @@ from skellycam.core.types.type_overloads import CameraGroupIdString
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.app.freemocap_application import FreemocApplication, get_freemocap_app
+from freemocap.core.pipeline.frontend_payload import FrontendPayload
+from freemocap.core.types.type_overloads import FrameNumberInt
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue, \
     MIN_LOG_LEVEL_FOR_WEBSOCKET
 from freemocap.utilities.wait_functions import await_10ms
@@ -99,18 +101,28 @@ class WebsocketServer:
                     else:
 
                         for pipeline_id, (payload_bytes, frontend_payload) in frontend_payloads.items():
-                            if not payload_bytes or not frontend_payload:
+                            frame_number= None
+                            if not payload_bytes and not frontend_payload:
                                 continue
+                            if frontend_payload:
+                                if not isinstance(frontend_payload, FrontendPayload):
+                                    frame_number = frontend_payload
+                                    frontend_payload = None
+                                else:
+                                    frame_number = frontend_payload.frame_number
+
                             if not isinstance(payload_bytes, (bytes, bytearray)):
                                 logger.warning(f"Invalid payload bytes on frame{frontend_payload.frame_number} -"
                                                f" got type {type(payload_bytes)}")
                                 continue
-                            await self.websocket.send_bytes(payload_bytes)
-                            await self.websocket.send_json(
+                            if payload_bytes:
+                                await self.websocket.send_bytes(payload_bytes)
+                            if frontend_payload:
+                                await self.websocket.send_json(
                                 {camera_id: overlay_data.model_dump() for camera_id, overlay_data in
                                  frontend_payload.charuco_overlays.items()})
-                            # await self.websocket.send_json(frontend_payload.to_websocket_dict())
-                            self.last_sent_frame_number = frontend_payload.frame_number
+                            if frame_number is not None:
+                                self.last_sent_frame_number = frame_number
                 else:
                     skipped_previous = True
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation

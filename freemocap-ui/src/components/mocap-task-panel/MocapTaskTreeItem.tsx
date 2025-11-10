@@ -141,91 +141,91 @@ export const MocapTaskTreeItem: React.FC = () => {
             <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
                 <Stack spacing={2}>
                     {/* Recording Status */}
-                    <Box>
-                        <Typography variant="caption" color="text.secondary">
-                            Recording Time
-                        </Typography>
-                        <Typography 
-                            variant="h5" 
-                            sx={{ 
-                                color: status === 'recording' ? 'error.main' : 'text.primary' 
-                            }}
-                        >
-                            {recordingTime.toFixed(1)}s
-                        </Typography>
-                    </Box>
+                    {/*<Box>*/}
+                    {/*    <Typography variant="caption" color="text.secondary">*/}
+                    {/*        Recording Time*/}
+                    {/*    </Typography>*/}
+                    {/*    <Typography*/}
+                    {/*        variant="h5"*/}
+                    {/*        sx={{*/}
+                    {/*            color: status === 'recording' ? 'error.main' : 'text.primary'*/}
+                    {/*        }}*/}
+                    {/*    >*/}
+                    {/*        {recordingTime.toFixed(1)}s*/}
+                    {/*    </Typography>*/}
+                    {/*</Box>*/}
 
-                    <Divider />
+                    {/*<Divider />*/}
 
-                    {/* Model Configuration */}
-                    <Box>
-                        <Typography variant="subtitle2" gutterBottom>
-                            Model Configuration
-                        </Typography>
-                        <Stack spacing={2}>
-                            <FormControl size="small" fullWidth>
-                                <InputLabel>Model Type</InputLabel>
-                                <Select
-                                    value={modelType}
-                                    label="Model Type"
-                                    onChange={handleModelTypeChange}
-                                >
-                                    <MenuItem value="full-body">Full Body (26 points)</MenuItem>
-                                    <MenuItem value="upper-body">Upper Body (13 points)</MenuItem>
-                                    <MenuItem value="hands">Hands Only (21 points each)</MenuItem>
-                                    <MenuItem value="face">Face (468 landmarks)</MenuItem>
-                                </Select>
-                            </FormControl>
+                    {/*/!* Model Configuration *!/*/}
+                    {/*<Box>*/}
+                    {/*    <Typography variant="subtitle2" gutterBottom>*/}
+                    {/*        Model Configuration*/}
+                    {/*    </Typography>*/}
+                    {/*    <Stack spacing={2}>*/}
+                    {/*        <FormControl size="small" fullWidth>*/}
+                    {/*            <InputLabel>Model Type</InputLabel>*/}
+                    {/*            <Select*/}
+                    {/*                value={modelType}*/}
+                    {/*                label="Model Type"*/}
+                    {/*                onChange={handleModelTypeChange}*/}
+                    {/*            >*/}
+                    {/*                <MenuItem value="full-body">Full Body (26 points)</MenuItem>*/}
+                    {/*                <MenuItem value="upper-body">Upper Body (13 points)</MenuItem>*/}
+                    {/*                <MenuItem value="hands">Hands Only (21 points each)</MenuItem>*/}
+                    {/*                <MenuItem value="face">Face (468 landmarks)</MenuItem>*/}
+                    {/*            </Select>*/}
+                    {/*        </FormControl>*/}
 
-                            <FormControl size="small" fullWidth>
-                                <InputLabel>Output Format</InputLabel>
-                                <Select
-                                    value={outputFormat}
-                                    label="Output Format"
-                                    onChange={handleOutputFormatChange}
-                                >
-                                    <MenuItem value="bvh">BVH</MenuItem>
-                                    <MenuItem value="fbx">FBX</MenuItem>
-                                    <MenuItem value="json">JSON</MenuItem>
-                                    <MenuItem value="csv">CSV</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Stack>
-                    </Box>
+                    {/*        <FormControl size="small" fullWidth>*/}
+                    {/*            <InputLabel>Output Format</InputLabel>*/}
+                    {/*            <Select*/}
+                    {/*                value={outputFormat}*/}
+                    {/*                label="Output Format"*/}
+                    {/*                onChange={handleOutputFormatChange}*/}
+                    {/*            >*/}
+                    {/*                <MenuItem value="bvh">BVH</MenuItem>*/}
+                    {/*                <MenuItem value="fbx">FBX</MenuItem>*/}
+                    {/*                <MenuItem value="json">JSON</MenuItem>*/}
+                    {/*                <MenuItem value="csv">CSV</MenuItem>*/}
+                    {/*            </Select>*/}
+                    {/*        </FormControl>*/}
+                    {/*    </Stack>*/}
+                    {/*</Box>*/}
 
-                    {/* Processing Settings */}
-                    <Box>
-                        <Typography variant="subtitle2" gutterBottom>
-                            Processing Settings
-                        </Typography>
-                        <Stack spacing={2}>
-                            <Box>
-                                <Typography variant="caption" gutterBottom>
-                                    Smoothing: {smoothing.toFixed(2)}
-                                </Typography>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="1"
-                                    step="0.01"
-                                    value={smoothing}
-                                    onChange={handleSmoothingChange}
-                                    style={{ width: '100%' }}
-                                />
-                            </Box>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={useGpu}
-                                        onChange={(e) => setUseGpu(e.target.checked)}
-                                    />
-                                }
-                                label="Use GPU Acceleration"
-                            />
-                        </Stack>
-                    </Box>
+                    {/*/!* Processing Settings *!/*/}
+                    {/*<Box>*/}
+                    {/*    <Typography variant="subtitle2" gutterBottom>*/}
+                    {/*        Processing Settings*/}
+                    {/*    </Typography>*/}
+                    {/*    <Stack spacing={2}>*/}
+                    {/*        <Box>*/}
+                    {/*            <Typography variant="caption" gutterBottom>*/}
+                    {/*                Smoothing: {smoothing.toFixed(2)}*/}
+                    {/*            </Typography>*/}
+                    {/*            <input*/}
+                    {/*                type="range"*/}
+                    {/*                min="0"*/}
+                    {/*                max="1"*/}
+                    {/*                step="0.01"*/}
+                    {/*                value={smoothing}*/}
+                    {/*                onChange={handleSmoothingChange}*/}
+                    {/*                style={{ width: '100%' }}*/}
+                    {/*            />*/}
+                    {/*        </Box>*/}
+                    {/*        <FormControlLabel*/}
+                    {/*            control={*/}
+                    {/*                <Switch*/}
+                    {/*                    checked={useGpu}*/}
+                    {/*                    onChange={(e) => setUseGpu(e.target.checked)}*/}
+                    {/*                />*/}
+                    {/*            }*/}
+                    {/*            label="Use GPU Acceleration"*/}
+                    {/*        />*/}
+                    {/*    </Stack>*/}
+                    {/*</Box>*/}
 
-                    <Divider />
+                    {/*<Divider />*/}
 
                     {/* Action Buttons */}
                     <Stack direction="row" spacing={1}>
@@ -253,6 +253,8 @@ export const MocapTaskTreeItem: React.FC = () => {
                             variant="outlined"
                             onClick={handleReset}
                             disabled={status === 'recording' || status === 'processing'}
+                            sx={{color: theme.palette.text.primary,
+                            borderColor: theme.palette.text.primary}}
                         >
                             Reset
                         </Button>

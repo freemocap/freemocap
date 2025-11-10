@@ -51,10 +51,10 @@ class CameraPairTargetView(BaseModel):
         if self.base_camera_id == self.other_camera_id:
             raise ValueError("base_camera_id and other_camera_id must be different")
         if self.base_camera_observation.frame_number != self.multi_frame_number:
-            raise ValueError(
+            logger.warning(
                 f"base_camera_observation frame_number {self.base_camera_observation.frame_number} does not match multi_frame_number {self.multi_frame_number}")
         if self.other_camera_observation.frame_number != self.multi_frame_number:
-            raise ValueError(
+            logger.warning(
                 f"other_camera_observation frame_number {self.other_camera_observation.frame_number} does not match multi_frame_number {self.multi_frame_number}")
         return self
 

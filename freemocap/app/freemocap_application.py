@@ -74,9 +74,9 @@ class FreemocApplication:
             camera_group = await self.camera_group_manager.create_or_update_camera_group(
                 camera_configs=pipeline_config.camera_configs
             )
-            pipeline = await self.realtime_pipeline_manager.create_realtime_pipeline(
-                camera_group=camera_group,
-                pipeline_config=pipeline_config)
+            # pipeline = await self.realtime_pipeline_manager.create_realtime_pipeline(
+            #     camera_group=camera_group,
+            #     pipeline_config=pipeline_config)
         return pipeline
 
     async def create_posthoc_calibration_pipeline(self,
@@ -107,12 +107,12 @@ class FreemocApplication:
         return recording_infos[0]
 
     def get_latest_frontend_payloads(self, if_newer_than: FrameNumberInt) -> dict[
-        PipelineIdString | CameraGroupIdString, tuple[bytes, FrontendPayload | None]]:
+        PipelineIdString | CameraGroupIdString, tuple[bytes, FrontendPayload | FrameNumberInt]]:
         if len(self.realtime_pipeline_manager.realtime_pipelines) == 0 or all(
                 [not p.alive for p in self.realtime_pipeline_manager.realtime_pipelines.values()]):
             # if there are no pipelines, return the latest payloads from the camera groups instead
             cg_payloads = self.camera_group_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)
-            cg_payloads = {camera_group_id: (payload[-1], None) for camera_group_id, payload in cg_payloads.items()}
+            cg_payloads = {camera_group_id: (payload[-1], payload[0]) for camera_group_id, payload in cg_payloads.items()}
             return cg_payloads
 
         return self.realtime_pipeline_manager.get_latest_frontend_payloads(if_newer_than=if_newer_than)

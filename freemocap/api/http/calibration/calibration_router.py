@@ -74,7 +74,7 @@ async def start_calibration_recording(request: StartCalibrationRecordingRequest)
         if not recording_info.recording_name.endswith('_calibration'):
             recording_info.recording_name += '_calibration'
 
-        await get_freemocap_app().create_or_update_realtime_calibration_pipeline(request.calibration_task_config)
+        # await get_freemocap_app().create_or_update_realtime_calibration_pipeline(request.calibration_task_config)
         await get_freemocap_app().start_recording_all(recording_info=recording_info,)
         logger.info(f"Starting recording : {recording_info}")
         return StartCalibrationRecordingResponse(success=True, message="Recording started")

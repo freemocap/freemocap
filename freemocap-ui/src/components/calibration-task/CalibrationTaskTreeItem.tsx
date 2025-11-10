@@ -39,7 +39,7 @@ interface BoardPresetConfig {
 }
 
 const BOARD_PRESETS: Record<BoardPreset, BoardPresetConfig> = {
-    '5x3': { xSquares: 5, ySquares: 3 },
+    '5x3': { xSquares: 3, ySquares: 5 },
     '7x5': { xSquares: 7, ySquares: 5 },
 };
 
@@ -86,7 +86,6 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                 return preset as BoardPreset;
             }
         }
-        throw new Error('Current board size does not match any preset');
     }, [config.charucoBoardXSquares, config.charucoBoardYSquares]);
 
     const handleClearError = useCallback((): void => {

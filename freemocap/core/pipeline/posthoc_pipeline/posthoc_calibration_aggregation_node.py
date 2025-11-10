@@ -13,10 +13,11 @@ from freemocap.core.pipeline.posthoc_pipeline.video_node.video_helper import Vid
 from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.charuco_observation_aggregator import \
     anipose_calibration_from_charuco_observations
 from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.freemocap_anipose import \
-    AniposeCharucoBoard, AniposeCameraGroup
+    AniposeCharucoBoard, AniposeCameraGroup, AniposeCamera
 from freemocap.core.tasks.calibration_task.shared_view_accumulator import CharucoObservations
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
+from freemocap.utilities.wait_functions import wait_10ms
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ class PosthocCalibrationAggregationNode:
                              f"start_frames={start_frame}, end_frames={end_frame}")
         start_frame = start_frame.pop()
         end_frame = end_frame.pop()
-        frame_numbers = set(range(start_frame, end_frame + 1))
+        frame_numbers = set(range(start_frame, end_frame))
         video_ids = list(video_metadata.keys())
 
         logger.debug(f"PosthocCalibrationAggregationNode for pipeline id: '{pipeline_id}' starting main loop")
@@ -99,13 +100,14 @@ class PosthocCalibrationAggregationNode:
                 frame_number: {video_id: None for video_id in video_ids}
                 for frame_number in frame_numbers
             }
+            got_all_outputs_by_frame = {frame_number: False for frame_number in frame_numbers}
 
             if not len(video_outputs_by_frame) == len(frame_numbers):
                 raise ValueError(f"Mismatch between video outputs by frame and recording info frame count - "
                                  f"{len(video_outputs_by_frame)} vs {len(frame_numbers)}")
 
-            all_frames_complete = False
-            while not all_frames_complete and not shutdown_self_flag.value and ipc.should_continue:
+            while not shutdown_self_flag.value and ipc.should_continue:
+                wait_10ms()
                 if not video_node_subscription.empty():
                     video_node_output_message: VideoNodeOutputMessage = video_node_subscription.get()
 
@@ -114,15 +116,13 @@ class PosthocCalibrationAggregationNode:
                             f"Video ID {video_node_output_message.video_id} not in recording info for pipeline {pipeline_id} - {recording_info.video_paths}")
                     video_outputs_by_frame[video_node_output_message.frame_number][
                         video_node_output_message.video_id] = video_node_output_message
+                    if all([isinstance(value, VideoNodeOutputMessage) for value in
+                           video_outputs_by_frame[video_node_output_message.frame_number].values()]):
+                        logger.info(f"Received all video node outputs for frame {video_node_output_message.frame_number} in pipeline {pipeline_id}")
+                        got_all_outputs_by_frame[video_node_output_message.frame_number] = True
 
-                # Check if we have received all video node outputs for each frame
-                all_frames_complete = True  # Assume complete until proven otherwise
-                for frame_outputs in video_outputs_by_frame.values():
-                    if any(output is None for output in frame_outputs.values()):
-                        all_frames_complete = False  # Found incomplete frame
-                        break
-                if not all_frames_complete:
-                    continue
+                if all(list(got_all_outputs_by_frame.values())):
+                    break
             logger.info(f"All video node outputs received for pipeline {pipeline_id}, starting calibration")
             charuco_observations_by_frame: list[CharucoObservations] = []
             for frame_outputs in video_outputs_by_frame.values():
@@ -136,13 +136,19 @@ class PosthocCalibrationAggregationNode:
 
             calibration_toml_save_path = Path(
                 recording_info.full_recording_path) / f"{recording_info.recording_name}_camera_calibration.toml"
+            anipose_cameras: list[AniposeCamera] = [
+                AniposeCamera(name=video_id,
+                              size=(video_metadata.height,video_metadata.width)) for video_id, video_metadata in video_metadata.items()
+            ]
+            anipose_camera_group = AniposeCameraGroup(cameras=anipose_cameras)
+
             triangulator = anipose_calibration_from_charuco_observations(
                 charuco_observations_by_frame=charuco_observations_by_frame,
                 charuco_board=AniposeCharucoBoard(squaresX=calibration_task_config.charuco_board_x_squares,
                                                   squaresY=calibration_task_config.charuco_board_y_squares,
                                                   square_length=calibration_task_config.charuco_square_length,
                                                   marker_length=calibration_task_config.charuco_square_length * .8),
-                anipose_camera_group=AniposeCameraGroup.from_names(video_ids),
+                anipose_camera_group=anipose_camera_group,
                 recording_path=Path(recording_info.full_recording_path),
                 calibration_toml_save_path=calibration_toml_save_path,
                 # use_charuco_as_groundplane=True,

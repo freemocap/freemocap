@@ -12,7 +12,7 @@ from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipeline.video_node.video_helper import VideoHelper
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_topics import CameraNodeOutputTopic, \
-    CameraNodeOutputMessage
+    CameraNodeOutputMessage, VideoNodeOutputTopic, VideoNodeOutputMessage
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,7 @@ class CalibrationVideoNode:
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
         with VideoHelper.from_video_path(video_path=video_path) as video:
+            logger.info(f"Starting video processing node for video: {video.video_path.stem}")
 
             charuco_detector = CharucoDetector.create(config=calibration_task_config.detector_config)
             try:
@@ -83,9 +84,9 @@ class CalibrationVideoNode:
                         image=image)
 
                     ipc.pubsub.publish(
-                        topic_type=CameraNodeOutputTopic,
-                        message=CameraNodeOutputMessage(
-                            camera_id=video.video_path.stem,
+                        topic_type=VideoNodeOutputTopic,
+                        message=VideoNodeOutputMessage(
+                            video_id=str(video.video_path),
                             frame_number=video.last_read_frame,
                             charuco_observation=charuco_observation,
                         ),

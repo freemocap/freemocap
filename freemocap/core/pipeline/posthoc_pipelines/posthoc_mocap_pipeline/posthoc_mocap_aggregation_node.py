@@ -8,12 +8,17 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
 from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 
 from freemocap.core.pipeline.pipeline_configs import PipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
     MocapTaskConfig
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.skeleton_from_mediapipe_observations import \
+    skeleton_from_mediapipe_observation_recorders
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoMetadata
+from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.charuco_observation_aggregator import \
+    get_last_successful_calibration_toml_path
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
 from freemocap.utilities.wait_functions import wait_1ms
@@ -126,15 +131,20 @@ class PosthocMocapAggregationNode:
                 if all(list(got_all_outputs_by_frame.values())):
                     break
             logger.info(f"All video node outputs received for pipeline {pipeline_id}, starting calibration")
-            mediapipe_observations_by_frame: list[MediapipeObservations] = []
-            for frame_outputs in video_outputs_by_frame.values():
-                if not all([isinstance(output, VideoNodeOutputMessage) for output in frame_outputs.values()]):
+            observation_recorders_by_video = {video_id: BaseRecorder() for video_id in video_ids}
+            for frame_number, frame_outputs_by_video in video_outputs_by_frame.items():
+                if not all([isinstance(output, VideoNodeOutputMessage) for output in frame_outputs_by_video.values()]):
                     raise ValueError(
-                        f"Missing video node outputs for frame in pipeline {pipeline_id}: {frame_outputs}")
-                mediapipe_observations_by_frame.append({
-                    video_id: output.observation
-                    for video_id, output in frame_outputs.items()
-                })
+                        f"Missing video node outputs for frame in pipeline {pipeline_id}: {frame_number}")
+                for video_id, recorder in observation_recorders_by_video.items():
+                    observation = frame_outputs_by_video[video_id].observation
+                    recorder.add_observation(observation=observation)
+
+            skeleton = skeleton_from_mediapipe_observation_recorders(
+                observation_recorders=observation_recorders_by_video,
+                path_to_calibration_toml= get_last_successful_calibration_toml_path(),
+                path_to_output_data_folder=recording_info.full_recording_path,
+            )
 
             logger.success(
                 f"Posthoc calibration completed for pipeline {pipeline_id}! Mocap file saved to {recording_info.full_recording_path}")

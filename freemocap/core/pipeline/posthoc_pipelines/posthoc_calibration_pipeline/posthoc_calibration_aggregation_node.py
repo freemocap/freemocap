@@ -6,16 +6,16 @@ from pydantic import BaseModel, ConfigDict
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
-    CalibrationTaskConfig
+    CalibrationpipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoMetadata
-from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.charuco_observation_aggregator import \
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_observation_aggregator import \
     anipose_calibration_from_charuco_observations
-from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.freemocap_anipose import \
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.freemocap_anipose import \
     AniposeCharucoBoard, AniposeCameraGroup, AniposeCamera
-from freemocap.core.tasks.calibration_task.shared_view_accumulator import CharucoObservations
+from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.shared_view_accumulator import CharucoObservations
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
 from freemocap.utilities.wait_functions import wait_1ms
@@ -29,7 +29,7 @@ class PosthocAgregationNodeState(BaseModel):
         frozen=True
     )
     pipeline_id: PipelineIdString
-    config: PipelineConfig
+    config: RealtimePipelineConfig
     alive: bool
     last_seen_frame_number: int | None = None
     calibration_task_state: object | None = None
@@ -43,7 +43,7 @@ class PosthocCalibrationAggregationNode:
 
     @classmethod
     def create(cls,
-               calibration_task_config: CalibrationTaskConfig,
+               calibration_pipeline_config: CalibrationpipelineConfig,
                video_metadata: dict[VideoIdString, VideoMetadata],
                pipeline_id: PipelineIdString,
                recording_info: RecordingInfo,
@@ -52,7 +52,7 @@ class PosthocCalibrationAggregationNode:
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
                                          name=f"Pipeline-{pipeline_id}-PosthocAggregationNode",
-                                         kwargs=dict(calibration_task_config=calibration_task_config,
+                                         kwargs=dict(calibration_pipeline_config=calibration_pipeline_config,
                                                      pipeline_id=pipeline_id,
                                                      recording_info=recording_info,
                                                      video_metadata=video_metadata,
@@ -70,7 +70,7 @@ class PosthocCalibrationAggregationNode:
                    )
 
     @staticmethod
-    def _run(calibration_task_config: CalibrationTaskConfig,
+    def _run(calibration_pipeline_config: CalibrationpipelineConfig,
              recording_info: RecordingInfo,
              pipeline_id: PipelineIdString,
              video_metadata: dict[VideoIdString, VideoMetadata],
@@ -135,20 +135,12 @@ class PosthocCalibrationAggregationNode:
                     for video_id, output in frame_outputs.items()
                 })
 
-            anipose_cameras: list[AniposeCamera] = [
-                AniposeCamera(name=video_id,
-                              size=(video_metadata.height,video_metadata.width)) for video_id, video_metadata in video_metadata.items()
-            ]
-            anipose_camera_group = AniposeCameraGroup(cameras=anipose_cameras)
 
             triangulator = anipose_calibration_from_charuco_observations(
                 charuco_observations_by_frame=charuco_observations_by_frame,
-                charuco_board=AniposeCharucoBoard(squaresX=calibration_task_config.charuco_board_x_squares,
-                                                  squaresY=calibration_task_config.charuco_board_y_squares,
-                                                  square_length=calibration_task_config.charuco_square_length,
-                                                  marker_length=calibration_task_config.charuco_square_length * .8),
-                anipose_camera_group=anipose_camera_group,
+                calibration_pipeline_config=calibration_pipeline_config,
                 recording_info=recording_info,
+                video_metadata=video_metadata,
                 # use_charuco_as_groundplane=True,
             )
 

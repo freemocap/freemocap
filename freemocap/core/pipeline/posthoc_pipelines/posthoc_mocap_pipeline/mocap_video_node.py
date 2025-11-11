@@ -8,7 +8,7 @@ from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import Mediapip
 
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
-    MocapTaskConfig
+    MocapPipelineTaskConfig
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoHelper
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MocapVideoNode:
     video_path:Path
-    mocap_task_config: MocapTaskConfig
+    mocap_task_config: MocapPipelineTaskConfig
     shutdown_self_flag: multiprocessing.Value
     worker: WorkerType
 
@@ -29,7 +29,7 @@ class MocapVideoNode:
     def create(cls,
                video_path:Path,
                subprocess_registry: list[multiprocessing.Process],
-               mocap_task_config: MocapTaskConfig,
+               mocap_task_config: MocapPipelineTaskConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
@@ -51,7 +51,7 @@ class MocapVideoNode:
     @staticmethod
     def _run(video_path:Path,
              ipc: PipelineIPC,
-             mocap_task_config: MocapTaskConfig,
+             mocap_task_config: MocapPipelineTaskConfig,
              shutdown_self_flag: multiprocessing.Value,
              ):
         if multiprocessing.parent_process():

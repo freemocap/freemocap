@@ -8,7 +8,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
-    MocapTaskConfig
+    MocapPipelineTaskConfig
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ mocap_router = APIRouter(prefix="/mocap", tags=["Mocap"])
 
 
 class MocapConfigRequest(BaseModel):
-    config: MocapTaskConfig
+    config: MocapPipelineTaskConfig
 
 
 class MocapConfigResponse(BaseModel):
@@ -29,7 +29,7 @@ class MocapConfigResponse(BaseModel):
 
 class StartMocapRecordingRequest(BaseModel):
     mocap_recording_directory: str = Field(alias="mocapRecordingDirectory")
-    mocap_task_config: MocapTaskConfig = Field(alias="mocapTaskConfig")
+    mocap_task_config: MocapPipelineTaskConfig = Field(alias="mocapTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
         recordings_directory = Path(self.mocap_recording_directory).parent
@@ -44,12 +44,12 @@ class StartMocapRecordingRequest(BaseModel):
 
 
 class StopMocapRecordingRequest(BaseModel):
-    mocap_task_config: MocapTaskConfig = Field(alias="mocapTaskConfig")
+    mocap_task_config: MocapPipelineTaskConfig = Field(alias="mocapTaskConfig")
 
 
 class ProcessMocapRecordingRequest(BaseModel):
     mocap_recording_directory: str = Field(alias="mocapRecordingDirectory")
-    mocap_task_config: MocapTaskConfig = Field(alias="mocapTaskConfig")
+    mocap_task_config: MocapPipelineTaskConfig = Field(alias="mocapTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
         return RecordingInfo(

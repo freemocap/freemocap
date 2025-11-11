@@ -8,7 +8,7 @@ from skellycam.core.types.type_overloads import WorkerType
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
 
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
-    CalibrationTaskConfig
+    CalibrationpipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoHelper
 from freemocap.core.types.type_overloads import PipelineIdString
@@ -33,7 +33,7 @@ class VideoNodeState(BaseModel):
 @dataclass
 class CalibrationVideoNode:
     video_path:Path
-    calibration_task_config: CalibrationTaskConfig
+    calibration_task_config: CalibrationpipelineConfig
     shutdown_self_flag: multiprocessing.Value
     worker: WorkerType
 
@@ -41,7 +41,7 @@ class CalibrationVideoNode:
     def create(cls,
                video_path:Path,
                subprocess_registry: list[multiprocessing.Process],
-               calibration_task_config: CalibrationTaskConfig,
+               calibration_task_config: CalibrationpipelineConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
@@ -63,7 +63,7 @@ class CalibrationVideoNode:
     @staticmethod
     def _run(video_path:Path,
              ipc: PipelineIPC,
-             calibration_task_config: CalibrationTaskConfig,
+             calibration_task_config: CalibrationpipelineConfig,
              shutdown_self_flag: multiprocessing.Value,
              ):
         if multiprocessing.parent_process():

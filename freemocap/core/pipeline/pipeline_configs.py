@@ -9,20 +9,19 @@ from skellytracker.trackers.charuco_tracker.charuco_detector import  CharucoDete
 
 
 
-class PipelineTaskConfigABC(BaseModel,ABC):
+class PipelineConfigABC(BaseModel, ABC):
     pass
 
 
-class CalibrationTaskConfig(BaseModel):
+class CalibrationpipelineConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     calibration_recording_folder: str | None = Field(default=None, alias="calibrationRecordingFolder")
-    live_track_charuco: bool = Field(default=True, alias="liveTrackCharuco")
     charuco_board_x_squares: int = Field(gt=0, default=5, alias="charucoBoardXSquares")
     charuco_board_y_squares: int = Field(gt=0, default=3, alias="charucoBoardYSquares")
     charuco_square_length: float = Field(gt=0, default=1, alias="charucoSquareLength")
-    min_shared_views_per_camera: int = Field(gt=0, default=200, alias="minSharedViewsPerCamera")
-    auto_stop_on_min_view_count: bool = Field(default=True, alias="autoStopOnMinViewCount")
-    auto_process_recording: bool = Field(default=True, alias="autoProcessRecording")
+    # min_shared_views_per_camera: int = Field(gt=0, default=200, alias="minSharedViewsPerCamera")
+    # auto_stop_on_min_view_count: bool = Field(default=True, alias="autoStopOnMinViewCount")
+    # auto_process_recording: bool = Field(default=True, alias="autoProcessRecording")
 
     @property
     def detector_config(self) -> CharucoDetectorConfig:
@@ -31,22 +30,22 @@ class CalibrationTaskConfig(BaseModel):
             squares_y=self.charuco_board_y_squares,
             square_length=self.charuco_square_length,
         )
-class MocapTaskConfig(BaseModel):
+class MocapPipelineTaskConfig(BaseModel):
     @property
     def detector_config(self) -> MediapipeDetectorConfig:
         return MediapipeDetectorConfig()
 
-class PipelineConfig(BaseModel):
+class RealtimePipelineConfig(BaseModel):
     camera_configs: CameraConfigs
-    calibration_task_config: CalibrationTaskConfig = Field(default_factory=CalibrationTaskConfig)
-    mocap_task_config: MocapTaskConfig = Field(default_factory=MocapTaskConfig)
+    calibration_task_config: CalibrationpipelineConfig = Field(default_factory=CalibrationpipelineConfig)
+    mocap_task_config: MocapPipelineTaskConfig = Field(default_factory=MocapPipelineTaskConfig)
 
     @property
     def camera_ids(self) -> list[CameraIdString]:
         return list(self.camera_configs.keys())
 
     @classmethod
-    def from_camera_configs(cls, *, camera_configs: CameraConfigs) -> "PipelineConfig":
+    def from_camera_configs(cls, *, camera_configs: CameraConfigs) -> "RealtimePipelineConfig":
         return cls(
             camera_configs=camera_configs,
 

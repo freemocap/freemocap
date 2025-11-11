@@ -1,14 +1,14 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pydantic import Field
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
-    CalibrationTaskConfig
+    CalibrationpipelineConfig
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ calibration_router = APIRouter(prefix="/calibration", tags=["Calibration"])
 
 
 class CalibrationConfigRequest(BaseModel):
-    config: CalibrationTaskConfig
+    config: CalibrationpipelineConfig
 
 
 class CalibrationConfigResponse(BaseModel):
@@ -29,7 +29,7 @@ class CalibrationConfigResponse(BaseModel):
 
 class StartCalibrationRecordingRequest(BaseModel):
     calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory")
-    calibration_task_config: CalibrationTaskConfig = Field(alias="calibrationTaskConfig")
+    calibration_task_config: CalibrationpipelineConfig = Field(alias="calibrationTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
         recordings_directory = Path(self.calibration_recording_directory).parent
@@ -42,12 +42,15 @@ class StartCalibrationRecordingRequest(BaseModel):
             mic_device_index=-1
         )
 
+
 class StopCalibrationRecordingRequest(BaseModel):
-    calibration_task_config: CalibrationTaskConfig = Field(alias="calibrationTaskConfig")
+    calibration_task_config: CalibrationpipelineConfig = Field(alias="calibrationTaskConfig")
+
 
 class CalibrateRecordingRequest(BaseModel):
     calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory")
-    calibration_task_config: CalibrationTaskConfig = Field(alias="calibrationTaskConfig")
+    calibration_task_config: CalibrationpipelineConfig = Field(alias="calibrationTaskConfig")
+
     def to_recording_info(self) -> RecordingInfo:
         return RecordingInfo(
             recording_directory=str(Path(self.calibration_recording_directory).parent),
@@ -89,7 +92,7 @@ async def start_calibration_recording(request: StartCalibrationRecordingRequest)
             recording_info.recording_name += '_calibration'
 
         # await get_freemocap_app().create_or_update_realtime_calibration_pipeline(request.calibration_task_config)
-        await get_freemocap_app().start_recording_all(recording_info=recording_info,)
+        await get_freemocap_app().start_recording_all(recording_info=recording_info, )
         logger.info(f"Starting recording : {recording_info}")
         return StartCalibrationRecordingResponse(success=True, message="Recording started")
     except Exception as e:
@@ -103,8 +106,8 @@ async def stop_calibration_recording(request: StopCalibrationRecordingRequest) -
     app = get_freemocap_app()
     try:
         recording_info = await app.stop_recording_all()
-        await app.posthoc_pipeline_manager.create_posthoc_calibration_pipeline(recording_info=recording_info,
-                                                                               calibration_task_config=request.calibration_task_config)
+        await app.create_posthoc_calibration_pipeline(recording_info=recording_info,
+                                                      calibration_pipeline_config=request.calibration_task_config)
         logger.info("Stopping recording")
         return {"success": True}
     except Exception as e:
@@ -118,8 +121,8 @@ async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRe
     app = get_freemocap_app()
     try:
         recording_info = request.to_recording_info()
-        await app.posthoc_pipeline_manager.create_posthoc_calibration_pipeline(recording_info=recording_info,
-                                                                               calibration_task_config=request.calibration_task_config)
+        await app.create_posthoc_calibration_pipeline(recording_info=recording_info,
+                                                      calibration_pipeline_config=request.calibration_task_config)
         logger.info(f"Calibrating recording at: {recording_info.full_recording_path}")
         return CalibrateRecordingResponse(
             success=True,

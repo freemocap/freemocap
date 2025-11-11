@@ -3,11 +3,9 @@ import logging
 from pydantic import Field, model_validator
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointIdString, BaseObservation
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
-from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
-from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import FrameNumberInt, Point3d, PipelineIdString, VideoIdString
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 
@@ -19,7 +17,7 @@ class ProcessFrameNumberMessage(TopicMessageABC):
 
 
 class PipelineConfigUpdateMessage(TopicMessageABC):
-    pipeline_config: PipelineConfig
+    pipeline_config: RealtimePipelineConfig
 
 
 class CameraNodeOutputMessage(TopicMessageABC):
@@ -36,7 +34,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = Field(ge=0)
     pipeline_id: PipelineIdString
     camera_group_id: CameraGroupIdString
-    pipeline_config: PipelineConfig
+    pipeline_config: RealtimePipelineConfig
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage]
     tracked_points3d: dict[TrackedPointIdString, Point3d] = Field(default_factory=dict)
 

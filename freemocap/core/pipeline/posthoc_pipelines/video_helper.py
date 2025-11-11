@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
+from freemocap.core.types.type_overloads import VideoIdString
 
 # Module level constants
 DEFAULT_CACHE_SIZE_MB = 500
@@ -39,6 +40,7 @@ class VideoMetadata(BaseModel):
                 raise ValueError(f"Subset frame count does not match frame_count: {end_frame - start_frame} != {frame_count}")
 
         return values
+
 
 
 class FrameCache(BaseModel):
@@ -319,6 +321,62 @@ class VideoHelper(BaseModel):
         self.close()
 
 
+class VideoGroupHelper(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="forbid",
+        frozen=True
+    )
+    videos: dict[VideoIdString, VideoHelper]
+    video_metadata_by_id: dict[VideoIdString, VideoMetadata]
+
+    @property
+    def video_ids(self) -> list[VideoIdString]:
+        return list(self.videos.keys())
+
+    @model_validator(mode="after")
+    def validate_videos(self):
+        if len(self.videos) == 0:
+            raise ValueError("VideoGroup must contain at least one video.")
+        if len(set(video.metadata.frame_count for video in self.videos.values())) != 1:
+            raise ValueError("All videos in VideoGroup must have the same frame count.")
+        return self
+
+    @classmethod
+    def from_video_paths(cls, video_paths: list[VideoIdString], close_videos:bool=True) -> "VideoGroupHelper":
+        video_paths = sorted(video_paths)  # sort to ensure consistent ordering
+
+        videos: dict[VideoIdString, VideoHelper] = {}
+
+        for video_number, video_path in enumerate(video_paths):
+            video_name = Path(video_path).name
+            # camera_id = extract_camera_id(video_name)
+            # TODO -  Just using video order index as video ID for now, need revisit this later to couple this to Camera Id somehow. Its a tricky problem.
+            videos[str(video_number)] = VideoHelper.from_video_path(Path(video_path))
+
+        instance = cls(videos=videos,
+                   video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()})
+        #close videos
+        if close_videos:
+            instance.close()
+        return instance
+
+    @classmethod
+    def from_video_folder_path(cls, video_folder_path: Path) -> "VideoGroupHelper":
+        video_paths = sorted(
+            [str(p) for p in video_folder_path.iterdir() if p.suffix.lower() in {'.mp4', '.avi', '.mov', '.mkv'}])
+
+        return cls.from_video_paths(video_paths)
+
+    @classmethod
+    def from_recording_path(cls, recording_path: str,
+                            video_subfolder_name: str = 'synchronized_videos') -> "VideoGroupHelper":
+        return cls.from_video_folder_path(Path(recording_path) / video_subfolder_name)
+
+    def close(self):
+        for video in self.videos.values():
+            video.close()
 # Example usage
 if __name__ == "__main__":
     video_path = Path(r"C:\Users\jonma\Downloads\2025-07-01_ferret_757_EyeCameras_P33_EO5_1m_20s-2m_20s(2).mp4")

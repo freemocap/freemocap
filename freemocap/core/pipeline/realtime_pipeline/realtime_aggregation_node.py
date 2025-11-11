@@ -5,18 +5,17 @@ from dataclasses import dataclass
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
-from skellycam.core.ipc.pubsub.pubsub_topics import SetShmMessage
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemory, \
     CameraGroupSharedMemoryDTO
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
-from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.charuco_stuff.charuco_board_definition import \
+from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
+from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.v1_capture_volume_calibration.charuco_stuff.charuco_board_definition import \
     CharucoBoardDefinition
-from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.run_anipose_capture_volume_calibration import \
+from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.v1_capture_volume_calibration.run_anipose_capture_volume_calibration import \
     run_anipose_capture_volume_calibration
 from freemocap.core.types.type_overloads import Point3d, PipelineIdString
 from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigUpdateTopic, ProcessFrameNumberTopic, \
@@ -32,7 +31,7 @@ class RealtimeAggregationNodeState(BaseModel):
         frozen=True
     )
     pipeline_id: PipelineIdString
-    config: PipelineConfig
+    config: RealtimePipelineConfig
     alive: bool
     last_seen_frame_number: int | None = None
     calibration_task_state: object | None = None
@@ -46,7 +45,7 @@ class AggregationNode:
 
     @classmethod
     def create(cls,
-               config: PipelineConfig,
+               config: RealtimePipelineConfig,
                camera_group_id: CameraGroupIdString,
                subprocess_registry: list[multiprocessing.Process],
                camera_group_shm_dto:CameraGroupSharedMemoryDTO,
@@ -75,7 +74,7 @@ class AggregationNode:
                    )
 
     @staticmethod
-    def _run(config: PipelineConfig,
+    def _run(config: RealtimePipelineConfig,
              camera_group_id: CameraGroupIdString,
              ipc: PipelineIPC,
              shutdown_self_flag: multiprocessing.Value,

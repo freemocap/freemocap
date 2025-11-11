@@ -5,14 +5,13 @@ from dataclasses import dataclass, field
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString
+from skellycam.core.camera_group.camera_group import CameraGroup
 
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
-    CalibrationTaskConfig
+    CalibrationpipelineConfig
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline import RealtimeProcessingPipeline
-from freemocap.core.tasks.calibration_task.v1_capture_volume_calibration.anipose_camera_calibration.freemocap_anipose import \
-    CameraGroup
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 from fastapi import FastAPI
 logger = logging.getLogger(__name__)
@@ -34,7 +33,7 @@ class RealtimePipelineManager:
 
     async def create_realtime_pipeline(self,
                                        camera_group: CameraGroup,
-                                       pipeline_config: PipelineConfig) -> RealtimeProcessingPipeline:
+                                       pipeline_config: RealtimePipelineConfig) -> RealtimeProcessingPipeline:
         with self.lock:
             # get existing pipeline for the provided camera configs, if it exists
             for pipeline in self.realtime_pipelines.values():
@@ -53,7 +52,7 @@ class RealtimePipelineManager:
             return pipeline
 
     async def update_realtime_pipeline(self,
-                                       pipeline_config: PipelineConfig) -> RealtimeProcessingPipeline:
+                                       pipeline_config: RealtimePipelineConfig) -> RealtimeProcessingPipeline:
         with self.lock:
             # get existing pipeline for the provided camera configs, if it exists
             for pipeline in self.realtime_pipelines.values():
@@ -98,7 +97,7 @@ class RealtimePipelineManager:
                 recording_infos.append( await pipeline.camera_group.stop_recording())
             return recording_infos
 
-    def update_calibration_task_config(self, calibration_task_config: CalibrationTaskConfig):
+    def update_calibration_task_config(self, calibration_task_config: CalibrationpipelineConfig):
         with self.lock:
             for pipeline in self.realtime_pipelines.values():
                 new_config = deepcopy(pipeline.config)
@@ -112,7 +111,7 @@ class RealtimePipelineManager:
                     return pipeline
         return None
 
-    async def create_or_update_realtime_calibration_pipeline(self, calibration_task_config: CalibrationTaskConfig) -> RealtimeProcessingPipeline:
+    async def create_or_update_realtime_calibration_pipeline(self, calibration_task_config: CalibrationpipelineConfig) -> RealtimeProcessingPipeline:
         with self.lock:
             # TODO - update specific pipelines by id, for now update all pipelines
             for pipeline in self.realtime_pipelines.values():
@@ -122,7 +121,7 @@ class RealtimePipelineManager:
                 return pipeline
         raise RuntimeError("No existing pipeline found for the provided camera configs.")
 
-    async def stop_calibration_recording(self, calibration_task_config: CalibrationTaskConfig):
+    async def stop_calibration_recording(self, calibration_task_config: CalibrationpipelineConfig):
         pass
 
 

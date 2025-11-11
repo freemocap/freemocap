@@ -10,14 +10,14 @@ from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
-    MocapTaskConfig
+    MocapPipelineTaskConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.skeleton_from_mediapipe_observations import \
     skeleton_from_mediapipe_observation_recorders
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoMetadata
-from freemocap.core.tasks.calibration_task.og_v1_capture_volume_calibration.charuco_observation_aggregator import \
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_observation_aggregator import \
     get_last_successful_calibration_toml_path
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
@@ -34,7 +34,7 @@ class PosthocAgregationNodeState(BaseModel):
         frozen=True
     )
     pipeline_id: PipelineIdString
-    config: PipelineConfig
+    config: RealtimePipelineConfig
     alive: bool
     last_seen_frame_number: int | None = None
     mocap_task_state: object | None = None
@@ -48,7 +48,7 @@ class PosthocMocapAggregationNode:
 
     @classmethod
     def create(cls,
-               mocap_task_config: MocapTaskConfig,
+               mocap_task_config: MocapPipelineTaskConfig,
                video_metadata: dict[VideoIdString, VideoMetadata],
                pipeline_id: PipelineIdString,
                recording_info: RecordingInfo,
@@ -75,7 +75,7 @@ class PosthocMocapAggregationNode:
                    )
 
     @staticmethod
-    def _run(mocap_task_config: MocapTaskConfig,
+    def _run(mocap_task_config: MocapPipelineTaskConfig,
              recording_info: RecordingInfo,
              pipeline_id: PipelineIdString,
              video_metadata: dict[VideoIdString, VideoMetadata],

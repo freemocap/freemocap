@@ -13,7 +13,7 @@ from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
 from skellytracker.trackers.charuco_tracker.charuco_observation import BaseObservation
 
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigUpdateTopic, CameraNodeOutputTopic, \
@@ -45,7 +45,7 @@ class RealtimeCameraNode:
                camera_id: CameraIdString,
                camera_shm_dto: SharedMemoryRingBufferDTO,
                subprocess_registry: list[multiprocessing.Process],
-               config: PipelineConfig,
+               config: RealtimePipelineConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
@@ -71,11 +71,11 @@ class RealtimeCameraNode:
     @staticmethod
     def _run(camera_id: CameraIdString,
              ipc: PipelineIPC,
-             config: PipelineConfig,
+             config: RealtimePipelineConfig,
              process_frame_number_subscription: TopicSubscriptionQueue,
              pipeline_config_subscription: TopicSubscriptionQueue,
              shutdown_self_flag: multiprocessing.Value,
-                camera_shm_dto: SharedMemoryRingBufferDTO,
+             camera_shm_dto: SharedMemoryRingBufferDTO,
              ):
         if multiprocessing.parent_process():
             # Configure logging if multiprocessing (i.e. if there is a parent process)

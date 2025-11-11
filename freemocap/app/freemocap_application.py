@@ -10,9 +10,9 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
 
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
-    CalibrationTaskConfig
+    CalibrationpipelineConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline import RealtimeProcessingPipeline
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline_manager import RealtimePipelineManager
@@ -67,7 +67,7 @@ class FreemocApplication:
         return not self.global_kill_flag.value
 
     async def create_or_update_realtime_pipeline(self,
-                                                 pipeline_config: PipelineConfig) -> RealtimeProcessingPipeline:
+                                                 pipeline_config: RealtimePipelineConfig) -> RealtimeProcessingPipeline:
         pipeline = self.realtime_pipeline_manager.get_pipeline_by_camera_ids(
             camera_ids=pipeline_config.camera_ids)
         if pipeline is not None:
@@ -83,10 +83,10 @@ class FreemocApplication:
 
     async def create_posthoc_calibration_pipeline(self,
                                                   recording_info: RecordingInfo,
-                                                  calibration_task_config:CalibrationTaskConfig) -> RealtimeProcessingPipeline:
+                                                  calibration_pipeline_config:CalibrationpipelineConfig) -> RealtimeProcessingPipeline:
         pipeline = await self.posthoc_pipeline_manager.create_posthoc_calibration_pipeline(
             recording_info=recording_info,
-            calibration_task_config=calibration_task_config
+            calibration_pipeline_config=calibration_pipeline_config
         )
         return pipeline
     def close_pipelines(self):
@@ -127,7 +127,7 @@ class FreemocApplication:
     def to_app_state(self):
         return AppState.from_app(self)
 
-    async def create_or_update_realtime_calibration_pipeline(self, calibration_task_config: CalibrationTaskConfig) -> RealtimeProcessingPipeline:
+    async def create_or_update_realtime_calibration_pipeline(self, calibration_task_config: CalibrationpipelineConfig) -> RealtimeProcessingPipeline:
         pipeline = await self.realtime_pipeline_manager.create_or_update_realtime_calibration_pipeline(
             calibration_task_config=calibration_task_config
         )

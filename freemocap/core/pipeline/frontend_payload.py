@@ -4,12 +4,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.calibration_display_helpers.charuco_3d_models import (
+from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.calibration_display_helpers.charuco_3d_models import (
     MultiCameraCharuco3dData,
     Charuco3dData,
     Color
 )
-from freemocap.core.tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
+from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 
 logger = logging.getLogger(__name__)

@@ -13,9 +13,9 @@ from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdStr
 from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import AggregationNode, RealtimeAggregationNodeState
 from freemocap.core.pipeline.realtime_pipeline.realtime_camera_node import RealtimeCameraNode, CameraNodeState
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_configs import PipelineConfig
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
-    CalibrationTaskConfig
+    CalibrationpipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \
@@ -44,7 +44,7 @@ class RealtimePipelineState(BaseModel):
 class RealtimeProcessingPipeline:
     id: PipelineIdString
     camera_group: CameraGroup
-    config: PipelineConfig
+    config: RealtimePipelineConfig
     camera_nodes: dict[CameraIdString, RealtimeCameraNode]
     aggregation_node: AggregationNode
     aggregation_node_subscription: TopicSubscriptionQueue
@@ -73,7 +73,7 @@ class RealtimeProcessingPipeline:
                     camera_group: CameraGroup,
                     heartbeat_timestamp: multiprocessing.Value,
                     subprocess_registry: list[multiprocessing.Process],
-                    pipeline_config: PipelineConfig,
+                    pipeline_config: RealtimePipelineConfig,
                     ):
 
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
@@ -168,13 +168,13 @@ class RealtimeProcessingPipeline:
         return (frames_bytearray,
                 FrontendPayload.from_aggregation_output(aggregation_output=aggregation_output))
 
-    def update_pipeline_config(self, new_config: PipelineConfig) -> None:
+    def update_pipeline_config(self, new_config: RealtimePipelineConfig) -> None:
         self.config = new_config
         self.ipc.pubsub.topics[PipelineConfigUpdateTopic].publish(
             PipelineConfigUpdateMessage(pipeline_config=self.config)
         )
 
-    async def start_calibration_recording(self, recording_info: RecordingInfo, config: CalibrationTaskConfig):
+    async def start_calibration_recording(self, recording_info: RecordingInfo, config: CalibrationpipelineConfig):
         # TODO - I don't love this method of getting the config and path here, wanna fix it later
         config.calibration_recording_folder = recording_info.full_recording_path
         logger.info(f"Starting calibration recording: {recording_info.full_recording_path} with config: {config.model_dump_json(indent=2)}")

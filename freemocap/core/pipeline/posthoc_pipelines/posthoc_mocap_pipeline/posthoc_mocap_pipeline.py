@@ -4,11 +4,11 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict
 
-from freemocap.core.pipeline.pipeline_configs import MocapTaskConfig
+from freemocap.core.pipeline.pipeline_configs import MocapPipelineTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_aggregation_node import PosthocMocapAggregationNode
-from freemocap.core.pipeline.posthoc_pipelines.video_group import VideoGroup
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_video_node import  MocapVideoNode
+from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoGroupHelper
 from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -27,7 +27,7 @@ class PosthocMocapProcessingPipeline(BaseModel):
     )
     id: PipelineIdString
     recording_info:RecordingInfo
-    mocap_task_config: MocapTaskConfig
+    mocap_task_config: MocapPipelineTaskConfig
     video_nodes: dict[VideoIdString, MocapVideoNode]
     aggregation_node: PosthocMocapAggregationNode
     ipc: PipelineIPC
@@ -44,14 +44,14 @@ class PosthocMocapProcessingPipeline(BaseModel):
 
     @classmethod
     def from_task_config(cls,
-                    recording_info:RecordingInfo,
-                    heartbeat_timestamp: multiprocessing.Value,
-                    subprocess_registry: list[multiprocessing.Process],
-                    mocap_task_config: MocapTaskConfig,
-                    global_kill_flag: multiprocessing.Value,
-                    ):
+                         recording_info:RecordingInfo,
+                         heartbeat_timestamp: multiprocessing.Value,
+                         subprocess_registry: list[multiprocessing.Process],
+                         mocap_task_config: MocapPipelineTaskConfig,
+                         global_kill_flag: multiprocessing.Value,
+                         ):
         #validate by creating video_group object
-        video_group = VideoGroup.from_recording_path(recording_path=recording_info.full_recording_path)
+        video_group = VideoGroupHelper.from_recording_path(recording_path=recording_info.full_recording_path)
         pipeline_id = str(uuid.uuid4())[:6]
         ipc = PipelineIPC.create(global_kill_flag=global_kill_flag,
                                  heartbeat_timestamp=heartbeat_timestamp

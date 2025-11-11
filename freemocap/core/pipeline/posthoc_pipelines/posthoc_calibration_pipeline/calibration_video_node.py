@@ -11,7 +11,7 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.post
     CalibrationpipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoHelper
-from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
 
 logger = logging.getLogger(__name__)
@@ -32,38 +32,43 @@ class VideoNodeState(BaseModel):
 
 @dataclass
 class CalibrationVideoNode:
+    video_id:VideoIdString
     video_path:Path
-    calibration_task_config: CalibrationpipelineConfig
+    calibration_pipeline_config: CalibrationpipelineConfig
     shutdown_self_flag: multiprocessing.Value
     worker: WorkerType
 
     @classmethod
     def create(cls,
+               video_id:VideoIdString,
                video_path:Path,
                subprocess_registry: list[multiprocessing.Process],
-               calibration_task_config: CalibrationpipelineConfig,
+               calibration_pipeline_config: CalibrationpipelineConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
                                          name=f"VideoProcessingNode-{video_path.stem}",
-                                         kwargs=dict(video_path=video_path,
+                                         kwargs=dict(video_id=video_id,
+                                                     video_path=video_path,
                                                      ipc=ipc,
-                                                     calibration_task_config=calibration_task_config,
+                                                     calibration_pipeline_config=calibration_pipeline_config,
                                                      shutdown_self_flag=shutdown_self_flag,
                                                      ),
                                          daemon=True
                                          )
         subprocess_registry.append(worker)
-        return cls(video_path=video_path,
+        return cls(video_id=video_id,
+                   video_path=video_path,
                    shutdown_self_flag=shutdown_self_flag,
-                     calibration_task_config=calibration_task_config,
+                     calibration_pipeline_config=calibration_pipeline_config,
                    worker=worker
                    )
 
     @staticmethod
-    def _run(video_path:Path,
+    def _run(video_id:VideoIdString,
+             video_path:Path,
              ipc: PipelineIPC,
-             calibration_task_config: CalibrationpipelineConfig,
+             calibration_pipeline_config: CalibrationpipelineConfig,
              shutdown_self_flag: multiprocessing.Value,
              ):
         if multiprocessing.parent_process():
@@ -75,7 +80,7 @@ class CalibrationVideoNode:
         with VideoHelper.from_video_path(video_path=video_path) as video:
             logger.info(f"Starting video processing node for video: {video.video_path.stem}")
 
-            charuco_detector = CharucoDetector.create(config=calibration_task_config.detector_config)
+            charuco_detector = CharucoDetector.create(config=calibration_pipeline_config.detector_config)
             try:
                 while video.has_frames and not shutdown_self_flag.value and ipc.should_continue:
                     image = video.read_next_frame()
@@ -86,7 +91,7 @@ class CalibrationVideoNode:
                     ipc.pubsub.publish(
                         topic_type=VideoNodeOutputTopic,
                         message=VideoNodeOutputMessage(
-                            video_id=str(video.video_path),
+                            video_id=video_id,
                             frame_number=video.last_read_frame,
                             observation=charuco_observation,
                         ),

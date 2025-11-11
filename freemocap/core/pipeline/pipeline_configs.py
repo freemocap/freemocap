@@ -14,7 +14,7 @@ class PipelineConfigABC(BaseModel, ABC):
 
 
 class CalibrationpipelineConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
     calibration_recording_folder: str | None = Field(default=None, alias="calibrationRecordingFolder")
     charuco_board_x_squares: int = Field(gt=0, default=5, alias="charucoBoardXSquares")
     charuco_board_y_squares: int = Field(gt=0, default=3, alias="charucoBoardYSquares")

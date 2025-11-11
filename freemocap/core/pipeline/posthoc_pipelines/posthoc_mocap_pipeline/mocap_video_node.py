@@ -10,46 +10,50 @@ from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
     MocapPipelineTaskConfig
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoHelper
+from freemocap.core.types.type_overloads import VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
 
 logger = logging.getLogger(__name__)
 
 
-
-
-
 @dataclass
 class MocapVideoNode:
-    video_path:Path
+    video_id: VideoIdString
+    video_path: Path
     mocap_task_config: MocapPipelineTaskConfig
     shutdown_self_flag: multiprocessing.Value
     worker: WorkerType
 
     @classmethod
     def create(cls,
-               video_path:Path,
+               video_id: VideoIdString,
+               video_path: Path,
                subprocess_registry: list[multiprocessing.Process],
                mocap_task_config: MocapPipelineTaskConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
                                          name=f"VideoProcessingNode-{video_path.stem}",
-                                         kwargs=dict(video_path=video_path,
-                                                     ipc=ipc,
-                                                     mocap_task_config=mocap_task_config,
-                                                     shutdown_self_flag=shutdown_self_flag,
-                                                     ),
+                                         kwargs=dict(
+                                             video_id=video_id,
+                                             video_path=video_path,
+                                             ipc=ipc,
+                                             mocap_task_config=mocap_task_config,
+                                             shutdown_self_flag=shutdown_self_flag,
+                                         ),
                                          daemon=True
                                          )
         subprocess_registry.append(worker)
-        return cls(video_path=video_path,
+        return cls(video_id=video_id,
+                   video_path=video_path,
                    shutdown_self_flag=shutdown_self_flag,
-                     mocap_task_config=mocap_task_config,
+                   mocap_task_config=mocap_task_config,
                    worker=worker
                    )
 
     @staticmethod
-    def _run(video_path:Path,
+    def _run(video_id: VideoIdString,
+             video_path: Path,
              ipc: PipelineIPC,
              mocap_task_config: MocapPipelineTaskConfig,
              shutdown_self_flag: multiprocessing.Value,
@@ -74,7 +78,7 @@ class MocapVideoNode:
                     ipc.pubsub.publish(
                         topic_type=VideoNodeOutputTopic,
                         message=VideoNodeOutputMessage(
-                            video_id=str(video.video_path),
+                            video_id=video_id,
                             frame_number=video.last_read_frame,
                             observation=mediapipe_observation,
                         ),

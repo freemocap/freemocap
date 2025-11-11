@@ -3,20 +3,17 @@ import multiprocessing
 import uuid
 
 from pydantic import BaseModel, ConfigDict
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.core.pipeline.pipeline_configs import MocapPipelineTaskConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_aggregation_node import PosthocMocapAggregationNode
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_video_node import  MocapVideoNode
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_video_node import MocapVideoNode
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_aggregation_node import \
+    PosthocMocapAggregationNode
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoGroupHelper
 from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
 
-from skellycam.core.recorders.videos.recording_info import RecordingInfo
-
 logger = logging.getLogger(__name__)
-
-
-
 
 
 class PosthocMocapProcessingPipeline(BaseModel):
@@ -26,7 +23,7 @@ class PosthocMocapProcessingPipeline(BaseModel):
         extra="forbid",
     )
     id: PipelineIdString
-    recording_info:RecordingInfo
+    recording_info: RecordingInfo
     mocap_task_config: MocapPipelineTaskConfig
     video_nodes: dict[VideoIdString, MocapVideoNode]
     aggregation_node: PosthocMocapAggregationNode
@@ -44,30 +41,31 @@ class PosthocMocapProcessingPipeline(BaseModel):
 
     @classmethod
     def from_task_config(cls,
-                         recording_info:RecordingInfo,
+                         recording_info: RecordingInfo,
                          heartbeat_timestamp: multiprocessing.Value,
                          subprocess_registry: list[multiprocessing.Process],
                          mocap_task_config: MocapPipelineTaskConfig,
                          global_kill_flag: multiprocessing.Value,
                          ):
-        #validate by creating video_group object
+        # validate by creating video_group object
         video_group = VideoGroupHelper.from_recording_path(recording_path=recording_info.full_recording_path)
         pipeline_id = str(uuid.uuid4())[:6]
         ipc = PipelineIPC.create(global_kill_flag=global_kill_flag,
                                  heartbeat_timestamp=heartbeat_timestamp
                                  )
-        video_nodes = {video_id: MocapVideoNode.create(video_path=video_helper.video_path,  #recreate in node worker
-                                                             subprocess_registry=subprocess_registry,
-                                                             mocap_task_config=mocap_task_config,
-                                                             ipc=ipc)
+        video_nodes = {video_id: MocapVideoNode.create(video_id=video_id,
+                                                       video_path=video_helper.video_path,  # recreate in node worker
+                                                       subprocess_registry=subprocess_registry,
+                                                       mocap_task_config=mocap_task_config,
+                                                       ipc=ipc)
                        for video_id, video_helper in video_group.videos.items()}
         aggregation_node = PosthocMocapAggregationNode.create(subprocess_registry=subprocess_registry,
-                                                                    mocap_task_config=mocap_task_config,
-                                                                    video_metadata=video_group.video_metadata_by_id,
-                                                                    ipc=ipc,
-                                                                    recording_info=recording_info,
-                                                                    pipeline_id=pipeline_id
-                                                                    )
+                                                              mocap_task_config=mocap_task_config,
+                                                              video_metadata=video_group.video_metadata_by_id,
+                                                              ipc=ipc,
+                                                              recording_info=recording_info,
+                                                              pipeline_id=pipeline_id
+                                                              )
         video_group.close()  # close here, videos reopened in video nodes
         return cls(video_nodes=video_nodes,
                    aggregation_node=aggregation_node,
@@ -96,7 +94,6 @@ class PosthocMocapProcessingPipeline(BaseModel):
             logger.error(f"Failed to start aggregation node: {type(e).__name__} - {e}")
             logger.exception(e)
             raise
-
 
         logger.info(f"All pipeline workers started successfully")
 

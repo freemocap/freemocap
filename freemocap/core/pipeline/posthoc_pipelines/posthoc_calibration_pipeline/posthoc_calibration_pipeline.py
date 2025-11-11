@@ -65,7 +65,8 @@ class PosthocCalibrationProcessingPipeline(BaseModel):
         ipc = PipelineIPC.create(global_kill_flag=global_kill_flag,
                                  heartbeat_timestamp=heartbeat_timestamp
                                  )
-        video_nodes = {video_id: CalibrationVideoNode.create(video_path=video_helper.video_path,  #recreate in node worker
+        video_nodes = {video_id: CalibrationVideoNode.create(video_id=video_id,
+                                                             video_path=video_helper.video_path,  #recreate in node worker
                                                              subprocess_registry=subprocess_registry,
                                                              calibration_pipeline_config=calibration_pipeline_config,
                                                              ipc=ipc)

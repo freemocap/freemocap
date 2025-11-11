@@ -119,7 +119,7 @@ class PosthocMocapAggregationNode:
 
                     if not video_node_output_message.video_id in video_ids:
                         raise ValueError(
-                            f"Video ID {video_node_output_message.video_id} not in recording info for pipeline {pipeline_id} - {recording_info.video_paths}")
+                            f"Video ID {video_node_output_message.video_id} not in recording info for pipeline {pipeline_id} - {recording_info.recording_name}")
                     video_outputs_by_frame[video_node_output_message.frame_number][
                         video_node_output_message.video_id] = video_node_output_message
                     if all([isinstance(value, VideoNodeOutputMessage) for value in

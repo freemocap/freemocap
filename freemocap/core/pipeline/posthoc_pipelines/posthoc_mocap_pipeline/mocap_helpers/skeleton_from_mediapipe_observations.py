@@ -42,12 +42,11 @@ def skeleton_from_mediapipe_observation_recorders(observation_recorders:dict[Vid
     data2d_by_video: dict[VideoIdString, np.ndarray] = {}
     if len(observation_recorders) == 0:
         raise ValueError("No observation recorders provided to process.")
-    for video_id, recorder in observation_recorders.items():
-        data_2d_xyc = recorder.to_array.copy()
-        logger.info(f"Processing video ID: {video_id} with 2D data shape: {data_2d_xyc.shape}")
-        data2d_by_video[video_id] = data_2d_xyc[..., :2]
 
-    print(f"2D data shape: {data_2d_xyc.shape}")
+    for video_id, recorder in observation_recorders.items():
+        data2d_fr_id_xyc = recorder.to_array.copy()
+        logger.info(f"Processing video ID: {video_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
+        data2d_by_video[video_id] = data2d_fr_id_xyc[..., :2]
 
     camera_group: CameraGroup = load_camera_group_from_toml(path_to_calibration_toml)
 
@@ -74,8 +73,16 @@ def skeleton_from_mediapipe_observation_recorders(observation_recorders:dict[Vid
         tracked_points_numpy_array=filtered_trajectory_3d.triangulated_data,
     )
 
-    skeleton.put_skeleton_on_ground()
-    skeleton.fix_hands_to_wrist()
+    try:
+        skeleton.put_skeleton_on_ground()
+    except Exception as e:
+        logger.warning(f"Could not put skeleton on ground: {e}")
+
+    try:
+        skeleton.fix_hands_to_wrist()
+    except Exception as e:
+        logger.warning(f"Could not fix hands to wrist: {e}")
+
     skeleton.calculate()
 
     skeleton.save_out_numpy_data(path_to_output_data_folder)

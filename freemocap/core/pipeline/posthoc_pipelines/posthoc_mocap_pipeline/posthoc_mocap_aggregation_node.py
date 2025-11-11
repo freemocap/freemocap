@@ -14,7 +14,7 @@ from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
     MocapPipelineTaskConfig
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.skeleton_from_mediapipe_observations import \
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_helpers.skeleton_from_mediapipe_observations import \
     skeleton_from_mediapipe_observation_recorders
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoMetadata
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_observation_aggregator import \

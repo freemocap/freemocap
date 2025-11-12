@@ -55,7 +55,7 @@ export const CalibrationControlPanel: React.FC = () => {
         'calibration-extrinsic',
         'mocap-task'
     ]);
-    const { api, isElectron } = useElectronIPC();
+    const { api } = useElectronIPC();
 
     const {
         config,
@@ -134,7 +134,7 @@ export const CalibrationControlPanel: React.FC = () => {
     }, [updateCalibrationConfig]);
 
     const handleSelectDirectory = async (): Promise<void> => {
-        if (!isElectron || !api) {
+        if ( !api) {
             console.warn('Electron API not available');
             return;
         }
@@ -154,7 +154,7 @@ export const CalibrationControlPanel: React.FC = () => {
         const newPath: string = e.target.value;
 
         // Handle tilde expansion for home directory
-        if (newPath.includes('~') && isElectron && api) {
+        if (newPath.includes('~')  && api) {
             try {
                 const home: string = await api.fileSystem.getHomeDirectory.query();
                 const expanded: string = newPath.replace(/^~([\/\\])?/, home ? `${home}$1` : '');
@@ -281,7 +281,6 @@ export const CalibrationControlPanel: React.FC = () => {
                                             <IconButton
                                                 onClick={handleSelectDirectory}
                                                 edge="end"
-                                                disabled={!isElectron}
                                             >
                                                 <FolderOpenIcon />
                                             </IconButton>

@@ -13,6 +13,7 @@ import {ServerConnectionStatus} from "@/components/ServerConnectionStatus";
 import {ProcessingPipelinePanel} from "@/components/processing-pipeline-panel/ProcessingPipelinePanel";
 import {CalibrationControlPanel} from "@/components/calibration-task-panel/CalibrationControlPanel";
 import {MocapTaskTreeItem} from "@/components/mocap-task-panel/MocapTaskTreeItem";
+import {RecordingInfoPanel} from "@/components/recording-info-panel/RecordingInfoPanel";
 
 // Extract reusable scrollbar styles
 const scrollbarStyles = {
@@ -141,9 +142,10 @@ export const LeftSidePanelContent = () => {
                 pb: 2,
             }}>
                 <CameraConfigTreeView/>
-                <ProcessingPipelinePanel/>
+                <RecordingInfoPanel/>
                 <CalibrationControlPanel />
                 <MocapTaskTreeItem />
+                <ProcessingPipelinePanel/>
 
             </Box>
         </Box>

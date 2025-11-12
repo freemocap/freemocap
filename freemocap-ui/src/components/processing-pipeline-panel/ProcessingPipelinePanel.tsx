@@ -6,6 +6,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import LanIcon from '@mui/icons-material/Lan';
 import PipelineConnectionStatus from "@/components/processing-pipeline-panel/PipelineConnectionStatus";
+import {RecordingInfoPanel} from "@/components/recording-info-panel/RecordingInfoPanel";
 
 export const ProcessingPipelinePanel: React.FC = () => {
     const theme = useTheme();
@@ -55,13 +56,12 @@ export const ProcessingPipelinePanel: React.FC = () => {
                             <LanIcon sx={{ transform: 'scaleY(-1.05) scaleX(1)' }} />
 
                             <Typography sx={{ pl: 1, flexGrow: 1 }} variant="h6" component="div">
-                                Data Processing Pipeline
+                                Realtime Pipeline
                             </Typography>
                             <PipelineConnectionStatus />
                         </Box>
                     }
                 >
-                    {/*<RecordingInfoPanel/>*/}
                 </TreeItem>
             </SimpleTreeView>
         </Box>

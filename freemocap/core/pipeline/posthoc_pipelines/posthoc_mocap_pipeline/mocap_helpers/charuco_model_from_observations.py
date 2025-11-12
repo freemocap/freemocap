@@ -72,7 +72,7 @@ def charuco_model_from_observations(observation_recorders: dict[VideoIdString, B
         # name/model info are hardcoded - but ideally we'll make a some sort of config that we'll pull from to choose these
         name="charuco_board_5x3",
         model_info=CharucoBoard5x3ModelInfo(),
-        tracked_points_numpy_array=filtered_trajectory_3d.triangulated_data,
+        tracked_points_numpy_array=raw_trajectory_3d.triangulated_data,
     )
 
 

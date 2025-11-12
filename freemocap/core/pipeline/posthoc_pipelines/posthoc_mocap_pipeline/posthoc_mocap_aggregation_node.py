@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 from dataclasses import dataclass
+from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
@@ -141,7 +142,7 @@ class PosthocMocapAggregationNode:
             skeleton = skeleton_from_mediapipe_observation_recorders(
                 observation_recorders=observation_recorders_by_video,
                 path_to_calibration_toml= get_last_successful_calibration_toml_path(),
-                path_to_output_data_folder=recording_info.full_recording_path,
+                path_to_output_data_folder=Path(recording_info.full_recording_path)/'output_data',
             )
 
             logger.success(

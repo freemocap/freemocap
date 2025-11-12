@@ -1,8 +1,7 @@
 import {useMemo, useRef} from "react";
-import {CameraHelper, InstancedMesh, Matrix4, MeshStandardMaterial, PerspectiveCamera, SphereGeometry} from "three";
+import {CameraHelper, InstancedMesh, MeshStandardMaterial, PerspectiveCamera, SphereGeometry} from "three";
 import {extend, useFrame} from "@react-three/fiber";
 import {CameraControls, Grid} from "@react-three/drei";
-import {ImageMesh} from "@/components/viewport3d/ImageMesh";
 import {useServer} from "@/services";
 
 extend({CameraHelper});

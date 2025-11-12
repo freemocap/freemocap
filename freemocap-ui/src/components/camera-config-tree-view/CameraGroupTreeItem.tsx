@@ -1,8 +1,8 @@
 import React from "react";
-import { Box, Typography } from "@mui/material";
-import { TreeItem } from "@mui/x-tree-view/TreeItem";
-import { CameraTreeItem } from "./CameraTreeItem";
-import { Camera } from "@/store/slices/cameras/cameras-types";
+import {Box, Typography} from "@mui/material";
+import {TreeItem} from "@mui/x-tree-view/TreeItem";
+import {CameraTreeItem} from "./CameraTreeItem";
+import {Camera} from "@/store/slices/cameras/cameras-types";
 
 interface CameraGroupTreeItemProps {
     groupId: string;

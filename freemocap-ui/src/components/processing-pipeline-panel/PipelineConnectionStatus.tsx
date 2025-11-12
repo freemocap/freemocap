@@ -3,8 +3,8 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {
-    connectPipeline,
     closePipeline,
+    connectRealtimePipeline,
     selectCanConnectPipeline,
     selectCanDisconnectPipeline,
     selectIsPipelineConnected,
@@ -33,7 +33,7 @@ export const PipelineConnectionStatus = () => {
             await dispatch(closePipeline());
         } else {
             console.log('Connecting to pipeline');
-            await dispatch(connectPipeline(undefined));
+            await dispatch(connectRealtimePipeline(undefined));
         }
     };
 
@@ -57,7 +57,7 @@ export const PipelineConnectionStatus = () => {
                     borderColor: 'rgb(0, 225, 225)',
                 } : {},
             }}
-            // onClick={isClickable ? handleToggleConnection : undefined}
+            onClick={isClickable ? handleToggleConnection : undefined}
         >
             <Typography
                 variant="body1"
@@ -68,34 +68,34 @@ export const PipelineConnectionStatus = () => {
                     gap: 1,
                 }}
             >
-                {/*<Box sx={{*/}
-                {/*    border: '1px solid rgba(255, 255, 255, 0.3)',*/}
-                {/*    width: '24px',*/}
-                {/*    height: '24px',*/}
-                {/*    marginRight: '8px',*/}
-                {/*    cursor: isClickable ? 'pointer' : 'not-allowed',*/}
-                {/*    borderRadius: '4px',*/}
-                {/*    transition: 'background-color 0.3s, border-color 0.3s',*/}
-                {/*    backgroundColor: isConnected ? 'rgba(0, 255, 255, 0.1)' : 'rgba(255, 0, 0, 0.1)',*/}
-                {/*    borderColor: isConnected ? 'rgba(0, 255, 255, 0.5)' : 'rgba(255, 0, 0, 0.5)',*/}
-                {/*    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',*/}
-                {/*    display: 'flex',*/}
-                {/*    alignItems: 'center',*/}
-                {/*    padding: '4px',*/}
-                {/*    justifyContent: 'center',*/}
-                {/*    '&:hover': isClickable ? {*/}
-                {/*        backgroundColor: 'rgba(255, 255, 255, 0.05)',*/}
-                {/*        borderColor: 'rgba(255, 255, 255, 0.2)',*/}
-                {/*    } : {},*/}
-                {/*}}>*/}
-                {/*    {isLoading ? (*/}
-                {/*        <CircularProgress size={16} sx={{ color: 'cyan' }} />*/}
-                {/*    ) : isConnected ? (*/}
-                {/*        <CheckIcon sx={{ color: 'green' }} />*/}
-                {/*    ) : (*/}
-                {/*        <CloseIcon fontSize="small" sx={{ color: 'red' }} />*/}
-                {/*    )}*/}
-                {/*</Box>*/}
+                <Box sx={{
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    width: '24px',
+                    height: '24px',
+                    marginRight: '8px',
+                    cursor: isClickable ? 'pointer' : 'not-allowed',
+                    borderRadius: '4px',
+                    transition: 'background-color 0.3s, border-color 0.3s',
+                    backgroundColor: isConnected ? 'rgba(0, 255, 255, 0.1)' : 'rgba(255, 0, 0, 0.1)',
+                    borderColor: isConnected ? 'rgba(0, 255, 255, 0.5)' : 'rgba(255, 0, 0, 0.5)',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '4px',
+                    justifyContent: 'center',
+                    '&:hover': isClickable ? {
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        borderColor: 'rgba(255, 255, 255, 0.2)',
+                    } : {},
+                }}>
+                    {isLoading ? (
+                        <CircularProgress size={16} sx={{ color: 'cyan' }} />
+                    ) : isConnected ? (
+                        <CheckIcon sx={{ color: 'green' }} />
+                    ) : (
+                        <CloseIcon fontSize="small" sx={{ color: 'red' }} />
+                    )}
+                </Box>
                 Pipeline: {isConnected ? `connected (id: ${pipelineId})` : 'disconnected'}
                 {error && (
                     <Typography variant="caption" color="error" sx={{ ml: 1 }}>

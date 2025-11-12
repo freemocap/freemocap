@@ -2,7 +2,7 @@
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {areConfigsEqual, CameraConfig, CamerasState, extractConfigSettings,} from './cameras-types';
 import {detectCameras,} from './cameras-thunks';
-import {closePipeline, connectPipeline} from '../pipeline/pipeline-thunks';
+import {closePipeline, connectRealtimePipeline} from '../pipeline/pipeline-thunks';
 
 
 const initialState: CamerasState = {
@@ -79,11 +79,11 @@ export const cameraSlice = createSlice({
             })
 
             // ========== Connect Pipeline ==========
-            .addCase(connectPipeline.pending, (state) => {
+            .addCase(connectRealtimePipeline.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
             })
-            .addCase(connectPipeline.fulfilled, (state, action) => {
+            .addCase(connectRealtimePipeline.fulfilled, (state, action) => {
                 state.isLoading = false;
                 // Update camera actual configs from server response
                 Object.entries(action.payload.camera_configs).forEach(
@@ -97,7 +97,7 @@ export const cameraSlice = createSlice({
                     }
                 );
             })
-            .addCase(connectPipeline.rejected, (state, action) => {
+            .addCase(connectRealtimePipeline.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.error.message || 'Failed to connect to cameras';
             })

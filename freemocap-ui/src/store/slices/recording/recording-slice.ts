@@ -1,6 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { RecordingInfo, RecordingConfig, ComputedRecordingPath } from './recording-types';
-import { startRecording, stopRecording } from './recording-thunks';
+import {createSlice, PayloadAction} from '@reduxjs/toolkit';
+import {ComputedRecordingPath, RecordingConfig, RecordingInfo} from './recording-types';
+import {startRecording, stopRecording} from './recording-thunks';
 
 const getTimestampString = (): string => {
     const now = new Date();

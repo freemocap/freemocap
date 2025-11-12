@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Button, CircularProgress, keyframes, Typography, Box } from '@mui/material';
-import { styled } from '@mui/system';
+import React, {useEffect, useState} from 'react';
+import {Box, Button, CircularProgress, keyframes, Typography} from '@mui/material';
+import {styled} from '@mui/system';
 
 interface StartStopButtonProps {
     isRecording: boolean;

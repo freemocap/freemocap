@@ -1,5 +1,5 @@
 // cameras-types.ts
-import { z } from 'zod';
+import {z} from 'zod';
 
 // ==================== Constants ====================
 export const PIXEL_FORMATS = ['RGB', 'BGR', 'GRAY'] as const;

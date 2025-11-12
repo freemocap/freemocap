@@ -1,4 +1,4 @@
-import { createAsyncThunk } from '@reduxjs/toolkit';
+import {createAsyncThunk} from '@reduxjs/toolkit';
 import {electronIpc} from "@/services/electron-ipc/electron-ipc";
 import {VideoFile} from "@/store";
 

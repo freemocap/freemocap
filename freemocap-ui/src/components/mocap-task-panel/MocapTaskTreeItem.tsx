@@ -24,11 +24,26 @@ import InfoIcon from '@mui/icons-material/Info';
 import CloseIcon from '@mui/icons-material/Close';
 import {useMocap} from '@/hooks/useMocap';
 import {useElectronIPC} from '@/services';
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import {SimpleTreeView} from "@mui/x-tree-view";
 
 
 export const MocapTaskTreeItem: React.FC = () => {
     const theme = useTheme();
     const [localError, setLocalError] = useState<string | null>(null);
+    const [expandedItems, setExpandedItems] = useState<string[]>([
+        'pipeline-main',
+        'calibration-intrinsic',
+        'calibration-extrinsic',
+        'mocap-task'
+    ]);
+    const handleExpandedItemsChange = (
+        event: React.SyntheticEvent,
+        itemIds: string[]
+    ): void => {
+        setExpandedItems(itemIds);
+    };
     const { api, isElectron } = useElectronIPC();
 
     const {
@@ -111,6 +126,15 @@ export const MocapTaskTreeItem: React.FC = () => {
     }, [isUsingManualPath]);
 
     return (
+        <SimpleTreeView
+            expandedItems={expandedItems}
+            onExpandedItemsChange={handleExpandedItemsChange}
+            slots={{
+                collapseIcon: ExpandMoreIcon,
+                expandIcon: ChevronRightIcon,
+            }}
+            sx={{ flexGrow: 1 }}
+        >
         <TreeItem
             itemId="mocap-task"
             label={
@@ -323,5 +347,6 @@ export const MocapTaskTreeItem: React.FC = () => {
                 </Stack>
             </Box>
         </TreeItem>
+        </SimpleTreeView>
     );
 };

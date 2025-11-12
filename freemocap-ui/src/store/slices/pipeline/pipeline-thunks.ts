@@ -1,12 +1,9 @@
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {RootState, selectSelectedCameraConfigs} from "@/store";
 import {serverUrls} from "@/services";
-import {
-    PipelineConnectResponse,
-    PipelineConnectRequest,
-} from "@/store/slices/pipeline/pipeline-types";
+import {PipelineConnectRequest, PipelineConnectResponse,} from "@/store/slices/pipeline/pipeline-types";
 
-export const connectPipeline = createAsyncThunk<
+export const connectRealtimePipeline = createAsyncThunk<
     PipelineConnectResponse,
     PipelineConnectRequest | undefined,
     { state: RootState }>(

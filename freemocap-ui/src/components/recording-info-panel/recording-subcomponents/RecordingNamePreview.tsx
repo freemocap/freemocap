@@ -1,6 +1,6 @@
 import React from 'react';
 import {TextField, Typography} from '@mui/material';
-import { useAppSelector } from '@/store';
+import {useAppSelector} from '@/store';
 
 interface RecordingNamePreviewProps {
     tag: string;

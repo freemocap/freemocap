@@ -2275,6 +2275,17 @@ class AniposeCameraGroup:
         for cam in self.cameras:
             cam.resize_camera(scale)
 
+    @jit(parallel=True, forceobj=True)
+    def calculate_mean_reprojection_error(self, errors):
+        errors_norm = np.linalg.norm(errors, axis=2)
+        good = ~np.isnan(errors_norm)
+        errors_norm[~good] = 0
+        denom = np.sum(good, axis=0).astype("float64")
+        denom[denom < 1.5] = np.nan
+        errors = np.sum(errors_norm, axis=0) / denom
+        return errors
+
+
 
 class AniposeCharucoBoard(CharucoBoard):
     def __init__(

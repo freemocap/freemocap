@@ -1,9 +1,9 @@
 import React from 'react';
-import { IconButton, InputAdornment, TextField } from '@mui/material';
+import {IconButton, InputAdornment, TextField} from '@mui/material';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import { useAppDispatch } from '@/store';
-import { recordingDirectoryChanged } from '@/store/slices/recording/recording-slice';
-import { useElectronIPC } from '@/services';
+import {useAppDispatch} from '@/store';
+import {recordingDirectoryChanged} from '@/store/slices/recording/recording-slice';
+import {useElectronIPC} from '@/services';
 
 interface DirectoryInputProps {
     baseRecordingFolder: string;

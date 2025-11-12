@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import {z} from 'zod';
 
 // Zod schemas for CharucoObservation data
 export const CharucoPointSchema = z.object({

@@ -5,13 +5,20 @@ import {TreeItem} from "@mui/x-tree-view/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import VideocamIcon from "@mui/icons-material/Videocam";
-import {useAppDispatch, useAppSelector} from "../../../../../skellycam/skellycam-ui/src/store";
+import {
+    recordingInfoUpdated,
+    startRecording,
+    stopRecording,
+    useAppDispatch,
+    useAppSelector
+} from "../../../../../skellycam/skellycam-ui/src/store";
 import {
     StartStopRecordingButton
 } from "../../../../../skellycam/skellycam-ui/src/components/recording-info-panel/recording-subcomponents/StartStopRecordingButton";
-import {startRecording, stopRecording, recordingInfoUpdated} from "../../../../../skellycam/skellycam-ui/src/store";
-import {RecordingPathTreeItem} from "../../../../../skellycam/skellycam-ui/src/components/recording-info-panel/RecordingPathTreeItem";
-import {electronIpc, useElectronIPC} from "../../../../../skellycam/skellycam-ui/src/services/electron-ipc/electron-ipc";
+import {
+    RecordingPathTreeItem
+} from "../../../../../skellycam/skellycam-ui/src/components/recording-info-panel/RecordingPathTreeItem";
+import {useElectronIPC} from "../../../../../skellycam/skellycam-ui/src/services/electron-ipc/electron-ipc";
 
 interface RecordingOperation {
     type: 'start' | 'stop';

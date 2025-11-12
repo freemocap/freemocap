@@ -1,9 +1,9 @@
 import React from 'react';
-import { IconButton, Tooltip, useTheme } from '@mui/material';
+import {IconButton, Tooltip, useTheme} from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4'; // Dark mode icon
 import Brightness7Icon from '@mui/icons-material/Brightness7'; // Light mode icon
-import { useAppDispatch, useAppSelector } from '@/store';
-import { themeModeToggled } from '@/store/slices/theme';
+import {useAppDispatch, useAppSelector} from '@/store';
+import {themeModeToggled} from '@/store/slices/theme';
 
 export const ThemeToggle: React.FC = () => {
     const dispatch = useAppDispatch();

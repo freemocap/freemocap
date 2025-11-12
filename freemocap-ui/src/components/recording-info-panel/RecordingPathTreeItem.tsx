@@ -5,7 +5,7 @@ import {
     FullRecordingPathPreview
 } from "@/components/recording-info-panel/recording-subcomponents/FullRecordingPathPreview";
 import {RecordingControlsSection} from "@/components/recording-info-panel/RecordingControlsTreeSection";
-import { useAppSelector } from '@/store';
+import {useAppSelector} from '@/store';
 
 interface RecordingPathTreeItemProps {
     countdown: number | null;

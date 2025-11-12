@@ -1,15 +1,11 @@
-import React, { useState } from "react";
-import { Box, Typography, useTheme } from "@mui/material";
-import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
-import { TreeItem } from "@mui/x-tree-view/TreeItem";
+import React, {useState} from "react";
+import {Box, Typography, useTheme} from "@mui/material";
+import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
+import {TreeItem} from "@mui/x-tree-view/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import LanIcon from '@mui/icons-material/Lan';
 import PipelineConnectionStatus from "@/components/processing-pipeline-panel/PipelineConnectionStatus";
-import {CalibrationTaskTreeItem} from "@/components/calibration-task-panel/CalibrationTaskTreeItem";
-import {MocapTaskTreeItem} from "@/components/mocap-task-panel/MocapTaskTreeItem";
-import {RecordingControlsSection} from "@/components/recording-info-panel/RecordingControlsTreeSection";
-import {RecordingInfoPanel} from "@/components/recording-info-panel/RecordingInfoPanel";
 
 export const ProcessingPipelinePanel: React.FC = () => {
     const theme = useTheme();
@@ -65,9 +61,7 @@ export const ProcessingPipelinePanel: React.FC = () => {
                         </Box>
                     }
                 >
-                    <RecordingInfoPanel/>
-                    <CalibrationTaskTreeItem />
-                    <MocapTaskTreeItem />
+                    {/*<RecordingInfoPanel/>*/}
                 </TreeItem>
             </SimpleTreeView>
         </Box>

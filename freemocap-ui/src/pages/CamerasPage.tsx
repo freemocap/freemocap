@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import Box from "@mui/material/Box";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
-import { Footer } from "@/components/ui-components/Footer";
-import { useTheme } from "@mui/material/styles";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { CameraViewsGrid } from "@/components/camera-views/CameraViewsGrid";
-import { CamerasViewSettingsOverlay } from "@/components/camera-views/camera-view-settings-overlay/CamerasViewSettingsOverlay";
-import { ThreeJsCanvas } from "@/components/viewport3d/ThreeJsCanvas";
+import {Footer} from "@/components/ui-components/Footer";
+import {useTheme} from "@mui/material/styles";
+import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
+import {CameraViewsGrid} from "@/components/camera-views/CameraViewsGrid";
+import {
+    CamerasViewSettingsOverlay
+} from "@/components/camera-views/camera-view-settings-overlay/CamerasViewSettingsOverlay";
+import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 
 interface CameraSettings {
     columns: number | null;

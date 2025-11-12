@@ -2,7 +2,6 @@
 import * as React from 'react';
 import Box from "@mui/material/Box";
 import {IconButton, List, ListItem, useTheme} from "@mui/material";
-import {RecordingInfoPanel} from "@/components/recording-info-panel/RecordingInfoPanel";
 import ThemeToggle from "@/components/ui-components/ThemeToggle";
 import HomeIcon from '@mui/icons-material/Home';
 import {useLocation, useNavigate} from "react-router-dom";
@@ -12,6 +11,8 @@ import {VideoFolderPanel} from "@/components/video-folder-panel/VideoFolderPanel
 import {CameraConfigTreeView} from "@/components/camera-config-tree-view/CameraConfigTreeView";
 import {ServerConnectionStatus} from "@/components/ServerConnectionStatus";
 import {ProcessingPipelinePanel} from "@/components/processing-pipeline-panel/ProcessingPipelinePanel";
+import {CalibrationControlPanel} from "@/components/calibration-task-panel/CalibrationControlPanel";
+import {MocapTaskTreeItem} from "@/components/mocap-task-panel/MocapTaskTreeItem";
 
 // Extract reusable scrollbar styles
 const scrollbarStyles = {
@@ -141,6 +142,8 @@ export const LeftSidePanelContent = () => {
             }}>
                 <CameraConfigTreeView/>
                 <ProcessingPipelinePanel/>
+                <CalibrationControlPanel />
+                <MocapTaskTreeItem />
 
             </Box>
         </Box>

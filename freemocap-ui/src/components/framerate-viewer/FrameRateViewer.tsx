@@ -6,7 +6,7 @@ import {alpha, useTheme} from "@mui/material/styles"
 import FramerateTimeseriesView from "./FramerateTimeseriesView"
 import FramerateHistogramView from "./FramerateHistogramView"
 import FramerateStatisticsView from "./FramerateStatisticsView"
-import {useAppSelector, selectFramerateViewerData} from "@/store";
+import {selectFramerateViewerData, useAppSelector} from "@/store";
 
 type ViewType = "timeseries" | "histogram" | "both"
 export const frontendColor: string = "#1976D2"

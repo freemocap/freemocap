@@ -1,25 +1,25 @@
 // components/CalibrationTaskTreeItem.tsx
-import React, { useCallback, useState, useMemo, useEffect } from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
+    Alert,
     Box,
-    Typography,
+    Button,
+    Checkbox,
+    Chip,
+    FormControl,
+    FormControlLabel,
+    IconButton,
+    InputAdornment,
+    InputLabel,
+    MenuItem,
+    Select,
     Stack,
     TextField,
-    Button,
-    FormControlLabel,
-    Checkbox,
-    Alert,
-    useTheme,
-    Select,
-    MenuItem,
-    FormControl,
-    InputLabel,
-    Chip,
-    InputAdornment,
-    IconButton,
     Tooltip,
+    Typography,
+    useTheme,
 } from '@mui/material';
-import { TreeItem } from '@mui/x-tree-view/TreeItem';
+import {TreeItem} from '@mui/x-tree-view/TreeItem';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
@@ -28,8 +28,11 @@ import ClearIcon from '@mui/icons-material/Clear';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info';
 import CloseIcon from '@mui/icons-material/Close';
-import { useCalibration } from '@/hooks/useCalibration';
-import { useElectronIPC } from '@/services';
+import {useCalibration} from '@/hooks/useCalibration';
+import {useElectronIPC} from '@/services';
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import {SimpleTreeView} from "@mui/x-tree-view";
 
 type BoardPreset = '5x3' | '7x5' | 'custom';
 
@@ -43,9 +46,15 @@ const BOARD_PRESETS: Record<Exclude<BoardPreset, 'custom'>, BoardPresetConfig> =
     '7x5': { xSquares: 7, ySquares: 5 },
 };
 
-export const CalibrationTaskTreeItem: React.FC = () => {
+export const CalibrationControlPanel: React.FC = () => {
     const theme = useTheme();
     const [localError, setLocalError] = useState<string | null>(null);
+    const [expandedItems, setExpandedItems] = useState<string[]>([
+        'pipeline-main',
+        'calibration-intrinsic',
+        'calibration-extrinsic',
+        'mocap-task'
+    ]);
     const { api, isElectron } = useElectronIPC();
 
     const {
@@ -172,8 +181,22 @@ export const CalibrationTaskTreeItem: React.FC = () => {
         }
         return 'Using default recording directory';
     }, [isUsingManualPath]);
-
+    const handleExpandedItemsChange = (
+        event: React.SyntheticEvent,
+        itemIds: string[]
+    ): void => {
+        setExpandedItems(itemIds);
+    };
     return (
+        <SimpleTreeView
+            expandedItems={expandedItems}
+            onExpandedItemsChange={handleExpandedItemsChange}
+            slots={{
+                collapseIcon: ExpandMoreIcon,
+                expandIcon: ChevronRightIcon,
+            }}
+            sx={{ flexGrow: 1 }}
+        >
         <TreeItem
             itemId="calibration-task"
             label={
@@ -449,5 +472,6 @@ export const CalibrationTaskTreeItem: React.FC = () => {
                 </Stack>
             </Box>
         </TreeItem>
+        </SimpleTreeView>
     );
 };

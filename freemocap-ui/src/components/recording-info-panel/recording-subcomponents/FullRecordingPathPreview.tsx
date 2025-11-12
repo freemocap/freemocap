@@ -5,7 +5,7 @@ import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import {useElectronIPC} from "@/services";
-import { useAppSelector } from '@/store';
+import {useAppSelector} from '@/store';
 
 export const FullRecordingPathPreview: React.FC = () => {
     const theme = useTheme();

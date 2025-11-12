@@ -93,7 +93,7 @@ def anipose_calibration_from_charuco_observations(
         use_charuco_as_groundplane: bool = False,
         init_intrinsics: bool = True,
         init_extrinsics: bool = True,
-        verbose: bool = True, ) -> PointTriangulator:
+        verbose: bool = True, ) -> tuple[Path,PointTriangulator]:
     anipose_cameras: list[AniposeCamera] = [
         AniposeCamera(name=video_id,
                       size=(video_metadata.height, video_metadata.width)) for video_id, video_metadata in
@@ -136,7 +136,10 @@ def anipose_calibration_from_charuco_observations(
 
     logger.info(f"Calibration error: {error}")
 
+    # Add metadata
     anipose_camera_group.metadata["groundplane_calibration"] = False
+    anipose_camera_group.metadata["recording_info"] = recording_info.model_dump()
+
     groundplane_success: GroundPlaneSuccess | None = None
 
     # Apply camera 0 pinning if requested
@@ -177,7 +180,7 @@ def anipose_calibration_from_charuco_observations(
     # Save as last successful calibration
     anipose_camera_group.dump(get_last_successful_calibration_toml_path())
     logger.info(f"Saved as last successful calibration: {get_last_successful_calibration_toml_path()}")
-    return PointTriangulator.from_toml(toml_path=get_last_successful_calibration_toml_path())
+    return recording_folder_calibration_toml_path, PointTriangulator.from_toml(toml_path=get_last_successful_calibration_toml_path())
 
 
 def pin_camera_zero_to_origin(camera_group: AniposeCameraGroup) -> AniposeCameraGroup:

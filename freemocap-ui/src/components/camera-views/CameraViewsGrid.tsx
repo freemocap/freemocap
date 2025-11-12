@@ -1,8 +1,8 @@
 import React from "react";
-import { Box } from "@mui/material";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { useTheme } from "@mui/material/styles";
-import { CameraView } from "./CameraView";
+import {Box} from "@mui/material";
+import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
+import {useTheme} from "@mui/material/styles";
+import {CameraView} from "./CameraView";
 
 import {useServer} from "@/hooks/useServer";
 

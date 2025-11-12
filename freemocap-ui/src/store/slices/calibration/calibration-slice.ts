@@ -1,6 +1,6 @@
 // store/slices/calibration/calibration-slice.ts
-import { createSlice, PayloadAction, createSelector } from '@reduxjs/toolkit';
-import { RootState } from '../../types';
+import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
+import {RootState} from '../../types';
 import {
     calibrateRecording,
     startCalibrationRecording,

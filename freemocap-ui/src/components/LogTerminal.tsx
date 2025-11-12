@@ -11,20 +11,16 @@ import {
     Tooltip,
     useTheme,
 } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
-import { useAppSelector, useAppDispatch } from "@/store";
+import {useEffect, useRef, useState} from "react";
+import {useAppDispatch, useAppSelector} from "@/store";
 import {
     selectFilteredLogs,
-    selectLogsPaused,
     selectHasErrors,
-    selectLogCountsByLevel
+    selectLogCountsByLevel,
+    selectLogsPaused
 } from "@/store/slices/log-records/logs-selectors";
-import {
-    logsFiltered,
-    logsPaused,
-    logsCleared
-} from "@/store/slices/log-records/log-records-slice";
-import { LogRecord } from "@/store/slices/log-records/logs-types";
+import {logsCleared, logsFiltered, logsPaused} from "@/store/slices/log-records/log-records-slice";
+import {LogRecord} from "@/store/slices/log-records/logs-types";
 import {
     Delete as DeleteIcon,
     Pause as PauseIcon,

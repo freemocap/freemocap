@@ -1,22 +1,22 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
     Box,
     Button,
+    CircularProgress,
     Container,
+    darken,
     Fade,
     Grow,
-    Paper,
-    Typography,
     Link as MuiLink,
-    CircularProgress,
-    darken
+    Paper,
+    Typography
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { useTheme } from '@mui/material/styles';
+import {useNavigate} from 'react-router-dom';
+import {useTheme} from '@mui/material/styles';
 import VideocamIcon from '@mui/icons-material/Videocam';
-import { Footer } from '@/components/ui-components/Footer';
-import { useElectronIPC } from "@/services";
-import { connectPipeline, useAppDispatch } from "@/store";
+import {Footer} from '@/components/ui-components/Footer';
+import {useElectronIPC} from "@/services";
+import {connectRealtimePipeline, useAppDispatch} from "@/store";
 import {useServer} from "@/hooks/useServer";
 
 const WelcomePage: React.FC = () => {
@@ -66,7 +66,7 @@ const WelcomePage: React.FC = () => {
     const handleConnectCameras = async (): Promise<void> => {
         setIsConnecting(true);
         try {
-            await dispatch(connectPipeline()).unwrap();
+            await dispatch(connectRealtimePipeline()).unwrap();
             // Navigation will happen automatically via the useEffect above
         } catch (error) {
             console.error('Error connecting to cameras:', error);

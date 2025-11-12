@@ -1,6 +1,6 @@
 // framerate-slice.ts
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { DetailedFramerate } from './framerate-types';
+import {createSlice, PayloadAction} from '@reduxjs/toolkit';
+import {DetailedFramerate} from './framerate-types';
 
 // Export DetailedFramerate as CurrentFramerate for component compatibility
 export type CurrentFramerate = DetailedFramerate;

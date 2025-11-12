@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 from dataclasses import dataclass
+from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -10,11 +11,14 @@ from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
     CalibrationpipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_helpers.charuco_model_from_observations import \
+    charuco_model_from_observations
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoMetadata
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_observation_aggregator import \
     anipose_calibration_from_charuco_observations
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.freemocap_anipose import \
-    AniposeCharucoBoard, AniposeCameraGroup, AniposeCamera
+
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
+
 from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.shared_view_accumulator import CharucoObservations
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
@@ -136,12 +140,27 @@ class PosthocCalibrationAggregationNode:
                 })
 
 
-            triangulator = anipose_calibration_from_charuco_observations(
+            calibration_toml_path, triangulator = anipose_calibration_from_charuco_observations(
                 charuco_observations_by_frame=charuco_observations_by_frame,
                 calibration_pipeline_config=calibration_pipeline_config,
                 recording_info=recording_info,
                 video_metadata=video_metadata,
                 # use_charuco_as_groundplane=True,
+            )
+
+            observation_recorders_by_video = {video_id: BaseRecorder() for video_id in video_ids}
+            for frame_number, frame_outputs_by_video in video_outputs_by_frame.items():
+                if not all([isinstance(output, VideoNodeOutputMessage) for output in frame_outputs_by_video.values()]):
+                    raise ValueError(
+                        f"Missing video node outputs for frame in pipeline {pipeline_id}: {frame_number}")
+                for video_id, recorder in observation_recorders_by_video.items():
+                    observation = frame_outputs_by_video[video_id].observation
+                    recorder.add_observation(observation=observation)
+
+            charuco_board_model = charuco_model_from_observations(
+                observation_recorders=observation_recorders_by_video,
+                calibration_toml_path=calibration_toml_path,
+                output_data_folder=Path(recording_info.full_recording_path) / "output_data",
             )
 
             logger.success(

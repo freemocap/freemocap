@@ -1,5 +1,8 @@
 // frame-processor.ts
-import { parseMultiFramePayload, ParsedFrame } from "@/services/server/server-helpers/frame-processor/binary-frame-parser";
+import {
+    ParsedFrame,
+    parseMultiFramePayload
+} from "@/services/server/server-helpers/frame-processor/binary-frame-parser";
 
 export interface FrameData {
     cameraId: string;

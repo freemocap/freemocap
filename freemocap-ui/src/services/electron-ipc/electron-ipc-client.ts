@@ -1,7 +1,7 @@
 // src/hooks/electron-service/electron-ipc-client.ts
-import { createTRPCProxyClient } from '@trpc/client';
+import {createTRPCProxyClient} from '@trpc/client';
 import superjson from 'superjson';
-import type { AppAPI } from '../../../electron/main/api';
+import type {AppAPI} from '../../../electron/main/api';
 
 // Type for the electron API exposed via preload
 interface ElectronAPI {

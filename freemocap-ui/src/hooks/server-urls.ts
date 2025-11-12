@@ -25,14 +25,14 @@ class ServerUrls {
 
             // Camera endpoints
             detectCameras: `${baseUrl}/skellycam/camera/detect`,
-            // camerasConnectOrUpdate: `${baseUrl}/skellycam/camera/group/apply`,
-            // closeAll: `${baseUrl}/skellycam/camera/group/close/all`,
-            // updateConfigs: `${baseUrl}/skellycam/camera/update`,
-            // pauseUnpauseCameras: `${baseUrl}/skellycam/camera/group/all/pause_unpause`,
+            camerasConnectOrUpdate: `${baseUrl}/skellycam/camera/group/apply`,
+            closeAll: `${baseUrl}/skellycam/camera/group/close/all`,
+            updateConfigs: `${baseUrl}/skellycam/camera/update`,
+            pauseUnpauseCameras: `${baseUrl}/skellycam/camera/group/all/pause_unpause`,
 
             // Recording endpoints
-            // startRecording: `${baseUrl}/skellycam/camera/group/all/record/start`,
-            // stopRecording: `${baseUrl}/skellycam/camera/group/all/record/stop`,
+            startRecording: `${baseUrl}/skellycam/camera/group/all/record/start`,
+            stopRecording: `${baseUrl}/skellycam/camera/group/all/record/stop`,
 
             // Pipeline endpoints
             pipelineConnectOrUpdate: `${baseUrl}/freemocap/pipeline/connect`,

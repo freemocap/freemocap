@@ -3,8 +3,8 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel
 
-from skellyforge.data_models.data_3d import Observation3d, Trajectory3d
-from skellyforge.data_models.frame_group import CameraIdString, FrameGroup, Trajectory2dGroup
+from skellyforge.data_models.trajectory_3d  import Observation3d, Trajectory3d
+from skellyforge.data_models.type_overloads import CameraIdString, FrameGroup, Trajectory2dGroup
 
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.freemocap_anipose import \
     AniposeCameraGroup

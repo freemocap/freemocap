@@ -1,5 +1,5 @@
 // framerate-types.ts
-import { z } from 'zod';
+import {z} from 'zod';
 
 // The actual framerate data structure used in the Redux store
 export const FramerateDataSchema = z.object({

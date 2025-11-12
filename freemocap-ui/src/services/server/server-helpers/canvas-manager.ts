@@ -1,4 +1,4 @@
-import { workerCode } from "@/services/server/server-helpers/offscreen-renderer.worker";
+import {workerCode} from "@/services/server/server-helpers/offscreen-renderer.worker";
 
 export interface FrameData {
     cameraId: string;

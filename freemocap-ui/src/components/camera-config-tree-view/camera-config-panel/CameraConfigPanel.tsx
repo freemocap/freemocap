@@ -1,19 +1,13 @@
 import React from "react";
-import {
-    Box,
-    Collapse,
-    IconButton,
-    Tooltip,
-    useTheme,
-} from "@mui/material";
+import {Box, Collapse, IconButton, Tooltip, useTheme,} from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import MediationIcon from "@mui/icons-material/Mediation";
-import { CameraConfigResolution } from "./CameraConfigResolution";
-import { CameraConfigExposure } from "./CameraConfigExposure";
-import { CameraConfigRotation } from "./CameraConfigRotation";
-import { CameraConfig, ExposureMode } from "@/store/slices/cameras/cameras-types";
-import { useAppDispatch, useAppSelector } from "@/store";
-import { selectCameras, configCopiedToAll } from "@/store/slices/cameras";
+import {CameraConfigResolution} from "./CameraConfigResolution";
+import {CameraConfigExposure} from "./CameraConfigExposure";
+import {CameraConfigRotation} from "./CameraConfigRotation";
+import {CameraConfig, ExposureMode} from "@/store/slices/cameras/cameras-types";
+import {useAppDispatch, useAppSelector} from "@/store";
+import {configCopiedToAll, selectCameras} from "@/store/slices/cameras";
 
 interface CameraConfigPanelProps {
     config: CameraConfig;

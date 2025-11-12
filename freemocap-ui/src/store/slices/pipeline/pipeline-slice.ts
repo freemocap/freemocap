@@ -1,6 +1,6 @@
 import {createSlice} from "@reduxjs/toolkit";
 import {PipelineState} from "@/store/slices/pipeline/pipeline-types";
-import {connectPipeline, closePipeline} from "@/store/slices/pipeline/pipeline-thunks";
+import {closePipeline, connectRealtimePipeline} from "@/store/slices/pipeline/pipeline-thunks";
 
 const initialState: PipelineState = {
     cameraGroupId: null,
@@ -26,17 +26,17 @@ export const pipelineSlice = createSlice({
     extraReducers: (builder) => {
         builder
         // Connect Pipeline
-            .addCase(connectPipeline.pending, (state) => {
+            .addCase(connectRealtimePipeline.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
             })
-            .addCase(connectPipeline.fulfilled, (state, action) => {
+            .addCase(connectRealtimePipeline.fulfilled, (state, action) => {
                 state.cameraGroupId = action.payload.camera_group_id;
                 state.pipelineId = action.payload.pipeline_id;
                 state.isConnected = true;
                 state.isLoading = false;
             })
-            .addCase(connectPipeline.rejected, (state, action) => {
+            .addCase(connectRealtimePipeline.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.error.message || 'Failed to connect pipeline';
             })

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import {useEffect, useMemo, useRef} from 'react';
+import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
-import { useServer } from '@/services';
+import {useServer} from '@/services';
 
 interface ImageMeshProps {
     cameraId: string;

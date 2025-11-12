@@ -1,6 +1,6 @@
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import { z } from 'zod';
-import { RootState } from '@/store/types';
+import {createAsyncThunk} from '@reduxjs/toolkit';
+import {z} from 'zod';
+import {RootState} from '@/store/types';
 import {serverUrls} from "@/services";
 
 const RecordStartRequestSchema = z.object({

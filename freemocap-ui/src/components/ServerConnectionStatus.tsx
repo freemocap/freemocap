@@ -1,6 +1,6 @@
 // components/ServerConnectionStatus.tsx
 import React from 'react';
-import { Box, Typography, IconButton } from "@mui/material";
+import {Box, IconButton, Typography} from "@mui/material";
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import WifiIcon from '@mui/icons-material/Wifi';

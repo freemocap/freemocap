@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, IconButton, Paper, TextField, Checkbox, FormControlLabel, Tooltip, Button } from '@mui/material';
+import React, {useState} from 'react';
+import {Box, Button, Checkbox, FormControlLabel, IconButton, Paper, TextField, Tooltip} from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
 import GridViewIcon from '@mui/icons-material/GridView';

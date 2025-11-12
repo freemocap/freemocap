@@ -1,7 +1,7 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
-import { RootState } from "@/store";
-import { serverUrls } from "@/hooks/server-urls";
-import { selectCalibrationRecordingPath } from "./calibration-slice";
+import {createAsyncThunk} from "@reduxjs/toolkit";
+import {RootState} from "@/store";
+import {serverUrls} from "@/hooks/server-urls";
+import {selectCalibrationRecordingPath} from "./calibration-slice";
 
 // Helper function to extract detailed error info from failed responses
 async function getDetailedErrorMessage(response: Response): Promise<string> {

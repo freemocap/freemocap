@@ -1,7 +1,7 @@
 // framerate-selectors.ts
-import { createSelector } from '@reduxjs/toolkit';
-import { RootState } from '../../types';
-import { DetailedFramerate } from './framerate-types';
+import {createSelector} from '@reduxjs/toolkit';
+import {RootState} from '../../types';
+import {DetailedFramerate} from './framerate-types';
 
 // Basic selectors for current framerates
 export const selectCurrentFrontendFramerate = (state: RootState): DetailedFramerate | null =>

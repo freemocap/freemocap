@@ -1,6 +1,6 @@
 import React from "react";
-import { Box, Typography } from "@mui/material";
-import { TreeItem } from "@mui/x-tree-view/TreeItem";
+import {Box, Typography} from "@mui/material";
+import {TreeItem} from "@mui/x-tree-view/TreeItem";
 
 export const NoCamerasPlaceholder: React.FC = () => {
     return (

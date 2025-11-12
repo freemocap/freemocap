@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box, Slider, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useTheme } from '@mui/material';
-import { ExposureMode } from "@/store/slices/cameras/cameras-types";
+import {Box, Slider, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useTheme} from '@mui/material';
+import {ExposureMode} from "@/store/slices/cameras/cameras-types";
 
 interface CameraConfigExposureProps {
     exposureMode: ExposureMode;

@@ -1,28 +1,23 @@
-import React, { useEffect, useState } from "react";
-import {
-    Box,
-    Paper,
-    Typography,
-    useTheme,
-} from "@mui/material";
-import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
-import { TreeItem } from "@mui/x-tree-view/TreeItem";
+import React, {useEffect, useState} from "react";
+import {Paper, useTheme,} from "@mui/material";
+import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
+import {TreeItem} from "@mui/x-tree-view/TreeItem";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import VideoCameraFrontIcon from '@mui/icons-material/VideoCameraFront';
 
-import { CameraConfigTreeViewHeader } from "./CameraConfigTreeViewHeader";
-import { CameraGroupTreeItem } from "./CameraGroupTreeItem";
-import { NoCamerasPlaceholder } from "./NoCamerasPlaceholder";
+import {CameraConfigTreeViewHeader} from "./CameraConfigTreeViewHeader";
+import {CameraGroupTreeItem} from "./CameraGroupTreeItem";
+import {NoCamerasPlaceholder} from "./NoCamerasPlaceholder";
 import {
-    useAppDispatch,
-    useAppSelector,
-    selectCameras,
-    selectIsLoading,
-    selectConnectedCameras,
-    selectSelectedCameras,
+    Camera,
     detectCameras,
-    Camera
+    selectCameras,
+    selectConnectedCameras,
+    selectIsLoading,
+    selectSelectedCameras,
+    useAppDispatch,
+    useAppSelector
 } from "@/store";
 
 import {useServer} from "@/hooks/useServer";

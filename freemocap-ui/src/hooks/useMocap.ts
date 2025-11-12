@@ -1,15 +1,25 @@
 // hooks/useMocap.ts
-import { useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {useCallback} from 'react';
+import {useAppDispatch, useAppSelector} from '@/store/hooks';
 
-import { useElectronIPC } from '@/services';
+import {useElectronIPC} from '@/services';
 import {
+    manualMocapRecordingPathChanged,
+    manualMocapRecordingPathCleared,
+    MocapConfig,
+    mocapConfigUpdated,
+    mocapDirectoryInfoUpdated,
+    mocapErrorCleared,
     processMocapRecording,
-    MocapConfig, mocapConfigUpdated, mocapDirectoryInfoUpdated,
-    mocapErrorCleared, manualMocapRecordingPathChanged, manualMocapRecordingPathCleared,
-    selectMocap, selectMocapDirectoryInfo, selectMocapRecordingPath,
-    selectCanStartMocapRecording, selectIsUsingManualMocapPath,
-    startMocapRecording, stopMocapRecording, updateMocapConfigOnServer, selectCanProcessMocapRecording
+    selectCanProcessMocapRecording,
+    selectCanStartMocapRecording,
+    selectIsUsingManualMocapPath,
+    selectMocap,
+    selectMocapDirectoryInfo,
+    selectMocapRecordingPath,
+    startMocapRecording,
+    stopMocapRecording,
+    updateMocapConfigOnServer
 } from "@/store/slices/mocap";
 
 export function useMocap() {

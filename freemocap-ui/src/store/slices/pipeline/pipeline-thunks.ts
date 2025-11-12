@@ -22,7 +22,7 @@ export const connectRealtimePipeline = createAsyncThunk<
             const error = await response.json()
             throw new Error(`Failed to connect pipeline: ${error.message || response.statusText}`);
         }
-        return response.json() as Promise<PipelineConnectResponse>;
+        return await response.json() as Promise<PipelineConnectResponse>;
     })
 
 

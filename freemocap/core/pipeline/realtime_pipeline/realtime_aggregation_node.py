@@ -66,7 +66,6 @@ class AggregationNode:
                                                          ShouldCalibrateTopic].get_subscription(),
                                                      ),
 
-                                         daemon=True
                                          )
         subprocess_registry.append(worker)
         return cls(shutdown_self_flag=shutdown_self_flag,
@@ -155,32 +154,7 @@ class AggregationNode:
                     ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
                     camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}
 
-                if not should_calibrate_subscription.empty():
-                    should_calibrate_message = should_calibrate_subscription.get()
-                    if isinstance(should_calibrate_message, ShouldCalibrateMessage) and calibrate_recording_thread is None:
-                        logger.info(
-                            f"Starting calibration recording thread for camera group {camera_group_id} in pipeline {ipc.pipeline_id}")
-                        # TODO - Shoehorning v2 models into v1 calibration function - v excited to put v1 in the ground sooooooon
-                        if calibrate_recording_thread is not None and calibrate_recording_thread.is_alive():
-                            calibration_thread_kill_event.set()
-                            calibrate_recording_thread.join(timeout=5)
-                            if calibrate_recording_thread.is_alive():
-                                raise RuntimeError('Failed to stop existing calibration recording thread....')
-                        calibration_thread_kill_event.clear()
-                        calibrate_recording_thread = threading.Thread(
-                            target=run_anipose_capture_volume_calibration,
-                            name=f"CameraGroup-{camera_group_id}-CalibrationRecordingThread",
-                            kwargs=dict(
-                                charuco_board_definition=CharucoBoardDefinition(
-                                    name=f"charuco_{camera_group_id}",
-                                    number_of_squares_width=config.calibration_task_config.charuco_board_x_squares,
-                                    number_of_squares_height=config.calibration_task_config.charuco_board_y_squares),
-                                charuco_square_size=config.calibration_task_config.charuco_square_length,
-                                kill_event=calibration_thread_kill_event,
-                                calibration_recording_folder=config.calibration_task_config.calibration_recording_folder,
-                                use_charuco_as_groundplane=True)
-                        )
-                        calibrate_recording_thread.start()
+
         except Exception as e:
             logger.error(f"Exception in AggregationNode for camera group {camera_group_id}: {e}", exc_info=True)
             ipc.kill_everything()
@@ -196,3 +170,4 @@ class AggregationNode:
         logger.debug(f"Stopping AggregationNode worker")
         self.shutdown_self_flag.value = True
         self.worker.join()
+        logger.debug(f"AggregationNode worker stopped")

@@ -60,7 +60,6 @@ class RealtimeCameraNode:
                                                      pipeline_config_subscription=ipc.pubsub.get_subscription(
                                                          PipelineConfigUpdateTopic),
                                                      ),
-                                         daemon=True
                                          )
         subprocess_registry.append(worker)
         return cls(camera_id=camera_id,
@@ -102,24 +101,22 @@ class RealtimeCameraNode:
                 if not process_frame_number_subscription.empty():
                     process_frame_number_message: ProcessFrameNumberMessage = process_frame_number_subscription.get()
 
-                    charuco_observation: BaseObservation | None = None
-                    if config.calibration_task_config.live_track_charuco:
-                        # Process the frame
-                        tik = time.perf_counter_ns()
-                        frame_rec_array = camera_shm.get_data_by_index(index=process_frame_number_message.frame_number,
-                                                                       rec_array=frame_rec_array)
-                        if frame_rec_array.frame_metadata.camera_config.rotation != -1:
-                            rotated_image = cv2.rotate(
-                                src=frame_rec_array.image[0],
-                                rotateCode=frame_rec_array.frame_metadata.camera_config.rotation[0]
-                            )
-                        else:
-                            rotated_image = frame_rec_array.image[0]
-                        charuco_observation = charuco_detector.detect(
-                            frame_number=frame_rec_array.frame_metadata.frame_number[0],
-                            image=rotated_image, )
+                    # Process the frame
+                    tik = time.perf_counter_ns()
+                    frame_rec_array = camera_shm.get_data_by_index(index=process_frame_number_message.frame_number,
+                                                                   rec_array=frame_rec_array)
+                    if frame_rec_array.frame_metadata.camera_config.rotation != -1:
+                        rotated_image = cv2.rotate(
+                            src=frame_rec_array.image[0],
+                            rotateCode=frame_rec_array.frame_metadata.camera_config.rotation[0]
+                        )
+                    else:
+                        rotated_image = frame_rec_array.image[0]
+                    charuco_observation = charuco_detector.detect(
+                        frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                        image=rotated_image, )
 
-                        # tok = time.perf_counter_ns()
+                    # tok = time.perf_counter_ns()
 
                     ipc.pubsub.publish(
                         topic_type=CameraNodeOutputTopic,
@@ -148,3 +145,4 @@ class RealtimeCameraNode:
         logger.debug(f"Stopping {self.__class__.__name__} for camera {self.camera_id}")
         self.shutdown_self_flag.value = True
         self.worker.join()
+        logger.debug(f"{self.__class__.__name__} for camera {self.camera_id} stopped")

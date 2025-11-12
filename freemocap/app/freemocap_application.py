@@ -76,9 +76,9 @@ class FreemocApplication:
             camera_group = await self.camera_group_manager.create_or_update_camera_group(
                 camera_configs=pipeline_config.camera_configs
             )
-            # pipeline = await self.realtime_pipeline_manager.create_realtime_pipeline(
-            #     camera_group=camera_group,
-            #     pipeline_config=pipeline_config)
+            pipeline = await self.realtime_pipeline_manager.create_realtime_pipeline(
+                camera_group=camera_group,
+                pipeline_config=pipeline_config)
         return pipeline
 
     async def create_posthoc_calibration_pipeline(self,

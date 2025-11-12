@@ -37,7 +37,7 @@ class StartCalibrationRecordingRequest(BaseModel):
         if not recording_name.endswith('_calibration'):
             recording_name += '_calibration'
         return RecordingInfo(
-            recording_directory=str(recordings_directory),
+            recording_directory=str(Path(self.calibration_recording_directory).parent).replace('~', str(Path.home())),
             recording_name=recording_name,
             mic_device_index=-1
         )
@@ -52,8 +52,9 @@ class CalibrateRecordingRequest(BaseModel):
     calibration_pipeline_config: CalibrationpipelineConfig = Field(alias="calibrationTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
+
         return RecordingInfo(
-            recording_directory=str(Path(self.calibration_recording_directory).parent),
+            recording_directory=str(Path(self.calibration_recording_directory).parent).replace('~', str(Path.home())),
             recording_name=Path(self.calibration_recording_directory).stem,
             mic_device_index=-1
         )
@@ -91,7 +92,6 @@ async def start_calibration_recording(request: StartCalibrationRecordingRequest)
         if not recording_info.recording_name.endswith('_calibration'):
             recording_info.recording_name += '_calibration'
 
-        # await get_freemocap_app().create_or_update_realtime_calibration_pipeline(request.calibration_pipeline_config)
         await get_freemocap_app().start_recording_all(recording_info=recording_info, )
         logger.info(f"Starting recording : {recording_info}")
         return StartCalibrationRecordingResponse(success=True, message="Recording started")

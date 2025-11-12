@@ -91,7 +91,7 @@ export const camerasConnectOrUpdate = createAsyncThunk<
             throw new Error(error.detail || 'Failed to connect to cameras');
         }
 
-        return response.json() as Promise<ConnectCamerasResponse>;
+        return await response.json() as Promise<ConnectCamerasResponse>;
     }
 );
 

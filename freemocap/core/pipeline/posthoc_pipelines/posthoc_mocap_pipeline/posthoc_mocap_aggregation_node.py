@@ -66,8 +66,6 @@ class PosthocMocapAggregationNode:
                                                      video_node_subscription=ipc.pubsub.topics[
                                                          VideoNodeOutputTopic].get_subscription(),
                                                      ),
-
-                                         daemon=True
                                          )
         subprocess_registry.append(worker)
         return cls(shutdown_self_flag=shutdown_self_flag,

@@ -143,7 +143,6 @@ class RealtimeProcessingPipeline:
         for camera_id, camera_node in self.camera_nodes.items():
             camera_node.shutdown()
         self.aggregation_node.shutdown()
-        self.camera_group.close()
 
     async def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
         return await self.camera_group.update_camera_settings(requested_configs=camera_configs)

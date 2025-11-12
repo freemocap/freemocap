@@ -41,7 +41,6 @@ class MocapVideoNode:
                                              mocap_task_config=mocap_task_config,
                                              shutdown_self_flag=shutdown_self_flag,
                                          ),
-                                         daemon=True
                                          )
         subprocess_registry.append(worker)
         return cls(video_id=video_id,

@@ -23,7 +23,7 @@ class PipelineConfigUpdateMessage(TopicMessageABC):
 class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString
     frame_number: FrameNumberInt = Field(ge=0)
-    observation: BaseObservation | None = None
+    observation: BaseObservation
 
 class VideoNodeOutputMessage(TopicMessageABC):
     video_id: VideoIdString

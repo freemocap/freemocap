@@ -831,7 +831,7 @@ class AniposeCamera:
 
 
 class AniposeCameraGroup:
-    def __init__(self, cameras, metadata={}):
+    def __init__(self, cameras:list[AniposeCamera], metadata={}):
         self.cameras = cameras
         self.metadata = metadata
         self.charuco_2d_data = None
@@ -2253,7 +2253,7 @@ class AniposeCameraGroup:
 
     def dump(self, fname):
         dicts = self.get_dicts()
-        names = ["cam_{}".format(i) for i in range(len(dicts))]
+        names = [camera_dict['name'] for camera_dict in dicts]
         master_dict = dict(zip(names, dicts))
         master_dict["metadata"] = self.metadata
         with open(fname, "w") as f:

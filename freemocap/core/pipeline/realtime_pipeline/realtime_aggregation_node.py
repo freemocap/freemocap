@@ -12,6 +12,10 @@ from skellycam.utilities.wait_functions import wait_1ms
 
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_observation_aggregator import \
+    get_last_successful_calibration_toml_path
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.point_triangulator import \
+    PointTriangulator
 from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
 from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.v1_capture_volume_calibration.charuco_stuff.charuco_board_definition import \
     CharucoBoardDefinition
@@ -98,10 +102,9 @@ class AggregationNode:
             camera_group_shm = CameraGroupSharedMemory.recreate(shm_dto=camera_group_shm_dto,
                                                                 read_only=True)
             shared_view_accumulator = SharedViewAccumulator.create(camera_ids=config.camera_ids)
-            calibrate_recording_thread: threading.Thread | None = None
-            calibration_thread_kill_event = threading.Event()
             latest_requested_frame: int = -1
             last_received_frame: int = -1
+            triangulator = PointTriangulator.from_toml(toml_path=get_last_successful_calibration_toml_path())
             while ipc.should_continue and not shutdown_self_flag.value:
                 wait_1ms()
 
@@ -140,6 +143,7 @@ class AggregationNode:
                         shared_view_accumulator.receive_camera_node_output(
                             camera_node_output_by_camera=camera_node_outputs,
                             multi_frame_number=latest_requested_frame)
+                    triangulated = triangulator.triangulate_camera_node_outputs(camera_node_outputs=camera_node_outputs)
                     aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                         frame_number=latest_requested_frame,
                         pipeline_id=ipc.pipeline_id,

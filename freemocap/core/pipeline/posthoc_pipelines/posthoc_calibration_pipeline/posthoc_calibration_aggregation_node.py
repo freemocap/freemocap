@@ -152,6 +152,8 @@ class PosthocCalibrationAggregationNode:
                     raise ValueError(
                         f"Missing video node outputs for frame in pipeline {pipeline_id}: {frame_number}")
                 for video_id, recorder in observation_recorders_by_video.items():
+                    if video_id == '0':
+                        print(f"Frame {frame_number} video {video_id} observation: {frame_outputs_by_video[video_id].observation.to_2d_array()}")
                     observation = frame_outputs_by_video[video_id].observation
                     recorder.add_observation(observation=observation)
 

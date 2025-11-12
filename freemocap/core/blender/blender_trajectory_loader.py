@@ -46,6 +46,7 @@ def read_trajectory_csv(filepath: str) -> list[TrajectoryPoint]:
         ValueError: If CSV format is invalid
     """
     trajectory_data: list[TrajectoryPoint] = []
+    skipped_rows = 0
     
     if not Path(filepath).exists():
         raise FileNotFoundError(f"CSV file not found: {filepath}")
@@ -58,8 +59,14 @@ def read_trajectory_csv(filepath: str) -> list[TrajectoryPoint]:
         if not expected_headers.issubset(reader.fieldnames or []):
             raise ValueError(f"CSV missing required headers. Expected: {expected_headers}, Got: {reader.fieldnames}")
         
-        for row in reader:
+        for row_num, row in enumerate(reader, start=2):  # Start at 2 since header is line 1
             try:
+                # Check if any coordinate values are missing/empty
+                if not row['x'].strip() or not row['y'].strip() or not row['z'].strip():
+                    skipped_rows += 1
+                    print(f"Skipping row {row_num}: missing coordinate data (frame={row.get('frame')}, keypoint={row.get('keypoint')})")
+                    continue
+                
                 point = TrajectoryPoint(
                     frame=int(row['frame']),
                     keypoint=int(row['keypoint']),
@@ -69,10 +76,19 @@ def read_trajectory_csv(filepath: str) -> list[TrajectoryPoint]:
                 )
                 trajectory_data.append(point)
             except (KeyError, ValueError) as e:
-                raise ValueError(f"Invalid CSV row: {row}. Error: {e}")
+                # Only fail on actual format errors, not missing data
+                if 'frame' not in row or 'keypoint' not in row:
+                    raise ValueError(f"Invalid CSV row {row_num}: Missing frame or keypoint. Error: {e}")
+                # For other errors (like non-numeric values), skip the row
+                skipped_rows += 1
+                print(f"Skipping row {row_num}: {e}")
+                continue
+    
+    if skipped_rows > 0:
+        print(f"Warning: Skipped {skipped_rows} rows with missing or invalid data")
     
     if not trajectory_data:
-        raise ValueError("No trajectory data found in CSV")
+        raise ValueError("No valid trajectory data found in CSV")
     
     return trajectory_data
 
@@ -95,7 +111,7 @@ def create_keypoint_object(keypoint_id: int, object_type: str = 'EMPTY') -> bpy.
         bpy.ops.mesh.primitive_uv_sphere_add(
             segments=16,
             ring_count=8,
-            radius=0.05,
+            radius=0.005,
             location=(0, 0, 0)
         )
         obj = bpy.context.active_object
@@ -306,7 +322,7 @@ def main(
 
 if __name__ == "__main__" or __name__ == '<run_path>':
     # IMPORTANT: Update this path to your CSV file location
-    CSV_FILE = r"C:\Users\jonma\Downloads\2025-11-11_10-48-58_GMT-5_calibration\2025-11-11_10-48-58_GMT-5_calibration\output_data\charuco_board_5_3_body_3d_xyz.csv"
+    CSV_FILE = r"C:\Users\jonma\freemocap_data\recordings\2025-11-12_15-16-53_GMT-5_calibration\output_data\charuco_board_5_3_body_3d_xyz.csv"
     
     # Configuration options
     CLEAR_EXISTING = True  # Clear all existing objects before loading
@@ -315,12 +331,12 @@ if __name__ == "__main__" or __name__ == '<run_path>':
     CREATE_TRAILS = True   # Create visual trails showing paths
     print(f"Loading trajectory from: {CSV_FILE}")
     try:
-        main(
+        main( 
             csv_filepath=CSV_FILE,
             clear_existing=CLEAR_EXISTING,
             scale_factor=SCALE_FACTOR,
             use_spheres=USE_SPHERES,
-            create_trails=CREATE_TRAILS
+            create_trails=CREATE_TRAILS 
         )
     except Exception as e:
         print(f"ERROR: Failed to load trajectory data!")

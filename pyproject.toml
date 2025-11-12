@@ -9,7 +9,7 @@ dependencies = [
     #    "freemocap-blender-addon",
     "ajc27_freemocap_blender_addon==v2024.12.1032",
     "libsass>=0.23.0",
-    "opencv-contrib-python>=4.8.1.78",
+    "opencv-contrib-python==4.10.*",
     "pyinstaller>=6.11.0",
     "requests>=2.32.3",
     #    "skelly-synchronize",

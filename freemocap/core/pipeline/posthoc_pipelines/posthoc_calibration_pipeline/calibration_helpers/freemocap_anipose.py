@@ -2384,12 +2384,19 @@ class AniposeCharucoBoard(CharucoBoard):
 
         return detectedCorners, detectedIds
 
-    def estimate_pose_points(self, camera, corners, ids):
+    def estimate_pose_points(self, camera: AniposeCamera, corners: np.ndarray | None, ids: np.ndarray | None) -> tuple[
+        np.ndarray | None, np.ndarray | None]:
         if corners is None or ids is None or len(corners) < 5:
             return None, None
 
         n_corners = corners.size // 2
         corners = np.reshape(corners, (n_corners, 1, 2))
+
+        #  Ensure corners are float32 for OpenCV
+        corners = corners.astype(np.float32)
+
+        # Ensure ids are the correct dtype as well
+        ids = ids.astype(np.int32) if ids.dtype != np.int32 else ids
 
         K = camera.get_camera_matrix()
         D = camera.get_distortions()

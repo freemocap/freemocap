@@ -86,10 +86,12 @@ def triangulate_frame_observations(frame_number: int,
     ordered_frame_observations = preserve_camera_group_order(data_by_camera=frame_observations_by_camera,
                                                              camera_group=anipose_camera_group)
 
-    data2d_cam_id_xy = np.stack(
-        [obs.to_2d_array() for obs in ordered_frame_observations.values()],
-        axis=0,
-    )
+    if not all([isinstance(obs, BaseObservation) for obs in ordered_frame_observations.values()]):
+        raise TypeError("All values in frame_observations_by_camera must be BaseObservation instances")
+    data2d_stack_list = [obs.to_2d_array() for obs in ordered_frame_observations.values()]
+    if not len(set(data.shape for data in data2d_stack_list)) == 1:
+        raise ValueError(f"2d data from each camera must be the same shape- got: {[data.shape for data in data2d_stack_list]}")
+    data2d_cam_id_xy = np.stack(data2d_stack_list, axis=0)
 
     if len(frame_observations_by_camera) != data2d_cam_id_xy.shape[0]:
         logger.error(

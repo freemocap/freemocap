@@ -94,7 +94,7 @@ def anipose_calibration_from_charuco_observations(
         video_metadata: dict[VideoIdString, VideoMetadata],
         recording_info: RecordingInfo,
         pin_camera_0_to_origin: bool = True,
-        use_charuco_as_groundplane: bool = False,
+        use_charuco_as_groundplane: bool = True,
         init_intrinsics: bool = True,
         init_extrinsics: bool = True,
         verbose: bool = True, ) -> Path:
@@ -155,18 +155,28 @@ def anipose_calibration_from_charuco_observations(
 
     # Apply groundplane correction if requested
     if use_charuco_as_groundplane:
-        raise NotImplementedError("Setting charuco board as groundplane is currently disabled.")
-        # anipose_camera_group, groundplane_success = set_charuco_board_as_groundplane(
-        #     charuco_board_model=charuco_board_model,
-        #     anipose_camera_group=anipose_camera_group,
-        #     anipose_charuco_board=anipose_charuco_board,
-        #     recording_folder_path=Path(recording_info.full_recording_path)
-        # )
-        # if groundplane_success.success:
-        #     anipose_camera_group.metadata["groundplane_calibration"] = True
-        #     logger.info("Successfully set charuco board as groundplane")
-        # else:
-        #     logger.warning(f"Failed to set groundplane: {groundplane_success.error}")
+        observation_recorders_by_video = {video_id: BaseRecorder() for video_id in
+                                          charuco_observations_by_frame[0].keys()}
+        for frame_number, charuco_observations_by_camera in enumerate(charuco_observations_by_frame):
+            if not all(
+                    [isinstance(output, CharucoObservation) for output in charuco_observations_by_camera.values()]):
+                raise ValueError(
+                    f"Non-CharucoObservation found in frame {frame_number} observations: {charuco_observations_by_camera}")
+            for video_id, recorder in observation_recorders_by_video.items():
+                recorder.add_observation(observation=charuco_observations_by_camera[video_id])
+
+
+        anipose_camera_group, groundplane_success = set_charuco_board_as_groundplane(
+            observation_recorders=observation_recorders_by_video,
+            anipose_camera_group=anipose_camera_group,
+            anipose_charuco_board=anipose_charuco_board,
+            recording_folder_path=Path(recording_info.full_recording_path)
+        )
+        if groundplane_success.success:
+            anipose_camera_group.metadata["groundplane_calibration"] = True
+            logger.info("Successfully set charuco board as groundplane")
+        else:
+            logger.warning(f"Failed to set groundplane: {groundplane_success.error}")
 
     # Calculate real-world camera positions and orientations
     get_real_world_matrices(camera_group=anipose_camera_group)
@@ -242,38 +252,48 @@ def shift_origin_to_cam0(camera_group: AniposeCameraGroup) -> np.ndarray:
 
 
 def set_charuco_board_as_groundplane(
-        charuco_board_model:Board,
+        observation_recorders: dict[VideoIdString, BaseRecorder],
         anipose_camera_group: AniposeCameraGroup,
         anipose_charuco_board: AniposeCharucoBoard,
         recording_folder_path: Path | None = None
 ) -> tuple[AniposeCameraGroup, GroundPlaneSuccess]:
     """Set the charuco board plane as the world groundplane."""
     logger.info("Getting 2D Charuco data")
+    data2d_by_video: dict[VideoIdString, np.ndarray] = {}
+    if len(observation_recorders) == 0:
+        raise ValueError("No observation recorders provided to process.")
 
-    charuco_2d_xy: np.ndarray = anipose_camera_group.charuco_2d_data
+    for video_id, recorder in observation_recorders.items():
+        if not all([isinstance(observation, CharucoObservation) for observation in recorder.observations]):
+            raise TypeError(f"Recorder for video ID {video_id} contains non-Charuco observations.")
+        data2d_fr_id_xyc = recorder.to_array.copy()
+        logger.info(f"Processing video ID: {video_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
+        data2d_by_video[video_id] = data2d_fr_id_xyc[..., :2]
 
-    if charuco_2d_xy is None:
+
+    charuco2d_cam_fr_id_xy = np.stack(list(data2d_by_video.values()), axis=0)  # shape: (num_cameras, num_frames, num_tracked_points, 2)
+    if charuco2d_cam_fr_id_xy is None:
         error_message = "Charuco 2d data was not retrieved successfully. Check for an error during calibration."
         logger.error(error_message)
         raise ValueError(error_message)
 
-    logger.info(f"Charuco 2d data retrieved successfully with shape: {charuco_2d_xy.shape}")
-    charuco_2d_xy = charuco_2d_xy.astype(np.float64)
-    num_cameras, num_frames, num_tracked_points, _ = charuco_2d_xy.shape
-    charuco_2d_flat = charuco_2d_xy.reshape(num_cameras, -1, 2)
+    logger.info(f"Charuco 2d data retrieved successfully with shape (cams, frames, markers, XY): {charuco2d_cam_fr_id_xy.shape}")
+    charuco2d_cam_fr_id_xy = charuco2d_cam_fr_id_xy.astype(np.float64)
+    num_cameras, num_frames, num_tracked_points, _ = charuco2d_cam_fr_id_xy.shape
+    charuco_2d_flat = charuco2d_cam_fr_id_xy.reshape(num_cameras, -1, 2)
 
     logger.info("Getting 3d Charuco data")
     charuco_3d_flat = anipose_camera_group.triangulate(charuco_2d_flat)
-    charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
-    logger.info(f"Charuco 3d data reconstructed with shape: {charuco_3d_xyz.shape}")
+    charuco3d_fr_id_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
+    logger.info(f"Charuco 3d data reconstructed with shape: {charuco3d_fr_id_xyz.shape}")
 
     charuco_3d_xyz_interpolated = interpolate_skeleton_data(
-        skeleton_data=charuco_3d_xyz
+        skeleton_data=charuco3d_fr_id_xyz
     )
 
     try:
         charuco_still_frame_idx = find_good_frame(
-            charuco_data3d_fr_id_xyz=charuco_board_model.to_data3d_frame_id_xyz_array(),
+            charuco_data3d_fr_id_xyz=charuco3d_fr_id_xyz,
             number_of_squares_width=anipose_charuco_board.squaresX,
             number_of_squares_height=anipose_charuco_board.squaresY,
         )
@@ -308,8 +328,8 @@ def set_charuco_board_as_groundplane(
 
     # Recalculate 3D charuco data in new coordinate system
     charuco_3d_flat = anipose_camera_group.triangulate(charuco_2d_flat)
-    charuco_3d_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
-    charuco_3d_xyz_interpolated = skellyforge_data(raw_charuco_data=charuco_3d_xyz)
+    charuco3d_fr_id_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
+    charuco_3d_xyz_interpolated = skellyforge_data(raw_charuco_data=charuco3d_fr_id_xyz)
 
     # Save charuco 3D data if recording folder is provided
     if recording_folder_path is not None:

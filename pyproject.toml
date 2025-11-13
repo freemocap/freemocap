@@ -20,7 +20,6 @@ dependencies = [
     "pydantic>=2.10.4",
     "numpydantic>=1.6.7",
     #    "ltrt"
-    "mediapipe>=0.10.21",
     "scikit-learn>=1.7.2",
     "pyceres>=2.5",
 ]

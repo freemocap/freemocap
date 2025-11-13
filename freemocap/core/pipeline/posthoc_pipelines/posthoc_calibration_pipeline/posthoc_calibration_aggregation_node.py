@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellycam.core.types.type_overloads import TopicSubscriptionQueue
+from skellycam.core.types.type_overloads import TopicSubscriptionQueue, CameraIdString
 
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
@@ -128,7 +128,7 @@ class PosthocCalibrationAggregationNode:
                 if all(list(got_all_outputs_by_frame.values())):
                     break
             logger.info(f"All video node outputs received for pipeline {pipeline_id}, starting calibration")
-            charuco_observations_by_frame: list[CharucoObservations] = []
+            charuco_observations_by_frame: list[ dict[CameraIdString, CharucoObservation]] = []
             for frame_outputs in video_outputs_by_frame.values():
                 if not all([isinstance(output, VideoNodeOutputMessage) for output in frame_outputs.values()]):
                     raise ValueError(

@@ -23,8 +23,9 @@ logger = logging.getLogger(__name__)
 
 
 def charuco_model_from_observations(observation_recorders: dict[VideoIdString, BaseRecorder],
-                                    calibration_toml_path: Path | str,
                                     output_data_folder: Path | str,
+                                    calibration_toml_path: Path | str|None,
+                                    anipose_camera_group: AniposeCameraGroup | None = None,
                                     triangulation_config: TriangulationConfig | None = None,
                                     interp_config: InterpolationConfig | None = None,
                                     filter_config: FilterConfig | None = None,
@@ -35,6 +36,13 @@ def charuco_model_from_observations(observation_recorders: dict[VideoIdString, B
         interp_config = InterpolationConfig()
     if filter_config is None:
         filter_config = FilterConfig()
+
+    if anipose_camera_group is not None and calibration_toml_path is not None:
+        raise ValueError("Provide either anipose_camera_group or calibration_toml_path, not both.")
+    if anipose_camera_group is None and calibration_toml_path is None:
+        raise ValueError("Must provide either anipose_camera_group or calibration_toml_path.")
+    if calibration_toml_path is not None:
+        anipose_camera_group = AniposeCameraGroup.load(str(calibration_toml_path))
 
     Path(output_data_folder).mkdir(parents=True,
                                    exist_ok=True)
@@ -50,11 +58,10 @@ def charuco_model_from_observations(observation_recorders: dict[VideoIdString, B
         logger.info(f"Processing video ID: {video_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
         data2d_by_video[video_id] = data2d_fr_id_xyc[..., :2]
 
-    camera_group= AniposeCameraGroup.load(str(calibration_toml_path))
 
     raw_trajectory_3d: Trajectory3d = triangulate_dict(
         data2d_fr_mar_xy_by_camera=data2d_by_video,
-        camera_group=camera_group,
+        camera_group=anipose_camera_group,
         config=triangulation_config,
     )
 

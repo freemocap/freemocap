@@ -121,6 +121,11 @@ class WebsocketServer:
                                 await self.websocket.send_json(
                                 {camera_id: overlay_data.model_dump() for camera_id, overlay_data in
                                  frontend_payload.charuco_overlays.items()})
+                                points3d_dict = {camera_id: tracked_points_3d.model_dump() for camera_id, tracked_points_3d in
+                                                 frontend_payload.tracked_points3d.items()}
+                                await self.websocket.send_json({"tracked_points3d": points3d_dict})
+                                #TODO - send these as one message?
+
                             if frame_number is not None:
                                 self.last_sent_frame_number = frame_number
                 else:

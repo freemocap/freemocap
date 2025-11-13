@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 PointIndex = int
 PipelineIdString = str
+TrackedPointNameString = str
 VideoIdString = str
 
 TopicPublicationQueue = multiprocessing.Queue

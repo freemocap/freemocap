@@ -10,7 +10,6 @@ from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetec
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
     CalibrationpipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoHelper
 from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
 
@@ -76,14 +75,14 @@ class CalibrationVideoNode:
             from freemocap import LOG_LEVEL
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
-        # with VideoHelper.from_video_path(video_path=video_path) as video:
+        logger.info(f"Starting video processing node for video: {video_path.stem}")
+
         video_reader = cv2.VideoCapture(str(video_path))
         success, image = video_reader.read()
         frame_number = 0
         charuco_detector = CharucoDetector.create(config=calibration_pipeline_config.detector_config)
         try:
             while success and not shutdown_self_flag.value and ipc.should_continue:
-                logger.info(f"Starting video processing node for video: {video_path.stem}")
 
                 charuco_observation = charuco_detector.detect(
                     frame_number=frame_number,

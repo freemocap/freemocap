@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 from pathlib import Path
+import cv2
 
 from skellycam.core.types.type_overloads import WorkerType
 from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
@@ -9,7 +10,7 @@ from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import Mediapip
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
     MocapPipelineTaskConfig
-from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoHelper
+
 from freemocap.core.types.type_overloads import VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
 
@@ -63,33 +64,35 @@ class MocapVideoNode:
             from freemocap import LOG_LEVEL
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
-        with VideoHelper.from_video_path(video_path=video_path) as video:
-            logger.info(f"Starting video processing node for video: {video.video_path.stem}")
+        video_reader = cv2.VideoCapture(str(video_path))
+        success, image = video_reader.read()
+        frame_number = 0
+        logger.info(f"Starting video processing node for video: {video_path.stem}")
+        mediapipe_detector = MediapipeDetector.create(config=mocap_task_config.detector_config)
+        try:
+            while success and not shutdown_self_flag.value and ipc.should_continue:
+                mediapipe_observation = mediapipe_detector.detect(
+                    frame_number=frame_number,
+                    image=image)
 
-            mediapipe_detector = MediapipeDetector.create(config=mocap_task_config.detector_config)
-            try:
-                while video.has_frames and not shutdown_self_flag.value and ipc.should_continue:
-                    image = video.read_next_frame()
-                    mediapipe_observation = mediapipe_detector.detect(
-                        frame_number=video.last_read_frame,
-                        image=image)
+                ipc.pubsub.publish(
+                    topic_type=VideoNodeOutputTopic,
+                    message=VideoNodeOutputMessage(
+                        video_id=video_id,
+                        frame_number=frame_number,
+                        observation=mediapipe_observation,
+                    ),
+                )
+                success, image = video_reader.read()
+                frame_number+=1
 
-                    ipc.pubsub.publish(
-                        topic_type=VideoNodeOutputTopic,
-                        message=VideoNodeOutputMessage(
-                            video_id=video_id,
-                            frame_number=video.last_read_frame,
-                            observation=mediapipe_observation,
-                        ),
-                    )
-            except Exception as e:
-                logger.exception(f"Exception in video node for video: {video.video_path.stem} - {e}")
-                ipc.kill_everything()
-                raise e
-            finally:
-                logger.debug(f"Shutting down video processing node for video: {video.video_path.stem}")
-                video.close()
-
+        except Exception as e:
+            logger.exception(f"Exception in video node for video: {video_path.stem} - {e}")
+            ipc.kill_everything()
+            raise e
+        finally:
+            logger.debug(f"Shutting down video processing node for video: {video_path.stem}")
+            video_reader.release()
     def start(self):
         logger.debug(f"Starting {self.__class__.__name__} for video: {self.video_path.stem}")
         self.worker.start()

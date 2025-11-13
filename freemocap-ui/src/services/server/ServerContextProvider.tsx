@@ -15,6 +15,13 @@ import {FrameCompositor} from "@/services/server/server-helpers/frame_compositor
 import {serverUrls} from "@/hooks/server-urls";
 
 type FrameSubscriber = (bitmap: ImageBitmap) => void;
+type TrackedPointsSubscriber = (points: Map<string, Point3d>) => void;
+
+export interface Point3d {
+    x: number;
+    y: number;
+    z: number;
+}
 
 export interface ServerContextValue {
     isConnected: boolean;
@@ -24,7 +31,9 @@ export interface ServerContextValue {
     setCanvasForCamera: (cameraId: string, canvas: HTMLCanvasElement) => void;
     getFps: (cameraId: string) => number | null;
     connectedCameraIds: string[];
-    subscribeToFrames: (cameraId:string,callback: FrameSubscriber) => () => void;
+    subscribeToFrames: (cameraId: string, callback: FrameSubscriber) => () => void;
+    subscribeToTrackedPoints: (callback: TrackedPointsSubscriber) => () => void;
+    getLatestTrackedPoints: () => Map<string, Point3d>;
 }
 
 export const ServerContext = createContext<ServerContextValue | null>(null);
@@ -83,6 +92,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const frameCompositorRef = useRef<FrameCompositor | null>(null);
     const frameSubscribersRef = useRef<Map<string, Set<FrameSubscriber>>>(new Map());
     const latestObservationsRef = useRef<Map<string, CharucoObservation>>(new Map());
+    const latestTrackedPoints = useRef<Map<string, Point3d>>(new Map());
+    const trackedPointsSubscribersRef = useRef<Set<TrackedPointsSubscriber>>(new Set());
 
     useEffect(() => {
         wsConnectionRef.current = new WebSocketConnection({
@@ -109,6 +120,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 frameCompositorRef.current.destroy();
             }
             latestObservationsRef.current.clear();
+            latestTrackedPoints.current.clear();
+            trackedPointsSubscribersRef.current.clear();
         };
     }, []);
 
@@ -124,6 +137,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 canvasManagerRef.current?.terminateAllWorkers();
                 frameProcessorRef.current?.reset();
                 latestObservationsRef.current.clear();
+                latestTrackedPoints.current.clear();
                 setConnectedCameraIds([]);
             }
         };
@@ -210,6 +224,16 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             latestObservationsRef.current.set(cameraId, observation);
                         }
                     }
+                    if ('tracked_points3d' in jsonData) {
+                        // Update tracked points and notify subscribers
+                        console.log(`Received 3d data - ${JSON.stringify(jsonData.tracked_points3d)}`);
+                        latestTrackedPoints.current = new Map(Object.entries(jsonData.tracked_points3d));
+
+                        // Notify all subscribers with the new tracked points
+                        for (const subscriber of trackedPointsSubscribersRef.current) {
+                            subscriber(latestTrackedPoints.current);
+                        }
+                    }
                     else if (isLogRecord(jsonData)) {
                         dispatch(logAdded(jsonData));
                     }
@@ -218,7 +242,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         dispatch(frontendFramerateUpdated(jsonData.frontend_framerate));
                     }
                     else {
-                        console.debug('Received unhandled JSON message:', jsonData);
+                        // console.debug('Received unhandled JSON message:', jsonData);
                     }
                 } catch (error) {
                     console.error('Error parsing JSON message:', error);
@@ -274,6 +298,23 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
     }, []);
 
+    const subscribeToTrackedPoints = useCallback((callback: TrackedPointsSubscriber): (() => void) => {
+        trackedPointsSubscribersRef.current.add(callback);
+
+        // Immediately call with current points if any exist
+        if (latestTrackedPoints.current.size > 0) {
+            callback(latestTrackedPoints.current);
+        }
+
+        return () => {
+            trackedPointsSubscribersRef.current.delete(callback);
+        };
+    }, []);
+
+    const getLatestTrackedPoints = useCallback((): Map<string, Point3d> => {
+        return latestTrackedPoints.current;
+    }, []);
+
     return (
         <ServerContext.Provider value={{
             isConnected,
@@ -283,10 +324,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             setCanvasForCamera,
             getFps,
             connectedCameraIds,
-            subscribeToFrames
+            subscribeToFrames,
+            subscribeToTrackedPoints,
+            getLatestTrackedPoints
         }}>
             {children}
         </ServerContext.Provider>
     );
 };
-

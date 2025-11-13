@@ -49,7 +49,7 @@ def skeleton_from_mediapipe_observation_recorders(observation_recorders:dict[Vid
     camera_group=AniposeCameraGroup.load(str(path_to_calibration_toml))
 
     raw_trajectory_3d: Trajectory3d = triangulate_dict(
-        data_dict=data2d_by_video,
+        data2d_fr_mar_xyz_by_camera=data2d_by_video,
         camera_group=camera_group,
         config=triangulation_config,
     )

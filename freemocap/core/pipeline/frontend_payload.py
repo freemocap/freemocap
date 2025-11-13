@@ -5,13 +5,14 @@ from pydantic import BaseModel, ConfigDict
 from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.calibration_display_helpers.charuco_3d_models import (
-    MultiCameraCharuco3dData,
-    Charuco3dData,
     Color
 )
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
+from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import \
+    CharucoOverlayData
+from freemocap.core.types.type_overloads import  TrackedPointNameString
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 
+from skellyforge.data_models.trajectory_3d import  Point3d
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +25,7 @@ class FrontendPayload(BaseModel):
 
     frame_number: int
     charuco_overlays: dict[CameraIdString, CharucoOverlayData]
-    charuco_3d_data: MultiCameraCharuco3dData | None = None
+    tracked_points3d:dict[TrackedPointNameString, Point3d] = {}
 
     @classmethod
     def from_aggregation_output(
@@ -32,47 +33,12 @@ class FrontendPayload(BaseModel):
             aggregation_output: AggregationNodeOutputMessage,
     ) -> "FrontendPayload":
         """Create frontend payload from aggregation node output"""
-        charuco_overlays = aggregation_output.charuco_overlay_data
-        camera_3d_data: dict[CameraIdString, Charuco3dData] = {}
 
-        for camera_id, camera_output in aggregation_output.camera_node_outputs.items():
-            if camera_output and camera_output.observation:
-                obs = camera_output.observation
-
-                if obs.has_board_pose:
-                    try:
-                        camera_3d_data[camera_id] = Charuco3dData.from_charuco_observation(
-                            camera_id=camera_id,
-                            frame_number=aggregation_output.frame_number,
-                            charuco_observation=obs,
-                            coordinate_system="camera",
-                            charuco_corner_radius=0.005,
-                            aruco_corner_radius=0.003,
-                            charuco_color=_get_camera_color(camera_id=camera_id,
-                                                            camera_ids=aggregation_output.camera_ids,
-                                                            element_type="charuco"),
-                            aruco_color=_get_camera_color(camera_id=camera_id,
-                                                          camera_ids=aggregation_output.camera_ids,
-                                                          element_type="aruco"),
-                        )
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to create 3D data for camera {camera_id}: {e}"
-                        )
-
-        # TODO: Add this after triangulation is implemented
-        world_data = None
-
-        charuco_3d_data = MultiCameraCharuco3dData(
-            frame_number=aggregation_output.frame_number,
-            camera_data=camera_3d_data,
-            world_data=world_data
-        )
 
         return cls(
             frame_number=aggregation_output.frame_number,
-            charuco_overlays=charuco_overlays,
-            charuco_3d_data=charuco_3d_data
+            charuco_overlays = aggregation_output.charuco_overlay_data,
+            tracked_points3d=aggregation_output.tracked_points3d
         )
 
     def to_websocket_dict(self) -> dict:

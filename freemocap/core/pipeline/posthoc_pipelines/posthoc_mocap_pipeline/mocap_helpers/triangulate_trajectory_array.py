@@ -1,11 +1,12 @@
 import logging
 from typing import Any
+
 import numpy as np
 from pydantic import BaseModel
+from skellyforge.data_models.trajectory_3d import Observation3d, Trajectory3d
+from skellyforge.data_models.type_overloads import CameraIdString, FrameObservationsByCamera, Trajectory2dGroup
 
-from skellyforge.data_models.trajectory_3d  import Observation3d, Trajectory3d
-from skellyforge.data_models.type_overloads import CameraIdString, FrameGroup, Trajectory2dGroup
-
+from skellytracker.trackers.base_tracker.base_tracker_abcs import  BaseObservation
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.freemocap_anipose import \
     AniposeCameraGroup
 
@@ -17,14 +18,15 @@ class TriangulationConfig(BaseModel):
 
 
 def triangulate_array(
-    data_2d: np.ndarray, # shape: cameras × frames × points × 2
-    camera_group: AniposeCameraGroup,
-    config: TriangulationConfig,
+        data2d_cam_id_xyz: np.ndarray,  # shape: cameras × frames × points × 2
+        camera_group: AniposeCameraGroup,
+        config: TriangulationConfig,
+        calculate_reprojection_error: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    number_of_cameras = data_2d.shape[0]
-    number_of_frames = data_2d.shape[1]
-    number_of_tracked_points = data_2d.shape[2]
-    number_of_spatial_dimensions = data_2d.shape[3]
+    number_of_cameras = data2d_cam_id_xyz.shape[0]
+    number_of_frames = data2d_cam_id_xyz.shape[1]
+    number_of_tracked_points = data2d_cam_id_xyz.shape[2]
+    number_of_spatial_dimensions = data2d_cam_id_xyz.shape[3]
 
     if number_of_spatial_dimensions != 2:
         logger.error(
@@ -32,9 +34,8 @@ def triangulate_array(
         )
         raise ValueError("Input data must have 2 spatial dimensions")
 
-    data2d_flat = data_2d.reshape(number_of_cameras, -1, 2)
+    data2d_flat = data2d_cam_id_xyz.reshape(number_of_cameras, -1, 2)
 
-    logger.info(f"shape of data2d_flat: {data2d_flat.shape}")
 
     # Triangulate 2D points to 3D
     if config.use_ransac:
@@ -43,7 +44,6 @@ def triangulate_array(
             data2d_flat, progress=True, kill_event=None
         )
     else:
-        logger.info("Using standard triangulation method")
         triangulated_data_flat = camera_group.triangulate(
             data2d_flat, progress=False, kill_event=None
         )
@@ -52,10 +52,12 @@ def triangulate_array(
         raise ValueError("Triangulation stopped due to kill event")
 
     # Reshape to frames × points × xyz
-    triangulated_data = triangulated_data_flat.reshape(
+    triangulated3d_fr_id_xyz = triangulated_data_flat.reshape(
         number_of_frames, number_of_tracked_points, 3
     )
 
+    if not calculate_reprojection_error:
+        return triangulated3d_fr_id_xyz, np.array([]), np.array([])
     # Calculate reprojection errors
     reprojection_error_full = camera_group.reprojection_error(
         triangulated_data_flat, data2d_flat
@@ -72,75 +74,79 @@ def triangulate_array(
         number_of_frames, number_of_tracked_points
     )
 
-    return triangulated_data, reprojection_error, reprojection_error_by_camera
+    return triangulated3d_fr_id_xyz, reprojection_error, reprojection_error_by_camera
 
 
-def triangulate_frame_group(
-    frame_number: int,
-    frame_group: FrameGroup,
-    camera_group: AniposeCameraGroup,
-    config: TriangulationConfig,
-) -> Observation3d:
-    camera_group = subset_camera_names(data_dict=frame_group, camera_group=camera_group)
+def triangulate_frame_observations(frame_number: int,
+                                   frame_observations_by_camera: FrameObservationsByCamera,
+                                   anipose_camera_group: AniposeCameraGroup,
+                                   config: TriangulationConfig=TriangulationConfig(),
+                                   calculate_reprojection_error: bool = False
+                                   ) -> Observation3d:
+    anipose_camera_group = subset_camera_names(data_dict=frame_observations_by_camera, anipose_camera_group=anipose_camera_group)
 
-    ordered_frame_group = preserve_camera_group_order(data_dict=frame_group, camera_group=camera_group)
+    ordered_frame_observations = preserve_camera_group_order(observations_by_frame=frame_observations_by_camera,
+                                                             camera_group=anipose_camera_group)
 
-    data_2d = np.stack(
-        [observation.to_array for observation in ordered_frame_group.values()],
+    data2d_cam_id_xyz = np.stack(
+        [obs.to_2d_array() for obs in ordered_frame_observations.values()],
         axis=0,
     )
 
-    if len(frame_group) != data_2d.shape[0]:
+    if len(frame_observations_by_camera) != data2d_cam_id_xyz.shape[0]:
         logger.error(
-            f"Expected {len(frame_group)} cameras but got {data_2d.shape[0]} cameras"
+            f"Expected {len(frame_observations_by_camera)} cameras but got {data2d_cam_id_xyz.shape[0]} cameras"
         )
         raise ValueError(
             "Input data must have the same number of cameras as the camera group"
         )
-    
-    triangulated_data, reprojection_error, reprojection_error_by_camera = triangulate_array(
-        data_2d, camera_group, config
+    # add singleton frame dimension
+    data2d_cam_fr_id_xyz = data2d_cam_id_xyz.reshape((data2d_cam_id_xyz.shape[0], 1, data2d_cam_id_xyz.shape[1], data2d_cam_id_xyz.shape[2]))
+    triangulated_data, _, _ = triangulate_array(
+        data2d_cam_id_xyz=data2d_cam_fr_id_xyz,
+        camera_group=anipose_camera_group,
+        config=config,
+        calculate_reprojection_error=calculate_reprojection_error,
     )
-
-
     return Observation3d(
         frame_number=frame_number,
-        triangulated_data=triangulated_data,
-        reprojection_error=reprojection_error,
-        reprojection_error_by_camera=reprojection_error_by_camera,
+        triangulated_data=np.squeeze(triangulated_data),
+        names=list(frame_observations_by_camera.values())[0].to_tracked_points().keys(),
+        # reprojection_error=reprojection_error,
+        # reprojection_error_by_camera=reprojection_error_by_camera,
     )
 
 
 def triangulate_frame_groups(
-    frame_groups: dict[int, FrameGroup],
-    camera_group: AniposeCameraGroup,
-    config: TriangulationConfig,
+        frame_groups: dict[int, FrameObservationsByCamera],
+        camera_group: AniposeCameraGroup,
+        config: TriangulationConfig,
 ) -> Trajectory3d:
     observations_3d = []
     frame_groups = dict(sorted(frame_groups.items()))
     for frame_number, frame_group in frame_groups.items():
-        observations_3d.append(triangulate_frame_group(
+        observations_3d.append(triangulate_frame_observations(
             frame_number, frame_group, camera_group, config
         ))
     return Trajectory3d.from_observations(list(frame_groups.values()))
 
 
 def triangulate_trajectories(
-    trajectory_group: Trajectory2dGroup,
-    camera_group: AniposeCameraGroup,
-    config: TriangulationConfig,
+        trajectory_group: Trajectory2dGroup,
+        camera_group: AniposeCameraGroup,
+        config: TriangulationConfig,
 ):
     # TODO: move this validation into Trajectory2dGroup creation
     if len(set(trajectory.start_frame for trajectory in trajectory_group.values())) != 1:
         raise ValueError(
             "Input data must have the same start frame for all trajectories"
-    )
+        )
     if len(set(trajectory.end_frame for trajectory in trajectory_group.values())) != 1:
         raise ValueError(
             "Input data must have the same end frame for all trajectories"
-    )
-    camera_group = subset_camera_names(data_dict=trajectory_group, camera_group=camera_group)
-    ordered_trajectory_group = preserve_camera_group_order(data_dict=trajectory_group, camera_group=camera_group)
+        )
+    camera_group = subset_camera_names(data_dict=trajectory_group, anipose_camera_group=camera_group)
+    ordered_trajectory_group = preserve_camera_group_order(observations_by_frame=trajectory_group, camera_group=camera_group)
 
     data_2d = np.stack(
         [trajectory.points2d for trajectory in ordered_trajectory_group.values()],
@@ -154,7 +160,7 @@ def triangulate_trajectories(
         raise ValueError(
             "Input data must have the same number of cameras as the camera group"
         )
-    
+
     triangulated_data, reprojection_error, reprojection_error_by_camera = triangulate_array(
         data_2d, camera_group, config
     )
@@ -170,21 +176,22 @@ def triangulate_trajectories(
         reprojection_error_by_camera=reprojection_error_by_camera,
     )
 
+
 def triangulate_dict(
-    data_dict: dict[CameraIdString, np.ndarray],
-    camera_group: AniposeCameraGroup,
-    config: TriangulationConfig,
-    start_frame: int | None = None,
-    end_frame: int | None = None,
+        data2d_fr_mar_xyz_by_camera: dict[CameraIdString, np.ndarray],
+        camera_group: AniposeCameraGroup,
+        config: TriangulationConfig = TriangulationConfig(),
+        start_frame: int | None = None,
+        end_frame: int | None = None,
 ) -> Trajectory3d:
     camera_group = subset_camera_names(
-        data_dict=data_dict, camera_group=camera_group
+        data_dict=data2d_fr_mar_xyz_by_camera, anipose_camera_group=camera_group
     )
 
-    ordered_data_dict = preserve_camera_group_order(data_dict=data_dict, camera_group=camera_group)
+    ordered_data_dict = preserve_camera_group_order(observations_by_frame=data2d_fr_mar_xyz_by_camera, camera_group=camera_group)
 
     combined_2d_data = np.stack(
-        [observation for observation in ordered_data_dict.values()],
+        [observation.to_2d_array() for observation in ordered_data_dict.values()],
         axis=0
     )
     logger.info(f"shape of combined_2d_data: {combined_2d_data.shape}")
@@ -204,10 +211,10 @@ def triangulate_dict(
         reprojection_error_by_camera=reprojection_error_by_camera,
     )
 
-    
-def subset_camera_names(data_dict: dict[CameraIdString, Any], camera_group: AniposeCameraGroup):
+
+def subset_camera_names(data_dict: dict[CameraIdString, Any], anipose_camera_group: AniposeCameraGroup)->AniposeCameraGroup:
     valid_calibration_names = []
-    for camera in camera_group.cameras:
+    for camera in anipose_camera_group.cameras:
         for key in data_dict.keys():
             if camera.name in key:
                 valid_calibration_names.append(camera.name)
@@ -216,24 +223,23 @@ def subset_camera_names(data_dict: dict[CameraIdString, Any], camera_group: Anip
         raise ValueError(
             "Camera names in frame group do not match camera names in camera group. Make sure calibration matches input data."
         )
-    if len(valid_calibration_names) == len(camera_group.cameras):
-        return camera_group
+    if len(valid_calibration_names) == len(anipose_camera_group.cameras):
+        return anipose_camera_group
     logger.warning(
         f"Frame group is missing cameras from camera group, triangulating with only cameras in frame group: {valid_calibration_names}"
     )
-    return camera_group.subset_cameras_names(valid_calibration_names)
+    return anipose_camera_group.subset_cameras_names(valid_calibration_names)
 
 
-def preserve_camera_group_order(data_dict: dict[CameraIdString, Any], camera_group: AniposeCameraGroup) -> dict[CameraIdString, Any]:
+def preserve_camera_group_order(observations_by_frame: dict[CameraIdString, BaseObservation], camera_group: AniposeCameraGroup) -> dict[
+    CameraIdString, BaseObservation]:
     ordered_data_dict = {}
 
     for camera in camera_group.cameras:
-        for name, data in data_dict.items():
+        for name, data in observations_by_frame.items():
             if camera.name in name:
                 ordered_data_dict[name] = data
                 break
 
-    logger.info(f"camera group names: {[camera.name for camera in camera_group.cameras]}")
-    logger.info(f"ordered data dict names: {[name for name in ordered_data_dict.keys()]}")
 
     return ordered_data_dict

@@ -1,324 +1,303 @@
 """
-Blender script to load and visualize ChArUco board trajectory data from CSV
-Run this script in Blender's Text Editor or as an add-on
+Blender script to load mediapipe body tracking data from CSV
 """
 
 import bpy
 import csv
+import colorsys
 from pathlib import Path
-from typing import NamedTuple
-from collections import defaultdict
+from dataclasses import dataclass
 
 
-class TrajectoryPoint(NamedTuple):
-    """Single trajectory point with frame, keypoint ID, and 3D position"""
+@dataclass
+class TrackingPoint:
+    """Single tracking point from mediapipe"""
     frame: int
-    keypoint: int
+    keypoint: str
     x: float
     y: float
     z: float
+    model: str
+    trajectory: str
 
 
 def clear_scene() -> None:
     """Remove all objects from the scene"""
-    # Deselect all objects
     bpy.ops.object.select_all(action='SELECT')
-    # Delete selected objects
     bpy.ops.object.delete(use_global=False)
     
-    # Remove all collections except Scene Collection
     for collection in bpy.data.collections:
         bpy.data.collections.remove(collection)
 
 
-def read_trajectory_csv(filepath: str) -> list[TrajectoryPoint]:
+def read_mediapipe_csv(*, filepath: str) -> dict[str, list[TrackingPoint]]:
     """
-    Read trajectory data from CSV file
+    Read mediapipe tracking data from CSV file
     
     Args:
         filepath: Path to the CSV file
         
     Returns:
-        List of TrajectoryPoint objects
+        Dictionary mapping keypoint names to their tracking points
         
     Raises:
         FileNotFoundError: If CSV file doesn't exist
-        ValueError: If CSV format is invalid or no valid data found
+        ValueError: If CSV format is invalid
     """
-    trajectory_data: list[TrajectoryPoint] = []
-    skipped_rows = 0
-    
     if not Path(filepath).exists():
         raise FileNotFoundError(f"CSV file not found: {filepath}")
+    
+    points_by_keypoint: dict[str, list[TrackingPoint]] = {}
     
     with open(filepath, 'r') as csvfile:
         reader = csv.DictReader(csvfile)
         
-        # Validate CSV headers
         if not reader.fieldnames:
-            raise ValueError("CSV file appears to be empty or has no headers")
-            
-        expected_headers = {'frame', 'keypoint', 'x', 'y', 'z'}
-        if not expected_headers.issubset(reader.fieldnames):
-            raise ValueError(f"CSV missing required headers. Expected: {expected_headers}, Got: {reader.fieldnames}")
+            raise ValueError("CSV file is empty or has no headers")
         
-        for row_num, row in enumerate(reader, start=2):  # Start at 2 since header is line 1
+        required_headers = {'frame', 'keypoint', 'x', 'y', 'z', 'model', 'trajectory'}
+        if not required_headers.issubset(reader.fieldnames):
+            missing = required_headers - set(reader.fieldnames)
+            raise ValueError(f"CSV missing required headers: {missing}")
+        
+        for row_num, row in enumerate(reader, start=2):
+            # Check for required fields
+            frame_str = row.get('frame', '').strip()
+            keypoint = row.get('keypoint', '').strip()
+            x_str = row.get('x', '').strip()
+            y_str = row.get('y', '').strip()
+            z_str = row.get('z', '').strip()
+            model = row.get('model', '').strip()
+            trajectory = row.get('trajectory', '').strip()
+            
+            if not frame_str or not keypoint:
+                raise ValueError(f"Row {row_num}: Missing frame or keypoint")
+            
+            # Skip rows with missing coordinates
+            if not x_str or not y_str or not z_str:
+                continue
+            if 'face' in keypoint.lower():
+                continue
+            
             try:
-                # Check for None or missing keys first
-                if 'frame' not in row or 'keypoint' not in row:
-                    raise ValueError(f"Row {row_num}: Missing critical fields (frame or keypoint)")
-                
-                # Handle None values and empty strings
-                frame_val = row.get('frame', '').strip()
-                keypoint_val = row.get('keypoint', '').strip()
-                x_val = row.get('x', '').strip()
-                y_val = row.get('y', '').strip()
-                z_val = row.get('z', '').strip()
-                
-                # Check if critical fields are empty
-                if not frame_val or not keypoint_val:
-                    raise ValueError(f"Row {row_num}: Empty frame or keypoint values")
-                
-                # Check if any coordinate is empty or None
-                if not x_val or not y_val or not z_val:
-                    skipped_rows += 1
-                    print(f"Skipping row {row_num}: missing coordinate data (frame={frame_val}, keypoint={keypoint_val})")
-                    continue
-                
-                # Try to parse values
-                point = TrajectoryPoint(
-                    frame=int(frame_val),
-                    keypoint=int(keypoint_val),
-                    x=float(x_val),
-                    y=float(y_val),
-                    z=float(z_val)
+                point = TrackingPoint(
+                    frame=int(frame_str),
+                    keypoint=keypoint,
+                    x=float(x_str),
+                    y=float(y_str),
+                    z=float(z_str),
+                    model=model,
+                    trajectory=trajectory
                 )
-                trajectory_data.append(point)
+                
+                if keypoint not in points_by_keypoint:
+                    points_by_keypoint[keypoint] = []
+                points_by_keypoint[keypoint].append(point)
                 
             except ValueError as e:
-                if "Missing critical fields" in str(e) or "Empty frame or keypoint" in str(e):
-                    # Critical error - re-raise
-                    raise
-                # Non-critical error - skip the row
-                skipped_rows += 1
-                print(f"Skipping row {row_num}: {e}")
-                continue
-            except Exception as e:
-                # Unexpected error - fail loudly
-                raise RuntimeError(f"Unexpected error at row {row_num}: {e}") from e
+                raise ValueError(f"Row {row_num}: Invalid data - {e}") from e
     
-    if skipped_rows > 0:
-        print(f"Warning: Skipped {skipped_rows} rows with missing or invalid data")
+    if not points_by_keypoint:
+        raise ValueError("No valid tracking data found in CSV")
     
-    if not trajectory_data:
-        raise ValueError(f"No valid trajectory data found in CSV file: {filepath}")
-    
-    return trajectory_data
+    return points_by_keypoint
 
 
-def create_keypoint_object(*, keypoint_id: int, object_type: str = 'EMPTY') -> bpy.types.Object:
+def get_keypoint_color(*, keypoint_name: str) -> tuple[float, float, float, float]:
     """
-    Create a Blender object to represent a keypoint
+    Get a consistent color for a keypoint based on its name
     
     Args:
-        keypoint_id: Unique identifier for the keypoint
-        object_type: Type of object to create ('EMPTY' or 'SPHERE')
+        keypoint_name: Name of the keypoint
         
     Returns:
-        Created Blender object
-        
-    Raises:
-        RuntimeError: If object creation fails
+        RGBA color tuple
     """
-    name = f"Keypoint_{keypoint_id:02d}"
+    # Use hash to generate consistent color
+    hash_val = hash(keypoint_name) % 360
+    hue = hash_val / 360.0
+    rgb = colorsys.hsv_to_rgb(hue, 0.8, 1.0)
+    return (*rgb, 1.0)
+
+
+def create_keypoint_sphere(*, keypoint_name: str, radius: float = 0.001) -> bpy.types.Object:
+    """
+    Create a sphere mesh for a keypoint
     
-    try:
-        if object_type == 'SPHERE':
-            # Create UV sphere mesh
-            bpy.ops.mesh.primitive_uv_sphere_add(
-                segments=16,
-                ring_count=8,
-                radius=0.005,
-                location=(0, 0, 0)
-            )
-            obj = bpy.context.active_object
-            if obj is None:
-                raise RuntimeError(f"Failed to create sphere object for keypoint {keypoint_id}")
-            
-            obj.name = name
-            
-            # Add material for visibility
-            mat = bpy.data.materials.new(name=f"Mat_{name}")
-            mat.use_nodes = True
-            # Set color based on keypoint ID
-            hue = (keypoint_id * 0.15) % 1.0
-            mat.node_tree.nodes["Principled BSDF"].inputs[0].default_value = (hue, 0.8, 1.0, 1.0)
-            obj.data.materials.append(mat)
-        else:
-            # Create empty object
-            bpy.ops.object.empty_add(
-                type='SPHERE',
-                radius=0.05,
-                location=(0, 0, 0)
-            )
-            obj = bpy.context.active_object
-            if obj is None:
-                raise RuntimeError(f"Failed to create empty object for keypoint {keypoint_id}")
-                
-            obj.name = name
-            obj.empty_display_size = 0.05
+    Args:
+        keypoint_name: Name of the keypoint
+        radius: Sphere radius in Blender units
         
-        return obj
-        
-    except Exception as e:
-        raise RuntimeError(f"Failed to create keypoint object {keypoint_id}: {e}") from e
+    Returns:
+        Created sphere object
+    """
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        segments=8,
+        ring_count=6,
+        radius=radius,
+        location=(0, 0, 0)
+    )
+    
+    obj = bpy.context.active_object
+    if obj is None:
+        raise RuntimeError(f"Failed to create sphere for keypoint {keypoint_name}")
+    
+    obj.name = f"keypoint_{keypoint_name}"
+    
+    # Add material
+    mat = bpy.data.materials.new(name=f"mat_{keypoint_name}")
+    mat.use_nodes = True
+    mat.node_tree.nodes["Principled BSDF"].inputs[0].default_value = get_keypoint_color(keypoint_name=keypoint_name)
+    obj.data.materials.append(mat)
+    
+    return obj
 
 
-def apply_trajectory_to_objects(
+def animate_keypoints(
     *,
-    trajectory_data: list[TrajectoryPoint],
-    scale_factor: float = 0.01,
-    use_spheres: bool = False
-) -> dict[int, bpy.types.Object]:
+    points_by_keypoint: dict[str, list[TrackingPoint]],
+    scale_factor: float = 0.001,
+    trajectory_filter: str|None = None
+) -> dict[str, bpy.types.Object]:
     """
-    Create objects for each keypoint and apply trajectory animation
+    Create and animate keypoint objects
     
     Args:
-        trajectory_data: List of trajectory points
-        scale_factor: Scale factor to convert units (default 0.01 for cm to meters)
-        use_spheres: If True, use sphere meshes instead of empties
+        points_by_keypoint: Dictionary of keypoint names to tracking points
+        scale_factor: Scale factor for coordinates (mm to meters)
+        trajectory_filter: Only use points with this trajectory type (e.g., "3d_xyz" or "rigid_3d_xyz")
         
     Returns:
-        Dictionary mapping keypoint IDs to created objects
-        
-    Raises:
-        ValueError: If trajectory_data is empty
-        RuntimeError: If object creation or animation fails
+        Dictionary mapping keypoint names to created objects
     """
-    if not trajectory_data:
-        raise ValueError("Cannot apply trajectories: trajectory_data is empty")
+    keypoint_objects: dict[str, bpy.types.Object] = {}
     
-    # Group trajectory data by keypoint
-    trajectories_by_keypoint: dict[int, list[TrajectoryPoint]] = defaultdict(list)
-    for point in trajectory_data:
-        trajectories_by_keypoint[point.keypoint].append(point)
-    
-    if not trajectories_by_keypoint:
-        raise ValueError("No keypoints found in trajectory data")
-    
-    # Create objects for each keypoint
-    keypoint_objects: dict[int, bpy.types.Object] = {}
-    
-    for keypoint_id in sorted(trajectories_by_keypoint.keys()):
-        trajectory = trajectories_by_keypoint[keypoint_id]
+    for keypoint_name, points in points_by_keypoint.items():
+        # Filter by trajectory type if specified
+        if trajectory_filter:
+            points = [p for p in points if p.trajectory == trajectory_filter]
+            if not points:
+                continue
         
-        # Skip keypoints with no trajectory data
-        if not trajectory:
-            print(f"Warning: Keypoint {keypoint_id} has no trajectory data, skipping")
-            continue
+        # Create sphere for this keypoint
+        obj = create_keypoint_sphere(keypoint_name=keypoint_name)
+        keypoint_objects[keypoint_name] = obj
         
-        # Create object
-        obj_type = 'SPHERE' if use_spheres else 'EMPTY'
-        try:
-            obj = create_keypoint_object(keypoint_id=keypoint_id, object_type=obj_type)
-        except Exception as e:
-            raise RuntimeError(f"Failed to create object for keypoint {keypoint_id}: {e}") from e
-            
-        keypoint_objects[keypoint_id] = obj
-        
-        # Sort trajectory points by frame
-        trajectory = sorted(trajectory, key=lambda p: p.frame)
+        # Sort points by frame
+        points = sorted(points, key=lambda p: p.frame)
         
         # Apply keyframes
-        for point in trajectory:
-            # Convert coordinates (apply scale and coordinate system conversion)
-            # Blender uses: X-right, Y-forward, Z-up
-            # Input might be different, adjust as needed
+        for point in points:
+            # Convert coordinates
+            # Mediapipe: X-right, Y-down, Z-forward
+            # Blender: X-right, Y-forward, Z-up
             location = (
                 point.x * scale_factor,
-                -point.z * scale_factor,  # Swap Y and Z, negate for coordinate system
-                point.y * scale_factor
+                -point.z * scale_factor,  # Forward becomes -Z
+                -point.y * scale_factor   # Down becomes -Y (up in Blender)
             )
             
             obj.location = location
-            obj.keyframe_insert(data_path="location", frame=point.frame + 1)  # Blender frames start at 1
-    
-    if not keypoint_objects:
-        raise ValueError("No keypoint objects were created - all keypoints had empty trajectories")
+            obj.keyframe_insert(data_path="location", frame=point.frame + 1)
     
     return keypoint_objects
 
 
-def create_trajectory_trails(*, keypoint_objects: dict[int, bpy.types.Object], num_frames: int) -> None:
+def create_skeleton_bones(*, keypoint_objects: dict[str, bpy.types.Object]) -> None:
     """
-    Create visual trails showing the path of each keypoint
+    Create edge connections between related keypoints to form a skeleton
     
     Args:
         keypoint_objects: Dictionary of keypoint objects
-        num_frames: Total number of frames in animation
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If trail creation fails
     """
-    if not keypoint_objects:
-        print("Warning: No keypoint objects to create trails for")
+    # Define bone connections for mediapipe body
+    connections = [
+        # Face
+        ("nose", "left_eye_inner"),
+        ("left_eye_inner", "left_eye"),
+        ("left_eye", "left_eye_outer"),
+        ("left_eye_outer", "left_ear"),
+        ("nose", "right_eye_inner"),
+        ("right_eye_inner", "right_eye"),
+        ("right_eye", "right_eye_outer"),
+        ("right_eye_outer", "right_ear"),
+        ("mouth_left", "mouth_right"),
+        
+        # Arms
+        ("left_shoulder", "left_elbow"),
+        ("left_elbow", "left_wrist"),
+        ("left_wrist", "left_pinky"),
+        ("left_wrist", "left_index"),
+        ("left_wrist", "left_thumb"),
+        ("right_shoulder", "right_elbow"),
+        ("right_elbow", "right_wrist"),
+        ("right_wrist", "right_pinky"),
+        ("right_wrist", "right_index"),
+        ("right_wrist", "right_thumb"),
+        
+        # Torso
+        ("left_shoulder", "right_shoulder"),
+        ("left_shoulder", "left_hip"),
+        ("right_shoulder", "right_hip"),
+        ("left_hip", "right_hip"),
+        
+        # Legs
+        ("left_hip", "left_knee"),
+        ("left_knee", "left_ankle"),
+        ("left_ankle", "left_heel"),
+        ("left_ankle", "left_foot_index"),
+        ("left_heel", "left_foot_index"),
+        ("right_hip", "right_knee"),
+        ("right_knee", "right_ankle"),
+        ("right_ankle", "right_heel"),
+        ("right_ankle", "right_foot_index"),
+        ("right_heel", "right_foot_index"),
+    ]
+    
+    # Create mesh edges for skeleton visualization
+    vertices = []
+    edges = []
+    vertex_map: dict[str, int] = {}
+    
+    # Build vertex list from unique keypoints in connections
+    for start_name, end_name in connections:
+        if start_name not in keypoint_objects or end_name not in keypoint_objects:
+            continue
+            
+        if start_name not in vertex_map:
+            vertex_map[start_name] = len(vertices)
+            vertices.append(keypoint_objects[start_name].location)
+            
+        if end_name not in vertex_map:
+            vertex_map[end_name] = len(vertices)
+            vertices.append(keypoint_objects[end_name].location)
+            
+        edges.append((vertex_map[start_name], vertex_map[end_name]))
+    
+    if not vertices:
         return
     
-    if num_frames < 1:
-        raise ValueError(f"Invalid num_frames: {num_frames}, must be >= 1")
+    # Create mesh
+    mesh = bpy.data.meshes.new(name="skeleton_mesh")
+    mesh.from_pydata(vertices, edges, [])
+    mesh.update()
     
-    for keypoint_id, obj in keypoint_objects.items():
-        try:
-            # Sample positions from animation
-            positions = []
-            for frame in range(1, num_frames + 1):
-                bpy.context.scene.frame_set(frame)
-                positions.append(obj.matrix_world.translation.copy())
-            
-            # Skip if we don't have enough positions for a trail
-            if len(positions) < 2:
-                print(f"Warning: Keypoint {keypoint_id} has fewer than 2 positions, skipping trail creation")
-                continue
-            
-            # Create curve object for trail
-            curve_data = bpy.data.curves.new(name=f"Trail_{keypoint_id:02d}", type='CURVE')
-            curve_data.dimensions = '3D'
-            
-            # Create spline
-            spline = curve_data.splines.new('BEZIER')
-            
-            # Add points to spline (we need to add len-1 because one point already exists)
-            num_points_to_add = len(positions) - 1
-            if num_points_to_add > 0:
-                spline.bezier_points.add(num_points_to_add)
-            
-            # Set positions
-            for i, pos in enumerate(positions):
-                point = spline.bezier_points[i]
-                point.co = pos
-                point.handle_left_type = 'AUTO'
-                point.handle_right_type = 'AUTO'
-            
-            # Create curve object
-            curve_obj = bpy.data.objects.new(f"Trail_{keypoint_id:02d}", curve_data)
-            bpy.context.collection.objects.link(curve_obj)
-            
-            # Set curve properties for visibility
-            curve_data.bevel_depth = 0.002
-            curve_data.bevel_resolution = 2
-            
-            # Add material
-            mat = bpy.data.materials.new(name=f"TrailMat_{keypoint_id:02d}")
-            mat.use_nodes = True
-            hue = (keypoint_id * 0.15) % 1.0
-            mat.node_tree.nodes["Principled BSDF"].inputs[0].default_value = (hue, 0.8, 0.5, 1.0)
-            curve_obj.data.materials.append(mat)
-            
-        except Exception as e:
-            print(f"Error creating trail for keypoint {keypoint_id}: {e}")
-            # Continue with other trails instead of failing completely
+    # Create object
+    skeleton_obj = bpy.data.objects.new("skeleton", mesh)
+    bpy.context.collection.objects.link(skeleton_obj)
+    
+    # Add vertex parent constraints for each vertex to follow its keypoint
+    for keypoint_name, vertex_index in vertex_map.items():
+        if keypoint_name not in keypoint_objects:
             continue
+            
+        # Use hooks to connect vertices to keypoint objects
+        hook_modifier = skeleton_obj.modifiers.new(
+            name=f"hook_{keypoint_name}",
+            type='HOOK'
+        )
+        hook_modifier.object = keypoint_objects[keypoint_name]
+        hook_modifier.vertex_indices_set([vertex_index])
 
 
 def setup_scene(*, num_frames: int) -> None:
@@ -327,141 +306,102 @@ def setup_scene(*, num_frames: int) -> None:
     
     Args:
         num_frames: Total number of frames
-        
-    Raises:
-        ValueError: If num_frames is invalid
     """
-    if num_frames < 1:
-        raise ValueError(f"Invalid num_frames: {num_frames}, must be >= 1")
-    
     scene = bpy.context.scene
     scene.frame_start = 1
     scene.frame_end = num_frames
     scene.frame_set(1)
     
-    # Set up viewport shading for better visibility
+    # Set viewport shading
     for area in bpy.context.screen.areas:
         if area.type == 'VIEW_3D':
             for space in area.spaces:
                 if space.type == 'VIEW_3D':
                     space.shading.type = 'SOLID'
-                    space.shading.light = 'MATCAP'
-                    space.shading.studio_light = 'basic_1.exr'
+                    space.overlay.show_floor = True
+                    space.overlay.show_axis_x = True
+                    space.overlay.show_axis_y = True
 
 
-def main(
-    *,
-    csv_filepath: str,
-    clear_existing: bool = True,
-    scale_factor: float = 0.01,
-    use_spheres: bool = True,
-    create_trails: bool = True
-) -> None:
+def main(*, csv_filepath: str, trajectory_type: str = "3d_xyz", create_skeleton: bool = True) -> None:
     """
-    Main function to load trajectory data into Blender
+    Main function to load mediapipe trajectory data into Blender
     
     Args:
         csv_filepath: Path to the CSV file
-        clear_existing: Whether to clear existing objects
-        scale_factor: Scale factor for coordinates
-        use_spheres: Use sphere meshes instead of empties
-        create_trails: Create trajectory trail curves
-        
-    Raises:
-        FileNotFoundError: If CSV file doesn't exist
-        ValueError: If data is invalid or empty
-        RuntimeError: If processing fails
+        trajectory_type: Which trajectory to use ("3d_xyz" or "rigid_3d_xyz")
+        create_skeleton: Whether to create bone connections
     """
-    print("=" * 50)
-    print("Loading ChArUco Trajectory Data")
-    print("=" * 50)
+    print("=" * 60)
+    print("MEDIAPIPE TRAJECTORY LOADER")
+    print("=" * 60)
     
-    # Validate inputs
-    if not csv_filepath:
-        raise ValueError("csv_filepath cannot be empty")
-    
-    if scale_factor <= 0:
-        raise ValueError(f"scale_factor must be positive, got {scale_factor}")
-    
-    # Clear scene if requested
-    if clear_existing:
-        print("Clearing existing objects...")
-        clear_scene()
+    # Clear existing scene
+    print("Clearing scene...")
+    clear_scene()
     
     # Read CSV data
-    print(f"Reading CSV file: {csv_filepath}")
-    trajectory_data = read_trajectory_csv(csv_filepath)
-    
-    if not trajectory_data:
-        raise ValueError("No trajectory data loaded from CSV")
-    
-    print(f"Loaded {len(trajectory_data)} trajectory points")
+    print(f"Reading CSV: {csv_filepath}")
+    points_by_keypoint = read_mediapipe_csv(filepath=csv_filepath)
     
     # Get frame range
-    frames = {point.frame for point in trajectory_data}
-    if not frames:
-        raise ValueError("No frames found in trajectory data")
+    all_frames = set()
+    for points in points_by_keypoint.values():
+        all_frames.update(p.frame for p in points)
     
-    min_frame = min(frames)
-    max_frame = max(frames)
+    if not all_frames:
+        raise ValueError("No frames found in data")
+    
+    min_frame = min(all_frames)
+    max_frame = max(all_frames)
     num_frames = max_frame - min_frame + 1
     
-    print(f"Animation frames: {min_frame} to {max_frame} ({num_frames} frames)")
+    print(f"Found {len(points_by_keypoint)} keypoints")
+    print(f"Frames: {min_frame} to {max_frame} ({num_frames} total)")
+    print(f"Using trajectory: {trajectory_type}")
     
-    # Create and animate objects
-    print("Creating keypoint objects and applying animation...")
-    keypoint_objects = apply_trajectory_to_objects(
-        trajectory_data=trajectory_data,
-        scale_factor=scale_factor,
-        use_spheres=use_spheres
+    # Create and animate keypoints
+    print("Creating animated keypoints...")
+    keypoint_objects = animate_keypoints(
+        points_by_keypoint=points_by_keypoint,
+        scale_factor=1, 
+        trajectory_filter=trajectory_type
     )
     
     if not keypoint_objects:
-        raise RuntimeError("Failed to create any keypoint objects")
+        raise RuntimeError(f"No keypoints created for trajectory type: {trajectory_type}")
     
     print(f"Created {len(keypoint_objects)} keypoint objects")
     
-    # Create trajectory trails
-    if create_trails:
-        print("Creating trajectory trails...")
-        create_trajectory_trails(keypoint_objects=keypoint_objects, num_frames=num_frames)
+    # Create skeleton connections
+    if create_skeleton:
+        print("Creating skeleton connections...")
+        create_skeleton_bones(keypoint_objects=keypoint_objects)
     
     # Setup scene
-    print("Configuring scene settings...")
     setup_scene(num_frames=num_frames)
     
-    print("=" * 50)  
-    print("✓ Trajectory data loaded successfully!")
-    print("Press SPACE to play the animation")
-    print("=" * 50)
+    print("=" * 60)
+    print("✓ LOAD COMPLETE")
+    print("Press SPACE to play animation")
+    print("=" * 60)
 
 
 # ============================================================================
 # USAGE
 # ============================================================================
 
-if __name__ == "__main__" or __name__ == '<run_path>':
-    # IMPORTANT: Update this path to your CSV file location
-    CSV_FILE = r"C:\Users\jonma\freemocap_data\recordings\2025-11-12_15-16-53_GMT-5_calibration\output_data\charuco_board_5_3_body_3d_xyz.csv"
-    
-    # Configuration options
-    CLEAR_EXISTING = True  # Clear all existing objects before loading
-    SCALE_FACTOR = 0.01    # Scale from millimeters to meters (adjust based on your data)
-    USE_SPHERES = True     # Use sphere meshes (True) or empty objects (False)
-    CREATE_TRAILS = True   # Create visual trails showing paths
-    
-    print(f"Loading trajectory from: {CSV_FILE}")
+if __name__ == "__main__" or __name__ =='<run_path>':
+    # UPDATE THIS PATH
+    CSV_FILE = r"C:\Users\jonma\freemocap_data\recording_sessions\freemocap_test_data\output_data\freemocap_data_by_frame.csv"
     try:
-        main( 
+        main(
             csv_filepath=CSV_FILE,
-            clear_existing=CLEAR_EXISTING,
-            scale_factor=SCALE_FACTOR,
-            use_spheres=USE_SPHERES,
-            create_trails=CREATE_TRAILS 
+            trajectory_type="3d_xyz",  # or "rigid_3d_xyz"
+            create_skeleton=True
         )
     except Exception as e:
-        print(f"ERROR: Failed to load trajectory data!")
-        print(f"Error details: {e}")
+        print(f"ERROR: {e}")
         import traceback
         traceback.print_exc()
         raise

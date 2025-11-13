@@ -6,9 +6,11 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointId
 
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
-from freemocap.core.types.type_overloads import FrameNumberInt, Point3d, PipelineIdString, VideoIdString
+from freemocap.core.types.type_overloads import FrameNumberInt,  PipelineIdString, VideoIdString, \
+    TrackedPointNameString
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 
+from skellyforge.data_models.trajectory_3d import  Point3d
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +38,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     camera_group_id: CameraGroupIdString
     pipeline_config: RealtimePipelineConfig
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage]
-    tracked_points3d: dict[TrackedPointIdString, Point3d] = Field(default_factory=dict)
+    tracked_points3d: dict[TrackedPointNameString, Point3d] = Field(default_factory=dict)
 
     @model_validator(mode='after')
     def validate(self) -> 'AggregationNodeOutputMessage':

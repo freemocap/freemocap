@@ -1,6 +1,5 @@
 import logging
 import multiprocessing
-import threading
 from dataclasses import dataclass
 
 import numpy as np
@@ -14,17 +13,16 @@ from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_observation_aggregator import \
     get_last_successful_calibration_toml_path
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.point_triangulator import \
-    PointTriangulator
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.shared_view_accumulator import SharedViewAccumulator
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.v1_capture_volume_calibration.charuco_stuff.charuco_board_definition import \
-    CharucoBoardDefinition
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.v1_capture_volume_calibration.run_anipose_capture_volume_calibration import \
-    run_anipose_capture_volume_calibration
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.freemocap_anipose import \
+    AniposeCameraGroup
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_helpers.triangulate_trajectory_array import \
+    triangulate_frame_observations
+from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.shared_view_accumulator import \
+    SharedViewAccumulator
 from freemocap.core.types.type_overloads import Point3d, PipelineIdString
 from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigUpdateTopic, ProcessFrameNumberTopic, \
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic, \
-    PipelineConfigUpdateMessage, ShouldCalibrateTopic, ShouldCalibrateMessage
+    PipelineConfigUpdateMessage, ShouldCalibrateTopic
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +41,7 @@ class RealtimeAggregationNodeState(BaseModel):
 
 
 @dataclass
-class AggregationNode:
+class RealtimeAggregationNode:
     shutdown_self_flag: multiprocessing.Value
     worker: multiprocessing.Process
 
@@ -52,7 +50,7 @@ class AggregationNode:
                config: RealtimePipelineConfig,
                camera_group_id: CameraGroupIdString,
                subprocess_registry: list[multiprocessing.Process],
-               camera_group_shm_dto:CameraGroupSharedMemoryDTO,
+               camera_group_shm_dto: CameraGroupSharedMemoryDTO,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
         worker = multiprocessing.Process(target=cls._run,
@@ -61,7 +59,7 @@ class AggregationNode:
                                                      camera_group_id=camera_group_id,
                                                      ipc=ipc,
                                                      shutdown_self_flag=shutdown_self_flag,
-                                                        camera_group_shm_dto=camera_group_shm_dto,
+                                                     camera_group_shm_dto=camera_group_shm_dto,
                                                      camera_node_subscription=ipc.pubsub.topics[
                                                          CameraNodeOutputTopic].get_subscription(),
                                                      pipeline_config_subscription=ipc.pubsub.topics[
@@ -81,7 +79,7 @@ class AggregationNode:
              camera_group_id: CameraGroupIdString,
              ipc: PipelineIPC,
              shutdown_self_flag: multiprocessing.Value,
-             camera_group_shm_dto:CameraGroupSharedMemoryDTO,
+             camera_group_shm_dto: CameraGroupSharedMemoryDTO,
              camera_node_subscription: TopicSubscriptionQueue,
              pipeline_config_subscription: TopicSubscriptionQueue,
              should_calibrate_subscription: TopicSubscriptionQueue
@@ -91,7 +89,6 @@ class AggregationNode:
             from freemocap.system.logging_configuration.configure_logging import configure_logging
             from freemocap import LOG_LEVEL
             configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
-
 
         logger.debug("AggregationNode  - starting main loop")
         try:
@@ -104,7 +101,7 @@ class AggregationNode:
             shared_view_accumulator = SharedViewAccumulator.create(camera_ids=config.camera_ids)
             latest_requested_frame: int = -1
             last_received_frame: int = -1
-            triangulator = PointTriangulator.from_toml(toml_path=get_last_successful_calibration_toml_path())
+            anipose_camera_group = AniposeCameraGroup.load(str(get_last_successful_calibration_toml_path()))
             while ipc.should_continue and not shutdown_self_flag.value:
                 wait_1ms()
 
@@ -138,22 +135,23 @@ class AggregationNode:
                         logger.warning(
                             f"Frame numbers from tracker results do not match expected ({latest_requested_frame}) - got {[camera_node_output_message.frame_number for camera_node_output_message in camera_node_outputs.values()]}")
                     last_received_frame = latest_requested_frame
-                    if any([node.observation and node.observation.charuco_board_visible for node in
-                            camera_node_outputs.values()]):
-                        shared_view_accumulator.receive_camera_node_output(
-                            camera_node_output_by_camera=camera_node_outputs,
-                            multi_frame_number=latest_requested_frame)
-                    triangulated = triangulator.triangulate_camera_node_outputs(camera_node_outputs=camera_node_outputs)
+
+                    # shared_view_accumulator.receive_camera_node_output(
+                    #     camera_node_output_by_camera=camera_node_outputs,
+                    #     multi_frame_number=latest_requested_frame)
+                    triangulated = triangulate_frame_observations(frame_number=latest_requested_frame,
+                                                                  frame_observations_by_camera={camera_id: camera_node_outputs[camera_id].observation
+                                                     for camera_id in camera_node_outputs.keys()},
+                                                                  anipose_camera_group=anipose_camera_group,
+                                                                  )
+
                     aggregation_output: AggregationNodeOutputMessage = AggregationNodeOutputMessage(
                         frame_number=latest_requested_frame,
                         pipeline_id=ipc.pipeline_id,
                         camera_group_id=camera_group_id,
                         pipeline_config=config,
                         camera_node_outputs=camera_node_outputs,
-                        tracked_points3d={'fake_point': Point3d(x=np.sin(last_received_frame),
-                                                                y=np.cos(last_received_frame),
-                                                                z=np.cos(last_received_frame)
-                                                                )}  # Placeholder for actual aggregation logic
+                        tracked_points3d=triangulated.to_point_dictionary()
                     )
                     ipc.pubsub.topics[AggregationNodeOutputTopic].publish(aggregation_output)
                     camera_node_outputs = {camera_id: None for camera_id in camera_node_outputs.keys()}

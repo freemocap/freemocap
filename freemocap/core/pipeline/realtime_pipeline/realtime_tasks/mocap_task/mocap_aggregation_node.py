@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from multiprocessing import Queue, Process
 from typing import Dict
 
-from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import AggregationNode
+from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import RealtimeAggregationNode
 from freemocap.core.pipeline.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BasePipelineOutputData
 from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.mocap_task.mocap_camera_node import MocapCameraNodeOutputData
@@ -29,7 +29,7 @@ class MocapPipelineOutputData(BasePipelineOutputData):
     aggregation_layer_output: MocapAggregationLayerOutputData
 
 
-class MocapAggregationProcessNode(AggregationNode):
+class MocapAggregationProcessNode(RealtimeAggregationNode):
     @classmethod
     def create(cls,
                config: MocapAggregationNodeConfig,

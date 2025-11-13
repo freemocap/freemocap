@@ -10,7 +10,7 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
-from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import AggregationNode, RealtimeAggregationNodeState
+from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import RealtimeAggregationNode, RealtimeAggregationNodeState
 from freemocap.core.pipeline.realtime_pipeline.realtime_camera_node import RealtimeCameraNode, CameraNodeState
 from freemocap.core.pipeline.frontend_payload import FrontendPayload
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
@@ -46,7 +46,7 @@ class RealtimeProcessingPipeline:
     camera_group: CameraGroup
     config: RealtimePipelineConfig
     camera_nodes: dict[CameraIdString, RealtimeCameraNode]
-    aggregation_node: AggregationNode
+    aggregation_node: RealtimeAggregationNode
     aggregation_node_subscription: TopicSubscriptionQueue
     ipc: PipelineIPC
     started: bool = False
@@ -85,12 +85,12 @@ class RealtimeProcessingPipeline:
                                                              config=pipeline_config,
                                                              ipc=ipc)
                         for camera_id, config in camera_group.configs.items()}
-        aggregation_node = AggregationNode.create(camera_group_id=camera_group.id,
-                                                  subprocess_registry=subprocess_registry,
-                                                  camera_group_shm_dto=camera_group.shm.to_dto(),
-                                                  config=pipeline_config,
-                                                  ipc=ipc,
-                                                  )
+        aggregation_node = RealtimeAggregationNode.create(camera_group_id=camera_group.id,
+                                                          subprocess_registry=subprocess_registry,
+                                                          camera_group_shm_dto=camera_group.shm.to_dto(),
+                                                          config=pipeline_config,
+                                                          ipc=ipc,
+                                                          )
 
         return cls(camera_nodes=camera_nodes,
                    aggregation_node=aggregation_node,

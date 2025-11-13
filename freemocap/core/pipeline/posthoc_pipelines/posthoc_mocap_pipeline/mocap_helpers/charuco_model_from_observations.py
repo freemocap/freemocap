@@ -53,7 +53,7 @@ def charuco_model_from_observations(observation_recorders: dict[VideoIdString, B
     camera_group= AniposeCameraGroup.load(str(calibration_toml_path))
 
     raw_trajectory_3d: Trajectory3d = triangulate_dict(
-        data_dict=data2d_by_video,
+        data2d_fr_mar_xyz_by_camera=data2d_by_video,
         camera_group=camera_group,
         config=triangulation_config,
     )

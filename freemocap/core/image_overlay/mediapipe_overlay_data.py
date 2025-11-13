@@ -53,7 +53,7 @@ class MediapipeOverlayData(BaseModel):
             *,
             camera_id: CameraIdString,
             observation: MediapipeObservation,
-            scale: float = 1.0,
+            scale: float =.5,
             include_face: bool = True,
             face_type: str = "contour",  # "contour" or "tesselation"
     ):

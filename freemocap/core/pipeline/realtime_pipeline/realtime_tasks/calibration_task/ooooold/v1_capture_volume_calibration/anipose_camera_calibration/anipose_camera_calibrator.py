@@ -208,7 +208,7 @@ class AniposeCameraCalibrator:
         charuco_3d_xyz_interpolated = skellyforge_data(raw_charuco_data=charuco_3d_xyz)
 
         try:
-            charuco_still_frame_idx = find_good_frame(charuco_data=charuco_3d_xyz_interpolated,
+            charuco_still_frame_idx = find_good_frame(charuco_data3d_fr_id_xyz=charuco_3d_xyz_interpolated,
                                                       number_of_squares_width=self._charuco_board_object.number_of_squares_width,
                                                       number_of_squares_height=self._charuco_board_object.number_of_squares_height, )
         except CharucoVisibilityError as e:

@@ -2118,7 +2118,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=jon%2Fdevelopment#c390f4cf2b843cddf5fd76e3cbcc96923db0ab79" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=jon%2Fdevelopment#eedf81f46886cc9edf95c8d8f4df15df3e99f387" }
 dependencies = [
     { name = "numpy" },
     { name = "pandas" },

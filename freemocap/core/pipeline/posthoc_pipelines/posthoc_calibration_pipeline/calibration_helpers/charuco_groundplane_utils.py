@@ -69,7 +69,7 @@ def find_still_frame(points_velocity: np.ndarray, max_allowed_velocity: float = 
 
 
 def find_good_frame(
-        charuco_data: np.ndarray,
+        charuco_data3d_fr_id_xyz: np.ndarray,
         number_of_squares_width: int,
         number_of_squares_height: int,
         frame_to_use: int = 0,
@@ -81,7 +81,7 @@ def find_good_frame(
         slice_to_search = slice(-search_range, None)
     elif frame_to_use > 0:
         start_frame = max(0, frame_to_use - search_range)
-        end_frame = min(charuco_data.shape[0], frame_to_use + search_range)
+        end_frame = min(charuco_data3d_fr_id_xyz.shape[0], frame_to_use + search_range)
         slice_to_search = slice(start_frame, end_frame)
     else:
         raise ValueError(f"Invalid value for frame_to_use: {frame_to_use}")
@@ -90,7 +90,7 @@ def find_good_frame(
         number_of_squares_width=number_of_squares_width, number_of_squares_height=number_of_squares_height
     )
 
-    charuco_corners = charuco_data[slice_to_search, [0, idx_y, idx_x]]
+    charuco_corners = charuco_data3d_fr_id_xyz[slice_to_search, [0, idx_y, idx_x]]
     charuco_corners_velocity = np.linalg.norm(np.diff(charuco_corners, axis=0), axis=2)
     best_velocity_frame = find_still_frame(points_velocity=charuco_corners_velocity)
 

@@ -113,12 +113,12 @@ class RealtimeCameraNode:
                         )
                     else:
                         rotated_image = frame_rec_array.image[0]
-                    # mediapipe_observation = mediapipe_detector.detect(
-                    #     frame_number=frame_rec_array.frame_metadata.frame_number[0],
-                    #     image=rotated_image, )
-                    charuco_observation = charuco_detector.detect(
+                    observation = mediapipe_detector.detect(
                         frame_number=frame_rec_array.frame_metadata.frame_number[0],
                         image=rotated_image, )
+                    # observation = charuco_detector.detect(
+                    #     frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                    #     image=rotated_image, )
 
                     # tok = time.perf_counter_ns()
 
@@ -127,8 +127,7 @@ class RealtimeCameraNode:
                         message=CameraNodeOutputMessage(
                             camera_id=frame_rec_array.frame_metadata.camera_config.camera_id[0],
                             frame_number=frame_rec_array.frame_metadata.frame_number[0],
-                            observation=charuco_observation,
-                            # observation=mediapipe_observation,
+                            observation=observation,
                         ),
                     )
                     tok2 = time.perf_counter_ns()

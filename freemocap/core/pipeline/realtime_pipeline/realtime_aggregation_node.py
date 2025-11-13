@@ -139,6 +139,7 @@ class RealtimeAggregationNode:
                     # shared_view_accumulator.receive_camera_node_output(
                     #     camera_node_output_by_camera=camera_node_outputs,
                     #     multi_frame_number=latest_requested_frame)
+
                     triangulated = triangulate_frame_observations(frame_number=latest_requested_frame,
                                                                   frame_observations_by_camera={camera_id: camera_node_outputs[camera_id].observation
                                                      for camera_id in camera_node_outputs.keys()},

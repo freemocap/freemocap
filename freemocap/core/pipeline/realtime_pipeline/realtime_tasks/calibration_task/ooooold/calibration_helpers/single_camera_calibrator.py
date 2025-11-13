@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import (
     CharucoObservations,
-    BaseObservation,
+    CharucoObservation,
     AllCharucoCorners3DByIdInObjectCoordinates,
     AllArucoCorners3DByIdInObjectCoordinates,
 )
@@ -119,7 +119,7 @@ class SingleCameraCalibrator(BaseModel):
     def from_charuco_observation(
             cls,
             camera_id: CameraIdString,
-            charuco_observation: BaseObservation):
+            charuco_observation: CharucoObservation):
 
         return cls.create_initial(
             camera_id=camera_id,
@@ -164,7 +164,7 @@ class SingleCameraCalibrator(BaseModel):
             ),
         )
 
-    def add_observation(self, observation: BaseObservation) -> None:
+    def add_observation(self, observation: CharucoObservation) -> None:
         if observation.frame_number in [obs.frame_number for obs in self.charuco_observations]:
             return
         if observation.charuco_empty or len(observation.detected_charuco_corner_ids) < MIN_CHARUCO_CORNERS:
@@ -445,7 +445,7 @@ class SingleCameraCalibrator(BaseModel):
     def draw_board_axes(
             self,
             image: np.ndarray,
-            observation: BaseObservation
+            observation: CharucoObservation
     ) -> np.ndarray:
         """
         Draw 3D axes on the board in the image.
@@ -477,7 +477,7 @@ class SingleCameraCalibrator(BaseModel):
             axis_length,
         )
 
-    def _validate_observation(self, observation: BaseObservation) -> None:
+    def _validate_observation(self, observation: CharucoObservation) -> None:
         """Validate observation matches calibrator configuration."""
         if observation.image_size != self.image_size:
             raise ValueError(

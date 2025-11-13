@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.charuco_tracker.charuco_observation import BaseObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.pipeline_configs import CalibrationpipelineConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.freemocap_anipose import \
@@ -23,7 +23,7 @@ from skellycam.core.recorders.videos.recording_info import  RecordingInfo
 
 logger = logging.getLogger(__name__)
 
-CharucoObservations = dict[CameraIdString, BaseObservation | None]
+CharucoObservations = dict[CameraIdString, CharucoObservation | None]
 
 
 def get_calibrations_folder_path() -> Path:

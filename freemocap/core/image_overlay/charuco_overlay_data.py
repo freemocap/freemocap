@@ -1,12 +1,8 @@
-"""
-Serialize CharucoObservation to JSON format for websocket transmission using Pydantic models.
-"""
-
 from typing import Literal
 
 from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.charuco_tracker.charuco_observation import BaseObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 
 class CharucoPointModel(BaseModel):
@@ -56,7 +52,7 @@ class CharucoOverlayData(BaseModel):
             cls,
             *,
             camera_id: CameraIdString,
-            observation: BaseObservation,
+            observation: CharucoObservation,
             scale: float = .5, ):
         """
         Convert CharucoObservation to Pydantic message model for websocket transmission.
@@ -108,7 +104,7 @@ class CharucoOverlayData(BaseModel):
         )
 
         # Build complete message
-        return CharucoOverlayData(
+        return cls(
             camera_id=camera_id,
             frame_number=observation.frame_number,
             charuco_corners=charuco_corners,

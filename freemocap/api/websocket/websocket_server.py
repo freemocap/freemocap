@@ -4,7 +4,7 @@ import logging
 
 from fastapi import FastAPI
 from skellycam.core.recorders.framerate_tracker import FramerateTracker
-from skellycam.core.types.type_overloads import CameraGroupIdString
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.app.freemocap_application import FreemocApplication, get_freemocap_app
@@ -83,12 +83,13 @@ class WebsocketServer:
             return True
         return self.last_received_frontend_confirmation >= self.last_sent_frame_number
 
-    async def _frontend_image_relay(self):
+    # Updated section for _frontend_image_relay method in websocket_server.py
+
+    async def _frontend_image_relay(self) -> None:
         """
         Relay image payloads from the shared memory to the frontend via the websocket.
         """
-        logger.info(
-            f"Starting frontend image payload relay...")
+        logger.info(f"Starting frontend image payload relay...")
         try:
             skipped_previous = False
             while self.should_continue:
@@ -99,9 +100,8 @@ class WebsocketServer:
                     if skipped_previous:  # skip an extra frame if there was backpressure from frontend
                         skipped_previous = False
                     else:
-
                         for pipeline_id, (payload_bytes, frontend_payload) in frontend_payloads.items():
-                            frame_number= None
+                            frame_number = None
                             if not payload_bytes and not frontend_payload:
                                 continue
                             if frontend_payload:
@@ -112,19 +112,37 @@ class WebsocketServer:
                                     frame_number = frontend_payload.frame_number
 
                             if not isinstance(payload_bytes, (bytes, bytearray)):
-                                logger.warning(f"Invalid payload bytes on frame{frontend_payload.frame_number} -"
+                                logger.warning(f"Invalid payload bytes on frame{frame_number} -"
                                                f" got type {type(payload_bytes)}")
                                 continue
+
+                            # Send the image bytes first
                             if payload_bytes:
                                 await self.websocket.send_bytes(payload_bytes)
-                            if frontend_payload:
-                                await self.websocket.send_json(
-                                {camera_id: overlay_data.model_dump() for camera_id, overlay_data in
-                                 frontend_payload.charuco_overlays.items()})
-                                points3d_dict = {camera_id: tracked_points_3d.model_dump() for camera_id, tracked_points_3d in
-                                                 frontend_payload.tracked_points3d.items()}
+
+                            # Send observation overlays as a single message per observation type
+                            if frontend_payload and frontend_payload.observation_overlays:
+                                # Group overlays by message type
+                                overlays_by_type: dict[str, dict[CameraIdString, dict]] = {}
+
+                                for camera_id, overlay_data in frontend_payload.observation_overlays.items():
+                                    message_type = overlay_data.message_type
+                                    if message_type not in overlays_by_type:
+                                        overlays_by_type[message_type] = {}
+                                    overlays_by_type[message_type][camera_id] = overlay_data.model_dump()
+
+                                # Send each observation type as separate message
+                                # This matches what the frontend expects
+                                for message_type, camera_overlays in overlays_by_type.items():
+                                    await self.websocket.send_json(camera_overlays)
+
+                            # Send tracked points if present
+                            if frontend_payload and frontend_payload.tracked_points3d:
+                                points3d_dict = {
+                                    point_name: tracked_point.model_dump()
+                                    for point_name, tracked_point in frontend_payload.tracked_points3d.items()
+                                }
                                 await self.websocket.send_json({"tracked_points3d": points3d_dict})
-                                #TODO - send these as one message?
 
                             if frame_number is not None:
                                 self.last_sent_frame_number = frame_number
@@ -138,19 +156,6 @@ class WebsocketServer:
                             f"Last sent frame: {self.last_sent_frame_number}, last received confirmation: "
                             f"{self.last_received_frontend_confirmation}")
 
-                # backend_framerate_updates:dict[CameraGroupIdString,CurrentFramerate] = self._cgm.get_backend_framerate_updates()
-                # if backend_framerate_updates:
-                #     for camera_group_id, backend_framerate in backend_framerate_updates.items():
-                #         if camera_group_id not in self._frontend_framerate_trackers:
-                #             continue
-                #         framerate_message = {
-                #             "message_type": "framerate_update",
-                #             "camera_group_id": camera_group_id,
-                #             "backend_framerate": backend_framerate.model_dump(),
-                #             "frontend_framerate": self._frontend_framerate_trackers[camera_group_id].current_framerate.model_dump()
-                #         }
-                #         await self.websocket.send_json(framerate_message)
-
         except WebSocketDisconnect:
             logger.api("Client disconnected, ending Frontend Image relay task...")
         except asyncio.CancelledError:
@@ -159,7 +164,6 @@ class WebsocketServer:
             logger.exception(f"Error in image payload relay: {e.__class__}: {e}")
             self._global_kill_flag.value = True
             raise
-
     async def _logs_relay(self, ws_log_level: int = MIN_LOG_LEVEL_FOR_WEBSOCKET):
         logger.info("Starting websocket log relay listener...")
         logs_queue = get_websocket_log_queue()

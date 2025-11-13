@@ -11,7 +11,7 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.cali
 )
 
 from  skellycam.core.types.type_overloads import  CameraIdString
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
+from skellytracker.trackers.base_tracker.base_tracker_abcs import CharucoObservation
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class TriangulatedObservationFrame:
     reprojection_error_by_camera: NDArray[np.float32]  # Shape: (n_cameras, n_points)
     valid_points: NDArray[np.bool_]  # Shape: (n_points,) - mask of successfully triangulated points
     nan_mask: NDArray[np.bool_]  # Shape: (n_points,) - mask of points with NaN in any camera
-    observations_by_camera: dict[str, 'BaseObservation']  # Original observations for reference
+    observations_by_camera: dict[str, 'CharucoObservation']  # Original observations for reference
 
 
 @dataclass
@@ -57,7 +57,7 @@ class ObservationTriangulator:
     def triangulate_observations(
             self,
             *,
-            observations_by_camera: dict[CameraIdString, BaseObservation],
+            observations_by_camera: dict[CameraIdString, CharucoObservation],
             frame_number: int | None = None,
     ) -> TriangulatedObservationFrame:
         """
@@ -119,8 +119,8 @@ class ObservationTriangulator:
 
     def _order_observation_frames(
             self,
-            observations_by_camera: dict[CameraIdString, BaseObservation],
-    ) -> dict[CameraIdString, BaseObservation]:
+            observations_by_camera: dict[CameraIdString, CharucoObservation],
+    ) -> dict[CameraIdString, CharucoObservation]:
         """
         Order observation frames to match calibration camera order.
 
@@ -133,7 +133,7 @@ class ObservationTriangulator:
         Raises:
             ValueError: If camera not found in calibration
         """
-        ordered_observations: dict[CameraIdString, BaseObservation|None] = {camera_id: None for camera_id in self.camera_names}
+        ordered_observations: dict[CameraIdString, CharucoObservation | None] = {camera_id: None for camera_id in self.camera_names}
         found_cameras: set[CameraIdString] = set()
 
         for cam_name in self.camera_names:
@@ -164,7 +164,7 @@ class ObservationTriangulator:
 
     def _stack_observations_with_nan_handling(
             self,
-            ordered_frames: dict[CameraIdString,BaseObservation],
+            ordered_frames: dict[CameraIdString,CharucoObservation],
     ) -> tuple[NDArray[np.float32], NDArray[np.bool_]]:
         """
         Stack 2D points from observations, handling NaNs for missing detections.

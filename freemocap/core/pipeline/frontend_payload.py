@@ -1,19 +1,18 @@
 import logging
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.calibration_display_helpers.charuco_3d_models import (
-    Color
-)
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import \
-    CharucoOverlayData
-from freemocap.core.types.type_overloads import  TrackedPointNameString
+from freemocap.core.image_overlay.charuco_overlay_data import CharucoOverlayData
+from freemocap.core.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
+from freemocap.core.types.type_overloads import TrackedPointNameString
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
+from skellyforge.data_models.trajectory_3d import Point3d
 
-from skellyforge.data_models.trajectory_3d import  Point3d
 logger = logging.getLogger(__name__)
+
+# Union type for all possible overlay data types
+ObservationOverlayData = CharucoOverlayData | MediapipeOverlayData
 
 
 class FrontendPayload(BaseModel):
@@ -24,8 +23,9 @@ class FrontendPayload(BaseModel):
     )
 
     frame_number: int
-    charuco_overlays: dict[CameraIdString, CharucoOverlayData]
-    tracked_points3d:dict[TrackedPointNameString, Point3d] = {}
+    # Now supports multiple observation types
+    observation_overlays: dict[CameraIdString, ObservationOverlayData]
+    tracked_points3d: dict[TrackedPointNameString, Point3d] = {}
 
     @classmethod
     def from_aggregation_output(
@@ -34,10 +34,24 @@ class FrontendPayload(BaseModel):
     ) -> "FrontendPayload":
         """Create frontend payload from aggregation node output"""
 
+        # Combine all observation types into single dict
+        observation_overlays: dict[CameraIdString, ObservationOverlayData] = {}
+
+        # Add charuco overlays if present
+        if hasattr(aggregation_output, 'charuco_overlay_data'):
+            observation_overlays.update(aggregation_output.charuco_overlay_data)
+
+        # Add mediapipe overlays if present
+        if hasattr(aggregation_output, 'mediapipe_overlay_data'):
+            observation_overlays.update(aggregation_output.mediapipe_overlay_data)
+
+        # Add other overlay types as they're implemented
+        # if hasattr(aggregation_output, 'rtmpose_overlay_data'):
+        #     observation_overlays.update(aggregation_output.rtmpose_overlay_data)
 
         return cls(
             frame_number=aggregation_output.frame_number,
-            charuco_overlays = aggregation_output.charuco_overlay_data,
+            observation_overlays=observation_overlays,
             tracked_points3d=aggregation_output.tracked_points3d
         )
 
@@ -47,69 +61,14 @@ class FrontendPayload(BaseModel):
         """
         payload = {
             "frame_number": self.frame_number,
-            "charuco_overlays": {
+            "observation_overlays": {
                 camera_id: overlay.model_dump()
-                for camera_id, overlay in self.charuco_overlays.items()
+                for camera_id, overlay in self.observation_overlays.items()
+            },
+            "tracked_points3d": {
+                name: point.model_dump()
+                for name, point in self.tracked_points3d.items()
             }
         }
 
-        if self.charuco_3d_data:
-            # The MultiCameraCharuco3dData model serializes itself perfectly!
-            payload["charuco_3d"] = self.charuco_3d_data.model_dump()
-
         return payload
-
-
-def _get_camera_color(
-        camera_id: CameraIdString,
-        camera_ids: list[CameraIdString],
-        element_type: Literal["charuco", "aruco"]
-) -> Color:
-    """
-    Get consistent colors per camera for visualization based on camera order.
-
-    Args:
-        camera_id: The camera ID to get color for
-        camera_ids: Ordered list of all camera IDs (determines color assignment)
-        element_type: Whether this is for charuco corners or aruco markers
-
-    Returns:
-        Color object for the specified camera and element type
-    """
-    # Color palettes - will cycle through these if we have more cameras
-    charuco_palette = [
-        "#00FF00",  # Green
-        "#0000FF",  # Blue
-        "#FF0000",  # Red
-        "#FFFF00",  # Yellow
-        "#FF00FF",  # Magenta
-        "#00FFFF",  # Cyan
-        "#FF8800",  # Orange
-        "#8800FF",  # Purple
-    ]
-
-    # Aruco markers use darker versions of the same hues
-    aruco_palette = [
-        "#00AA00",  # Dark Green
-        "#0000AA",  # Dark Blue
-        "#AA0000",  # Dark Red
-        "#AAAA00",  # Dark Yellow
-        "#AA00AA",  # Dark Magenta
-        "#00AAAA",  # Dark Cyan
-        "#AA5500",  # Dark Orange
-        "#5500AA",  # Dark Purple
-    ]
-
-    # Get the camera index (determines which color to use)
-    try:
-        camera_index = camera_ids.index(camera_id)
-    except ValueError:
-        # Camera not in list - use default color
-        default_hex = "#FFFFFF" if element_type == "charuco" else "#888888"
-        return Color.from_hex(default_hex)
-
-    # Select color from palette (with wrapping for > 8 cameras)
-    palette = charuco_palette if element_type == "charuco" else aruco_palette
-    color_hex = palette[camera_index % len(palette)]
-
-    return Color.from_hex(color_hex)

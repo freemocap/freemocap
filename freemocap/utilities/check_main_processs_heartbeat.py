@@ -8,7 +8,7 @@ from typing import Final
 
 logger = logging.getLogger(__name__)
 HEARTBEAT_INTERVAL_SECONDS: Final[float] = 1.0
-HEARTBEAT_TIMEOUT_SECONDS: Final[float] = 30.0
+HEARTBEAT_TIMEOUT_SECONDS: Final[float] = 300.0
 def check_main_process_heartbeat(*,
                                  heartbeat_timestamp: multiprocessing.Value,
                                  global_kill_flag: multiprocessing.Value) -> bool:

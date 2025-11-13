@@ -2,10 +2,13 @@ import logging
 
 from pydantic import Field, model_validator
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
-from skellytracker.trackers.base_tracker.base_tracker_abcs import TrackedPointIdString, BaseObservation
+from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
+from freemocap.core.image_overlay.charuco_overlay_data import CharucoOverlayData
+from freemocap.core.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
 
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.types.type_overloads import FrameNumberInt,  PipelineIdString, VideoIdString, \
     TrackedPointNameString
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
@@ -30,7 +33,7 @@ class CameraNodeOutputMessage(TopicMessageABC):
 class VideoNodeOutputMessage(TopicMessageABC):
     video_id: VideoIdString
     frame_number: FrameNumberInt = Field(ge=0)
-    observation: BaseObservation | None = None
+    observation: CharucoObservation | None = None
 
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = Field(ge=0)
@@ -59,8 +62,19 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     def charuco_overlay_data(self) -> dict[CameraIdString, CharucoOverlayData]:
         overlay_data: dict[CameraIdString, CharucoOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
-            if cam_output.observation is not None:
+            if cam_output.observation is not None and isinstance(cam_output.observation, CharucoObservation):
                 overlay_data[camera_id] = CharucoOverlayData.from_charuco_observation(
+                    camera_id=camera_id,
+                    observation=cam_output.observation,
+                )
+        return overlay_data
+
+    @property
+    def mediapipe_overlay_data(self) -> dict[CameraIdString, MediapipeOverlayData]:
+        overlay_data: dict[CameraIdString, MediapipeOverlayData] = {}
+        for camera_id, cam_output in self.camera_node_outputs.items():
+            if cam_output.observation is not None and isinstance(cam_output.observation, MediapipeObservation):
+                overlay_data[camera_id] = MediapipeOverlayData.from_mediapipe_observation(
                     camera_id=camera_id,
                     observation=cam_output.observation,
                 )

@@ -3,12 +3,12 @@ import logging
 from pydantic import BaseModel, Field
 from pydantic import model_validator
 from skellycam.core.types.type_overloads import CameraIdString, FrameNumberInt
-from skellytracker.trackers.charuco_tracker.charuco_observation import BaseObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.calibration_numpy_types import ImagePoint2D
 from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage
 
-CharucoObservations = dict[CameraIdString, BaseObservation | None]
+CharucoObservations = dict[CameraIdString, CharucoObservation | None]
 
 MultiFrameNumber = int
 MINIMUM_CHARUCO_CORNERS_FOR_VISIBILITY: int = 6
@@ -43,8 +43,8 @@ class CameraPairTargetView(BaseModel):
     multi_frame_number: MultiFrameNumber
     base_camera_id: CameraIdString
     other_camera_id: CameraIdString
-    base_camera_observation: BaseObservation
-    other_camera_observation: BaseObservation
+    base_camera_observation: CharucoObservation
+    other_camera_observation: CharucoObservation
 
     @model_validator(mode='after')
     def validate(self):
@@ -172,7 +172,7 @@ class SharedViewAccumulator(BaseModel):
         """
         return all([count >= min_shared_views for count in self.get_shared_view_count_per_camera().values()])
 
-    def get_observations_by_camera(self, camera_id: CameraIdString) -> dict[FrameNumberInt, BaseObservation]:
+    def get_observations_by_camera(self, camera_id: CameraIdString) -> dict[FrameNumberInt, CharucoObservation]:
         """
         Get the charuco observations for a given camera id across all frames
         """

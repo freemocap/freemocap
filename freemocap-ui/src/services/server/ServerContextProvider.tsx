@@ -6,13 +6,24 @@ import {ConnectionState, WebSocketConnection} from "@/services/server/server-hel
 import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/frame-processor";
 import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {backendFramerateUpdated, DetailedFramerate, frontendFramerateUpdated, logAdded, LogRecord} from '@/store';
+
+import {FrameCompositor} from "@/services/server/server-helpers/frame_compositor";
+import {serverUrls} from "@/hooks/server-urls";
 import {
     CharucoObservation,
     CharucoOverlayDataMessage,
     CharucoOverlayDataMessageSchema
-} from "@/services/server/server-helpers/charuco_types";
-import {FrameCompositor} from "@/services/server/server-helpers/frame_compositor";
-import {serverUrls} from "@/hooks/server-urls";
+} from "@/services/server/server-helpers/image-overlay/charuco-types";
+import {
+    MediapipeOverlayDataMessage,
+    MediapipeOverlayDataMessageSchema
+} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
+import {
+    OverlayManager,
+    OverlayRendererFactory
+} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
+import {ModelInfo} from "@/services/server/server-helpers/image-overlay/image-overlay-system";
+import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-overlay-renderer";
 
 type FrameSubscriber = (bitmap: ImageBitmap) => void;
 type TrackedPointsSubscriber = (points: Map<string, Point3d>) => void;
@@ -79,6 +90,15 @@ function isCharucoOverlayDataMessage(data: any): data is CharucoOverlayDataMessa
     const result = CharucoOverlayDataMessageSchema.safeParse(data);
     return result.success;
 }
+function isMediapipeOverlayDataMessage(data: any): data is MediapipeOverlayDataMessage {
+    const result = MediapipeOverlayDataMessageSchema.safeParse(data);
+    return result.success;
+}
+
+function handleModelInfoUpdate(modelInfo: ModelInfo): void {
+    console.log(`Received model info for tracker: ${modelInfo.tracker_name}`);
+    OverlayRendererFactory.setModelInfo(modelInfo.tracker_name, modelInfo);
+}
 
 export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({children}) => {
     const dispatch = useDispatch<AppDispatch>();
@@ -89,9 +109,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const wsConnectionRef = useRef<WebSocketConnection | null>(null);
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
+    const overlayManagerRef = useRef<OverlayManager | null>(null);
     const frameCompositorRef = useRef<FrameCompositor | null>(null);
     const frameSubscribersRef = useRef<Map<string, Set<FrameSubscriber>>>(new Map());
-    const latestObservationsRef = useRef<Map<string, CharucoObservation>>(new Map());
+    const latestObservationsRef = useRef<Map<string, CharucoObservation|MediapipeObservation>>(new Map());
     const latestTrackedPoints = useRef<Map<string, Point3d>>(new Map());
     const trackedPointsSubscribersRef = useRef<Set<TrackedPointsSubscriber>>(new Set());
 
@@ -104,6 +125,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         });
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
+        overlayManagerRef.current = new OverlayManager();
         frameCompositorRef.current = new FrameCompositor();
 
         return () => {
@@ -136,6 +158,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (newState === ConnectionState.DISCONNECTED || newState === ConnectionState.FAILED) {
                 canvasManagerRef.current?.terminateAllWorkers();
                 frameProcessorRef.current?.reset();
+                overlayManagerRef.current?.clearAll();
                 latestObservationsRef.current.clear();
                 latestTrackedPoints.current.clear();
                 setConnectedCameraIds([]);
@@ -159,6 +182,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             for (const cameraId of removedCameras) {
                                 console.log(`Removing camera ${cameraId} - not in latest payload`);
                                 canvasManagerRef.current?.terminateWorker(cameraId);
+                                overlayManagerRef.current?.clearCamera(cameraId);  // Clear overlay renderer
                                 latestObservationsRef.current.delete(cameraId);
                             }
 
@@ -167,33 +191,33 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         return prevIds;
                     });
 
-                    // Track remaining frames to render (simple counter - most efficient)
+                    // Track remaining frames to render
                     let remainingFrames = frames.length;
                     const maxFrameNumber = Math.max(...Array.from(frameNumbers));
 
                     const onFrameRendered = (): void => {
                         remainingFrames--;
                         if (remainingFrames === 0) {
-                            // ALL frames rendered - now we can ACK
                             ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
                         }
                     };
 
-                    // Composite frames with overlays and send to canvas workers
-                    const compositor = frameCompositorRef.current!;
+                    // Process frames with generic overlay manager
+                    const overlayManager = overlayManagerRef.current!;
                     for (const frameData of frames) {
                         const observation = latestObservationsRef.current.get(frameData.cameraId) || null;
 
-                        // Composite the frame with overlay
-                        const compositeBitmap = await compositor.compositeFrame(
+                        // Use generic overlay manager to composite frame
+                        const compositeBitmap = await overlayManager.processFrame(
+                            frameData.cameraId,
                             frameData.bitmap,
                             observation
                         );
 
+                        // Send to subscribers if any
                         if (frameSubscribersRef.current.size > 0) {
                             const subscribers = frameSubscribersRef.current.get(frameData.cameraId);
                             if (subscribers && subscribers.size > 0) {
-                                // Create one clone per subscriber for THIS camera only
                                 for (const callback of subscribers) {
                                     const clonedBitmap = await createImageBitmap(compositeBitmap);
                                     callback(clonedBitmap);
@@ -201,15 +225,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             }
                         }
 
-                        // Send composited frame to worker - ACK only when rendered
+                        // Send to canvas worker
                         canvasManagerRef.current!.sendFrameToWorker(
                             frameData.cameraId,
                             compositeBitmap,
                             onFrameRendered
                         );
                     }
-
-                    // Note: ACK is sent by onFrameRendered callback after ALL frames are done
                 } catch (error) {
                     console.error('Error processing frame:', error);
                     throw error;
@@ -219,17 +241,26 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 try {
                     const jsonData = JSON.parse(event.data);
 
+                    // Handle different observation types
                     if (isCharucoOverlayDataMessage(jsonData)) {
                         for (const [cameraId, observation] of Object.entries(jsonData)) {
                             latestObservationsRef.current.set(cameraId, observation);
                         }
                     }
-                    if ('tracked_points3d' in jsonData) {
-                        // Update tracked points and notify subscribers
+                    else if (isMediapipeOverlayDataMessage(jsonData)) {
+                        for (const [cameraId, observation] of Object.entries(jsonData)) {
+                            latestObservationsRef.current.set(cameraId, observation);
+                        }
+                    }
+                    else if ('model_info' in jsonData && jsonData.model_info) {
+                        // Handle model info updates
+                        handleModelInfoUpdate(jsonData.model_info);
+                    }
+                    else if ('tracked_points3d' in jsonData) {
+                        // Handle 3D tracked points
                         console.log(`Received 3d data - ${JSON.stringify(jsonData.tracked_points3d)}`);
                         latestTrackedPoints.current = new Map(Object.entries(jsonData.tracked_points3d));
 
-                        // Notify all subscribers with the new tracked points
                         for (const subscriber of trackedPointsSubscribersRef.current) {
                             subscriber(latestTrackedPoints.current);
                         }
@@ -240,9 +271,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     else if (isFramerateUpdate(jsonData)) {
                         dispatch(backendFramerateUpdated(jsonData.backend_framerate));
                         dispatch(frontendFramerateUpdated(jsonData.frontend_framerate));
-                    }
-                    else {
-                        // console.debug('Received unhandled JSON message:', jsonData);
                     }
                 } catch (error) {
                     console.error('Error parsing JSON message:', error);

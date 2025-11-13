@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.charuco_tracker.charuco_observation import BaseObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.calibration_display_helpers.charuco_python_converter import \
     charuco_observation_to_overlay_data, charuco_observation_to_metadata
@@ -53,7 +53,7 @@ class CameraOverlayRenderer:
             self,
             *,
             image: np.ndarray,
-            charuco_observation: BaseObservation,
+            charuco_observation: CharucoObservation,
             total_frames: int | None = None,
     ) -> np.ndarray:
         """

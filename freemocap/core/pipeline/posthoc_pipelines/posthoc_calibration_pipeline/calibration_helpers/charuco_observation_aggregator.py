@@ -97,7 +97,7 @@ def anipose_calibration_from_charuco_observations(
         use_charuco_as_groundplane: bool = False,
         init_intrinsics: bool = True,
         init_extrinsics: bool = True,
-        verbose: bool = True, ) -> tuple[Path,Board]:
+        verbose: bool = True, ) -> Path:
 
     anipose_cameras: list[AniposeCamera] = [
         AniposeCamera(name=video_id,
@@ -145,19 +145,6 @@ def anipose_calibration_from_charuco_observations(
     anipose_camera_group.metadata["groundplane_calibration"] = False
     anipose_camera_group.metadata["recording_info"] = recording_info.model_dump()
 
-    observation_recorders_by_video = {video_id: BaseRecorder() for video_id in charuco_observations_by_frame[0].keys()}
-    for frame_number, charuco_observations_by_camera in enumerate(charuco_observations_by_frame):
-        if not all([isinstance(output, CharucoObservation) for output in charuco_observations_by_camera.values()]):
-            raise ValueError(
-                f"Non-CharucoObservation found in frame {frame_number} observations: {charuco_observations_by_camera}")
-        for video_id, recorder in observation_recorders_by_video.items():
-            recorder.add_observation(observation=charuco_observations_by_camera[video_id])
-
-    charuco_board_model = charuco_model_from_observations(
-        observation_recorders=observation_recorders_by_video,
-        calibration_toml_path=get_last_successful_calibration_toml_path(),
-        output_data_folder=Path(recording_info.full_recording_path) / "output_data",
-    )
 
     groundplane_success: GroundPlaneSuccess | None = None
 
@@ -168,18 +155,18 @@ def anipose_calibration_from_charuco_observations(
 
     # Apply groundplane correction if requested
     if use_charuco_as_groundplane:
-
-        anipose_camera_group, groundplane_success = set_charuco_board_as_groundplane(
-            charuco_board_model=charuco_board_model,
-            anipose_camera_group=anipose_camera_group,
-            anipose_charuco_board=anipose_charuco_board,
-            recording_folder_path=Path(recording_info.full_recording_path)
-        )
-        if groundplane_success.success:
-            anipose_camera_group.metadata["groundplane_calibration"] = True
-            logger.info("Successfully set charuco board as groundplane")
-        else:
-            logger.warning(f"Failed to set groundplane: {groundplane_success.error}")
+        raise NotImplementedError("Setting charuco board as groundplane is currently disabled.")
+        # anipose_camera_group, groundplane_success = set_charuco_board_as_groundplane(
+        #     charuco_board_model=charuco_board_model,
+        #     anipose_camera_group=anipose_camera_group,
+        #     anipose_charuco_board=anipose_charuco_board,
+        #     recording_folder_path=Path(recording_info.full_recording_path)
+        # )
+        # if groundplane_success.success:
+        #     anipose_camera_group.metadata["groundplane_calibration"] = True
+        #     logger.info("Successfully set charuco board as groundplane")
+        # else:
+        #     logger.warning(f"Failed to set groundplane: {groundplane_success.error}")
 
     # Calculate real-world camera positions and orientations
     get_real_world_matrices(camera_group=anipose_camera_group)
@@ -197,11 +184,10 @@ def anipose_calibration_from_charuco_observations(
     anipose_camera_group.dump(calibration_folder_calibration_toml_path)
     logger.info(f"Saved calibration to: {calibration_folder_calibration_toml_path}")
 
-
     # Save as last successful calibration
     anipose_camera_group.dump(get_last_successful_calibration_toml_path())
     logger.info(f"Saved as last successful calibration: {get_last_successful_calibration_toml_path()}")
-    return recording_folder_calibration_toml_path, charuco_board_model
+    return recording_folder_calibration_toml_path
 
 
 def pin_camera_zero_to_origin(camera_group: AniposeCameraGroup) -> AniposeCameraGroup:

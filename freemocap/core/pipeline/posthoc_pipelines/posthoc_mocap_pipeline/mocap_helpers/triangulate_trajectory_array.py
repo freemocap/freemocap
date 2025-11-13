@@ -28,11 +28,9 @@ def triangulate_array(
     number_of_tracked_points = data2d_cam_id_xy.shape[2]
     number_of_spatial_dimensions = data2d_cam_id_xy.shape[3]
 
-    if number_of_spatial_dimensions != 2:
-        logger.error(
-            f"Expected 2D data but got {number_of_spatial_dimensions} dimensions"
-        )
-        raise ValueError("Input data must have 2 spatial dimensions")
+    if number_of_spatial_dimensions == 3:
+        # if provided 3d, ignore z dimension
+        data2d_cam_id_xy = data2d_cam_id_xy[..., :2]
 
     data2d_flat = data2d_cam_id_xy.reshape(number_of_cameras, -1, 2)
 
@@ -101,9 +99,9 @@ def triangulate_frame_observations(frame_number: int,
             "Input data must have the same number of cameras as the camera group"
         )
     # add singleton frame dimension
-    data2d_cam_fr_id_xy = data2d_cam_id_xy.reshape((data2d_cam_id_xy.shape[0], 1, data2d_cam_id_xy.shape[1], data2d_cam_id_xy.shape[2]))
+    data2d_cam_fr_id_xyz = data2d_cam_id_xy.reshape((data2d_cam_id_xy.shape[0], 1, data2d_cam_id_xy.shape[1], data2d_cam_id_xy.shape[2]))
     triangulated_data, _, _ = triangulate_array(
-        data2d_cam_id_xy=data2d_cam_fr_id_xy,
+        data2d_cam_id_xy=data2d_cam_fr_id_xyz,
         camera_group=anipose_camera_group,
         config=config,
         calculate_reprojection_error=calculate_reprojection_error,

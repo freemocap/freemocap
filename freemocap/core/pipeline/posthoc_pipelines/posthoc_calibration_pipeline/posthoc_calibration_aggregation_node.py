@@ -7,6 +7,9 @@ from pydantic import BaseModel, ConfigDict
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
     CalibrationpipelineConfig
@@ -15,9 +18,7 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_help
     charuco_model_from_observations
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoMetadata
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_observation_aggregator import \
-    anipose_calibration_from_charuco_observations
-
-
+    anipose_calibration_from_charuco_observations, get_last_successful_calibration_toml_path
 
 from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.shared_view_accumulator import CharucoObservations
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
@@ -138,15 +139,28 @@ class PosthocCalibrationAggregationNode:
                 })
 
 
-            calibration_toml_path, charuco_board_model = anipose_calibration_from_charuco_observations(
+            calibration_toml_path = anipose_calibration_from_charuco_observations(
                 charuco_observations_by_frame=charuco_observations_by_frame,
                 calibration_pipeline_config=calibration_pipeline_config,
                 recording_info=recording_info,
                 video_metadata=video_metadata,
                 # use_charuco_as_groundplane=True,
             )
+            observation_recorders_by_video = {video_id: BaseRecorder() for video_id in
+                                              charuco_observations_by_frame[0].keys()}
+            for frame_number, charuco_observations_by_camera in enumerate(charuco_observations_by_frame):
+                if not all(
+                        [isinstance(output, CharucoObservation) for output in charuco_observations_by_camera.values()]):
+                    raise ValueError(
+                        f"Non-CharucoObservation found in frame {frame_number} observations: {charuco_observations_by_camera}")
+                for video_id, recorder in observation_recorders_by_video.items():
+                    recorder.add_observation(observation=charuco_observations_by_camera[video_id])
 
-
+            charuco_board_model = charuco_model_from_observations(
+                observation_recorders=observation_recorders_by_video,
+                calibration_toml_path=get_last_successful_calibration_toml_path(),
+                output_data_folder=Path(recording_info.full_recording_path) / "output_data",
+            )
 
             logger.success(
                 f"Posthoc calibration completed for pipeline {pipeline_id}! Calibration file saved to {recording_info.full_recording_path}")

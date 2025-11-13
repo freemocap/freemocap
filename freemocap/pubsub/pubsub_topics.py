@@ -33,7 +33,7 @@ class CameraNodeOutputMessage(TopicMessageABC):
 class VideoNodeOutputMessage(TopicMessageABC):
     video_id: VideoIdString
     frame_number: FrameNumberInt = Field(ge=0)
-    observation: CharucoObservation | None = None
+    observation: BaseObservation
 
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = Field(ge=0)

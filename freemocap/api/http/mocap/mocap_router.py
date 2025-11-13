@@ -116,14 +116,14 @@ async def stop_mocap_recording(request: StopMocapRecordingRequest) -> dict[str, 
 
 
 @mocap_router.post("/recording/process")
-async def calibrate_recording(request: ProcessMocapRecordingRequest) -> MocapRecordingResponse:
+async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> MocapRecordingResponse:
     """Process and calibrate a recorded session."""
     app = get_freemocap_app()
     try:
         recording_info = request.to_recording_info()
         await app.posthoc_pipeline_manager.create_posthoc_mocap_pipeline(recording_info=recording_info,
                                                                          mocap_task_config=request.mocap_task_config)
-        logger.info(f"Calibrating recording at: {recording_info.full_recording_path}")
+        logger.info(f"Processing mocap recording at: {recording_info.full_recording_path}")
         return MocapRecordingResponse(
             success=True,
             message="Mocap processing pipeline completed",

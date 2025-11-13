@@ -141,11 +141,11 @@ export const LeftSidePanelContent = () => {
                 pt: 0.5,
                 pb: 2,
             }}>
+                <ProcessingPipelinePanel/>
                 <CameraConfigTreeView/>
-                <RecordingInfoPanel/>
+                {/*<RecordingInfoPanel/>*/}
                 <CalibrationControlPanel />
                 <MocapTaskTreeItem />
-                <ProcessingPipelinePanel/>
 
             </Box>
         </Box>

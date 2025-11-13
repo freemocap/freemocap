@@ -86,7 +86,7 @@ class MediapipeOverlayData(BaseModel):
                     
                     body_points.append(
                         MediapipePointModel(
-                            name=name.replace("body.", ""),  # Remove "body." prefix
+                            name=name,
                             x=float(x),
                             y=float(y),
                             z=float(z),

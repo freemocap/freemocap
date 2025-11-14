@@ -178,6 +178,7 @@ class WebsocketServer:
                     if log_record.exc_info:
                         log_record.exc_text = logging.Formatter().formatException(log_record.exc_info)
                         log_record.exc_info = None
+                    print("Sending log record via websocket:", log_record.getMessage())
                     await self.websocket.send_json(log_record)
                 else:
                     await await_10ms()

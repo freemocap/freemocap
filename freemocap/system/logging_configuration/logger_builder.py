@@ -49,6 +49,7 @@ class LoggerBuilder:
         return handler
 
     def _build_websocket_handler(self):
+        print("\n\n\n\nBuilding WebSocket log handler\n\n\n\n")
         handler = WebSocketQueueHandler(self.queue)
         handler.setLevel(self.level.value)
         return handler

@@ -86,7 +86,7 @@ class RealtimeCameraNode:
         camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
                                                            read_only=False)
         charuco_detector = CharucoDetector.create(config=config.calibration_task_config.detector_config)
-        mediapipe_detector = MediapipeDetector.create_realtime_preset()
+        mediapipe_detector = MediapipeDetector.create()
         try:
             logger.trace(f"Starting camera processing node for camera {camera_id}")
             frame_rec_array: np.recarray | None = None

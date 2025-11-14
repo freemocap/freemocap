@@ -27,6 +27,7 @@ class WebSocketQueueHandler(QueueHandler):
             try:
                 # Prepare the record for pickling (handles exception info)
                 prepared_record = self.prepare(record)
+                print(f"---------------------\n--------------------\n------------WebSocketQueueHandler emitting record: {prepared_record.getMessage()}\n--------------------------\n--------------------\n------------")
                 self.queue.put(prepared_record)
             except Exception:
                 self.handleError(record)

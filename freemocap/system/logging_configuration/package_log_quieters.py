@@ -1,5 +1,6 @@
 import logging
 
+
 def suppress_noisy_package_logs():
     # Suppress some external loggers that are too verbose for our context/taste
     logging.getLogger("tzlocal").setLevel(logging.WARNING)
@@ -12,4 +13,4 @@ def suppress_noisy_package_logs():
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("comtypes").setLevel(logging.WARNING)
-
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)

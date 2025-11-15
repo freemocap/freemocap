@@ -4,8 +4,7 @@ from enum import Enum
 
 class LogLevels(Enum):
     ALL = logging.NOTSET  # 0 # All logs, including those from third-party libraries
-    LOOP = 3  # For logs that are printed in a loop
-    GUI = 4  # For logs that are printed in the GUI
+    LOOP = 3  # For logs that are printed in a loop (ONLY FOR DEBUGGING, REMOVE BEFORE PRODUCTION)
     TRACE = 5  # Low level logs for deep debugging
     DEBUG = logging.DEBUG  # 10 # Detailed information for devs and curious folk
     INFO = logging.INFO  # 20 # General information about the program

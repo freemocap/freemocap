@@ -1,0 +1,52 @@
+from abc import ABC
+
+from pydantic import BaseModel, Field, ConfigDict
+from skellycam.core.camera.config.camera_config import CameraConfigs
+from skellycam.core.types.type_overloads import CameraIdString
+
+from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetectorConfig
+from skellytracker.trackers.charuco_tracker.charuco_detector import  CharucoDetectorConfig
+
+
+
+class PipelineConfigABC(BaseModel, ABC):
+    pass
+
+
+class CalibrationpipelineConfig(BaseModel):
+    # model_config = ConfigDict(extra="forbid")
+    calibration_recording_folder: str | None = Field(default=None, alias="calibrationRecordingFolder")
+    charuco_board_x_squares: int = Field(gt=0, default=5, alias="charucoBoardXSquares")
+    charuco_board_y_squares: int = Field(gt=0, default=3, alias="charucoBoardYSquares")
+    charuco_square_length: float = Field(gt=0, default=1, alias="charucoSquareLength")
+    # min_shared_views_per_camera: int = Field(gt=0, default=200, alias="minSharedViewsPerCamera")
+    # auto_stop_on_min_view_count: bool = Field(default=True, alias="autoStopOnMinViewCount")
+    # auto_process_recording: bool = Field(default=True, alias="autoProcessRecording")
+
+    @property
+    def detector_config(self) -> CharucoDetectorConfig:
+        return CharucoDetectorConfig(
+            squares_x=self.charuco_board_x_squares,
+            squares_y=self.charuco_board_y_squares,
+            square_length=self.charuco_square_length,
+        )
+class MocapPipelineTaskConfig(BaseModel):
+    @property
+    def detector_config(self) -> MediapipeDetectorConfig:
+        return MediapipeDetectorConfig()
+
+class RealtimePipelineConfig(BaseModel):
+    camera_configs: CameraConfigs
+    calibration_task_config: CalibrationpipelineConfig = Field(default_factory=CalibrationpipelineConfig)
+    mocap_task_config: MocapPipelineTaskConfig = Field(default_factory=MocapPipelineTaskConfig)
+
+    @property
+    def camera_ids(self) -> list[CameraIdString]:
+        return list(self.camera_configs.keys())
+
+    @classmethod
+    def from_camera_configs(cls, *, camera_configs: CameraConfigs) -> "RealtimePipelineConfig":
+        return cls(
+            camera_configs=camera_configs,
+
+        )

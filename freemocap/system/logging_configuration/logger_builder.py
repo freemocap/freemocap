@@ -8,12 +8,13 @@ from .handlers.colored_console import ColoredConsoleHandler
 from .handlers.websocket_log_queue_handler import WebSocketQueueHandler
 from .log_format_string import LOG_FORMAT_STRING
 from .log_levels import LogLevels
-from ..paths_and_filenames.path_getters import get_log_file_path
+from ..default_paths import get_log_file_path
+
 
 class LoggerBuilder:
 
     def __init__(self,
-                 level: LogLevels ,
+                 level: LogLevels,
                  queue: Optional[Queue]):
         self.level = level
         self.queue = queue
@@ -35,7 +36,6 @@ class LoggerBuilder:
 
         root.addHandler(self._build_console_handler())
 
-
     def _build_console_handler(self):
         handler = ColoredConsoleHandler()
         handler.setLevel(self.level.value)
@@ -49,6 +49,7 @@ class LoggerBuilder:
         return handler
 
     def _build_websocket_handler(self):
+        print("\n\n\n\nBuilding WebSocket log handler\n\n\n\n")
         handler = WebSocketQueueHandler(self.queue)
         handler.setLevel(self.level.value)
         return handler
@@ -56,4 +57,3 @@ class LoggerBuilder:
     def configure(self):
         if len(logging.getLogger().handlers) == 0:
             self._configure_root_logger()
-

@@ -1,46 +1,91 @@
+import asyncio
 import logging
 import multiprocessing
+import signal
 import sys
 
-import freemocap
-from freemocap.freemocap_app.freemocap_application import create_freemocap_app, get_freemocap_app
-from freemocap.run_freemocap_server import run_freemocap_server
-from freemocap.system.paths_and_filenames.file_and_folder_names import SPARKLES_EMOJI_STRING, SKULL_EMOJI_STRING
-from freemocap.utilities.clean_path import clean_path
-from freemocap.utilities.setup_windows_app_id import setup_app_id_for_windows
+import uvicorn
+from skellycam.utilities.kill_process_on_port import kill_process_on_port
+from skellycam.utilities.wait_functions import await_1s
+
+from freemocap.api.server_constants import HOSTNAME, PORT
+from freemocap.app.app import create_fastapi_app
 
 logger = logging.getLogger(__name__)
 
-logger.debug(
-    f"Initializing {freemocap.__package_name__} package, version: {freemocap.__version__}, from file: {__file__}")
 
+async def main() -> None:
+    # Create shared kill flag for subprocesses
+    global_kill_flag: multiprocessing.Value = multiprocessing.Value("b", False)
+    heartbeat_timestamp:multiprocessing.Value = multiprocessing.Value("d", 0)
+    subprocess_registry: list[multiprocessing.Process] = []
+    server: uvicorn.Server | None = None
 
-def main():
-    logger.info(f"Running from __main__: {__name__} - {clean_path(__file__)}")
+    def handle_signal(signum: int, frame: object) -> None:
+        """Handle shutdown signals."""
+        logger.info(f"Received signal {signum}, initiating shutdown...")
+        global_kill_flag.value = True
+        if server:
+            server.should_exit = True
 
-    global_kill_flag = multiprocessing.Value('b', False)
-    create_freemocap_app(global_kill_flag=global_kill_flag)
+    # Setup signal handlers
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
 
-    logger.info("Starting server...")
-    run_freemocap_server(global_kill_flag)
+    try:
+        # Clean up any existing process on the port
+        kill_process_on_port(port=PORT)
 
-    global_kill_flag.value = True
-    get_freemocap_app().close()
+        # Create FastAPI app
+        app = create_fastapi_app(global_kill_flag=global_kill_flag,
+                                 heartbeat_timestamp=heartbeat_timestamp,
+                                 subprocess_registry=subprocess_registry)
 
-    logger.info("Exiting `main`...")
+        # Configure and create Uvicorn server
+        config = uvicorn.Config(
+            app=app,
+            host=HOSTNAME,
+            port=PORT,
+            log_level="warning",
+            reload=False
+
+        )
+        server = uvicorn.Server(config)
+
+        logger.info(f"Starting server on {HOSTNAME}:{PORT}")
+
+        # Run server (blocks until shutdown)
+        await server.serve()
+
+    except KeyboardInterrupt:
+        logger.info("Keyboard interrupt received")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
+        raise
+    finally:
+        # Ensure kill flag is set and server is stopped
+        global_kill_flag.value = True
+        if server:
+            server.should_exit = True
+            await await_1s()  # Give it time to shut down gracefully
+
+        for process in subprocess_registry:
+            if process.is_alive():
+                logger.info(f"Terminating subprocess {process.name} (PID: {process.pid})")
+                process.terminate()
+                process.join(timeout=2)
+                if process.is_alive():
+                    logger.warning(f"Force killing subprocess {process.name} (PID: {process.pid})")
+                    process.kill()
+                    process.join()
+        logger.success("Done! Thank you for using SkellyCam 💀📸✨")
 
 
 if __name__ == "__main__":
-    multiprocessing.freeze_support()
-    if sys.platform == "win32":
-        setup_app_id_for_windows()
     try:
-        main()
-    except KeyboardInterrupt:
-        logger.info("Keyboard interrupt - shutting down!")
+        asyncio.run(main())
     except Exception as e:
-        logger.exception("An unexpected error occurred", exc_info=e)
-        raise
-    print("\n\n--------------------------------------------------\n--------------------------------------------------")
-    print(f"Thank you for using FreeMoCap {SKULL_EMOJI_STRING} {SPARKLES_EMOJI_STRING}")
-    print("--------------------------------------------------\n--------------------------------------------------\n\n")
+        logger.exception(f"Unhandled exception: {e}")
+        sys.exit(1)
+    else:
+        sys.exit(0)

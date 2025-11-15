@@ -1,55 +1,72 @@
 import React from 'react';
 import {IconButton, InputAdornment, TextField} from '@mui/material';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import {useAppDispatch} from "@/store/AppStateStore";
-import {setRecordingInfo} from "@/store/slices/recordingInfoSlice";
+import {useAppDispatch} from '@/store';
+import {recordingDirectoryChanged} from '@/store/slices/recording/recording-slice';
+import {useElectronIPC} from '@/services';
 
 interface DirectoryInputProps {
-    value: string;
+    baseRecordingFolder: string;
 }
-export const BaseRecordingDirectoryInput: React.FC<DirectoryInputProps> = ({value}) => {
-    const dispatch = useAppDispatch();
 
-    const handleSelectDirectory = async () => {
+export const BaseRecordingDirectoryInput: React.FC<DirectoryInputProps> = ({ baseRecordingFolder }) => {
+    const dispatch = useAppDispatch();
+    const { api, isElectron } = useElectronIPC();
+
+    const handleSelectDirectory = async (): Promise<void> => {
+        // Only try to use electron API if we're in electron environment
+        if (!isElectron || !api) {
+            console.warn('Electron API not available');
+            return;
+        }
+
         try {
-            const result = await window.electronAPI.selectDirectory();
+            const result: string | null = await api.fileSystem.selectDirectory.mutate();
             if (result) {
-                dispatch(setRecordingInfo({recordingDirectory: result}));
+                // Use the specific action for recording directory changes
+                dispatch(recordingDirectoryChanged(result));
             }
         } catch (error) {
             console.error('Failed to select directory:', error);
         }
     };
 
-    const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newPath = e.target.value;
+    const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+        const newPath: string = e.target.value;
 
-        // If the path contains a tilde, expand it immediately
-        if (newPath.includes('~')) {
+        // Handle tilde expansion for home directory
+        if (newPath.includes('~') && isElectron && api) {
             try {
-                const expandedPath = await window.electronAPI.expandPath(newPath);
-                dispatch(setRecordingInfo({recordingDirectory: expandedPath}));
+                const home: string = await api.fileSystem.getHomeDirectory.query();
+                // Replace ~ at the beginning of the path with home directory
+                const expanded: string = newPath.replace(/^~(\/|\\)?/, home ? `${home}$1` : '');
+                dispatch(recordingDirectoryChanged(expanded));
             } catch (error) {
-                console.error('Failed to expand path:', error);
-                dispatch(setRecordingInfo({recordingDirectory: newPath}));
+                console.error('Failed to expand home directory:', error);
+                // Fall back to using the path as-is
+                dispatch(recordingDirectoryChanged(newPath));
             }
         } else {
-            dispatch(setRecordingInfo({recordingDirectory: newPath}));
+            dispatch(recordingDirectoryChanged(newPath));
         }
     };
 
     return (
         <TextField
             label="Recording Directory"
-            value={value}
+            value={baseRecordingFolder}
             onChange={handleInputChange}
             fullWidth
             size="small"
             InputProps={{
                 endAdornment: (
                     <InputAdornment position="end">
-                        <IconButton onClick={handleSelectDirectory} edge="end">
-                            <FolderOpenIcon/>
+                        <IconButton
+                            onClick={handleSelectDirectory}
+                            edge="end"
+                            disabled={!isElectron}
+                        >
+                            <FolderOpenIcon />
                         </IconButton>
                     </InputAdornment>
                 ),

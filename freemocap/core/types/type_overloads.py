@@ -1,4 +1,21 @@
-from numpydantic import NDArray, Shape
-PipelineIdString = str
+import multiprocessing
 
-TrackedPoint3d = NDArray[Shape["3 xyz"], float]
+from pydantic import BaseModel
+
+PointIndex = int
+PipelineIdString = str
+TrackedPointNameString = str
+VideoIdString = str
+
+TopicPublicationQueue = multiprocessing.Queue
+TopicSubscriptionQueue = multiprocessing.Queue
+
+TrackerTypeString = str  # TODO - move this to `skellytracker.types` or something
+
+FrameNumberInt = int
+
+
+class Point3d(BaseModel):
+    x: float
+    y: float
+    z: float

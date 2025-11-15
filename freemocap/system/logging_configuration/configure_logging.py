@@ -10,7 +10,6 @@ from .logger_builder import LoggerBuilder
 
 suppress_noisy_package_logs()
 # Add custom log levels
-logging.addLevelName(LogLevels.GUI.value, "GUI")
 logging.addLevelName(LogLevels.LOOP.value, "LOOP")
 logging.addLevelName(LogLevels.TRACE.value, "TRACE")
 logging.addLevelName(LogLevels.SUCCESS.value, "SUCCESS")
@@ -32,7 +31,6 @@ def configure_logging(level: LogLevels, ws_queue: Optional[multiprocessing.Queue
             return
 
         ws_queue = create_websocket_log_queue()
-    add_log_method(LogLevels.GUI, 'gui')
     add_log_method(LogLevels.LOOP, 'loop')
     add_log_method(LogLevels.TRACE, 'trace')
     add_log_method(LogLevels.API, 'api')

@@ -12,7 +12,7 @@
 3. **Change to the `jon/development` branch:**
    - `git switch jon/development`
 4. Create virtual environment: 
-   - `uv venv`
+   - `uv venv` 
 5. Activate virtual environment
    - Windows: `.venv/bin/activate`
    - Mac/Linux: `source .venv/bin/activate`

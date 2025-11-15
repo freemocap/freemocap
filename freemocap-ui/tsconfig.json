@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ESNext",
     "useDefineForClassFields": true,
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": false,
@@ -20,8 +24,16 @@
       "@/*": [
         "src/*"
       ]
-    },
+    }
   },
-  "include": ["src", "electron", "src/types/**/*" ],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": [
+    "src",
+    "old_electron",
+    "src/lib/**/*"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ]
 }

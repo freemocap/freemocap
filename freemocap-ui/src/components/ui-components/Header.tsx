@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography';
 import {Box, useTheme} from '@mui/material';
 import ThemeToggle from './ThemeToggle';
 
-export const Header = function() {
+export const Header = function () {
     const theme = useTheme();
 
     return (
@@ -20,11 +20,11 @@ export const Header = function() {
             }}
         >
             <Toolbar>
-                <Typography variant="h6" color="inherit" sx={{ flexGrow: 1 }}>
-                    SkellyCam 💀📸
+                <Typography variant="h6" color="inherit" sx={{flexGrow: 1}}>
+                    FreeMoCap 💀📸
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <ThemeToggle />
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
+                    <ThemeToggle/>
                 </Box>
             </Toolbar>
         </AppBar>

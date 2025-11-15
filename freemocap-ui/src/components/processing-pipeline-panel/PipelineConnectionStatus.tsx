@@ -1,26 +1,43 @@
-import {Box, Typography} from "@mui/material";
+import {Box, CircularProgress, Typography} from "@mui/material";
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
-import {useState} from "react";
-import {connectPipelineThunk, disconnectPipelineThunk} from "@/store/thunks/connect-pipeline-thunk";
-import {useAppDispatch} from "@/store/AppStateStore";
+import {useAppDispatch, useAppSelector} from "@/store/hooks";
+import {
+    closePipeline,
+    connectRealtimePipeline,
+    selectCanConnectPipeline,
+    selectCanDisconnectPipeline,
+    selectIsPipelineConnected,
+    selectIsPipelineLoading,
+    selectPipelineError,
+    selectPipelineId,
+} from "@/store/slices/pipeline";
 
 export const PipelineConnectionStatus = () => {
     const dispatch = useAppDispatch();
-    const [isConnected, setIsConnected] = useState(false);
-    const [pipelineId, setPipelineId] = useState<string | null>(null);
 
-    const handleToggleConnection = async () => {
+    const isConnected = useAppSelector(selectIsPipelineConnected);
+    const pipelineId = useAppSelector(selectPipelineId);
+    const isLoading = useAppSelector(selectIsPipelineLoading);
+    const error = useAppSelector(selectPipelineError);
+    const canConnect = useAppSelector(selectCanConnectPipeline);
+    const canDisconnect = useAppSelector(selectCanDisconnectPipeline);
+
+    const handleToggleConnection = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+
+        if (isLoading) return;
+
         if (isConnected) {
             console.log('Disconnecting from pipeline');
-            await dispatch(disconnectPipelineThunk());
+            await dispatch(closePipeline());
         } else {
             console.log('Connecting to pipeline');
-            const pipelineIdConnected = await dispatch(connectPipelineThunk());
-            setPipelineId(pipelineIdConnected.payload as string);
+            await dispatch(connectRealtimePipeline(undefined));
         }
-        setIsConnected(!isConnected);
     };
+
+    const isClickable = canConnect || canDisconnect;
 
     return (
         <Box
@@ -30,16 +47,17 @@ export const PipelineConnectionStatus = () => {
                 padding: '10px',
                 flexDirection: 'column',
                 pl: 4,
-                cursor: 'pointer',
+                cursor: isClickable ? 'pointer' : 'not-allowed',
                 border: '4px solid rgb(0, 125, 125)',
                 backgroundColor: isConnected ? '#005d94' : '#395067',
                 borderRadius: '8px',
-                ':hover': {
+                opacity: isClickable ? 1 : 0.6,
+                ':hover': isClickable ? {
                     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderColor: 'rgb(0,225, 225)',
-                },
+                    borderColor: 'rgb(0, 225, 225)',
+                } : {},
             }}
-            onClick={handleToggleConnection}
+            onClick={isClickable ? handleToggleConnection : undefined}
         >
             <Typography
                 variant="body1"
@@ -55,7 +73,7 @@ export const PipelineConnectionStatus = () => {
                     width: '24px',
                     height: '24px',
                     marginRight: '8px',
-                    cursor: 'pointer',
+                    cursor: isClickable ? 'pointer' : 'not-allowed',
                     borderRadius: '4px',
                     transition: 'background-color 0.3s, border-color 0.3s',
                     backgroundColor: isConnected ? 'rgba(0, 255, 255, 0.1)' : 'rgba(255, 0, 0, 0.1)',
@@ -65,20 +83,28 @@ export const PipelineConnectionStatus = () => {
                     alignItems: 'center',
                     padding: '4px',
                     justifyContent: 'center',
-                    '&:hover': {
+                    '&:hover': isClickable ? {
                         backgroundColor: 'rgba(255, 255, 255, 0.05)',
                         borderColor: 'rgba(255, 255, 255, 0.2)',
-                    },
+                    } : {},
                 }}>
-                    {isConnected ? (
+                    {isLoading ? (
+                        <CircularProgress size={16} sx={{ color: 'cyan' }} />
+                    ) : isConnected ? (
                         <CheckIcon sx={{ color: 'green' }} />
                     ) : (
                         <CloseIcon fontSize="small" sx={{ color: 'red' }} />
                     )}
                 </Box>
-                Pipeline: {isConnected ? `connected (id:${pipelineId})` : 'disconnected'}
+                Pipeline: {isConnected ? `connected (id: ${pipelineId})` : 'disconnected'}
+                {error && (
+                    <Typography variant="caption" color="error" sx={{ ml: 1 }}>
+                        {error}
+                    </Typography>
+                )}
             </Typography>
         </Box>
     );
 };
+
 export default PipelineConnectionStatus;

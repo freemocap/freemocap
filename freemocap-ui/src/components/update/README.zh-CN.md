@@ -28,21 +28,21 @@ npm i electron-updater
 
 2. ##### Electron更新逻辑
 
-   - 检测更新是否可用；
+    - 检测更新是否可用；
 
-   - 检测服务端的软件版本；
+    - 检测服务端的软件版本；
 
-   - 检测更新是否可用；
+    - 检测更新是否可用；
 
-   - 下载服务端新版软件（当更新可用）；
-   - 安装方式；
+    - 下载服务端新版软件（当更新可用）；
+    - 安装方式；
 
-  更多见 : [update...](https://github.com/electron-vite/electron-vite-react/blob/main/electron/main/update.ts)
+更多见 : [update...](https://github.com/electron-vite/electron-vite-react/blob/main/electron/main/update.ts)
 
 3. ##### Electron更新UI页面
 
-    主要功能是：用户触发上述(2.)更新逻辑的UI页面。用户可以通过点击页面触发electron更新的不同功能。
-    更多见 : [components/update.ts...](https://github.com/electron-vite/electron-vite-react/tree/main/src/components/update/index.tsx)
+   主要功能是：用户触发上述(2.)更新逻辑的UI页面。用户可以通过点击页面触发electron更新的不同功能。
+   更多见 : [components/update.ts...](https://github.com/electron-vite/electron-vite-react/tree/main/src/components/update/index.tsx)
 
 ---
 

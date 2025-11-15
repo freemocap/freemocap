@@ -2,7 +2,6 @@ import pydantic2zod
 from pydantic2zod.model import BuiltinType, ClassDecl
 
 
-
 class Compiler(pydantic2zod.Compiler):
 
     def _modify_models(self, pydantic_models: list[ClassDecl]) -> list[ClassDecl]:

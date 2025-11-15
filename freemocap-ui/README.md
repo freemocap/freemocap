@@ -11,12 +11,14 @@ English | [简体中文](README.zh-CN.md)
 ## 👀 Overview
 
 📦 Ready out of the box  
-🎯 Based on the official [template-react-ts](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts), project structure will be familiar to you  
+🎯 Based on the
+official [template-react-ts](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts), project
+structure will be familiar to you  
 🌱 Easily extendable and customizable  
 💪 Supports Node.js API in the renderer process  
 🔩 Supports C/C++ native addons  
 🐞 Debugger configuration included  
-🖥 Easy to implement multiple windows  
+🖥 Easy to implement multiple windows
 
 ## 🛫 Quick Setup
 
@@ -41,7 +43,7 @@ npm run dev
 ## 📂 Directory structure
 
 Familiar React application structure, just with `electron` folder on the top :wink:  
-*Files in this folder will be separated from your React application and built into `dist-electron`*  
+*Files in this folder will be separated from your React application and built into `dist-electron`*
 
 ```tree
 ├── electron                                 Electron-related code

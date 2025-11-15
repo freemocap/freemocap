@@ -4,7 +4,6 @@ import zipfile
 from pathlib import Path
 
 import requests
-
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
     FIGSHARE_SAMPLE_ZIP_FILE_URL,
     FREEMOCAP_SAMPLE_DATA_RECORDING_NAME,

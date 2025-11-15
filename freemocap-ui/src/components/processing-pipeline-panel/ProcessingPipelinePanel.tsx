@@ -1,23 +1,28 @@
-import React from "react";
-import {Box, Button, Typography, useTheme} from "@mui/material";
+import React, {useState} from "react";
+import {Box, Typography, useTheme} from "@mui/material";
 import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
 import {TreeItem} from "@mui/x-tree-view/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import {useAppDispatch} from "@/store/AppStateStore";
-import {
-    StartStopRecordingButton
-} from "@/components/recording-info-panel/recording-subcomponents/StartStopRecordingButton";
-import {RecordingPathTreeItem} from "@/components/recording-info-panel/RecordingPathTreeItem";
 import LanIcon from '@mui/icons-material/Lan';
-import {
-    FullRecordingPathPreview
-} from "@/components/recording-info-panel/recording-subcomponents/FullRecordingPathPreview";
 import PipelineConnectionStatus from "@/components/processing-pipeline-panel/PipelineConnectionStatus";
+import {RecordingInfoPanel} from "@/components/recording-info-panel/RecordingInfoPanel";
 
 export const ProcessingPipelinePanel: React.FC = () => {
     const theme = useTheme();
-    const dispatch = useAppDispatch();
+    const [expandedItems, setExpandedItems] = useState<string[]>([
+        'pipeline-main',
+        'calibration-intrinsic',
+        'calibration-extrinsic',
+        'mocap-task'
+    ]);
+
+    const handleExpandedItemsChange = (
+        event: React.SyntheticEvent,
+        itemIds: string[]
+    ): void => {
+        setExpandedItems(itemIds);
+    };
 
     return (
         <Box
@@ -29,35 +34,34 @@ export const ProcessingPipelinePanel: React.FC = () => {
             }}
         >
             <SimpleTreeView
+                expandedItems={expandedItems}
+                onExpandedItemsChange={handleExpandedItemsChange}
                 slots={{
                     collapseIcon: ExpandMoreIcon,
                     expandIcon: ChevronRightIcon,
                 }}
-                sx={{flexGrow: 1}}
+                sx={{ flexGrow: 1 }}
             >
                 <TreeItem
-                    itemId="calibration-pipeline-main"
+                    itemId="pipeline-main"
                     label={
                         <Box
                             sx={{
                                 display: "flex",
                                 alignItems: "center",
                                 width: "100%",
-                                r: 2,
+                                py: 1,
                             }}
                         >
-                            <LanIcon sx={{transform: 'scaleY(-1.3) scaleX(1.25)'}}/>
+                            <LanIcon sx={{ transform: 'scaleY(-1.05) scaleX(1)' }} />
 
-                            <Typography sx={{pl: 1, flexGrow: 1}} variant="h6" component="div">
-                                Data Processing
+                            <Typography sx={{ pl: 1, flexGrow: 1 }} variant="h6" component="div">
+                                Realtime Pipeline
                             </Typography>
-                            <PipelineConnectionStatus/>
+                            <PipelineConnectionStatus />
                         </Box>
                     }
                 >
-                    <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-                        tree stuff
-                    </Box>
                 </TreeItem>
             </SimpleTreeView>
         </Box>

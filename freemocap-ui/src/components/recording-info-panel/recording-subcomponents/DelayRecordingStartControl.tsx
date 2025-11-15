@@ -9,11 +9,11 @@ interface DelayStartControlProps {
 }
 
 export const DelayRecordingStartControl: React.FC<DelayStartControlProps> = ({
-    useDelay,
-    delaySeconds,
-    onDelayToggle,
-    onDelayChange
-}) => {
+                                                                                 useDelay,
+                                                                                 delaySeconds,
+                                                                                 onDelayToggle,
+                                                                                 onDelayChange
+                                                                             }) => {
     const theme = useTheme();
     return (
         <Box display="flex" alignItems="center" gap={2}>
@@ -22,7 +22,12 @@ export const DelayRecordingStartControl: React.FC<DelayStartControlProps> = ({
                     <Checkbox
                         checked={useDelay}
                         onChange={(e) => onDelayToggle(e.target.checked)}
-                        color="primary"
+                        sx={{
+                            color: theme.palette.text.primary,
+                            '&.Mui-checked': {
+                                color: theme.palette.text.primary,
+                            },
+                        }}
                     />
                 }
                 label="Delay Start"

@@ -1,0 +1,152 @@
+import logging
+import multiprocessing
+import time
+from dataclasses import dataclass
+
+import cv2
+import numpy as np
+from pydantic import BaseModel, ConfigDict
+from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
+from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
+from skellycam.core.types.type_overloads import CameraIdString, WorkerType, TopicSubscriptionQueue
+from skellycam.utilities.wait_functions import wait_1ms
+from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
+from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
+
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigUpdateTopic, CameraNodeOutputTopic, \
+    PipelineConfigUpdateMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage
+
+logger = logging.getLogger(__name__)
+
+
+class CameraNodeState(BaseModel):
+    model_config = ConfigDict(
+        validate_assignment=True,
+        frozen=True
+    )
+    pipeline_id: PipelineIdString
+    alive: bool
+    last_seen_frame_number: int | None = None
+    calibration_task_state: object | None = None
+    mocap_task_state: object = None  # TODO - this
+
+
+@dataclass
+class RealtimeCameraNode:
+    camera_id: CameraIdString
+    shutdown_self_flag: multiprocessing.Value
+    worker: WorkerType
+
+    @classmethod
+    def create(cls,
+               camera_id: CameraIdString,
+               camera_shm_dto: SharedMemoryRingBufferDTO,
+               subprocess_registry: list[multiprocessing.Process],
+               config: RealtimePipelineConfig,
+               ipc: PipelineIPC):
+        shutdown_self_flag = multiprocessing.Value('b', False)
+        worker = multiprocessing.Process(target=cls._run,
+                                         name=f"CameraProcessingNode-{camera_id}",
+                                         kwargs=dict(camera_id=camera_id,
+                                                     ipc=ipc,
+                                                     config=config,
+                                                     shutdown_self_flag=shutdown_self_flag,
+                                                     camera_shm_dto=camera_shm_dto,
+                                                     process_frame_number_subscription=ipc.pubsub.get_subscription(
+                                                         ProcessFrameNumberTopic),
+                                                     pipeline_config_subscription=ipc.pubsub.get_subscription(
+                                                         PipelineConfigUpdateTopic),
+                                                     ),
+                                         )
+        subprocess_registry.append(worker)
+        return cls(camera_id=camera_id,
+                   shutdown_self_flag=shutdown_self_flag,
+                   worker=worker
+                   )
+
+    @staticmethod
+    def _run(camera_id: CameraIdString,
+             ipc: PipelineIPC,
+             config: RealtimePipelineConfig,
+             process_frame_number_subscription: TopicSubscriptionQueue,
+             pipeline_config_subscription: TopicSubscriptionQueue,
+             shutdown_self_flag: multiprocessing.Value,
+             camera_shm_dto: SharedMemoryRingBufferDTO,
+             ):
+        if multiprocessing.parent_process():
+            # Configure logging if multiprocessing (i.e. if there is a parent process)
+            from freemocap.system.logging_configuration.configure_logging import configure_logging
+            from freemocap import LOG_LEVEL
+            configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
+
+        logger.debug(f"Initializing camera processing node for camera {camera_id} - creating shared memory ring buffer")
+        camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
+                                                           read_only=False)
+        charuco_detector = CharucoDetector.create(config=config.calibration_task_config.detector_config)
+        mediapipe_detector = MediapipeDetector.create()
+        try:
+            logger.trace(f"Starting camera processing node for camera {camera_id}")
+            frame_rec_array: np.recarray | None = None
+            while ipc.should_continue and not shutdown_self_flag.value:
+                wait_1ms()
+                # Check trackers config updates
+                while not pipeline_config_subscription.empty():
+                    new_pipeline_config_message: PipelineConfigUpdateMessage = pipeline_config_subscription.get()
+                    logger.debug(f"Received new skelly trackers for camera {camera_id}: {new_pipeline_config_message}")
+                    config = new_pipeline_config_message.pipeline_config
+
+                # Check for new frame to process
+                if not process_frame_number_subscription.empty():
+                    process_frame_number_message: ProcessFrameNumberMessage = process_frame_number_subscription.get()
+
+                    # Process the frame
+                    tik = time.perf_counter_ns()
+                    frame_rec_array = camera_shm.get_data_by_index(index=process_frame_number_message.frame_number,
+                                                                   rec_array=frame_rec_array)
+                    if frame_rec_array.frame_metadata.camera_config.rotation != -1:
+                        rotated_image = cv2.rotate(
+                            src=frame_rec_array.image[0],
+                            rotateCode=frame_rec_array.frame_metadata.camera_config.rotation[0]
+                        )
+                    else:
+                        rotated_image = frame_rec_array.image[0]
+                    observation = mediapipe_detector.detect(
+                        frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                        image=rotated_image, )
+                    # observation = charuco_detector.detect(
+                    #     frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                    #     image=rotated_image, )
+
+                    # tok = time.perf_counter_ns()
+
+                    ipc.pubsub.publish(
+                        topic_type=CameraNodeOutputTopic,
+                        message=CameraNodeOutputMessage(
+                            camera_id=frame_rec_array.frame_metadata.camera_config.camera_id[0],
+                            frame_number=frame_rec_array.frame_metadata.frame_number[0],
+                            observation=observation,
+                        ),
+                    )
+                    tok2 = time.perf_counter_ns()
+                    # logger.debug(
+                    #     f"Camera {camera_id} processed frame {frame_rec_array.frame_metadata.frame_number[0]} in "
+                    #     f"{(tok - tik) / 1e6:.2f} ms, published observation in {(tok2 - tok) / 1e6:.2f} ms")
+        except Exception as e:
+            logger.exception(f"Exception in camera node for camera {camera_id}: {e}")
+            ipc.kill_everything()
+            raise e
+        finally:
+            logger.debug(f"Shutting down camera processing node for camera {camera_id}")
+
+    def start(self):
+        logger.debug(f"Starting {self.__class__.__name__} for camera {self.camera_id}")
+        self.worker.start()
+
+    def shutdown(self):
+        logger.debug(f"Stopping {self.__class__.__name__} for camera {self.camera_id}")
+        self.shutdown_self_flag.value = True
+        self.worker.join()
+        logger.debug(f"{self.__class__.__name__} for camera {self.camera_id} stopped")

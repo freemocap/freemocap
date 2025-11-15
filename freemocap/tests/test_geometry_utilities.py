@@ -25,7 +25,7 @@ def test_rotate_by_90_degrees_around_x_axis():
     with pytest.raises(ValueError) as exc_info:
         rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)
     assert (
-        str(exc_info.value) == "raw_skel3d_frame_marker_xyz must have shape (N, M, 3)"
+            str(exc_info.value) == "raw_skel3d_frame_marker_xyz must have shape (N, M, 3)"
     ), "Did not correctly handle an empty input array."
 
     # test zero input

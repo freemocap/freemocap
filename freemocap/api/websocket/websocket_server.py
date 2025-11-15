@@ -1,30 +1,33 @@
 import asyncio
 import json
 import logging
-import time
 
+from fastapi import FastAPI
+from skellycam.core.recorders.framerate_tracker import FramerateTracker
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
-from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
-from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt, MultiframeTimestampFloat
-from skellycam.skellycam_app.skellycam_app import SkellycamApplication, get_skellycam_app
-
-from freemocap.freemocap_app.freemocap_application import FreemocapApplication, get_freemocap_app
-from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import LogRecordModel, \
-    get_websocket_log_queue
-from freemocap.system.logging_configuration.log_levels import LogLevels
-from skellycam.utilities.wait_functions import async_wait_10ms
+from freemocap.app.freemocap_application import FreemocApplication, get_freemocap_app
+from freemocap.core.pipeline.frontend_payload import FrontendPayload
+from freemocap.core.types.type_overloads import FrameNumberInt
+from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue, \
+    MIN_LOG_LEVEL_FOR_WEBSOCKET
+from freemocap.utilities.wait_functions import await_10ms
 
 logger = logging.getLogger(__name__)
 
-BACKPRESSURE_WARNING_THRESHOLD: int = 15  # Number of frames before we warn about backpressure
+BACKPRESSURE_WARNING_THRESHOLD: int = 100  # Number of frames before we warn about backpressure
 
 
 class WebsocketServer:
-    def __init__(self, websocket: WebSocket):
+    def __init__(self, fastapi_app: FastAPI, websocket: WebSocket):
 
         self.websocket = websocket
-        self._app: FreemocapApplication = get_freemocap_app()
+        if not hasattr(fastapi_app, "state") or not hasattr(fastapi_app.state, "global_kill_flag"):
+            raise RuntimeError(
+                "FastAPI app does not have a global_kill_flag in its state - define those fields when creating fastapi app")
+        self._global_kill_flag = fastapi_app.state.global_kill_flag
+        self._app: FreemocApplication = get_freemocap_app()
 
         self._websocket_should_continue = True
         self.ws_tasks: list[asyncio.Task] = []
@@ -32,7 +35,6 @@ class WebsocketServer:
         self.last_sent_frame_number: int = -1
         self._display_image_sizes: dict[CameraGroupIdString, dict[str, float]] | None = None
         self._frontend_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
-
 
     async def __aenter__(self):
         logger.debug("Entering WebsocketRunner context manager...")
@@ -55,7 +57,7 @@ class WebsocketServer:
     @property
     def should_continue(self):
         return (
-                self._app.should_continue
+                not self._global_kill_flag.value
                 and self._websocket_should_continue
                 and self.websocket.client_state == WebSocketState.CONNECTED
         )
@@ -63,7 +65,6 @@ class WebsocketServer:
     async def run(self):
         logger.info("Starting websocket runner...")
         self.ws_tasks = [asyncio.create_task(self._frontend_image_relay(), name="WebsocketFrontendImageRelay"),
-                         # asyncio.create_task(self._ipc_queue_relay(), name="WebsocketIPCQueueRelay"),
                          asyncio.create_task(self._logs_relay(), name="WebsocketLogsRelay"),
                          asyncio.create_task(self._client_message_handler(), name="WebsocketClientMessageHandler")]
 
@@ -82,83 +83,112 @@ class WebsocketServer:
             return True
         return self.last_received_frontend_confirmation >= self.last_sent_frame_number
 
-    async def _frontend_image_relay(self):
+    # Updated section for _frontend_image_relay method in websocket_server.py
+
+    async def _frontend_image_relay(self) -> None:
         """
         Relay image payloads from the shared memory to the frontend via the websocket.
         """
-        logger.info(
-            f"Starting frontend image payload relay...")
+        logger.info(f"Starting frontend image payload relay...")
         try:
             skipped_previous = False
             while self.should_continue:
-                await async_wait_10ms()
+                await await_10ms()
+                frontend_payloads = self._app.get_latest_frontend_payloads(if_newer_than=self.last_sent_frame_number)
+
                 if self.check_frame_acknowledgment_status():
                     if skipped_previous:  # skip an extra frame if there was backpressure from frontend
                         skipped_previous = False
                     else:
-                        new_frontend_payloads: dict[
-                            CameraGroupIdString, tuple[
-                                FrameNumberInt, MultiframeTimestampFloat, bytes]] = self._app.skellycam_app.get_new_frontend_payloads(
-                            if_newer_than=self.last_sent_frame_number,
-                            display_image_sizes=self._display_image_sizes)
+                        for pipeline_id, (payload_bytes, frontend_payload) in frontend_payloads.items():
+                            frame_number = None
+                            if not payload_bytes and not frontend_payload:
+                                continue
+                            if frontend_payload:
+                                if not isinstance(frontend_payload, FrontendPayload):
+                                    frame_number = frontend_payload
+                                    frontend_payload = None
+                                else:
+                                    frame_number = frontend_payload.frame_number
 
-                        for camera_group_id, (frame_number,
-                                              multiframe_timestamp,
-                                              payload_bytes) in new_frontend_payloads.items():
-                            await self.websocket.send_bytes(payload_bytes)
-                            self.last_sent_frame_number = frame_number
-                            if camera_group_id not in self._frontend_framerate_trackers:
-                                self._frontend_framerate_trackers[camera_group_id] = FramerateTracker.create(
-                                    framerate_source=f"Frontend-{camera_group_id}")
-                            self._frontend_framerate_trackers[camera_group_id].update(multiframe_timestamp)
+                            if not isinstance(payload_bytes, (bytes, bytearray)):
+                                logger.warning(f"Invalid payload bytes on frame{frame_number} -"
+                                               f" got type {type(payload_bytes)}")
+                                continue
+
+                            # Send the image bytes first
+                            if payload_bytes:
+                                await self.websocket.send_bytes(payload_bytes)
+
+                            # Send observation overlays as a single message per observation type
+                            if frontend_payload and frontend_payload.observation_overlays:
+                                # Group overlays by message type
+                                overlays_by_type: dict[str, dict[CameraIdString, dict]] = {}
+
+                                for camera_id, overlay_data in frontend_payload.observation_overlays.items():
+                                    message_type = overlay_data.message_type
+                                    if message_type not in overlays_by_type:
+                                        overlays_by_type[message_type] = {}
+                                    overlays_by_type[message_type][camera_id] = overlay_data.model_dump()
+
+                                # Send each observation type as separate message
+                                # This matches what the frontend expects
+                                for message_type, camera_overlays in overlays_by_type.items():
+                                    await self.websocket.send_json(camera_overlays)
+
+                            # Send tracked points if present
+                            if frontend_payload and frontend_payload.tracked_points3d:
+                                points3d_dict = {
+                                    point_name: tracked_point.model_dump()
+                                    for point_name, tracked_point in frontend_payload.tracked_points3d.items()
+                                }
+                                await self.websocket.send_json({"tracked_points3d": points3d_dict})
+
+                            if frame_number is not None:
+                                self.last_sent_frame_number = frame_number
                 else:
                     skipped_previous = True
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
-                    if backpressure > BACKPRESSURE_WARNING_THRESHOLD:
+                    if (backpressure > BACKPRESSURE_WARNING_THRESHOLD and
+                            backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0):
                         logger.trace(
-                            f"Backpressure detected: {backpressure} frames not acknowledged by frontend! Last sent frame: {self.last_sent_frame_number}, last received confirmation: {self.last_received_frontend_confirmation}")
+                            f"Backpressure detected: {backpressure} frames not acknowledged by frontend! "
+                            f"Last sent frame: {self.last_sent_frame_number}, last received confirmation: "
+                            f"{self.last_received_frontend_confirmation}")
 
-                backend_framerate_updates:dict[CameraGroupIdString,CurrentFramerate] = self._app.skellycam_app.camera_group_manager.get_backend_framerate_updates()
-                if backend_framerate_updates:
-                    for camera_group_id, backend_framerate in backend_framerate_updates.items():
-                        if camera_group_id not in self._frontend_framerate_trackers:
-                            continue
-                        framerate_message = {
-                            "message_type": "framerate_update",
-                            "camera_group_id": camera_group_id,
-                            "backend_framerate": backend_framerate.model_dump(),
-                            "frontend_framerate": self._frontend_framerate_trackers[camera_group_id].current_framerate.model_dump()
-                        }
-                        await self.websocket.send_json(framerate_message)
-                        self._frontend_framerate_trackers[camera_group_id].clear()
         except WebSocketDisconnect:
             logger.api("Client disconnected, ending Frontend Image relay task...")
         except asyncio.CancelledError:
             pass
         except Exception as e:
             logger.exception(f"Error in image payload relay: {e.__class__}: {e}")
-            get_skellycam_app().kill_everything()
+            self._global_kill_flag.value = True
             raise
-
-    async def _logs_relay(self, ws_log_level: LogLevels = LogLevels.INFO):
+    async def _logs_relay(self, ws_log_level: int = MIN_LOG_LEVEL_FOR_WEBSOCKET):
         logger.info("Starting websocket log relay listener...")
         logs_queue = get_websocket_log_queue()
         try:
             while self.should_continue:
                 if not logs_queue.empty() and self.websocket.client_state == WebSocketState.CONNECTED:
-                    log_record: LogRecordModel = LogRecordModel(**logs_queue.get_nowait())
-                    if log_record.levelno < ws_log_level.value:
+                    log_record: logging.LogRecord = logs_queue.get_nowait()
+                    if log_record.levelno < ws_log_level:
                         continue  # Skip logs below the specified level
-                    await self.websocket.send_json(log_record.model_dump())
+
+                    # if traceback is present, replace with string
+                    if log_record.exc_info:
+                        log_record.exc_text = logging.Formatter().formatException(log_record.exc_info)
+                        log_record.exc_info = None
+                    print("Sending log record via websocket:", log_record.getMessage())
+                    await self.websocket.send_json(log_record)
                 else:
-                    await async_wait_10ms()
+                    await await_10ms()
         except asyncio.CancelledError:
             logger.debug("Log relay task cancelled")
         except WebSocketDisconnect:
             logger.info("Client disconnected, ending log relay task...")
         except Exception as e:
             logger.exception(f"Error in websocket log relay: {e.__class__}: {e}")
-            get_skellycam_app().kill_everything()
+            self._global_kill_flag.value = True
             raise
 
     async def _client_message_handler(self):
@@ -186,10 +216,14 @@ class WebsocketServer:
                                 logger.error(f"Failed to decode JSON message: {e}")
                         else:
                             # Handle plain text messages
-                            logger.info(f"Websocket received message: `{text_content}`")
-                            # Add any specific handling for plain text commands here
-
-
+                            if text_content.startswith("ping"):
+                                await self.websocket.send_text("pong")
+                            elif text_content.startswith("pong"):
+                                pass
+                            else:
+                                logger.info(f"Websocket received message: `{text_content}`")
+                    elif "websocket" in message:
+                        logger.trace(f"Received unknown websocket control message: {message}")
                     else:
                         logger.warning(f"Received unexpected message format: {message}")
 
@@ -197,7 +231,7 @@ class WebsocketServer:
             logger.debug("Client message handler task cancelled")
         except Exception as e:
             logger.exception(f"Error handling client message: {e.__class__}: {e}")
-            get_skellycam_app().kill_everything()
+            self._global_kill_flag.value = True
             raise
         finally:
             logger.info("Ending client message handler...")

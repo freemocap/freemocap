@@ -113,9 +113,9 @@ class FrameData(BaseModel):
 
     def to_dict(self):
         return {
-            "timestamps": self.timestamps.dict(),
-            "tracked_points": {name: point.dict() for name, point in self.tracked_points.items()},
-            "reprojection_error": {name: error.dict() for name, error in self.reprojection_error.items()},
+            "timestamps": self.timestamps.model_dump(),
+            "tracked_points": {name: point.model_dump() for name, point in self.tracked_points.items()},
+            "reprojection_error": {name: error.model_dump() for name, error in self.reprojection_error.items()},
         }
 
 

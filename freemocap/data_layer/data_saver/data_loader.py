@@ -279,7 +279,6 @@ class DataLoader:
         """
         if self.reprojection_error_frame_name_value is None:
             return {}
-        num_cams = self.reprojection_error_camera_frame_name_value.shape[0]
         reprojection_error_data = {}
         for index, point_name in enumerate(self._reprojection_error_point_names):
             reprojection_error_data[point_name] = ReprojectionError(

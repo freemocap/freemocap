@@ -22,7 +22,7 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     RAW_DATA_FOLDER_NAME,
     REPROJECTION_ERROR_NPY_FILE_NAME,
     FULL_REPROJECTION_ERROR_NPY_FILE_NAME,
-    REPROJECTION_FILTERED_PREFIX
+    REPROJECTION_FILTERED_PREFIX,
 )
 from freemocap.system.paths_and_filenames.path_getters import (
     get_output_data_folder_path,
@@ -59,6 +59,7 @@ class DataLoader:
 
         self._set_file_prefix()
         self._load_data()
+        self._set_reprojection_error_point_names()
 
     def _load_data(self):
         self._load_timestamps()
@@ -104,7 +105,9 @@ class DataLoader:
         self._validate_numpy_array(self.center_of_mass_xyz, "center of mass")
         self._validate_numpy_array(self.segment_center_of_mass_segment_xyz, "segment center of mass")
         self._validate_numpy_array(self.reprojection_error_frame_name_value, "average reprojection error")
-        self._validate_numpy_array(self.reprojection_error_camera_frame_name_value, "reprojection error by camera", frame_index=1)
+        self._validate_numpy_array(
+            self.reprojection_error_camera_frame_name_value, "reprojection error by camera", frame_index=1
+        )
 
     def _validate_dataframe(self, df, df_name):
         if df is not None and len(df) != self.number_of_frames:
@@ -160,8 +163,14 @@ class DataLoader:
         Load reprojection error averaged across cameras and by camera.
         Defaults to using reprojection filtered values if they exist.
         """
-        filtered_average_error_path = self._raw_data_folder_path / f"{REPROJECTION_FILTERED_PREFIX}{self._file_prefix}{REPROJECTION_ERROR_NPY_FILE_NAME}"
-        filtered_by_camera_path = self._raw_data_folder_path / f"{REPROJECTION_FILTERED_PREFIX}{self._file_prefix}{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
+        filtered_average_error_path = (
+            self._raw_data_folder_path
+            / f"{REPROJECTION_FILTERED_PREFIX}{self._file_prefix}{REPROJECTION_ERROR_NPY_FILE_NAME}"
+        )
+        filtered_by_camera_path = (
+            self._raw_data_folder_path
+            / f"{REPROJECTION_FILTERED_PREFIX}{self._file_prefix}{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
+        )
 
         raw_average_error_path = self._raw_data_folder_path / f"{self._file_prefix}{REPROJECTION_ERROR_NPY_FILE_NAME}"
         raw_by_camera_path = self._raw_data_folder_path / f"{self._file_prefix}{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
@@ -268,17 +277,15 @@ class DataLoader:
         """
         Get reprojection error data for a given frame number.
         """
-        if self.reprojection_error_frame_name_value is None or self.reprojection_error_camera_frame_name_value is None:
+        if self.reprojection_error_frame_name_value is None:
             return {}
         num_cams = self.reprojection_error_camera_frame_name_value.shape[0]
         reprojection_error_data = {}
-        for index, point_name in enumerate(self._model_info.landmark_names):
-            reprojection_error_data[point_name] = ReprojectionError(value=self.reprojection_error_frame_name_value[frame_number, index])
-            for cam in range(num_cams):
-                reprojection_error_data[f"{point_name}_cam{cam}"] = ReprojectionError(value=self.reprojection_error_camera_frame_name_value[cam, frame_number, index])
-
+        for index, point_name in enumerate(self._reprojection_error_point_names):
+            reprojection_error_data[point_name] = ReprojectionError(
+                value=self.reprojection_error_frame_name_value[frame_number, index]
+            )
         return reprojection_error_data
-
 
     def _process_dataframe(self, data_frame) -> Dict[str, Any]:
         """
@@ -315,3 +322,20 @@ class DataLoader:
 
         if self._file_prefix[-1] != "_":
             self._file_prefix += "_"
+
+    def _set_reprojection_error_point_names(self) -> None:
+        landmark_names = []
+        landmark_names.extend(self._model_info.body_landmark_names)
+
+        if self.include_hands:
+            right_hand_names = [f"right_{i:04d}" for i in range(21)]
+            landmark_names.extend(right_hand_names)
+
+            left_hand_names = [f"left_{i:04d}" for i in range(21)]
+            landmark_names.extend(left_hand_names)
+
+        if self.include_face:
+            face_names = [f"{i:04d}" for i in range(478)]
+            landmark_names.extend(face_names)
+
+        self._reprojection_error_point_names = landmark_names

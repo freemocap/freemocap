@@ -17,10 +17,12 @@ class Point(BaseModel):
     y: Optional[float] = Field(None, description="The Y-coordinate of the point")
     z: Optional[float] = Field(None, description="The Z-coordinate of the point")
 
+
 class ReprojectionError(BaseModel):
     """
     Reprojection error of a 3D point at a particular time
     """
+
     value: Optional[float] = Field(None, description="Reprojection error of the point")
 
 
@@ -97,7 +99,9 @@ class FrameData(BaseModel):
 
     timestamps: Timestamps = Field(default_factory=Timestamps, description="Timestamp data")
     tracked_points: Dict[str, Point] = Field(default_factory=dict, description="The points being tracked")
-    reprojection_error: Dict[str, ReprojectionError] = Field(default_factory=dict, description="Reprojection error of the point being tracked")
+    reprojection_error: Dict[str, ReprojectionError] = Field(
+        default_factory=dict, description="Reprojection error of the point being tracked"
+    )
 
     @property
     def tracked_point_names(self):
@@ -111,7 +115,7 @@ class FrameData(BaseModel):
         return {
             "timestamps": self.timestamps.dict(),
             "tracked_points": {name: point.dict() for name, point in self.tracked_points.items()},
-            "reprojection_error": {name: error.dict() for name, error in self.reprojection_error.items()}
+            "reprojection_error": {name: error.dict() for name, error in self.reprojection_error.items()},
         }
 
 
@@ -121,8 +125,9 @@ class InfoDict(BaseModel):
     """
 
     # segment_lengths: Dict[str, Any] = Field(default_factory=dict, description="The lengths of the segments of the body")
-    schemas: Optional[Dict[str, Any]] = Field(default_factory=dict,
-                                              description="The segment connections for the tracked points")
+    schemas: Optional[Dict[str, Any]] = Field(
+        default_factory=dict, description="The segment connections for the tracked points"
+    )
 
 
 if __name__ == "__main__":

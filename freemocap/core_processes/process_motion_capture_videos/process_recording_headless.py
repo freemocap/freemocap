@@ -20,14 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 def process_recording_headless(
-    recording_path: Union[str, Path],
-    path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
-    path_to_blender_executable: Optional[Union[str, Path]] = None,
-    recording_processing_parameter_model: Optional[ProcessingParameterModel] = None,
-    recording_info_model: Optional[RecordingInfoModel] = None,
-    run_blender: bool = True,
-    make_jupyter_notebook: bool = True,
-    use_tqdm: bool = True,
+        recording_path: Union[str, Path],
+        path_to_camera_calibration_toml: Optional[Union[str, Path]] = None,
+        path_to_blender_executable: Optional[Union[str, Path]] = None,
+        recording_processing_parameter_model: Optional[ProcessingParameterModel] = None,
+        recording_info_model: Optional[RecordingInfoModel] = None,
+        run_blender: bool = True,
+        make_jupyter_notebook: bool = True,
+        use_tqdm: bool = True,
 ):
     if path_to_blender_executable is None:
         path_to_blender_executable = get_best_guess_of_blender_path()
@@ -60,7 +60,7 @@ def process_recording_headless(
                 f"There are {number_of_videos} videos. Must provide a calibration toml file for multicamera recordings."
             )
 
-    recording_info_dict = rec.dict(exclude={"recording_info_model"})
+    recording_info_dict = rec.model_dump(exclude={"recording_info_model"})
 
     Path(rec.recording_info_model.output_data_folder_path).mkdir(parents=True, exist_ok=True)
 

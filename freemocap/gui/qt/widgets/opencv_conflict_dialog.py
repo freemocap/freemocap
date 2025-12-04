@@ -2,6 +2,7 @@ import logging
 import subprocess
 import sys
 import threading
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QLabel, QHBoxLayout, QFrame
 

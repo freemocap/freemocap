@@ -106,10 +106,6 @@ QPushButton:pressed {
   background-color: darken($secondary-button, 20%);
 }
 
-QPushButton:pressed {
-  background-color: darken($secondary-button, 20%);
-}
-
 QPushButton#start_recording_button {
   font-size: 16px;
   background-color: $recording-button-red;

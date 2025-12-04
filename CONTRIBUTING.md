@@ -77,6 +77,23 @@ COMING SOON
 
 COMING SOON
 
+## Updating Documentation
+
+**Notes**
+
+- Our documentation uses [JetBrains Writerside](https://www.jetbrains.com/pycharm/) and lives at [https://freemocap.github.io/documentation/](https://freemocap.github.io/documentation/).
+- Updating docs guidelines for non-org members on official docs: [https://freemocap.github.io/documentation/updating-documentation.html](https://freemocap.github.io/documentation/updating-documentation.html)
+
+**Steps** 
+
+1. In PyCharm, install the Writerside plugin, restart PyCharm, then select the Writerside plugin in the left toolbar. 
+2. Select `Git` → `Clone` from the top menu.
+    * URL: [https://github.com/freemocap/documentation/](https://github.com/freemocap/documentation/)
+3. Create a branch. 
+    * This can be done in PyCharm by clicking `main` in the top left and selecting `+ New Branch`.
+4. Use the Writerside formatting style guide: [Markdown vs semantic markup - Writerside Documentation](https://www.jetbrains.com/help/writerside/markup-reference.html)
+5. Once you've finished making your updates to documentation, submit a PR onto `main`.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under its [AGPL](LICENSE) License.

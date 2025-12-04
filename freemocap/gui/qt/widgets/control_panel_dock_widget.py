@@ -18,12 +18,12 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.process_mot
 
 class ControlPanelDockWidget(QDockWidget):
     def __init__(
-        self,
-        camera_configuration_parameter_tree_widget: SkellyCamParameterTreeWidget,
-        calibration_control_panel: CalibrationControlPanel,
-        process_motion_capture_data_panel: ProcessMotionCaptureDataPanel,
-        visualize_data_widget: QWidget,
-        parent=None,
+            self,
+            camera_configuration_parameter_tree_widget: SkellyCamParameterTreeWidget,
+            calibration_control_panel: CalibrationControlPanel,
+            process_motion_capture_data_panel: ProcessMotionCaptureDataPanel,
+            visualize_data_widget: QWidget,
+            parent=None,
     ):
         super().__init__(parent=parent)
 

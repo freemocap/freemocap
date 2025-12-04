@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 import shutil
+import threading
 from pathlib import Path
 from typing import Union, List, Callable
 
@@ -20,7 +21,6 @@ from skellycam import (
     SkellyCamWidget,
 )
 from tqdm import tqdm
-
 
 from freemocap.data_layer.generate_jupyter_notebook.generate_jupyter_notebook import (
     generate_jupyter_notebook,
@@ -63,11 +63,11 @@ from freemocap.gui.qt.widgets.home_widget import (
 from freemocap.gui.qt.widgets.import_videos_wizard import ImportVideosWizard
 from freemocap.gui.qt.widgets.log_view_widget import LogViewWidget
 from freemocap.gui.qt.widgets.opencv_conflict_dialog import OpencvConflictDialog
+from freemocap.gui.qt.widgets.release_notes_dialogs.tabbed_release_notes_dialog import TabbedReleaseNotesDialog
 from freemocap.gui.qt.widgets.set_data_folder_dialog import SetDataFolderDialog
 from freemocap.gui.qt.widgets.welcome_screen_dialog import WelcomeScreenDialog
 from freemocap.gui.qt.workers.download_sample_data_thread_worker import DownloadDataThreadWorker
 from freemocap.gui.qt.workers.export_to_blender_thread_worker import ExportToBlenderThreadWorker
-
 # reboot GUI method based on this - https://stackoverflow.com/a/56563926/14662833
 from freemocap.system.open_file import open_file
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -91,10 +91,10 @@ logger = logging.getLogger(__name__)
 
 class MainWindow(QMainWindow):
     def __init__(
-        self,
-        freemocap_data_folder_path: Union[str, Path],
-        pipedream_pings: PipedreamPings,
-        parent=None,
+            self,
+            freemocap_data_folder_path: Union[str, Path],
+            pipedream_pings: PipedreamPings,
+            parent=None,
     ):
         super().__init__(parent=parent)
         self._log_view_widget = LogViewWidget(parent=self)  # start this first so it will grab the setup logs
@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
 
         self.setMinimumSize(1280, 720)
         self.setWindowIcon(QIcon(PATH_TO_FREEMOCAP_LOGO_SVG))
-        self.setWindowTitle("freemocap \U0001F480 \U00002728")
+        self.setWindowTitle("freemocap \U0001f480 \U00002728")
 
         dummy_widget = QWidget()
         self._layout = QHBoxLayout()
@@ -114,7 +114,7 @@ class MainWindow(QMainWindow):
         self._freemocap_data_folder_path = freemocap_data_folder_path
         self._pipedream_pings = pipedream_pings
 
-        self._gui_state = load_gui_state(get_gui_state_json_path())
+        self._gui_state: GuiState = load_gui_state(get_gui_state_json_path())
 
         self._kill_thread_event = multiprocessing.Event()
 
@@ -146,6 +146,8 @@ class MainWindow(QMainWindow):
         self._control_panel_widget = self._create_control_panel_widget(log_update=self._log_view_widget.add_log)
         self._tools_dock_widget.setWidget(self._control_panel_widget)
 
+        self._connect_calibration_updates()
+
         log_view_dock_widget = QDockWidget("Log View", self)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, log_view_dock_widget)
         log_view_dock_widget.setWidget(self._log_view_widget)
@@ -168,15 +170,17 @@ class MainWindow(QMainWindow):
         self._active_recording_info_widget.set_active_recording(recording_folder_path=folder_path)
 
         if (
-            self._controller_group_box.auto_process_videos_checked
-            and self._controller_group_box.mocap_videos_radio_button_checked
+                self._controller_group_box.auto_process_videos_checked
+                and self._controller_group_box.mocap_videos_radio_button_checked
         ):
             logger.info("'Auto process videos' checkbox is checked - triggering 'Process Motion Capture Data' button")
             self._process_motion_capture_data_panel.process_motion_capture_data_button.click()
         elif self._controller_group_box.calibration_videos_radio_button_checked:
             logger.info("Processing calibration videos")
             self._process_motion_capture_data_panel.calibrate_from_active_recording(
-                charuco_square_size_mm=float(self._controller_group_box.charuco_square_size)
+                charuco_square_size_mm=float(self._controller_group_box.charuco_square_size),
+                use_charuco_as_groundplane=self._controller_group_box.use_charuco_as_groundplane,
+                charuco_board_name=self._controller_group_box.charuco_board_name,
             )
 
     def _handle_processing_finished_signal(self):
@@ -355,7 +359,7 @@ class MainWindow(QMainWindow):
         try:
             self._process_motion_capture_data_panel.update_calibration_path()
         except (
-            AttributeError
+                AttributeError
         ):  # Active Recording and Data Panel widgets rely on each other, so we're guaranteed to hit this every time the app opens
             logger.debug("Process motion capture data panel not created yet, skipping claibraiton setting")
         except Exception as e:
@@ -435,7 +439,7 @@ class MainWindow(QMainWindow):
         self._visualization_control_panel._blender_executable_label.setText(str(self._gui_state.blender_path))
         self._visualization_control_panel._blender_executable_path = str(self._gui_state.blender_path)
 
-        save_gui_state(self._gui_state, get_gui_state_json_path())
+        save_gui_state(self._gui_state)
 
         self._active_recording_info_widget.set_active_recording(recording_folder_path=get_most_recent_recording_path())
 
@@ -470,6 +474,20 @@ class MainWindow(QMainWindow):
 
         self._welcome_screen_dialog.exec()
 
+    def open_release_notes_popup(self):
+        logger.info("Opening `Release Notes` dialog... ")
+
+        self._gui_state.shown_latest_release_notes = True
+
+        save_gui_state(gui_state=self._gui_state, file_pathstring=get_gui_state_json_path())
+
+        dialog = TabbedReleaseNotesDialog(
+            kill_thread_event=threading.Event(),
+            gui_state=self._gui_state,
+            dark_mode=True,  # Set to True for dark mode, False for light mode
+        )
+        dialog.exec()
+
     def open_opencv_conflict_dialog(self):
         self._opencv_conflict_dialog = OpencvConflictDialog(
             gui_state=self._gui_state, kill_thread_event=self._kill_thread_event, parent=self
@@ -487,9 +505,9 @@ class MainWindow(QMainWindow):
         if self._settings_dialog.result():
             self.reboot_gui()
 
-    def download_data(self, download_url: str):
+    def download_data(self, dataset_name: str):
         logger.info("Downloading sample data")
-        self.download_data_thread_worker = DownloadDataThreadWorker(dowload_url=download_url)
+        self.download_data_thread_worker = DownloadDataThreadWorker(dataset_name=dataset_name)
         self.download_data_thread_worker.start()
         self.download_data_thread_worker.finished.connect(self._handle_download_data_finished)
 
@@ -509,12 +527,12 @@ class MainWindow(QMainWindow):
 
         if not synchronization_bool:
             for video_path in tqdm(
-                video_paths,
-                desc="Importing videos...",
-                colour=[255, 128, 0],
-                unit="video",
-                unit_scale=True,
-                leave=False,
+                    video_paths,
+                    desc="Importing videos...",
+                    colour=[255, 128, 0],
+                    unit="video",
+                    unit_scale=True,
+                    leave=False,
             ):
                 if not Path(video_path).exists():
                     logger.error(f"{video_path} does not exist!")
@@ -536,6 +554,14 @@ class MainWindow(QMainWindow):
 
         self._active_recording_info_widget.set_active_recording(
             recording_folder_path=Path(folder_to_save_videos).parent
+        )
+
+    def _connect_calibration_updates(self):
+        self._process_motion_capture_data_panel._calibration_control_panel.control_panel_calibration_updated.connect(
+            self._controller_group_box.charuco_option_updated
+        )
+        self._controller_group_box.controller_group_box_calibration_updated.connect(
+            self._process_motion_capture_data_panel._calibration_control_panel.charuco_option_updated
         )
 
     def reboot_gui(self):

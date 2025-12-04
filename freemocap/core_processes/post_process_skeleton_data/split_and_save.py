@@ -1,9 +1,9 @@
+import logging
 from pathlib import Path
 from typing import Dict, List
-import logging
+
 import numpy as np
 import pandas as pd
-
 from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 from freemocap.system.paths_and_filenames.file_and_folder_names import (
@@ -15,7 +15,6 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
 
 logger = logging.getLogger(__name__)
 
-
 # TODO: This is dependent on the ordering we currently use for mediapipe, maybe it should live in model_info
 category_info = {
     "body": BODY_3D_DATAFRAME_CSV_FILE_NAME,
@@ -26,12 +25,13 @@ category_info = {
 
 DEFAULT_CATEGORY_NAME = "body"
 
+
 # TODO: come up with a sensible way of splitting this for different types of trackers
 
 
 def split_data(
-    skeleton_3d_data: np.ndarray,
-    model_info: ModelInfo,
+        skeleton_3d_data: np.ndarray,
+        model_info: ModelInfo,
 ) -> Dict[str, np.ndarray]:
     """
     Splits the skeleton data into separate arrays for each data category using the provided model info.
@@ -82,7 +82,7 @@ def create_column_names(model_info: ModelInfo) -> Dict[str, List[str]]:
         if hasattr(model_info, tracked_points_name):
             category_column_names = []
             if hasattr(model_info, landmark_names) and len(getattr(model_info, landmark_names)) == getattr(
-                model_info, tracked_points_name
+                    model_info, tracked_points_name
             ):
                 for name in getattr(model_info, landmark_names):
                     category_column_names.append(f"{category}_{name}_x")
@@ -102,9 +102,9 @@ def create_column_names(model_info: ModelInfo) -> Dict[str, List[str]]:
         tracked_points_name = "num_tracked_points"
         category_column_names = []
         if (
-            hasattr(model_info, landmark_names)
-            and hasattr(model_info, tracked_points_name)
-            and len(getattr(model_info, landmark_names)) == getattr(model_info, tracked_points_name)
+                hasattr(model_info, landmark_names)
+                and hasattr(model_info, tracked_points_name)
+                and len(getattr(model_info, landmark_names)) == getattr(model_info, tracked_points_name)
         ):
             for name in getattr(model_info, landmark_names):
                 category_column_names.append(f"{category}_{name}_x")
@@ -122,10 +122,10 @@ def create_column_names(model_info: ModelInfo) -> Dict[str, List[str]]:
 
 
 def save_split_csv(
-    output_data_folder_path: str,
-    split_data: Dict[str, np.ndarray],
-    column_names: Dict[str, List[str]],
-    model_info: ModelInfo,
+        output_data_folder_path: str,
+        split_data: Dict[str, np.ndarray],
+        column_names: Dict[str, List[str]],
+        model_info: ModelInfo,
 ) -> None:
     """
     Saves the split skeleton data to CSV files using column names.
@@ -178,9 +178,9 @@ def save_split_npy(output_data_folder_path: str, split_data: Dict[str, np.ndarra
 
 
 def split_and_save(
-    skeleton_3d_data: np.ndarray,
-    model_info: ModelInfo,
-    output_data_folder_path: str,
+        skeleton_3d_data: np.ndarray,
+        model_info: ModelInfo,
+        output_data_folder_path: str,
 ) -> None:
     """
     Splits the skeleton data into separate arrays for each data category using the provided model info.

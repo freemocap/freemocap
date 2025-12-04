@@ -31,13 +31,15 @@ class ControlPanelDockWidget(QDockWidget):
 
 class ControlPanelWidget(QWidget):
     def __init__(
-        self,
-        camera_configuration_parameter_tree_widget: SkellyCamParameterTreeWidget,
-        process_motion_capture_data_panel: ProcessMotionCaptureDataPanel,
-        visualize_data_widget: QWidget,
-        parent=None,
+            self,
+            camera_configuration_parameter_tree_widget: SkellyCamParameterTreeWidget,
+            process_motion_capture_data_panel: ProcessMotionCaptureDataPanel,
+            visualize_data_widget: QWidget,
+            parent=None,
     ):
         super().__init__(parent=parent)
+
+        self.setMinimumWidth(500)
 
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)

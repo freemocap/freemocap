@@ -3,7 +3,6 @@ from typing import List, Dict, Tuple
 from typing import Optional, Any
 
 from pydantic import BaseModel, Field, model_validator
-
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeModelInfo,
 )
@@ -77,9 +76,9 @@ class SkeletonSchema(BaseModel):
 
     def dict(self):
         d = {}
-        d["body"] = self.body.dict()
-        d["hands"] = {hand: hand_schema.dict() for hand, hand_schema in self.hands.items()}
-        d["face"] = self.face.dict()
+        d["body"] = self.body.model_dump()
+        d["hands"] = {hand: hand_schema.model_dump() for hand, hand_schema in self.hands.items()}
+        d["face"] = self.face.model_dump()
         return d
 
 
@@ -116,14 +115,14 @@ class FrameData(BaseModel):
         }
 
 
-
 class InfoDict(BaseModel):
     """
     A dictionary of information about this recording, such as the measured segement lengths and the segment connections that we can use to interpret the tracked points (i.e./e.g. how to connect the dots of skeleton)
     """
 
     # segment_lengths: Dict[str, Any] = Field(default_factory=dict, description="The lengths of the segments of the body")
-    schemas: Optional[Dict[str, Any]] = Field(default_factory=dict, description="The segment connections for the tracked points")
+    schemas: Optional[Dict[str, Any]] = Field(default_factory=dict,
+                                              description="The segment connections for the tracked points")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import logging
+import re
 from pathlib import Path
 
 from PySide6.QtWidgets import (
@@ -79,7 +80,7 @@ class VisualizationControlPanel(QWidget):
 
         if "blender" in path_selection[0]:
             self._blender_executable_path = path_selection[0]
-        elif "Blender.app" in path_selection[0]:
+        elif re.match(r".*Blender.*\.app$", path_selection[0]):
             self._blender_executable_path = path_selection[0] + "/Contents/MacOS/Blender"  # executable is buried on mac
         else:
             self._blender_executable_path = BLENDER_EXECUTABLE_PATH_MISSING_STRING
@@ -88,7 +89,7 @@ class VisualizationControlPanel(QWidget):
         self._blender_executable_label.setText(self._blender_executable_path)
 
         if (
-            self._blender_executable_path != BLENDER_EXECUTABLE_PATH_MISSING_STRING
+                self._blender_executable_path != BLENDER_EXECUTABLE_PATH_MISSING_STRING
         ):  # don't persist missing paths across sessions
             self._gui_state.blender_path = self._blender_executable_path
             save_gui_state(gui_state=self._gui_state, file_pathstring=get_gui_state_json_path())

@@ -8,6 +8,8 @@ import queue
 import time
 from collections import defaultdict, Counter
 from copy import copy
+from pathlib import Path
+from typing import List
 
 import cv2
 import numpy as np
@@ -21,12 +23,33 @@ from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.cluster.vq import whiten
 from scipy.linalg import inv as inverse
 from scipy.sparse import dok_matrix
+from skellytracker.process_folder_of_videos import process_list_of_videos
+from skellytracker.trackers.charuco_tracker.charuco_model_info import CharucoModelInfo, CharucoTrackingParams
 from tqdm import trange
 
 numba_logger = logging.getLogger("numba")
 numba_logger.setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
+
+ARUCO_DICTS = {
+    (4, 50): cv2.aruco.DICT_4X4_50,
+    (5, 50): cv2.aruco.DICT_5X5_50,
+    (6, 50): cv2.aruco.DICT_6X6_50,
+    (7, 50): cv2.aruco.DICT_7X7_50,
+    (4, 100): cv2.aruco.DICT_4X4_100,
+    (5, 100): cv2.aruco.DICT_5X5_100,
+    (6, 100): cv2.aruco.DICT_6X6_100,
+    (7, 100): cv2.aruco.DICT_7X7_100,
+    (4, 250): cv2.aruco.DICT_4X4_250,
+    (5, 250): cv2.aruco.DICT_5X5_250,
+    (6, 250): cv2.aruco.DICT_6X6_250,
+    (7, 250): cv2.aruco.DICT_7X7_250,
+    (4, 1000): cv2.aruco.DICT_4X4_1000,
+    (5, 1000): cv2.aruco.DICT_5X5_1000,
+    (6, 1000): cv2.aruco.DICT_6X6_1000,
+    (7, 1000): cv2.aruco.DICT_7X7_1000,
+}
 
 
 @jit(nopython=True, parallel=False)
@@ -36,8 +59,8 @@ def triangulate_simple(points, camera_mats):
     for i in range(num_cams):
         x, y = points[i]
         mat = camera_mats[i]
-        A[(i * 2) : (i * 2 + 1)] = x * mat[2] - mat[0]
-        A[(i * 2 + 1) : (i * 2 + 2)] = y * mat[2] - mat[1]
+        A[(i * 2): (i * 2 + 1)] = x * mat[2] - mat[0]
+        A[(i * 2 + 1): (i * 2 + 2)] = y * mat[2] - mat[1]
     u, s, vh = np.linalg.svd(A, full_matrices=True)
     p3d = vh[-1]
     p3d = p3d[:3] / p3d[3]
@@ -370,20 +393,24 @@ def get_initial_extrinsics(rtvecs, cam_names=None):
 
 class Camera:
     def __init__(
-        self,
-        matrix=np.eye(3),
-        dist=np.zeros(5),
-        size=None,
-        rvec=np.zeros(3),
-        tvec=np.zeros(3),
-        name=None,
-        extra_dist=False,
+            self,
+            matrix=np.eye(3),
+            dist=np.zeros(5),
+            size=None,
+            rvec=np.zeros(3),
+            tvec=np.zeros(3),
+            world_orientation=np.eye(3),
+            world_position=np.zeros(3),
+            name=None,
+            extra_dist=False,
     ):
         self.set_camera_matrix(matrix)
         self.set_distortions(dist)
         self.set_size(size)
         self.set_rotation(rvec)
         self.set_translation(tvec)
+        self.set_world_orientation(world_orientation)
+        self.set_world_position(world_position)
         self.set_name(name)
         self.extra_dist = extra_dist
 
@@ -395,6 +422,8 @@ class Camera:
             "distortions": self.get_distortions().tolist(),
             "rotation": self.get_rotation().tolist(),
             "translation": self.get_translation().tolist(),
+            "world_orientation": self.get_world_orientation().tolist(),
+            "world_position": self.get_world_position().tolist()
         }
 
     def load_dict(self, d):
@@ -404,6 +433,9 @@ class Camera:
         self.set_distortions(d["distortions"])
         self.set_name(d["name"])
         self.set_size(d["size"])
+
+        self.set_world_orientation(d.get("world_orientation", np.eye(3)))
+        self.set_world_position(d.get("world_position", np.zeros(3)))
 
     def from_dict(d):
         cam = Camera()
@@ -447,6 +479,18 @@ class Camera:
 
     def get_translation(self):
         return self.tvec
+
+    def set_world_orientation(self, world_orientation):
+        self.world_orientation = np.asarray(world_orientation, dtype="float64").reshape(3, 3)
+
+    def get_world_orientation(self):
+        return self.world_orientation
+
+    def set_world_position(self, world_position):
+        self.world_position = np.array(world_position, dtype="float64").ravel()
+
+    def get_world_position(self):
+        return self.world_position
 
     def get_extrinsics_mat(self):
         return make_M(self.rvec, self.tvec)
@@ -541,19 +585,21 @@ class Camera:
             tvec=self.get_translation().copy(),
             name=self.get_name(),
             extra_dist=self.extra_dist,
+            world_orientation=self.get_world_orientation().copy(),
+            world_position=self.get_world_position().copy()
         )
 
 
 class FisheyeCamera(Camera):
     def __init__(
-        self,
-        matrix=np.eye(3),
-        dist=np.zeros(4),
-        size=None,
-        rvec=np.zeros(3),
-        tvec=np.zeros(3),
-        name=None,
-        extra_dist=False,
+            self,
+            matrix=np.eye(3),
+            dist=np.zeros(4),
+            size=None,
+            rvec=np.zeros(3),
+            tvec=np.zeros(3),
+            name=None,
+            extra_dist=False,
     ):
         self.set_camera_matrix(matrix)
         self.set_distortions(dist)
@@ -649,6 +695,7 @@ class CameraGroup:
     def __init__(self, cameras, metadata={}):
         self.cameras = cameras
         self.metadata = metadata
+        self.charuco_2d_data = None
 
     def subset_cameras(self, indices):
         cams = [self.cameras[ix].copy() for ix in indices]
@@ -727,13 +774,13 @@ class CameraGroup:
         return out
 
     def triangulate_possible(
-        self,
-        points,
-        undistort=True,
-        min_cams=2,
-        progress=False,
-        threshold=0.5,
-        kill_event: multiprocessing.Event = None,
+            self,
+            points,
+            undistort=True,
+            min_cams=2,
+            progress=False,
+            threshold=0.5,
+            kill_event: multiprocessing.Event = None,
     ):
         """Given an CxNxPx2 array, this returns an Nx3 array of points
         by triangulating all possible points and picking the ones with
@@ -823,7 +870,7 @@ class CameraGroup:
         return out  # simplify output so that `triangulate_ransac` can be used exactly the same way as `triangulate`
 
     def triangulate_ransac(
-        self, points, undistort=True, min_cams=2, progress=False, kill_event: multiprocessing.Event = None
+            self, points, undistort=True, min_cams=2, progress=False, kill_event: multiprocessing.Event = None
     ):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
@@ -883,18 +930,18 @@ class CameraGroup:
         return errors
 
     def bundle_adjust_iter(
-        self,
-        p2ds,
-        extra=None,
-        n_iters=10,
-        start_mu=15,
-        end_mu=1,
-        max_nfev=200,
-        ftol=1e-4,
-        n_samp_iter=100,
-        n_samp_full=1000,
-        error_threshold=0.3,
-        verbose=False,
+            self,
+            p2ds,
+            extra=None,
+            n_iters=10,
+            start_mu=15,
+            end_mu=1,
+            max_nfev=200,
+            ftol=1e-4,
+            n_samp_iter=100,
+            n_samp_full=1000,
+            error_threshold=0.3,
+            verbose=False,
     ):
         """Given an CxNx2 array of 2D points,
         where N is the number of points and C is the number of cameras,
@@ -1005,16 +1052,16 @@ class CameraGroup:
         return error
 
     def bundle_adjust(
-        self,
-        p2ds,
-        extra=None,
-        loss="linear",
-        threshold=50,
-        ftol=1e-4,
-        max_nfev=1000,
-        weights=None,
-        start_params=None,
-        verbose=True,
+            self,
+            p2ds,
+            extra=None,
+            loss="linear",
+            threshold=50,
+            ftol=1e-4,
+            max_nfev=1000,
+            weights=None,
+            start_params=None,
+            verbose=True,
     ):
         """Given an CxNx2 array of 2D points,
         where N is the number of points and C is the number of cameras,
@@ -1079,7 +1126,7 @@ class CameraGroup:
         n_cams = len(self.cameras)
         sub = n_cam_params * n_cams
         n3d = p2ds.shape[1] * 3
-        p3ds_test = params[sub : sub + n3d].reshape(-1, 3)
+        p3ds_test = params[sub: sub + n3d].reshape(-1, 3)
         errors = self.reprojection_error(p3ds_test, p2ds)
         errors_reproj = errors[good]
 
@@ -1089,8 +1136,8 @@ class CameraGroup:
             min_scale = np.min(objp[objp > 0])
             n_boards = int(np.max(ids)) + 1
             a = sub + n3d
-            rvecs = params[a : a + n_boards * 3].reshape(-1, 3)
-            tvecs = params[a + n_boards * 3 : a + n_boards * 6].reshape(-1, 3)
+            rvecs = params[a: a + n_boards * 3].reshape(-1, 3)
+            tvecs = params[a + n_boards * 3: a + n_boards * 6].reshape(-1, 3)
             expected = transform_points(objp, rvecs[ids], tvecs[ids])
             errors_obj = 2 * (p3ds_test - expected).ravel() / min_scale
         else:
@@ -1223,29 +1270,29 @@ class CameraGroup:
 
         x0 = np.zeros(total_cam_params + p3ds.size + total_board_params)
         x0[:total_cam_params] = cam_params
-        x0[total_cam_params : total_cam_params + p3ds.size] = p3ds.ravel()
+        x0[total_cam_params: total_cam_params + p3ds.size] = p3ds.ravel()
 
         if extra is not None:
             start_board = total_cam_params + p3ds.size
-            x0[start_board : start_board + n_boards * 3] = rvecs.ravel()
-            x0[start_board + n_boards * 3 : start_board + n_boards * 6] = tvecs.ravel()
+            x0[start_board: start_board + n_boards * 3] = rvecs.ravel()
+            x0[start_board + n_boards * 3: start_board + n_boards * 6] = tvecs.ravel()
 
         return x0, n_cam_params
 
     def optim_points(
-        self,
-        points,
-        p3ds,
-        constraints=[],
-        constraints_weak=[],
-        scale_smooth=4,
-        scale_length=2,
-        scale_length_weak=0.5,
-        reproj_error_threshold=15,
-        reproj_loss="soft_l1",
-        n_deriv_smooth=1,
-        scores=None,
-        verbose=False,
+            self,
+            points,
+            p3ds,
+            constraints=[],
+            constraints_weak=[],
+            scale_smooth=4,
+            scale_length=2,
+            scale_length_weak=0.5,
+            reproj_error_threshold=15,
+            reproj_loss="soft_l1",
+            n_deriv_smooth=1,
+            scores=None,
+            verbose=False,
     ):
         """
         Take in an array of 2D points of shape CxNxJx2,
@@ -1319,19 +1366,19 @@ class CameraGroup:
         return p3ds_new2
 
     def optim_points_possible(
-        self,
-        points,
-        p3ds,
-        constraints=[],
-        constraints_weak=[],
-        scale_smooth=4,
-        scale_length=2,
-        scale_length_weak=0.5,
-        reproj_error_threshold=15,
-        reproj_loss="soft_l1",
-        n_deriv_smooth=1,
-        scores=None,
-        verbose=False,
+            self,
+            points,
+            p3ds,
+            constraints=[],
+            constraints_weak=[],
+            scale_smooth=4,
+            scale_length=2,
+            scale_length_weak=0.5,
+            reproj_error_threshold=15,
+            reproj_loss="soft_l1",
+            n_deriv_smooth=1,
+            scores=None,
+            verbose=False,
     ):
         """
         Take in an array of 2D points of shape CxNxJxPx2,
@@ -1477,18 +1524,18 @@ class CameraGroup:
 
     @jit(forceobj=True, parallel=True)
     def _error_fun_triangulation(
-        self,
-        params,
-        p2ds,
-        constraints=[],
-        constraints_weak=[],
-        scores=None,
-        scale_smooth=10000,
-        scale_length=1,
-        scale_length_weak=0.2,
-        reproj_error_threshold=100,
-        reproj_loss="soft_l1",
-        n_deriv_smooth=1,
+            self,
+            params,
+            p2ds,
+            constraints=[],
+            constraints_weak=[],
+            scores=None,
+            scale_smooth=10000,
+            scale_length=1,
+            scale_length_weak=0.2,
+            reproj_error_threshold=100,
+            reproj_loss="soft_l1",
+            n_deriv_smooth=1,
     ):
         n_cams, n_frames, n_joints, _ = p2ds.shape
 
@@ -1498,8 +1545,8 @@ class CameraGroup:
 
         # load params
         p3ds = params[:n_3d].reshape((n_frames, n_joints, 3))
-        joint_lengths = np.array(params[n_3d : n_3d + n_constraints])
-        joint_lengths_weak = np.array(params[n_3d + n_constraints :])
+        joint_lengths = np.array(params[n_3d: n_3d + n_constraints])
+        joint_lengths_weak = np.array(params[n_3d + n_constraints:])
 
         # reprojection errors
         p3ds_flat = p3ds.reshape(-1, 3)
@@ -1764,6 +1811,20 @@ class CameraGroup:
         for cam, tvec in zip(self.cameras, tvecs):
             cam.set_translation(tvec)
 
+    def set_world_positions(self, positions):
+        for cam, position, in zip(self.cameras, positions):
+            cam.set_world_position(position)
+
+    def set_world_orientations(self, orientations):
+        for cam, orientation in zip(self.cameras, orientations):
+            cam.set_world_orientation(orientation)
+
+    def get_world_positions(self):
+        return np.stack([cam.get_world_position() for cam in self.cameras])
+
+    def get_world_orientations(self):
+        return np.stack([cam.get_world_orientation() for cam in self.cameras])
+
     def get_rotations(self):
         rvecs = []
         for cam in self.cameras:
@@ -1794,13 +1855,13 @@ class CameraGroup:
             return np.mean(errors)
 
     def calibrate_rows(
-        self,
-        all_rows,
-        board,
-        init_intrinsics=True,
-        init_extrinsics=True,
-        verbose=True,
-        **kwargs,
+            self,
+            all_rows,
+            board,
+            init_intrinsics=True,
+            init_extrinsics=True,
+            verbose=True,
+            **kwargs,
     ):
         assert len(all_rows) == len(self.cameras), "Number of camera detections does not match number of cameras"
 
@@ -1836,21 +1897,62 @@ class CameraGroup:
 
         return error, merged, charuco_frames
 
-    def get_rows_videos(self, videos, board, verbose=True):
+    def get_rows_videos(self, videos: List[List[str]], board: "AniposeCharucoBoard", verbose: bool = True):
+        num_corners = board.total_size
+        self._get_charuco_2d_data(videos=videos, board=board)
+
+        if self.charuco_2d_data is None:
+            raise ValueError(
+                "Charuco 2D data has not been initialized. Call _get_charuco_2d_data() first, or check for errors in the video processing.")
+
         all_rows = []
 
-        for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):
-            rows_cam = []
-            for vnum, vidname in enumerate(cam_videos):
-                if verbose:
-                    print(vidname)
-                rows = board.detect_video(vidname, prefix=vnum, progress=verbose)
-                if verbose:
-                    print("{} boards detected".format(len(rows)))
-                rows_cam.extend(rows)
-            all_rows.append(rows_cam)
+        num_cameras, num_frames, _, _ = self.charuco_2d_data.shape
+        for camera_number in range(num_cameras):
+            camera_rows = []
+            for frame in range(num_frames):
+                filled = self.charuco_2d_data[camera_number, frame, :, :]
+                filled = filled.astype(np.float32)
+                filled = np.reshape(filled, (num_corners, 1, 2))  # Add empty column anipose expects
+                mask = (~np.isnan(filled[:, :, 0])) & (~np.isnan(filled[:, :, 1]))
+                non_empty_ids = np.where(mask)[0]
+                corners = filled[non_empty_ids, :, :]
+                non_empty_ids = non_empty_ids.reshape(-1, 1)  # Add empty column anipose expects
+                if corners.shape[0] != 0:
+                    row = {
+                        "framenum": (0, frame),
+                        "corners": corners,
+                        "ids": non_empty_ids,
+                        "filled": filled,
+                    }
+                    camera_rows.append(row)
+            all_rows.append(camera_rows)
+        if verbose:
+            print(f"Charuco detection results:")
+            for i, rows in enumerate(all_rows):
+                print(f"\tCamera {i} has {len(rows)} frames with detected corners.")
 
         return all_rows
+
+    def _get_charuco_2d_data(self, videos: List[List[str]], board: "AniposeCharucoBoard"):
+        """
+        Processes a list of a list of videos to extract Charuco 2D data.
+        
+        Should be called once during the initial calibration, and then referenced with self.charuco_2d_data
+        """
+        video_paths = [Path(video[0]) for video in videos]
+        charuco_2d_data = process_list_of_videos(
+            model_info=CharucoModelInfo(),
+            tracking_params=CharucoTrackingParams(
+                charuco_squares_x_in=board.squaresX,
+                charuco_squares_y_in=board.squaresY,
+                charuco_dict_id=ARUCO_DICTS[(board.marker_bits, board.dict_size)]
+            ),
+            video_paths=video_paths,
+            num_processes=min(len(videos), multiprocessing.cpu_count() - 1),
+        )
+
+        self.charuco_2d_data = charuco_2d_data
 
     def set_camera_sizes_videos(self, videos):
         for cix, (cam, cam_videos) in enumerate(zip(self.cameras, videos)):
@@ -1861,13 +1963,13 @@ class CameraGroup:
                 cam.set_size(size)
 
     def calibrate_videos(
-        self,
-        videos,
-        board,
-        init_intrinsics=True,
-        init_extrinsics=True,
-        verbose=True,
-        **kwargs,
+            self,
+            videos,
+            board: "AniposeCharucoBoard",
+            init_intrinsics=True,
+            init_extrinsics=True,
+            verbose=True,
+            **kwargs,
     ):
         """Takes as input a list of list of video filenames, one list of each camera.
         Also takes a board which specifies what should be detected in the videos"""
@@ -1942,40 +2044,23 @@ class CameraGroup:
 
 class AniposeCharucoBoard(CharucoBoard):
     def __init__(
-        self,
-        squaresX,
-        squaresY,
-        square_length,
-        marker_length,
-        marker_bits=4,
-        dict_size=50,
-        aruco_dict=None,
-        manually_verify=False,
+            self,
+            squaresX,
+            squaresY,
+            square_length,
+            marker_length,
+            marker_bits=4,
+            dict_size=50,
+            aruco_dict=None,
+            manually_verify=False,
     ):
         self.squaresX = squaresX
         self.squaresY = squaresY
         self.square_length = square_length
         self.marker_length = marker_length
         self.manually_verify = manually_verify
-
-        ARUCO_DICTS = {
-            (4, 50): cv2.aruco.DICT_4X4_50,
-            (5, 50): cv2.aruco.DICT_5X5_50,
-            (6, 50): cv2.aruco.DICT_6X6_50,
-            (7, 50): cv2.aruco.DICT_7X7_50,
-            (4, 100): cv2.aruco.DICT_4X4_100,
-            (5, 100): cv2.aruco.DICT_5X5_100,
-            (6, 100): cv2.aruco.DICT_6X6_100,
-            (7, 100): cv2.aruco.DICT_7X7_100,
-            (4, 250): cv2.aruco.DICT_4X4_250,
-            (5, 250): cv2.aruco.DICT_5X5_250,
-            (6, 250): cv2.aruco.DICT_6X6_250,
-            (7, 250): cv2.aruco.DICT_7X7_250,
-            (4, 1000): cv2.aruco.DICT_4X4_1000,
-            (5, 1000): cv2.aruco.DICT_5X5_1000,
-            (6, 1000): cv2.aruco.DICT_6X6_1000,
-            (7, 1000): cv2.aruco.DICT_7X7_1000,
-        }
+        self.marker_bits = marker_bits
+        self.dict_size = dict_size
 
         dkey = (marker_bits, dict_size)
         self.dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICTS[dkey])
@@ -1990,7 +2075,7 @@ class AniposeCharucoBoard(CharucoBoard):
         total_size = (squaresX - 1) * (squaresY - 1)
 
         objp = np.zeros((total_size, 3), np.float64)
-        objp[:, :2] = np.mgrid[0 : (squaresX - 1), 0 : (squaresY - 1)].T.reshape(-1, 2)
+        objp[:, :2] = np.mgrid[0: (squaresX - 1), 0: (squaresY - 1)].T.reshape(-1, 2)
         objp *= square_length
         self.objPoints = objp
 
@@ -2048,9 +2133,9 @@ class AniposeCharucoBoard(CharucoBoard):
             detectedCorners = detectedIds = np.float64([])
 
         if (
-            len(detectedCorners) > 0
-            and self.manually_verify
-            and not self.manually_verify_board_detection(gray, detectedCorners, detectedIds)
+                len(detectedCorners) > 0
+                and self.manually_verify
+                and not self.manually_verify_board_detection(gray, detectedCorners, detectedIds)
         ):
             detectedCorners = detectedIds = np.float64([])
 

@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, Tuple
+
 import numpy as np
 
 from freemocap.data_layer.skeleton_models.segments import SegmentAnthropometry
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def calculate_all_segments_com(
-    segment_positions: Dict[str, Dict[str, np.ndarray]], center_of_mass_definitions: Dict[str, SegmentAnthropometry]
+        segment_positions: Dict[str, Dict[str, np.ndarray]], center_of_mass_definitions: Dict[str, SegmentAnthropometry]
 ) -> Dict[str, np.ndarray]:
     """
     Calculates the center of mass (COM) for each segment based on provided segment positions
@@ -45,9 +46,9 @@ def calculate_all_segments_com(
 
 
 def calculate_total_body_center_of_mass(
-    segment_center_of_mass_data: Dict[str, np.ndarray],
-    center_of_mass_definitions: Dict[str, SegmentAnthropometry],
-    num_frames: int,
+        segment_center_of_mass_data: Dict[str, np.ndarray],
+        center_of_mass_definitions: Dict[str, SegmentAnthropometry],
+        num_frames: int,
 ) -> np.ndarray:
     """
     Calculates the total body center of mass for each frame based on segment COM positions and anthropometric data.

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def load_most_recent_anipose_calibration_toml(
-    save_copy_of_calibration_to_this_path: Union[str, Path, None] = None
+        save_copy_of_calibration_to_this_path: Union[str, Path, None] = None
 ) -> freemocap_anipose.CameraGroup:
     most_recent_calibration_toml_path = get_last_successful_calibration_toml_path()
     logger.info(f"loading `most recent calibration from:{str(most_recent_calibration_toml_path)}")
@@ -34,8 +34,8 @@ def load_most_recent_anipose_calibration_toml(
 
 
 def load_anipose_calibration_toml_from_path(
-    camera_calibration_data_toml_path: Union[str, Path],
-    save_copy_of_calibration_to_this_path: Union[str, Path, None] = None,
+        camera_calibration_data_toml_path: Union[str, Path],
+        save_copy_of_calibration_to_this_path: Union[str, Path, None] = None,
 ) -> freemocap_anipose.CameraGroup:
     logger.info(f"loading camera calibration file from:{str(camera_calibration_data_toml_path)}")
     try:
@@ -46,7 +46,7 @@ def load_anipose_calibration_toml_from_path(
             )
 
             if Path(copy_toml_path).is_file() and not filecmp.cmp(
-                str(camera_calibration_data_toml_path), copy_toml_path
+                    str(camera_calibration_data_toml_path), copy_toml_path
             ):
                 logger.info(
                     f"Saving copy of {camera_calibration_data_toml_path} to {save_copy_of_calibration_to_this_path}"
@@ -60,7 +60,7 @@ def load_anipose_calibration_toml_from_path(
 
 
 def load_calibration_from_session_id(
-    session_calibration_file_path: Union[str, Path],
+        session_calibration_file_path: Union[str, Path],
 ) -> freemocap_anipose.CameraGroup:
     logger.info(f"loading camera calibration file from:{str(session_calibration_file_path)}")
     try:

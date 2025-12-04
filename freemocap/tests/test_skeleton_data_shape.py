@@ -11,8 +11,8 @@ from freemocap.utilities.get_number_of_frames_of_videos_in_a_folder import (
 
 @pytest.mark.usefixtures("raw_skeleton_data", "reprojection_error_data")
 def test_skeleton_data_exists(
-    raw_skeleton_data: Union[str, Path],
-    reprojection_error_data: Union[str, Path],
+        raw_skeleton_data: Union[str, Path],
+        reprojection_error_data: Union[str, Path],
 ):
     """
     test that the `3d detection` process worked correctly by checking that there is an `.npy` file containing the 3d data in the `output_data_folder`
@@ -29,9 +29,9 @@ def test_skeleton_data_exists(
 
 @pytest.mark.usefixtures("synchronized_video_folder_path", "raw_skeleton_data", "reprojection_error_data")
 def test_skeleton_data_shape(
-    synchronized_video_folder_path: Union[str, Path],
-    raw_skeleton_data: Union[str, Path, np.ndarray],
-    reprojection_error_data: Union[str, Path, np.ndarray],
+        synchronized_video_folder_path: Union[str, Path],
+        raw_skeleton_data: Union[str, Path, np.ndarray],
+        reprojection_error_data: Union[str, Path, np.ndarray],
 ):
     """
     test that the `3d detection` process worked correctly by checking:
@@ -44,7 +44,7 @@ def test_skeleton_data_shape(
         skel3d_frame_marker_xyz = raw_skeleton_data
 
     assert (
-        len(skel3d_frame_marker_xyz.shape) == 3
+            len(skel3d_frame_marker_xyz.shape) == 3
     ), f"3d skeleton data file should have 3 dimensions, but has shape  {skel3d_frame_marker_xyz.shape}"
 
     if isinstance(reprojection_error_data, (str, Path)):
@@ -53,12 +53,12 @@ def test_skeleton_data_shape(
         skeleton_reprojection_error_fr_mar = reprojection_error_data
 
     assert (
-        len(skeleton_reprojection_error_fr_mar.shape) == 2
+            len(skeleton_reprojection_error_fr_mar.shape) == 2
     ), f"3d skeleton reprojection error data file should have 2 dimensions but has shape {skeleton_reprojection_error_fr_mar.shape}"
 
     frame_counts = list(get_number_of_frames_of_videos_in_a_folder(synchronized_video_folder_path).values())
     assert (
-        len(set(frame_counts)) == 1
+            len(set(frame_counts)) == 1
     ), f"Videos in {synchronized_video_folder_path} have different frame counts: {frame_counts}"
 
     number_of_frames = frame_counts[0]
@@ -69,5 +69,5 @@ def test_skeleton_data_shape(
     # TODO - check number of tracked points vs 'expected' number of tracked points
 
     assert (
-        skel3d_frame_marker_xyz.shape[2] == 3
+            skel3d_frame_marker_xyz.shape[2] == 3
     ), f"3d skeleton data file should have 3 dimensions for X,Y,Z, but instead has {skel3d_frame_marker_xyz.shape[2]}"

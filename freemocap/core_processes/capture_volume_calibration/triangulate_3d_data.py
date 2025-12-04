@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 def triangulate_3d_data(
-    anipose_calibration_object: CameraGroup,
-    image_2d_data: np.ndarray,
-    use_triangulate_ransac: bool = False,
-    kill_event: multiprocessing.Event = None,
+        anipose_calibration_object: CameraGroup,
+        image_2d_data: np.ndarray,
+        use_triangulate_ransac: bool = False,
+        kill_event: multiprocessing.Event = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     number_of_cameras = image_2d_data.shape[0]
     number_of_frames = image_2d_data.shape[1]

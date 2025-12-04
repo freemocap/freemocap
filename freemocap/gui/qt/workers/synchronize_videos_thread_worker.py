@@ -13,12 +13,12 @@ class SynchronizeVideosThreadWorker(QThread):
     in_progress = Signal(str)
 
     def __init__(
-        self,
-        raw_video_folder_path: Path,
-        synchronized_video_folder_path: Path,
-        kill_thread_event: threading.Event,
-        synchronization_method: str = "audio",
-        brightness_contrast_threshold: float = 1000,
+            self,
+            raw_video_folder_path: Path,
+            synchronized_video_folder_path: Path,
+            kill_thread_event: threading.Event,
+            synchronization_method: str = "audio",
+            brightness_contrast_threshold: float = 1000,
     ):
         super().__init__()
         logger.info("Initializing Synchronize Videos Thread Worker")

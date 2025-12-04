@@ -18,7 +18,7 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
     in_progress = Signal(object)
 
     def __init__(
-        self, post_processing_parameters: ProcessingParameterModel, kill_event: multiprocessing.Event, parent=None
+            self, post_processing_parameters: ProcessingParameterModel, kill_event: multiprocessing.Event, parent=None
     ):
         super().__init__()
         self._processing_parameters = post_processing_parameters
@@ -33,11 +33,11 @@ class ProcessMotionCaptureDataThreadWorker(QThread):
 
     def run(self):
         logger.info(
-            f"Beginning processing of motion capture data with parameters: {self._processing_parameters.dict(exclude={'tracking_model_info'})}"
+            f"Beginning processing of motion capture data with parameters: {self._processing_parameters.model_dump(exclude={'tracking_model_info'})}"
         )
         self._kill_event.clear()
 
-        recording_info_dict = self._processing_parameters.dict(exclude={"recording_info_model"})
+        recording_info_dict = self._processing_parameters.model_dump(exclude={"recording_info_model"})
         Path(self._processing_parameters.recording_info_model.output_data_folder_path).mkdir(
             parents=True, exist_ok=True
         )

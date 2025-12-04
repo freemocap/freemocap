@@ -5,11 +5,10 @@ from typing import Tuple, Union
 
 import numpy as np
 import pandas as pd
-
+from skellytracker.trackers.base_tracker.model_info import ModelInfo
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_info import (
     MediapipeModelInfo,
 )
-from skellytracker.trackers.base_tracker.model_info import ModelInfo
 
 from freemocap.data_layer.data_saver.data_loader import DataLoader
 from freemocap.data_layer.data_saver.data_models import InfoDict
@@ -23,11 +22,11 @@ mediapipe_model_info = MediapipeModelInfo()
 
 class DataSaver:
     def __init__(
-        self,
-        recording_folder_path: Union[Path, str],
-        include_hands: bool = True,
-        include_face: bool = True,
-        model_info: ModelInfo = mediapipe_model_info,
+            self,
+            recording_folder_path: Union[Path, str],
+            include_hands: bool = True,
+            include_face: bool = True,
+            model_info: ModelInfo = mediapipe_model_info,
     ):
         """
         Initialize DataFrameManager with the given recording_folder_path.

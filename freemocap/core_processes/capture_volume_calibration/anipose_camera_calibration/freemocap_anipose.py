@@ -179,6 +179,7 @@ def triangulate_with_outlier_rejection(
         # Set the final_p3d and best_error from the total camera triangulation 
         best_p3d = default_p3d
         best_error = default_mean_error
+        error_improvement_ratio = 1.0
 
         # For now only do N-1 combinations as the correct combination criteria
         # is not solid yet. Getting the lowest mean error does not always

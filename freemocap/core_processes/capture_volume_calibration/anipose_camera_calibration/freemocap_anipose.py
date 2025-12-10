@@ -94,6 +94,7 @@ def triangulate_with_outlier_rejection(
     marker_index = None,
     number_of_tracked_points = None,
     enable_debug: bool = True,
+    smooth_transition: bool = True,
 ):
     """
     Triangulates 3D points with progressive outlier rejection.
@@ -110,6 +111,7 @@ def triangulate_with_outlier_rejection(
         marker_index: Flattened index for tracking specific markers
         number_of_tracked_points: Total points per frame for index calculation
         enable_debug: Enable debug logging for specific markers/frames
+        smooth_transition: If True, uses weighted average for ratios near threshold to avoid oscillation
     
     Returns:
         np.ndarray: 3D point coordinates
@@ -125,16 +127,17 @@ def triangulate_with_outlier_rejection(
 
     # Enable debug only for specific markers and frames
     if enable_debug and real_marker_index is not None:
-        enable_debug = (((real_marker_index == 23) 
-            and (real_frame_index in range(189, 197))) or
-            ((real_marker_index == 28) 
-            and (real_frame_index in range(24, 50))) or
-            ((real_marker_index == 28) 
-            and (real_frame_index in range(92, 100))) or
-            ((real_marker_index == 28) 
-            and (real_frame_index in range(157, 179))) or
-            ((real_marker_index == 7) 
-            and (real_frame_index in range(183, 195))))
+        enable_debug = (((real_marker_index == 26) 
+            and (real_frame_index in range(1010, 1039)))
+            # or ((real_marker_index == 28) 
+            # and (real_frame_index in range(24, 50))) or
+            # ((real_marker_index == 28) 
+            # and (real_frame_index in range(92, 100))) or
+            # ((real_marker_index == 28) 
+            # and (real_frame_index in range(157, 179))) or
+            # ((real_marker_index == 7) 
+            # and (real_frame_index in range(183, 195)))
+            )
     # ---
 
     # Get the total of valid cameras
@@ -246,6 +249,31 @@ def triangulate_with_outlier_rejection(
         # than the threshold
         if error_improvement_ratio > error_improvement_threshold:
             return best_p3d
+        elif smooth_transition and 1.0 < error_improvement_ratio <= error_improvement_threshold:
+            # Use exponential weighting for smoother transition
+            # Create a normalized parameter between 0 and 1
+            t = (error_improvement_ratio - 1.0) / (error_improvement_threshold - 1.0)
+            
+            # Exponential weighting gives more weight to default when near 1,
+            # and transitions smoothly to best as ratio approaches threshold
+            # Using exp(5*t) gives a good smooth curve
+            weight = 1.0 - np.exp(-5.0 * t)
+            
+            # Ensure weight is between 0 and 1
+            weight = np.clip(weight, 0.0, 1.0)
+            
+            # Blend the two solutions
+            blended_p3d = (1.0 - weight) * default_p3d + weight * best_p3d
+            
+            if enable_debug:
+                print(
+                    f"Using exponential blend with weight {weight:.3f} (t={t:.3f}):\n"
+                    f"  Default p3d: {default_p3d}\n"
+                    f"  Best p3d:    {best_p3d}\n"
+                    f"  Blended p3d: {blended_p3d}"
+                )
+            
+            return blended_p3d
         else:
             return default_p3d
             

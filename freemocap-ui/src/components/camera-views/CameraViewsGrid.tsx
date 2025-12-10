@@ -29,9 +29,9 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ settings, rese
         }
 
         if (total <= 1) return 1;
-        if (total <= 4) return 2;
-        if (total <= 9) return 3;
-        return 4;
+        if (total <= 4) return 3;
+        if (total <= 9) return 4;
+        return 5;
     };
 
     if (connectedCameraIds.length === 0) {

@@ -50,5 +50,6 @@ if __name__ == "__main__":
         charuco_board_object=charuco_definition,
         charuco_square_size=charuco_square_size,
         pin_camera_0_to_origin=True,
-        use_charuco_as_groundplane=use_charuco_as_groundplane
+        use_charuco_as_groundplane=use_charuco_as_groundplane,
+        recording_name=recording_name
     )

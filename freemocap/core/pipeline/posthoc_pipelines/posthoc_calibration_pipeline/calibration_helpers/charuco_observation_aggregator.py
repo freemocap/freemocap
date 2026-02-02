@@ -94,7 +94,7 @@ def anipose_calibration_from_charuco_observations(
         video_metadata: dict[VideoIdString, VideoMetadata],
         recording_info: RecordingInfo,
         pin_camera_0_to_origin: bool = True,
-        use_charuco_as_groundplane: bool = True,
+        use_charuco_as_groundplane: bool = False,
         init_intrinsics: bool = True,
         init_extrinsics: bool = True,
         verbose: bool = True, ) -> Path:

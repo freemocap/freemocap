@@ -108,14 +108,23 @@ def triangulate_frame_observations(frame_number: int,
         config=config,
         calculate_reprojection_error=calculate_reprojection_error,
     )
+
+    rotated_triangulated = rotate_by_180_deg_about_x(triangulated_data)
+
     return Observation3d(
         frame_number=frame_number,
-        triangulated_data=np.squeeze(triangulated_data),
+        triangulated_data=np.squeeze(rotated_triangulated),
         names=list(frame_observations_by_camera.values())[0].to_tracked_points().keys(),
         # reprojection_error=reprojection_error,
         # reprojection_error_by_camera=reprojection_error_by_camera,
     )
 
+def rotate_by_180_deg_about_x(points_3d: np.ndarray) -> np.ndarray:
+    rotation_matrix = np.array([[1, 0, 0],
+                                [0, -1, 0],
+                                [0, 0, -1]])
+    rotated_points = points_3d @ rotation_matrix.T
+    return rotated_points
 
 def triangulate_frame_groups(
         frame_groups: dict[int, FrameObservationsByCamera],

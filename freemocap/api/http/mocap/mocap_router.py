@@ -32,7 +32,7 @@ class StartMocapRecordingRequest(BaseModel):
     mocap_task_config: MocapPipelineTaskConfig = Field(alias="mocapTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
-        recordings_directory = Path(self.mocap_recording_directory).parent
+        recordings_directory = Path(self.mocap_recording_directory).expanduser().parent
         recording_name = Path(self.mocap_recording_directory).stem
         if not recording_name.endswith('_mocap'):
             recording_name += '_mocap'
@@ -41,6 +41,7 @@ class StartMocapRecordingRequest(BaseModel):
             recording_name=recording_name,
             mic_device_index=-1
         )
+
 
 
 class StopMocapRecordingRequest(BaseModel):

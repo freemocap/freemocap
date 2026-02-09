@@ -21,6 +21,7 @@ from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscript
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \
     PipelineConfigUpdateMessage, \
     PipelineConfigUpdateTopic, ShouldCalibrateMessage, ShouldCalibrateTopic
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -71,22 +72,21 @@ class RealtimeProcessingPipeline:
     @classmethod
     def from_config(cls,
                     camera_group: CameraGroup,
-                    heartbeat_timestamp: multiprocessing.Value,
-                    subprocess_registry: list[multiprocessing.Process],
+                    process_registry: ProcessRegistry,
                     pipeline_config: RealtimePipelineConfig,
                     ):
 
         ipc = PipelineIPC.create(global_kill_flag=camera_group.ipc.global_kill_flag,
-                                 heartbeat_timestamp=heartbeat_timestamp
+                                 heartbeat_timestamp=process_registry.heartbeat_timestamp,
         )
         camera_nodes = {camera_id: RealtimeCameraNode.create(camera_id=camera_id,
-                                                             subprocess_registry=subprocess_registry,
+                                                             process_registry=process_registry,
                                                              camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
                                                              config=pipeline_config,
                                                              ipc=ipc)
                         for camera_id, config in camera_group.configs.items()}
         aggregation_node = RealtimeAggregationNode.create(camera_group_id=camera_group.id,
-                                                          subprocess_registry=subprocess_registry,
+                                                          process_registry=process_registry,
                                                           camera_group_shm_dto=camera_group.shm.to_dto(),
                                                           config=pipeline_config,
                                                           ipc=ipc,

@@ -14,22 +14,21 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.post
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline import RealtimeProcessingPipeline
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 from fastapi import FastAPI
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class RealtimePipelineManager:
     global_kill_flag: multiprocessing.Value
-    heartbeat_timestamp: multiprocessing.Value
-    subprocess_registry: list[multiprocessing.Process]
+    process_registry: ProcessRegistry
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
     realtime_pipelines: dict[PipelineIdString, RealtimeProcessingPipeline] = field(default_factory=dict)
 
     @classmethod
     def from_fastapi_app(cls, fastapi_app:FastAPI) -> 'RealtimePipelineManager':
         return cls(global_kill_flag=fastapi_app.state.global_kill_flag,
-                   heartbeat_timestamp=fastapi_app.state.heartbeat_timestamp,
-                   subprocess_registry=fastapi_app.state.subprocess_registry)
+                   process_registry=fastapi_app.state.process_registry)
 
     async def create_realtime_pipeline(self,
                                        camera_group: CameraGroup,
@@ -43,9 +42,8 @@ class RealtimePipelineManager:
                     await pipeline.update_camera_configs(camera_configs=pipeline_config.camera_configs)
                     return pipeline
             pipeline = RealtimeProcessingPipeline.from_config(pipeline_config=pipeline_config,
-                                                              heartbeat_timestamp=self.heartbeat_timestamp,
                                                               camera_group=camera_group,
-                                                              subprocess_registry=self.subprocess_registry)
+                                                              process_registry=self.process_registry)
             pipeline.start()
             self.realtime_pipelines[pipeline.id] = pipeline
             logger.info(f"Created pipeline with ID: {pipeline.id} for camera group ID: {pipeline.camera_group_id}")

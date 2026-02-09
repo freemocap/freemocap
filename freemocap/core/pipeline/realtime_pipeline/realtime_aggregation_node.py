@@ -23,6 +23,8 @@ from freemocap.core.types.type_overloads import Point3d, PipelineIdString
 from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigUpdateTopic, ProcessFrameNumberTopic, \
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic, \
     PipelineConfigUpdateMessage, ShouldCalibrateTopic
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 
 logger = logging.getLogger(__name__)
 
@@ -43,33 +45,32 @@ class RealtimeAggregationNodeState(BaseModel):
 @dataclass
 class RealtimeAggregationNode:
     shutdown_self_flag: multiprocessing.Value
-    worker: multiprocessing.Process
+    worker: ManagedProcess
 
     @classmethod
     def create(cls,
                config: RealtimePipelineConfig,
                camera_group_id: CameraGroupIdString,
-               subprocess_registry: list[multiprocessing.Process],
+               process_registry: ProcessRegistry,
                camera_group_shm_dto: CameraGroupSharedMemoryDTO,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = multiprocessing.Process(target=cls._run,
-                                         name=f"CameraGroup-{camera_group_id}-AggregationNode",
-                                         kwargs=dict(config=config,
-                                                     camera_group_id=camera_group_id,
-                                                     ipc=ipc,
-                                                     shutdown_self_flag=shutdown_self_flag,
-                                                     camera_group_shm_dto=camera_group_shm_dto,
-                                                     camera_node_subscription=ipc.pubsub.topics[
-                                                         CameraNodeOutputTopic].get_subscription(),
-                                                     pipeline_config_subscription=ipc.pubsub.topics[
-                                                         PipelineConfigUpdateTopic].get_subscription(),
-                                                     should_calibrate_subscription=ipc.pubsub.topics[
-                                                         ShouldCalibrateTopic].get_subscription(),
-                                                     ),
-
-                                         )
-        subprocess_registry.append(worker)
+        worker = process_registry.create_process(target=cls._run,
+                                                 name=f"CameraGroup-{camera_group_id}-AggregationNode",
+                                                 kwargs=dict(config=config,
+                                                             camera_group_id=camera_group_id,
+                                                             ipc=ipc,
+                                                             shutdown_self_flag=shutdown_self_flag,
+                                                             camera_group_shm_dto=camera_group_shm_dto,
+                                                             camera_node_subscription=ipc.pubsub.topics[
+                                                                 CameraNodeOutputTopic].get_subscription(),
+                                                             pipeline_config_subscription=ipc.pubsub.topics[
+                                                                 PipelineConfigUpdateTopic].get_subscription(),
+                                                             should_calibrate_subscription=ipc.pubsub.topics[
+                                                                 ShouldCalibrateTopic].get_subscription(),
+                                                             ),
+                                                 log_queue=ipc.ws_queue
+                                                 )
         return cls(shutdown_self_flag=shutdown_self_flag,
                    worker=worker
                    )
@@ -84,11 +85,6 @@ class RealtimeAggregationNode:
              pipeline_config_subscription: TopicSubscriptionQueue,
              should_calibrate_subscription: TopicSubscriptionQueue
              ):
-        if multiprocessing.parent_process():
-            # Configure logging if multiprocessing (i.e. if there is a parent process)
-            from freemocap.system.logging_configuration.configure_logging import configure_logging
-            from freemocap import LOG_LEVEL
-            configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
         logger.debug("AggregationNode  - starting main loop")
         try:
@@ -141,8 +137,10 @@ class RealtimeAggregationNode:
                     #     multi_frame_number=latest_requested_frame)
 
                     triangulated = triangulate_frame_observations(frame_number=latest_requested_frame,
-                                                                  frame_observations_by_camera={camera_id: camera_node_outputs[camera_id].observation
-                                                     for camera_id in camera_node_outputs.keys()},
+                                                                  frame_observations_by_camera={
+                                                                      camera_id: camera_node_outputs[
+                                                                          camera_id].observation
+                                                                      for camera_id in camera_node_outputs.keys()},
                                                                   anipose_camera_group=anipose_camera_group,
                                                                   )
 
@@ -172,5 +170,6 @@ class RealtimeAggregationNode:
     def shutdown(self):
         logger.debug(f"Stopping AggregationNode worker")
         self.shutdown_self_flag.value = True
+        self.worker.terminate()
         self.worker.join()
         logger.debug(f"AggregationNode worker stopped")

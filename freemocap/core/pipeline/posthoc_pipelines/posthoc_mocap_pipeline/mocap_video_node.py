@@ -13,7 +13,8 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mo
 
 from freemocap.core.types.type_overloads import VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
-
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 logger = logging.getLogger(__name__)
 
 
@@ -23,17 +24,17 @@ class MocapVideoNode:
     video_path: Path
     mocap_task_config: MocapPipelineTaskConfig
     shutdown_self_flag: multiprocessing.Value
-    worker: WorkerType
+    worker: ManagedProcess
 
     @classmethod
     def create(cls,
                video_id: VideoIdString,
                video_path: Path,
-               subprocess_registry: list[multiprocessing.Process],
+               process_registry: ProcessRegistry,
                mocap_task_config: MocapPipelineTaskConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = multiprocessing.Process(target=cls._run,
+        worker = process_registry.create_process(target=cls._run,
                                          name=f"VideoProcessingNode-{video_path.stem}",
                                          kwargs=dict(
                                              video_id=video_id,
@@ -42,8 +43,8 @@ class MocapVideoNode:
                                              mocap_task_config=mocap_task_config,
                                              shutdown_self_flag=shutdown_self_flag,
                                          ),
+                                                 log_queue=ipc.ws_queue,
                                          )
-        subprocess_registry.append(worker)
         return cls(video_id=video_id,
                    video_path=video_path,
                    shutdown_self_flag=shutdown_self_flag,
@@ -58,11 +59,6 @@ class MocapVideoNode:
              mocap_task_config: MocapPipelineTaskConfig,
              shutdown_self_flag: multiprocessing.Value,
              ):
-        if multiprocessing.parent_process():
-            # Configure logging if multiprocessing (i.e. if there is a parent process)
-            from freemocap.system.logging_configuration.configure_logging import configure_logging
-            from freemocap import LOG_LEVEL
-            configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
         video_reader = cv2.VideoCapture(str(video_path))
         success, image = video_reader.read()
@@ -100,4 +96,5 @@ class MocapVideoNode:
     def shutdown(self):
         logger.debug(f"Stopping {self.__class__.__name__} for video: {self.video_path.stem}")
         self.shutdown_self_flag.value = True
+        self.worker.terminate()
         self.worker.join()

@@ -18,6 +18,8 @@ from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigUpdateTopic, CameraNodeOutputTopic, \
     PipelineConfigUpdateMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 
 logger = logging.getLogger(__name__)
 
@@ -38,30 +40,30 @@ class CameraNodeState(BaseModel):
 class RealtimeCameraNode:
     camera_id: CameraIdString
     shutdown_self_flag: multiprocessing.Value
-    worker: WorkerType
+    worker: ManagedProcess
 
     @classmethod
     def create(cls,
                camera_id: CameraIdString,
                camera_shm_dto: SharedMemoryRingBufferDTO,
-               subprocess_registry: list[multiprocessing.Process],
+               process_registry: ProcessRegistry,
                config: RealtimePipelineConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = multiprocessing.Process(target=cls._run,
-                                         name=f"CameraProcessingNode-{camera_id}",
-                                         kwargs=dict(camera_id=camera_id,
-                                                     ipc=ipc,
-                                                     config=config,
-                                                     shutdown_self_flag=shutdown_self_flag,
-                                                     camera_shm_dto=camera_shm_dto,
-                                                     process_frame_number_subscription=ipc.pubsub.get_subscription(
-                                                         ProcessFrameNumberTopic),
-                                                     pipeline_config_subscription=ipc.pubsub.get_subscription(
-                                                         PipelineConfigUpdateTopic),
-                                                     ),
-                                         )
-        subprocess_registry.append(worker)
+        worker = process_registry.create_process(target=cls._run,
+                                                 name=f"CameraProcessingNode-{camera_id}",
+                                                 kwargs=dict(camera_id=camera_id,
+                                                             ipc=ipc,
+                                                             config=config,
+                                                             shutdown_self_flag=shutdown_self_flag,
+                                                             camera_shm_dto=camera_shm_dto,
+                                                             process_frame_number_subscription=ipc.pubsub.get_subscription(
+                                                                 ProcessFrameNumberTopic),
+                                                             pipeline_config_subscription=ipc.pubsub.get_subscription(
+                                                                 PipelineConfigUpdateTopic),
+                                                             ),
+                                                 log_queue=ipc.ws_queue
+                                                 )
         return cls(camera_id=camera_id,
                    shutdown_self_flag=shutdown_self_flag,
                    worker=worker
@@ -76,11 +78,6 @@ class RealtimeCameraNode:
              shutdown_self_flag: multiprocessing.Value,
              camera_shm_dto: SharedMemoryRingBufferDTO,
              ):
-        if multiprocessing.parent_process():
-            # Configure logging if multiprocessing (i.e. if there is a parent process)
-            from freemocap.system.logging_configuration.configure_logging import configure_logging
-            from freemocap import LOG_LEVEL
-            configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
         logger.debug(f"Initializing camera processing node for camera {camera_id} - creating shared memory ring buffer")
         camera_shm = CameraSharedMemoryRingBuffer.recreate(dto=camera_shm_dto,
@@ -148,5 +145,6 @@ class RealtimeCameraNode:
     def shutdown(self):
         logger.debug(f"Stopping {self.__class__.__name__} for camera {self.camera_id}")
         self.shutdown_self_flag.value = True
+        self.worker.terminate_gracefully()
         self.worker.join()
         logger.debug(f"{self.__class__.__name__} for camera {self.camera_id} stopped")

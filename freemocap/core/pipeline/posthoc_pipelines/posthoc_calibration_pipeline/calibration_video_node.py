@@ -12,9 +12,10 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.post
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 
 logger = logging.getLogger(__name__)
-
 
 
 class VideoNodeState(BaseModel):
@@ -31,49 +32,44 @@ class VideoNodeState(BaseModel):
 
 @dataclass
 class CalibrationVideoNode:
-    video_id:VideoIdString
-    video_path:Path
+    video_id: VideoIdString
+    video_path: Path
     calibration_pipeline_config: CalibrationpipelineConfig
     shutdown_self_flag: multiprocessing.Value
-    worker: WorkerType
+    worker: ManagedProcess
 
     @classmethod
     def create(cls,
-               video_id:VideoIdString,
-               video_path:Path,
-               subprocess_registry: list[multiprocessing.Process],
+               video_id: VideoIdString,
+               video_path: Path,
+               process_registry: ProcessRegistry,
                calibration_pipeline_config: CalibrationpipelineConfig,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = multiprocessing.Process(target=cls._run,
-                                         name=f"VideoProcessingNode-{video_path.stem}",
-                                         kwargs=dict(video_id=video_id,
-                                                     video_path=video_path,
-                                                     ipc=ipc,
-                                                     calibration_pipeline_config=calibration_pipeline_config,
-                                                     shutdown_self_flag=shutdown_self_flag,
-                                                     ),
-                                         )
-        subprocess_registry.append(worker)
+        worker = process_registry.create_process(target=cls._run,
+                                                 name=f"VideoProcessingNode-{video_path.stem}",
+                                                 kwargs=dict(video_id=video_id,
+                                                             video_path=video_path,
+                                                             ipc=ipc,
+                                                             calibration_pipeline_config=calibration_pipeline_config,
+                                                             shutdown_self_flag=shutdown_self_flag,
+                                                             ),
+                                                 log_queue=ipc.ws_queue,
+                                                 )
         return cls(video_id=video_id,
                    video_path=video_path,
                    shutdown_self_flag=shutdown_self_flag,
-                     calibration_pipeline_config=calibration_pipeline_config,
+                   calibration_pipeline_config=calibration_pipeline_config,
                    worker=worker
                    )
 
     @staticmethod
-    def _run(video_id:VideoIdString,
-             video_path:Path,
+    def _run(video_id: VideoIdString,
+             video_path: Path,
              ipc: PipelineIPC,
              calibration_pipeline_config: CalibrationpipelineConfig,
              shutdown_self_flag: multiprocessing.Value,
              ):
-        if multiprocessing.parent_process():
-            # Configure logging if multiprocessing (i.e. if there is a parent process)
-            from freemocap.system.logging_configuration.configure_logging import configure_logging
-            from freemocap import LOG_LEVEL
-            configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
         logger.info(f"Starting video processing node for video: {video_path.stem}")
 
@@ -83,7 +79,6 @@ class CalibrationVideoNode:
         charuco_detector = CharucoDetector.create(config=calibration_pipeline_config.detector_config)
         try:
             while success and not shutdown_self_flag.value and ipc.should_continue:
-
                 charuco_observation = charuco_detector.detect(
                     frame_number=frame_number,
                     image=image)
@@ -113,4 +108,5 @@ class CalibrationVideoNode:
     def shutdown(self):
         logger.debug(f"Stopping {self.__class__.__name__} for video: {self.video_path.stem}")
         self.shutdown_self_flag.value = True
+        self.worker.terminate_gracefully()
         self.worker.join()

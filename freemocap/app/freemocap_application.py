@@ -17,7 +17,7 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_pipeline_manager import P
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline import RealtimeProcessingPipeline
 from freemocap.core.pipeline.realtime_pipeline.realtime_pipeline_manager import RealtimePipelineManager
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
-
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 logger = logging.getLogger(__name__)
 
 
@@ -47,6 +47,7 @@ class AppState(BaseModel):
 @dataclass
 class FreemocApplication:
     global_kill_flag: multiprocessing.Value
+    process_registry: ProcessRegistry
     pipeline_shutdown_event: multiprocessing.Event
     realtime_pipeline_manager: RealtimePipelineManager
     posthoc_pipeline_manager: PosthocPipelineManager
@@ -56,6 +57,7 @@ class FreemocApplication:
     def create(cls, fastapi_app: FastAPI) -> 'FreemocApplication':
 
         return cls(global_kill_flag=fastapi_app.state.global_kill_flag,
+                   process_registry=fastapi_app.state.process_registry,
                    pipeline_shutdown_event=multiprocessing.Event(),
                    realtime_pipeline_manager=RealtimePipelineManager.from_fastapi_app(fastapi_app),
                    posthoc_pipeline_manager=PosthocPipelineManager.from_fastapi_app(fastapi_app),

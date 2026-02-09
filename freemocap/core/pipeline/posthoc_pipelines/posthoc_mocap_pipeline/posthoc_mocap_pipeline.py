@@ -12,7 +12,8 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mo
     PosthocMocapAggregationNode
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoGroupHelper
 from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
-
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 logger = logging.getLogger(__name__)
 
 
@@ -42,8 +43,7 @@ class PosthocMocapProcessingPipeline(BaseModel):
     @classmethod
     def from_task_config(cls,
                          recording_info: RecordingInfo,
-                         heartbeat_timestamp: multiprocessing.Value,
-                         subprocess_registry: list[multiprocessing.Process],
+                         process_registry: ProcessRegistry,
                          mocap_task_config: MocapPipelineTaskConfig,
                          global_kill_flag: multiprocessing.Value,
                          ):
@@ -51,15 +51,15 @@ class PosthocMocapProcessingPipeline(BaseModel):
         video_group = VideoGroupHelper.from_recording_path(recording_path=recording_info.full_recording_path)
         pipeline_id = str(uuid.uuid4())[:6]
         ipc = PipelineIPC.create(global_kill_flag=global_kill_flag,
-                                 heartbeat_timestamp=heartbeat_timestamp
+                                 heartbeat_timestamp=process_registry.heartbeat_timestamp
                                  )
         video_nodes = {video_id: MocapVideoNode.create(video_id=video_id,
                                                        video_path=video_helper.video_path,  # recreate in node worker
-                                                       subprocess_registry=subprocess_registry,
+                                                       process_registry=process_registry,
                                                        mocap_task_config=mocap_task_config,
                                                        ipc=ipc)
                        for video_id, video_helper in video_group.videos.items()}
-        aggregation_node = PosthocMocapAggregationNode.create(subprocess_registry=subprocess_registry,
+        aggregation_node = PosthocMocapAggregationNode.create(process_registry=process_registry,
                                                               mocap_task_config=mocap_task_config,
                                                               video_metadata=video_group.video_metadata_by_id,
                                                               ipc=ipc,

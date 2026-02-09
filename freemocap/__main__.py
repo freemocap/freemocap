@@ -1,10 +1,12 @@
 import asyncio
 import logging
 import multiprocessing
+import os
 import signal
-import sys
 
 import uvicorn
+
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.utilities.kill_process_on_port import kill_process_on_port
 from skellycam.utilities.wait_functions import await_1s
 
@@ -15,46 +17,46 @@ logger = logging.getLogger(__name__)
 
 
 async def main() -> None:
-    # Create shared kill flag for subprocesses
-    global_kill_flag: multiprocessing.Value = multiprocessing.Value("b", False)
-    heartbeat_timestamp:multiprocessing.Value = multiprocessing.Value("d", 0)
-    subprocess_registry: list[multiprocessing.Process] = []
-    server: uvicorn.Server | None = None
+    global_kill_flag = multiprocessing.Value("b", False)
+    process_registry = ProcessRegistry(
+        global_kill_flag=global_kill_flag,
+    )
+    process_registry.start_heartbeat()
 
+    server: uvicorn.Server | None = None
+    signum_to_signal_name = {
+        signal.SIGINT:"signal.SIGINT",
+        signal.SIGTERM:"signal.SIGTERM",
+    }
     def handle_signal(signum: int, frame: object) -> None:
         """Handle shutdown signals."""
-        logger.info(f"Received signal {signum}, initiating shutdown...")
+        logger.info(f"Received signal {signum}({signum_to_signal_name[signum]}), initiating shutdown...")
         global_kill_flag.value = True
         if server:
             server.should_exit = True
 
-    # Setup signal handlers
-    signal.signal(signal.SIGTERM, handle_signal)
-    signal.signal(signal.SIGINT, handle_signal)
+    for sigint, signal_name in signum_to_signal_name.items():
+        logger.trace(f"Registering shutdown signal {sigint}({signum_to_signal_name[sigint]})")
+        signal.signal(sigint, handle_signal)
 
     try:
-        # Clean up any existing process on the port
         kill_process_on_port(port=PORT)
 
-        # Create FastAPI app
-        app = create_fastapi_app(global_kill_flag=global_kill_flag,
-                                 heartbeat_timestamp=heartbeat_timestamp,
-                                 subprocess_registry=subprocess_registry)
+        app = create_fastapi_app(
+            global_kill_flag=global_kill_flag,
+            process_registry=process_registry,
+        )
 
-        # Configure and create Uvicorn server
         config = uvicorn.Config(
             app=app,
             host=HOSTNAME,
             port=PORT,
             log_level="warning",
-            reload=False
-
+            reload=False,
         )
         server = uvicorn.Server(config)
 
         logger.info(f"Starting server on {HOSTNAME}:{PORT}")
-
-        # Run server (blocks until shutdown)
         await server.serve()
 
     except KeyboardInterrupt:
@@ -63,22 +65,13 @@ async def main() -> None:
         logger.error(f"Fatal error: {e}")
         raise
     finally:
-        # Ensure kill flag is set and server is stopped
         global_kill_flag.value = True
         if server:
             server.should_exit = True
-            await await_1s()  # Give it time to shut down gracefully
+            await await_1s()
 
-        for process in subprocess_registry:
-            if process.is_alive():
-                logger.info(f"Terminating subprocess {process.name} (PID: {process.pid})")
-                process.terminate()
-                process.join(timeout=2)
-                if process.is_alive():
-                    logger.warning(f"Force killing subprocess {process.name} (PID: {process.pid})")
-                    process.kill()
-                    process.join()
-        logger.success("Done! Thank you for using SkellyCam 💀📸✨")
+        process_registry.shutdown_all()
+        logger.success("Done! Thank you for using FreeMoCap 💀✨")
 
 
 if __name__ == "__main__":
@@ -86,6 +79,8 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as e:
         logger.exception(f"Unhandled exception: {e}")
-        sys.exit(1)
-    else:
-        sys.exit(0)
+        os._exit(1)
+    print("Done!")
+    os._exit(0)
+
+

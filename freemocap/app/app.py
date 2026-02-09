@@ -1,20 +1,18 @@
 """
 Consolidated FastAPI app factory with proper lifecycle management.
 """
-import asyncio
 import logging
 import multiprocessing
-import os
-import signal
-import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
 
-import skellycam
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse
+
+import skellycam
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from starlette.responses import FileResponse
 
 import freemocap
@@ -25,34 +23,12 @@ from freemocap.api.middleware.cors import cors
 from freemocap.api.routers import SKELLYCAM_ROUTERS, FREEMOCAP_ROUTERS
 from freemocap.api.server_constants import APP_URL
 from freemocap.api.websocket.websocket_connect import websocket_router
-from freemocap.app.freemocap_application import create_freemocap_app, get_freemocap_app
+from freemocap.app.freemocap_application import create_freemocap_app
 from freemocap.system.default_paths import (
     get_default_freemocap_base_folder_path, FREEMOCAP_FAVICON_ICO_PATH
 )
-from freemocap.utilities.wait_functions import await_1s
 
 logger = logging.getLogger(__name__)
-
-async def keep_alive_task(*,
-                         heartbeat_timestamp: multiprocessing.Value,
-                         global_kill_flag: multiprocessing.Value) -> None:
-    """A simple task that increments a counter every second to indicate the main process is alive."""
-    logger.debug("Starting heartbeat task...")
-    while not global_kill_flag.value:
-        with heartbeat_timestamp.get_lock():
-            heartbeat_timestamp.value = time.perf_counter()
-        await asyncio.sleep(1.0)
-    logger.debug("Heartbeat task ended")
-
-async def monitor_kill_flag(app: FastAPI) -> None:
-    """
-    Background task to monitor the kill flag and trigger shutdown.
-    """
-    while not app.state.global_kill_flag.value:
-        await await_1s()
-
-    logger.info("Kill flag detected, initiating shutdown...")
-    os.kill(os.getpid(), signal.SIGTERM)
 
 
 @asynccontextmanager
@@ -72,85 +48,37 @@ async def app_lifespan(
     logger.info(f"Base folder: {base_path}")
     create_freemocap_app(fastapi_app=app)
 
-    # Initialize heartbeat timestamp with current time
-    with app.state.heartbeat_timestamp.get_lock():
-        app.state.heartbeat_timestamp.value = time.perf_counter()
-
-    # Start heartbeat task IN THE APP CONTEXT
-    heartbeat_task = asyncio.create_task(
-        keep_alive_task(
-            heartbeat_timestamp=app.state.heartbeat_timestamp,
-            global_kill_flag=app.state.global_kill_flag
-        )
-    )
-    # Start background task to monitor kill flag
-    monitor_task = asyncio.create_task(monitor_kill_flag(app=app))
-
     logger.success(
         f"FreeMoCap API {freemocap.__version__} started successfully 💀✨\n"
         f"Swagger API docs: {APP_URL}/docs"
     )
 
-    # Let the application do its thing
     yield
 
     # ===== SHUTDOWN =====
     logger.api("FreeMoCap API shutting down...")
 
-    # Cancel the background tasks
-    heartbeat_task.cancel()
-    monitor_task.cancel()
-
-    try:
-        await heartbeat_task
-    except asyncio.CancelledError:
-        pass
-
-    try:
-        await monitor_task
-    except asyncio.CancelledError:
-        pass
-
-    # Cleanup SkellyCam application
     app.state.global_kill_flag.value = True
-    get_freemocap_app().close()
 
     logger.success("FreeMoCap API shutdown complete - Goodbye! 👋")
 
 
-def create_fastapi_app(global_kill_flag: multiprocessing.Value,
-                       heartbeat_timestamp: multiprocessing.Value,
-                       subprocess_registry: list[multiprocessing.Process]) -> FastAPI:
+def create_fastapi_app(
+        *,
+        global_kill_flag: multiprocessing.Value,
+        process_registry: ProcessRegistry,
+) -> FastAPI:
     """
     Create and configure the FastAPI application.
-
-    Args:
-        global_kill_flag: Shared flag for coordinated shutdown
-        heartbeat_timestamp: Shared heartbeat timestamp value
-        subprocess_registry: List to track subprocesses
-
-    Returns:
-        Configured FastAPI application
     """
-    # Create app with lifespan manager
     app = FastAPI(lifespan=app_lifespan)
 
-    # Store dependencies in app state
     app.state.global_kill_flag = global_kill_flag
-    app.state.subprocess_registry = subprocess_registry
-    app.state.heartbeat_timestamp = heartbeat_timestamp
+    app.state.process_registry = process_registry
 
-
-    # Configure CORS
     cors(app)
-
-    # Register routes
     _register_routes(app)
-
-    # Add middleware
     add_middleware(app)
-
-    # Customize OpenAPI
     _customize_openapi(app)
 
     return app

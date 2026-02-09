@@ -24,6 +24,9 @@ from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
 from freemocap.utilities.wait_functions import wait_1ms
 
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
+
 logger = logging.getLogger(__name__)
 
 MediapipeObservations = dict[VideoIdString, MediapipeObservation]
@@ -45,7 +48,7 @@ class PosthocAgregationNodeState(BaseModel):
 @dataclass
 class PosthocMocapAggregationNode:
     shutdown_self_flag: multiprocessing.Value
-    worker: multiprocessing.Process
+    worker: ManagedProcess
 
     @classmethod
     def create(cls,
@@ -53,10 +56,10 @@ class PosthocMocapAggregationNode:
                video_metadata: dict[VideoIdString, VideoMetadata],
                pipeline_id: PipelineIdString,
                recording_info: RecordingInfo,
-               subprocess_registry: list[multiprocessing.Process],
+               process_registry: ProcessRegistry,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = multiprocessing.Process(target=cls._run,
+        worker = process_registry.create_process(target=cls._run,
                                          name=f"Pipeline-{pipeline_id}-PosthocAggregationNode",
                                          kwargs=dict(mocap_task_config=mocap_task_config,
                                                      pipeline_id=pipeline_id,
@@ -67,8 +70,8 @@ class PosthocMocapAggregationNode:
                                                      video_node_subscription=ipc.pubsub.topics[
                                                          VideoNodeOutputTopic].get_subscription(),
                                                      ),
+                                         log_queue=ipc.ws_queue
                                          )
-        subprocess_registry.append(worker)
         return cls(shutdown_self_flag=shutdown_self_flag,
                    worker=worker
                    )
@@ -164,4 +167,5 @@ class PosthocMocapAggregationNode:
     def shutdown(self):
         logger.debug(f"Stopping PosthocAggregationNode worker")
         self.shutdown_self_flag.value = True
+        self.worker.terminate_gracefully()
         self.worker.join()

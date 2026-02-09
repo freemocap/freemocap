@@ -10,23 +10,21 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.post
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import MocapPipelineTaskConfig, \
     PosthocMocapProcessingPipeline
 from freemocap.core.types.type_overloads import PipelineIdString
-
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class PosthocPipelineManager:
     global_kill_flag: multiprocessing.Value
-    heartbeat_timestamp: multiprocessing.Value
-    subprocess_registry: list[multiprocessing.Process]
+    process_registry: ProcessRegistry
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
     posthoc_pipelines: dict[PipelineIdString, PosthocCalibrationProcessingPipeline|PosthocMocapProcessingPipeline] = field(default_factory=dict)
 
     @classmethod
     def from_fastapi_app(cls, fastapi_app: FastAPI):
         return cls(global_kill_flag=fastapi_app.state.global_kill_flag,
-                   heartbeat_timestamp=fastapi_app.state.heartbeat_timestamp,
-                   subprocess_registry=fastapi_app.state.subprocess_registry)
+                   process_registry=fastapi_app.state.process_registry)
 
     async def create_posthoc_calibration_pipeline(self,
                                                   recording_info: RecordingInfo,
@@ -35,8 +33,7 @@ class PosthocPipelineManager:
             pipeline = PosthocCalibrationProcessingPipeline.from_config(
                 calibration_pipeline_config=calibration_pipeline_config,
                 recording_info=recording_info,
-                heartbeat_timestamp=self.heartbeat_timestamp,
-                subprocess_registry=self.subprocess_registry,
+                process_registry=self.process_registry,
                 global_kill_flag=self.global_kill_flag,
             )
             pipeline.start()
@@ -50,8 +47,7 @@ class PosthocPipelineManager:
             pipeline = PosthocMocapProcessingPipeline.from_task_config(
                 mocap_task_config=mocap_task_config,
                 recording_info=recording_info,
-                heartbeat_timestamp=self.heartbeat_timestamp,
-                subprocess_registry=self.subprocess_registry,
+                process_registry=self.process_registry,
                 global_kill_flag=self.global_kill_flag,
             )
             pipeline.start()

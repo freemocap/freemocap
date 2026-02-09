@@ -25,6 +25,8 @@ from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
 from freemocap.utilities.wait_functions import wait_1ms
 
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 logger = logging.getLogger(__name__)
 
 
@@ -44,7 +46,7 @@ class PosthocAgregationNodeState(BaseModel):
 @dataclass
 class PosthocCalibrationAggregationNode:
     shutdown_self_flag: multiprocessing.Value
-    worker: multiprocessing.Process
+    worker: ManagedProcess
 
     @classmethod
     def create(cls,
@@ -52,10 +54,10 @@ class PosthocCalibrationAggregationNode:
                video_metadata: dict[VideoIdString, VideoMetadata],
                pipeline_id: PipelineIdString,
                recording_info: RecordingInfo,
-               subprocess_registry: list[multiprocessing.Process],
+               process_registry: ProcessRegistry,
                ipc: PipelineIPC):
         shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = multiprocessing.Process(target=cls._run,
+        worker = process_registry.create_process(target=cls._run,
                                          name=f"Pipeline-{pipeline_id}-PosthocAggregationNode",
                                          kwargs=dict(calibration_pipeline_config=calibration_pipeline_config,
                                                      pipeline_id=pipeline_id,
@@ -67,7 +69,6 @@ class PosthocCalibrationAggregationNode:
                                                          VideoNodeOutputTopic].get_subscription(),
                                                      ),
                                          )
-        subprocess_registry.append(worker)
         return cls(shutdown_self_flag=shutdown_self_flag,
                    worker=worker
                    )
@@ -81,11 +82,6 @@ class PosthocCalibrationAggregationNode:
              shutdown_self_flag: multiprocessing.Value,
              video_node_subscription: TopicSubscriptionQueue,
              ):
-        if multiprocessing.parent_process():
-            # Configure logging if multiprocessing (i.e. if there is a parent process)
-            from freemocap.system.logging_configuration.configure_logging import configure_logging
-            from freemocap import LOG_LEVEL
-            configure_logging(LOG_LEVEL, ws_queue=ipc.ws_queue)
 
         start_frame = set(vm.start_frame for vm in video_metadata.values())
         end_frame = set(vm.end_frame for vm in video_metadata.values())
@@ -180,4 +176,5 @@ class PosthocCalibrationAggregationNode:
     def shutdown(self):
         logger.debug(f"Stopping PosthocAggregationNode worker")
         self.shutdown_self_flag.value = True
+        self.worker.terminate()
         self.worker.join()

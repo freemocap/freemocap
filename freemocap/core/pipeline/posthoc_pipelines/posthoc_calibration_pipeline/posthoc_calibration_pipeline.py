@@ -13,7 +13,7 @@ from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import 
 from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 logger = logging.getLogger(__name__)
 
 
@@ -54,8 +54,7 @@ class PosthocCalibrationProcessingPipeline(BaseModel):
     @classmethod
     def from_config(cls,
                     recording_info:RecordingInfo,
-                    heartbeat_timestamp: multiprocessing.Value,
-                    subprocess_registry: list[multiprocessing.Process],
+                    process_registry: ProcessRegistry,
                     calibration_pipeline_config: CalibrationpipelineConfig,
                     global_kill_flag: multiprocessing.Value,
                     ):
@@ -63,15 +62,15 @@ class PosthocCalibrationProcessingPipeline(BaseModel):
         video_group = VideoGroupHelper.from_recording_path(recording_path=recording_info.full_recording_path)
         pipeline_id = str(uuid.uuid4())[:6]
         ipc = PipelineIPC.create(global_kill_flag=global_kill_flag,
-                                 heartbeat_timestamp=heartbeat_timestamp
+                                 heartbeat_timestamp=process_registry.heartbeat_timestamp
                                  )
         video_nodes = {video_id: CalibrationVideoNode.create(video_id=video_id,
                                                              video_path=video_helper.video_path,  #recreate in node worker
-                                                             subprocess_registry=subprocess_registry,
+                                                             process_registry=process_registry,
                                                              calibration_pipeline_config=calibration_pipeline_config,
                                                              ipc=ipc)
                        for video_id, video_helper in video_group.videos.items()}
-        aggregation_node = PosthocCalibrationAggregationNode.create(subprocess_registry=subprocess_registry,
+        aggregation_node = PosthocCalibrationAggregationNode.create(process_registry=process_registry,
                                                                     calibration_pipeline_config=calibration_pipeline_config,
                                                                     video_metadata=video_group.video_metadata_by_id,
                                                                     ipc=ipc,

@@ -7,16 +7,13 @@ from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.pipeline.pipeline_configs import CalibrationpipelineConfig
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.freemocap_anipose import \
-    AniposeCameraGroup, AniposeCharucoBoard, AniposeCamera
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.point_triangulator import PointTriangulator
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_groundplane_utils import \
-    interpolate_skeleton_data, find_good_frame, CharucoVisibilityError, CharucoVelocityError, \
+from freemocap.core.old_pipeline.pipeline_configs import CalibrationpipelineConfig
+from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_helpers.charuco_groundplane_utils import \
+    find_good_frame, interpolate_skeleton_data, CharucoVisibilityError, CharucoVelocityError, \
     compute_basis_vectors_of_new_reference, skellyforge_data
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_helpers.charuco_model_from_observations import \
-    charuco_model_from_observations
-from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoMetadata
+from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_helpers.freemocap_anipose import \
+    AniposeCameraGroup, AniposeCamera, AniposeCharucoBoard
+from freemocap.core.pipeline.video_helper import VideoMetadata
 from freemocap.core.types.type_overloads import VideoIdString
 
 from freemocap.system.default_paths import get_default_freemocap_base_folder_path

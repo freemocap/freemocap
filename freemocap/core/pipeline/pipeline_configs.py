@@ -1,27 +1,52 @@
-from abc import ABC
+"""
+Pipeline configuration types.
 
-from pydantic import BaseModel, Field, ConfigDict
+All detector/task configs live here. DetectorSpec is the picklable union
+used to tell child processes which detector to instantiate.
+"""
+from pydantic import BaseModel, Field
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
-
+from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
 from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetectorConfig
-from skellytracker.trackers.charuco_tracker.charuco_detector import  CharucoDetectorConfig
 
 
+# ---------------------------------------------------------------------------
+# Detector spec: the picklable union that video nodes use to create detectors
+# ---------------------------------------------------------------------------
 
-class PipelineConfigABC(BaseModel, ABC):
-    pass
+DetectorSpec = CharucoDetectorConfig | MediapipeDetectorConfig
 
 
-class CalibrationpipelineConfig(BaseModel):
-    # model_config = ConfigDict(extra="forbid")
-    calibration_recording_folder: str | None = Field(default=None, alias="calibrationRecordingFolder")
+def create_detector_from_spec(spec: DetectorSpec):
+    """
+    Create a detector instance from a picklable spec.
+    Called inside child processes — imports happen at module level but
+    the heavy detector objects are only instantiated here.
+    """
+    from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
+    from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
+
+    match spec:
+        case CharucoDetectorConfig():
+            return CharucoDetector.create(config=spec)
+        case MediapipeDetectorConfig():
+            return MediapipeDetector.create(config=spec)
+        case _:
+            raise TypeError(f"Unknown detector spec type: {type(spec).__name__}")
+
+
+# ---------------------------------------------------------------------------
+# Task configs
+# ---------------------------------------------------------------------------
+
+class CalibrationPipelineConfig(BaseModel):
+    calibration_recording_folder: str | None = Field(
+        default=None, alias="calibrationRecordingFolder",
+    )
     charuco_board_x_squares: int = Field(gt=0, default=5, alias="charucoBoardXSquares")
     charuco_board_y_squares: int = Field(gt=0, default=3, alias="charucoBoardYSquares")
     charuco_square_length: float = Field(gt=0, default=1, alias="charucoSquareLength")
-    # min_shared_views_per_camera: int = Field(gt=0, default=200, alias="minSharedViewsPerCamera")
-    # auto_stop_on_min_view_count: bool = Field(default=True, alias="autoStopOnMinViewCount")
-    # auto_process_recording: bool = Field(default=True, alias="autoProcessRecording")
 
     @property
     def detector_config(self) -> CharucoDetectorConfig:
@@ -30,15 +55,36 @@ class CalibrationpipelineConfig(BaseModel):
             squares_y=self.charuco_board_y_squares,
             square_length=self.charuco_square_length,
         )
-class MocapPipelineTaskConfig(BaseModel):
+
+    @property
+    def detector_spec(self) -> DetectorSpec:
+        return self.detector_config
+
+
+class MocapPipelineConfig(BaseModel):
     @property
     def detector_config(self) -> MediapipeDetectorConfig:
         return MediapipeDetectorConfig()
 
+    @property
+    def detector_spec(self) -> DetectorSpec:
+        return self.detector_config
+
+
+# ---------------------------------------------------------------------------
+# Top-level realtime pipeline config
+# ---------------------------------------------------------------------------
+
 class RealtimePipelineConfig(BaseModel):
     camera_configs: CameraConfigs
-    calibration_task_config: CalibrationpipelineConfig = Field(default_factory=CalibrationpipelineConfig)
-    mocap_task_config: MocapPipelineTaskConfig = Field(default_factory=MocapPipelineTaskConfig)
+    calibration_config: CalibrationPipelineConfig = Field(
+        default_factory=CalibrationPipelineConfig,
+    )
+    mocap_config: MocapPipelineConfig = Field(
+        default_factory=MocapPipelineConfig,
+    )
+    calibration_detection_enabled: bool = Field(default=True)
+    mocap_detection_enabled: bool = Field(default=True)
 
     @property
     def camera_ids(self) -> list[CameraIdString]:
@@ -46,7 +92,4 @@ class RealtimePipelineConfig(BaseModel):
 
     @classmethod
     def from_camera_configs(cls, *, camera_configs: CameraConfigs) -> "RealtimePipelineConfig":
-        return cls(
-            camera_configs=camera_configs,
-
-        )
+        return cls(camera_configs=camera_configs)

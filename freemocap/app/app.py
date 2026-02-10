@@ -46,7 +46,7 @@ async def app_lifespan(
     base_path = Path(get_default_freemocap_base_folder_path())
     base_path.mkdir(parents=True, exist_ok=True)
     logger.info(f"Base folder: {base_path}")
-    create_freemocap_app(fastapi_app=app)
+
 
     logger.success(
         f"FreeMoCap API {freemocap.__version__} started successfully 💀✨\n"
@@ -75,7 +75,7 @@ def create_fastapi_app(
 
     app.state.global_kill_flag = global_kill_flag
     app.state.process_registry = process_registry
-
+    create_freemocap_app(fastapi_app=app)
     cors(app)
     _register_routes(app)
     add_middleware(app)

@@ -13,9 +13,9 @@ from skellyforge.data_models.trajectory_3d import Trajectory3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.freemocap_anipose import \
+from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_helpers.freemocap_anipose import \
     AniposeCameraGroup
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_helpers.triangulate_trajectory_array import \
+from freemocap.core.pipeline.posthoc_tasks.mocap_task.mocap_helpers.triangulate_trajectory_array import \
     TriangulationConfig, triangulate_dict
 from freemocap.core.types.type_overloads import VideoIdString
 

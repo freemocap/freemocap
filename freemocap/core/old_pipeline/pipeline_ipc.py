@@ -1,15 +1,8 @@
-"""
-PipelineIPC: shared inter-process communication state for a single pipeline.
-
-Each pipeline (realtime or posthoc) gets its own PipelineIPC with:
-  - A unique pipeline_id
-  - A PubSubTopicManager for typed message passing
-  - Shared flags for shutdown coordination
-  - Heartbeat monitoring to detect parent death
-"""
 import multiprocessing
 import uuid
 from dataclasses import dataclass, field
+
+from skellycam.core.ipc.pubsub.pubsub_topics import SetShmTopic
 
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager, create_pipeline_pubsub_manager
@@ -24,18 +17,13 @@ class PipelineIPC:
     ws_queue: multiprocessing.Queue
     global_kill_flag: multiprocessing.Value
     heartbeat_timestamp: multiprocessing.Value
-    pipeline_shutdown_flag: multiprocessing.Value = field(
-        default_factory=lambda: multiprocessing.Value('b', False),
-    )
+    pipeline_shutdown_flag: multiprocessing.Value = field(default_factory=lambda: multiprocessing.Value('b', False))
 
     @classmethod
-    def create(
-        cls,
-        *,
-        global_kill_flag: multiprocessing.Value,
-        heartbeat_timestamp: multiprocessing.Value,
-        pipeline_id: PipelineIdString | None = None,
-    ) -> "PipelineIPC":
+    def create(cls,
+               global_kill_flag: multiprocessing.Value,
+               heartbeat_timestamp: multiprocessing.Value,
+               pipeline_id: PipelineIdString | None = None):
         if pipeline_id is None:
             pipeline_id = str(uuid.uuid4())[:6]
         pubsub = create_pipeline_pubsub_manager(pipeline_id=pipeline_id)
@@ -49,21 +37,16 @@ class PipelineIPC:
 
     @property
     def should_continue(self) -> bool:
-        return (
-            not self.global_kill_flag.value
-            and not self.pipeline_shutdown_flag.value
-            and check_main_process_heartbeat(
-                global_kill_flag=self.global_kill_flag,
-                heartbeat_timestamp=self.heartbeat_timestamp,
-            )
-        )
+        return (not self.global_kill_flag.value
+                and not self.pipeline_shutdown_flag.value
+                and check_main_process_heartbeat(global_kill_flag=self.global_kill_flag,
+                                                 heartbeat_timestamp=self.heartbeat_timestamp, ))
 
-    def shutdown_pipeline(self) -> None:
-        """Signal this pipeline to stop. Does NOT touch the global kill flag."""
+    def shutdown_pipeline(self):
         self.pipeline_shutdown_flag.value = True
         self.pubsub.close()
 
-    def kill_everything(self) -> None:
-        """Nuclear option: stop this pipeline AND signal global shutdown."""
+    def kill_everything(self):
         self.shutdown_pipeline()
         self.global_kill_flag.value = True
+

@@ -18,10 +18,10 @@ from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
 
-from freemocap.core.pipeline.calibration_state import CalibrationStateTracker
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.nodes import BaseNode
+from freemocap.core.pipeline.shared.calibration_state import CalibrationStateTracker
+from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.shared.base_node import BaseNode
 from freemocap.pubsub.pubsub_topics import (
     CameraNodeOutputMessage,
     CameraNodeOutputTopic,
@@ -51,15 +51,15 @@ class RealtimeAggregationNode(BaseNode):
         camera_group_shm_dto: CameraGroupSharedMemoryDTO,
         ipc: PipelineIPC,
     ) -> "RealtimeAggregationNode":
-        shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = process_registry.create_process(
+        shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
             name=f"CameraGroup-{camera_group_id}-AggregationNode",
+            process_registry=process_registry,
+            log_queue=ipc.ws_queue,
             kwargs=dict(
                 config=config,
                 camera_group_id=camera_group_id,
                 ipc=ipc,
-                shutdown_self_flag=shutdown_self_flag,
                 camera_group_shm_dto=camera_group_shm_dto,
                 camera_node_subscription=ipc.pubsub.topics[
                     CameraNodeOutputTopic
@@ -71,7 +71,6 @@ class RealtimeAggregationNode(BaseNode):
                     ShouldCalibrateTopic
                 ].get_subscription(),
             ),
-            log_queue=ipc.ws_queue,
         )
         return cls(
             shutdown_self_flag=shutdown_self_flag,

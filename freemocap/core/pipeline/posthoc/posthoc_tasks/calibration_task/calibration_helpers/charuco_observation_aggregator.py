@@ -8,12 +8,12 @@ from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.old_pipeline.pipeline_configs import CalibrationpipelineConfig
-from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_helpers.charuco_groundplane_utils import \
+from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task.calibration_helpers.charuco_groundplane_utils import \
     find_good_frame, interpolate_skeleton_data, CharucoVisibilityError, CharucoVelocityError, \
     compute_basis_vectors_of_new_reference, skellyforge_data
-from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_helpers.freemocap_anipose import \
+from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task.calibration_helpers.freemocap_anipose import \
     AniposeCameraGroup, AniposeCamera, AniposeCharucoBoard
-from freemocap.core.pipeline.video_helper import VideoMetadata
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.types.type_overloads import VideoIdString
 
 from freemocap.system.default_paths import get_default_freemocap_base_folder_path
@@ -21,7 +21,6 @@ from freemocap.system.default_paths import get_default_freemocap_base_folder_pat
 from skellycam.core.recorders.videos.recording_info import  RecordingInfo
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 
-from skellyforge.skellymodels.managers.board import Board
 logger = logging.getLogger(__name__)
 
 CharucoObservations = dict[CameraIdString, CharucoObservation | None]

@@ -11,7 +11,7 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import (
     AllArucoCorners3DByIdInObjectCoordinates,
 )
 
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.calibration_numpy_types import (
+from freemocap.core.pipeline.realtime.realtime_pipeline import (
     ObjectPoints3D,
     ImagePoints2D,
 )
@@ -22,7 +22,7 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.cali
     CameraDistortionCoefficients,
     CameraMatrix,
 )
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.charuco_view_optimizer import (
+from freemocap.core.pipeline.realtime.realtime_pipeline import (
     CharucoViewOptimizer,
     CharucoViewSelectionConfig,
 )

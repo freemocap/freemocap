@@ -7,7 +7,6 @@ Runs indefinitely until shutdown. Responds to pipeline config updates
 """
 import logging
 import multiprocessing
-import time
 from dataclasses import dataclass
 
 import cv2
@@ -19,9 +18,9 @@ from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
 from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
 
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.nodes import BaseNode
+from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.shared.base_node import BaseNode
 from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberTopic,
     PipelineConfigUpdateTopic,
@@ -49,15 +48,15 @@ class RealtimeCameraNode(BaseNode):
         config: RealtimePipelineConfig,
         ipc: PipelineIPC,
     ) -> "RealtimeCameraNode":
-        shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = process_registry.create_process(
+        shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
             name=f"RealtimeCameraNode-{camera_id}",
+            process_registry=process_registry,
+            log_queue=ipc.ws_queue,
             kwargs=dict(
                 camera_id=camera_id,
                 ipc=ipc,
                 config=config,
-                shutdown_self_flag=shutdown_self_flag,
                 camera_shm_dto=camera_shm_dto,
                 process_frame_number_subscription=ipc.pubsub.get_subscription(
                     ProcessFrameNumberTopic,
@@ -66,7 +65,6 @@ class RealtimeCameraNode(BaseNode):
                     PipelineConfigUpdateTopic,
                 ),
             ),
-            log_queue=ipc.ws_queue,
         )
         return cls(
             camera_id=camera_id,

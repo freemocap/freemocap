@@ -6,16 +6,16 @@ from skellyforge.post_processing.filters.apply_filter import filter_trajectory
 from skellyforge.post_processing.filters.filter_config import FilterConfig
 from skellyforge.post_processing.interpolation.apply_interpolation import interpolate_trajectory
 from skellyforge.post_processing.interpolation.interpolation_config import InterpolationConfig
-from skellyforge.skellymodels.models.tracking_model_info import MediapipeModelInfo, CharucoBoard5x3ModelInfo
+from skellyforge.skellymodels.models.tracking_model_info import CharucoBoard5x3ModelInfo
 from skellyforge.skellymodels.managers.board import Board
 from skellyforge.data_models.trajectory_3d import Trajectory3d
 
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_helpers.freemocap_anipose import \
+from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task.calibration_helpers.freemocap_anipose import \
     AniposeCameraGroup
-from freemocap.core.pipeline.posthoc_tasks.mocap_task.mocap_helpers.triangulate_trajectory_array import \
+from freemocap.core.pipeline.posthoc.posthoc_tasks.mocap_task.mocap_helpers.triangulate_trajectory_array import \
     TriangulationConfig, triangulate_dict
 from freemocap.core.types.type_overloads import VideoIdString
 

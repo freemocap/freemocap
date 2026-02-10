@@ -16,12 +16,12 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation, BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.pipeline.pipeline_configs import CalibrationPipelineConfig
-from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_helpers.charuco_observation_aggregator import \
+from freemocap.core.pipeline.shared.pipeline_configs import CalibrationPipelineConfig
+from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task import \
     anipose_calibration_from_charuco_observations, get_last_successful_calibration_toml_path
-from freemocap.core.pipeline.posthoc_tasks.mocap_task.mocap_helpers.charuco_model_from_observations import \
+from freemocap.core.pipeline.posthoc.posthoc_tasks.mocap_task.mocap_helpers.charuco_model_from_observations import \
     charuco_model_from_observations
-from freemocap.core.pipeline.video_helper import VideoMetadata
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 
 from freemocap.core.types.type_overloads import VideoIdString
 

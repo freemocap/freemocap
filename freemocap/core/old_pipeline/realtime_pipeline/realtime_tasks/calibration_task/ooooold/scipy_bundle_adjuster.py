@@ -11,7 +11,7 @@ from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.cali
     CameraDistortionCoefficients,
     TransformationMatrix,
 )
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.shared_view_accumulator import MultiCameraTargetView
+from freemocap.core.pipeline.realtime.realtime_pipeline import MultiCameraTargetView
 
 logger = logging.getLogger(__name__)
 

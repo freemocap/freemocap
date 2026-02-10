@@ -8,7 +8,7 @@ from skellyforge.data_models.type_overloads import CameraIdString, FrameObservat
 
 from skellytracker.trackers.base_tracker.base_tracker_abcs import  BaseObservation
 
-from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_helpers.freemocap_anipose import \
+from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task.calibration_helpers.freemocap_anipose import \
     AniposeCameraGroup
 
 logger = logging.getLogger(__name__)

@@ -23,7 +23,7 @@ class FrontendPayload(BaseModel):
     )
 
     frame_number: int
-    # Now supports multiple observation types
+    # Overlay data keyed by camera ID, supporting multiple detector types
     observation_overlays: dict[CameraIdString, ObservationOverlayData]
     tracked_points3d: dict[TrackedPointNameString, Point3d] = {}
 
@@ -32,22 +32,16 @@ class FrontendPayload(BaseModel):
             cls,
             aggregation_output: AggregationNodeOutputMessage,
     ) -> "FrontendPayload":
-        """Create frontend payload from aggregation node output"""
-
-        # Combine all observation types into single dict
+        """Create frontend payload from aggregation node output."""
         observation_overlays: dict[CameraIdString, ObservationOverlayData] = {}
 
-        # Add charuco overlays if present
-        if hasattr(aggregation_output, 'charuco_overlay_data'):
-            observation_overlays.update(aggregation_output.charuco_overlay_data)
+        charuco_overlay_data = getattr(aggregation_output, 'charuco_overlay_data', None)
+        if charuco_overlay_data is not None:
+            observation_overlays.update(charuco_overlay_data)
 
-        # Add mediapipe overlays if present
-        if hasattr(aggregation_output, 'mediapipe_overlay_data'):
-            observation_overlays.update(aggregation_output.mediapipe_overlay_data)
-
-        # Add other overlay types as they're implemented
-        # if hasattr(aggregation_output, 'rtmpose_overlay_data'):
-        #     observation_overlays.update(aggregation_output.rtmpose_overlay_data)
+        mediapipe_overlay_data = getattr(aggregation_output, 'mediapipe_overlay_data', None)
+        if mediapipe_overlay_data is not None:
+            observation_overlays.update(mediapipe_overlay_data)
 
         return cls(
             frame_number=aggregation_output.frame_number,

@@ -3,7 +3,7 @@ PipelineIPC: shared inter-process communication state for a single pipeline.
 
 Each pipeline (realtime or posthoc) gets its own PipelineIPC with:
   - A unique pipeline_id
-  - A PubSubTopicManager for typed message passing
+  - A PubSubTopicManager for typed message passing (with relay thread)
   - Shared flags for shutdown coordination
   - Heartbeat monitoring to detect parent death
 """
@@ -38,7 +38,10 @@ class PipelineIPC:
     ) -> "PipelineIPC":
         if pipeline_id is None:
             pipeline_id = str(uuid.uuid4())[:6]
-        pubsub = create_pipeline_pubsub_manager(pipeline_id=pipeline_id)
+        pubsub = create_pipeline_pubsub_manager(
+            pipeline_id=pipeline_id,
+            global_kill_flag=global_kill_flag,
+        )
         return cls(
             pipeline_id=pipeline_id,
             pubsub=pubsub,

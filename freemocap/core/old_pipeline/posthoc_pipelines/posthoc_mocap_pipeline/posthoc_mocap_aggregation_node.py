@@ -11,8 +11,8 @@ from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
     MocapPipelineTaskConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_helpers.skeleton_from_mediapipe_observations import \

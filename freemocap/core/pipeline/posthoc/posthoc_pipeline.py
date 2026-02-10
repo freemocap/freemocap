@@ -14,15 +14,13 @@ import multiprocessing
 import uuid
 from dataclasses import dataclass
 
-from pydantic import BaseModel
-
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
-from freemocap.core.pipeline.pipeline_configs import DetectorSpec
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.nodes.posthoc_aggregation_node import PosthocAggregationNode, PosthocTaskFn
-from freemocap.core.pipeline.nodes.video_node import VideoNode
-from freemocap.core.pipeline.video_helper import VideoGroupHelper
+from freemocap.core.pipeline.shared.pipeline_configs import DetectorSpec
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.posthoc.posthoc_aggregation_node import PosthocAggregationNode, PosthocTaskFn
+from freemocap.core.pipeline.posthoc.video_node import VideoNode
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
 from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 

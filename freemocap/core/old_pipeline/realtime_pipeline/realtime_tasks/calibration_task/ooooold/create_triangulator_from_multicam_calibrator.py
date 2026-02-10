@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.calibration_helpers.multi_camera_calibrator import \
+from freemocap.core.pipeline.realtime.realtime_pipeline import \
     MultiCameraCalibrator
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.point_triangulator import PointTriangulator, CameraCalibrationData
 from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage

@@ -11,11 +11,11 @@ from pathlib import Path
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_helpers.charuco_observation_aggregator import \
+from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task import \
     get_last_successful_calibration_toml_path
-from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_helpers.freemocap_anipose import \
+from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task import \
     AniposeCameraGroup
-from freemocap.core.pipeline.posthoc_tasks.mocap_task.mocap_helpers.triangulate_trajectory_array import \
+from freemocap.core.pipeline.posthoc.posthoc_tasks.mocap_task.mocap_helpers.triangulate_trajectory_array import \
     triangulate_frame_observations
 from freemocap.core.types.type_overloads import TrackedPointNameString
 from skellyforge.data_models.trajectory_3d import Point3d
@@ -84,7 +84,7 @@ class CalibrationStateTracker:
             return True
 
         except Exception as e:
-            logger.warning(f"Failed to load calibration: {e}")
+            logger.error(f"Failed to load calibration: {e}", exc_info=True)
             self._invalidate()
             return False
 
@@ -116,7 +116,8 @@ class CalibrationStateTracker:
             self._failure_count += 1
             logger.warning(
                 f"Triangulation failed (failure #{self._failure_count}): {e} "
-                f"— invalidating calibration"
+                f"— invalidating calibration",
+                exc_info=True,
             )
             self._invalidate()
             return None

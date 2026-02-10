@@ -1,10 +1,9 @@
 """
 PosthocAggregationNode: collects all video node outputs, then calls a task function.
 
-This replaces both PosthocCalibrationAggregationNode and PosthocMocapAggregationNode.
-The frame-collection logic (which was duplicated line-for-line) is written once here.
-The actual processing is delegated to a task function (e.g. run_calibration_task,
-run_mocap_task) that is passed in as a picklable callable.
+The frame-collection logic is written once here. The actual processing is
+delegated to a task function (e.g. run_calibration_task, run_mocap_task)
+passed in as a picklable callable.
 
 The task function signature must be:
 
@@ -26,9 +25,9 @@ from dataclasses import dataclass
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.nodes import BaseNode
-from freemocap.core.pipeline.video_helper import VideoMetadata
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.shared.base_node import BaseNode
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_topics import (
     VideoNodeOutputMessage,
@@ -60,22 +59,21 @@ class PosthocAggregationNode(BaseNode):
         process_registry: ProcessRegistry,
         ipc: PipelineIPC,
     ) -> "PosthocAggregationNode":
-        shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = process_registry.create_process(
+        shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
             name=f"Pipeline-{pipeline_id}-PosthocAggregationNode",
+            process_registry=process_registry,
+            log_queue=ipc.ws_queue,
             kwargs=dict(
                 task_fn=task_fn,
                 pipeline_id=pipeline_id,
                 recording_info=recording_info,
                 video_metadata=video_metadata,
                 ipc=ipc,
-                shutdown_self_flag=shutdown_self_flag,
                 video_node_subscription=ipc.pubsub.topics[
                     VideoNodeOutputTopic
                 ].get_subscription(),
             ),
-            log_queue=ipc.ws_queue,
         )
         return cls(
             shutdown_self_flag=shutdown_self_flag,
@@ -126,7 +124,7 @@ class PosthocAggregationNode(BaseNode):
                     ),
                 )
             except Exception:
-                pass  # progress reporting is best-effort
+                logger.debug("Failed to publish progress", exc_info=True)
 
         def _report_progress(detail: str, fraction: float) -> None:
             """Callback passed to the task function for task-phase progress."""

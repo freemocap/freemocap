@@ -8,8 +8,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
-from freemocap.core.pipeline.frontend_payload import FrontendPayload
-from freemocap.core.types.type_overloads import FrameNumberInt
+from freemocap.core.pipeline.shared.frontend_payload import FrontendPayload
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue, \
     MIN_LOG_LEVEL_FOR_WEBSOCKET
 from freemocap.utilities.wait_functions import await_10ms

@@ -1,5 +1,4 @@
 import logging
-import multiprocessing
 import time
 import uuid
 from dataclasses import dataclass
@@ -10,13 +9,13 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
-from freemocap.core.pipeline.realtime_pipeline.realtime_aggregation_node import RealtimeAggregationNode, RealtimeAggregationNodeState
-from freemocap.core.pipeline.realtime_pipeline.realtime_camera_node import RealtimeCameraNode, CameraNodeState
-from freemocap.core.pipeline.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimeAggregationNode, RealtimeAggregationNodeState
+from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimeCameraNode, CameraNodeState
+from freemocap.core.pipeline.shared.frontend_payload import FrontendPayload
+from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
     CalibrationpipelineConfig
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputTopic, AggregationNodeOutputMessage, \
     PipelineConfigUpdateMessage, \

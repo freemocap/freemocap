@@ -5,15 +5,15 @@ import uuid
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
-from freemocap.core.pipeline.pipeline_configs import MocapPipelineTaskConfig
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.shared.pipeline_configs import MocapPipelineTaskConfig
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_video_node import MocapVideoNode
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_aggregation_node import \
     PosthocMocapAggregationNode
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoGroupHelper
 from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
-from skellycam.core.ipc.process_management.managed_process import ManagedProcess
+
 logger = logging.getLogger(__name__)
 
 

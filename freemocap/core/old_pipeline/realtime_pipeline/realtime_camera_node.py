@@ -8,13 +8,13 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
-from skellycam.core.types.type_overloads import CameraIdString, WorkerType, TopicSubscriptionQueue
+from skellycam.core.types.type_overloads import CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
 from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
 
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_topics import ProcessFrameNumberTopic, PipelineConfigUpdateTopic, CameraNodeOutputTopic, \
     PipelineConfigUpdateMessage, ProcessFrameNumberMessage, CameraNodeOutputMessage

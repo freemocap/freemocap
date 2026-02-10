@@ -30,15 +30,18 @@ class VideoMetadata(BaseModel):
     @model_validator(mode="before")
     def validate_frames(cls, values):
         start_frame = values.get("start_frame", 0)
-        values["end_frame"] = values.get("end_frame", values.get("frame_count"))
+        total_frame_count = values.get("frame_count")
+        values["end_frame"] = values.get("end_frame", total_frame_count)
         end_frame = values["end_frame"]
-        frame_count = end_frame - start_frame if end_frame is not None else values.get("frame_count")
-        if end_frame is not None:
-            if not (0 <= start_frame < end_frame <= frame_count):
-                raise ValueError(f"Invalid start_frame or end_frame values: start_frame={start_frame}, end_frame={end_frame}, frame_count={frame_count}")
-            if not (end_frame - start_frame) == frame_count:
-                raise ValueError(f"Subset frame count does not match frame_count: {end_frame - start_frame} != {frame_count}")
-
+        if end_frame is not None and total_frame_count is not None:
+            if not (0 <= start_frame < end_frame):
+                raise ValueError(
+                    f"Invalid frame range: start_frame={start_frame}, end_frame={end_frame}"
+                )
+            if end_frame > total_frame_count:
+                raise ValueError(
+                    f"end_frame ({end_frame}) exceeds total frame_count ({total_frame_count})"
+                )
         return values
 
 

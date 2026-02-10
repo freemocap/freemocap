@@ -14,7 +14,7 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservatio
 
 from freemocap.core.image_overlay.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
     PipelineIdString,

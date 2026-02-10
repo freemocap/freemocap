@@ -2,9 +2,9 @@ import threading
 from pathlib import Path
 from typing import Callable, Union
 
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.v1_capture_volume_calibration.anipose_camera_calibration.anipose_camera_calibrator import \
+from freemocap.core.pipeline.realtime.realtime_pipeline import \
     GroundPlaneSuccess, AniposeCameraCalibrator
-from freemocap.core.pipeline.realtime_pipeline.realtime_tasks.calibration_task.ooooold.v1_capture_volume_calibration.charuco_stuff.charuco_board_definition import \
+from freemocap.core.pipeline.realtime.realtime_pipeline import \
     CharucoBoardDefinition
 
 

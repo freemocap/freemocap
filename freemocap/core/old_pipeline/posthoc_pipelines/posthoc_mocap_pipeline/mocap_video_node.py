@@ -4,10 +4,9 @@ from dataclasses import dataclass
 from pathlib import Path
 import cv2
 
-from skellycam.core.types.type_overloads import WorkerType
 from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
 
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
     MocapPipelineTaskConfig
 

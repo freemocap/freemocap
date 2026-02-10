@@ -1,9 +1,8 @@
 """
 VideoNode: reads frames from a video file, runs a detector, publishes observations.
 
-Replaces the old CalibrationVideoNode and MocapVideoNode — the only difference
-between them was which detector they created, which is now parameterized via
-DetectorSpec.
+Generic video processing node parameterized by DetectorSpec — the same node
+handles charuco detection, mediapipe detection, or any future detector type.
 """
 import logging
 import multiprocessing
@@ -12,13 +11,12 @@ from pathlib import Path
 
 import cv2
 
-from freemocap.core.pipeline.pipeline_configs import DetectorSpec, create_detector_from_spec
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.nodes import BaseNode
+from freemocap.core.pipeline.shared.pipeline_configs import DetectorSpec, create_detector_from_spec
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.shared.base_node import BaseNode
 from freemocap.core.types.type_overloads import VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
-from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 
 logger = logging.getLogger(__name__)
 
@@ -38,18 +36,17 @@ class VideoNode(BaseNode):
         process_registry: ProcessRegistry,
         ipc: PipelineIPC,
     ) -> "VideoNode":
-        shutdown_self_flag = multiprocessing.Value('b', False)
-        worker = process_registry.create_process(
+        shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
             name=f"VideoNode-{video_path.stem}",
+            process_registry=process_registry,
+            log_queue=ipc.ws_queue,
             kwargs=dict(
                 video_id=video_id,
                 video_path=video_path,
                 detector_spec=detector_spec,
                 ipc=ipc,
-                shutdown_self_flag=shutdown_self_flag,
             ),
-            log_queue=ipc.ws_queue,
         )
         return cls(
             video_id=video_id,

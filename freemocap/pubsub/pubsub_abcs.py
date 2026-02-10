@@ -1,5 +1,7 @@
 import logging
-from typing import TypeVar, Generic, Callable, ClassVar
+import threading
+from typing import TypeVar, Generic, ClassVar
+from queue import Empty
 
 from pydantic import BaseModel, Field, ConfigDict, create_model
 
@@ -23,12 +25,17 @@ MessageType = TypeVar('MessageType', bound=TopicMessageABC)
 
 
 class PubSubTopicABC(BaseModel, Generic[MessageType]):
-    """Base pub/sub topic with default behavior."""
+    """
+    Base pub/sub topic. Publishers write to the publication queue.
+    The PubSubRelay thread reads from the publication queue and fans out
+    to all subscription queues.
+    """
     topic_registry: ClassVar[set[type['PubSubTopicABC']]] = set()
 
     message_type: type[TopicMessageABC]
     publication: TopicPublicationQueue = Field(default_factory=TopicPublicationQueue)
     subscriptions: list[TopicSubscriptionQueue] = Field(default_factory=list)
+    _subscriptions_lock: threading.Lock = threading.Lock()
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -43,24 +50,62 @@ class PubSubTopicABC(BaseModel, Generic[MessageType]):
         return cls.topic_registry.copy()
 
     def get_subscription(self) -> TopicSubscriptionQueue:
+        """Create a new subscription queue. Thread-safe (coordinates with relay)."""
         sub = TopicSubscriptionQueue()
-        self.subscriptions.append(sub)
+        with self._subscriptions_lock:
+            self.subscriptions.append(sub)
         return sub
 
     def publish(self, message: MessageType) -> None:
+        """
+        Publish a message by writing it to the publication queue.
+        The PubSubRelay thread handles distribution to subscribers.
+        Safe to call from any process (multiprocessing.Queue is process-safe).
+        """
         if not isinstance(message, self.message_type):
-            raise TypeError(f"Message must be of type {self.message_type.__name__}, got {type(message).__name__}")
+            raise TypeError(
+                f"Message must be of type {self.message_type.__name__}, "
+                f"got {type(message).__name__}"
+            )
         self.publication.put(message)
-        for sub in self.subscriptions:
-            sub.put(message)
+
+    def _relay_to_subscribers(self) -> int:
+        """
+        Drain the publication queue and fan out to all subscribers.
+        Called by the PubSubRelay thread — not for external use.
+        Returns the number of messages relayed.
+        """
+        relayed = 0
+        while True:
+            try:
+                message = self.publication.get_nowait()
+            except Empty:
+                break
+            with self._subscriptions_lock:
+                for sub in self.subscriptions:
+                    sub.put(message)
+            relayed += 1
+        return relayed
 
     def close(self) -> None:
         if hasattr(self.publication, 'close'):
             self.publication.close()
-        for sub in self.subscriptions:
-            if hasattr(sub, 'close'):
-                sub.close()
-        self.subscriptions.clear()
+        with self._subscriptions_lock:
+            for sub in self.subscriptions:
+                if hasattr(sub, 'close'):
+                    sub.close()
+            self.subscriptions.clear()
+
+    def __getstate__(self) -> dict:
+        """Exclude the threading.Lock when pickling (for child processes)."""
+        state = self.__dict__.copy()
+        state.pop('_subscriptions_lock', None)
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        """Recreate the lock after unpickling."""
+        self.__dict__.update(state)
+        self._subscriptions_lock = threading.Lock()
 
 
 # ============================================================================
@@ -69,7 +114,6 @@ class PubSubTopicABC(BaseModel, Generic[MessageType]):
 
 def create_topic(
         message_type: type[MessageType],
-        publication_factory: Callable[[], TopicPublicationQueue] | None = None,
 ) -> type[PubSubTopicABC[MessageType]]:
     """
     Factory that creates a topic class for a message type.
@@ -79,20 +123,10 @@ def create_topic(
     """
     topic_name = message_type.__name__.replace('Message', 'Topic')
 
-    # Build field definitions for create_model
-    # Format: field_name=(type, Field(...))
     field_definitions: dict[str, object] = {
         'message_type': (type[MessageType], message_type),
     }
 
-    # Add custom publication factory if provided
-    if publication_factory is not None:
-        field_definitions['publication'] = (
-            TopicPublicationQueue,
-            Field(default_factory=publication_factory)
-        )
-
-    # Use Pydantic's create_model - the proper v2 way!
     topic_class = create_model(
         topic_name,
         __base__=PubSubTopicABC,

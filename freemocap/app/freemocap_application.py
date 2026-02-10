@@ -1,8 +1,14 @@
+"""
+FreemocapApplication: top-level application object.
+
+Holds both pipeline managers (realtime + posthoc) and the camera group manager.
+Delegates to the appropriate manager based on the operation.
+"""
 import logging
 import multiprocessing
 from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+from pydantic import BaseModel, ConfigDict
 
 from fastapi import FastAPI
 from skellycam.core.camera_group.camera_group import CameraGroupState
@@ -10,15 +16,17 @@ from skellycam.core.camera_group.camera_group_manager import CameraGroupManager,
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
 
-from freemocap.core.pipeline.pipeline_configs import (
+from freemocap.core.pipeline.shared.pipeline_configs import (
     CalibrationPipelineConfig,
     MocapPipelineConfig,
     RealtimePipelineConfig,
 )
-from freemocap.core.pipeline.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_manager import PipelineManager
-from freemocap.core.pipeline.posthoc_pipeline import PosthocPipeline
-from freemocap.core.pipeline.realtime_pipeline import RealtimePipeline
+from freemocap.core.pipeline.shared.frontend_payload import FrontendPayload
+from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
+from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
+from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
+from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
+
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 
@@ -42,20 +50,31 @@ class AppState(BaseModel):
     camera_groups: dict[CameraGroupIdString, CameraGroupState]
     workers: dict[str, WorkerState]
 
+
 @dataclass
 class FreemocapApplication:
 
     global_kill_flag: multiprocessing.Value
     process_registry: ProcessRegistry
-    pipeline_manager: PipelineManager
+    realtime_pipeline_manager: RealtimePipelineManager
+    posthoc_pipeline_manager: PosthocPipelineManager
     camera_group_manager: CameraGroupManager
 
     @classmethod
     def create(cls, fastapi_app: FastAPI) -> "FreemocapApplication":
+        global_kill_flag = fastapi_app.state.global_kill_flag
+        process_registry = fastapi_app.state.process_registry
+
         return cls(
-            global_kill_flag=fastapi_app.state.global_kill_flag,
-            process_registry=fastapi_app.state.process_registry,
-            pipeline_manager=PipelineManager.from_fastapi_app(fastapi_app),
+            global_kill_flag=global_kill_flag,
+            process_registry=process_registry,
+            realtime_pipeline_manager=RealtimePipelineManager(
+                process_registry=process_registry,
+            ),
+            posthoc_pipeline_manager=PosthocPipelineManager(
+                global_kill_flag=global_kill_flag,
+                process_registry=process_registry,
+            ),
             camera_group_manager=get_or_create_camera_group_manager(app=fastapi_app),
         )
 
@@ -71,7 +90,7 @@ class FreemocapApplication:
         self,
         pipeline_config: RealtimePipelineConfig,
     ) -> RealtimePipeline:
-        existing = self.pipeline_manager.get_realtime_pipeline_by_camera_ids(
+        existing = self.realtime_pipeline_manager.get_pipeline_by_camera_ids(
             camera_ids=pipeline_config.camera_ids,
         )
         if existing is not None:
@@ -81,7 +100,7 @@ class FreemocapApplication:
         camera_group = await self.camera_group_manager.create_or_update_camera_group(
             camera_configs=pipeline_config.camera_configs,
         )
-        return self.pipeline_manager.create_realtime_pipeline(
+        return self.realtime_pipeline_manager.create_pipeline(
             camera_group=camera_group,
             pipeline_config=pipeline_config,
         )
@@ -95,7 +114,7 @@ class FreemocapApplication:
         recording_info: RecordingInfo,
         calibration_config: CalibrationPipelineConfig,
     ) -> PosthocPipeline:
-        return self.pipeline_manager.create_posthoc_calibration_pipeline(
+        return self.posthoc_pipeline_manager.create_calibration_pipeline(
             recording_info=recording_info,
             calibration_config=calibration_config,
         )
@@ -105,7 +124,7 @@ class FreemocapApplication:
         recording_info: RecordingInfo,
         mocap_config: MocapPipelineConfig,
     ) -> PosthocPipeline:
-        return self.pipeline_manager.create_posthoc_mocap_pipeline(
+        return self.posthoc_pipeline_manager.create_mocap_pipeline(
             recording_info=recording_info,
             mocap_config=mocap_config,
         )
@@ -138,7 +157,7 @@ class FreemocapApplication:
         self,
         if_newer_than: FrameNumberInt,
     ) -> dict[PipelineIdString | CameraGroupIdString, tuple[bytes, FrontendPayload | FrameNumberInt]]:
-        realtime_pipelines = self.pipeline_manager.realtime_pipelines
+        realtime_pipelines = self.realtime_pipeline_manager.pipelines
         if len(realtime_pipelines) == 0 or all(
             not p.alive for p in realtime_pipelines.values()
         ):
@@ -151,7 +170,7 @@ class FreemocapApplication:
                 for camera_group_id, payload in cg_payloads.items()
             }
 
-        return self.pipeline_manager.get_latest_frontend_payloads(
+        return self.realtime_pipeline_manager.get_latest_frontend_payloads(
             if_newer_than=if_newer_than,
         )
 
@@ -160,15 +179,16 @@ class FreemocapApplication:
     # ------------------------------------------------------------------
 
     def close_pipelines(self) -> None:
-        self.pipeline_manager.close_all_realtime_pipelines()
-        self.pipeline_manager.close_all_posthoc_pipelines()
+        self.realtime_pipeline_manager.shutdown()
+        self.posthoc_pipeline_manager.shutdown()
 
     def pause_unpause_pipelines(self) -> None:
-        self.pipeline_manager.pause_unpause_realtime_pipelines()
+        self.realtime_pipeline_manager.pause_unpause_all()
 
     def close(self) -> None:
         self.global_kill_flag.value = True
-        self.pipeline_manager.shutdown_all()
+        self.realtime_pipeline_manager.shutdown()
+        self.posthoc_pipeline_manager.shutdown()
 
     def to_app_state(self) -> AppState:
         return AppState.from_app(self)

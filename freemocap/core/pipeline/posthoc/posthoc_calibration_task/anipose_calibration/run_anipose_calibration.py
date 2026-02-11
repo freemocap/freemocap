@@ -41,7 +41,7 @@ def run_anipose_calibration(
     anipose_cameras: list[AniposeCamera] = [
         AniposeCamera(
             name=video_id,
-            size=(video_meta.height, video_meta.width),
+            size=(video_meta.width, video_meta.height),
         )
         for video_id, video_meta in video_metadata.items()
     ]

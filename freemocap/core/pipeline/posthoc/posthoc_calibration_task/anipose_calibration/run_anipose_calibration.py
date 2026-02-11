@@ -1,6 +1,11 @@
-"""Run anipose-based camera calibration (legacy solver)."""
+"""Run anipose-based camera calibration (legacy solver).
+
+Accepts the shared CharucoBoardDefinition and returns a CalibrationResult,
+so both solver paths produce the same output type.
+"""
 
 import logging
+import time
 from pathlib import Path
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -8,13 +13,24 @@ from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.pipeline.posthoc.posthoc_calibration_task.anipose_calibration.helpers.calibration_helpers import \
-    get_real_world_matrices, pin_camera_zero_to_origin, set_charuco_board_as_groundplane
-from freemocap.core.pipeline.posthoc.posthoc_calibration_task.anipose_calibration.helpers.freemocap_anipose import \
-    AniposeCamera, AniposeCameraGroup, AniposeCharucoBoard
-from freemocap.core.pipeline.posthoc.posthoc_calibration_task.shared.calibration_save import save_calibration_copies
-from freemocap.core.pipeline.posthoc.posthoc_calibration_task.shared.charuco_observation_aggregator import \
-    CharucoObservationAggregator
+from freemocap.core.pipeline.posthoc.posthoc_calibration_task.anipose_calibration.helpers.calibration_helpers import (
+    get_real_world_matrices,
+    pin_camera_zero_to_origin,
+    set_charuco_board_as_groundplane,
+)
+from freemocap.core.pipeline.posthoc.posthoc_calibration_task.anipose_calibration.helpers.freemocap_anipose import (
+    AniposeCamera,
+    AniposeCameraGroup,
+)
+from freemocap.core.pipeline.posthoc.posthoc_calibration_task.shared.anipose_adapters import (
+    anipose_group_to_camera_models,
+    create_anipose_board,
+)
+from freemocap.core.pipeline.posthoc.posthoc_calibration_task.shared.calibration_models import CharucoBoardDefinition, \
+    CalibrationResult
+from freemocap.core.pipeline.posthoc.posthoc_calibration_task.shared.charuco_observation_aggregator import (
+    CharucoObservationAggregator,
+)
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.pipeline.shared.pipeline_configs import CalibrationPipelineConfig
 from freemocap.core.types.type_overloads import VideoIdString
@@ -25,19 +41,22 @@ logger = logging.getLogger(__name__)
 def run_anipose_calibration(
     *,
     charuco_observations_by_frame: list[dict[CameraIdString, CharucoObservation]],
+    board: CharucoBoardDefinition,
     calibration_pipeline_config: CalibrationPipelineConfig,
     video_metadata: dict[VideoIdString, VideoMetadata],
     recording_info: RecordingInfo,
     pin_camera_0_to_origin: bool = True,
     use_charuco_as_groundplane: bool = False,
-    init_intrinsics: bool = False,
+    init_intrinsics: bool = True,
     init_extrinsics: bool = True,
     verbose: bool = True,
-) -> Path:
+) -> CalibrationResult:
     """Run anipose calibration from charuco observations.
 
-    Returns the path to the saved calibration TOML.
+    Returns a CalibrationResult with optimized camera models.
     """
+    t_start = time.monotonic()
+
     anipose_cameras: list[AniposeCamera] = [
         AniposeCamera(
             name=video_id,
@@ -46,18 +65,14 @@ def run_anipose_calibration(
         for video_id, video_meta in video_metadata.items()
     ]
     anipose_camera_group = AniposeCameraGroup(cameras=anipose_cameras)
+    anipose_charuco_board = create_anipose_board(board=board)
 
-    anipose_charuco_board = AniposeCharucoBoard(
-        squaresY=calibration_pipeline_config.charuco_board_y_squares,
-        squaresX=calibration_pipeline_config.charuco_board_x_squares,
-        square_length=calibration_pipeline_config.charuco_square_length,
-        marker_length=calibration_pipeline_config.charuco_square_length * 0.8,
-    )
     logger.info(
-        f"Starting Anipose calibration with {len(charuco_observations_by_frame)} frames of charuco observations"
+        f"Starting Anipose calibration with "
+        f"{len(charuco_observations_by_frame)} frames of charuco observations"
     )
 
-    # Aggregate all observations
+    # Aggregate all observations into anipose row format
     charuco_observation_aggregator: CharucoObservationAggregator | None = None
     for charuco_observations_by_camera in charuco_observations_by_frame:
         if charuco_observation_aggregator is None:
@@ -71,7 +86,7 @@ def run_anipose_calibration(
     if charuco_observation_aggregator is None:
         raise ValueError("No charuco observations were provided for calibration")
 
-    # Perform calibration on aggregated rows
+    # Run anipose bundle adjustment
     all_camera_rows = charuco_observation_aggregator.all_camera_rows
     logger.info(f"Aggregated charuco observations for {len(all_camera_rows)} cameras")
     error, merged, charuco_frame_numbers = anipose_camera_group.calibrate_rows(
@@ -88,14 +103,14 @@ def run_anipose_calibration(
     anipose_camera_group.metadata["groundplane_calibration"] = False
     anipose_camera_group.metadata["recording_info"] = recording_info.model_dump()
 
-    # Apply camera 0 pinning
+    # Pin camera 0 to origin
     if pin_camera_0_to_origin:
         anipose_camera_group = pin_camera_zero_to_origin(camera_group=anipose_camera_group)
         logger.info("Pinned camera 0 to origin")
 
-    # Apply groundplane correction
+    # Ground plane correction
     if use_charuco_as_groundplane:
-        observation_recorders_by_video = {
+        observation_recorders_by_video: dict[VideoIdString, BaseRecorder] = {
             video_id: BaseRecorder() for video_id in charuco_observations_by_frame[0].keys()
         }
         for frame_number, charuco_observations_by_camera in enumerate(charuco_observations_by_frame):
@@ -120,14 +135,22 @@ def run_anipose_calibration(
         else:
             logger.warning(f"Failed to set groundplane: {groundplane_success.error}")
 
-    # Calculate real-world camera positions and orientations
+    # Compute real-world camera positions and orientations
     get_real_world_matrices(camera_group=anipose_camera_group)
 
-    # Save calibration to all three standard locations
-    recording_toml = save_calibration_copies(
-        save_fn=anipose_camera_group.dump,
-        recording_name=recording_info.recording_name,
-        recording_folder_path=recording_info.full_recording_path,
-    )
+    # Convert anipose results to shared CameraModel types
+    camera_models = anipose_group_to_camera_models(group=anipose_camera_group)
 
-    return recording_toml
+    elapsed = time.monotonic() - t_start
+
+    return CalibrationResult(
+        cameras=camera_models,
+        board=board,
+        reprojection_error_px=float(error),
+        initial_cost=0.0,
+        final_cost=float(error),
+        n_iterations=0,
+        time_seconds=elapsed,
+        n_observations_used=len(charuco_frame_numbers) * len(camera_models),
+        n_observations_rejected=0,
+    )

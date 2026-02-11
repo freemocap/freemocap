@@ -22,6 +22,7 @@ dependencies = [
     #    "ltrt"
     "scikit-learn>=1.7.2",
     "pyceres>=2.5",
+    "tomli-w>=1.2.0",
 ]
 
 [tool.uv.sources]

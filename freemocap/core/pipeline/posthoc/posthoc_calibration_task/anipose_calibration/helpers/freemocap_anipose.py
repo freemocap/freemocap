@@ -963,7 +963,7 @@ class AniposeCameraGroup:
             self,
             all_rows: list[list[dict]],
             board,
-            init_intrinsics: bool = False,
+            init_intrinsics: bool = True,
             init_extrinsics: bool = True,
             verbose: bool = True,
     ) -> tuple[float, list, list]:

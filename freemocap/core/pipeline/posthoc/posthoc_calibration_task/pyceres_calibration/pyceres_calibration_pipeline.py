@@ -1,4 +1,4 @@
-"""Top-level calibration pipeline.
+"""Top-level pyceres calibration pipeline.
 
 Orchestrates the full calibration flow:
   1. Validate and organize observations
@@ -11,7 +11,6 @@ Orchestrates the full calibration flow:
 """
 
 import logging
-from pathlib import Path
 
 from .helpers.initialization import (
     initialize_board_poses,
@@ -27,7 +26,6 @@ from .helpers.models import (
 )
 from .helpers.postprocessing import align_to_charuco_groundplane, pin_camera_to_origin
 from .helpers.solver import run_bundle_adjustment
-from .helpers.toml_io import save_calibration_toml
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +37,7 @@ def run_pyceres_calibration(
     image_sizes: dict[str, tuple[int, int]],
     camera_names: list[str],
     config: PyceresCalibrationSolverConfig,
-    output_toml_path: Path,
     use_groundplane: bool = False,
-    extra_metadata: dict | None = None,
 ) -> CalibrationResult:
     """Run the complete camera calibration pipeline.
 
@@ -51,12 +47,10 @@ def run_pyceres_calibration(
         image_sizes: Per-camera image size as {name: (width, height)}.
         camera_names: Ordered list of camera names. Camera 0 is the reference.
         config: Solver configuration.
-        output_toml_path: Where to save the calibration TOML.
         use_groundplane: If True, align the world frame to the charuco board plane.
-        extra_metadata: Additional metadata to include in the TOML.
 
     Returns:
-        CalibrationResult with optimized cameras.
+        CalibrationResult with optimized cameras. Caller is responsible for saving.
     """
     # =========================================================================
     # VALIDATE INPUTS
@@ -183,14 +177,8 @@ def run_pyceres_calibration(
                 board=board,
                 all_observations=all_observations,
             )
-            if extra_metadata is None:
-                extra_metadata = {}
-            extra_metadata["groundplane_calibration"] = True
         except RuntimeError as e:
             logger.warning(f"Ground plane alignment failed: {e}")
-            if extra_metadata is None:
-                extra_metadata = {}
-            extra_metadata["groundplane_calibration"] = False
 
     # Rebuild result with post-processed cameras
     result = CalibrationResult(
@@ -205,19 +193,6 @@ def run_pyceres_calibration(
         n_observations_rejected=result.n_observations_rejected,
     )
 
-    # =========================================================================
-    # STEP 7: SAVE
-    # =========================================================================
-    logger.info("\n" + "=" * 80)
-    logger.info("STEP 6: SAVE")
-    logger.info("=" * 80)
-
-    save_calibration_toml(
-        result=result,
-        path=output_toml_path,
-        metadata=extra_metadata,
-    )
-
     # Log final summary
     logger.info("\n" + "=" * 80)
     logger.info("CALIBRATION COMPLETE")
@@ -227,7 +202,6 @@ def run_pyceres_calibration(
     logger.info(f"  Observations used:     {result.n_observations_used}")
     logger.info(f"  Observations rejected: {result.n_observations_rejected}")
     logger.info(f"  Solver time:           {result.time_seconds:.2f}s")
-    logger.info(f"  Output:                {output_toml_path}")
 
     for cam in result.cameras:
         pos = cam.extrinsics.world_position

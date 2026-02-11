@@ -83,7 +83,7 @@ class CalibrationPipelineConfig(BaseModel):
     charuco_square_length: float = Field(gt=0, default=1, alias="charucoSquareLength")
 
     solver_method: CalibrationSolverMethod = Field(
-        default=CalibrationSolverMethod.PYCERES,
+        default=CalibrationSolverMethod.ANIPOSE,
         alias="solverMethod",
         description="Which calibration solver to use: 'anipose' (legacy) or 'pyceres' (new bundle adjustment).",
     )

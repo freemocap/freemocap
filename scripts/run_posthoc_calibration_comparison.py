@@ -214,13 +214,13 @@ if __name__ == "__main__":
     RECORDING_PATH = (
         Path.home()
         / "freemocap_data"
-        / "recording_sessions"
-        / "freemocap_test_data2"
+        / "recordings"
+        / "2026-02-11_14-35-59_GMT-5_calibration"
     )
 
     CONFIG = CalibrationPipelineConfig()
-    CONFIG.charuco_board_x_squares = 7
-    CONFIG.charuco_board_y_squares = 5
+    CONFIG.charuco_board_x_squares = 5
+    CONFIG.charuco_board_y_squares = 3
     comparison = run_both_and_compare(
         recording_path=RECORDING_PATH,
         base_config=CONFIG,

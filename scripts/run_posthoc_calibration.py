@@ -143,12 +143,12 @@ def run_posthoc_calibration(
 
 
 if __name__ == "__main__":
-    RECORDING_PATH: Path | list[str] = Path().home() / "freemocap_data" / "recording_sessions" / "freemocap_test_data2"
+    RECORDING_PATH: Path | list[str] = Path().home() / "freemocap_data" / "recordings" / "2026-02-11_14-35-59_GMT-5_calibration"
 
     CONFIG: CalibrationPipelineConfig = CalibrationPipelineConfig()
     CONFIG.solver_method = CalibrationSolverMethod.PYCERES
-    CONFIG.charuco_board_x_squares = 7
-    CONFIG.charuco_board_y_squares = 5
+    CONFIG.charuco_board_x_squares = 5
+    CONFIG.charuco_board_y_squares = 3
     # CONFIG.solver_method = CalibrationSolverMethod.ANIPOSE
     # CONFIG.charuco_board_x_squares = 7
     # CONFIG.charuco_board_y_squares = 5

@@ -271,7 +271,7 @@ def run_calibration_task(
     # Save observations so comparison tools can run board reconstruction tests
     observations_json_path = Path(recording_info.full_recording_path) / "charuco_observations.json"
     observations_json_path.write_text(
-        json.dumps([numpy_to_python(obs.model_dump()) for obs in all_observations])
+        json.dumps([numpy_to_python(obs.model_dump()) for obs in all_observations], indent=4)
     )
     logger.info(f"Saved {len(all_observations)} charuco observations to {observations_json_path}")
 

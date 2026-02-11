@@ -1,16 +1,13 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import NDArray
-
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.freemocap_anipose import (
     AniposeCameraGroup
 )
-
-from  skellycam.core.types.type_overloads import  CameraIdString
+from numpy.typing import NDArray
+from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import CharucoObservation
 
 logger = logging.getLogger(__name__)

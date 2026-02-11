@@ -5,12 +5,12 @@ import cv2
 import numpy as np
 import pytest
 import toml
-
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.camera_math_models import (
     CameraDistortionCoefficients,
     CameraMatrix,
 )
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.point_triangulator import CameraCalibrationData, PointTriangulator
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.point_triangulator import \
+    CameraCalibrationData, PointTriangulator
 
 
 class SyntheticCameraSetup:

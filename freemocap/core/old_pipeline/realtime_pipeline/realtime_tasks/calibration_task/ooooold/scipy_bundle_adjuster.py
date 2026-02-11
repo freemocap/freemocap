@@ -2,15 +2,15 @@ import logging
 
 import cv2
 import numpy as np
-from pydantic import BaseModel, Field
-from scipy.optimize import least_squares
-from skellycam.core.types.type_overloads import CameraIdString
-
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.camera_math_models import (
     CameraMatrix,
     CameraDistortionCoefficients,
     TransformationMatrix,
 )
+from pydantic import BaseModel, Field
+from scipy.optimize import least_squares
+from skellycam.core.types.type_overloads import CameraIdString
+
 from freemocap.core.pipeline.realtime.realtime_pipeline import MultiCameraTargetView
 
 logger = logging.getLogger(__name__)

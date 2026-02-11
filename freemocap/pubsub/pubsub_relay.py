@@ -7,7 +7,8 @@ This decouples publishers from subscribers:
   - The relay (in the main process) handles distribution
   - Subscriptions can be added at any time without ordering constraints
 
-Lifecycle: started by PubSubTopicManager.create(), stopped by PubSubTopicManager.close().
+The relay owns the subscriptions lock, coordinating between the main thread
+(adding subscriptions) and the relay thread (iterating subscriptions).
 
 If the relay thread dies from an unhandled exception, it sets the global_kill_flag
 to bring down all processes.
@@ -18,6 +19,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
+from freemocap.core.types.type_overloads import TopicPublicationQueue, TopicSubscriptionQueue
 from freemocap.pubsub.pubsub_abcs import PubSubTopicABC
 
 logger = logging.getLogger(__name__)
@@ -36,14 +38,46 @@ class PubSubRelay:
     is found, it is distributed to every subscription queue for that topic.
     On shutdown, remaining messages are drained before the thread exits.
 
+    Owns the subscriptions lock — both create_subscription() and the relay
+    loop acquire it, so subscriptions can be safely added while the relay
+    is running.
+
     If the relay thread crashes, global_kill_flag is set immediately to
     bring down all processes.
     """
     topics: dict[type[PubSubTopicABC], PubSubTopicABC]
     global_kill_flag: multiprocessing.Value
+    _subscriptions_lock: threading.Lock = field(default_factory=threading.Lock)
     _stop_event: threading.Event = field(default_factory=threading.Event)
     _thread: threading.Thread | None = field(default=None, init=False)
     _fatal_error: BaseException | None = field(default=None, init=False)
+
+    def create_subscription(self, topic_type: type[PubSubTopicABC]) -> TopicSubscriptionQueue:
+        """
+        Create a new subscription queue for a topic. Thread-safe.
+        Called from the main thread; coordinates with the relay thread
+        via the subscriptions lock.
+        """
+        if topic_type not in self.topics:
+            raise ValueError(
+                f"Unknown topic type: {topic_type.__name__}. "
+                f"Available topics: {[t.__name__ for t in self.topics.keys()]}"
+            )
+        with self._subscriptions_lock:
+            return self.topics[topic_type].get_subscription()
+
+    def get_publication_queue(self, topic_type: type[PubSubTopicABC]) -> TopicPublicationQueue:
+        """
+        Get the publication queue for a topic.
+        Returns a bare multiprocessing.Queue — pickle-safe, pass directly
+        to child processes as a kwarg.
+        """
+        if topic_type not in self.topics:
+            raise ValueError(
+                f"Unknown topic type: {topic_type.__name__}. "
+                f"Available topics: {[t.__name__ for t in self.topics.keys()]}"
+            )
+        return self.topics[topic_type].publication
 
     def start(self) -> None:
         """Start the relay thread. Raises if already running."""
@@ -78,13 +112,16 @@ class PubSubRelay:
     def _relay_one_pass(self) -> bool:
         """
         Do one pass over all topics, relaying any pending messages.
+        Holds the subscriptions lock while iterating to coordinate
+        with create_subscription().
         Returns True if any messages were relayed.
         """
         relayed_any = False
-        for topic in self.topics.values():
-            count = topic._relay_to_subscribers()
-            if count > 0:
-                relayed_any = True
+        with self._subscriptions_lock:
+            for topic in self.topics.values():
+                count = topic.relay_to_subscribers()
+                if count > 0:
+                    relayed_any = True
         return relayed_any
 
     def _drain(self) -> None:
@@ -97,12 +134,12 @@ class PubSubRelay:
 
         while time.monotonic() < deadline:
             drained_this_pass = 0
-            for topic in self.topics.values():
-                drained_this_pass += topic._relay_to_subscribers()
+            with self._subscriptions_lock:
+                for topic in self.topics.values():
+                    drained_this_pass += topic.relay_to_subscribers()
             total_drained += drained_this_pass
             if drained_this_pass == 0:
                 break
-            # Brief yield to let any in-flight publishes complete
             time.sleep(RELAY_POLL_INTERVAL_SECONDS)
 
         if total_drained > 0:
@@ -111,7 +148,7 @@ class PubSubRelay:
     def check_alive(self) -> None:
         """
         Raise if the relay thread has died unexpectedly.
-        Call this before operations that depend on the relay (e.g., adding subscriptions).
+        Call this before operations that depend on the relay.
         """
         if self._fatal_error is not None:
             raise RuntimeError(
@@ -146,8 +183,6 @@ class PubSubRelay:
                 f"{RELAY_SHUTDOWN_TIMEOUT_SECONDS}s timeout"
             )
 
-        # Final drain after thread has stopped — catches anything published
-        # between the last relay pass and the stop signal
         self._drain()
         logger.debug("PubSubRelay stopped")
 

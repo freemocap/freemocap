@@ -1,9 +1,8 @@
+import logging
 import multiprocessing
 import os
 import signal
 import time
-
-import logging
 from typing import Final
 
 logger = logging.getLogger(__name__)

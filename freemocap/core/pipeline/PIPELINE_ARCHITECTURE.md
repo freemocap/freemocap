@@ -75,7 +75,7 @@ Task functions are plain module-level functions with task-specific config pre-bo
 
 ```python
 task_fn = functools.partial(run_calibration_task, task_config=calib_config)
-pipeline = PosthocPipeline.create(..., task_fn=task_fn, ...)
+pipeline = PosthocPipeline.create(..., aggregation_task_fn=task_fn, ...)
 ```
 
 ### 4. Adding a new posthoc task
@@ -88,7 +88,7 @@ To add a new task (e.g., posthoc RTMPose processing):
    def create_rtmpose_pipeline(self, ...) -> PosthocPipeline:
        task_fn = functools.partial(run_rtmpose_task, task_config=rtmpose_config)
        return PosthocPipeline.create(
-           ..., detector_spec=rtmpose_config.detector_spec, task_fn=task_fn, ...
+           ..., detector_spec=rtmpose_config.detector_spec, aggregation_task_fn=task_fn, ...
        )
    ```
 

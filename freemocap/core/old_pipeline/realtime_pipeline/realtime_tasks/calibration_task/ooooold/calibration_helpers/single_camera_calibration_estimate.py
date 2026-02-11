@@ -2,9 +2,9 @@ from pydantic import BaseModel
 from pydantic import Field
 from skellycam.core.types.type_overloads import CameraIdString
 
+from freemocap.core.pipeline.realtime.realtime_pipeline import Positional6DoF
 from freemocap.core.pipeline.realtime.realtime_pipeline import \
     TransformationMatrixArray, CameraMatrixArray, CameraDistortionCoefficientsArray
-from freemocap.core.pipeline.realtime.realtime_pipeline import Positional6DoF
 
 
 class SingleCameraCalibrationEstimate(BaseModel):

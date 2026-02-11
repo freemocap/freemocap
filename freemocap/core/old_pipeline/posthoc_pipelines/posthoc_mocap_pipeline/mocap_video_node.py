@@ -2,18 +2,18 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 from pathlib import Path
-import cv2
 
+import cv2
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
+    MocapPipelineTaskConfig
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
 
 from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
-    MocapPipelineTaskConfig
-
 from freemocap.core.types.type_overloads import VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
-from skellycam.core.ipc.process_management.managed_process import ManagedProcess
+
 logger = logging.getLogger(__name__)
 
 

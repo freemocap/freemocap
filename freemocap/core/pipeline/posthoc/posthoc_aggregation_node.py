@@ -22,27 +22,25 @@ import multiprocessing
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
-from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.shared.base_node import BaseNode
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
+from freemocap.core.pipeline.shared.base_node import BaseNode
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
+from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     VideoNodeOutputMessage,
     VideoNodeOutputTopic,
     PosthocProgressTopic,
-    PosthocProgressMessage,
 )
 from freemocap.utilities.wait_functions import wait_1ms
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 
 logger = logging.getLogger(__name__)
 
-# Type alias for task functions. Concrete tasks may have additional kwargs
-# pre-bound via functools.partial — the aggregation node doesn't need to know.
-PosthocTaskFn = Callable[..., None]
+PosthocAggregationNodeTaskFn = Callable[..., None]
 
 
 @dataclass
@@ -52,12 +50,13 @@ class PosthocAggregationNode(BaseNode):
     def create(
         cls,
         *,
-        task_fn: PosthocTaskFn,
+        aggregation_task_fn: PosthocAggregationNodeTaskFn,
         video_metadata: dict[VideoIdString, VideoMetadata],
         pipeline_id: PipelineIdString,
         recording_info: RecordingInfo,
         process_registry: ProcessRegistry,
         ipc: PipelineIPC,
+        pubsub: PubSubTopicManager,
     ) -> "PosthocAggregationNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -65,14 +64,14 @@ class PosthocAggregationNode(BaseNode):
             process_registry=process_registry,
             log_queue=ipc.ws_queue,
             kwargs=dict(
-                task_fn=task_fn,
+                aggregation_task_fn=aggregation_task_fn,
                 pipeline_id=pipeline_id,
                 recording_info=recording_info,
                 video_metadata=video_metadata,
                 ipc=ipc,
-                video_node_subscription=ipc.pubsub.topics[
-                    VideoNodeOutputTopic
-                ].get_subscription(),
+                video_node_output_subscription=pubsub.get_subscription(
+                    VideoNodeOutputTopic,
+                ),
             ),
         )
         return cls(
@@ -83,15 +82,14 @@ class PosthocAggregationNode(BaseNode):
     @staticmethod
     def _run(
         *,
-        task_fn: PosthocTaskFn,
+        aggregation_task_fn: PosthocAggregationNodeTaskFn,
         pipeline_id: PipelineIdString,
         recording_info: RecordingInfo,
         video_metadata: dict[VideoIdString, VideoMetadata],
         ipc: PipelineIPC,
         shutdown_self_flag: multiprocessing.Value,
-        video_node_subscription: TopicSubscriptionQueue,
+        video_node_output_subscription: TopicSubscriptionQueue,
     ) -> None:
-        # ---- Validate frame ranges across videos ----
         start_frames = set(vm.start_frame for vm in video_metadata.values())
         end_frames = set(vm.end_frame for vm in video_metadata.values())
         if len(start_frames) != 1 or len(end_frames) != 1:
@@ -111,31 +109,9 @@ class PosthocAggregationNode(BaseNode):
             f"= {total_expected} outputs"
         )
 
-        # ---- Helper to publish progress ----
-        def _publish_progress(phase: str, fraction: float, detail: str = "") -> None:
-            try:
-                ipc.pubsub.publish(
-                    topic_type=PosthocProgressTopic,
-                    message=PosthocProgressMessage(
-                        pipeline_id=pipeline_id,
-                        phase=phase,
-                        progress_fraction=max(0.0, min(1.0, fraction)),
-                        detail=detail,
-                    ),
-                )
-            except Exception:
-                logger.debug("Failed to publish progress", exc_info=True)
-
-        def _report_progress(detail: str, fraction: float) -> None:
-            """Callback passed to the task function for task-phase progress."""
-            _publish_progress(phase="processing", fraction=fraction, detail=detail)
-
-        # ---- Phase 1: Collect all frame outputs ----
-        _publish_progress("collecting_frames", 0.0, "Waiting for video node outputs")
-
         video_outputs_by_frame: dict[FrameNumberInt, dict[VideoIdString, VideoNodeOutputMessage | None]] = {
-            fn: {vid: None for vid in video_ids}
-            for fn in frame_numbers
+            frame_number: {vid: None for vid in video_ids}
+            for frame_number in frame_numbers
         }
         got_all_by_frame: dict[FrameNumberInt, bool] = {fn: False for fn in frame_numbers}
         received_count: int = 0
@@ -144,10 +120,10 @@ class PosthocAggregationNode(BaseNode):
             while not shutdown_self_flag.value and ipc.should_continue:
                 wait_1ms()
 
-                if video_node_subscription.empty():
+                if video_node_output_subscription.empty():
                     continue
 
-                msg: VideoNodeOutputMessage = video_node_subscription.get()
+                msg: VideoNodeOutputMessage = video_node_output_subscription.get()
 
                 if msg.video_id not in video_ids:
                     raise ValueError(
@@ -163,60 +139,44 @@ class PosthocAggregationNode(BaseNode):
                 video_outputs_by_frame[msg.frame_number][msg.video_id] = msg
                 received_count += 1
 
-                # Check if this frame is complete
                 if all(
                     isinstance(v, VideoNodeOutputMessage)
                     for v in video_outputs_by_frame[msg.frame_number].values()
                 ):
                     got_all_by_frame[msg.frame_number] = True
 
-                # Report collection progress
-                if received_count % max(1, total_expected // 20) == 0:
-                    _publish_progress(
-                        "collecting_frames",
-                        received_count / total_expected,
-                        f"Collected {received_count}/{total_expected} observations",
-                    )
-
-                # Check if ALL frames are complete
                 if all(got_all_by_frame.values()):
                     break
 
-            # ---- Validate completeness ----
             missing_frames = [fn for fn, complete in got_all_by_frame.items() if not complete]
             if missing_frames:
                 raise RuntimeError(
-                    f"Pipeline {pipeline_id} ended with {len(missing_frames)} "
+                    f"Pipeline {pipeline_id} ended with {len(missing_frames)} missing frames out of {total_expected}, "
                     f"incomplete frames (shutdown_flag={shutdown_self_flag.value}, "
                     f"should_continue={ipc.should_continue})"
                 )
 
-            _publish_progress("collecting_frames", 1.0, "All frames collected")
             logger.info(f"PosthocAggregationNode [{pipeline_id}] — all frames collected")
 
-            # ---- Phase 2: Build observation list and call task ----
-            _publish_progress("processing", 0.0, "Starting task processing")
 
-            frame_observations: list[dict[VideoIdString, object]] = []
-            for fn in frame_numbers:
-                frame_data = video_outputs_by_frame[fn]
+            observations_by_frame: list[dict[VideoIdString, object]] = []
+            for frame_number in frame_numbers:
+                frame_data = video_outputs_by_frame[frame_number]
                 observations = {}
                 for vid_id, output_msg in frame_data.items():
                     if not isinstance(output_msg, VideoNodeOutputMessage):
                         raise RuntimeError(
-                            f"Missing output for video {vid_id} frame {fn}"
+                            f"Missing output for video {vid_id} frame {frame_number}"
                         )
                     observations[vid_id] = output_msg.observation
-                frame_observations.append(observations)
+                observations_by_frame.append(observations)
 
-            task_fn(
-                frame_observations=frame_observations,
+            aggregation_task_fn(
+                frame_observations=observations_by_frame,
                 recording_info=recording_info,
                 video_metadata=video_metadata,
-                report_progress=_report_progress,
             )
 
-            _publish_progress("complete", 1.0, "Task completed successfully")
             logger.info(f"PosthocAggregationNode [{pipeline_id}] — task completed")
 
         except Exception as e:
@@ -224,7 +184,6 @@ class PosthocAggregationNode(BaseNode):
                 f"Exception in PosthocAggregationNode [{pipeline_id}]: {e}",
                 exc_info=True,
             )
-            _publish_progress("failed", 0.0, str(e))
             ipc.shutdown_pipeline()
             raise
         finally:

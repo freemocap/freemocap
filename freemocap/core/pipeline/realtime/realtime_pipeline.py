@@ -15,21 +15,22 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group import CameraGroup
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
-from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
-from freemocap.core.pipeline.shared.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.realtime_aggregation_node import RealtimeAggregationNode
 from freemocap.core.pipeline.realtime.realtime_camera_node import RealtimeCameraNode
+from freemocap.core.pipeline.shared.frontend_payload import FrontendPayload
+from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
+from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputTopic,
     AggregationNodeOutputMessage,
     PipelineConfigUpdateMessage,
     PipelineConfigUpdateTopic,
 )
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class RealtimePipeline:
     aggregation_node: RealtimeAggregationNode
     aggregation_output_subscription: TopicSubscriptionQueue
     ipc: PipelineIPC
+    pubsub: PubSubTopicManager
     started: bool = False
 
     @property
@@ -83,9 +85,14 @@ class RealtimePipeline:
         process_registry: ProcessRegistry,
         pipeline_config: RealtimePipelineConfig,
     ) -> "RealtimePipeline":
+        global_kill_flag = camera_group.ipc.global_kill_flag
+
         ipc = PipelineIPC.create(
-            global_kill_flag=camera_group.ipc.global_kill_flag,
+            global_kill_flag=global_kill_flag,
             heartbeat_timestamp=process_registry.heartbeat_timestamp,
+        )
+        pubsub = PubSubTopicManager.create(
+            global_kill_flag=global_kill_flag,
         )
 
         camera_nodes = {
@@ -95,6 +102,7 @@ class RealtimePipeline:
                 camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
                 config=pipeline_config,
                 ipc=ipc,
+                pubsub=pubsub,
             )
             for camera_id in camera_group.configs.keys()
         }
@@ -105,11 +113,12 @@ class RealtimePipeline:
             camera_group_shm_dto=camera_group.shm.to_dto(),
             config=pipeline_config,
             ipc=ipc,
+            pubsub=pubsub,
         )
 
-        aggregation_output_subscription = ipc.pubsub.topics[
-            AggregationNodeOutputTopic
-        ].get_subscription()
+        aggregation_output_subscription = pubsub.get_subscription(
+            AggregationNodeOutputTopic,
+        )
 
         return cls(
             id=str(uuid.uuid4())[:6],
@@ -119,6 +128,7 @@ class RealtimePipeline:
             aggregation_node=aggregation_node,
             aggregation_output_subscription=aggregation_output_subscription,
             ipc=ipc,
+            pubsub=pubsub,
         )
 
     def start(self) -> None:
@@ -131,12 +141,10 @@ class RealtimePipeline:
             f"[{self.camera_group_id}] with cameras {self.camera_ids}"
         )
 
-        # Start camera group if not already running
         if not self.camera_group.started:
             logger.debug("Starting camera group...")
             self.camera_group.start()
 
-        # Start aggregation node first (so it's ready for camera outputs)
         self.aggregation_node.start()
 
         for camera_id, node in self.camera_nodes.items():
@@ -147,6 +155,7 @@ class RealtimePipeline:
     def shutdown(self) -> None:
         logger.debug(f"Shutting down RealtimePipeline [{self.id}]")
         self.ipc.shutdown_pipeline()
+        self.pubsub.close()
         for node in self.camera_nodes.values():
             if node.is_alive:
                 node.shutdown()
@@ -157,8 +166,9 @@ class RealtimePipeline:
     def update_config(self, new_config: RealtimePipelineConfig) -> None:
         """Push a config update to all pipeline workers via pubsub."""
         self.config = new_config
-        self.ipc.pubsub.topics[PipelineConfigUpdateTopic].publish(
-            PipelineConfigUpdateMessage(pipeline_config=new_config),
+        self.pubsub.publish(
+            topic_type=PipelineConfigUpdateTopic,
+            message=PipelineConfigUpdateMessage(pipeline_config=new_config),
         )
 
     async def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
@@ -172,11 +182,9 @@ class RealtimePipeline:
     ) -> tuple[bytes, FrontendPayload | None] | None:
         """
         Drain the aggregation output queue and return the latest payload.
-
         Returns None if no new data is available.
         """
         if not self.alive:
-            # Pipeline is dead — try to get raw frames from camera group
             if self.camera_group.alive:
                 _, _, frames_bytearray = self.camera_group.get_latest_frontend_payload(
                     if_newer_than=if_newer_than,
@@ -185,7 +193,6 @@ class RealtimePipeline:
                     return (frames_bytearray, None)
             return None
 
-        # Drain queue, keep only latest
         aggregation_output: AggregationNodeOutputMessage | None = None
         while not self.aggregation_output_subscription.empty():
             aggregation_output = self.aggregation_output_subscription.get()

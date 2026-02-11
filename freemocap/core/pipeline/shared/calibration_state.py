@@ -8,17 +8,17 @@ calibration completes).
 import logging
 from pathlib import Path
 
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
-from skellycam.core.types.type_overloads import CameraIdString
-
-from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task import \
-    get_last_successful_calibration_toml_path
-from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task import \
+from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task.anipose_calibration.helpers.freemocap_anipose import \
     AniposeCameraGroup
+from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task.calibration_paths import \
+    get_last_successful_calibration_toml_path
 from freemocap.core.pipeline.posthoc.posthoc_tasks.mocap_task.mocap_helpers.triangulate_trajectory_array import \
     triangulate_frame_observations
-from freemocap.core.types.type_overloads import TrackedPointNameString
+from skellycam.core.types.type_overloads import CameraIdString
 from skellyforge.data_models.trajectory_3d import Point3d
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
+
+from freemocap.core.types.type_overloads import TrackedPointNameString
 
 logger = logging.getLogger(__name__)
 
@@ -76,11 +76,20 @@ class CalibrationStateTracker:
                 self._invalidate()
                 return False
 
-            self._anipose_camera_group = AniposeCameraGroup.load(str(path))
+            loaded_group = AniposeCameraGroup.load(str(path))
+            camera_names = loaded_group.get_names()
+            if not camera_names:
+                raise ValueError(
+                    f"Calibration file at {path} contains no cameras — "
+                    f"file may be corrupt or incomplete"
+                )
+            self._anipose_camera_group = loaded_group
             self._calibration_path = path
             self._is_valid = True
             self._failure_count = 0
-            logger.info(f"Loaded calibration from {path}")
+            logger.info(
+                f"Loaded calibration from {path} with cameras: {camera_names}"
+            )
             return True
 
         except Exception as e:

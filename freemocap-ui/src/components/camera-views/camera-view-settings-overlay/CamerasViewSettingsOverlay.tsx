@@ -1,17 +1,14 @@
 import React, {useState} from 'react';
-import {Box, Button, Checkbox, FormControlLabel, IconButton, Paper, TextField, Tooltip} from '@mui/material';
+import {Box, Button, Checkbox, FormControlLabel, IconButton, Paper, TextField, ToggleButton, ToggleButtonGroup, Tooltip} from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
 import GridViewIcon from '@mui/icons-material/GridView';
 import ViewInArIcon from '@mui/icons-material/ViewInAr';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
-
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import TableRowsIcon from '@mui/icons-material/TableRows';
 import {useServer} from "@/hooks/useServer";
-
-interface CameraSettings {
-    columns: number | null;
-    show3dView: boolean;
-}
+import {CameraSettings, LayoutDirection} from "@/pages/CamerasPage";
 
 interface CamerasViewSettingsOverlayProps {
     onSettingsChange: (settings: CameraSettings) => void;
@@ -22,11 +19,12 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
                                                                                           onSettingsChange,
                                                                                           onResetViews
                                                                                       }) => {
-    const { connectedCameraIds } = useServer();
+    const {connectedCameraIds} = useServer();
     const [isOpen, setIsOpen] = useState<boolean>(false);
     const [isAuto, setIsAuto] = useState<boolean>(true);
     const [manualColumns, setManualColumns] = useState<number>(2);
     const [show3dView, setShow3dView] = useState<boolean>(true);
+    const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('vertical');
 
     const getAutoColumns = (total: number): number => {
         if (total <= 1) return 1;
@@ -37,13 +35,20 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
 
     const autoColumns = getAutoColumns(connectedCameraIds.length);
 
+    const buildSettings = (overrides: Partial<{
+        columns: number | null;
+        show3dView: boolean;
+        layoutDirection: LayoutDirection;
+    }> = {}): CameraSettings => ({
+        columns: overrides.columns !== undefined ? overrides.columns : (isAuto ? null : manualColumns),
+        show3dView: overrides.show3dView !== undefined ? overrides.show3dView : show3dView,
+        layoutDirection: overrides.layoutDirection !== undefined ? overrides.layoutDirection : layoutDirection,
+    });
+
     const handleAutoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const checked = event.target.checked;
         setIsAuto(checked);
-        onSettingsChange({
-            columns: checked ? null : manualColumns,
-            show3dView
-        });
+        onSettingsChange(buildSettings({columns: checked ? null : manualColumns}));
     };
 
     const handleColumnsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,23 +56,22 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
         if (!isNaN(value) && value > 0) {
             setManualColumns(value);
             if (isAuto) {
-                // User is adjusting input while Auto is checked, so uncheck Auto
                 setIsAuto(false);
             }
-            onSettingsChange({
-                columns: value,
-                show3dView
-            });
+            onSettingsChange(buildSettings({columns: value}));
         }
     };
 
     const handle3dViewChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const checked = event.target.checked;
         setShow3dView(checked);
-        onSettingsChange({
-            columns: isAuto ? null : manualColumns,
-            show3dView: checked
-        });
+        onSettingsChange(buildSettings({show3dView: checked}));
+    };
+
+    const handleLayoutDirectionChange = (_event: React.MouseEvent<HTMLElement>, newDirection: LayoutDirection | null) => {
+        if (newDirection === null) return; // Prevent deselecting both
+        setLayoutDirection(newDirection);
+        onSettingsChange(buildSettings({layoutDirection: newDirection}));
     };
 
     const handleResetViews = () => {
@@ -96,7 +100,7 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
                             },
                         }}
                     >
-                        {isOpen ? <CloseIcon /> : <SettingsIcon />}
+                        {isOpen ? <CloseIcon/> : <SettingsIcon/>}
                     </IconButton>
                 </Tooltip>
             </Box>
@@ -114,12 +118,12 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
                         minWidth: 250,
                     }}
                 >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <GridViewIcon fontSize="small" />
-                        <Box sx={{ fontWeight: 600 }}>Grid Columns</Box>
+                    <Box sx={{display: 'flex', alignItems: 'center', gap: 1, mb: 2}}>
+                        <GridViewIcon fontSize="small"/>
+                        <Box sx={{fontWeight: 600}}>Grid Columns</Box>
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 3 }}>
+                    <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 1, mb: 3}}>
                         <FormControlLabel
                             control={
                                 <Checkbox
@@ -149,12 +153,12 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
                         />
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <ViewInArIcon fontSize="small" />
-                        <Box sx={{ fontWeight: 600 }}>3D View</Box>
+                    <Box sx={{display: 'flex', alignItems: 'center', gap: 1, mb: 2}}>
+                        <ViewInArIcon fontSize="small"/>
+                        <Box sx={{fontWeight: 600}}>3D View</Box>
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 3 }}>
+                    <Box sx={{display: 'flex', alignItems: 'flex-start', gap: 1, mb: 2}}>
                         <FormControlLabel
                             control={
                                 <Checkbox
@@ -171,9 +175,37 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
                         />
                     </Box>
 
+                    {/* Layout direction toggle — only meaningful when 3D view is visible */}
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        mb: 1,
+                        opacity: show3dView ? 1 : 0.4,
+                    }}>
+                        <Box sx={{fontWeight: 600, fontSize: 13}}>Layout</Box>
+                    </Box>
+                    <ToggleButtonGroup
+                        value={layoutDirection}
+                        exclusive
+                        onChange={handleLayoutDirectionChange}
+                        disabled={!show3dView}
+                        size="small"
+                        sx={{mb: 3, width: '100%'}}
+                    >
+                        <ToggleButton value="vertical" sx={{flex: 1, textTransform: 'none', fontSize: 12}}>
+                            <TableRowsIcon sx={{mr: 0.5, fontSize: 16}}/>
+                            Top / Bottom
+                        </ToggleButton>
+                        <ToggleButton value="horizontal" sx={{flex: 1, textTransform: 'none', fontSize: 12}}>
+                            <ViewColumnIcon sx={{mr: 0.5, fontSize: 16}}/>
+                            Side by Side
+                        </ToggleButton>
+                    </ToggleButtonGroup>
+
                     <Button
                         variant="outlined"
-                        startIcon={<RestartAltIcon />}
+                        startIcon={<RestartAltIcon/>}
                         onClick={handleResetViews}
                         fullWidth
                         sx={{

@@ -2,12 +2,12 @@ import logging
 
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.types.type_overloads import CameraIdString
+from skellyforge.data_models.trajectory_3d import Point3d
 
 from freemocap.core.image_overlay.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
 from freemocap.core.types.type_overloads import TrackedPointNameString
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
-from skellyforge.data_models.trajectory_3d import Point3d
 
 logger = logging.getLogger(__name__)
 

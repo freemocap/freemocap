@@ -13,17 +13,17 @@ import logging
 import multiprocessing
 from dataclasses import dataclass, field
 
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
+from freemocap.core.pipeline.posthoc.posthoc_calibration_task.calibration_task import run_calibration_task
+from freemocap.core.pipeline.posthoc.posthoc_mocap_task.mocap_task import run_mocap_task
+from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.shared.pipeline_configs import (
     CalibrationPipelineConfig,
     MocapPipelineConfig,
 )
-from freemocap.core.pipeline.posthoc_pipeline import PosthocPipeline
-from freemocap.core.pipeline.posthoc_tasks.calibration_task.calibration_task import run_calibration_task
-from freemocap.core.pipeline.posthoc_tasks.mocap_task.mocap_task import run_mocap_task
 from freemocap.core.types.type_overloads import PipelineIdString
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -70,14 +70,14 @@ class PosthocPipelineManager:
         recording_info: RecordingInfo,
         calibration_config: CalibrationPipelineConfig,
     ) -> PosthocPipeline:
-        task_fn = functools.partial(
+        calibration_aggregation_task_fn = functools.partial(
             run_calibration_task,
             task_config=calibration_config,
         )
         pipeline = PosthocPipeline.create(
             recording_info=recording_info,
             detector_spec=calibration_config.detector_spec,
-            task_fn=task_fn,
+            task_fn=calibration_aggregation_task_fn,
             process_registry=self.process_registry,
             global_kill_flag=self.global_kill_flag,
         )

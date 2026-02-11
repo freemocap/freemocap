@@ -5,7 +5,6 @@ import os
 import signal
 
 import uvicorn
-
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.utilities.kill_process_on_port import kill_process_on_port
 from skellycam.utilities.wait_functions import await_1s

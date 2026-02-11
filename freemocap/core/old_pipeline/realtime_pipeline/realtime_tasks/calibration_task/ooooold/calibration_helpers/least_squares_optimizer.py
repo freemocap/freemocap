@@ -1,4 +1,6 @@
 import numpy as np
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.camera_math_models import \
+    TransformationMatrix
 from pydantic import BaseModel
 from pydantic import model_validator
 from scipy import optimize
@@ -7,14 +9,13 @@ from skellycam.core.types.type_overloads import CameraIdString
 from typing_extensions import Self
 
 from freemocap.core.pipeline.realtime.realtime_pipeline import \
-    ImagePoints2D, ImagePoint2D, CameraExtrinsicsMatrix
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.camera_math_models import TransformationMatrix
-from freemocap.core.pipeline.realtime.realtime_pipeline import \
     CameraIntrinsicsEstimate
-from freemocap.core.pipeline.realtime.realtime_pipeline import undistort_points, \
-    calculate_reprojection_error, triangulate_point
+from freemocap.core.pipeline.realtime.realtime_pipeline import \
+    ImagePoints2D, ImagePoint2D, CameraExtrinsicsMatrix
 from freemocap.core.pipeline.realtime.realtime_pipeline import MultiCameraTargetView, \
     MultiFrameNumber
+from freemocap.core.pipeline.realtime.realtime_pipeline import undistort_points, \
+    calculate_reprojection_error, triangulate_point
 
 
 class SparseBundleOptimizer(BaseModel):

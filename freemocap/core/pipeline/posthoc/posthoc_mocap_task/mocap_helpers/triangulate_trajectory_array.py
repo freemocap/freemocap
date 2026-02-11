@@ -5,10 +5,9 @@ import numpy as np
 from pydantic import BaseModel
 from skellyforge.data_models.trajectory_3d import Observation3d, Trajectory3d
 from skellyforge.data_models.type_overloads import CameraIdString, FrameObservationsByCamera, Trajectory2dGroup
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 
-from skellytracker.trackers.base_tracker.base_tracker_abcs import  BaseObservation
-
-from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task.calibration_helpers.freemocap_anipose import \
+from freemocap.core.pipeline.posthoc.posthoc_calibration_task.anipose_calibration.helpers.freemocap_anipose import \
     AniposeCameraGroup
 
 logger = logging.getLogger(__name__)
@@ -247,7 +246,7 @@ def subset_camera_names(data_dict: dict[CameraIdString, Any], anipose_camera_gro
                 break
     if len(valid_calibration_names) != len(data_dict.keys()):
         raise ValueError(
-            "Camera names in frame group do not match camera names in camera group. Make sure calibration matches input data."
+            f"Camera names in frame group do not match camera names in camera group. Make sure calibration matches input data. Expected: {valid_calibration_names}, got: {data_dict.keys()}"
         )
     if len(valid_calibration_names) == len(anipose_camera_group.cameras):
         return anipose_camera_group

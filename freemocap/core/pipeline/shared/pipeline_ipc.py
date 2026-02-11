@@ -1,18 +1,20 @@
 """
-PipelineIPC: shared inter-process communication state for a single pipeline.
+PipelineIPC: shared inter-process communication flags for a single pipeline.
 
-Each pipeline (realtime or posthoc) gets its own PipelineIPC with:
-  - A unique pipeline_id
-  - A PubSubTopicManager for typed message passing (with relay thread)
-  - Shared flags for shutdown coordination
-  - Heartbeat monitoring to detect parent death
+Contains only the cross-process primitives that children need:
+  - pipeline_id
+  - global_kill_flag / pipeline_shutdown_flag
+  - heartbeat_timestamp
+  - ws_queue (for log forwarding)
+
+PubSub is NOT on this object. Pipelines own pubsub separately and pass
+bare queue handles to children as explicit kwargs.
 """
 import multiprocessing
 import uuid
 from dataclasses import dataclass, field
 
 from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.pubsub.pubsub_manager import PubSubTopicManager, create_pipeline_pubsub_manager
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue
 from freemocap.utilities.check_main_processs_heartbeat import check_main_process_heartbeat
 
@@ -20,7 +22,6 @@ from freemocap.utilities.check_main_processs_heartbeat import check_main_process
 @dataclass
 class PipelineIPC:
     pipeline_id: PipelineIdString
-    pubsub: PubSubTopicManager
     ws_queue: multiprocessing.Queue
     global_kill_flag: multiprocessing.Value
     heartbeat_timestamp: multiprocessing.Value
@@ -38,13 +39,8 @@ class PipelineIPC:
     ) -> "PipelineIPC":
         if pipeline_id is None:
             pipeline_id = str(uuid.uuid4())[:6]
-        pubsub = create_pipeline_pubsub_manager(
-            pipeline_id=pipeline_id,
-            global_kill_flag=global_kill_flag,
-        )
         return cls(
             pipeline_id=pipeline_id,
-            pubsub=pubsub,
             global_kill_flag=global_kill_flag,
             heartbeat_timestamp=heartbeat_timestamp,
             ws_queue=get_websocket_log_queue(),
@@ -64,9 +60,8 @@ class PipelineIPC:
     def shutdown_pipeline(self) -> None:
         """Signal this pipeline to stop. Does NOT touch the global kill flag."""
         self.pipeline_shutdown_flag.value = True
-        self.pubsub.close()
 
     def kill_everything(self) -> None:
         """Nuclear option: stop this pipeline AND signal global shutdown."""
-        self.shutdown_pipeline()
+        self.pipeline_shutdown_flag.value = True
         self.global_kill_flag.value = True

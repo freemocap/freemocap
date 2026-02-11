@@ -2,28 +2,28 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict
-from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemory, \
-    CameraGroupSharedMemoryDTO
-from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
-from skellycam.utilities.wait_functions import wait_1ms
-
-from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
-from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_observation_aggregator import \
     get_last_successful_calibration_toml_path
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.freemocap_anipose import \
     AniposeCameraGroup
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_helpers.triangulate_trajectory_array import \
     triangulate_frame_observations
+from pydantic import BaseModel, ConfigDict
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemory, \
+    CameraGroupSharedMemoryDTO
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
+from skellycam.utilities.wait_functions import wait_1ms
+
 from freemocap.core.pipeline.realtime.realtime_pipeline import \
     SharedViewAccumulator
+from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_topics import CameraNodeOutputMessage, PipelineConfigUpdateTopic, ProcessFrameNumberTopic, \
     ProcessFrameNumberMessage, AggregationNodeOutputMessage, AggregationNodeOutputTopic, CameraNodeOutputTopic, \
     PipelineConfigUpdateMessage, ShouldCalibrateTopic
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
-from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 
 logger = logging.getLogger(__name__)
 

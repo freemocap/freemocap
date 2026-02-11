@@ -20,6 +20,7 @@ import logging
 import multiprocessing
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Optional
 
 from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
@@ -74,7 +75,7 @@ class BaseNode:
         target: Callable[..., None],
         name: str,
         process_registry: ProcessRegistry,
-        log_queue: multiprocessing.Queue | None,
+        log_queue: Optional[multiprocessing.Queue],
         kwargs: dict,
     ) -> tuple[multiprocessing.Value, ManagedProcess]:
         """

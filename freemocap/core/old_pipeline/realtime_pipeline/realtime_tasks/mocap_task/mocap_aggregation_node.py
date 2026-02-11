@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from multiprocessing import Queue, Process
 from typing import Dict
 
-from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimeAggregationNode
 from freemocap.core.pipeline.processing_pipeline import BaseAggregationLayerOutputData, BasePipelineStageConfig, \
     BasePipelineOutputData
+
 from freemocap.core.pipeline.realtime.realtime_pipeline import MocapCameraNodeOutputData
 from freemocap.core.pipeline.realtime.realtime_pipeline import PointTriangulator
+from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimeAggregationNode
 
 logger = logging.getLogger(__name__)
 

@@ -2,14 +2,14 @@ import logging
 
 import cv2
 import numpy as np
-from pydantic import BaseModel
-from skellycam.core.types.type_overloads import CameraIdString
-
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.camera_math_models import (
     TransformationMatrix,
     RotationVector,
     TranslationVector,
 )
+from pydantic import BaseModel
+from skellycam.core.types.type_overloads import CameraIdString
+
 from freemocap.core.pipeline.realtime.realtime_pipeline import (
     CameraIntrinsicsEstimate,
     SingleCameraCalibrator,

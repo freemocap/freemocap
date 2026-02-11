@@ -11,6 +11,7 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
     CameraGroupSharedMemory,
     CameraGroupSharedMemoryDTO,
@@ -18,10 +19,12 @@ from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
 
+from freemocap.core.pipeline.shared.base_node import BaseNode
 from freemocap.core.pipeline.shared.calibration_state import CalibrationStateTracker
 from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.shared.base_node import BaseNode
+from freemocap.core.types.type_overloads import TopicPublicationQueue
+from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     CameraNodeOutputMessage,
     CameraNodeOutputTopic,
@@ -33,7 +36,6 @@ from freemocap.pubsub.pubsub_topics import (
     PipelineConfigUpdateMessage,
     ShouldCalibrateTopic,
 )
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,7 @@ class RealtimeAggregationNode(BaseNode):
         process_registry: ProcessRegistry,
         camera_group_shm_dto: CameraGroupSharedMemoryDTO,
         ipc: PipelineIPC,
+        pubsub: PubSubTopicManager,
     ) -> "RealtimeAggregationNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -61,15 +64,21 @@ class RealtimeAggregationNode(BaseNode):
                 camera_group_id=camera_group_id,
                 ipc=ipc,
                 camera_group_shm_dto=camera_group_shm_dto,
-                camera_node_subscription=ipc.pubsub.topics[
-                    CameraNodeOutputTopic
-                ].get_subscription(),
-                pipeline_config_subscription=ipc.pubsub.topics[
-                    PipelineConfigUpdateTopic
-                ].get_subscription(),
-                should_calibrate_subscription=ipc.pubsub.topics[
-                    ShouldCalibrateTopic
-                ].get_subscription(),
+                camera_node_sub=pubsub.get_subscription(
+                    CameraNodeOutputTopic,
+                ),
+                pipeline_config_sub=pubsub.get_subscription(
+                    PipelineConfigUpdateTopic,
+                ),
+                should_calibrate_sub=pubsub.get_subscription(
+                    ShouldCalibrateTopic,
+                ),
+                process_frame_number_pub=pubsub.get_publication_queue(
+                    ProcessFrameNumberTopic,
+                ),
+                aggregation_output_pub=pubsub.get_publication_queue(
+                    AggregationNodeOutputTopic,
+                ),
             ),
         )
         return cls(
@@ -85,9 +94,11 @@ class RealtimeAggregationNode(BaseNode):
         ipc: PipelineIPC,
         shutdown_self_flag: multiprocessing.Value,
         camera_group_shm_dto: CameraGroupSharedMemoryDTO,
-        camera_node_subscription: TopicSubscriptionQueue,
-        pipeline_config_subscription: TopicSubscriptionQueue,
-        should_calibrate_subscription: TopicSubscriptionQueue,
+        camera_node_sub: TopicSubscriptionQueue,
+        pipeline_config_sub: TopicSubscriptionQueue,
+        should_calibrate_sub: TopicSubscriptionQueue,
+        process_frame_number_pub: TopicPublicationQueue,
+        aggregation_output_pub: TopicPublicationQueue,
     ) -> None:
         logger.debug(f"RealtimeAggregationNode [{camera_group_id}] initializing")
 
@@ -119,14 +130,12 @@ class RealtimeAggregationNode(BaseNode):
                 wait_1ms()
 
                 # ---- Handle config updates (also triggers calibration reload) ----
-                while not pipeline_config_subscription.empty():
-                    msg: PipelineConfigUpdateMessage = pipeline_config_subscription.get()
+                while not pipeline_config_sub.empty():
+                    msg: PipelineConfigUpdateMessage = pipeline_config_sub.get()
                     config = msg.pipeline_config
                     logger.info(
                         f"RealtimeAggregationNode [{camera_group_id}] received config update"
                     )
-                    # On config update, try reloading calibration
-                    # (a posthoc calibration may have written a new toml)
                     if calibration.reload():
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
@@ -134,8 +143,8 @@ class RealtimeAggregationNode(BaseNode):
                         )
 
                 # ---- Handle explicit calibration signals ----
-                while not should_calibrate_subscription.empty():
-                    should_calibrate_subscription.get()  # consume
+                while not should_calibrate_sub.empty():
+                    should_calibrate_sub.get()
                     if calibration.reload():
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
@@ -143,20 +152,21 @@ class RealtimeAggregationNode(BaseNode):
                         )
 
                 # ---- Request new frames if ready ----
-                if (camera_group_shm.latest_multiframe_number > latest_requested_frame
+                current_multiframe_number = camera_group_shm.latest_multiframe_number
+                if (current_multiframe_number > latest_requested_frame
                         and last_received_frame >= latest_requested_frame):
-                    ipc.pubsub.topics[ProcessFrameNumberTopic].publish(
+                    process_frame_number_pub.put(
                         ProcessFrameNumberMessage(
-                            frame_number=camera_group_shm.latest_multiframe_number,
+                            frame_number=current_multiframe_number,
                         ),
                     )
-                    latest_requested_frame = camera_group_shm.latest_multiframe_number
+                    latest_requested_frame = current_multiframe_number
 
                 # ---- Collect camera node outputs ----
-                if camera_node_subscription.empty():
+                if camera_node_sub.empty():
                     continue
 
-                cam_output: CameraNodeOutputMessage = camera_node_subscription.get()
+                cam_output: CameraNodeOutputMessage = camera_node_sub.get()
                 if cam_output.camera_id not in config.camera_configs:
                     raise ValueError(
                         f"Camera ID {cam_output.camera_id} not in "
@@ -171,7 +181,6 @@ class RealtimeAggregationNode(BaseNode):
                 ):
                     continue
 
-                # Warn on frame number mismatches (don't hard-fail for realtime)
                 frame_numbers = [
                     msg.frame_number
                     for msg in camera_node_outputs.values()
@@ -198,11 +207,9 @@ class RealtimeAggregationNode(BaseNode):
                     )
                     if triangulated is not None:
                         tracked_points3d = triangulated
-                    # If triangulated is None, calibration was invalidated.
-                    # We continue publishing 2D-only data.
 
                 # ---- Publish aggregated output ----
-                ipc.pubsub.topics[AggregationNodeOutputTopic].publish(
+                aggregation_output_pub.put(
                     AggregationNodeOutputMessage(
                         frame_number=latest_requested_frame,
                         pipeline_id=ipc.pipeline_id,
@@ -213,7 +220,6 @@ class RealtimeAggregationNode(BaseNode):
                     ),
                 )
 
-                # Reset for next frame
                 camera_node_outputs = {cam_id: None for cam_id in config.camera_configs.keys()}
 
         except Exception as e:

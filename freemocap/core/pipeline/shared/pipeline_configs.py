@@ -4,12 +4,17 @@ Pipeline configuration types.
 All detector/task configs live here. DetectorSpec is the picklable union
 used to tell child processes which detector to instantiate.
 """
+from enum import Enum
+
 from pydantic import BaseModel, Field
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
 from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetectorConfig
 
+from freemocap.core.pipeline.posthoc.posthoc_calibration_task.pyceres_calibration.helpers.models import (
+    PyceresCalibrationSolverConfig,
+)
 
 # ---------------------------------------------------------------------------
 # Detector spec: the picklable union that video nodes use to create detectors
@@ -36,9 +41,38 @@ def create_detector_from_spec(spec: DetectorSpec):
             raise TypeError(f"Unknown detector spec type: {type(spec).__name__}")
 
 
+def create_annotator_from_spec(spec: DetectorSpec):
+    """
+    Create an image annotator matching the given detector spec.
+    Called inside child processes for drawing detection results onto frames.
+    """
+    from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoImageAnnotator, CharucoAnnotatorConfig
+    from skellytracker.trackers.mediapipe_tracker.mediapipe_annotator import MediapipeImageAnnotator, MediapipeAnnotatorConfig
+
+    match spec:
+        case CharucoDetectorConfig():
+            return CharucoImageAnnotator.create(config=CharucoAnnotatorConfig())
+        case MediapipeDetectorConfig():
+            return MediapipeImageAnnotator.create(config=MediapipeAnnotatorConfig())
+        case _:
+            raise TypeError(f"Unknown detector spec type for annotator: {type(spec).__name__}")
+
+
+# ---------------------------------------------------------------------------
+# Calibration solver selection
+# ---------------------------------------------------------------------------
+
+
+class CalibrationSolverMethod(str, Enum):
+    """Which calibration solver backend to use."""
+    ANIPOSE = "anipose"
+    PYCERES = "pyceres"
+
+
 # ---------------------------------------------------------------------------
 # Task configs
 # ---------------------------------------------------------------------------
+
 
 class CalibrationPipelineConfig(BaseModel):
     calibration_recording_folder: str | None = Field(
@@ -47,6 +81,24 @@ class CalibrationPipelineConfig(BaseModel):
     charuco_board_x_squares: int = Field(gt=0, default=5, alias="charucoBoardXSquares")
     charuco_board_y_squares: int = Field(gt=0, default=3, alias="charucoBoardYSquares")
     charuco_square_length: float = Field(gt=0, default=1, alias="charucoSquareLength")
+
+    solver_method: CalibrationSolverMethod = Field(
+        default=CalibrationSolverMethod.PYCERES,
+        alias="solverMethod",
+        description="Which calibration solver to use: 'anipose' (legacy) or 'pyceres' (new bundle adjustment).",
+    )
+
+    pyceres_solver_config: PyceresCalibrationSolverConfig = Field(
+        default_factory=PyceresCalibrationSolverConfig,
+        alias="pyceresSolverConfig",
+        description="Configuration for the pyceres bundle adjustment solver. Only used when solver_method='pyceres'.",
+    )
+
+    use_groundplane: bool = Field(
+        default=False,
+        alias="useGroundplane",
+        description="Align world frame to charuco board plane after calibration.",
+    )
 
     @property
     def detector_config(self) -> CharucoDetectorConfig:

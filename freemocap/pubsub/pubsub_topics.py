@@ -8,9 +8,10 @@ import logging
 
 from pydantic import Field, model_validator
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
-from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
 
 from freemocap.core.image_overlay.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
@@ -22,7 +23,6 @@ from freemocap.core.types.type_overloads import (
     TrackedPointNameString,
 )
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
-from skellyforge.data_models.trajectory_3d import Point3d
 
 logger = logging.getLogger(__name__)
 

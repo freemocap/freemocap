@@ -2,17 +2,18 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 from pathlib import Path
-import cv2
-from pydantic import BaseModel, ConfigDict
-from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
 
+import cv2
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
     CalibrationpipelineConfig
+from pydantic import BaseModel, ConfigDict
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
+
 from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
-from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 
 logger = logging.getLogger(__name__)
 

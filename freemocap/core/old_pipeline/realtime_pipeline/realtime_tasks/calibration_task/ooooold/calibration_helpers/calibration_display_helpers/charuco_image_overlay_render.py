@@ -5,11 +5,11 @@ from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.realtime.realtime_pipeline import \
+    OverlayRenderer
+from freemocap.core.pipeline.realtime.realtime_pipeline import \
     charuco_observation_to_overlay_data, charuco_observation_to_metadata
 from freemocap.core.pipeline.realtime.realtime_pipeline import \
     create_charuco_topology
-from freemocap.core.pipeline.realtime.realtime_pipeline import \
-    OverlayRenderer
 
 logger = logging.getLogger(__name__)
 

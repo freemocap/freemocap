@@ -8,27 +8,25 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict
-
 from fastapi import FastAPI
+from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera_group.camera_group import CameraGroupState
 from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
 
+from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
+from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
+from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
+from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
+from freemocap.core.pipeline.shared.frontend_payload import FrontendPayload
 from freemocap.core.pipeline.shared.pipeline_configs import (
     CalibrationPipelineConfig,
     MocapPipelineConfig,
     RealtimePipelineConfig,
 )
-from freemocap.core.pipeline.shared.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
-from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
-from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
-from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
-
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 
 logger = logging.getLogger(__name__)
 

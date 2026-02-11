@@ -1,6 +1,6 @@
 from typing import Literal
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
 

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from multiprocessing import Queue
 from typing import Dict
 
+from freemocap.core.pipeline.processing_pipeline import BasePipelineConfig, PipelineImageAnnotator, \
+    BaseProcessingPipeline
 from skellycam.core.camera_group.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.shmorchestrator.shared_memory.single_slot_camera_group_shared_memory import \
     CameraSharedMemoryDTOs
@@ -12,8 +14,6 @@ from skellytracker.trackers.mediapipe_tracker import MediapipeTrackerConfig
 from skellytracker.trackers.mediapipe_tracker.mediapipe_annotator import MediapipeImageAnnotator, \
     MediapipeAnnotatorConfig
 
-from freemocap.core.pipeline.processing_pipeline import BasePipelineConfig, PipelineImageAnnotator, \
-    BaseProcessingPipeline
 from freemocap.core.pipeline.realtime.realtime_pipeline import MocapAggregationNodeConfig, \
     MocapPipelineOutputData, MocapAggregationProcessNode
 from freemocap.core.pipeline.realtime.realtime_pipeline import MocapPipelineCameraNodeConfig, MocapCameraNode

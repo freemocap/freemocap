@@ -6,14 +6,14 @@ from typing import Callable, Union
 
 import cv2
 import numpy as np
-
-from freemocap.core.pipeline.realtime.realtime_pipeline import \
-    freemocap_anipose
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_groundplane_utils import \
     skellyforge_data, find_good_frame, CharucoVisibilityError, compute_basis_vectors_of_new_reference, \
     CharucoVelocityError
+
 from freemocap.core.pipeline.realtime.realtime_pipeline import \
     CharucoBoardDefinition
+from freemocap.core.pipeline.realtime.realtime_pipeline import \
+    freemocap_anipose
 from freemocap.utilities.get_video_paths import get_video_paths
 
 logger = logging.getLogger(__name__)

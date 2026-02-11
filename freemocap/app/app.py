@@ -7,11 +7,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
 
+import skellycam
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse
-
-import skellycam
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from starlette.responses import FileResponse
 

@@ -3,28 +3,20 @@ import {Box} from "@mui/material";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {useTheme} from "@mui/material/styles";
 import {CameraView} from "./CameraView";
-
 import {useServer} from "@/hooks/useServer";
-
-interface CameraSettings {
-    columns: number | null;
-}
+import {CameraSettings} from "@/pages/CamerasPage";
 
 interface CameraViewsGridProps {
-    settings?: CameraSettings;
+    settings: CameraSettings;
+    resetKey: number;
 }
 
-interface CameraViewsGridProps {
-    settings?: CameraSettings;
-    resetKey?: number;
-}
-
-export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ settings, resetKey }) => {
+export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({settings, resetKey}) => {
     const theme = useTheme();
-    const { connectedCameraIds } = useServer();
+    const {connectedCameraIds} = useServer();
 
     const getColumns = (total: number): number => {
-        if (settings?.columns !== null && settings?.columns !== undefined) {
+        if (settings.columns !== null && settings.columns !== undefined) {
             return settings.columns;
         }
 
@@ -49,7 +41,7 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ settings, rese
             }}>
                 <div>
                     <div>No cameras connected</div>
-                    <div style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                    <div style={{fontSize: '0.9rem', marginTop: '0.5rem'}}>
                         Waiting for camera streams...
                     </div>
                 </div>
@@ -65,7 +57,6 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ settings, rese
         rows.push(connectedCameraIds.slice(i, i + columns));
     }
 
-    // Calculate default size for each panel
     const defaultRowSize = 100 / rows.length;
     const minRowSize = Math.max(10, 100 / (rows.length * 2));
 
@@ -76,7 +67,7 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ settings, rese
             overflow: 'hidden',
             padding: 1,
         }}>
-            <PanelGroup key={`camera-grid-${resetKey ?? 0}`} direction="vertical">
+            <PanelGroup key={`camera-grid-${resetKey}`} direction="vertical">
                 {rows.map((row, rowIndex) => {
                     const defaultCameraSize = 100 / row.length;
                     const minCameraSize = Math.max(10, 100 / (row.length * 2));
@@ -102,7 +93,7 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ settings, rese
                                                     justifyContent: 'center',
                                                     overflow: 'hidden',
                                                 }}>
-                                                    <CameraView cameraId={cameraId} />
+                                                    <CameraView cameraId={cameraId}/>
                                                 </Box>
                                             </Panel>
 

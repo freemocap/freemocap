@@ -1,12 +1,10 @@
 from abc import ABC
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
-
+from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
 from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetectorConfig
-from skellytracker.trackers.charuco_tracker.charuco_detector import  CharucoDetectorConfig
-
 
 
 class PipelineConfigABC(BaseModel, ABC):

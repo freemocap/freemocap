@@ -3,8 +3,9 @@ Simplified VideoHelper with OpenCV best practices.
 Includes smart frame reading and caching.
 """
 
-from pathlib import Path
 from collections import OrderedDict
+from pathlib import Path
+
 import cv2
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator
@@ -380,6 +381,7 @@ class VideoGroupHelper(BaseModel):
     def close(self):
         for video in self.videos.values():
             video.close()
+
 # Example usage
 if __name__ == "__main__":
     video_path = Path(r"C:\Users\jonma\Downloads\2025-07-01_ferret_757_EyeCameras_P33_EO5_1m_20s-2m_20s(2).mp4")

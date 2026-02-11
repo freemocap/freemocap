@@ -2,11 +2,12 @@
 Blender script to load mediapipe body tracking data from CSV
 """
 
-import bpy
-import csv
 import colorsys
-from pathlib import Path
+import csv
 from dataclasses import dataclass
+from pathlib import Path
+
+import bpy
 
 
 @dataclass

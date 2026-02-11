@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Callable, Union
 
 from freemocap.core.pipeline.realtime.realtime_pipeline import \
-    GroundPlaneSuccess, AniposeCameraCalibrator
-from freemocap.core.pipeline.realtime.realtime_pipeline import \
     CharucoBoardDefinition
+from freemocap.core.pipeline.realtime.realtime_pipeline import \
+    GroundPlaneSuccess, AniposeCameraCalibrator
 
 
 async def async_run_anipose_capture_volume_calibration(**kwargs):

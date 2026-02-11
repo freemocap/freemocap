@@ -3,30 +3,28 @@ import multiprocessing
 from dataclasses import dataclass
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
-from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellycam.core.types.type_overloads import TopicSubscriptionQueue, CameraIdString
-
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
-
-from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_observation_aggregator import \
+    anipose_calibration_from_charuco_observations, get_last_successful_calibration_toml_path
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.posthoc_calibration_pipeline import \
     CalibrationpipelineConfig
-from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.mocap_helpers.charuco_model_from_observations import \
     charuco_model_from_observations
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoMetadata
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_calibration_pipeline.calibration_helpers.charuco_observation_aggregator import \
-    anipose_calibration_from_charuco_observations, get_last_successful_calibration_toml_path
+from pydantic import BaseModel, ConfigDict
+from skellycam.core.ipc.process_management.managed_process import ManagedProcess
+from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
+from skellycam.core.types.type_overloads import TopicSubscriptionQueue, CameraIdString
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.realtime.realtime_pipeline import CharucoObservations
+from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputMessage, VideoNodeOutputTopic
 from freemocap.utilities.wait_functions import wait_1ms
 
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
-from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 logger = logging.getLogger(__name__)
 
 

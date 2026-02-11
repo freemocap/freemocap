@@ -8,16 +8,16 @@ calibration completes).
 import logging
 from pathlib import Path
 
-from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task.anipose_calibration.helpers.freemocap_anipose import \
-    AniposeCameraGroup
-from freemocap.core.pipeline.posthoc.posthoc_tasks.calibration_task.calibration_paths import \
-    get_last_successful_calibration_toml_path
-from freemocap.core.pipeline.posthoc.posthoc_tasks.mocap_task.mocap_helpers.triangulate_trajectory_array import \
-    triangulate_frame_observations
 from skellycam.core.types.type_overloads import CameraIdString
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 
+from freemocap.core.pipeline.posthoc.posthoc_calibration_task.anipose_calibration.helpers.freemocap_anipose import \
+    AniposeCameraGroup
+from freemocap.core.pipeline.posthoc.posthoc_calibration_task.shared.calibration_paths import \
+    get_last_successful_calibration_toml_path
+from freemocap.core.pipeline.posthoc.posthoc_mocap_task.mocap_helpers.triangulate_trajectory_array import \
+    triangulate_frame_observations
 from freemocap.core.types.type_overloads import TrackedPointNameString
 
 logger = logging.getLogger(__name__)

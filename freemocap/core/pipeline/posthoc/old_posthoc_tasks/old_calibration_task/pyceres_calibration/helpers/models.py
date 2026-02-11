@@ -53,7 +53,7 @@ class IntrinsicsOptimizationMode(BaseModel):
     optimize_focal_length: bool = True
     shared_focal_length: bool = False
     optimize_principal_point: bool = False
-    optimize_k1: bool = False
+    optimize_k1: bool = True
     optimize_k2: bool = False
     optimize_tangential: bool = False
 
@@ -258,7 +258,7 @@ class CornerObservation(BaseModel):
         return arr
 
 
-class CharucoCornersObservation(BaseModel):
+class FrameObservation(BaseModel):
     """All charuco corners detected by one camera in one frame."""
 
     model_config = ConfigDict(extra="forbid")
@@ -281,7 +281,7 @@ class CharucoCornersObservation(BaseModel):
 # =============================================================================
 
 
-class PyceresCalibrationSolverConfig(BaseModel):
+class CalibrationSolverConfig(BaseModel):
     """Configuration for the bundle adjustment solver."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -299,7 +299,7 @@ class PyceresCalibrationSolverConfig(BaseModel):
     min_corners_per_frame: int = 4
 
     @model_validator(mode="after")
-    def validate_thresholds(self) -> "PyceresCalibrationSolverConfig":
+    def validate_thresholds(self) -> "CalibrationSolverConfig":
         if self.initial_outlier_threshold_px < self.final_outlier_threshold_px:
             raise ValueError(
                 f"initial_outlier_threshold_px ({self.initial_outlier_threshold_px}) "

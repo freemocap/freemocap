@@ -16,12 +16,12 @@ from scipy.spatial.transform import Rotation
 from .cost_functions import CharucoReprojectionCost, IntrinsicsPriorCost
 from .models import (
     CalibrationResult,
-    PyceresCalibrationSolverConfig,
+    CalibrationSolverConfig,
     CameraExtrinsics,
     CameraIntrinsics,
     CameraModel,
     CharucoBoardDefinition,
-    CharucoCornersObservation,
+    FrameObservation,
 )
 
 logger = logging.getLogger(__name__)
@@ -121,9 +121,9 @@ def run_bundle_adjustment(
     *,
     cameras: list[CameraModel],
     board: CharucoBoardDefinition,
-    all_observations: list[CharucoCornersObservation],
+    all_observations: list[FrameObservation],
     board_poses_init: dict[int, tuple[NDArray[np.float64], NDArray[np.float64]]],
-    config: PyceresCalibrationSolverConfig,
+    config: CalibrationSolverConfig,
 ) -> CalibrationResult:
     """Run iterative bundle adjustment with outlier rejection.
 
@@ -279,7 +279,7 @@ def run_bundle_adjustment(
             elif len(constant_indices) > 0:
                 problem.set_manifold(
                     i_arr,
-                    pyceres.SubsetManifold(8, constant_indices),
+                    pyceres.SubsetManifold(size=8, constant_parameters=constant_indices),
                 )
 
         # Pin camera 0 extrinsics if configured

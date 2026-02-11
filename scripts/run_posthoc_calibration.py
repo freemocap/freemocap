@@ -146,9 +146,12 @@ if __name__ == "__main__":
     RECORDING_PATH: Path | list[str] = Path().home() / "freemocap_data" / "recording_sessions" / "freemocap_test_data2"
 
     CONFIG: CalibrationPipelineConfig = CalibrationPipelineConfig()
-    CONFIG.solver_method = CalibrationSolverMethod.ANIPOSE
+    CONFIG.solver_method = CalibrationSolverMethod.PYCERES
     CONFIG.charuco_board_x_squares = 7
     CONFIG.charuco_board_y_squares = 5
+    # CONFIG.solver_method = CalibrationSolverMethod.ANIPOSE
+    # CONFIG.charuco_board_x_squares = 7
+    # CONFIG.charuco_board_y_squares = 5
 
     run_posthoc_calibration(
         recording_path=RECORDING_PATH,

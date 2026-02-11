@@ -286,10 +286,10 @@ class PyceresCalibrationSolverConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    max_iterations: int = 500
-    function_tolerance: float = 1e-8
-    parameter_tolerance: float = 1e-10
-    gradient_tolerance: float = 1e-12
+    max_iterations: int = 100
+    function_tolerance: float = 1e-6
+    parameter_tolerance: float = 1e-8
+    gradient_tolerance: float = 1e-10
     intrinsics_mode: IntrinsicsOptimizationMode = IntrinsicsOptimizationMode()
     intrinsics_prior_weight: float = 0.01
     pin_camera_0: bool = True
@@ -297,6 +297,7 @@ class PyceresCalibrationSolverConfig(BaseModel):
     initial_outlier_threshold_px: float = 15.0
     final_outlier_threshold_px: float = 2.0
     min_corners_per_frame: int = 4
+    verbose:bool = True
 
     @model_validator(mode="after")
     def validate_thresholds(self) -> "PyceresCalibrationSolverConfig":

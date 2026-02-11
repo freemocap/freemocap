@@ -342,7 +342,7 @@ def run_bundle_adjustment(
         options.function_tolerance = config.function_tolerance
         options.parameter_tolerance = config.parameter_tolerance
         options.gradient_tolerance = config.gradient_tolerance
-        options.minimizer_progress_to_stdout = False
+        options.minimizer_progress_to_stdout = config.verbose
 
         summary = pyceres.SolverSummary()
         pyceres.solve(options, problem, summary)

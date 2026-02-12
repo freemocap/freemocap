@@ -1,69 +1,27 @@
-import React, {useState} from "react";
-import {Box, Typography, useTheme} from "@mui/material";
-import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
-import {TreeItem} from "@mui/x-tree-view/TreeItem";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import LanIcon from '@mui/icons-material/Lan';
-import PipelineConnectionStatus from "@/components/processing-pipeline-panel/PipelineConnectionStatus";
-import {RecordingInfoPanel} from "@/components/recording-info-panel/RecordingInfoPanel";
+import React from "react";
+import {Box, Typography} from "@mui/material";
+import LanIcon from "@mui/icons-material/Lan";
+import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
+import {PipelineConnectionToggle} from "@/components/processing-pipeline-panel/PipelineConnectionToggle";
+import {PipelineSummary} from "@/components/processing-pipeline-panel/PipelineSummary";
 
 export const ProcessingPipelinePanel: React.FC = () => {
-    const theme = useTheme();
-    const [expandedItems, setExpandedItems] = useState<string[]>([
-        'pipeline-main',
-        'calibration-intrinsic',
-        'calibration-extrinsic',
-        'mocap-task'
-    ]);
-
-    const handleExpandedItemsChange = (
-        event: React.SyntheticEvent,
-        itemIds: string[]
-    ): void => {
-        setExpandedItems(itemIds);
-    };
-
     return (
-        <Box
-            sx={{
-                color: "text.primary",
-                backgroundColor: theme.palette.primary.main,
-                borderRadius: 1,
-                mb: 2,
-            }}
+        <CollapsibleSidebarSection
+            icon={<LanIcon sx={{transform: "scaleY(-1.05)", color: "inherit"}} />}
+            title="Realtime Pipeline"
+            summaryContent={<PipelineSummary />}
+            primaryControl={<PipelineConnectionToggle />}
+            defaultExpanded={false}
         >
-            <SimpleTreeView
-                expandedItems={expandedItems}
-                onExpandedItemsChange={handleExpandedItemsChange}
-                slots={{
-                    collapseIcon: ExpandMoreIcon,
-                    expandIcon: ChevronRightIcon,
-                }}
-                sx={{ flexGrow: 1 }}
-            >
-                <TreeItem
-                    itemId="pipeline-main"
-                    label={
-                        <Box
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                width: "100%",
-                                py: 1,
-                            }}
-                        >
-                            <LanIcon sx={{ transform: 'scaleY(-1.05) scaleX(1)' }} />
-
-                            <Typography sx={{ pl: 1, flexGrow: 1 }} variant="h6" component="div">
-                                Realtime Pipeline
-                            </Typography>
-                            <PipelineConnectionStatus />
-                        </Box>
-                    }
-                >
-                </TreeItem>
-            </SimpleTreeView>
-        </Box>
+            {/* Future: tracker selection (MediaPipe/Truco), per-tracker settings,
+                aggregation toggles (triangulation, one-euro, IK),
+                visualization layer toggles */}
+            <Box sx={{p: 2}}>
+                <Typography variant="body2" color="text.secondary">
+                    Pipeline settings will appear here — tracker selection, aggregation stages, visualization toggles.
+                </Typography>
+            </Box>
+        </CollapsibleSidebarSection>
     );
 };

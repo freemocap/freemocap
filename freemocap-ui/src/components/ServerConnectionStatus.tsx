@@ -1,17 +1,16 @@
-// components/ServerConnectionStatus.tsx
-import React from 'react';
-import {Box, IconButton, Typography} from "@mui/material";
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
-import WifiIcon from '@mui/icons-material/Wifi';
-import WifiOffIcon from '@mui/icons-material/WifiOff';
-
+import React from "react";
+import {Box, Chip, IconButton, Tooltip, Typography, useTheme} from "@mui/material";
+import WifiIcon from "@mui/icons-material/Wifi";
+import WifiOffIcon from "@mui/icons-material/WifiOff";
+import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 import {useServer} from "@/hooks/useServer";
 
 export const ServerConnectionStatus: React.FC = () => {
-    const { isConnected, connect, disconnect, connectedCameraIds } = useServer();
+    const theme = useTheme();
+    const {isConnected, connect, disconnect, connectedCameraIds} = useServer();
 
-    const handleClick = (): void => {
+    const handleToggle = (e: React.MouseEvent): void => {
+        e.stopPropagation();
         if (isConnected) {
             disconnect();
         } else {
@@ -19,86 +18,83 @@ export const ServerConnectionStatus: React.FC = () => {
         }
     };
 
-    const getStatusColor = (): { bg: string; border: string; text: string } => {
-        if (isConnected) {
-            return {
-                bg: 'rgba(0, 255, 255, 0.05)',
-                border: 'rgba(0, 255, 255, 0.3)',
-                text: '#00ffff'
-            };
-        }
-        return {
-            bg: 'rgba(255, 0, 0, 0.1)',
-            border: 'rgba(255, 0, 0, 0.3)',
-            text: '#f44336'
-        };
-    };
-
-    const colors = getStatusColor();
+    const statusColor = isConnected
+        ? theme.palette.success.main
+        : theme.palette.error.main;
 
     return (
-        <Box
-            onClick={handleClick}
-            sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                padding: '8px 12px',
-                cursor: 'pointer',
-                border: `1px solid ${colors.border}`,
-                borderRadius: '8px',
-                backgroundColor: colors.bg,
-                transition: 'all 0.2s ease',
-                ':hover': {
-                    opacity: 0.8,
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                },
-            }}
-        >
-            <IconButton
-                size="small"
-                sx={{
-                    p: 0.5,
-                    color: colors.text,
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    ':hover': { backgroundColor: 'rgba(255, 255, 255, 0.2)' }
-                }}
-            >
-                {isConnected ? <WifiIcon /> : <WifiOffIcon />}
-            </IconButton>
-
-            <Box>
-                <Typography
-                    variant="body2"
-                    sx={{
-                        fontWeight: 500,
-                        color: colors.text,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5
-                    }}
-                >
-                    WebSocket: {isConnected ? 'Connected' : 'Disconnected'}
-                    {isConnected ? (
-                        <CheckIcon sx={{ fontSize: 16 }} />
-                    ) : (
-                        <CloseIcon sx={{ fontSize: 16 }} />
+        <CollapsibleSidebarSection
+            icon={
+                isConnected ? (
+                    <WifiIcon sx={{color: "inherit"}} />
+                ) : (
+                    <WifiOffIcon sx={{color: "inherit"}} />
+                )
+            }
+            title="Connection"
+            summaryContent={
+                <Box sx={{display: "flex", alignItems: "center", gap: 0.75}}>
+                    <Chip
+                        label={isConnected ? "Connected" : "Disconnected"}
+                        size="small"
+                        sx={{
+                            height: 20,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            backgroundColor: statusColor,
+                            color: theme.palette.getContrastText(statusColor),
+                        }}
+                    />
+                    {isConnected && connectedCameraIds.length > 0 && (
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: "inherit",
+                                opacity: 0.8,
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            {connectedCameraIds.length} cam{connectedCameraIds.length !== 1 ? "s" : ""}
+                        </Typography>
                     )}
+                </Box>
+            }
+            primaryControl={
+                <Tooltip title={isConnected ? "Disconnect" : "Connect"}>
+                    <IconButton
+                        size="small"
+                        onClick={handleToggle}
+                        sx={{
+                            color: "inherit",
+                            border: `1.5px solid`,
+                            borderColor: isConnected
+                                ? "rgba(255,255,255,0.4)"
+                                : "rgba(255,255,255,0.25)",
+                            borderRadius: 1,
+                            px: 1,
+                            py: 0.25,
+                            fontSize: 12,
+                            "&:hover": {
+                                backgroundColor: "rgba(255,255,255,0.1)",
+                            },
+                        }}
+                    >
+                        <Typography variant="caption" sx={{fontWeight: 600, color: "inherit"}}>
+                            {isConnected ? "OFF" : "ON"}
+                        </Typography>
+                    </IconButton>
+                </Tooltip>
+            }
+            defaultExpanded={false}
+        >
+            {/* Future: server address, port, reconnect behavior settings */}
+            <Box sx={{p: 2}}>
+                <Typography variant="body2" color="text.secondary">
+                    {isConnected
+                        ? "WebSocket connection active."
+                        : "Click the connect button to establish a WebSocket connection."}
                 </Typography>
-
-                {isConnected && connectedCameraIds.length > 0 && (
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {connectedCameraIds.length} camera{connectedCameraIds.length !== 1 ? 's' : ''} active
-                    </Typography>
-                )}
-
-                {!isConnected && (
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        Click to connect
-                    </Typography>
-                )}
             </Box>
-        </Box>
+        </CollapsibleSidebarSection>
     );
 };

@@ -8,6 +8,12 @@ Handles:
     - Multi-branch trees (wrist → 5 fingers)
     - Multiple disjoint trees (separate arm/leg trees)
 
+Tree topology is decoupled from bone lengths: the FabrikTree stores
+parent/child relationships and traversal order, while bone lengths
+are passed to solve_tree() as a separate dict. This allows bone
+lengths to be updated per-frame (e.g. from a running estimator)
+without rebuilding the tree.
+
 Algorithm (tree extension of Aristidou & Lasenby 2011):
     Forward pass (leaves → roots):
         1. Snap each leaf to its target position
@@ -20,16 +26,16 @@ Algorithm (tree extension of Aristidou & Lasenby 2011):
         3. At each node, enforce bone length from parent
 
 Usage:
-    tree = FabrikTree.from_skeleton(skeleton=skel, bone_lengths=lengths)
-    solved = solve_tree(targets=filtered_positions, tree=tree)
+    tree = FabrikTree.from_skeleton(skeleton=skel)
+    solved = solve_tree(targets=positions, tree=tree, bone_lengths=lengths)
 """
 
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
-from mediapipe_skeleton_config import Bone, SkeletonDefinition
+from freemocap.core.mocap.skeleton_dewiggler.mediapipe_skeleton_config import SkeletonDefinition
 
 
 # ============================================================
@@ -44,7 +50,7 @@ class FabrikNode:
     name: str
     parent_name: str | None
     children_names: tuple[str, ...]
-    bone_length_to_parent: float | None  # None for root nodes
+    bone_key: str | None  # "parent->child" key for bone_lengths lookup, None for roots
 
     @property
     def is_root(self) -> bool:
@@ -64,6 +70,7 @@ class FabrikTree:
     """
     Forest of FABRIK trees built from a SkeletonDefinition.
 
+    Stores topology only — bone lengths are passed separately to solve_tree().
     Nodes are stored in topological order (roots first, leaves last).
     """
 
@@ -71,21 +78,19 @@ class FabrikTree:
     topo_order: tuple[str, ...]  # roots first → leaves last
     root_names: frozenset[str]
     leaf_names: frozenset[str]
+    bone_keys: frozenset[str]  # all "parent->child" keys in this tree
 
     @classmethod
     def from_skeleton(
         cls,
         *,
         skeleton: SkeletonDefinition,
-        bone_lengths: dict[str, float],
     ) -> "FabrikTree":
         """
-        Build FABRIK tree(s) from skeleton bones and measured bone lengths.
+        Build FABRIK tree topology from skeleton bones.
 
         Args:
             skeleton: skeleton topology (bones define tree edges).
-            bone_lengths: mapping of "parent->child" → length (meters).
-                          Must contain an entry for every bone.
         """
         if not skeleton.bones:
             return cls(
@@ -93,14 +98,8 @@ class FabrikTree:
                 topo_order=(),
                 root_names=frozenset(),
                 leaf_names=frozenset(),
+                bone_keys=frozenset(),
             )
-
-        # Validate bone lengths
-        for bone in skeleton.bones:
-            if bone.key not in bone_lengths:
-                raise ValueError(f"Missing bone length for '{bone.key}'")
-            if bone_lengths[bone.key] <= 0.0:
-                raise ValueError(f"Bone length must be positive for '{bone.key}', got {bone_lengths[bone.key]}")
 
         # Build adjacency: parent → [children]
         children_of: dict[str, list[str]] = {}
@@ -143,20 +142,22 @@ class FabrikTree:
         # Build nodes
         nodes: dict[str, FabrikNode] = {}
         leaf_names: set[str] = set()
+        bone_keys: set[str] = set()
 
         for name in topo_order:
             children = tuple(children_of.get(name, []))
             parent = parent_of.get(name)
 
-            bl: float | None = None
+            bone_key: str | None = None
             if parent is not None:
-                bl = bone_lengths[f"{parent}->{name}"]
+                bone_key = f"{parent}->{name}"
+                bone_keys.add(bone_key)
 
             nodes[name] = FabrikNode(
                 name=name,
                 parent_name=parent,
                 children_names=children,
-                bone_length_to_parent=bl,
+                bone_key=bone_key,
             )
 
             if not children:
@@ -167,7 +168,19 @@ class FabrikTree:
             topo_order=tuple(topo_order),
             root_names=frozenset(root_names),
             leaf_names=frozenset(leaf_names),
+            bone_keys=frozenset(bone_keys),
         )
+
+    def validate_bone_lengths(self, bone_lengths: dict[str, float]) -> None:
+        """Validate that bone_lengths covers all bones in this tree with positive values."""
+        for bone_key in self.bone_keys:
+            if bone_key not in bone_lengths:
+                raise ValueError(f"Missing bone length for '{bone_key}'")
+            if bone_lengths[bone_key] <= 0.0:
+                raise ValueError(
+                    f"Bone length must be positive for '{bone_key}', "
+                    f"got {bone_lengths[bone_key]}"
+                )
 
 
 # ============================================================
@@ -196,6 +209,7 @@ def solve_tree(
     *,
     targets: dict[str, np.ndarray],
     tree: FabrikTree,
+    bone_lengths: dict[str, float],
     tolerance: float = 1e-4,
     max_iterations: int = 20,
 ) -> dict[str, np.ndarray]:
@@ -209,7 +223,9 @@ def solve_tree(
     Args:
         targets: target positions for all joints in the tree,
                  mapping name → (3,) array.
-        tree: FABRIK tree structure with bone lengths.
+        tree: FABRIK tree topology.
+        bone_lengths: mapping "parent->child" → length in meters.
+                      Must cover all bones in the tree.
         tolerance: convergence threshold on leaf end-effector error.
         max_iterations: max forward/backward iterations.
 
@@ -219,10 +235,14 @@ def solve_tree(
     if not tree.nodes:
         return {}
 
-    # Validate targets
+    # Validate inputs
     for name in tree.topo_order:
         if name not in targets:
             raise ValueError(f"Missing target position for joint '{name}'")
+
+    for bone_key in tree.bone_keys:
+        if bone_key not in bone_lengths:
+            raise ValueError(f"Missing bone length for '{bone_key}'")
 
     positions: dict[str, np.ndarray] = {
         name: np.array(targets[name], dtype=np.float64)
@@ -231,46 +251,40 @@ def solve_tree(
 
     for _ in range(max_iterations):
         # === FORWARD PASS: leaves → roots ===
-        # Process in reverse topological order (leaves first)
-        # At each node: enforce bone length toward parent.
-        # At branch points: average positions from children first.
         suggested: dict[str, list[np.ndarray]] = {}
 
         for name in reversed(tree.topo_order):
             node = tree.nodes[name]
 
             if node.is_leaf:
-                # Snap leaf to target
                 positions[name] = np.array(targets[name], dtype=np.float64)
             elif name in suggested:
-                # Branch or internal node: average child-suggested positions
                 positions[name] = np.mean(suggested[name], axis=0)
 
-            # Suggest a position for parent based on bone constraint
             if node.parent_name is not None:
-                assert node.bone_length_to_parent is not None
+                assert node.bone_key is not None
+                length = bone_lengths[node.bone_key]
                 suggested_parent = _enforce_bone_length(
                     from_pos=positions[name],
                     to_pos=positions[node.parent_name],
-                    length=node.bone_length_to_parent,
+                    length=length,
                 )
                 suggested.setdefault(node.parent_name, []).append(suggested_parent)
 
         # === BACKWARD PASS: roots → leaves ===
-        # Fix roots, push outward enforcing bone lengths
         for name in tree.topo_order:
             node = tree.nodes[name]
 
             if node.is_root:
-                # Root stays fixed at target
                 positions[name] = np.array(targets[name], dtype=np.float64)
             else:
                 assert node.parent_name is not None
-                assert node.bone_length_to_parent is not None
+                assert node.bone_key is not None
+                length = bone_lengths[node.bone_key]
                 positions[name] = _enforce_bone_length(
                     from_pos=positions[node.parent_name],
                     to_pos=positions[name],
-                    length=node.bone_length_to_parent,
+                    length=length,
                 )
 
         # === CONVERGENCE CHECK ===
@@ -287,7 +301,7 @@ def solve_tree(
 
 
 # ============================================================
-# Bone Length Estimation
+# Bone Length Estimation (simple median, for offline/batch use)
 # ============================================================
 
 
@@ -298,6 +312,8 @@ def estimate_bone_lengths(
 ) -> dict[str, float]:
     """
     Estimate bone lengths as median distance across calibration frames.
+
+    For online estimation with priors, use BoneLengthEstimator instead.
 
     Args:
         frames: list of position dicts (one per frame),

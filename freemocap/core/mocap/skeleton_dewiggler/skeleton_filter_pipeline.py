@@ -82,14 +82,7 @@ class SkeletonFilterPipeline:
     _initialized: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
-        for bone in self.skeleton.bones:
-            if bone.key not in self.bone_lengths:
-                raise ValueError(f"Missing bone length for '{bone.key}'")
-            if self.bone_lengths[bone.key] <= 0.0:
-                raise ValueError(
-                    f"Bone length must be positive for '{bone.key}', "
-                    f"got {self.bone_lengths[bone.key]}"
-                )
+        self.fabrik_tree.validate_bone_lengths(self.bone_lengths)
 
     @classmethod
     def from_calibration(
@@ -108,10 +101,7 @@ class SkeletonFilterPipeline:
             frames=calibration_frames,
             skeleton=skeleton,
         )
-        fabrik_tree = FabrikTree.from_skeleton(
-            skeleton=skeleton,
-            bone_lengths=bone_lengths,
-        )
+        fabrik_tree = FabrikTree.from_skeleton(skeleton=skeleton)
         return cls(
             skeleton=skeleton,
             config=config,
@@ -128,10 +118,7 @@ class SkeletonFilterPipeline:
         bone_lengths: dict[str, float],
     ) -> "SkeletonFilterPipeline":
         """Create pipeline with pre-computed bone lengths."""
-        fabrik_tree = FabrikTree.from_skeleton(
-            skeleton=skeleton,
-            bone_lengths=bone_lengths,
-        )
+        fabrik_tree = FabrikTree.from_skeleton(skeleton=skeleton)
         return cls(
             skeleton=skeleton,
             config=config,
@@ -195,6 +182,7 @@ class SkeletonFilterPipeline:
             solved = solve_tree(
                 targets=fabrik_targets,
                 tree=self.fabrik_tree,
+                bone_lengths=self.bone_lengths,
                 tolerance=self.config.fabrik_tolerance,
                 max_iterations=self.config.fabrik_max_iterations,
             )

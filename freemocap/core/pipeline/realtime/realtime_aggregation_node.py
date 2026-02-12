@@ -1,15 +1,22 @@
 """
 RealtimeAggregationNode: collects per-camera observations for each frame,
 triangulates mediapipe and charuco observations (if calibration is valid),
-and publishes aggregated output containing both charuco and mediapipe data.
+filters+constrains the triangulated skeleton via One Euro + FABRIK,
+and publishes aggregated output.
 
 Uses CalibrationStateTracker for graceful degradation: if triangulation fails,
 the calibration is invalidated and we continue publishing 2D-only data until
 a new calibration is loaded (triggered by a config update after posthoc
 calibration completes).
+
+Skeleton filtering (One Euro + FABRIK) runs on the triangulated 3D mediapipe
+points. Bone lengths are estimated online from observed inter-keypoint distances
+blended with an anthropometric prior. The filter resets on calibration reload
+since the coordinate frame may change.
 """
 import logging
 import multiprocessing
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -23,6 +30,10 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellycam.utilities.wait_functions import wait_1ms
 
 from freemocap.core.calibration.shared.calibration_state import CalibrationStateTracker
+from freemocap.core.mocap.skeleton_dewiggler.bone_length_estimator import AnthropometricPrior
+from freemocap.core.mocap.skeleton_dewiggler.mediapipe_skeleton_config import SkeletonDefinition
+from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig, \
+    RealtimeSkeletonFilter
 from freemocap.core.pipeline.base_node import BaseNode
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
@@ -67,6 +78,65 @@ def _merge_triangulated_points(
                 f"Unexpected type for triangulated point '{point_name}': "
                 f"{type(coords).__name__}"
             )
+
+
+def _create_skeleton_filter(
+    *,
+    filter_config: RealtimeFilterConfig,
+) -> RealtimeSkeletonFilter:
+    """Create the skeleton filter with mediapipe body skeleton and anthropometric prior."""
+    skeleton = SkeletonDefinition.mediapipe_body()
+    prior = AnthropometricPrior.mediapipe_body()
+    return RealtimeSkeletonFilter.create(
+        skeleton=skeleton,
+        prior=prior,
+        config=filter_config,
+    )
+
+
+def _filter_skeleton_points(
+    *,
+    tracked_points3d: dict[str, Point3d],
+    skeleton_filter: RealtimeSkeletonFilter,
+    t: float,
+) -> dict[str, Point3d]:
+    """
+    Run the skeleton filter on triangulated points, returning filtered results.
+
+    Only skeleton keypoints are filtered+constrained. Non-skeleton points
+    (e.g. charuco board corners) are passed through unchanged.
+    """
+    skeleton_keypoint_names = skeleton_filter.skeleton.keypoint_names
+
+    # Extract skeleton keypoints as numpy arrays
+    skeleton_positions: dict[str, np.ndarray] = {}
+    for name, point in tracked_points3d.items():
+        if name in skeleton_keypoint_names:
+            skeleton_positions[name] = np.array([point.x, point.y, point.z], dtype=np.float64)
+
+    if not skeleton_positions:
+        return tracked_points3d
+
+    # Run the filter
+    filtered_positions = skeleton_filter.process_frame(
+        t=t,
+        positions=skeleton_positions,
+    )
+
+    # Build output: filtered skeleton points + unmodified non-skeleton points
+    result: dict[str, Point3d] = {}
+    for name, point in tracked_points3d.items():
+        if name in filtered_positions:
+            coords = filtered_positions[name]
+            result[name] = Point3d(
+                x=float(coords[0]),
+                y=float(coords[1]),
+                z=float(coords[2]),
+            )
+        else:
+            result[name] = point
+
+    return result
 
 
 @dataclass
@@ -147,6 +217,11 @@ class RealtimeAggregationNode(BaseNode):
                 f"calibration — triangulation disabled"
             )
 
+        # Initialize skeleton filter for 3D smoothing + bone length constraint
+        # TODO: pull filter_config from RealtimePipelineConfig when wired up
+        filter_config = RealtimeFilterConfig()
+        skeleton_filter = _create_skeleton_filter(filter_config=filter_config)
+
         camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {
             cam_id: None for cam_id in config.camera_configs.keys()
         }
@@ -170,6 +245,12 @@ class RealtimeAggregationNode(BaseNode):
                             f"RealtimeAggregationNode [{camera_group_id}] "
                             f"reloaded calibration from {calibration.calibration_path}"
                         )
+                        # Reset filter state — coordinate frame may have changed
+                        skeleton_filter.reset()
+                        logger.info(
+                            f"RealtimeAggregationNode [{camera_group_id}] "
+                            f"reset skeleton filter after calibration reload"
+                        )
 
                 # ---- Handle explicit calibration signals ----
                 while not should_calibrate_sub.empty():
@@ -178,6 +259,11 @@ class RealtimeAggregationNode(BaseNode):
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
                             f"reloaded calibration after ShouldCalibrate signal"
+                        )
+                        skeleton_filter.reset()
+                        logger.info(
+                            f"RealtimeAggregationNode [{camera_group_id}] "
+                            f"reset skeleton filter after calibration reload"
                         )
 
                 # ---- Request new frames if ready ----
@@ -256,6 +342,14 @@ class RealtimeAggregationNode(BaseNode):
                                 frame_observations_by_camera=charuco_observations_by_camera,
                             ),
                             into=tracked_points3d,
+                        )
+
+                    # ---- Filter + constrain skeleton keypoints ----
+                    if tracked_points3d:
+                        tracked_points3d = _filter_skeleton_points(
+                            tracked_points3d=tracked_points3d,
+                            skeleton_filter=skeleton_filter,
+                            t=time.monotonic(),
                         )
 
                 # ---- Publish aggregated output ----

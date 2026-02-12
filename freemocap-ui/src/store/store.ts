@@ -8,6 +8,7 @@ import {logRecordsSlice} from "./slices/log-records/log-records-slice";
 import {pipelineSlice} from "./slices/pipeline/pipeline-slice";
 import {calibrationSlice} from "@/store/slices/calibration/calibration-slice";
 import {mocapSlice} from "@/store/slices/mocap/mocap-slice";
+import {settingsSlice} from "@/store/slices/settings/settings-slice";
 
 export const store = configureStore({
     reducer: {
@@ -20,7 +21,6 @@ export const store = configureStore({
         pipeline: pipelineSlice.reducer,
         calibration: calibrationSlice.reducer,
         mocap: mocapSlice.reducer,
-    }
+        settings: settingsSlice.reducer,
+    },
 });
-
-

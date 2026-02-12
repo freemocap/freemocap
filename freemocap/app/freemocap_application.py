@@ -1,12 +1,10 @@
 """
-FreemocapApplication: top-level application object.
+FreemocapApplication with SettingsManager integration.
 
-Holds both pipeline managers (realtime + posthoc) and the camera group manager.
-Delegates to the appropriate manager based on the operation.
 """
 import logging
 import multiprocessing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict
@@ -20,6 +18,7 @@ from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
+from freemocap.app.settings import SettingsManager
 from freemocap.core.viz.frontend_payload import FrontendPayload
 from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
@@ -32,9 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class WorkerState(BaseModel):
-    """Serializable representation of a worker process state."""
     model_config = ConfigDict(frozen=True)
-
     pid: int
     name: str
     alive: bool
@@ -42,9 +39,7 @@ class WorkerState(BaseModel):
 
 
 class AppState(BaseModel):
-    """Serializable representation of the application state."""
     model_config = ConfigDict(frozen=True)
-
     camera_groups: dict[CameraGroupIdString, CameraGroupState]
     workers: dict[str, WorkerState]
 
@@ -57,6 +52,7 @@ class FreemocapApplication:
     realtime_pipeline_manager: RealtimePipelineManager
     posthoc_pipeline_manager: PosthocPipelineManager
     camera_group_manager: CameraGroupManager
+    settings_manager: SettingsManager = field(default_factory=SettingsManager)
 
     @classmethod
     def create(cls, fastapi_app: FastAPI) -> "FreemocapApplication":
@@ -74,6 +70,7 @@ class FreemocapApplication:
                 process_registry=process_registry,
             ),
             camera_group_manager=get_or_create_camera_group_manager(app=fastapi_app),
+            settings_manager=SettingsManager(),
         )
 
     @property
@@ -93,15 +90,18 @@ class FreemocapApplication:
         )
         if existing is not None:
             existing.update_config(new_config=pipeline_config)
+            self.settings_manager.update_from_app(self)
             return existing
 
         camera_group = await self.camera_group_manager.create_or_update_camera_group(
             camera_configs=pipeline_config.camera_configs,
         )
-        return self.realtime_pipeline_manager.create_pipeline(
+        pipeline = self.realtime_pipeline_manager.create_pipeline(
             camera_group=camera_group,
             pipeline_config=pipeline_config,
         )
+        self.settings_manager.update_from_app(self)
+        return pipeline
 
     # ------------------------------------------------------------------
     # Posthoc pipeline operations
@@ -112,20 +112,24 @@ class FreemocapApplication:
         recording_info: RecordingInfo,
         calibration_config: CalibrationPipelineConfig,
     ) -> PosthocPipeline:
-        return self.posthoc_pipeline_manager.create_calibration_pipeline(
+        pipeline = self.posthoc_pipeline_manager.create_calibration_pipeline(
             recording_info=recording_info,
             calibration_config=calibration_config,
         )
+        self.settings_manager.update_from_app(self)
+        return pipeline
 
     async def create_posthoc_mocap_pipeline(
         self,
         recording_info: RecordingInfo,
         mocap_config: MocapPipelineConfig,
     ) -> PosthocPipeline:
-        return self.posthoc_pipeline_manager.create_mocap_pipeline(
+        pipeline = self.posthoc_pipeline_manager.create_mocap_pipeline(
             recording_info=recording_info,
             mocap_config=mocap_config,
         )
+        self.settings_manager.update_from_app(self)
+        return pipeline
 
     # ------------------------------------------------------------------
     # Recording orchestration
@@ -135,9 +139,11 @@ class FreemocapApplication:
         await self.camera_group_manager.start_recording_all_groups(
             recording_info=recording_info,
         )
+        self.settings_manager.update_from_app(self)
 
     async def stop_recording_all(self) -> RecordingInfo | None:
         recording_infos = await self.camera_group_manager.stop_recording_all_groups()
+        self.settings_manager.update_from_app(self)
         if len(recording_infos) == 0:
             logger.warning("No recordings were stopped.")
             return None
@@ -159,7 +165,6 @@ class FreemocapApplication:
         if len(realtime_pipelines) == 0 or all(
             not p.alive for p in realtime_pipelines.values()
         ):
-            # No live pipelines — fall back to raw camera group payloads
             cg_payloads = self.camera_group_manager.get_latest_frontend_payloads(
                 if_newer_than=if_newer_than,
             )
@@ -179,9 +184,11 @@ class FreemocapApplication:
     def close_pipelines(self) -> None:
         self.realtime_pipeline_manager.shutdown()
         self.posthoc_pipeline_manager.shutdown()
+        self.settings_manager.update_from_app(self)
 
     def pause_unpause_pipelines(self) -> None:
         self.realtime_pipeline_manager.pause_unpause_all()
+        self.settings_manager.update_from_app(self)
 
     def close(self) -> None:
         self.global_kill_flag.value = True

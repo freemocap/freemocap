@@ -2,6 +2,8 @@ import React, {ReactNode, useCallback, useState} from "react";
 import {Box, Collapse, Paper, Typography, useTheme} from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import {useDragHandle} from "@/components/common/DragHandleContext";
 
 interface CollapsibleSidebarSectionProps {
     icon: ReactNode;
@@ -13,21 +15,21 @@ interface CollapsibleSidebarSectionProps {
 }
 
 export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps> = ({
-    icon,
-    title,
-    primaryControl,
-    summaryContent,
-    children,
-    defaultExpanded,
-}) => {
+                                                                                        icon,
+                                                                                        title,
+                                                                                        primaryControl,
+                                                                                        summaryContent,
+                                                                                        children,
+                                                                                        defaultExpanded,
+                                                                                    }) => {
     const theme = useTheme();
     const [expanded, setExpanded] = useState(defaultExpanded);
+    const dragHandle = useDragHandle();
 
     const handleToggle = useCallback(() => {
         setExpanded((prev) => !prev);
     }, []);
 
-    // Clicks on the primary control should NOT toggle expand/collapse
     const handlePrimaryControlClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
     }, []);
@@ -48,7 +50,7 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
                     alignItems: "center",
                     cursor: "pointer",
                     py: 0.75,
-                    px: 1.5,
+                    px: dragHandle ? 0.5 : 1.5,
                     minHeight: 44,
                     backgroundColor: theme.palette.primary.main,
                     color: theme.palette.primary.contrastText,
@@ -59,6 +61,35 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
                     },
                 }}
             >
+                {/* Drag handle — only rendered when inside a sortable context */}
+                {dragHandle && (
+                    <Box
+                        {...dragHandle.attributes}
+                        {...dragHandle.listeners}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            cursor: "grab",
+                            px: 0.25,
+                            mr: 0.25,
+                            flexShrink: 0,
+                            opacity: 0.35,
+                            borderRadius: 0.5,
+                            transition: "opacity 0.15s ease, background-color 0.15s ease",
+                            "&:hover": {
+                                opacity: 0.9,
+                                backgroundColor: "rgba(255,255,255,0.1)",
+                            },
+                            "&:active": {
+                                cursor: "grabbing",
+                            },
+                        }}
+                    >
+                        <DragIndicatorIcon sx={{fontSize: 18}} />
+                    </Box>
+                )}
+
                 {/* Expand/collapse chevron */}
                 <Box
                     sx={{
@@ -120,6 +151,7 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
                         flexShrink: 0,
                         display: "flex",
                         alignItems: "center",
+                        pr: 0.5,
                     }}
                 >
                     {primaryControl}

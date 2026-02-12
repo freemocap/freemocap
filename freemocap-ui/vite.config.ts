@@ -38,7 +38,10 @@ export default defineConfig(({command}) => {
                             minify: isBuild,
                             outDir: 'dist-electron/main',
                             rollupOptions: {
-                                external: Object.keys('dependencies' in pkg ? pkg.dependencies : {}),
+                                external: [
+                                    ...Object.keys('dependencies' in pkg ? pkg.dependencies : {}),
+                                    'electron-devtools-installer',
+                                ],
                             },
                         },
                     },

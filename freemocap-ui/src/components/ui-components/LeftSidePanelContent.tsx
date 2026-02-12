@@ -1,17 +1,83 @@
-import React from "react";
+import React, {useCallback, useMemo, useState} from "react";
 import Box from "@mui/material/Box";
 import {IconButton, List, ListItem, useTheme} from "@mui/material";
+import {
+    closestCenter,
+    DndContext,
+    DragEndEvent,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {restrictToVerticalAxis, restrictToParentElement} from "@dnd-kit/modifiers";
 import ThemeToggle from "@/components/ui-components/ThemeToggle";
 import HomeIcon from "@mui/icons-material/Home";
 import {useLocation, useNavigate} from "react-router-dom";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import DirectionsRunIcon from "@mui/icons-material/DirectionsRun";
 import {VideoFolderPanel} from "@/components/video-folder-panel/VideoFolderPanel";
-import {CameraConfigTreeView} from "@/components/camera-config-tree-view/CameraConfigTreeView";
+import {SortableSectionWrapper} from "@/components/common/SortableSectionWrapper";
 import {ServerConnectionStatus} from "@/components/ServerConnectionStatus";
 import {ProcessingPipelinePanel} from "@/components/processing-pipeline-panel/ProcessingPipelinePanel";
+import {CameraConfigTreeView} from "@/components/camera-config-tree-view/CameraConfigTreeView";
 import {CalibrationControlPanel} from "@/components/calibration-task-panel/CalibrationControlPanel";
 import {MocapTaskTreeItem} from "@/components/mocap-task-panel/MocapTaskTreeItem";
+
+const STORAGE_KEY = "freemocap-sidebar-section-order";
+
+const DEFAULT_SECTION_ORDER = [
+    "connection",
+    "pipeline",
+    "cameras",
+    "calibration",
+    "mocap",
+] as const;
+
+type SectionId = (typeof DEFAULT_SECTION_ORDER)[number];
+
+const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
+    connection: ServerConnectionStatus,
+    pipeline: ProcessingPipelinePanel,
+    cameras: CameraConfigTreeView,
+    calibration: CalibrationControlPanel,
+    mocap: MocapTaskTreeItem,
+};
+
+function loadSectionOrder(): SectionId[] {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) return [...DEFAULT_SECTION_ORDER];
+        const parsed = JSON.parse(stored) as string[];
+        // Validate: must contain exactly the same IDs (handles additions/removals across versions)
+        const defaultSet = new Set<string>(DEFAULT_SECTION_ORDER);
+        const parsedSet = new Set(parsed);
+        if (
+            parsed.length !== DEFAULT_SECTION_ORDER.length ||
+            !parsed.every((id) => defaultSet.has(id)) ||
+            !DEFAULT_SECTION_ORDER.every((id) => parsedSet.has(id))
+        ) {
+            return [...DEFAULT_SECTION_ORDER];
+        }
+        return parsed as SectionId[];
+    } catch {
+        return [...DEFAULT_SECTION_ORDER];
+    }
+}
+
+function saveSectionOrder(order: SectionId[]): void {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+    } catch {
+        // Storage full or unavailable — silently ignore
+    }
+}
 
 const scrollbarStyles = {
     "&::-webkit-scrollbar": {
@@ -45,6 +111,36 @@ export const LeftSidePanelContent = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
+    const [sectionOrder, setSectionOrder] = useState<SectionId[]>(loadSectionOrder);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        const {active, over} = event;
+        if (!over || active.id === over.id) return;
+
+        setSectionOrder((prev) => {
+            const oldIndex = prev.indexOf(active.id as SectionId);
+            const newIndex = prev.indexOf(over.id as SectionId);
+            const newOrder = arrayMove(prev, oldIndex, newIndex);
+            saveSectionOrder(newOrder);
+            return newOrder;
+        });
+    }, []);
+
+    const modifiers = useMemo(
+        () => [restrictToVerticalAxis, restrictToParentElement],
+        []
+    );
 
     return (
         <Box
@@ -142,22 +238,37 @@ export const LeftSidePanelContent = () => {
                 </Box>
             )}
 
-            {/* Sidebar Sections — all using CollapsibleSidebarSection */}
-            <Box
-                sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 0.75,
-                    p: 0.75,
-                    pb: 2,
-                }}
+            {/* Sidebar Sections — drag-reorderable */}
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                modifiers={modifiers}
+                onDragEnd={handleDragEnd}
             >
-                <ServerConnectionStatus />
-                <ProcessingPipelinePanel />
-                <CameraConfigTreeView />
-                <CalibrationControlPanel />
-                <MocapTaskTreeItem />
-            </Box>
+                <SortableContext
+                    items={sectionOrder}
+                    strategy={verticalListSortingStrategy}
+                >
+                    <Box
+                        sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 0.75,
+                            p: 0.75,
+                            pb: 2,
+                        }}
+                    >
+                        {sectionOrder.map((sectionId) => {
+                            const Component = SECTION_COMPONENTS[sectionId];
+                            return (
+                                <SortableSectionWrapper key={sectionId} id={sectionId}>
+                                    <Component />
+                                </SortableSectionWrapper>
+                            );
+                        })}
+                    </Box>
+                </SortableContext>
+            </DndContext>
         </Box>
     );
 };

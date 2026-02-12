@@ -1,6 +1,6 @@
 """
 RealtimeAggregationNode: collects per-camera observations for each frame,
-optionally triangulates mediapipe observations (if calibration is valid),
+triangulates mediapipe and charuco observations (if calibration is valid),
 and publishes aggregated output containing both charuco and mediapipe data.
 
 Uses CalibrationStateTracker for graceful degradation: if triangulation fails,
@@ -41,6 +41,32 @@ from freemocap.pubsub.pubsub_topics import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _merge_triangulated_points(
+    *,
+    triangulated: dict[str, np.ndarray] | None,
+    into: dict[str, Point3d],
+) -> None:
+    """Merge triangulated 3D points into the output dict, skipping NaN entries."""
+    if triangulated is None:
+        return
+    for point_name, coords in triangulated.items():
+        if isinstance(coords, np.ndarray):
+            if np.any(np.isnan(coords)):
+                continue
+            into[point_name] = Point3d(
+                x=float(coords[0]),
+                y=float(coords[1]),
+                z=float(coords[2]),
+            )
+        elif isinstance(coords, Point3d):
+            into[point_name] = coords
+        else:
+            raise TypeError(
+                f"Unexpected type for triangulated point '{point_name}': "
+                f"{type(coords).__name__}"
+            )
 
 
 @dataclass
@@ -197,9 +223,10 @@ class RealtimeAggregationNode(BaseNode):
 
                 last_received_frame = latest_requested_frame
 
-                # ---- Triangulate using mediapipe and/or charuco  observations if calibration is valid ----
+                # ---- Triangulate mediapipe and charuco observations if calibration is valid ----
                 tracked_points3d: dict[str, Point3d] = {}
                 if calibration.is_valid:
+                    # Triangulate mediapipe observations
                     mediapipe_observations_by_camera = {
                         cam_id: output.mediapipe_observation
                         for cam_id, output in camera_node_outputs.items()
@@ -207,27 +234,29 @@ class RealtimeAggregationNode(BaseNode):
                         and output.mediapipe_observation is not None
                     }
                     if mediapipe_observations_by_camera:
-                        triangulated = calibration.try_triangulate(
-                            frame_number=latest_requested_frame,
-                            frame_observations_by_camera=mediapipe_observations_by_camera,
+                        _merge_triangulated_points(
+                            triangulated=calibration.try_triangulate(
+                                frame_number=latest_requested_frame,
+                                frame_observations_by_camera=mediapipe_observations_by_camera,
+                            ),
+                            into=tracked_points3d,
                         )
-                        if triangulated is not None:
-                            for point_name, coords in triangulated.items():
-                                if isinstance(coords, np.ndarray):
-                                    if np.any(np.isnan(coords)):
-                                        continue
-                                    tracked_points3d[point_name] = Point3d(
-                                        x=float(coords[0]),
-                                        y=float(coords[1]),
-                                        z=float(coords[2]),
-                                    )
-                                elif isinstance(coords, Point3d):
-                                    tracked_points3d[point_name] = coords
-                                else:
-                                    raise TypeError(
-                                        f"Unexpected type for triangulated point '{point_name}': "
-                                        f"{type(coords).__name__}"
-                                    )
+
+                    # Triangulate charuco observations
+                    charuco_observations_by_camera = {
+                        cam_id: output.charuco_observation
+                        for cam_id, output in camera_node_outputs.items()
+                        if isinstance(output, CameraNodeOutputMessage)
+                        and output.charuco_observation is not None
+                    }
+                    if charuco_observations_by_camera:
+                        _merge_triangulated_points(
+                            triangulated=calibration.try_triangulate(
+                                frame_number=latest_requested_frame,
+                                frame_observations_by_camera=charuco_observations_by_camera,
+                            ),
+                            into=tracked_points3d,
+                        )
 
                 # ---- Publish aggregated output ----
                 aggregation_output_pub.put(

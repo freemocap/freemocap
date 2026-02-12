@@ -7,7 +7,6 @@ import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/f
 import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {backendFramerateUpdated, DetailedFramerate, frontendFramerateUpdated, logAdded, LogRecord} from '@/store';
 
-import {FrameCompositor} from "@/services/server/server-helpers/frame_compositor";
 import {serverUrls} from "@/hooks/server-urls";
 import {
     CharucoObservation,
@@ -110,9 +109,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const overlayManagerRef = useRef<OverlayManager | null>(null);
-    const frameCompositorRef = useRef<FrameCompositor | null>(null);
     const frameSubscribersRef = useRef<Map<string, Set<FrameSubscriber>>>(new Map());
-    const latestObservationsRef = useRef<Map<string, CharucoObservation|MediapipeObservation>>(new Map());
+    const latestCharucoRef = useRef<Map<string, CharucoObservation>>(new Map());
+    const latestMediapipeRef = useRef<Map<string, MediapipeObservation>>(new Map());
     const latestTrackedPoints = useRef<Map<string, Point3d>>(new Map());
     const trackedPointsSubscribersRef = useRef<Set<TrackedPointsSubscriber>>(new Set());
 
@@ -126,7 +125,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
         overlayManagerRef.current = new OverlayManager();
-        frameCompositorRef.current = new FrameCompositor();
 
         return () => {
             if (wsConnectionRef.current) {
@@ -138,10 +136,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (frameProcessorRef.current) {
                 frameProcessorRef.current.reset();
             }
-            if (frameCompositorRef.current) {
-                frameCompositorRef.current.destroy();
-            }
-            latestObservationsRef.current.clear();
+            latestCharucoRef.current.clear();
+            latestMediapipeRef.current.clear();
             latestTrackedPoints.current.clear();
             trackedPointsSubscribersRef.current.clear();
         };
@@ -159,7 +155,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 canvasManagerRef.current?.terminateAllWorkers();
                 frameProcessorRef.current?.reset();
                 overlayManagerRef.current?.clearAll();
-                latestObservationsRef.current.clear();
+                latestCharucoRef.current.clear();
+                latestMediapipeRef.current.clear();
                 latestTrackedPoints.current.clear();
                 setConnectedCameraIds([]);
             }
@@ -182,8 +179,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             for (const cameraId of removedCameras) {
                                 console.log(`Removing camera ${cameraId} - not in latest payload`);
                                 canvasManagerRef.current?.terminateWorker(cameraId);
-                                overlayManagerRef.current?.clearCamera(cameraId);  // Clear overlay renderer
-                                latestObservationsRef.current.delete(cameraId);
+                                latestCharucoRef.current.delete(cameraId);
+                                latestMediapipeRef.current.delete(cameraId);
                             }
 
                             return currentCameraIds;
@@ -202,16 +199,17 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         }
                     };
 
-                    // Process frames with generic overlay manager
+                    // Process frames with both overlay types composited sequentially
                     const overlayManager = overlayManagerRef.current!;
                     for (const frameData of frames) {
-                        const observation = latestObservationsRef.current.get(frameData.cameraId) || null;
+                        const charucoObservation = latestCharucoRef.current.get(frameData.cameraId) ?? null;
+                        const mediapipeObservation = latestMediapipeRef.current.get(frameData.cameraId) ?? null;
 
-                        // Use generic overlay manager to composite frame
                         const compositeBitmap = await overlayManager.processFrame(
                             frameData.cameraId,
                             frameData.bitmap,
-                            observation
+                            charucoObservation,
+                            mediapipeObservation,
                         );
 
                         // Send to subscribers if any
@@ -244,12 +242,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     // Handle different observation types
                     if (isCharucoOverlayDataMessage(jsonData)) {
                         for (const [cameraId, observation] of Object.entries(jsonData)) {
-                            latestObservationsRef.current.set(cameraId, observation);
+                            latestCharucoRef.current.set(cameraId, observation as CharucoObservation);
                         }
                     }
                     else if (isMediapipeOverlayDataMessage(jsonData)) {
                         for (const [cameraId, observation] of Object.entries(jsonData)) {
-                            latestObservationsRef.current.set(cameraId, observation);
+                            latestMediapipeRef.current.set(cameraId, observation as MediapipeObservation);
                         }
                     }
                     else if ('model_info' in jsonData && jsonData.model_info) {
@@ -258,7 +256,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     }
                     else if ('tracked_points3d' in jsonData) {
                         // Handle 3D tracked points
-                        console.log(`Received 3d data - ${JSON.stringify(jsonData.tracked_points3d)}`);
                         latestTrackedPoints.current = new Map(Object.entries(jsonData.tracked_points3d));
 
                         for (const subscriber of trackedPointsSubscribersRef.current) {

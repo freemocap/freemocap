@@ -24,7 +24,7 @@ from freemocap.core.pipeline.posthoc.posthoc_calibration_task.shared.calibration
 
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
-from freemocap.core.pipeline.shared.pipeline_configs import (
+from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
     CalibrationSolverMethod,
 )

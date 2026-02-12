@@ -8,7 +8,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
-from freemocap.core.pipeline.shared.frontend_payload import FrontendPayload
+from freemocap.core.viz.frontend_payload import FrontendPayload
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue, \
     MIN_LOG_LEVEL_FOR_WEBSOCKET
 from freemocap.utilities.wait_functions import await_10ms
@@ -82,8 +82,6 @@ class WebsocketServer:
             return True
         return self.last_received_frontend_confirmation >= self.last_sent_frame_number
 
-    # Updated section for _frontend_image_relay method in websocket_server.py
-
     async def _frontend_image_relay(self) -> None:
         """
         Relay image payloads from the shared memory to the frontend via the websocket.
@@ -111,29 +109,27 @@ class WebsocketServer:
                                     frame_number = frontend_payload.frame_number
 
                             if not isinstance(payload_bytes, (bytes, bytearray)):
-                                logger.warning(f"Invalid payload bytes on frame{frame_number} -"
-                                               f" got type {type(payload_bytes)}")
-                                continue
+                                raise TypeError(
+                                    f"Invalid payload bytes on frame {frame_number} — "
+                                    f"got type {type(payload_bytes).__name__}"
+                                )
 
                             # Send the image bytes first
                             if payload_bytes:
                                 await self.websocket.send_bytes(payload_bytes)
 
-                            # Send observation overlays as a single message per observation type
-                            if frontend_payload and frontend_payload.observation_overlays:
-                                # Group overlays by message type
-                                overlays_by_type: dict[str, dict[CameraIdString, dict]] = {}
+                            # Send observation overlays — one message per overlay type
+                            if frontend_payload and frontend_payload.charuco_overlays:
+                                await self.websocket.send_json({
+                                    camera_id: overlay_data.model_dump()
+                                    for camera_id, overlay_data in frontend_payload.charuco_overlays.items()
+                                })
 
-                                for camera_id, overlay_data in frontend_payload.observation_overlays.items():
-                                    message_type = overlay_data.message_type
-                                    if message_type not in overlays_by_type:
-                                        overlays_by_type[message_type] = {}
-                                    overlays_by_type[message_type][camera_id] = overlay_data.model_dump()
-
-                                # Send each observation type as separate message
-                                # This matches what the frontend expects
-                                for message_type, camera_overlays in overlays_by_type.items():
-                                    await self.websocket.send_json(camera_overlays)
+                            if frontend_payload and frontend_payload.mediapipe_overlays:
+                                await self.websocket.send_json({
+                                    camera_id: overlay_data.model_dump()
+                                    for camera_id, overlay_data in frontend_payload.mediapipe_overlays.items()
+                                })
 
                             # Send tracked points if present
                             if frontend_payload and frontend_payload.tracked_points3d:
@@ -224,7 +220,7 @@ class WebsocketServer:
                     elif "websocket" in message:
                         logger.trace(f"Received unknown websocket control message: {message}")
                     else:
-                        logger.warning(f"Received unexpected message format: {message}")
+                        raise ValueError(f"Received unexpected message format: {message}")
 
         except asyncio.CancelledError:
             logger.debug("Client message handler task cancelled")

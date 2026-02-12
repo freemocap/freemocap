@@ -24,7 +24,7 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
     const [isAuto, setIsAuto] = useState<boolean>(true);
     const [manualColumns, setManualColumns] = useState<number>(2);
     const [show3dView, setShow3dView] = useState<boolean>(true);
-    const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('vertical');
+    const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('horizontal');
 
     const getAutoColumns = (total: number): number => {
         if (total <= 1) return 1;

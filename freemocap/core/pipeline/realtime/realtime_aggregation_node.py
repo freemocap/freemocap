@@ -1,6 +1,7 @@
 """
 RealtimeAggregationNode: collects per-camera observations for each frame,
-optionally triangulates (if calibration is valid), and publishes aggregated output.
+optionally triangulates mediapipe observations (if calibration is valid),
+and publishes aggregated output containing both charuco and mediapipe data.
 
 Uses CalibrationStateTracker for graceful degradation: if triangulation fails,
 the calibration is invalidated and we continue publishing 2D-only data until
@@ -11,7 +12,9 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 
+import numpy as np
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellyforge.data_models.trajectory_3d import Point3d
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
     CameraGroupSharedMemory,
     CameraGroupSharedMemoryDTO,
@@ -19,10 +22,10 @@ from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
 
-from freemocap.core.pipeline.shared.base_node import BaseNode
-from freemocap.core.pipeline.shared.calibration_state import CalibrationStateTracker
-from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
-from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
+from freemocap.core.calibration.shared.calibration_state import CalibrationStateTracker
+from freemocap.core.pipeline.base_node import BaseNode
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
@@ -187,26 +190,44 @@ class RealtimeAggregationNode(BaseNode):
                     if isinstance(msg, CameraNodeOutputMessage)
                 ]
                 if len(set(frame_numbers)) > 1:
-                    logger.warning(
+                    raise ValueError(
                         f"Frame number mismatch across cameras: {frame_numbers} "
                         f"(expected {latest_requested_frame})"
                     )
 
                 last_received_frame = latest_requested_frame
 
-                # ---- Triangulate if calibration is valid ----
-                tracked_points3d: dict = {}
+                # ---- Triangulate using mediapipe and/or charuco  observations if calibration is valid ----
+                tracked_points3d: dict[str, Point3d] = {}
                 if calibration.is_valid:
-                    triangulated = calibration.try_triangulate(
-                        frame_number=latest_requested_frame,
-                        frame_observations_by_camera={
-                            cam_id: output.observation
-                            for cam_id, output in camera_node_outputs.items()
-                            if isinstance(output, CameraNodeOutputMessage)
-                        },
-                    )
-                    if triangulated is not None:
-                        tracked_points3d = triangulated
+                    mediapipe_observations_by_camera = {
+                        cam_id: output.mediapipe_observation
+                        for cam_id, output in camera_node_outputs.items()
+                        if isinstance(output, CameraNodeOutputMessage)
+                        and output.mediapipe_observation is not None
+                    }
+                    if mediapipe_observations_by_camera:
+                        triangulated = calibration.try_triangulate(
+                            frame_number=latest_requested_frame,
+                            frame_observations_by_camera=mediapipe_observations_by_camera,
+                        )
+                        if triangulated is not None:
+                            for point_name, coords in triangulated.items():
+                                if isinstance(coords, np.ndarray):
+                                    if np.any(np.isnan(coords)):
+                                        continue
+                                    tracked_points3d[point_name] = Point3d(
+                                        x=float(coords[0]),
+                                        y=float(coords[1]),
+                                        z=float(coords[2]),
+                                    )
+                                elif isinstance(coords, Point3d):
+                                    tracked_points3d[point_name] = coords
+                                else:
+                                    raise TypeError(
+                                        f"Unexpected type for triangulated point '{point_name}': "
+                                        f"{type(coords).__name__}"
+                                    )
 
                 # ---- Publish aggregated output ----
                 aggregation_output_pub.put(

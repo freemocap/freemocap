@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
+from freemocap.core.calibration.shared.camera_identity import camera_ids_from_video_paths
 from freemocap.core.types.type_overloads import VideoIdString
 
 # Module level constants
@@ -348,20 +349,24 @@ class VideoGroupHelper(BaseModel):
         return self
 
     @classmethod
-    def from_video_paths(cls, video_paths: list[VideoIdString], close_videos:bool=True) -> "VideoGroupHelper":
-        video_paths = sorted(video_paths)  # sort to ensure consistent ordering
+    def from_video_paths(cls, video_paths: list[str], close_videos: bool = True) -> "VideoGroupHelper":
+        """Create VideoGroupHelper from a list of video file paths.
+
+        Camera IDs are extracted from video filenames when possible.
+        Falls back to sorted positional indices if extraction fails.
+        """
+        id_to_path = camera_ids_from_video_paths(
+            video_paths=[Path(p) for p in video_paths],
+        )
 
         videos: dict[VideoIdString, VideoHelper] = {}
+        for camera_id, video_path in id_to_path.items():
+            videos[camera_id] = VideoHelper.from_video_path(video_path)
 
-        for video_number, video_path in enumerate(video_paths):
-            video_name = Path(video_path).name
-            # camera_id = extract_camera_id(video_name)
-            # TODO -  Just using video order index as video ID for now, need revisit this later to couple this to Camera Id somehow. Its a tricky problem.
-            videos[str(video_number)] = VideoHelper.from_video_path(Path(video_path))
-
-        instance = cls(videos=videos,
-                   video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()})
-        #close videos
+        instance = cls(
+            videos=videos,
+            video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
+        )
         if close_videos:
             instance.close()
         return instance

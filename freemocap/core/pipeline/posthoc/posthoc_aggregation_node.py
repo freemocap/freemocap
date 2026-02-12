@@ -26,9 +26,9 @@ from skellycam.core.ipc.process_management.process_registry import ProcessRegist
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
+from freemocap.core.pipeline.base_node import BaseNode
+from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
-from freemocap.core.pipeline.shared.base_node import BaseNode
-from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (

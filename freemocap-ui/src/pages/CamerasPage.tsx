@@ -23,7 +23,7 @@ export const CamerasPage = () => {
     const [settings, setSettings] = useState<CameraSettings>({
         columns: null,
         show3dView: true,
-        layoutDirection: 'vertical',
+        layoutDirection: 'horizontal',
     });
     const [resetKey, setResetKey] = useState<number>(0);
 

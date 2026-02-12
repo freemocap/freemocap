@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.pipeline.shared.pipeline_configs import MocapPipelineConfig
+from freemocap.core.pipeline.pipeline_configs import MocapPipelineConfig
 
 logger = logging.getLogger(__name__)
 

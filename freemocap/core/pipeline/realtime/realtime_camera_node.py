@@ -19,9 +19,9 @@ from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
 from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
 
-from freemocap.core.pipeline.shared.base_node import BaseNode
-from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
-from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.base_node import BaseNode
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
@@ -163,25 +163,26 @@ class RealtimeCameraNode(BaseNode):
                         f"RealtimeCameraNode [{camera_id}]: requested frame {frame_msg.frame_number} "
                         f"but ring buffer contained frame {actual_frame_number} — possible ring buffer overwrite"
                     )
-
+                mediapipe_observation = None
+                charuco_observation = None
                 if mediapipe_detector is not None:
-                    observation = mediapipe_detector.detect(
+                    mediapipe_observation = mediapipe_detector.detect(
                         frame_number=actual_frame_number,
                         image=image,
                     )
-                elif charuco_detector is not None:
-                    observation = charuco_detector.detect(
+                if charuco_detector is not None:
+                    charuco_observation = charuco_detector.detect(
                         frame_number=actual_frame_number,
                         image=image,
                     )
-                else:
+                if mediapipe_detector is None and charuco_detector is None:
                     continue
-
                 camera_output_pub.put(
                     CameraNodeOutputMessage(
                         camera_id=actual_camera_id,
                         frame_number=actual_frame_number,
-                        observation=observation,
+                        charuco_observation=charuco_observation,
+                        mediapipe_observation = mediapipe_observation
                     ),
                 )
 

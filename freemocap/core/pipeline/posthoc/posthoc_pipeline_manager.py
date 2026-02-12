@@ -16,13 +16,10 @@ from dataclasses import dataclass, field
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
-from freemocap.core.pipeline.posthoc.posthoc_calibration_task.calibration_task import run_calibration_task
-from freemocap.core.pipeline.posthoc.posthoc_mocap_task.mocap_task import run_mocap_task
+from freemocap.core.calibration.calibration_task import run_calibration_task
+from freemocap.core.mocap.mocap_task import run_mocap_task
+from freemocap.core.pipeline.pipeline_configs import CalibrationPipelineConfig, MocapPipelineConfig
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
-from freemocap.core.pipeline.shared.pipeline_configs import (
-    CalibrationPipelineConfig,
-    MocapPipelineConfig,
-)
 from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)

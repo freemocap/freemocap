@@ -20,8 +20,8 @@ from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
-from freemocap.core.pipeline.shared.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.shared.pipeline_configs import (
+from freemocap.core.viz.frontend_payload import FrontendPayload
+from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
     MocapPipelineConfig,
     RealtimePipelineConfig,

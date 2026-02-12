@@ -17,9 +17,9 @@ from pathlib import Path
 import cv2
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 
-from freemocap.core.pipeline.shared.base_node import BaseNode
-from freemocap.core.pipeline.shared.pipeline_configs import DetectorSpec, create_detector_from_spec, create_annotator_from_spec
-from freemocap.core.pipeline.shared.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.base_node import BaseNode
+from freemocap.core.pipeline.pipeline_configs import DetectorSpec, create_detector_from_spec, create_annotator_from_spec
+from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import VideoIdString, TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage

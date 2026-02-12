@@ -13,15 +13,15 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservatio
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
 
-from freemocap.core.image_overlay.charuco_overlay_data import CharucoOverlayData
-from freemocap.core.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
-from freemocap.core.pipeline.shared.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
     PipelineIdString,
     VideoIdString,
     TrackedPointNameString,
 )
+from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
+from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,8 @@ class PipelineConfigUpdateMessage(TopicMessageABC):
 class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString
     frame_number: FrameNumberInt = Field(ge=0)
-    observation: BaseObservation
+    charuco_observation: CharucoObservation|None
+    mediapipe_observation: MediapipeObservation|None
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +87,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
             )
         for cam_output in self.camera_node_outputs.values():
             if cam_output.frame_number != self.frame_number:
-                logger.warning(
+                raise ValueError(
                     f"CameraNodeOutputMessage for camera {cam_output.camera_id} "
                     f"has frame number {cam_output.frame_number} which does not match "
                     f"AggregationNodeOutputMessage frame number {self.frame_number}"
@@ -97,10 +98,10 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     def charuco_overlay_data(self) -> dict[CameraIdString, CharucoOverlayData]:
         overlay_data: dict[CameraIdString, CharucoOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
-            if cam_output.observation is not None and isinstance(cam_output.observation, CharucoObservation):
+            if cam_output.charuco_observation is not None and isinstance(cam_output.charuco_observation, CharucoObservation):
                 overlay_data[camera_id] = CharucoOverlayData.from_charuco_observation(
                     camera_id=camera_id,
-                    observation=cam_output.observation,
+                    observation=cam_output.charuco_observation,
                 )
         return overlay_data
 
@@ -108,10 +109,10 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     def mediapipe_overlay_data(self) -> dict[CameraIdString, MediapipeOverlayData]:
         overlay_data: dict[CameraIdString, MediapipeOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
-            if cam_output.observation is not None and isinstance(cam_output.observation, MediapipeObservation):
+            if cam_output.mediapipe_observation is not None and isinstance(cam_output.mediapipe_observation, MediapipeObservation):
                 overlay_data[camera_id] = MediapipeOverlayData.from_mediapipe_observation(
                     camera_id=camera_id,
-                    observation=cam_output.observation,
+                    observation=cam_output.mediapipe_observation,
                 )
         return overlay_data
 

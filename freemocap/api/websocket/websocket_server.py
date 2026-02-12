@@ -220,7 +220,7 @@ class WebsocketServer:
                     elif "websocket" in message:
                         logger.trace(f"Received unknown websocket control message: {message}")
                     else:
-                        raise ValueError(f"Received unexpected message format: {message}")
+                        logger.warning(f"Received unexpected message format: {message}")
 
         except asyncio.CancelledError:
             logger.debug("Client message handler task cancelled")

@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
-from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetectorConfig
+from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetectorConfig, \
+    MediapipeModelComplexity
 
 from freemocap.core.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
 
@@ -114,7 +115,9 @@ class CalibrationPipelineConfig(BaseModel):
 class MocapPipelineConfig(BaseModel):
     @property
     def detector_config(self) -> MediapipeDetectorConfig:
-        return MediapipeDetectorConfig()
+        return MediapipeDetectorConfig(
+            model_complexity= MediapipeModelComplexity.FULL
+        )
 
     @property
     def detector_spec(self) -> DetectorSpec:

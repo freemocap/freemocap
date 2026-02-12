@@ -249,6 +249,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         for (const [cameraId, observation] of Object.entries(jsonData)) {
                             latestMediapipeRef.current.set(cameraId, observation as MediapipeObservation);
                         }
+                        // console.log(JSON.stringify(jsonData))
                     }
                     else if ('model_info' in jsonData && jsonData.model_info) {
                         // Handle model info updates
@@ -257,6 +258,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     else if ('tracked_points3d' in jsonData) {
                         // Handle 3D tracked points
                         latestTrackedPoints.current = new Map(Object.entries(jsonData.tracked_points3d));
+                        // console.log(`Received 3d data - ${JSON.stringify(jsonData.tracked_points3d)}`);
 
                         for (const subscriber of trackedPointsSubscribersRef.current) {
                             subscriber(latestTrackedPoints.current);

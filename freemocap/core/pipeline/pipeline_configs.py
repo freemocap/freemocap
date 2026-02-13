@@ -11,7 +11,9 @@ from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
 from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetectorConfig, \
-    MediapipeModelComplexity
+    MediapipeModelComplexity, MEDIAPIPE_TRACKER_REALTIME_PRESET, MEDIAPIPE_TRACKER_POSTHOC_PRESET
+from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
+from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
 
 from freemocap.core.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
 
@@ -28,8 +30,6 @@ def create_detector_from_spec(spec: DetectorSpec):
     Called inside child processes — imports happen at module level but
     the heavy detector objects are only instantiated here.
     """
-    from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
-    from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
 
     match spec:
         case CharucoDetectorConfig():
@@ -113,15 +113,18 @@ class CalibrationPipelineConfig(BaseModel):
 
 
 class MocapPipelineConfig(BaseModel):
-    @property
-    def detector_config(self) -> MediapipeDetectorConfig:
-        return MediapipeDetectorConfig(
-            model_complexity= MediapipeModelComplexity.FULL
-        )
+    detector: MediapipeDetectorConfig
 
-    @property
-    def detector_spec(self) -> DetectorSpec:
-        return self.detector_config
+    @classmethod
+    def default_realtime(cls) -> "MocapPipelineConfig":
+        return cls(detector=MEDIAPIPE_TRACKER_REALTIME_PRESET)
+
+    @classmethod
+    def default_posthoc(cls) -> "MocapPipelineConfig":
+        return cls(detector=MEDIAPIPE_TRACKER_POSTHOC_PRESET)
+
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -134,7 +137,7 @@ class RealtimePipelineConfig(BaseModel):
         default_factory=CalibrationPipelineConfig,
     )
     mocap_config: MocapPipelineConfig = Field(
-        default_factory=MocapPipelineConfig,
+        default_factory=MocapPipelineConfig.default_realtime,
     )
     calibration_detection_enabled: bool = Field(default=True)
     mocap_detection_enabled: bool = Field(default=True)

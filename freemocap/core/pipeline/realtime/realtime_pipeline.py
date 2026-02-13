@@ -166,6 +166,7 @@ class RealtimePipeline:
     def update_config(self, new_config: RealtimePipelineConfig) -> None:
         """Push a config update to all pipeline workers via pubsub."""
         self.config = new_config
+        logger.trace(f"Pushing new config to realtime pipeline: {self.id} \n {new_config.model_dump_json(indent=4)}")
         self.pubsub.publish(
             topic_type=PipelineConfigUpdateTopic,
             message=PipelineConfigUpdateMessage(pipeline_config=new_config),

@@ -10,7 +10,6 @@ import multiprocessing
 from dataclasses import dataclass
 
 import cv2
-import numpy as np
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
@@ -32,6 +31,10 @@ from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberMessage,
     CameraNodeOutputMessage,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +108,7 @@ class RealtimeCameraNode(BaseNode):
             )
         if config.mocap_detection_enabled:
             mediapipe_detector = MediapipeDetector.create(
-                config=config.mocap_config.detector_config,
+                config=config.mocap_config.detector,
             )
 
         frame_rec_array: np.recarray | None = None
@@ -130,7 +133,7 @@ class RealtimeCameraNode(BaseNode):
 
                     if new_config.mocap_detection_enabled and mediapipe_detector is None:
                         mediapipe_detector = MediapipeDetector.create(
-                            config=new_config.mocap_config.detector_config,
+                            config=new_config.mocap_config.detector,
                         )
                     elif not new_config.mocap_detection_enabled:
                         mediapipe_detector = None

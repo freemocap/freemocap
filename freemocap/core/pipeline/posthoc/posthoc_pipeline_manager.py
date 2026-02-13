@@ -100,7 +100,7 @@ class PosthocPipelineManager:
         )
         pipeline = PosthocPipeline.create(
             recording_info=recording_info,
-            detector_spec=mocap_config.detector_spec,
+            detector_spec=mocap_config.detector,
             task_fn=task_fn,
             process_registry=self.process_registry,
             global_kill_flag=self.global_kill_flag,

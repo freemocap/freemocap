@@ -4,18 +4,23 @@ import multiprocessing
 import os
 import signal
 
-import uvicorn
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
-from skellycam.utilities.kill_process_on_port import kill_process_on_port
-from skellycam.utilities.wait_functions import await_1s
-
-from freemocap.api.server_constants import HOSTNAME, PORT
-from freemocap.app.app import create_fastapi_app
-
 logger = logging.getLogger(__name__)
 
 
 async def main() -> None:
+    # Heavy imports are here (not at module level) so that multiprocessing
+    # child processes don't re-import the entire app tree on Windows.
+    # Windows uses the `spawn` start method, which re-executes this file
+    # in every child process — but only `main()` needs these imports,
+    # and children never call `main()`.
+    import uvicorn
+    from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+    from skellycam.utilities.kill_process_on_port import kill_process_on_port
+    from skellycam.utilities.wait_functions import await_1s
+
+    from freemocap.api.server_constants import HOSTNAME, PORT
+    from freemocap.app.app import create_fastapi_app
+
     global_kill_flag = multiprocessing.Value("b", False)
     process_registry = ProcessRegistry(
         global_kill_flag=global_kill_flag,
@@ -24,9 +29,10 @@ async def main() -> None:
 
     server: uvicorn.Server | None = None
     signum_to_signal_name = {
-        signal.SIGINT:"signal.SIGINT",
-        signal.SIGTERM:"signal.SIGTERM",
+        signal.SIGINT: "signal.SIGINT",
+        signal.SIGTERM: "signal.SIGTERM",
     }
+
     def handle_signal(signum: int, frame: object) -> None:
         """Handle shutdown signals."""
         logger.info(f"Received signal {signum}({signum_to_signal_name[signum]}), initiating shutdown...")
@@ -81,5 +87,3 @@ if __name__ == "__main__":
         os._exit(1)
     print("Done!")
     os._exit(0)
-
-

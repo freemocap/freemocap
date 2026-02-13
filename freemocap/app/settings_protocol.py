@@ -6,8 +6,8 @@ Add this as a task in WebsocketServer.run() alongside the existing
 _frontend_image_relay, _logs_relay, and _client_message_handler tasks.
 """
 import asyncio
-import json
 import logging
+from copy import deepcopy
 
 from starlette.websockets import WebSocket, WebSocketState
 
@@ -69,24 +69,18 @@ def handle_settings_message(
     if message_type == "settings/patch":
         patch = data.get("patch")
         if patch is None:
-            logger.warning("Received settings/patch with no 'patch' field")
-            return
-        try:
-            settings_manager.apply_patch(patch)
-            # After applying config changes, sync relevant configs back
-            # to the running pipelines/managers
-            _sync_patch_to_app(patch=patch, settings_manager=settings_manager, app=app)
-        except Exception as e:
-            logger.error(f"Failed to apply settings patch: {e}")
-            # Push current (unchanged) state so frontend knows its patch was rejected
-            settings_manager.notify_changed()
+            raise ValueError("Received settings/patch with no 'patch' field")
+        settings_manager.apply_patch(patch)
+        # After applying config changes, sync relevant configs back
+        # to the running pipelines/managers
+        _sync_patch_to_app(patch=patch, settings_manager=settings_manager, app=app)
 
     elif message_type == "settings/request":
         # Frontend wants the full state — just notify so the relay task pushes it
         settings_manager.notify_changed()
 
     else:
-        logger.warning(f"Unknown settings message_type: {message_type}")
+        raise ValueError(f"Unknown settings message_type: {message_type}")
 
 
 def _sync_patch_to_app(
@@ -101,13 +95,11 @@ def _sync_patch_to_app(
     This bridges the gap between "settings blob updated" and
     "actual pipeline/camera behavior changed."
     """
-    from copy import deepcopy
-
     # If calibration config was patched, update active pipelines
     if "calibration" in patch and "config" in patch.get("calibration", {}):
         cal_config = settings_manager.settings.calibration.config
         with app.realtime_pipeline_manager.lock:
-            for pipeline in app.realtime_pipeline_manager.realtime_pipelines.values():
+            for pipeline in app.realtime_pipeline_manager.pipelines.values():
                 new_config = deepcopy(pipeline.config)
                 new_config.calibration_config = cal_config
                 pipeline.update_config(new_config=new_config)
@@ -117,7 +109,7 @@ def _sync_patch_to_app(
     if "mocap" in patch and "config" in patch.get("mocap", {}):
         mocap_config = settings_manager.settings.mocap.config
         with app.realtime_pipeline_manager.lock:
-            for pipeline in app.realtime_pipeline_manager.realtime_pipelines.values():
+            for pipeline in app.realtime_pipeline_manager.pipelines.values():
                 new_config = deepcopy(pipeline.config)
                 new_config.mocap_config = mocap_config
                 pipeline.update_config(new_config=new_config)

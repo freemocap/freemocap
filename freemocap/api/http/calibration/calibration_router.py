@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -74,15 +75,22 @@ class CalibrateRecordingResponse(BaseModel):
 
 @calibration_router.post("/config/update/all")
 def update_all_calibration_config(request: CalibrationConfigRequest) -> CalibrationConfigResponse:
-    """Update calibration configuration on all active realtime pipelines."""
+    """Update calibration configuration on all active realtime pipelines via SettingsManager."""
     try:
         app = get_freemocap_app()
-        from copy import deepcopy
-        with app.pipeline_manager.lock:
-            for pipeline in app.pipeline_manager.realtime_pipelines.values():
+
+        # Update settings manager (source of truth), which notifies WebSocket clients
+        app.settings_manager.apply_patch({
+            "calibration": {"config": request.config.model_dump()},
+        })
+
+        # Sync to running pipelines
+        with app.realtime_pipeline_manager.lock:
+            for pipeline in app.realtime_pipeline_manager.pipelines.values():
                 new_config = deepcopy(pipeline.config)
                 new_config.calibration_config = request.config
                 pipeline.update_config(new_config=new_config)
+
         return CalibrationConfigResponse(success=True, message="Configuration updated")
     except Exception as e:
         logger.exception(f"Error updating calibration config: {e}")

@@ -11,12 +11,10 @@ import json
 import logging
 
 from fastapi import FastAPI
-from skellycam.core.recorders.framerate_tracker import FramerateTracker
-from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
+from skellycam.core.types.type_overloads import CameraIdString
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
-from freemocap.app.settings import SettingsManager
 from freemocap.app.settings_protocol import (
     handle_settings_message,
     settings_state_relay,
@@ -27,6 +25,12 @@ from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler
     MIN_LOG_LEVEL_FOR_WEBSOCKET,
 )
 from freemocap.utilities.wait_functions import await_10ms
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from freemocap.app.settings import SettingsManager
+    from skellycam.core.types.type_overloads import CameraGroupIdString
+    from skellycam.core.recorders.framerate_tracker import FramerateTracker
 
 logger = logging.getLogger(__name__)
 
@@ -149,13 +153,13 @@ class WebsocketServer:
                                 else:
                                     frame_number = frontend_payload.frame_number
 
-                            if not isinstance(payload_bytes, (bytes, bytearray)):
-                                raise TypeError(
-                                    f"Invalid payload bytes on frame {frame_number} - "
-                                    f"got type {type(payload_bytes).__name__}"
-                                )
-
                             if payload_bytes:
+                                if not isinstance(payload_bytes, (bytes, bytearray)):
+                                    raise TypeError(
+                                        f"Invalid payload bytes on frame {frame_number} - "
+                                        f"got type {type(payload_bytes).__name__}"
+                                    )
+
                                 await self.websocket.send_bytes(payload_bytes)
 
                             if frontend_payload and frontend_payload.charuco_overlays:
@@ -197,7 +201,7 @@ class WebsocketServer:
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.exception(f"Error in image payload relay: {e.__class__}: {e}")
+            logger.exception(f"Error in frontend image relay: {e.__class__}: {e}")
             self._websocket_should_continue = False
             raise
 

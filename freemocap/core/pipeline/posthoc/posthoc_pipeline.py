@@ -11,9 +11,12 @@ naturally when their work is done.
 """
 import logging
 import multiprocessing
+import sys
+import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
+from typing import ClassVar
 
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -134,6 +137,8 @@ class PosthocPipeline:
             pubsub=pubsub,
         )
 
+
+
     def start(self) -> None:
         """Start all video nodes then the aggregation node."""
         if self.started:
@@ -145,8 +150,10 @@ class PosthocPipeline:
             f"with {len(self.video_nodes)} video node(s)"
         )
 
-        for node in self.video_nodes.values():
+        nodes = list(self.video_nodes.values())
+        for i, node in enumerate(nodes):
             node.start()
+
 
         self.aggregation_node.start()
         logger.info(f"PosthocPipeline [{self.id}] — all workers started")

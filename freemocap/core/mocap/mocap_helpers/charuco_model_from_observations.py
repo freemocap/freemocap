@@ -8,8 +8,6 @@ then interpolates, filters, and saves the result.
 import logging
 from pathlib import Path
 
-import numpy as np
-from skellyforge.data_models.trajectory_3d import Trajectory3d
 from skellyforge.post_processing.filters.apply_filter import filter_trajectory
 from skellyforge.post_processing.filters.filter_config import FilterConfig
 from skellyforge.post_processing.interpolation.apply_interpolation import interpolate_trajectory
@@ -22,6 +20,11 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 from freemocap.core.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCameraGroup
 from freemocap.core.mocap.mocap_helpers.triangulate_trajectory_array import TriangulationConfig, triangulate_dict
 from freemocap.core.types.type_overloads import VideoIdString
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from skellyforge.data_models.trajectory_3d import Trajectory3d
+    import numpy as np
 
 logger = logging.getLogger(__name__)
 

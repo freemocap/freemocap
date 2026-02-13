@@ -18,15 +18,24 @@ Error escalation policy (enforced by subclasses, not the base):
 """
 import logging
 import multiprocessing
+import sys
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, ClassVar
 
 from skellycam.core.ipc.process_management.managed_process import ManagedProcess
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 
 logger = logging.getLogger(__name__)
 
+# On Windows, multiprocessing.spawn causes each child process to
+# re-import the full module tree. Spawning many children simultaneously
+# creates a file-locking race (PermissionError) because Windows holds
+# brief exclusive locks during file reads, and antivirus real-time
+# scanning amplifies the contention. Staggering spawns lets each child
+# finish its import phase before the next one starts.
+_SPAWN_STAGGER_SECONDS: ClassVar[float] = 0.25 if sys.platform == "win32" else 0.0
 
 @dataclass
 class BaseNode:
@@ -51,6 +60,9 @@ class BaseNode:
             raise RuntimeError(
                 f"{type(self).__name__} worker '{self.worker.name}' is already running"
             )
+
+        if _SPAWN_STAGGER_SECONDS > 0:
+            time.sleep(_SPAWN_STAGGER_SECONDS)
         self.worker.start()
         logger.debug(f"{type(self).__name__} worker '{self.worker.name}' started")
 

@@ -62,7 +62,7 @@ class CalibrationSettings(BaseModel):
 
 class MocapSettings(BaseModel):
     """Motion capture config + runtime status."""
-    config: MocapPipelineConfig = Field(default_factory=MocapPipelineConfig)
+    config: MocapPipelineConfig = Field(default_factory=MocapPipelineConfig.default_realtime)
     is_recording: bool = False
     recording_progress: float = 0.0
     last_recording_path: str | None = None

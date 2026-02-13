@@ -5,13 +5,12 @@ Each Message + Topic pair defines a typed channel. Topics auto-register
 via __init_subclass__ so the PubSubTopicManager discovers them at startup.
 """
 import logging
+from typing import TYPE_CHECKING
 
 from pydantic import Field, model_validator
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
-from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
 
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.types.type_overloads import (
@@ -20,9 +19,13 @@ from freemocap.core.types.type_overloads import (
     VideoIdString,
     TrackedPointNameString,
 )
-from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
-from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
+
+if TYPE_CHECKING:
+    from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+    from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
+    from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
+    from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +53,8 @@ class PipelineConfigUpdateMessage(TopicMessageABC):
 class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString
     frame_number: FrameNumberInt = Field(ge=0)
-    charuco_observation: CharucoObservation|None
-    mediapipe_observation: MediapipeObservation|None
+    charuco_observation: BaseObservation | None
+    mediapipe_observation: BaseObservation | None
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +98,10 @@ class AggregationNodeOutputMessage(TopicMessageABC):
         return self
 
     @property
-    def charuco_overlay_data(self) -> dict[CameraIdString, CharucoOverlayData]:
+    def charuco_overlay_data(self) -> dict:
+        from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+        from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
+
         overlay_data: dict[CameraIdString, CharucoOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
             if cam_output.charuco_observation is not None and isinstance(cam_output.charuco_observation, CharucoObservation):
@@ -106,7 +112,10 @@ class AggregationNodeOutputMessage(TopicMessageABC):
         return overlay_data
 
     @property
-    def mediapipe_overlay_data(self) -> dict[CameraIdString, MediapipeOverlayData]:
+    def mediapipe_overlay_data(self) -> dict:
+        from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
+        from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
+
         overlay_data: dict[CameraIdString, MediapipeOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
             if cam_output.mediapipe_observation is not None and isinstance(cam_output.mediapipe_observation, MediapipeObservation):

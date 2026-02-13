@@ -13,8 +13,6 @@ from enum import Enum
 from pydantic import BaseModel, Field
 from skellycam.core.camera.config.camera_config import CameraConfig, CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
-from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetectorConfig
 
 from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,

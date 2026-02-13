@@ -10,10 +10,12 @@ from pydantic import BaseModel, Field
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
-from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetectorConfig, \
-    MediapipeModelComplexity, MEDIAPIPE_TRACKER_REALTIME_PRESET, MEDIAPIPE_TRACKER_POSTHOC_PRESET
-from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
-from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
+from skellytracker.trackers.mediapipe_tracker.mediapipe_detector_config import (
+    MediapipeDetectorConfig,
+    MediapipeModelComplexity,
+    MEDIAPIPE_TRACKER_REALTIME_PRESET,
+    MEDIAPIPE_TRACKER_POSTHOC_PRESET,
+)
 
 from freemocap.core.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
 
@@ -27,14 +29,16 @@ DetectorSpec = CharucoDetectorConfig | MediapipeDetectorConfig
 def create_detector_from_spec(spec: DetectorSpec):
     """
     Create a detector instance from a picklable spec.
-    Called inside child processes — imports happen at module level but
-    the heavy detector objects are only instantiated here.
+    Called inside child processes — detector class imports are deferred
+    to avoid pulling in mediapipe/cv2.aruco during module import.
     """
 
     match spec:
         case CharucoDetectorConfig():
+            from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
             return CharucoDetector.create(config=spec)
         case MediapipeDetectorConfig():
+            from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
             return MediapipeDetector.create(config=spec)
         case _:
             raise TypeError(f"Unknown detector spec type: {type(spec).__name__}")

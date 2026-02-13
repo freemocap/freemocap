@@ -9,14 +9,11 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 
-import cv2
 from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.types.type_overloads import CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
-from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
-from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
 
 from freemocap.core.pipeline.base_node import BaseNode
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
@@ -93,6 +90,10 @@ class RealtimeCameraNode(BaseNode):
         shutdown_self_flag: multiprocessing.Value,
         camera_shm_dto: SharedMemoryRingBufferDTO,
     ) -> None:
+        import cv2
+        from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
+        from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
+
         logger.debug(f"RealtimeCameraNode [{camera_id}] initializing")
         camera_shm = CameraSharedMemoryRingBuffer.recreate(
             dto=camera_shm_dto,
